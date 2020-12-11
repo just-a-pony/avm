@@ -11,7 +11,7 @@ Style Check:
     - apk add --no-cache git clang
   script:
     - |
-      for f in $(git diff --name-only HEAD HEAD~1 '*.[hc]pp' '*.cc' '*.[ch]' | grep -v third_party); do
+      for f in $(git ls-files '*.[hc]pp' '*.cc' '*.[ch]' | grep -v third_party); do
         clang-format -i --style=file $f
       done
 
