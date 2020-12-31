@@ -1,0 +1,84 @@
+stages:
+  - build
+
+Linux Build:
+  stage: build
+  image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
+  variables:
+    CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DCONFIG_LOWBITDEPTH=1
+  parallel:
+    matrix:
+      - AOM_BUILD_CONFIG:
+          - internal-stats
+          - shared
+          - no-rtcd
+          - rtcd
+          - encode-only
+          - decode-only
+          - no-thread
+          - no-webm
+          - inspection-accounting
+          - nasm
+          - no-examples
+          - realtime-only
+          - high-bitdepth
+          - no-high-bitdepth
+          - test-data
+  script:
+    - |
+      case $AOM_BUILD_CONFIG in
+        internal-stats)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_INTERNAL_STATS=1"
+          ;;
+        small)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_SMALL=1"
+          ;;
+        shared)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SHARED_LIBS=1"
+          ;;
+        shared-no-static)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SHARED_LIBS=1 -DCONFIG_STATIC=0"
+          ;;
+        no-rtcd)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_RUNTIME_CPU_DETECT=0"
+          ;;
+        rtcd)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_RUNTIME_CPU_DETECT=1"
+          ;;
+        realtime-only)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_REALTIME_ONLY=1"
+          ;;
+        encode-only)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_AV1_DECODER=0"
+          ;;
+        decode-only)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_AV1_ENCODER=0"
+          ;;
+        no-thread)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_MULTITHREAD=0"
+          ;;
+        no-webm)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_WEBM_IO=0"
+          ;;
+        inspection-accounting)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_INSPECTION=1 -DACCOUNTING=1"
+          ;;
+        nasm)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DENABLE_NASM=1"
+          ;;
+        no-examples)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DENABLE_EXAMPLES=0"
+          ;;
+        high-bitdepth)
+          CMAKE_FLAGS=""
+          CMAKE_FLAGS="-DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DFORCE_HIGHBITDEPTH_DECODING=0 -DCONFIG_AV1_HIGHBITDEPTH=1"
+          ;;
+        no-high-bitdepth)
+          CMAKE_FLAGS=""
+          CMAKE_FLAGS="-DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DFORCE_HIGHBITDEPTH_DECODING=0 -DCONFIG_AV1_HIGHBITDEPTH=0"
+          ;;
+      esac
+      echo "CMake Flags: $CMAKE_FLAGS"
+    - cmake -B aom_build -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS
+    - cmake --build aom_build
+
