@@ -24,7 +24,6 @@ Linux Build:
           - realtime-only
           - high-bitdepth
           - no-high-bitdepth
-          - test-data
   script:
     - |
       case $AOM_BUILD_CONFIG in
