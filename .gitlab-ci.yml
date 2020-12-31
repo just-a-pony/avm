@@ -10,7 +10,7 @@ Test Data:
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
   script:
-    - cmake -B aom_testdata
+    - cmake -B aom_testdata -GNinja
     - cmake --build aom_testdata --target testdata
   artifacts:
     expire_in: 1 day
@@ -98,7 +98,7 @@ Linux Build:
           ;;
       esac
       echo "CMake Flags: $CMAKE_FLAGS"
-    - cmake -B aom_build -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS
+    - cmake -B aom_build -GNinja -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS
     - cmake --build aom_build
     - cmake --build aom_build --target dist
     - DESTDIR="${CI_PROJECT_DIR}/installroot" cmake --build aom_build --target install
@@ -112,7 +112,7 @@ Linux Test Builds:
   stage: build
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
   script:
-    - cmake -B aom_test_build
+    - cmake -B aom_test_build -GNinja
         -DCMAKE_BUILD_TYPE=Debug
         -DENABLE_EXAMPLES=0
         -DBUILD_SHARED_LIBS=0
