@@ -6,6 +6,7 @@ Linux Build:
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
   variables:
     CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DCONFIG_LOWBITDEPTH=1
+    DESTDIR: ${CI_PROJECT_DIR}/installroot/
   parallel:
     matrix:
       - AOM_BUILD_CONFIG:
@@ -85,4 +86,11 @@ Linux Build:
       echo "CMake Flags: $CMAKE_FLAGS"
     - cmake -B aom_build -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS
     - cmake --build aom_build
+    - cmake --build aom_build --target dist
+    - cmake --build aom_build --target install
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - ${CI_PROJECT_DIR}/aom_build/dist/*
+      - ${CI_PROJECT_DIR}/installroot/*
 
