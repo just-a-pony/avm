@@ -130,6 +130,7 @@ Linux Unit Tests:
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
     GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
+    GTEST_OUTPUT: "xml:report.xml"
   before_script:
     - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
   script:
