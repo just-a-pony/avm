@@ -77,6 +77,10 @@ Linux Build:
           CMAKE_FLAGS=""
           CMAKE_FLAGS="-DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DFORCE_HIGHBITDEPTH_DECODING=0 -DCONFIG_AV1_HIGHBITDEPTH=0"
           ;;
+        *)
+          echo -n "Unknown configuration: '$AOM_BUILD_CONFIG'"
+          exit 1
+          ;;
       esac
       echo "CMake Flags: $CMAKE_FLAGS"
     - cmake -B aom_build -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS
