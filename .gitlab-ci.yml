@@ -99,7 +99,7 @@ Linux Build:
       esac
       echo "CMake Flags: $CMAKE_FLAGS"
     - cmake -B aom_build -GNinja -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS
-    - cmake --build aom_build
+    - cmake --build aom_build -j 1
     - cmake --build aom_build --target dist
     - DESTDIR="${CI_PROJECT_DIR}/installroot" cmake --build aom_build --target install
   artifacts:
