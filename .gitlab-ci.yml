@@ -196,3 +196,32 @@ Linux Unit Test:
     when: always
     reports:
       junit: report.xml
+
+Linux Sanitizer (address) Test:
+  stage: test
+  image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
+  parallel: 20
+  variables:
+    LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
+    GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
+    GTEST_OUTPUT: "xml:report.xml"
+    ASAN_OPTIONS: "\
+     :handle_segv=1\
+     :handle_abort=1\
+     :handle_sigfpe=1\
+     :fast_unwind_on_fatal=1\
+     :allocator_may_return_null=1\
+     :detect_stack_use_after_return=1\
+     :max_uar_stack_size_log=17"
+  before_script:
+    - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
+  script:
+    - ./aom_build/address/test_libaom
+        --gtest_filter='-*Large*'
+  needs:
+    - 'Test Data'
+    - 'Linux Sanitizers (x86_64-clang): [address]'
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
