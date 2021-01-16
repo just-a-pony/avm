@@ -5,8 +5,8 @@ stages:
 
 # Check code style with clang-format
 Style Check:
-  stage: .pre
-  image: alpine
+  stage: check
+  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
   before_script:
     - apk add --no-cache git clang
   script:
