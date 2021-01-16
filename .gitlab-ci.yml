@@ -3,7 +3,8 @@ stages:
   - build
   - test
 
-style check:
+# Check code style with clang-format
+Style Check:
   stage: .pre
   image: alpine
   before_script:
