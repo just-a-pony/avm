@@ -120,7 +120,7 @@ Linux Build:
       - ${CI_PROJECT_DIR}/aom_build/dist/*
       - ${CI_PROJECT_DIR}/installroot/*
 
-Linux Test Builds:
+Linux Test (x86_64-gcc):
   stage: build
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
   script:
@@ -150,7 +150,7 @@ Linux Unit Tests:
         --gtest_filter='-*Large*'
   needs:
     - 'Test Data'
-    - 'Linux Test Builds'
+    - 'Linux Test (x86_64-gcc)'
   artifacts:
     when: always
     reports:
