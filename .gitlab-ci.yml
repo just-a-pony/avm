@@ -259,3 +259,11 @@ Linux Sanitizer (address) Test:
   needs:
     - 'Test Data'
     - 'Linux Sanitizers (x86_64-clang): [address]'
+
+Linux Sanitizer (undefined) Test:
+  extends: .sanitizer-common
+  variables:
+    AOM_SANITIZER_TYPE: undefined
+  needs:
+    - 'Test Data'
+    - 'Linux Sanitizers (x86_64-clang): [undefined]'
