@@ -147,7 +147,7 @@ Linux Sanitizers (x86_64-clang):
       -DCMAKE_CXX_COMPILER=clang++-10
       -DCMAKE_C_FLAGS=-O2
       -DCMAKE_CXX_FLAGS=-O2
-
+      -DENABLE_EXAMPLES=0
   parallel:
     matrix:
       - AOM_SANITIZER_TYPE:
