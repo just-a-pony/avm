@@ -242,9 +242,10 @@ Linux Unit Test:
         research*)
           negative_filter="${negative_filter}:*MD5Test*:*TestVectorTest*:*InvalidFile*:*ExternalFrameBuffer*"
       esac
+      filter="${negative_filter}"
       case $AOM_SANITIZER_TYPE in
         thread)
-          filter="*Thread*:${negative_filter}"
+          filter="*Thread*:${filter}"
       esac
     - ./aom_build/${AOM_SANITIZER_TYPE}/test_libaom --gtest_filter="${filter}"
   artifacts:
