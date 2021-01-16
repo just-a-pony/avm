@@ -176,7 +176,7 @@ Linux Sanitizers (x86_64-clang):
     paths:
       - aom_build/*/test_libaom
 
-Linux Unit Tests:
+Linux Unit Test:
   stage: test
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
   parallel: 20
