@@ -141,7 +141,7 @@ Linux Sanitizers (x86_64-clang):
   stage: build
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
   variables:
-    CMAKE_FLAGS: >
+    CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
       -DCMAKE_C_COMPILER=clang-10
       -DCMAKE_CXX_COMPILER=clang++-10
