@@ -230,7 +230,7 @@ Linux Unit Test:
           export TSAN_OPTIONS
           ;;
         undefined|integer)
-          SANITIZER_OPTIONS="${SANITIZER_OPTIONS}:print_stacktrace=1"
+          SANITIZER_OPTIONS="${SANITIZER_OPTIONS}:print_stacktrace=1:suppressions=.gitlab/UBSan.supp"
           export UBSAN_OPTIONS="${SANITIZER_OPTIONS}"
           ;;
       esac
