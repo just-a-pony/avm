@@ -145,8 +145,6 @@ Linux Sanitizers (x86_64-clang):
       -DENABLE_CCACHE=1
       -DCMAKE_C_COMPILER=clang-6.0
       -DCMAKE_CXX_COMPILER=clang++-6.0
-      -DCMAKE_C_FLAGS=-O2
-      -DCMAKE_CXX_FLAGS=-O2
       -DENABLE_EXAMPLES=0
   parallel:
     matrix:
@@ -168,7 +166,7 @@ Linux Sanitizers (x86_64-clang):
           ;;
       esac
       echo "CMake Flags: $CMAKE_FLAGS"
-    - cmake -B "aom_build/$AOM_SANITIZER_TYPE" -GNinja -DCMAKE_BUILD_TYPE=Debug $CMAKE_FLAGS
+    - cmake -B "aom_build/$AOM_SANITIZER_TYPE" -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo $CMAKE_FLAGS
     - cmake --build "aom_build/$AOM_SANITIZER_TYPE"
   needs: []
   artifacts:
