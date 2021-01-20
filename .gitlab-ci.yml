@@ -154,18 +154,7 @@ Linux Sanitizers (x86_64-clang):
   script:
     - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
     - |
-      case $AOM_SANITIZER_TYPE in
-        address)
-          CMAKE_FLAGS="$CMAKE_FLAGS -DSANITIZE=address"
-          ;;
-        undefined)
-          CMAKE_FLAGS="$CMAKE_FLAGS -DSANITIZE=undefined"
-          ;;
-        *)
-          echo -n "Unknown sanitizer type: '$AOM_SANITIZER_TYPE'"
-          exit 1
-          ;;
-      esac
+      CMAKE_FLAGS="$CMAKE_FLAGS -DSANITIZE=${AOM_SANITIZER_TYPE}"
       echo "CMake Flags: $CMAKE_FLAGS"
     - cmake -B "aom_build/$AOM_SANITIZER_TYPE" -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo $CMAKE_FLAGS
     - cmake --build "aom_build/$AOM_SANITIZER_TYPE"
