@@ -151,6 +151,7 @@ Linux Sanitizers (x86_64-clang):
       - AOM_SANITIZER_TYPE:
           - address
           - undefined
+          - integer
   script:
     - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
     - |
@@ -257,3 +258,11 @@ Linux Sanitizer (undefined) Test:
   needs:
     - 'Test Data'
     - 'Linux Sanitizers (x86_64-clang): [undefined]'
+
+Linux Sanitizer (integer) Test:
+  extends: .sanitizer-common
+  variables:
+    AOM_SANITIZER_TYPE: integer
+  needs:
+    - 'Test Data'
+    - 'Linux Sanitizers (x86_64-clang): [integer]'
