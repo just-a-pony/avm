@@ -242,11 +242,27 @@ Linux Unit Test:
         thread)
           filter="*Thread*:${filter}"
       esac
-    - ./aom_build/${AOM_SANITIZER_TYPE}/test_libaom --gtest_filter="${filter}"
+    - ./aom_build/${AOM_SANITIZER_TYPE}/test_libaom --gtest_filter="${filter}" 2> >(tee -a sanitizer.log >&2)
+    - |
+      # Looking for sanitizer output in log...
+      grep -q "\(ERROR\|WARNING\): \(Address\|Thread\|Memory\|Leak\)Sanitizer:" sanitizer.log && {
+        echo "Found sanitizer errors or warnings, check the log:"
+        cat sanitizer.log
+        exit 1
+      }
+      # Looking for UBSan output in log (differs from the common format)
+      grep -q ":[[:digit:]]\+:[[:digit:]]\+: runtime error:" sanitizer.log && {
+        echo "Found sanitizer errors or warnings, check the log:"
+        cat sanitizer.log
+        exit 1
+      }
+      echo "No sanitizer errors found"
   artifacts:
-    when: always
-    reports:
-      junit: report.xml
+    expose_as: 'Sanitizer logs'
+    name: "sanitizer.log-$CI_JOB_ID"
+    when: on_failure
+    paths:
+      - sanitizer.log
 
 Linux Sanitizer (address) Test:
   extends: .sanitizer-common
