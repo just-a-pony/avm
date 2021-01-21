@@ -141,6 +141,7 @@ Linux Sanitizers (x86_64-clang):
   stage: build
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
   variables:
+    SANITIZER_IGNORES_FILE: .gitlab/SanitizerIgnores.txt
     CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
       -DCMAKE_C_COMPILER=clang
@@ -155,7 +156,11 @@ Linux Sanitizers (x86_64-clang):
   script:
     - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
     - |
+      SANITIZER_BLACKLIST_FLAG="-fsanitize-blacklist=${PWD}/${SANITIZER_IGNORES_FILE}"
+
       CMAKE_FLAGS="$CMAKE_FLAGS -DSANITIZE=${AOM_SANITIZER_TYPE}"
+      CMAKE_FLAGS="$CMAKE_FLAGS -DAOM_EXTRA_C_FLAGS=${SANITIZER_BLACKLIST_FLAG}"
+      CMAKE_FLAGS="$CMAKE_FLAGS -DAOM_EXTRA_CXX_FLAGS=${SANITIZER_BLACKLIST_FLAG}"
       echo "CMake Flags: $CMAKE_FLAGS"
     - cmake -B "aom_build/$AOM_SANITIZER_TYPE" -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo $CMAKE_FLAGS
     - cmake --build "aom_build/$AOM_SANITIZER_TYPE"
