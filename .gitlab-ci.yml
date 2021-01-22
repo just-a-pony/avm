@@ -154,6 +154,7 @@ Linux Sanitizers (x86_64-clang):
           - undefined
           - integer
           - cfi
+          - thread
   script:
     - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
     - |
@@ -296,3 +297,11 @@ Linux Sanitizer (cfi) Test:
   needs:
     - 'Test Data'
     - 'Linux Sanitizers (x86_64-clang): [cfi]'
+
+Linux Sanitizer (thread) Test:
+  extends: .sanitizer-common
+  variables:
+    AOM_SANITIZER_TYPE: thread
+  needs:
+    - 'Test Data'
+    - 'Linux Sanitizers (x86_64-clang): [thread]'
