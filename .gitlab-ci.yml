@@ -153,6 +153,7 @@ Linux Sanitizers (x86_64-clang):
           - address
           - undefined
           - integer
+          - cfi
   script:
     - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
     - |
@@ -287,3 +288,11 @@ Linux Sanitizer (integer) Test:
   needs:
     - 'Test Data'
     - 'Linux Sanitizers (x86_64-clang): [integer]'
+
+Linux Sanitizer (cfi) Test:
+  extends: .sanitizer-common
+  variables:
+    AOM_SANITIZER_TYPE: cfi
+  needs:
+    - 'Test Data'
+    - 'Linux Sanitizers (x86_64-clang): [cfi]'
