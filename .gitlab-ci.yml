@@ -170,7 +170,7 @@ Linux Sanitizers (x86_64-clang):
       CMAKE_FLAGS="$CMAKE_FLAGS -DAOM_EXTRA_CXX_FLAGS=${SANITIZER_BLACKLIST_FLAG}"
       echo "CMake Flags: $CMAKE_FLAGS"
     - cmake -B "aom_build/$AOM_SANITIZER_TYPE" -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo $CMAKE_FLAGS
-    - cmake --build "aom_build/$AOM_SANITIZER_TYPE"
+    - cmake --build "aom_build/$AOM_SANITIZER_TYPE" --target test_libaom
   needs: []
   artifacts:
     expire_in: 1 day
