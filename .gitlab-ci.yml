@@ -108,7 +108,9 @@ Test Data:
           exit 1
           ;;
       esac
-      echo "CMake Flags: $CMAKE_FLAGS"
+      echo "CMake Flags:       $CMAKE_FLAGS"
+      echo "Extra CMake Flags: $EXTRA_CMAKE_FLAGS"
+      echo "Configuration:     $AOM_BUILD_CONFIG"
     - cmake -B aom_build -GNinja -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS $EXTRA_CMAKE_FLAGS
     - cmake --build aom_build -j 1
     - cmake --build aom_build --target dist
