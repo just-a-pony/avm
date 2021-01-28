@@ -32,7 +32,7 @@ Test Data:
 .build-common:
   stage: build
   variables:
-    CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DCONFIG_LOWBITDEPTH=1
+    CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1
   parallel:
     matrix:
       - AOM_BUILD_CONFIG:
@@ -48,8 +48,6 @@ Test Data:
           - nasm
           - no-examples
           - realtime-only
-          - high-bitdepth
-          - no-high-bitdepth
   script:
     - |
       case $AOM_BUILD_CONFIG in
@@ -95,14 +93,6 @@ Test Data:
         no-examples)
           CMAKE_FLAGS="$CMAKE_FLAGS -DENABLE_EXAMPLES=0"
           ;;
-        high-bitdepth)
-          CMAKE_FLAGS=""
-          CMAKE_FLAGS="-DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DFORCE_HIGHBITDEPTH_DECODING=0 -DCONFIG_AV1_HIGHBITDEPTH=1"
-          ;;
-        no-high-bitdepth)
-          CMAKE_FLAGS=""
-          CMAKE_FLAGS="-DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DFORCE_HIGHBITDEPTH_DECODING=0 -DCONFIG_AV1_HIGHBITDEPTH=0"
-          ;;
         *)
           echo -n "Unknown configuration: '$AOM_BUILD_CONFIG'"
           exit 1
@@ -138,8 +128,6 @@ Build (generic-gnu):
           - inspection-accounting
           - no-examples
           - realtime-only
-          - high-bitdepth
-          - no-high-bitdepth
   variables:
     EXTRA_CMAKE_FLAGS: -DAOM_TARGET_CPU=generic
 
