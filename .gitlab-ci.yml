@@ -2,6 +2,7 @@ stages:
   - check
   - build
   - test
+  - enc_compare
 
 # Check code style with clang-format
 Style Check:
@@ -451,3 +452,19 @@ Enc Run (Low-delay):
     when: always
     paths:
       - ${AOMENC_OUTPUT}.*
+
+# Enc compare:
+#   stage: enc_compare
+#   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
+#   script:
+#     - |
+#       [ "${CI_COMMIT_BEFORE_SHA}" == "0000000000000000000000000000000000000000" ] && {
+#         echo "Skipping comparison as reference SHA "
+#         exit 77
+#       }
+#     - git
+#         --no-pager log
+#           --grep STATS_CHANGED
+#           --format=format:"%H" "${CI_COMMIT_BEFORE_SHA}..${CI_COMMIT_SHA}"
+#   needs:
+#     - 'Enc Run (all-intra)'
