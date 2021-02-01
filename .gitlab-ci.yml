@@ -29,8 +29,24 @@ Test Data:
     paths:
       - ${CI_PROJECT_DIR}/libaom-test-data
 
+.ccache-common:
+  variables:
+    CCACHE_BASEDIR: ${CI_PROJECT_DIR}
+    CCACHE_DIR: ${CI_PROJECT_DIR}/ccache
+    CCACHE_COMPILERCHECK: content
+  before_script:
+    - ccache --zero-stats
+    - ccache --show-stats
+  after_script:
+    - ccache --show-stats
+  cache:
+    key: ${CI_JOB_NAME}
+    paths:
+      - ccache
+
 .build-common:
   stage: build
+  extends: .ccache-common
   variables:
     CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1
   parallel:
