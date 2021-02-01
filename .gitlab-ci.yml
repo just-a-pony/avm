@@ -324,3 +324,114 @@ Linux Sanitizer (thread) Test:
   needs:
     - 'Test Data'
     - 'Linux Sanitizers (x86_64-clang): [thread]'
+
+# Encoder run and compare with target branch (MR) or previous runs
+# TODO: Actually compare encodes and report result
+.enc-run-common:
+  stage: test
+  image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
+  variables:
+    AOMENC_LIMIT: 30
+    AOMENC_CQ_LEVEL: 32
+    AOMENC_INPUT: Vertical_Bayshore_270x480_2997.y4m
+    AOMENC: installroot/usr/local/bin/aomenc
+  before_script:
+    - curl -s -S -f -O https://gitlab.com/AOMediaCodec/aom-testing/-/raw/master/test-files/${AOMENC_INPUT}.xz
+    - unxz ${AOMENC_INPUT}.xz
+  needs:
+    - 'Build (x86_64-linux-gcc): [encode-only]'
+
+
+Enc Run (All-intra):
+  extends: .enc-run-common
+  variables:
+    AOMENC_OUTPUT: all-intra
+  script:
+    - ${AOMENC}
+        --cpu-used=0
+        --passes=1
+        --end-usage=q
+        --cq-level=${AOMENC_CQ_LEVEL}
+        --kf-min-dist=0
+        --kf-max-dist=0
+        --use-fixed-qp-offsets=1
+        --deltaq-mode=0
+        --enable-tpl-model=0
+        --enable-keyframe-filtering=0
+        --psnr
+        --obu
+        --limit=${AOMENC_LIMIT}
+        -o "${AOMENC_OUTPUT}.obu"
+        "${AOMENC_INPUT}" 2>&1 | tee "${AOMENC_OUTPUT}.psnr.log"
+    - '[ -f "${AOMENC_OUTPUT}.obu" ] || exit 1'
+    - md5sum -b "${AOMENC_OUTPUT}.obu" > "${AOMENC_OUTPUT}.md5"
+  artifacts:
+    when: always
+    paths:
+      - ${AOMENC_OUTPUT}.*
+
+Enc Run (Random Access):
+  extends: .enc-run-common
+  variables:
+    AOMENC_OUTPUT: random-access
+  script:
+    - ${AOMENC}
+        --cpu-used=0
+        --passes=1
+        --lag-in-frames=19
+        --auto-alt-ref=1
+        --min-gf-interval=16
+        --max-gf-interval=16
+        --gf-min-pyr-height=4
+        --gf-max-pyr-height=4
+        --kf-min-dist=65
+        --kf-max-dist=65
+        --use-fixed-qp-offsets=1
+        --deltaq-mode=0
+        --enable-tpl-model=0
+        --end-usage=q
+        --cq-level=${AOMENC_CQ_LEVEL}
+        --enable-keyframe-filtering=0
+        --obu
+        --limit=${AOMENC_LIMIT}
+        -o "${AOMENC_OUTPUT}.obu"
+        "${AOMENC_INPUT}" 2>&1 | tee "${AOMENC_OUTPUT}.psnr.log"
+    - '[ -f "${AOMENC_OUTPUT}.obu" ] || exit 1'
+    - md5sum -b "${AOMENC_OUTPUT}.obu" > "${AOMENC_OUTPUT}.md5"
+  artifacts:
+    when: always
+    paths:
+      - ${AOMENC_OUTPUT}.*
+
+Enc Run (Low-delay):
+  extends: .enc-run-common
+  variables:
+    AOMENC_OUTPUT: low-delay
+  script:
+    - ${AOMENC}
+        --cpu-used=0
+        --passes=1
+        --lag-in-frames=0
+        --min-gf-interval=16
+        --max-gf-interval=16
+        --gf-min-pyr-height=4
+        --gf-max-pyr-height=4
+        --kf-min-dist=9999
+        --kf-max-dist=9999
+        --use-fixed-qp-offsets=1
+        --deltaq-mode=0
+        --enable-tpl-model=0
+        --end-usage=q
+        --cq-level=${AOMENC_CQ_LEVEL}
+        --subgop-config-str=ld
+        --enable-keyframe-filtering=0
+        --obu
+        --limit=${AOMENC_LIMIT}
+        -o "${AOMENC_OUTPUT}.obu"
+        "${AOMENC_INPUT}" 2>&1 | tee "${AOMENC_OUTPUT}.psnr.log"
+    - '[ -f "${AOMENC_OUTPUT}.obu" ] || exit 1'
+    - md5sum -b "${AOMENC_OUTPUT}.obu" > "${AOMENC_OUTPUT}.md5"
+  artifacts:
+    when: always
+    paths:
+      - ${AOMENC_OUTPUT}.*
