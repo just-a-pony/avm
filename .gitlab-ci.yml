@@ -471,7 +471,7 @@ Enc Run (Low-delay):
 
 Static Analyzer:
   stage: test
-  image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
+  image: epirat/ubuntu2004:latest
   parallel:
     matrix:
       - ANALYZER_MODE:
