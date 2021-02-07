@@ -478,11 +478,11 @@ Static Analyzer:
           - shallow
           - deep
   script:
-    - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-10/bin:${PATH}"
     - mkdir output-${ANALYZER_MODE}
     - |
       scan_build() {
-        scan-build -o output-${ANALYZER_MODE} -analyzer-config mode=${ANALYZER_MODE} $*
+        scan-build --exclude third_party -o output-${ANALYZER_MODE} -analyzer-config mode=${ANALYZER_MODE} $*
       }
     - scan_build cmake -B aom_build -GNinja -DCMAKE_BUILD_TYPE=Debug
     - scan_build cmake --build aom_build
