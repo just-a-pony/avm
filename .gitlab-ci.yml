@@ -2,6 +2,7 @@ stages:
   - check
   - build
   - test
+  - report
   - enc_compare
 
 # Check code style with clang-format
@@ -526,16 +527,40 @@ Linux All Unit Test:
     - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
   script:
     - cd aom_nightly_build
-    - ./test_libaom --gtest_filter='SSE2/*-*Large*' # remove filter later!
-    - gcovr --xml -o ../coverage.xml -r ../ .
-    - gcovr --html -o ../coverage.html -r ../ .
+    - ./test_libaom
+    - gcovr
+      --exclude '../third_party/'
+      --json -o "coverage_${CI_NODE_INDEX}.json"
+      -r ../ .
   needs:
     - 'Test Data'
     - 'Linux Nightly Build'
   artifacts:
     when: always
     reports:
-      junit: report.xml
+      junit: ./aom_nightly_build/report.xml
+    paths:
+      - aom_nightly_build/coverage_*.json
+
+Coverage Report:
+  stage: report
+  image: epirat/ubuntu2004:latest
+  script:
+    - mkdir -p coverage-html
+    - cd aom_nightly_build
+    # the find can be replace with --add-tracefile "coverage_*.json" once
+    # next release of gcovr is done (current is gcovr 4.2)
+    # additionally --html-self-contained could then be used.
+    - >-
+      gcovr
+      $(find . -name 'coverage_*.json' -printf '--add-tracefile %p ')
+      --exclude '../third_party/'
+      --xml ../coverage.xml
+      --html --html-details ../coverage-html/coverage.html
+      --print-summary
+      -r ../ .
+  artifacts:
+    reports:
       cobertura: coverage.xml
     paths:
-      - coverage.html
+      - coverage-html
