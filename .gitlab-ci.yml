@@ -488,5 +488,6 @@ Static Analyzer:
     - scan_build --status-bugs cmake --build aom_build
   artifacts:
     expire_in: 2 weeks
+    when: on_failure
     paths:
       - output-*
