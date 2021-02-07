@@ -491,3 +491,51 @@ Static Analyzer:
     when: on_failure
     paths:
       - output-*
+
+Linux Nightly Build:
+  stage: build
+  image: epirat/ubuntu2004:latest
+  variables:
+    CMAKE_FLAGS: >-
+      -DCMAKE_BUILD_TYPE=Debug
+      -DAOM_EXTRA_C_FLAGS="--coverage"
+      -DAOM_EXTRA_CXX_FLAGS="--coverage"
+      -DAOM_EXTRA_EXE_LINKER_FLAGS="--coverage"
+  script:
+    - 'echo "CMake Flags: $CMAKE_FLAGS"'
+    - cmake -B "aom_nightly_build" -GNinja $CMAKE_FLAGS
+    - cmake --build "aom_nightly_build" --target test_libaom
+  needs: []
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - 'aom_nightly_build/test_libaom'
+      - 'aom_nightly_build/**/*.gcno'
+      - 'aom_nightly_build/**/*.[hc]'
+
+# Full test suite run (with coverage report)
+Linux All Unit Test:
+  stage: test
+  image: epirat/ubuntu2004:latest
+  parallel: 20
+  variables:
+    LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
+    GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
+    GTEST_OUTPUT: "xml:report.xml"
+  before_script:
+    - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
+  script:
+    - cd aom_nightly_build
+    - ./test_libaom --gtest_filter='SSE2/*-*Large*' # remove filter later!
+    - gcovr --xml -o ../coverage.xml -r ../ .
+    - gcovr --html -o ../coverage.html -r ../ .
+  needs:
+    - 'Test Data'
+    - 'Linux Nightly Build'
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      cobertura: coverage.xml
+    paths:
+      - coverage.html
