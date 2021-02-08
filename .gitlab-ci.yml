@@ -519,6 +519,7 @@ Linux All Unit Test:
   stage: test
   image: epirat/ubuntu2004:latest
   parallel: 20
+  timeout: 5 hours
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
     GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
