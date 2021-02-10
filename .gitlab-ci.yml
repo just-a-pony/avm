@@ -3,7 +3,6 @@ stages:
   - build
   - test
   - report
-  - enc_compare
 
 # Check code style with clang-format
 Style Check:
@@ -455,7 +454,7 @@ Enc Run (Low-delay):
       - ${AOMENC_OUTPUT}.*
 
 # Enc compare:
-#   stage: enc_compare
+#   stage: report
 #   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
 #   script:
 #     - |
