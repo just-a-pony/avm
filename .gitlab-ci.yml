@@ -498,6 +498,7 @@ SO Checks:
   script:
     - |
       for so in $(find -name '*.so*'); do
+        echo "Checking $so for textrels..."
         if readelf -dW $so | grep TEXTREL; then
           textrels=$(eu-findtextrel $so | sort | uniq)
           if [ -n "$textrels" ]; then
@@ -505,7 +506,8 @@ SO Checks:
             exit 1
           fi
         fi
-        
+
+        echo "Checking $so ELF header/section headers..."
         if readelf -lW $so | grep WE; then
           echo "Invalid ELF header/section headers"
           echo "https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md#Writable-and-Executable-Segments-Enforced-for-API-level-26"
