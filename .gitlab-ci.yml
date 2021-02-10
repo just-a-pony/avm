@@ -493,6 +493,33 @@ Static Analyzer:
     paths:
       - output-*
 
+SO Checks:
+  stage: test
+  image: epirat/ubuntu2004:latest
+  script:
+    - |
+      for so in $(find -name '*.so*'); do
+        if readelf -dW $so | grep TEXTREL; then
+          textrels=$(eu-findtextrel $so | sort | uniq)
+          if [ -n "$textrels" ]; then
+            echo "$textrels"
+            exit 1
+          fi
+        fi
+        
+        if readelf -lW $so | grep WE; then
+          echo "Invalid ELF header/section headers"
+          echo "https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md#Writable-and-Executable-Segments-Enforced-for-API-level-26"
+          exit 1
+        fi
+      done
+  needs:
+    - 'Build (x86_64-linux-gcc): [shared]'
+
+#
+# Nightly jobs
+#
+
 Linux Nightly Build:
   stage: build
   image: epirat/ubuntu2004:latest
