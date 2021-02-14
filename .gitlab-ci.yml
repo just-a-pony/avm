@@ -118,7 +118,7 @@ Test Data:
       echo "CMake Flags:       $CMAKE_FLAGS"
       echo "Extra CMake Flags: $EXTRA_CMAKE_FLAGS"
       echo "Configuration:     $AOM_BUILD_CONFIG"
-    - cmake -B aom_build -GNinja -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS $EXTRA_CMAKE_FLAGS
+    - cmake -B aom_build -S . -GNinja -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS $EXTRA_CMAKE_FLAGS
     - cmake --build aom_build -j 2
     - cmake --build aom_build --target dist
     - DESTDIR="${CI_PROJECT_DIR}/installroot" cmake --build aom_build --target install/strip
