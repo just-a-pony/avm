@@ -154,7 +154,7 @@ Build (x86_64-linux-gcc):
 
 Build (x86-linux-gcc):
   extends: .build-common
-  image: epirat/ubuntu2004:latest
+  image: epirat/ubuntu-multilib2004:20210214
   variables:
     CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
