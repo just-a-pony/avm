@@ -152,7 +152,7 @@ Build (x86_64-linux-gcc):
 
 Build (x86-linux-gcc):
   extends: .build-common
-  image: registry.gitlab.com/epirat/images/ubuntu2004-multilib
+  image: registry.gitlab.com/epirat/images/ubuntu2004-multilib:20210216213329
   variables:
     CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
