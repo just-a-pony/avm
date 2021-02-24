@@ -6,7 +6,7 @@ stages:
 
 image: registry.gitlab.com/epirat/images/ubuntu2004:20210216213337
 
-# Check code style with clang-format
+# Check code style with clang-format and cmake-format
 Style Check:
   stage: check
   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
@@ -14,9 +14,13 @@ Style Check:
     - apk add --no-cache git clang
   script:
     - |
+      # Run clang-format
       for f in $(git ls-files '*.[hc]pp' '*.cc' '*.[ch]' | grep -v third_party); do
         clang-format -i --style=file $f
       done
+    - |
+      # Run cmake-format
+      git ls-files '*.cmake' 'CMakeLists.txt' | grep -v third_party | xargs cmake-format -i
 
 # Fetch the test data later needed for the unit test jobs
 Test Data:
