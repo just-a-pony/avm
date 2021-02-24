@@ -154,8 +154,7 @@ Build (x86-linux-gcc):
   extends: .build-common
   image: registry.gitlab.com/epirat/images/ubuntu2004-multilib:20210216213329
   variables:
-    CMAKE_FLAGS: >-
-      -DENABLE_CCACHE=1
+    EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86-linux.cmake
 
 Build (aarch64-linux-gcc):
@@ -174,8 +173,7 @@ Build (aarch64-linux-gcc):
           - no-examples
           - realtime-only
   variables:
-    CMAKE_FLAGS: >-
-      -DENABLE_CCACHE=1
+    EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/arm64-linux-gcc.cmake
 
 Build (armv7-linux-gcc):
@@ -194,15 +192,13 @@ Build (armv7-linux-gcc):
           - no-examples
           - realtime-only
   variables:
-    CMAKE_FLAGS: >-
-      -DENABLE_CCACHE=1
+    EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/armv7-linux-gcc.cmake
 
 Build (ppc-linux-gcc):
   extends: .build-common
   variables:
-    CMAKE_FLAGS: >-
-      -DENABLE_CCACHE=1
+    EXTRA_CMAKE_FLAGS: >-
       -DCROSS=powerpc64le-linux-gnu-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/ppc-linux-gcc.cmake
 
@@ -222,8 +218,7 @@ Build (x86-mingw-gcc):
           - no-examples
           - realtime-only
   variables:
-    CMAKE_FLAGS: >-
-      -DENABLE_CCACHE=1
+    EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86-mingw-gcc.cmake
 
 Build (x86_64-mingw-gcc):
@@ -242,8 +237,7 @@ Build (x86_64-mingw-gcc):
           - no-examples
           - realtime-only
   variables:
-    CMAKE_FLAGS: >-
-      -DENABLE_CCACHE=1
+    EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86_64-mingw-gcc.cmake
 
 Linux Test (x86_64-gcc):
