@@ -452,6 +452,7 @@ Enc Run (All-intra):
     AOMENC_OUTPUT: all-intra
   script:
     - ${AOMENC}
+        --debug
         --cpu-used=0
         --passes=1
         --end-usage=q
@@ -480,6 +481,7 @@ Enc Run (Random Access):
     AOMENC_OUTPUT: random-access
   script:
     - ${AOMENC}
+        --debug
         --cpu-used=0
         --passes=1
         --lag-in-frames=19
@@ -513,6 +515,7 @@ Enc Run (Low-delay):
     AOMENC_OUTPUT: low-delay
   script:
     - ${AOMENC}
+        --debug
         --cpu-used=0
         --passes=1
         --lag-in-frames=0
