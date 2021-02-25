@@ -54,7 +54,7 @@ Test Data:
   stage: build
   extends: .ccache-common
   variables:
-    CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1
+    CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DENABLE_DOCS=0
   parallel:
     matrix:
       - AOM_BUILD_CONFIG:
@@ -180,6 +180,7 @@ Build (aarch64-linux-gcc):
     # Overwriting the default flags to disalbe Werror
     CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
+      -DENABLE_DOCS=0
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/arm64-linux-gcc.cmake
 
 Build (armv7-linux-gcc):
@@ -201,6 +202,7 @@ Build (armv7-linux-gcc):
     # Overwriting the default flags to disalbe Werror
     CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
+      -DENABLE_DOCS=0
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/armv7-linux-gcc.cmake
 
 Build (ppc-linux-gcc):
