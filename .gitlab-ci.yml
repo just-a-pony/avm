@@ -106,7 +106,7 @@ Test Data:
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_WEBM_IO=0"
           ;;
         inspection-accounting)
-          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_INSPECTION=1 -DACCOUNTING=1"
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_INSPECTION=1 -DCONFIG_ACCOUNTING=1"
           ;;
         nasm)
           CMAKE_FLAGS="$CMAKE_FLAGS -DENABLE_NASM=1"
