@@ -4,7 +4,7 @@ stages:
   - test
   - report
 
-image: registry.gitlab.com/epirat/images/ubuntu2004:20210216213337
+image: registry.gitlab.com/epirat/images/ubuntu2004:20210225223748
 
 # Check code style with clang-format and cmake-format
 Style Check:
