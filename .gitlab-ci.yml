@@ -250,6 +250,20 @@ Build (x86_64-mingw-gcc):
     EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86_64-mingw-gcc.cmake
 
+Build Documentation:
+  stage: build
+  script:
+    - cmake -B aom_docs_build -GNinja
+        -DENABLE_DOCS=1
+        -DENABLE_EXAMPLES=0
+        -DBUILD_SHARED_LIBS=0
+        -DCMAKE_BUILD_TYPE=Debug
+    - cmake --build aom_docs_build --target docs
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - aom_docs_build/docs/
+
 Linux Test (x86_64-gcc):
   stage: build
   script:
