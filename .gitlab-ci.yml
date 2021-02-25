@@ -177,7 +177,9 @@ Build (aarch64-linux-gcc):
           - no-examples
           - realtime-only
   variables:
-    EXTRA_CMAKE_FLAGS: >-
+    # Overwriting the default flags to disalbe Werror
+    CMAKE_FLAGS: >-
+      -DENABLE_CCACHE=1
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/arm64-linux-gcc.cmake
 
 Build (armv7-linux-gcc):
@@ -196,7 +198,9 @@ Build (armv7-linux-gcc):
           - no-examples
           - realtime-only
   variables:
-    EXTRA_CMAKE_FLAGS: >-
+    # Overwriting the default flags to disalbe Werror
+    CMAKE_FLAGS: >-
+      -DENABLE_CCACHE=1
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/armv7-linux-gcc.cmake
 
 Build (ppc-linux-gcc):
