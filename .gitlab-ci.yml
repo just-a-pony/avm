@@ -598,6 +598,7 @@ Static Analyzer:
     when: on_failure
     paths:
       - output-*
+  dependencies: []
 
 SO Checks:
   stage: test
