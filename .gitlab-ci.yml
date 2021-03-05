@@ -266,18 +266,20 @@ Build Documentation:
 
 Linux Test (x86_64-gcc):
   stage: build
+  variables:
+    GIT_FETCH_EXTRA_FLAGS: --tags
   script:
-    - cmake -B aom_test_build -GNinja
+    - git fetch --unshallow
+    - cmake -B aom_test_build
         -DCMAKE_BUILD_TYPE=Debug
-        -DENABLE_EXAMPLES=0
+        -DENABLE_EXAMPLES=1
         -DBUILD_SHARED_LIBS=0
-        -DCONFIG_STATIC=0
     - cmake --build aom_test_build
   needs: []
   artifacts:
     expire_in: 1 day
     paths:
-      - aom_test_build/test_libaom
+      - aom_test_build/
 
 Linux Sanitizers (x86_64-clang):
   stage: build
@@ -333,6 +335,34 @@ Linux Unit Test:
     when: always
     reports:
       junit: report.xml
+
+Example Test (x86_64):
+  stage: test
+  parallel: 5
+  variables:
+    GIT_FETCH_EXTRA_FLAGS: --tags
+    LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
+  before_script:
+    - export SHARD_INDEX=$((CI_NODE_INDEX - 1))
+  script:
+    - git fetch --unshallow
+    - cd aom_test_build
+    - |
+      for t in $(../test/examples.sh --list-tests | awk "{ if ((NR-1) % ${CI_NODE_TOTAL} == ${SHARD_INDEX}) print }"); do
+        sh ../test/examples.sh \
+          --bin-path examples \
+          --verbose \
+          --show-program-output \
+          --filter "\b$t\b"
+        # Only the last return value counts. Need to break early.
+        if [ $? -ne 0 ]; then
+          echo "Failure running '${t}' example test, see log above for details!"
+          exit 1
+        fi
+      done
+  needs:
+    - 'Test Data'
+    - 'Linux Test (x86_64-gcc)'
 
 .sanitizer-common:
   stage: test
