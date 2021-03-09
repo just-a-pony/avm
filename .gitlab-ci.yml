@@ -523,6 +523,8 @@ SO Checks:
 
 Linux Nightly Build:
   stage: build
+  only:
+    - schedules
   image: epirat/ubuntu2004:latest
   variables:
     CMAKE_FLAGS: >-
@@ -545,6 +547,8 @@ Linux Nightly Build:
 # Full test suite run (with coverage report)
 Linux All Unit Test:
   stage: test
+  only:
+    - schedules
   image: epirat/ubuntu2004:latest
   parallel: 20
   timeout: 5 hours
@@ -573,6 +577,8 @@ Linux All Unit Test:
 
 Coverage Report:
   stage: report
+  only:
+    - schedules
   image: epirat/ubuntu2004:latest
   script:
     - mkdir -p coverage-html
