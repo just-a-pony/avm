@@ -176,6 +176,15 @@ Build (armv7-linux-gcc):
       -DENABLE_CCACHE=1
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/armv7-linux-gcc.cmake
 
+Build (ppc-linux-gcc):
+  extends: .build-common
+  image: epirat/ubuntu2004:latest
+  variables:
+    CMAKE_FLAGS: >-
+      -DENABLE_CCACHE=1
+      -DCROSS=powerpc64le-linux-gnu-
+      -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/ppc-linux-gcc.cmake
+
 Linux Test (x86_64-gcc):
   stage: build
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
