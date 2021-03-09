@@ -3,6 +3,17 @@ stages:
   - build
   - test
 
+style check:
+  stage: .pre
+  image: alpine
+  before_script:
+    - apk add --no-cache git clang
+  script:
+    - |
+      for f in $(git diff --name-only HEAD HEAD~1 '*.[hc]pp' '*.cc' '*.[ch]' | grep -v third_party); do
+        clang-format -i --style=file $f
+      done
+
 # Fetch the test data later needed for the unit test jobs
 Test Data:
   stage: check
