@@ -168,6 +168,14 @@ Build (aarch64-linux-gcc):
       -DENABLE_CCACHE=1
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/arm64-linux-gcc.cmake
 
+Build (armv7-linux-gcc):
+  extends: .build-common
+  image: epirat/ubuntu2004:latest
+  variables:
+    CMAKE_FLAGS: >-
+      -DENABLE_CCACHE=1
+      -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/armv7-linux-gcc.cmake
+
 Linux Test (x86_64-gcc):
   stage: build
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
