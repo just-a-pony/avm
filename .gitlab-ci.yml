@@ -114,6 +114,7 @@ Linux Build:
     - cmake --build aom_build -j 1
     - cmake --build aom_build --target dist
     - DESTDIR="${CI_PROJECT_DIR}/installroot" cmake --build aom_build --target install
+  needs: []
   artifacts:
     expire_in: 1 day
     paths:
@@ -130,6 +131,7 @@ Linux Test (x86_64-gcc):
         -DBUILD_SHARED_LIBS=0
         -DCONFIG_STATIC=0
     - cmake --build aom_test_build
+  needs: []
   artifacts:
     expire_in: 1 day
     paths:
@@ -168,6 +170,7 @@ Linux Sanitizers (x86_64-clang):
       echo "CMake Flags: $CMAKE_FLAGS"
     - cmake -B "aom_build/$AOM_SANITIZER_TYPE" -GNinja -DCMAKE_BUILD_TYPE=Debug $CMAKE_FLAGS
     - cmake --build "aom_build/$AOM_SANITIZER_TYPE"
+  needs: []
   artifacts:
     expire_in: 1 day
     paths:
