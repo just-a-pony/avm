@@ -255,19 +255,15 @@ Linux Sanitizers (x86_64-clang):
       -DCMAKE_C_COMPILER=clang
       -DCMAKE_CXX_COMPILER=clang++
       -DENABLE_EXAMPLES=0
-    #LDFLAGS: '-fuse-ld=lld'
   parallel:
     matrix:
       - AOM_SANITIZER_TYPE:
           - address
           - undefined
           - integer
-          #- cfi
           - thread
-  #before_script:
-  #  # TODO: Move this to the image, if it works
-  #  - apt-get update
-  #  - apt-get install -yyy lld-6.0
+          # CFI Sanitizer commented for now, as lto build does not work
+          #- cfi
   script:
     - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
     - |
@@ -402,6 +398,8 @@ Linux Sanitizer (integer) Test:
   needs:
     - 'Test Data'
     - 'Linux Sanitizers (x86_64-clang): [integer]'
+
+# CFI Sanitizer commented for now, as lto build does not work
 
 # Linux Sanitizer (cfi) Test:
 #   extends: .sanitizer-common
