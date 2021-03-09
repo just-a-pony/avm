@@ -53,7 +53,6 @@ Test Data:
   parallel:
     matrix:
       - AOM_BUILD_CONFIG:
-          - internal-stats
           - shared
           - no-rtcd
           - rtcd
@@ -166,7 +165,6 @@ Build (aarch64-linux-gcc):
   parallel:
     matrix:
       - AOM_BUILD_CONFIG:
-          - internal-stats
           - shared
           - no-rtcd
           - rtcd
@@ -188,7 +186,6 @@ Build (armv7-linux-gcc):
   parallel:
     matrix:
       - AOM_BUILD_CONFIG:
-          - internal-stats
           - shared
           - no-rtcd
           - rtcd
@@ -216,6 +213,19 @@ Build (ppc-linux-gcc):
 Build (x86-mingw-gcc):
   extends: .build-common
   image: epirat/ubuntu-2004:latest
+  parallel:
+    matrix:
+      - AOM_BUILD_CONFIG:
+          - no-rtcd
+          - rtcd
+          - encode-only
+          - decode-only
+          - no-thread
+          - no-webm
+          - inspection-accounting
+          - nasm
+          - no-examples
+          - realtime-only
   variables:
     CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
@@ -224,6 +234,19 @@ Build (x86-mingw-gcc):
 Build (x86_64-mingw-gcc):
   extends: .build-common
   image: epirat/ubuntu-2004:latest
+  parallel:
+    matrix:
+      - AOM_BUILD_CONFIG:
+          - no-rtcd
+          - rtcd
+          - encode-only
+          - decode-only
+          - no-thread
+          - no-webm
+          - inspection-accounting
+          - nasm
+          - no-examples
+          - realtime-only
   variables:
     CMAKE_FLAGS: >-
       -DENABLE_CCACHE=1
