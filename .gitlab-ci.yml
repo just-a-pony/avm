@@ -22,6 +22,73 @@ Style Check:
       # Run cmake-format
       git ls-files '*.cmake' 'CMakeLists.txt' | grep -v third_party | xargs cmake-format -i
 
+.commit-checks-common:
+  stage: check
+  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
+  script:
+    - 'echo "Diff ref is: $DIFF_REF"'
+    - git fetch --unshallow
+    - git diff "$DIFF_REF" --check
+    - |
+      # Validate files with the executable bit set
+      files=$(git diff --name-only "$DIFF_REF" | tr '\n' ' ')
+      git ls-tree -r HEAD $files | while read mode type sha1 file; do
+        if [ "$mode" = "100755" ]; then
+          case "$file" in
+            configure|*.php|*.pl|*.py|*.sh)
+              ;;
+            *)
+              echo "File $file should not be executable."
+              echo "Only configure|*.php|*.pl|*.py|*.sh are accepted."
+              exit 1
+              ;;
+          esac
+        fi
+      done
+    - |
+      # Check commit messages
+      for i in $(git rev-list HEAD ^"$DIFF_REF"); do
+        echo "Checking commit $i"
+        subject="$(git log --pretty=format:%s -n 1 $i)"
+        if [ ! "${subject:0:6}" = "Revert" ]; then
+          length=$(echo -n "$subject" | wc -c)
+          if [ $length -gt 65 ]; then
+            echo "The commit subject: '$subject' is too long! ($length characters)"
+            echo "Try to keep this to 50 or less."
+            echo "https://www.git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#_commit_guidelines"
+            exit 1
+          fi
+        fi
+      done
+
+# MR checks (formerly patch_check)
+MR checks:
+  extends: .commit-checks-common
+  variables:
+    DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
+  only:
+    - merge_requests
+
+# Commit checks (formerly patch_check)
+Commit checks:
+  extends: .commit-checks-common
+  variables:
+    DIFF_REF: $CI_COMMIT_BEFORE_SHA
+  before_script:
+    - |
+      # Checking if the DIFF_REF is a valid commit
+      # In case of a force-push it can end up not being valid
+      if ! git cat-file commit "$DIFF_REF"; then
+        echo "DIFF_REF ($DIFF_REF) is not a valid commit ref, skipping checks!"
+        exit 77
+      fi
+  allow_failure:
+    exit_codes: 77
+  except:
+    - merge_requests
+    - schedules
+    - tags
+
 # Fetch the test data later needed for the unit test jobs
 Test Data:
   stage: check
