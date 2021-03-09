@@ -152,6 +152,14 @@ Build (x86_64-linux-gcc):
   extends: .build-common
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
 
+Build (x86-linux-gcc):
+  extends: .build-common
+  image: epirat/ubuntu2004:latest
+  variables:
+    CMAKE_FLAGS: >-
+      -DENABLE_CCACHE=1
+      -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86-linux.cmake
+
 Linux Test (x86_64-gcc):
   stage: build
   image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004
