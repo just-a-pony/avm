@@ -109,6 +109,28 @@ Test Data:
     paths:
       - ${CI_PROJECT_DIR}/libaom-test-data
 
+Test Data Check:
+  stage: check
+  variables:
+    DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
+  script:
+    - git fetch --unshallow
+    - |
+      ADDED_TEST_FILES="$(git diff $DIFF_REF "test/" \
+        | perl -ne  '/^\++.*?"(.*?\.(ivf|webm|res|mkv|y4m|yuv))"/g and print "$1\n"')"
+
+      printf "Checking for files:\n%s\n\n" "$ADDED_TEST_FILES"
+      echo "$ADDED_TEST_FILES" | while read -r f; do
+        if [ -n "$(grep -L "${f}"  test/test-data.sha1 test/test_data_util.cmake)" ]; then
+          echo "file: ${f} was not found in test-data.sha1 or test_data_util.cmake"
+          exit 1
+        fi
+      done
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - 'test/**/*'
+
 .ccache-common:
   variables:
     CCACHE_BASEDIR: ${CI_PROJECT_DIR}
