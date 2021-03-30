@@ -633,7 +633,7 @@ Enc Run (All-intra):
         -o "${AOMENC_OUTPUT}.obu"
         "${AOMENC_INPUT}" 2>&1 | tee "${AOMENC_OUTPUT}.psnr.log"
     - '[ -f "${AOMENC_OUTPUT}.obu" ] || exit 1'
-    - md5sum -b "${AOMENC_OUTPUT}.obu" > "${AOMENC_OUTPUT}.md5"
+    - md5sum -b "${AOMENC_OUTPUT}.obu" | cut -d' ' -f1 > "${AOMENC_OUTPUT}.md5"
   artifacts:
     when: always
     paths:
@@ -667,7 +667,7 @@ Enc Run (Random Access):
         -o "${AOMENC_OUTPUT}.obu"
         "${AOMENC_INPUT}" 2>&1 | tee "${AOMENC_OUTPUT}.psnr.log"
     - '[ -f "${AOMENC_OUTPUT}.obu" ] || exit 1'
-    - md5sum -b "${AOMENC_OUTPUT}.obu" > "${AOMENC_OUTPUT}.md5"
+    - md5sum -b "${AOMENC_OUTPUT}.obu" | cut -d' ' -f1 > "${AOMENC_OUTPUT}.md5"
   artifacts:
     when: always
     paths:
@@ -701,7 +701,7 @@ Enc Run (Low-delay):
         -o "${AOMENC_OUTPUT}.obu"
         "${AOMENC_INPUT}" 2>&1 | tee "${AOMENC_OUTPUT}.psnr.log"
     - '[ -f "${AOMENC_OUTPUT}.obu" ] || exit 1'
-    - md5sum -b "${AOMENC_OUTPUT}.obu" > "${AOMENC_OUTPUT}.md5"
+    - md5sum -b "${AOMENC_OUTPUT}.obu" | cut -d' ' -f1 > "${AOMENC_OUTPUT}.md5"
   artifacts:
     when: always
     paths:
