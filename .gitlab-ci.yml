@@ -639,6 +639,17 @@ Enc Run (All-intra):
     paths:
       - ${AOMENC_OUTPUT}.*
 
+Previous Enc Run (All-intra):
+  extends: 'Enc Run (All-intra)'
+  variables:
+    AOMENC: installroot_old/usr/local/bin/aomenc
+    AOMENC_OUTPUT: previous-all-intra
+  needs:
+    - 'Previous Build (x86_64-linux-gcc): [encode-only]'
+  only:
+    - merge_requests
+
+
 Enc Run (Random Access):
   extends: .enc-run-common
   variables:
@@ -672,6 +683,16 @@ Enc Run (Random Access):
     when: always
     paths:
       - ${AOMENC_OUTPUT}.*
+
+Previous Enc Run (Random Access):
+  extends: 'Enc Run (Random Access)'
+  variables:
+    AOMENC: installroot_old/usr/local/bin/aomenc
+    AOMENC_OUTPUT: previous-random-access
+  needs:
+    - 'Previous Build (x86_64-linux-gcc): [encode-only]'
+  only:
+    - merge_requests
 
 Enc Run (Low-delay):
   extends: .enc-run-common
@@ -707,21 +728,66 @@ Enc Run (Low-delay):
     paths:
       - ${AOMENC_OUTPUT}.*
 
-# Enc compare:
-#   stage: report
-#   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
-#   script:
-#     - |
-#       [ "${CI_COMMIT_BEFORE_SHA}" == "0000000000000000000000000000000000000000" ] && {
-#         echo "Skipping comparison as reference SHA "
-#         exit 77
-#       }
-#     - git
-#         --no-pager log
-#           --grep STATS_CHANGED
-#           --format=format:"%H" "${CI_COMMIT_BEFORE_SHA}..${CI_COMMIT_SHA}"
-#   needs:
-#     - 'Enc Run (all-intra)'
+Previous Enc Run (Low-delay):
+  extends: 'Enc Run (Low-delay)'
+  variables:
+    AOMENC: installroot_old/usr/local/bin/aomenc
+    AOMENC_OUTPUT: previous-low-delay
+  needs:
+    - 'Previous Build (x86_64-linux-gcc): [encode-only]'
+  only:
+    - merge_requests
+
+Enc compare:
+  stage: report
+  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
+  script:
+    - git fetch --unshallow
+    - |
+      ALLOW_FAIL=0
+      FAILED=0
+      if [ -n "$(git --no-pager log --grep STATS_CHANGED --format=format:"%H" "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}")" ]; then
+        ALLOW_FAIL=1
+      fi
+      for variant in all-intra random-access low-delay; do
+        if diff -- "previous-${variant}.md5" "${variant}.md5" &>/dev/null; then
+          echo "OK: No differences in ${variant} outputs found."
+          echo ""
+        else
+          echo "WARNING: previous-${variant}.md5 and ${variant}.md5 differ!"
+          {
+            printf "%s:%s\n" "previous-${variant}.md5" $(cat previous-${variant}.md5);
+            printf "%s:%s\n" "${variant}.md5" $(cat ${variant}.md5);
+          } | column -t -s ':'
+          echo ""
+          FAILED=1
+        fi
+      done
+      if [ $FAILED -eq 1 ]; then
+        if [ $ALLOW_FAIL -eq 1 ]; then
+          echo "SUCCESS: Even though a mismatch was detected, one or more"
+          echo "         commits contain the STATS_CHANGED keyword, so mismatch"
+          echo "         of encode outputs is allowed."
+          echo "Commits containing STATS_CHANGED added in this MR:"
+          git --no-pager log --grep STATS_CHANGED --format=format:"%h: %s; \"%aN\" <%aE>" "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"
+          echo ""
+          exit 77
+        fi
+        echo "FAIL: Failing job due to mismatch and no STATS_CHANGED keyword"
+        echo "      was found in any of the commits added in this MR!"
+        exit 1
+      fi
+  allow_failure:
+    exit_codes: 77
+  needs:
+    - 'Enc Run (All-intra)'
+    - 'Previous Enc Run (All-intra)'
+    - 'Enc Run (Random Access)'
+    - 'Previous Enc Run (Random Access)'
+    - 'Enc Run (Low-delay)'
+    - 'Previous Enc Run (Low-delay)'
+  only:
+    - merge_requests
 
 Static Analyzer:
   stage: test
