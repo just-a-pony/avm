@@ -151,6 +151,7 @@ Test Data Check:
   extends: .ccache-common
   variables:
     CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DENABLE_DOCS=0
+    INSTALLROOT_FOLDER: installroot
   parallel:
     matrix:
       - AOM_BUILD_CONFIG:
@@ -221,7 +222,7 @@ Test Data Check:
     - cmake -B aom_build -S . -GNinja -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS $EXTRA_CMAKE_FLAGS
     - cmake --build aom_build -j 2
     - cmake --build aom_build --target dist
-    - DESTDIR="${CI_PROJECT_DIR}/installroot" cmake --build aom_build --target install/strip
+    - DESTDIR="${CI_PROJECT_DIR}/${INSTALLROOT_FOLDER}" cmake --build aom_build --target install/strip
   needs: []
   artifacts:
     expire_in: 1 day
@@ -249,6 +250,25 @@ Build (generic-gnu):
 
 Build (x86_64-linux-gcc):
   extends: .build-common
+
+Previous Build (x86_64-linux-gcc):
+  extends: .build-common
+  variables:
+    DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
+    INSTALLROOT_FOLDER: installroot_old
+  before_script:
+    - git fetch --unshallow
+    - git checkout "$DIFF_REF"
+  parallel:
+    matrix:
+      - AOM_BUILD_CONFIG:
+          - encode-only
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - ${CI_PROJECT_DIR}/installroot_old/*
+  only:
+    - merge_requests
 
 Build (x86-linux-gcc):
   extends: .build-common
