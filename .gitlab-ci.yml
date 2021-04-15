@@ -739,8 +739,10 @@ Previous Enc Run (Low-delay):
     - merge_requests
 
 Enc compare:
+  tags:
+    - docker-arm64
   stage: report
-  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
+  image: registry.gitlab.com/epirat/images/alpine:20210415142607
   script:
     - git fetch --unshallow
     - |
