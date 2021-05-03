@@ -596,7 +596,6 @@ Linux Sanitizer (thread) Test:
     - 'Linux Sanitizers (x86_64-clang): [thread]'
 
 # Encoder run and compare with target branch (MR) or previous runs
-# TODO: Actually compare encodes and report result
 .enc-run-common:
   stage: test
   variables:
