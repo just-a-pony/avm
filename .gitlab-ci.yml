@@ -844,10 +844,14 @@ SO Checks:
 # Nightly jobs
 #
 
+.common-nightly:
+  timeout: 5 hours
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
 Linux Nightly Build:
   stage: build
-  only:
-    - schedules
+  extends: .common-nightly
   variables:
     CMAKE_FLAGS: >-
       -DCMAKE_BUILD_TYPE=Debug
@@ -869,10 +873,8 @@ Linux Nightly Build:
 # Full test suite run (with coverage report)
 Linux All Unit Test:
   stage: test
-  only:
-    - schedules
+  extends: .common-nightly
   parallel: 20
-  timeout: 5 hours
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
     GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
@@ -898,8 +900,7 @@ Linux All Unit Test:
 
 Coverage Report:
   stage: report
-  only:
-    - schedules
+  extends: .common-nightly
   script:
     - mkdir -p coverage-html
     - cd aom_nightly_build
