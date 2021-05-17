@@ -13,7 +13,6 @@ default:
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
     - if: '$CI_COMMIT_BRANCH'
@@ -33,6 +32,10 @@ Style Check:
     - |
       # Run cmake-format
       git ls-files '*.cmake' 'CMakeLists.txt' | grep -v third_party | xargs cmake-format -i
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
 
 .commit-checks-common:
   stage: check
@@ -78,8 +81,8 @@ MR checks:
   extends: .commit-checks-common
   variables:
     DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
-  only:
-    - merge_requests
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 # Commit checks (formerly patch_check)
 Commit checks:
@@ -132,6 +135,8 @@ Test Data Check:
         fi
       done
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
         - 'test/**/*'
@@ -272,8 +277,8 @@ Previous Build (x86_64-linux-gcc):
     expire_in: 1 day
     paths:
       - ${CI_PROJECT_DIR}/installroot_old/*
-  only:
-    - merge_requests
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 Build (x86-linux-gcc):
   extends: .build-common
@@ -456,6 +461,10 @@ Linux Unit Test:
     when: always
     reports:
       junit: report.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
 
 Example Test (x86_64):
   stage: test
@@ -481,6 +490,10 @@ Example Test (x86_64):
           exit 1
         fi
       done
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
   needs:
     - 'Test Data'
     - 'Linux Test (x86_64-gcc)'
@@ -556,6 +569,10 @@ Example Test (x86_64):
     when: on_failure
     paths:
       - sanitizer.log
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
 
 Linux Sanitizer (address) Test:
   extends: .sanitizer-common
@@ -612,6 +629,10 @@ Linux Sanitizer (thread) Test:
     - unxz ${AOMENC_INPUT}.xz
   needs:
     - 'Build (x86_64-linux-gcc): [encode-only]'
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
 
 
 Enc Run (All-intra):
@@ -650,8 +671,6 @@ Previous Enc Run (All-intra):
     AOMENC_OUTPUT: previous-all-intra
   needs:
     - 'Previous Build (x86_64-linux-gcc): [encode-only]'
-  only:
-    - merge_requests
 
 
 Enc Run (Random Access):
@@ -695,8 +714,6 @@ Previous Enc Run (Random Access):
     AOMENC_OUTPUT: previous-random-access
   needs:
     - 'Previous Build (x86_64-linux-gcc): [encode-only]'
-  only:
-    - merge_requests
 
 Enc Run (Low-delay):
   extends: .enc-run-common
@@ -739,8 +756,6 @@ Previous Enc Run (Low-delay):
     AOMENC_OUTPUT: previous-low-delay
   needs:
     - 'Previous Build (x86_64-linux-gcc): [encode-only]'
-  only:
-    - merge_requests
 
 Enc compare:
   stage: report
@@ -790,8 +805,10 @@ Enc compare:
     - 'Previous Enc Run (Random Access)'
     - 'Enc Run (Low-delay)'
     - 'Previous Enc Run (Low-delay)'
-  only:
-    - merge_requests
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
 
 Static Analyzer:
   stage: test
@@ -815,6 +832,10 @@ Static Analyzer:
     paths:
       - output-*
   dependencies: []
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
 
 SO Checks:
   stage: test
@@ -839,6 +860,10 @@ SO Checks:
       done
   needs:
     - 'Build (x86_64-linux-gcc): [shared]'
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
 
 #
 # Nightly jobs
