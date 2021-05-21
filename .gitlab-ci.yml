@@ -870,7 +870,7 @@ SO Checks:
 #
 
 .common-nightly:
-  timeout: 5 hours
+  timeout: 8 hours
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
 
