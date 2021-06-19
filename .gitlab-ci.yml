@@ -989,7 +989,7 @@ Coverage Report:
     - |
       filter="*Large*"
       # As of 17 May 2018 there are no large threading tests.
-      [ "${sanitizer}" = "thread" ] && filter="*Thread*Large*" || :
+      [ "${AOM_SANITIZER_TYPE}" = "thread" ] && filter="*Thread*Large*" || :
     - ./aom_build/${AOM_SANITIZER_TYPE}/test_libaom --gtest_filter="${filter}" 2> >(tee -a sanitizer.log >&2)
     - |
       # Looking for sanitizer output in log...
