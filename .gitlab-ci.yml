@@ -6,6 +6,10 @@ stages:
 
 image: registry.gitlab.com/epirat/images/ubuntu2004:20210225223748
 
+default:
+  tags:
+    - docker-x86_64
+
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -739,8 +743,6 @@ Previous Enc Run (Low-delay):
     - merge_requests
 
 Enc compare:
-  tags:
-    - docker-arm64
   stage: report
   image: registry.gitlab.com/epirat/images/alpine:20210415142607
   script:
