@@ -17,6 +17,98 @@
 
 #include "av1/common/entropy.h"
 
+#if CONFIG_CONTEXT_DERIVATION
+static const aom_cdf_prob
+    av1_default_v_dc_sign_cdfs[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS]
+                              [DC_SIGN_CONTEXTS][CDF_SIZE(2)] = {
+                                { {
+                                      { AOM_CDF2(128 * 125) },
+                                      { AOM_CDF2(128 * 102) },
+                                      { AOM_CDF2(128 * 147) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  } },
+                                { {
+                                      { AOM_CDF2(128 * 125) },
+                                      { AOM_CDF2(128 * 102) },
+                                      { AOM_CDF2(128 * 147) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  } },
+                                { {
+                                      { AOM_CDF2(128 * 125) },
+                                      { AOM_CDF2(128 * 102) },
+                                      { AOM_CDF2(128 * 147) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  } },
+                                { {
+                                      { AOM_CDF2(128 * 125) },
+                                      { AOM_CDF2(128 * 102) },
+                                      { AOM_CDF2(128 * 147) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  },
+                                  {
+                                      { AOM_CDF2(128 * 119) },
+                                      { AOM_CDF2(128 * 101) },
+                                      { AOM_CDF2(128 * 135) },
+                                  } },
+                              };
+
+static const aom_cdf_prob av1_default_v_ac_sign_cdfs[TOKEN_CDF_Q_CTXS]
+                                                    [CROSS_COMPONENT_CONTEXTS]
+                                                    [CDF_SIZE(2)] = {
+                                                      {
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                      },
+                                                      {
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                      },
+                                                      {
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                      },
+                                                      {
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                          { AOM_CDF2(16384) },
+                                                      },
+                                                    };
+#endif  // CONFIG_CONTEXT_DERIVATION
+
 static const aom_cdf_prob
     av1_default_dc_sign_cdfs[TOKEN_CDF_Q_CTXS][PLANE_TYPES][DC_SIGN_CONTEXTS]
                             [CDF_SIZE(2)] = {
@@ -324,6 +416,67 @@ static const aom_cdf_prob
                                                    { AOM_CDF2(16384) },
                                                    { AOM_CDF2(16384) },
                                                    { AOM_CDF2(16384) } } } };
+
+#if CONFIG_CONTEXT_DERIVATION
+static const aom_cdf_prob
+    av1_default_v_txb_skip_cdfs[TOKEN_CDF_Q_CTXS][V_TXB_SKIP_CONTEXTS]
+                               [CDF_SIZE(2)] = { {
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                 },
+                                                 {
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                 },
+                                                 {
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                 },
+                                                 {
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                     { AOM_CDF2(16384) },
+                                                 } };
+#endif  // CONFIG_CONTEXT_DERIVATION
 
 static const aom_cdf_prob
     av1_default_eob_extra_cdfs[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]

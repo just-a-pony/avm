@@ -1173,9 +1173,17 @@ typedef struct FRAME_COUNTS {
                                      [PALETTE_COLORS];
   unsigned int partition[PARTITION_CONTEXTS][EXT_PARTITION_TYPES];
   unsigned int txb_skip[TOKEN_CDF_Q_CTXS][TX_SIZES][TXB_SKIP_CONTEXTS][2];
+#if CONFIG_CONTEXT_DERIVATION
+  unsigned int v_txb_skip[TOKEN_CDF_Q_CTXS][V_TXB_SKIP_CONTEXTS][2];
+#endif
   unsigned int eob_extra[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
                         [EOB_COEF_CONTEXTS][2];
-  unsigned int dc_sign[PLANE_TYPES][DC_SIGN_CONTEXTS][2];
+  unsigned int dc_sign[TOKEN_CDF_Q_CTXS][PLANE_TYPES][DC_SIGN_CONTEXTS][2];
+#if CONFIG_CONTEXT_DERIVATION
+  unsigned int v_dc_sign[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS]
+                        [DC_SIGN_CONTEXTS][2];
+  unsigned int v_ac_sign[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS][2];
+#endif  // CONFIG_CONTEXT_DERIVATION
   unsigned int coeff_lps[TX_SIZES][PLANE_TYPES][BR_CDF_SIZE - 1][LEVEL_CONTEXTS]
                         [2];
   unsigned int eob_flag[TX_SIZES][PLANE_TYPES][EOB_COEF_CONTEXTS][2];
@@ -1217,7 +1225,12 @@ typedef struct FRAME_COUNTS {
   unsigned int compound_type[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
   unsigned int motion_mode[BLOCK_SIZES_ALL][MOTION_MODES];
   unsigned int obmc[BLOCK_SIZES_ALL][2];
+#if CONFIG_CONTEXT_DERIVATION
+  unsigned int intra_inter[INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS]
+                          [2];
+#else
   unsigned int intra_inter[INTRA_INTER_CONTEXTS][2];
+#endif
   unsigned int comp_inter[COMP_INTER_CONTEXTS][2];
   unsigned int comp_ref_type[COMP_REF_TYPE_CONTEXTS][2];
   unsigned int uni_comp_ref[UNI_COMP_REF_CONTEXTS][UNIDIR_COMP_REFS - 1][2];

@@ -118,6 +118,11 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                             const TXB_CTX *const txb_ctx,
                             const TX_SIZE tx_size) {
   MACROBLOCKD *const xd = &dcb->xd;
+#if CONFIG_CONTEXT_DERIVATION
+  if (plane == AOM_PLANE_U) {
+    xd->eob_u = 0;
+  }
+#endif  // CONFIG_CONTEXT_DERIVATION
   FRAME_CONTEXT *const ec_ctx = xd->tile_ctx;
   const int32_t max_value = (1 << (7 + xd->bd)) - 1;
   const int32_t min_value = -(1 << (7 + xd->bd));
@@ -139,8 +144,21 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   int dc_val = 0;
   uint8_t levels_buf[TX_PAD_2D];
   uint8_t *const levels = set_levels(levels_buf, width);
+#if CONFIG_CONTEXT_DERIVATION
+  int txb_skip_ctx = txb_ctx->txb_skip_ctx;
+  int all_zero;
+  if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U) {
+    all_zero = aom_read_symbol(r, ec_ctx->txb_skip_cdf[txs_ctx][txb_skip_ctx],
+                               2, ACCT_STR);
+  } else {
+    txb_skip_ctx += (xd->eob_u_flag ? V_TXB_SKIP_CONTEXT_OFFSET : 0);
+    all_zero =
+        aom_read_symbol(r, ec_ctx->v_txb_skip_cdf[txb_skip_ctx], 2, ACCT_STR);
+  }
+#else
   const int all_zero = aom_read_symbol(
       r, ec_ctx->txb_skip_cdf[txs_ctx][txb_ctx->txb_skip_ctx], 2, ACCT_STR);
+#endif  // CONFIG_CONTEXT_DERIVATION
   eob_info *eob_data = dcb->eob_data[plane] + dcb->txb_offset[plane];
   uint16_t *const eob = &(eob_data->eob);
   uint16_t *const max_scan_line = &(eob_data->max_scan_line);
@@ -165,6 +183,12 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
           " blk_col = %d, plane = %d, tx_size = %d ",
           xd->mi_row, xd->mi_col, blk_row, blk_col, plane, tx_size);
 #endif
+
+#if CONFIG_CONTEXT_DERIVATION
+  if (plane == AOM_PLANE_U) {
+    xd->eob_u_flag = all_zero ? 0 : 1;
+  }
+#endif  // CONFIG_CONTEXT_DERIVATION
 
   if (all_zero) {
     *max_scan_line = 0;
@@ -259,6 +283,12 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   }
   *eob = rec_eob_pos(eob_pt, eob_extra);
 
+#if CONFIG_CONTEXT_DERIVATION
+  if (plane == AOM_PLANE_U) {
+    xd->eob_u = *eob;
+  }
+#endif  // CONFIG_CONTEXT_DERIVATION
+
 #if CONFIG_IST
   // read  sec_tx_type here
   // Only y plane's sec_tx_type is transmitted
@@ -317,14 +347,44 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     const int pos = scan[c];
     uint8_t sign;
     tran_low_t level = levels[get_padded_idx(pos, bwl)];
+#if CONFIG_CONTEXT_DERIVATION
+    if (plane == AOM_PLANE_U) {
+      xd->tmp_sign[pos] = 0;
+    }
+#endif  // CONFIG_CONTEXT_DERIVATION
     if (level) {
       *max_scan_line = AOMMAX(*max_scan_line, pos);
       if (c == 0) {
         const int dc_sign_ctx = txb_ctx->dc_sign_ctx;
+#if CONFIG_CONTEXT_DERIVATION
+        if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U) {
+          sign = aom_read_symbol(
+              r, ec_ctx->dc_sign_cdf[plane_type][dc_sign_ctx], 2, ACCT_STR);
+        } else {
+          int32_t tmp_sign = 0;
+          if (c < xd->eob_u) tmp_sign = xd->tmp_sign[0];
+          sign = aom_read_symbol(
+              r, ec_ctx->v_dc_sign_cdf[tmp_sign][dc_sign_ctx], 2, ACCT_STR);
+        }
+        if (plane == AOM_PLANE_U) xd->tmp_sign[0] = (sign ? 2 : 1);
+#else
         sign = aom_read_symbol(r, ec_ctx->dc_sign_cdf[plane_type][dc_sign_ctx],
                                2, ACCT_STR);
+#endif  // CONFIG_CONTEXT_DERIVATION
       } else {
+#if CONFIG_CONTEXT_DERIVATION
+        if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U)
+          sign = aom_read_bit(r, ACCT_STR);
+        else {
+          int32_t tmp_sign = 0;
+          if (c < xd->eob_u) tmp_sign = xd->tmp_sign[pos];
+          sign =
+              aom_read_symbol(r, ec_ctx->v_ac_sign_cdf[tmp_sign], 2, ACCT_STR);
+        }
+        if (plane == AOM_PLANE_U) xd->tmp_sign[pos] = (sign ? 2 : 1);
+#else
         sign = aom_read_bit(r, ACCT_STR);
+#endif  // CONFIG_CONTEXT_DERIVATION
       }
       if (level >= MAX_BASE_BR_RANGE) {
         level += read_golomb(xd, r);

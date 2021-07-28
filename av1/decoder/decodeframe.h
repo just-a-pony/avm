@@ -17,6 +17,16 @@
 extern "C" {
 #endif
 
+#if CONFIG_THROUGHPUT_ANALYSIS
+extern int64_t tot_ctx_syms;
+extern int64_t tot_bypass_syms;
+extern int max_ctx_syms;
+extern int max_bypass_syms;
+extern int max_bits;
+extern int64_t tot_bits;
+extern int tot_frames;
+#endif  // CONFIG_THROUGHPUT_ANALYSIS
+
 struct AV1Decoder;
 struct aom_read_bit_buffer;
 struct ThreadData;

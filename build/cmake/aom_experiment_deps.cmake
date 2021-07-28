@@ -35,4 +35,8 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_IST_FIX_B076 1 CONFIG_IST)
   endif()
 
+  if(CONFIG_THROUGHPUT_ANALYSIS)
+    change_config_and_warn(CONFIG_ACCOUNTING 1 CONFIG_THROUGHPUT_ANALYSIS)
+  endif()
+
 endmacro()

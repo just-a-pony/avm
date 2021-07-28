@@ -340,10 +340,19 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       }
     }
 
+#if CONFIG_CONTEXT_DERIVATION
+    for (j = 0; j < INTRA_INTER_SKIP_TXFM_CONTEXTS; ++j) {
+      for (i = 0; i < INTRA_INTER_CONTEXTS; ++i) {
+        av1_cost_tokens_from_cdf(mode_costs->intra_inter_cost[j][i],
+                                 fc->intra_inter_cdf[j][i], NULL);
+      }
+    }
+#else
     for (i = 0; i < INTRA_INTER_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->intra_inter_cost[i],
                                fc->intra_inter_cdf[i], NULL);
     }
+#endif  // CONFIG_CONTEXT_DERIVATION
 
 #if CONFIG_NEW_INTER_MODES
     for (i = 0; i < INTER_SINGLE_MODE_CONTEXTS; ++i) {
@@ -732,7 +741,11 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
       for (int ctx = 0; ctx < TXB_SKIP_CONTEXTS; ++ctx)
         av1_cost_tokens_from_cdf(pcost->txb_skip_cost[ctx],
                                  fc->txb_skip_cdf[tx_size][ctx], NULL);
-
+#if CONFIG_CONTEXT_DERIVATION
+      for (int ctx = 0; ctx < V_TXB_SKIP_CONTEXTS; ++ctx)
+        av1_cost_tokens_from_cdf(pcost->v_txb_skip_cost[ctx],
+                                 fc->v_txb_skip_cdf[ctx], NULL);
+#endif  // CONFIG_CONTEXT_DERIVATION
       for (int ctx = 0; ctx < SIG_COEF_CONTEXTS_EOB; ++ctx)
         av1_cost_tokens_from_cdf(pcost->base_eob_cost[ctx],
                                  fc->coeff_base_eob_cdf[tx_size][plane][ctx],
@@ -759,6 +772,17 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
       for (int ctx = 0; ctx < DC_SIGN_CONTEXTS; ++ctx)
         av1_cost_tokens_from_cdf(pcost->dc_sign_cost[ctx],
                                  fc->dc_sign_cdf[plane][ctx], NULL);
+#if CONFIG_CONTEXT_DERIVATION
+      if (plane == PLANE_TYPE_UV) {
+        for (int i = 0; i < CROSS_COMPONENT_CONTEXTS; ++i)
+          for (int ctx = 0; ctx < DC_SIGN_CONTEXTS; ++ctx)
+            av1_cost_tokens_from_cdf(pcost->v_dc_sign_cost[i][ctx],
+                                     fc->v_dc_sign_cdf[i][ctx], NULL);
+        for (int i = 0; i < CROSS_COMPONENT_CONTEXTS; ++i)
+          av1_cost_tokens_from_cdf(pcost->v_ac_sign_cost[i],
+                                   fc->v_ac_sign_cdf[i], NULL);
+      }
+#endif  // CONFIG_CONTEXT_DERIVATION
 
       for (int ctx = 0; ctx < LEVEL_CONTEXTS; ++ctx) {
         int br_rate[BR_CDF_SIZE];

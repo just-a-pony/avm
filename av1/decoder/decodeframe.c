@@ -77,6 +77,16 @@
   (((MAX_SB_SIZE)*2 + (AOM_INTERP_EXTEND)*2) * \
    ((MAX_SB_SIZE)*2 + (AOM_INTERP_EXTEND)*2))
 
+#if CONFIG_THROUGHPUT_ANALYSIS
+int64_t tot_ctx_syms = { 0 };
+int64_t tot_bypass_syms = { 0 };
+int max_ctx_syms = { 0 };
+int max_bypass_syms = { 0 };
+int max_bits = { 0 };
+int64_t tot_bits = { 0 };
+int tot_frames = { 0 };
+#endif  // CONFIG_THROUGHPUT_ANALYSIS
+
 // Checks that the remaining bits start with a 1 and ends with 0s.
 // It consumes an additional byte, if already byte aligned before the check.
 int av1_check_trailing_bits(AV1Decoder *pbi, struct aom_read_bit_buffer *rb) {
@@ -3271,6 +3281,47 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
   aom_merge_corrupted_flag(&dcb->corrupted, corrupted);
 }
 
+#if CONFIG_THROUGHPUT_ANALYSIS
+static void aom_accounting_cal_total(AV1Decoder *pbi) {
+  if (pbi->decoding_first_frame) {
+    pbi->common.sym_stats.frame_dec_order = 0;
+    pbi->common.sym_stats.tot_ctx_syms = 0;
+    pbi->common.sym_stats.tot_bypass_syms = 0;
+    pbi->common.sym_stats.tot_bits = 0;
+    pbi->common.sym_stats.peak_ctx_syms = 0;
+    pbi->common.sym_stats.peak_bypass_syms = 0;
+    pbi->common.sym_stats.peak_bits = 0;
+  }
+  Accounting accounting = pbi->accounting;
+  int frm_ctx_syms = accounting.syms.num_ctx_coded;
+  int frm_bypass_syms = accounting.syms.num_bypass_coded;
+  int frm_bits = 0;
+  for (int i = 0; i < accounting.syms.num_syms; i++) {
+    AccountingSymbol sym = accounting.syms.syms[i];
+    frm_bits += sym.bits;
+  }
+  int peak_ctx_syms = pbi->common.sym_stats.peak_ctx_syms;
+  int peak_bypass_syms = pbi->common.sym_stats.peak_bypass_syms;
+  pbi->common.sym_stats.tot_ctx_syms += frm_ctx_syms;
+  pbi->common.sym_stats.tot_bypass_syms += frm_bypass_syms;
+  pbi->common.sym_stats.frame_dec_order += 1;
+  pbi->common.sym_stats.tot_bits += frm_bits;
+  if (frm_ctx_syms * 4 + frm_bypass_syms >
+      peak_ctx_syms * 4 + peak_bypass_syms) {
+    pbi->common.sym_stats.peak_ctx_syms = frm_ctx_syms;
+    pbi->common.sym_stats.peak_bypass_syms = frm_bypass_syms;
+    pbi->common.sym_stats.peak_bits = frm_bits;
+  }
+  tot_ctx_syms = pbi->common.sym_stats.tot_ctx_syms;
+  tot_bypass_syms = pbi->common.sym_stats.tot_bypass_syms;
+  tot_bits = pbi->common.sym_stats.tot_bits;
+  max_ctx_syms = pbi->common.sym_stats.peak_ctx_syms;
+  max_bypass_syms = pbi->common.sym_stats.peak_bypass_syms;
+  max_bits = pbi->common.sym_stats.peak_bits;
+  tot_frames = pbi->common.sym_stats.frame_dec_order;
+}
+#endif  // CONFIG_THROUGHPUT_ANALYSIS
+
 static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
                                    const uint8_t *data_end, int start_tile,
                                    int end_tile) {
@@ -3410,7 +3461,11 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
     return raw_data_end;
   }
   TileDataDec *const tile_data = pbi->tile_data + end_tile;
-
+#if CONFIG_THROUGHPUT_ANALYSIS
+  if (pbi->acct_enabled) {
+    aom_accounting_cal_total(pbi);
+  }
+#endif  // CONFIG_THROUGHPUT_ANALYSIS
   return aom_reader_find_end(&tile_data->bit_reader);
 }
 
@@ -3974,6 +4029,11 @@ static AOM_INLINE void reset_dec_workers(AV1Decoder *pbi,
   }
 #if CONFIG_ACCOUNTING
   if (pbi->acct_enabled) {
+#if CONFIG_THROUGHPUT_ANALYSIS
+    aom_accounting_cal_total(pbi);
+#else
+    aom_accounting_dump(&pbi->accounting);
+#endif  // CONFIG_THROUGHPUT_ANALYSIS
     aom_accounting_reset(&pbi->accounting);
   }
 #endif

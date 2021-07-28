@@ -1748,7 +1748,12 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 }
 
 static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
-                               int segment_id, aom_reader *r) {
+                               int segment_id, aom_reader *r
+#if CONFIG_CONTEXT_DERIVATION
+                               ,
+                               const int skip_txfm
+#endif  // CONFIG_CONTEXT_DERIVATION
+) {
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_REF_FRAME)) {
     const int frame = get_segdata(&cm->seg, segment_id, SEG_LVL_REF_FRAME);
     if (frame < LAST_FRAME) return 0;
@@ -1760,7 +1765,11 @@ static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
   const int ctx = av1_get_intra_inter_context(xd);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   const int is_inter =
+#if CONFIG_CONTEXT_DERIVATION
+      aom_read_symbol(r, ec_ctx->intra_inter_cdf[skip_txfm][ctx], 2, ACCT_STR);
+#else
       aom_read_symbol(r, ec_ctx->intra_inter_cdf[ctx], 2, ACCT_STR);
+#endif  // CONFIG_CONTEXT_DERIVATION
   return is_inter;
 }
 
@@ -2134,7 +2143,18 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   read_delta_q_params(cm, xd, r);
 
   if (!mbmi->skip_mode)
-    inter_block = read_is_inter_block(cm, xd, mbmi->segment_id, r);
+    inter_block =
+        read_is_inter_block(cm, xd, mbmi->segment_id, r
+#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_SDP
+                            ,
+                            mbmi->skip_txfm[xd->tree_type == CHROMA_PART]
+#else
+                            ,
+                            mbmi->skip_txfm
+#endif
+#endif  // CONFIG_CONTEXT_DERIVATION
+        );
 
   mbmi->current_qindex = xd->current_base_qindex;
 

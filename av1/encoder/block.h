@@ -165,6 +165,10 @@ typedef struct macroblock_plane {
 typedef struct {
   //! Cost to skip txfm for the current txfm block.
   int txb_skip_cost[TXB_SKIP_CONTEXTS][2];
+#if CONFIG_CONTEXT_DERIVATION
+  //! Cost to skip txfm for the current AOM_PLANE_V txfm block.
+  int v_txb_skip_cost[V_TXB_SKIP_CONTEXTS][2];
+#endif  // CONFIG_CONTEXT_DERIVATION
   /*! \brief Cost for encoding the base_eob of a level.
    *
    * Decoder uses base_eob to derive the base_level as base_eob := base_eob+1.
@@ -182,6 +186,12 @@ typedef struct {
   int eob_extra_cost[EOB_COEF_CONTEXTS][2];
   //! Cost for encoding the dc_sign
   int dc_sign_cost[DC_SIGN_CONTEXTS][2];
+#if CONFIG_CONTEXT_DERIVATION
+  //! Cost for encoding the AOM_PLANE_V txfm coefficient dc_sign
+  int v_dc_sign_cost[CROSS_COMPONENT_CONTEXTS][DC_SIGN_CONTEXTS][2];
+  //! Cost for encoding the AOM_PLANE_V txfm coefficient ac_sign
+  int v_ac_sign_cost[CROSS_COMPONENT_CONTEXTS][2];
+#endif  // CONFIG_CONTEXT_DERIVATION
   //! Cost for encoding an increment to the coefficient
   int lps_cost[LEVEL_CONTEXTS][COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1];
 } LV_MAP_COEFF_COST;
@@ -734,7 +744,12 @@ typedef struct {
    ****************************************************************************/
   /**@{*/
   //! intra_inter_cost
+#if CONFIG_CONTEXT_DERIVATION
+  int intra_inter_cost[INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS][2];
+#else
   int intra_inter_cost[INTRA_INTER_CONTEXTS][2];
+#endif  // CONFIG_CONTEXT_DERIVATION
+  //! inter_compound_mode_cost
 #if CONFIG_OPTFLOW_REFINEMENT
   /*! use_optflow_cost */
   int use_optflow_cost[INTER_COMPOUND_MODE_CONTEXTS][2];

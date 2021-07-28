@@ -990,10 +990,21 @@ static AOM_INLINE void estimate_ref_frame_costs(
              REF_FRAMES * sizeof((*ref_costs_comp)[0]));
   } else {
     int intra_inter_ctx = av1_get_intra_inter_context(xd);
+#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_SDP
+    const int skip_txfm = xd->mi[0]->skip_txfm[xd->tree_type == CHROMA_PART];
+#else
+    const int skip_txfm = xd->mi[0]->skip_txfm;
+#endif
+    ref_costs_single[INTRA_FRAME] =
+        mode_costs->intra_inter_cost[skip_txfm][intra_inter_ctx][0];
+    unsigned int base_cost =
+        mode_costs->intra_inter_cost[skip_txfm][intra_inter_ctx][1];
+#else
     ref_costs_single[INTRA_FRAME] =
         mode_costs->intra_inter_cost[intra_inter_ctx][0];
     unsigned int base_cost = mode_costs->intra_inter_cost[intra_inter_ctx][1];
-
+#endif  // CONFIG_CONTEXT_DERIVATION
     for (int i = LAST_FRAME; i <= ALTREF_FRAME; ++i)
       ref_costs_single[i] = base_cost;
 

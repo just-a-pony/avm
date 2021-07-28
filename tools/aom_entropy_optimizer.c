@@ -500,13 +500,22 @@ int main(int argc, const char **argv) {
                      "default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
 
   /* Intra/inter flag */
-  cts_each_dim[0] = INTRA_INTER_CONTEXTS;
-  cts_each_dim[1] = 2;
+#if CONFIG_CONTEXT_DERIVATION
+  cts_each_dim[0] = INTRA_INTER_SKIP_TXFM_CONTEXTS;
+  cts_each_dim[1] = INTRA_INTER_CONTEXTS;
+  cts_each_dim[2] = 2;
   optimize_cdf_table(
-      &fc.intra_inter[0][0], probsfile, 2, cts_each_dim,
+      &fc.intra_inter[0][0][0], probsfile, 3, cts_each_dim,
       "static const aom_cdf_prob\n"
       "default_intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)]");
-
+#else
+  cts_each_dim[0] = INTRA_INTER_CONTEXTS;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(&fc.intra_inter[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob\n"
+                     "default_intra_inter_cdf[INTRA_INTER_SKIP_TXFM_CONTEXTS]["
+                     "INTRA_INTER_CONTEXTS][CDF_SIZE(2)]");
+#endif  // CONFIG_CONTEXT_DERIVATION
   /* Single/comp ref flag */
   cts_each_dim[0] = COMP_INTER_CONTEXTS;
   cts_each_dim[1] = 2;
@@ -697,6 +706,15 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob "
                      "av1_default_txb_skip_cdfs[TOKEN_CDF_Q_CTXS][TX_SIZES]"
                      "[TXB_SKIP_CONTEXTS][CDF_SIZE(2)]");
+#if CONFIG_CONTEXT_DERIVATION
+  cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
+  cts_each_dim[1] = V_TXB_SKIP_CONTEXTS;
+  cts_each_dim[2] = 2;
+  optimize_cdf_table(&fc.v_txb_skip[0][0][0], probsfile, 3, cts_each_dim,
+                     "static const aom_cdf_prob "
+                     "av1_default_v_txb_skip_cdfs[TOKEN_CDF_Q_CTXS]"
+                     "[V_TXB_SKIP_CONTEXTS][CDF_SIZE(2)]");
+#endif  // CONFIG_CONTEXT_DERIVATION
 
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
   cts_each_dim[1] = TX_SIZES;
@@ -798,6 +816,34 @@ int main(int argc, const char **argv) {
       "static const aom_cdf_prob av1_default_coeff_base_eob_multi_cdfs"
       "[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS_EOB]"
       "[CDF_SIZE(NUM_BASE_LEVELS + 1)]");
+#if CONFIG_CONTEXT_DERIVATION
+  cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
+  cts_each_dim[1] = PLANE_TYPES;
+  cts_each_dim[2] = DC_SIGN_CONTEXTS;
+  cts_each_dim[3] = 2;
+  optimize_cdf_table(&fc.dc_sign[0][0][0][0], probsfile, 4, cts_each_dim,
+                     "static const aom_cdf_prob av1_default_dc_sign_cdfs"
+                     "[TOKEN_CDF_Q_CTXS][PLANE_TYPES][DC_SIGN_CONTEXTS]"
+                     "[CDF_SIZE(2)]");
+
+  cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
+  cts_each_dim[1] = CROSS_COMPONENT_CONTEXTS;
+  cts_each_dim[2] = DC_SIGN_CONTEXTS;
+  cts_each_dim[3] = 2;
+  optimize_cdf_table(
+      &fc.v_dc_sign[0][0][0][0], probsfile, 4, cts_each_dim,
+      "static const aom_cdf_prob av1_default_v_dc_sign_cdfs"
+      "[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS][DC_SIGN_CONTEXTS]"
+      "[CDF_SIZE(2)]");
+
+  cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
+  cts_each_dim[1] = CROSS_COMPONENT_CONTEXTS;
+  cts_each_dim[2] = 2;
+  optimize_cdf_table(&fc.v_ac_sign[0][0][0], probsfile, 3, cts_each_dim,
+                     "static const aom_cdf_prob av1_default_v_ac_sign_cdfs"
+                     "[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS]"
+                     "[CDF_SIZE(2)]");
+#endif  // CONFIG_CONTEXT_DERIVATION
 
   fclose(statsfile);
   fclose(logfile);

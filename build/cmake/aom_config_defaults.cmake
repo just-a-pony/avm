@@ -182,6 +182,12 @@ set_aom_config_var(CONFIG_COMPLEXITY_SCALABLE_MVP 1
                    "Enable complexity scalable mvp")
 set_aom_config_var(CONFIG_IST_FIX_B076 1
                    "AV2 experiment flag to enable IST scan alignment.")
+set_aom_config_var(
+  CONFIG_CONTEXT_DERIVATION 1
+  "AV2 experiment flag to enable modified context derivation : CWG-B065.")
+# Source of throughput analysis : CWG-B065
+set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
+                   "AV2 experiment flag to measure throughput.")
 #
 # Variables in this section control optional features of the build system.
 #

@@ -1153,6 +1153,18 @@ typedef struct macroblockd {
   /** ccso blk v */
   uint8_t ccso_blk_v;
 #endif
+
+#if CONFIG_CONTEXT_DERIVATION
+  /** buffer to store AOM_PLANE_U txfm coefficient signs */
+  int32_t tmp_sign[1024];
+  /** variable to store AOM_PLANE_U eob value */
+  uint16_t eob_u;
+#endif  // CONFIG_CONTEXT_DERIVATION
+
+#if CONFIG_CONTEXT_DERIVATION
+  /** variable to store eob_u flag */
+  uint8_t eob_u_flag;
+#endif  // CONFIG_CONTEXT_DERIVATION
 } MACROBLOCKD;
 
 /*!\cond */

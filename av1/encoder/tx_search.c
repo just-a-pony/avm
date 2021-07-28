@@ -2258,8 +2258,19 @@ static INLINE void predict_dc_only_block(
     TXB_CTX txb_ctx_tmp;
     const PLANE_TYPE plane_type = get_plane_type(plane);
     get_txb_ctx(plane_bsize, tx_size, plane, ta, tl, &txb_ctx_tmp);
+#if CONFIG_CONTEXT_DERIVATION
+    int zero_blk_rate = 0;
+    if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U) {
+      zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][plane_type]
+                          .txb_skip_cost[txb_ctx_tmp.txb_skip_ctx][1];
+    } else {
+      zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][plane_type]
+                          .v_txb_skip_cost[txb_ctx_tmp.txb_skip_ctx][1];
+    }
+#else
     const int zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][plane_type]
                                   .txb_skip_cost[txb_ctx_tmp.txb_skip_ctx][1];
+#endif  // CONFIG_CONTEXT_DERIVATION
     best_rd_stats->rate = zero_blk_rate;
 
     best_rd_stats->rdcost =

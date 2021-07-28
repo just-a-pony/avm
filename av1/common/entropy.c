@@ -36,8 +36,15 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
 #endif
 
   av1_copy(cm->fc->txb_skip_cdf, av1_default_txb_skip_cdfs[index]);
+#if CONFIG_CONTEXT_DERIVATION
+  av1_copy(cm->fc->v_txb_skip_cdf, av1_default_v_txb_skip_cdfs[index]);
+#endif  // CONFIG_CONTEXT_DERIVATION
   av1_copy(cm->fc->eob_extra_cdf, av1_default_eob_extra_cdfs[index]);
   av1_copy(cm->fc->dc_sign_cdf, av1_default_dc_sign_cdfs[index]);
+#if CONFIG_CONTEXT_DERIVATION
+  av1_copy(cm->fc->v_dc_sign_cdf, av1_default_v_dc_sign_cdfs[index]);
+  av1_copy(cm->fc->v_ac_sign_cdf, av1_default_v_ac_sign_cdfs[index]);
+#endif  // CONFIG_CONTEXT_DERIVATION
   av1_copy(cm->fc->coeff_br_cdf, av1_default_coeff_lps_multi_cdfs[index]);
   av1_copy(cm->fc->coeff_base_cdf, av1_default_coeff_base_multi_cdfs[index]);
   av1_copy(cm->fc->coeff_base_eob_cdf,
@@ -86,8 +93,15 @@ static AOM_INLINE void reset_nmv_counter(nmv_context *nmv) {
 
 void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->txb_skip_cdf, 2);
+#if CONFIG_CONTEXT_DERIVATION
+  RESET_CDF_COUNTER(fc->v_txb_skip_cdf, 2);
+#endif  // CONFIG_CONTEXT_DERIVATION
   RESET_CDF_COUNTER(fc->eob_extra_cdf, 2);
   RESET_CDF_COUNTER(fc->dc_sign_cdf, 2);
+#if CONFIG_CONTEXT_DERIVATION
+  RESET_CDF_COUNTER(fc->v_dc_sign_cdf, 2);
+  RESET_CDF_COUNTER(fc->v_ac_sign_cdf, 2);
+#endif  // CONFIG_CONTEXT_DERIVATION
   RESET_CDF_COUNTER(fc->eob_flag_cdf16, 5);
   RESET_CDF_COUNTER(fc->eob_flag_cdf32, 6);
   RESET_CDF_COUNTER(fc->eob_flag_cdf64, 7);
@@ -154,8 +168,13 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
 #endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   RESET_CDF_COUNTER(fc->comp_group_idx_cdf, 2);
   RESET_CDF_COUNTER(fc->skip_mode_cdfs, 2);
-  RESET_CDF_COUNTER(fc->skip_txfm_cdfs, 2);
+#if CONFIG_CONTEXT_DERIVATION
+  RESET_CDF_COUNTER(fc->intra_inter_cdf[0], 2);
+  RESET_CDF_COUNTER(fc->intra_inter_cdf[1], 2);
+#else
   RESET_CDF_COUNTER(fc->intra_inter_cdf, 2);
+#endif  // CONFIG_CONTEXT_DERIVATION
+  RESET_CDF_COUNTER(fc->skip_txfm_cdfs, 2);
   reset_nmv_counter(&fc->nmvc);
   reset_nmv_counter(&fc->ndvc);
   RESET_CDF_COUNTER(fc->intrabc_cdf, 2);

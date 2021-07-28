@@ -56,6 +56,10 @@ typedef struct {
   int num_multi_syms;
   /** Raw binary symbol decoding calls. */
   int num_binary_syms;
+  /** Bypass coded. */
+  int num_bypass_coded;
+  /** Context coded. */
+  int num_ctx_coded;
   /** Dictionary for translating strings into id. */
   AccountingDictionary dictionary;
 } AccountingSymbols;

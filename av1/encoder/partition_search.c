@@ -1079,11 +1079,25 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif
 
   if (!seg_ref_active) {
-#if CONFIG_ENTROPY_STATS
+#if CONFIG_ENTROPY_STATS && !CONFIG_CONTEXT_DERIVATION
     counts->intra_inter[av1_get_intra_inter_context(xd)][inter_block]++;
-#endif
+#endif  // CONFIG_ENTROPY_STATS && !CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_SDP
+    const int skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
+#else
+    const int skip_txfm = mbmi->skip_txfm;
+#endif  // CONFIG_SDP
+#if CONFIG_ENTROPY_STATS
+    counts->intra_inter[skip_txfm][av1_get_intra_inter_context(xd)]
+                       [inter_block]++;
+#endif  // CONFIG_ENTROPY_STATS
+    update_cdf(fc->intra_inter_cdf[skip_txfm][av1_get_intra_inter_context(xd)],
+               inter_block, 2);
+#else
     update_cdf(fc->intra_inter_cdf[av1_get_intra_inter_context(xd)],
                inter_block, 2);
+#endif  // CONFIG_CONTEXT_DERIVATION
     // If the segment reference feature is enabled we have only a single
     // reference frame allowed for the segment so exclude it from
     // the reference frame counts used to work out probabilities.

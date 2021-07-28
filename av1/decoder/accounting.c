@@ -69,6 +69,8 @@ void aom_accounting_reset(Accounting *accounting) {
   accounting->syms.num_syms = 0;
   accounting->syms.num_binary_syms = 0;
   accounting->syms.num_multi_syms = 0;
+  accounting->syms.num_bypass_coded = 0;
+  accounting->syms.num_ctx_coded = 0;
   accounting->context.x = -1;
   accounting->context.y = -1;
   accounting->last_tell_frac = 0;
