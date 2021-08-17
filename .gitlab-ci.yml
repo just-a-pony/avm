@@ -397,7 +397,7 @@ Linux Test (x86_64-gcc):
   script:
     - git fetch --unshallow
     - cmake -B aom_test_build
-        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo
         -DENABLE_EXAMPLES=1
         -DBUILD_SHARED_LIBS=0
     - cmake --build aom_test_build
@@ -879,7 +879,7 @@ Linux Nightly Build:
   extends: .common-nightly
   variables:
     CMAKE_FLAGS: >-
-      -DCMAKE_BUILD_TYPE=Debug
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
       -DAOM_EXTRA_C_FLAGS="--coverage"
       -DAOM_EXTRA_CXX_FLAGS="--coverage"
       -DAOM_EXTRA_EXE_LINKER_FLAGS="--coverage"
