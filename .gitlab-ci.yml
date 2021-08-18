@@ -387,23 +387,27 @@ Build Documentation:
     paths:
       - aom_docs_build/docs/
 
-Linux Test (x86_64-gcc):
+Example Build (x86_64-gcc):
   stage: build
   interruptible: true
   variables:
     GIT_FETCH_EXTRA_FLAGS: --tags
   script:
     - git fetch --unshallow
-    - cmake -B aom_test_build
+    - cmake -B aom_example_build
         -DCMAKE_BUILD_TYPE=RelWithDebInfo
         -DENABLE_EXAMPLES=1
         -DBUILD_SHARED_LIBS=0
-    - cmake --build aom_test_build
+    - cmake --build aom_example_build
   needs: []
   artifacts:
     expire_in: 1 day
     paths:
-      - aom_test_build/
+      - aom_example_build/aomenc
+      - aom_example_build/aomdec
+      - aom_example_build/config
+      - aom_example_build/examples
+      - aom_example_build/tools
 
 Linux Sanitizers (x86_64-clang):
   stage: build
@@ -452,7 +456,7 @@ Example Test (x86_64):
     - export SHARD_INDEX=$((CI_NODE_INDEX - 1))
   script:
     - git fetch --unshallow
-    - cd aom_test_build
+    - cd aom_example_build
     - |
       for t in $(../test/examples.sh --list-tests | awk "{ if ((NR-1) % ${CI_NODE_TOTAL} == ${SHARD_INDEX}) print }"); do
         sh ../test/examples.sh \
@@ -472,7 +476,7 @@ Example Test (x86_64):
     - when: on_success
   needs:
     - 'Test Data'
-    - 'Linux Test (x86_64-gcc)'
+    - 'Example Build (x86_64-gcc)'
 
 .sanitizer-common:
   stage: test
