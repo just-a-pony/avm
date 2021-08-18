@@ -586,6 +586,8 @@ Linux Sanitizer (integer) Test:
 
 Linux Sanitizer (thread) Test:
   extends: .sanitizer-common
+  # Very few tests, so minimum parallelism.
+  parallel: 2
   variables:
     AOM_SANITIZER_TYPE: thread
   needs:
