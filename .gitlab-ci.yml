@@ -180,7 +180,6 @@ Test Data Check:
           - inspection-accounting
           - nasm
           - no-examples
-          - realtime-only
   script:
     - |
       case $AOM_BUILD_CONFIG in
@@ -201,9 +200,6 @@ Test Data Check:
           ;;
         rtcd)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_RUNTIME_CPU_DETECT=1"
-          ;;
-        realtime-only)
-          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_REALTIME_ONLY=1"
           ;;
         encode-only)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_AV1_DECODER=0"
@@ -259,7 +255,6 @@ Build (generic-gnu):
           - no-webm
           - inspection-accounting
           - no-examples
-          - realtime-only
   variables:
     EXTRA_CMAKE_FLAGS: -DAOM_TARGET_CPU=generic
 
@@ -306,7 +301,6 @@ Build (aarch64-linux-gcc):
           - no-webm
           - inspection-accounting
           - no-examples
-          - realtime-only
   variables:
     # Overwriting the default flags to disalbe Werror
     CMAKE_FLAGS: >-
@@ -328,7 +322,6 @@ Build (armv7-linux-gcc):
           - no-webm
           - inspection-accounting
           - no-examples
-          - realtime-only
   variables:
     # Overwriting the default flags to disalbe Werror
     CMAKE_FLAGS: >-
@@ -357,7 +350,6 @@ Build (x86-mingw-gcc):
           - inspection-accounting
           - nasm
           - no-examples
-          - realtime-only
   variables:
     EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86-mingw-gcc.cmake
@@ -376,7 +368,6 @@ Build (x86_64-mingw-gcc):
           - inspection-accounting
           - nasm
           - no-examples
-          - realtime-only
   variables:
     EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86_64-mingw-gcc.cmake
@@ -449,31 +440,6 @@ Linux Sanitizers (x86_64-clang):
     expire_in: 1 day
     paths:
       - aom_build/*/test_libaom
-
-Linux Unit Test:
-  stage: test
-  interruptible: true
-  parallel: 20
-  variables:
-    LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
-    GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
-    GTEST_OUTPUT: "xml:report.xml"
-  before_script:
-    - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
-  script:
-    - ./aom_test_build/test_libaom
-        --gtest_filter='-*Large*'
-  needs:
-    - 'Test Data'
-    - 'Linux Test (x86_64-gcc)'
-  artifacts:
-    when: always
-    reports:
-      junit: report.xml
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      when: never
-    - when: on_success
 
 Example Test (x86_64):
   stage: test
@@ -549,12 +515,7 @@ Example Test (x86_64):
           ;;
       esac
     - |
-      negative_filter="-*Large*"
-      case $CI_COMMIT_BRANCH in
-        research*)
-          negative_filter="${negative_filter}:*MD5Test*:*TestVectorTest*:*InvalidFile*:*ExternalFrameBuffer*"
-      esac
-      filter="${negative_filter}"
+      filter="-*Large*:*MD5Test*:*TestVectorTest*:*InvalidFile*:*ExternalFrameBuffer*"
       case $AOM_SANITIZER_TYPE in
         thread)
           filter="*Thread*:${filter}"
