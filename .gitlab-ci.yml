@@ -20,6 +20,7 @@ workflow:
 # Check code style with clang-format and cmake-format
 Style Check:
   stage: check
+  interruptible: true
   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
   before_script:
     - apk add --no-cache git clang
@@ -39,6 +40,7 @@ Style Check:
 
 .commit-checks-common:
   stage: check
+  interruptible: true
   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
   script:
     - 'echo "Diff ref is: $DIFF_REF"'
@@ -107,6 +109,7 @@ Commit checks:
 # Fetch the test data later needed for the unit test jobs
 Test Data:
   stage: check
+  interruptible: true
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
   script:
@@ -119,6 +122,7 @@ Test Data:
 
 Test Data Check:
   stage: check
+  interruptible: true
   variables:
     DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
   script:
@@ -158,6 +162,7 @@ Test Data Check:
 
 .build-common:
   stage: build
+  interruptible: true
   extends: .ccache-common
   variables:
     CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DENABLE_DOCS=0
@@ -378,6 +383,7 @@ Build (x86_64-mingw-gcc):
 
 Build Documentation:
   stage: build
+  interruptible: true
   script:
     - cmake -B aom_docs_build -GNinja
         -DENABLE_DOCS=1
@@ -392,6 +398,7 @@ Build Documentation:
 
 Linux Test (x86_64-gcc):
   stage: build
+  interruptible: true
   variables:
     GIT_FETCH_EXTRA_FLAGS: --tags
   script:
@@ -409,6 +416,7 @@ Linux Test (x86_64-gcc):
 
 Linux Sanitizers (x86_64-clang):
   stage: build
+  interruptible: true
   variables:
     SANITIZER_IGNORES_FILE: .gitlab/SanitizerIgnores.txt
     CMAKE_FLAGS: >-
@@ -444,6 +452,7 @@ Linux Sanitizers (x86_64-clang):
 
 Linux Unit Test:
   stage: test
+  interruptible: true
   parallel: 20
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
@@ -468,6 +477,7 @@ Linux Unit Test:
 
 Example Test (x86_64):
   stage: test
+  interruptible: true
   parallel: 5
   variables:
     GIT_FETCH_EXTRA_FLAGS: --tags
@@ -500,6 +510,7 @@ Example Test (x86_64):
 
 .sanitizer-common:
   stage: test
+  interruptible: true
   parallel: 20
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
@@ -619,6 +630,7 @@ Linux Sanitizer (thread) Test:
 # Encoder run and compare with target branch (MR) or previous runs
 .enc-run-common:
   stage: test
+  interruptible: true
   variables:
     AOMENC_LIMIT: 30
     AOMENC_CQ_LEVEL: 32
@@ -759,6 +771,7 @@ Previous Enc Run (Low-delay):
 
 Enc compare:
   stage: report
+  interruptible: true
   image: registry.gitlab.com/epirat/images/alpine:20210415142607
   script:
     - git fetch --unshallow
@@ -812,6 +825,7 @@ Enc compare:
 
 Static Analyzer:
   stage: test
+  interruptible: true
   parallel:
     matrix:
       - ANALYZER_MODE:
@@ -839,6 +853,7 @@ Static Analyzer:
 
 SO Checks:
   stage: test
+  interruptible: true
   script:
     - |
       for so in $(find -name '*.so*'); do
@@ -876,6 +891,7 @@ SO Checks:
 
 Linux Nightly Build:
   stage: build
+  interruptible: true
   extends: .common-nightly
   variables:
     CMAKE_FLAGS: >-
@@ -898,6 +914,7 @@ Linux Nightly Build:
 # Full test suite run (with coverage report)
 Linux All Unit Test:
   stage: test
+  interruptible: true
   extends: .common-nightly
   parallel: 20
   variables:
@@ -925,6 +942,7 @@ Linux All Unit Test:
 
 Coverage Report:
   stage: report
+  interruptible: true
   extends: .common-nightly
   script:
     - mkdir -p coverage-html
@@ -948,6 +966,7 @@ Coverage Report:
 
 .sanitizer-common-nigtly:
   stage: test
+  interruptible: true
   extends: .common-nightly
   parallel: 20
   variables:
