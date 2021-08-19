@@ -600,7 +600,7 @@ Linux Sanitizer (thread) Test:
   interruptible: true
   variables:
     AOMENC_LIMIT: 30
-    AOMENC_CQ_LEVEL: 32
+    AOMENC_QP: 128
     AOMENC_INPUT: Vertical_Bayshore_270x480_2997.y4m
     AOMENC: installroot/usr/local/bin/aomenc
   before_script:
@@ -624,7 +624,7 @@ Enc Run (All-intra):
         --cpu-used=0
         --passes=1
         --end-usage=q
-        --cq-level=${AOMENC_CQ_LEVEL}
+        --qp=${AOMENC_QP}
         --kf-min-dist=0
         --kf-max-dist=0
         --use-fixed-qp-offsets=1
@@ -673,7 +673,7 @@ Enc Run (Random Access):
         --deltaq-mode=0
         --enable-tpl-model=0
         --end-usage=q
-        --cq-level=${AOMENC_CQ_LEVEL}
+        --qp=${AOMENC_QP}
         --enable-keyframe-filtering=0
         --obu
         --limit=${AOMENC_LIMIT}
@@ -714,7 +714,7 @@ Enc Run (Low-delay):
         --deltaq-mode=0
         --enable-tpl-model=0
         --end-usage=q
-        --cq-level=${AOMENC_CQ_LEVEL}
+        --qp=${AOMENC_QP}
         --subgop-config-str=ld
         --enable-keyframe-filtering=0
         --obu
