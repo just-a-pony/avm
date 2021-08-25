@@ -145,23 +145,6 @@ The following example demonstrates use of the x86-linux.cmake toolchain file on 
     $ make
 ~~~
 
-To build for an unlisted target creation of a new toolchain file is the best
-solution. The existing toolchain files can be used a starting point for a new
-toolchain file since each one exposes the basic requirements for toolchain files
-as used in the AVM codec build.
-
-As a temporary work around an unoptimized AVM configuration that builds only C
-and C++ sources can be produced using the following commands:
-
-~~~
-    $ cmake path/to/avm -DAOM_TARGET_CPU=generic
-    $ make
-~~~
-
-In addition to the above it's important to note that the toolchain files
-suffixed with gcc behave differently than the others. These toolchain files
-attempt to obey the $CROSS environment variable.
-
 ### Sanitizers {#sanitizers}
 
 Sanitizer integration is built-in to the CMake build system. To enable a
@@ -281,7 +264,7 @@ Additional input data for testing the encoder can be obtained from:
 ### Sharded testing {#sharded-testing}
 
 The AVM codec library unit tests are built upon gtest which supports sharding of test jobs.
-Sharded test runs can be achieved in a couple of ways. Below is one example:
+Sharded tests can be achieved as follows for example:
 
 ~~~
    # Set the environment variable GTEST_TOTAL_SHARDS to control the number of
@@ -369,7 +352,7 @@ In addition to the local tests, many more tests and/or configurations will run t
 ## Support {#support}
 
 This library is an open source project supported by its community.
-Please please email https://aomedia.org/contact/ for help.
+Please email https://aomedia.org/contact/ for help.
 
 ## Bug reports {#bug-reports}
 
