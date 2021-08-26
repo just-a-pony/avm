@@ -1,35 +1,10 @@
-README.md                {#LREADME}
-=========
-# AVM Codec Library
+# AVM
 
-## Contents
-1. [Building the lib and applications](#building-the-library-and-applications)
-    - [Prerequisites](#prerequisites)
-    - [Get the code](#get-the-code)
-    - [Basics](#basic-build)
-    - [Configuration options](#configuration-options)
-    - [Dylib builds](#dylib-builds)
-    - [Debugging](#debugging)
-    - [Cross compiling](#cross-compiling)
-    - [Sanitizer support](#sanitizers)
-    - [MSVC builds](#microsoft-visual-studio-builds)
-    - [Xcode builds](#xcode-builds)
-    - [Build with VMAF support](#build-with-vmaf)
-2. [Testing the library](#testing-the-avm-codec)
-    - [Basics](#testing-basics)
-        - [Unit tests](#1_unit-tests)
-        - [Example tests](#2_example-tests)
-    - [Downloading test data](#downloading-the-test-data)
-    - [Sharded testing](#sharded-testing)
-3. [Coding style](#coding-style)
-4. [Submitting patches](#submitting-patches)
-    - [Testing your code](#testing-your-code)
-5. [Support](#support)
-6. [Bug reports](#bug-reports)
+[TOC]
 
-## Building the library and applications {#building-the-library-and-applications}
+## Building
 
-### Prerequisites {#prerequisites}
+### Prerequisites
 
  1. [CMake](https://cmake.org) version 3.16 or higher.
  2. [Git](https://git-scm.com/).
@@ -42,7 +17,7 @@ README.md                {#LREADME}
    [doxygen version 1.8.10 or newer](http://doxygen.org).
  6. Building the unit tests requires [Python](https://www.python.org/).
 
-### Get the code {#get-the-code}
+### Get the code
 
 The AVM project source code is stored in the Alliance of Open Media’s GitLab [repository](https://gitlab.com/AOMediaCodec/avm). To get the code,
 ~~~
@@ -51,7 +26,7 @@ The AVM project source code is stored in the Alliance of Open Media’s GitLab [
     $ cd avm
 ~~~
 
-### Basic build {#basic-build}
+### Basic build
 
 CMake replaces the configure step typical of many projects. Running CMake will
 produce configuration and build files for the currently selected CMake
@@ -69,7 +44,7 @@ successfully. The compiler chosen varies by host platform, but a general rule
 applies: On systems where cc and c++ are present in $PATH at the time CMake is
 run the generated build will use cc and c++ by default.
 
-### Configuration options {#configuration-options}
+### Configuration options
 
 The AVM codec library has a great many configuration options. These come in two
 varieties:
@@ -90,7 +65,7 @@ configuration options can be found at the top of the CMakeLists.txt file found
 in the root of the AVM repository, and AVM codec configuration options can
 currently be found in the file `build/cmake/aom_config_defaults.cmake`.
 
-### Dylib builds {#dylib-builds}
+### Dylib builds
 
 A dylib (shared object) build of the AVM codec library can be enabled via the
 CMake built in variable `BUILD_SHARED_LIBS`:
@@ -102,7 +77,7 @@ CMake built in variable `BUILD_SHARED_LIBS`:
 
 This is currently only supported on non-Windows targets.
 
-### Debugging {#debugging}
+### Debugging
 
 Depending on the generator used there are multiple ways of going about
 debugging AVM components. For single configuration generators like the Unix
@@ -131,7 +106,7 @@ generic at generation time:
     $ cmake path/to/avm -DAOM_TARGET_CPU=generic
 ~~~
 
-### Cross compiling {#cross-compiling}
+### Cross compiling
 
 For the purposes of building the AVM codec and applications, relative to the scope of this guide,
 all builds for architectures differing from the native host architecture will be considered cross compiles.
@@ -145,7 +120,7 @@ The following example demonstrates use of the x86-linux.cmake toolchain file on 
     $ make
 ~~~
 
-### Sanitizers {#sanitizers}
+### Sanitizers
 
 Sanitizer integration is built-in to the CMake build system. To enable a
 sanitizer, add `-DSANITIZE=<type>` to the CMake command line. For example, to
@@ -159,7 +134,7 @@ enable address sanitizer:
 Sanitizers available vary by platform, target, and compiler. Consult your
 compiler documentation to determine which, if any, are available.
 
-### Microsoft Visual Studio builds {#microsoft-visual-studio-builds}
+### Microsoft Visual Studio builds
 
 Building the AVM codec library in Microsoft Visual Studio is supported. Visual
 Studio 2019 (16.7) or later is required. The following example demonstrates
@@ -181,7 +156,7 @@ generating projects and a solution for the Microsoft IDE:
 NOTE: The build system targets Windows 7 or later by compiling files with
 `-D_WIN32_WINNT=0x0601`.
 
-### Xcode builds {#xcode-builds}
+### Xcode builds
 
 Building the AVM codec library in Xcode is supported. The following example
 demonstrates generating an Xcode project:
@@ -190,7 +165,7 @@ demonstrates generating an Xcode project:
     $ cmake path/to/avm -G Xcode
 ~~~
 
-### Build with VMAF support {#build-with-vmaf}
+### Build with VMAF support
 
 After installing
 [libvmaf.a](https://github.com/Netflix/vmaf/blob/master/libvmaf/README.md),
@@ -207,15 +182,15 @@ will be used unless you set the following flag when running the encoder:
     # --vmaf-model-path=path/to/model
 ~~~
 
-## Testing the AVM codec {#testing-the-avm-codec}
+## Testing
 
-### Testing basics {#testing-basics}
+### Testing basics
 
 There are several methods of testing the AVM codec. All of these methods require
 the presence of the AVM source code and a working build of the AVM library and
 applications.
 
-#### 1. Unit tests: {#1_unit-tests}
+#### 1. Unit tests:
 
 The unit tests can be run at build time:
 
@@ -229,7 +204,7 @@ The unit tests can be run at build time:
     $ make runtests
 ~~~
 
-#### 2. Example tests: {#2_example-tests}
+#### 2. Example tests:
 
 The example tests require a bash shell and can be run in the following manner:
 
@@ -244,7 +219,7 @@ The example tests require a bash shell and can be run in the following manner:
     $ path/to/avm/test/examples.sh --bin-path examples
 ~~~
 
-### Downloading the test data {#downloading-the-test-data}
+### Downloading the test data
 
 The fastest and easiest way to obtain the test data is to use CMake to generate
 a build using the Unix Makefiles generator, and then to build only the testdata
@@ -261,7 +236,7 @@ The above make command will only download and verify the test data.
 Additional input data for testing the encoder can be obtained from:
 [AV2 - CTC](https://media.xiph.org/video/aomctc/test_set/)
 
-### Sharded testing {#sharded-testing}
+### Sharded testing
 
 The AVM codec library unit tests are built upon gtest which supports sharding of test jobs.
 Sharded tests can be achieved as follows for example:
@@ -283,7 +258,7 @@ CMake. A system with 24 cores can run 24 test shards using a value of 24 with
 the `-j` parameter. When CMake is unable to detect the number of cores 10 shards
 is the default maximum value.
 
-## Coding style {#coding-style}
+## Coding style
 
 We are using the Google C Coding Style defined by the
 [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html).
@@ -324,7 +299,7 @@ Some Git installations have clang-format integration. Here are some examples:
     $ git clang-format -f -p
 ~~~
 
-## Submitting patches {#submitting-patches}
+## Submitting patches
 
 We manage the submission of patches using Gitlab's
 [merge request](https://docs.gitlab.com/ee/user/project/merge_requests/) process.
@@ -342,19 +317,12 @@ contributor agreements are signed for the AOMedia Project.
 Follow the Merge request page to check the status of the changes, review comments etc.
 
 
-### Testing your code {#testing-your-code}
-
-The testing basics are covered in the [testing section](#testing-the-avm-codec)
-above.
-
-In addition to the local tests, many more tests and/or configurations will run through Gitlab CI.
-
-## Support {#support}
+## Support
 
 This library is an open source project supported by its community.
 Please email https://aomedia.org/contact/ for help.
 
-## Bug reports {#bug-reports}
+## Bug reports
 
 Bug reports can be filed in the Alliance for Open Media
 [Gitlab issue tracker](https://gitlab.com/AOMediaCodec/avm/-/issues).
