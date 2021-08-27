@@ -21,11 +21,7 @@
   \subsection main_startpoints Starting Points
   - Consult the \ref changelog for a complete list of improvements in this
     release.
-  \if av1_md_support
-  - [README](\ref LREADME) contains instructions on compiling the sample applications.
-  \else
   - \ref readme contains instructions on compiling the sample applications.
-  \endif
   - Read the \ref usage "usage" for a narrative on codec usage.
   - Read the \ref samples "sample code" for examples of how to interact with the
     codec.
