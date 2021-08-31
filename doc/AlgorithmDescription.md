@@ -62,7 +62,7 @@ The largest coding block unit (LCU) applied in this codec is 128×128. In
 addition to no split mode `PARTITION_NONE`, the partition tree supports 9
 different partitioning patterns, as shown in below figure.
 
-<figure class="image"> <center><img src="img\partition_codingblock.svg"
+<figure class="image"> <center><img src="img/partition_codingblock.svg"
 alt="Partition" width="360" /> <figcaption>Figure 1: Supported coding block
 partitions</figcaption> </figure>
 
@@ -86,7 +86,7 @@ levels. The mapping from the transform size of the current depth to the
 transform size of the next depth is shown in the following Table 1.
 
 <figure class="image"> <center><figcaption>Table 1: Transform partition size
-setting</figcaption> <img src="img\tx_partition.svg" alt="Partition" width="220"
+setting</figcaption> <img src="img/tx_partition.svg" alt="Partition" width="220"
 /> </figure>
 
 Furthermore, for intra coded blocks, the transform partition is done in a way
@@ -94,7 +94,7 @@ that all the transform blocks have the same size, and the transform blocks are
 coded in a raster scan order. An example of the transform block partitioning for
 intra coded block is shown in the Figure 2.
 
-<figure class="image"> <center><img src="img\intra_tx_partition.svg"
+<figure class="image"> <center><img src="img/intra_tx_partition.svg"
 alt="Partition" width="600" /> <figcaption>Figure 2: Example of transform
 partitioning for intra coded block</figcaption> </figure>
 
@@ -108,7 +108,7 @@ Otherwise, if the coding block width or height is greater than 64, then both the
 luma and chroma coding blocks will implicitly split into multiples of min(W,
 64)x min(H, 64) and min(W, 32)x min(H, 32) transform blocks, respectively.
 
-<figure class="image"> <center><img src="img\inter_tx_partition.svg"
+<figure class="image"> <center><img src="img/inter_tx_partition.svg"
 alt="Partition" width="400" /> <figcaption>Figure 3: Example of transform
 partitioning for inter coded block</figcaption> </figure>
 
@@ -127,7 +127,7 @@ modes, as shown in the following figure. In the below figure, solid arrows
 indicate directional intra prediction modes and dotted arrows represent non-zero
 angle delta.
 
-<figure class="image"> <center><img src="img\intra_directional.svg"
+<figure class="image"> <center><img src="img/intra_directional.svg"
 alt="Directional intra" width="300" /> <figcaption>Figure 4: Directional intra
 prediction modes</figcaption> </figure>
 
@@ -155,7 +155,7 @@ from the top (T), left (L) and top-left (TL) reference samples, which has the
 value closest to the Paeth predictor value, i.e., T + L -TL. The samples used in
 `PAETH predictor` are illustrated in below figure.
 
-<figure class="image"> <center><img src="img\intra_paeth.svg" alt="Directional
+<figure class="image"> <center><img src="img/intra_paeth.svg" alt="Directional
 intra" width="300" /> <figcaption>Figure 5: Paeth predictor</figcaption>
 </figure>
 
@@ -170,7 +170,7 @@ within a 4×2 sub-block. The prediction process can be done recursively in unit
 4x2 sub-block, which means that prediction samples generated for one 4x2
 prediction block can be used to predict another 4x2 sub-block.
 
-<figure class="image"> <center><img src="img\intra_recursive.svg"
+<figure class="image"> <center><img src="img/intra_recursive.svg"
 alt="Directional intra" width="300" /> <figcaption>Figure 6: Recursive filtering
 modes</figcaption> </figure>
 
@@ -185,7 +185,7 @@ removed to form the AC contribution. In CfL mode, the model parameters which
 specify the linear function between two color components are optimized by
 encoder signalled in the bitstream.
 
-<figure class="image"> <center><img src="img\intra_cfl.svg" alt="Directional
+<figure class="image"> <center><img src="img/intra_cfl.svg" alt="Directional
 intra" width="700" /> <figcaption>Figure 7: CfL prediction</figcaption>
 </figure>
 
@@ -207,7 +207,7 @@ neighbors which are close but not directly adjacent to the current block. The
 two sets of spatial neighboring blocks are illustrated in an example shown in
 Figure 8.
 
-<figure class="image"> <center><img src="img\inter_spatial_mvp.svg"
+<figure class="image"> <center><img src="img/inter_spatial_mvp.svg"
 alt="Directional intra" width="350" /><figcaption>Figure 8: Motion field
 estimation by linear projection</figcaption></figure>
 
@@ -236,7 +236,7 @@ temporal MV buffer. In an example shown in Figure 5, the MV of reference frame 1
 (R1) pointing from R1 to a reference frame of R1 is identified, i.e., MVref,
 which passes a 8x8 block (shaded in blue dots) of current frame. Then this MVref
 is stored in the temporal MV buffer associated with this 8x8 block. <figure
-class="image"> <center><img src="img\inter_motion_field.svg" alt="Directional
+class="image"> <center><img src="img/inter_motion_field.svg" alt="Directional
 intra" width="800" /><figcaption>Figure 9: Motion field estimation by linear
 projection</figcaption></figure> Finally, given a couple of pre-defined block
 coordinates, the associated MVs stored in the temporal MV buffer are identified
@@ -245,7 +245,7 @@ the current block to its reference frame, e.g., MV0 in Figure 5. In Figure 6,
 the pre-defined block positions for deriving temporal MV predictors of a 16x16
 block are shown and up to 7 blocks will be checked to find valid temporal MV
 predictors.<figure class="image"> <center><img
-src="img\inter_tmvp_positions.svg" alt="Directional intra" width="300"
+src="img/inter_tmvp_positions.svg" alt="Directional intra" width="300"
 /><figcaption>Figure 10: Block positions for deriving temporal MV
 predictors</figcaption></figure> The temporal MV predictors are checked after
 the nearest spatial MV predictors but before the non-adjacent spatial MV
@@ -334,7 +334,7 @@ average of p0(x,y) and p1(x,y). The overlapping area of block 1 and block 0 is
 marked in grey in the following picture. The motion vectors of block 2, 3, 4 are
 further applied and blended in the same way.
 
-<figure class="image"> <center><img src="img\inter_obmc.svg" alt="Directional
+<figure class="image"> <center><img src="img/inter_obmc.svg" alt="Directional
 intra" width="300" /><figcaption>Figure 11: neighboring blocks for OBMC
 process</figcaption></figure>
 
@@ -379,7 +379,7 @@ is greater than 4-point, ADST refers to DST-4.
 
 <figure class="image"> <center><figcaption>Table 2: Transform basis functions
 (DCT-2, DST-4 and DST-7 for N-point input.</figcaption> <img src=
-"img\tx_basis.svg" alt="Partition" width="450" /> </figure>
+"img/tx_basis.svg" alt="Partition" width="450" /> </figure>
 
 For luma component, each transform block can select one pair of horizontal and
 vertical transform combination given a pre-defined set of transform type
@@ -393,18 +393,18 @@ mode, as described in Table 4.
 
 <figure class="image"> <center><figcaption>Table 3: Transform type candidates
 for luma component when max(width, height) is greater than or equal to 32.
-</figcaption> <img src="img\tx_cands_large.svg" alt="Partition" width="370" />
+</figcaption> <img src="img/tx_cands_large.svg" alt="Partition" width="370" />
 </figure>
 
 <figure class="image"> <center><figcaption>Table 4: Transform type candidates
 for luma component when max(width, height) is smaller than 32. </figcaption>
-<img src="img\tx_cands_small.svg" alt="Partition" width="440" /> </figure>
+<img src="img/tx_cands_small.svg" alt="Partition" width="440" /> </figure>
 
 The set of transform type candidates (namely transform set) is defined in Table
 5.
 
 <figure class="image"> <center><figcaption>Table 5: Definition of transform set.
-</figcaption> <img src="img\tx_set.svg" alt="Partition" width="450" /> </figure>
+</figcaption> <img src="img/tx_set.svg" alt="Partition" width="450" /> </figure>
 
 For chroma component, the transform type selection is done in an implicit way.
 For intra prediction residuals, the transform type is selected according to the
@@ -415,7 +415,7 @@ type signalling in the bitstream.
 
 <figure class="image"> <center><figcaption>Table 6: Transform type selection for
 chroma component intra prediction residuals.</figcaption> <img src=
-"img\tx_chroma.svg" alt="Partition" width="500" /> </figure>
+"img/tx_chroma.svg" alt="Partition" width="500" /> </figure>
 
 The computational cost of large size (e.g., 64-point) transforms is further
 reduced by zeroing out all the coefficients except the following two cases:
@@ -456,11 +456,11 @@ specified by a lookup table Dc_Qlookup[3][256], and the mapping from
 quantization index to quantization step size for 8-bit, 10-bit and 12-bit is
 specified by a lookup table Ac_Qlookup[3][256].
 
-<figure class="image"> <center><img src="img\quant_dc.svg" alt="quant_dc"
+<figure class="image"> <center><img src="img/quant_dc.svg" alt="quant_dc"
 width="800" /><figcaption>Figure 11: Quantization step size of DC coefficients
 for different internal bit-depth</figcaption></figure>
 
-<figure class="image"> <center><img src="img\quant_ac.svg" alt="quant_ac"
+<figure class="image"> <center><img src="img/quant_ac.svg" alt="quant_ac"
 width="800" /><figcaption>Figure 12: Quantization step size of AC coefficients
 for different internal bit-depth</figcaption></figure>
 
@@ -551,14 +551,14 @@ variance.
 **Edge Direction Estimation**\
 In CDEF, edge direction search is performed at 8x8 block-level. There are
 eight edge directions in total, as illustrated in Figure 13.
-<figure class="image"> <center><img src="img\edge_direction.svg"
+<figure class="image"> <center><img src="img/edge_direction.svg"
 alt="Edge direction" width="700" /> <figcaption>Figure 13: Line number
 k for pixels following direction d=0:7 in an 8x8 block.</figcaption> </figure>
 
 The optimal edge direction d_opt is found by maximizing the following
 term [3]:
 
-<figure class="image"> <center><img src="img\equ_edge_direction.svg"
+<figure class="image"> <center><img src="img/equ_edge_direction.svg"
 alt="Equation edge direction" width="250" /> </figure>
 <!-- $$d_{opt}=\max_{d} s_d$$
 $$s_d = \sum_{k}\frac{1}{N_{d,k}}(\sum_{p\in P_{d,k}}x_p)^2,$$ -->
@@ -572,20 +572,20 @@ The primary tap works along the edge direction (as shown in Figure 14),
 while the secondary tap forms an oriented 45 degree off the edge direction
  (as shown in Figure 15).
 
-<figure class="image"> <center><img src="img\primary_tap.svg"
+<figure class="image"> <center><img src="img/primary_tap.svg"
 alt="Primary tap" width="700" /> <figcaption>Figure 14: Primary filter
 taps following edge direction. For even strengths a = 2 and b = 4, for
 odd strengths a = 3 and b = 3. The filtered pixel is shown in the
 highlighted center.</figcaption> </figure>
 
-<figure class="image"> <center><img src="img\secondary_tap.svg"
+<figure class="image"> <center><img src="img/secondary_tap.svg"
 alt="Edge direction" width="700" /> <figcaption>Figure 15: Secondary
 filter taps. The filtered pixel is shown in the highlighted center.
 </figcaption> </figure>
 
 CDEF can be described by the following equation:
 
-<figure class="image"> <center><img src="img\equ_dir_search.svg"
+<figure class="image"> <center><img src="img/equ_dir_search.svg"
 alt="Equation direction search" width="720" /> </figure>
 
 <!-- $$y(i,j)=x(i,j)+round(\sum_{m,n}w^{(p)}_{d,m,n}f(x(m,x)-x(i,j),S^{(p)},
@@ -643,13 +643,13 @@ X1 and X2 of the degraded frame X, and the final restoration Xr is obtained as
 a combination of the degraded samples, and the difference between the degraded
 samples and the coarse restorations [4]:
 
-<figure class="image"> <center><img src="img\equ_dual_self_guided.svg"
+<figure class="image"> <center><img src="img/equ_dual_self_guided.svg"
 alt="Equation dual self guided filter" width="300" /> </figure>
 <!-- $$X_r = X + \alpha (X_1 - X) + \beta (X_2 - X)$$ -->
 
 At encoder side, alpha and beta are computed using:
 
-<figure class="image"> <center><img src="img\equ_dual_self_para.svg"
+<figure class="image"> <center><img src="img/equ_dual_self_para.svg"
 alt="Equation dual self guided filter parameter" width="220" /> </figure>
 <!-- $${\alpha, \beta}^T = (A^T A) ^{-1} A^T b,$$ -->
 
@@ -667,7 +667,7 @@ r is always less or equal to 3 [4].
 
 Guided filtering can be described by a local linear model:
 
-<figure class="image"> <center><img src="img\equ_guided_filter.svg"
+<figure class="image"> <center><img src="img/equ_guided_filter.svg"
 alt="Equation guided filter" width="155" /> </figure>
 <!-- $$y=Fx+G,$$ -->
 
@@ -771,7 +771,7 @@ can be accessed by IntraBC, if y < y0 and x < x0 + 2 * (y0 - y) - D, where D
 denotes the restricted immediate reconstructed area. When D is one super block,
 the prediction area is shown in below figure.
 
-<figure class="image"> <center><img src="img\SCC_IntraBC.svg" alt="Intra block
+<figure class="image"> <center><img src="img/scc_intrabc.svg" alt="Intra block
 copy" width="600" /> <figcaption>Figure 13: the prediction area for IntraBC mode
 in one super block prediction</figcaption> </figure>
 
