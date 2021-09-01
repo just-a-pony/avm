@@ -22,8 +22,6 @@ Style Check:
   stage: check
   interruptible: true
   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3:20210901124702
-  before_script:
-    - apk add --no-cache git clang
   script:
     - |
       # Run clang-format
