@@ -21,7 +21,7 @@ workflow:
 Style Check:
   stage: check
   interruptible: true
-  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
+  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3:20210901124702
   before_script:
     - apk add --no-cache git clang
   script:
@@ -41,7 +41,7 @@ Style Check:
 .commit-checks-common:
   stage: check
   interruptible: true
-  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3
+  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3:20210901124702
   script:
     - 'echo "Diff ref is: $DIFF_REF"'
     - git fetch --unshallow
