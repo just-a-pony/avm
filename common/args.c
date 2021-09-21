@@ -133,6 +133,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_NEW_INTER_MODES
     GET_PARAMS(max_drl_refmvs);
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+    GET_PARAMS(enable_refmvbank);
+#endif  // CONFIG_REF_MV_BANK
 
     fprintf(stderr, "\nInvalid parameter: %s", left);
     exit(-1);

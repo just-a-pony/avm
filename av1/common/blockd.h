@@ -647,6 +647,30 @@ struct scale_factors;
 
 /*!\endcond */
 
+#if CONFIG_REF_MV_BANK
+#define REF_MV_BANK_SIZE 4
+
+/*! \brief Variables related to reference MV bank. */
+typedef struct {
+  /*!
+   * Number of ref MVs in the buffer.
+   */
+  int rmb_count[MODE_CTX_REF_FRAMES];
+  /*!
+   * Index corresponding to the first ref MV in the buffer.
+   */
+  int rmb_start_idx[MODE_CTX_REF_FRAMES];
+  /*!
+   * Circular buffer storing the ref MVs.
+   */
+  CANDIDATE_MV rmb_buffer[MODE_CTX_REF_FRAMES][REF_MV_BANK_SIZE];
+  /*!
+   * Total number of mbmi updates conducted in SB
+   */
+  int rmb_sb_hits;
+} REF_MV_BANK;
+#endif  // CONFIG_REF_MV_BANK
+
 /*! \brief Variables related to current coding block.
  *
  * This is a common set of variables used by both encoder and decoder.
@@ -666,6 +690,16 @@ typedef struct macroblockd {
    * Same as cm->mi_params.mi_stride, copied here for convenience.
    */
   int mi_stride;
+
+#if CONFIG_REF_MV_BANK
+  /**
+   * \name Reference MV bank info.
+   */
+  /**@{*/
+  REF_MV_BANK ref_mv_bank;     /*!< Ref mv bank to update */
+  REF_MV_BANK *ref_mv_bank_pt; /*!< Pointer to bank to refer to */
+  /**@}*/
+#endif  // CONFIG_REF_MV_BANK
 
   /*!
    * True if current block transmits chroma information.

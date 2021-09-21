@@ -580,6 +580,15 @@ static const aom_cdf_prob
       { AOM_CDF3(24626, 24936) }, { AOM_CDF3(10923, 21845) }
     };
 
+#if CONFIG_REF_MV_BANK
+static const aom_cdf_prob
+    default_drl0_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
+      { AOM_CDF2(18923) }, { AOM_CDF2(12861) }, { AOM_CDF2(15472) },
+      { AOM_CDF2(13796) }, { AOM_CDF2(21474) }, { AOM_CDF2(24491) },
+      { AOM_CDF2(23482) }, { AOM_CDF2(23176) }, { AOM_CDF2(15143) },
+      { AOM_CDF2(16155) }, { AOM_CDF2(20465) }, { AOM_CDF2(20185) }
+    };
+#endif  // CONFIG_REF_MV_BANK
 static const aom_cdf_prob default_drl0_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(26658) }, { AOM_CDF2(22485) }, { AOM_CDF2(19400) },
   { AOM_CDF2(17600) }, { AOM_CDF2(23001) }, { AOM_CDF2(25649) },
@@ -587,6 +596,15 @@ static const aom_cdf_prob default_drl0_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(16468) }, { AOM_CDF2(21428) }, { AOM_CDF2(21326) }
 };
 
+#if CONFIG_REF_MV_BANK
+static const aom_cdf_prob
+    default_drl1_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
+      { AOM_CDF2(6862) },  { AOM_CDF2(7013) },  { AOM_CDF2(11644) },
+      { AOM_CDF2(11423) }, { AOM_CDF2(11683) }, { AOM_CDF2(12322) },
+      { AOM_CDF2(11637) }, { AOM_CDF2(10987) }, { AOM_CDF2(16528) },
+      { AOM_CDF2(21970) }, { AOM_CDF2(15118) }, { AOM_CDF2(17207) }
+    };
+#endif  // CONFIG_REF_MV_BANK
 static const aom_cdf_prob default_drl1_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(19705) }, { AOM_CDF2(15838) }, { AOM_CDF2(18496) },
   { AOM_CDF2(18312) }, { AOM_CDF2(15248) }, { AOM_CDF2(16292) },
@@ -594,6 +612,15 @@ static const aom_cdf_prob default_drl1_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(22903) }, { AOM_CDF2(16244) }, { AOM_CDF2(19319) }
 };
 
+#if CONFIG_REF_MV_BANK
+static const aom_cdf_prob
+    default_drl2_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
+      { AOM_CDF2(14694) }, { AOM_CDF2(13186) }, { AOM_CDF2(14211) },
+      { AOM_CDF2(12899) }, { AOM_CDF2(12637) }, { AOM_CDF2(12295) },
+      { AOM_CDF2(14358) }, { AOM_CDF2(13386) }, { AOM_CDF2(12462) },
+      { AOM_CDF2(13917) }, { AOM_CDF2(14188) }, { AOM_CDF2(13904) }
+    };
+#endif  // CONFIG_REF_MV_BANK
 static const aom_cdf_prob default_drl2_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(12992) }, { AOM_CDF2(7518) },  { AOM_CDF2(18309) },
   { AOM_CDF2(17119) }, { AOM_CDF2(15195) }, { AOM_CDF2(15214) },
@@ -1334,7 +1361,9 @@ int av1_fast_palette_color_index_context(const uint8_t *color_map, int stride,
 #undef NUM_PALETTE_NEIGHBORS
 #undef MAX_COLOR_CONTEXT_HASH
 
-static void init_mode_probs(FRAME_CONTEXT *fc) {
+static void init_mode_probs(FRAME_CONTEXT *fc,
+                            const SequenceHeader *const seq_params) {
+  (void)seq_params;
   av1_copy(fc->palette_y_size_cdf, default_palette_y_size_cdf);
   av1_copy(fc->palette_uv_size_cdf, default_palette_uv_size_cdf);
   av1_copy(fc->palette_y_color_index_cdf, default_palette_y_color_index_cdf);
@@ -1368,9 +1397,21 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->comp_group_idx_cdf, default_comp_group_idx_cdfs);
 #if CONFIG_NEW_INTER_MODES
   av1_copy(fc->inter_single_mode_cdf, default_inter_single_mode_cdf);
+#if CONFIG_REF_MV_BANK
+  if (seq_params->enable_refmvbank) {
+    av1_copy(fc->drl_cdf[0], default_drl0_cdf_refmvbank);
+    av1_copy(fc->drl_cdf[1], default_drl1_cdf_refmvbank);
+    av1_copy(fc->drl_cdf[2], default_drl2_cdf_refmvbank);
+  } else {
+    av1_copy(fc->drl_cdf[0], default_drl0_cdf);
+    av1_copy(fc->drl_cdf[1], default_drl1_cdf);
+    av1_copy(fc->drl_cdf[2], default_drl2_cdf);
+  }
+#else
   av1_copy(fc->drl_cdf[0], default_drl0_cdf);
   av1_copy(fc->drl_cdf[1], default_drl1_cdf);
   av1_copy(fc->drl_cdf[2], default_drl2_cdf);
+#endif  // CONFIG_REF_MV_BANK
 #else
   av1_copy(fc->newmv_cdf, default_newmv_cdf);
   av1_copy(fc->zeromv_cdf, default_zeromv_cdf);
@@ -1491,7 +1532,7 @@ void av1_setup_past_independence(AV1_COMMON *cm) {
   set_default_lf_deltas(&cm->lf);
 
   av1_default_coef_probs(cm);
-  init_mode_probs(cm->fc);
+  init_mode_probs(cm->fc, &cm->seq_params);
   av1_init_mv_probs(cm);
   cm->fc->initialized = 1;
   av1_setup_frame_contexts(cm);

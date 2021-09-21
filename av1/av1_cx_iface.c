@@ -186,6 +186,9 @@ struct av1_extracfg {
 #if CONFIG_NEW_INTER_MODES
   unsigned int max_drl_refmvs;
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  int enable_refmvbank;
+#endif  // CONFIG_REF_MV_BANK
 };
 
 // Example subgop configs. Currently not used by default.
@@ -467,6 +470,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_NEW_INTER_MODES
   0,    // max_drl_refmvs
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  1,    // enable_refmvbank
+#endif  // CONFIG_REF_MV_BANK
 };
 
 struct aom_codec_alg_priv {
@@ -884,6 +890,9 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_NEW_INTER_MODES
   cfg->max_drl_refmvs = extra_cfg->max_drl_refmvs;
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
+#endif  // CONFIG_REF_MV_BANK
 }
 
 static void update_default_encoder_config(const cfg_options_t *cfg,
@@ -953,6 +962,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_NEW_INTER_MODES
   extra_cfg->max_drl_refmvs = cfg->max_drl_refmvs;
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  extra_cfg->enable_refmvbank = cfg->enable_refmvbank;
+#endif  // CONFIG_REF_MV_BANK
 }
 
 static double convert_qp_offset(int qp, int qp_offset, int bit_depth) {
@@ -1182,6 +1194,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_NEW_INTER_MODES
   tool_cfg->max_drl_refmvs = extra_cfg->max_drl_refmvs;
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  tool_cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
+#endif  // CONFIG_REF_MV_BANK
 
   // Set Quantization related configuration.
   q_cfg->using_qm = extra_cfg->enable_qm;
@@ -3729,10 +3744,13 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
 #if CONFIG_NEW_INTER_MODES
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.max_drl_refmvs, argv,
                               err_string)) {
-    printf("haha\n");
     extra_cfg.max_drl_refmvs = arg_parse_uint_helper(&arg, err_string);
-    printf("gaga %d\n", extra_cfg.max_drl_refmvs);
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_refmvbank,
+                              argv, err_string)) {
+    extra_cfg.enable_refmvbank = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_REF_MV_BANK
   } else {
     match = 0;
     snprintf(err_string, ARG_ERR_MSG_MAX_LEN, "Cannot find aom option %s",
@@ -4005,6 +4023,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_NEW_INTER_MODES
         0,
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+        1,
+#endif  // CONFIG_REF_MV_BANK
     },  // cfg
 } };
 

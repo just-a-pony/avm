@@ -398,6 +398,12 @@ typedef struct cfg_options {
    */
   unsigned int max_drl_refmvs;
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  /*!\brief enable reference MV Bank
+   *
+   */
+  unsigned int enable_refmvbank;
+#endif
 } cfg_options_t;
 
 /*!\brief Encoded Frame Flags

@@ -833,6 +833,10 @@ typedef struct {
 #if CONFIG_NEW_INTER_MODES
   unsigned int max_drl_refmvs;
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  // Indicates if ref MV Bank should be enabled.
+  bool enable_refmvbank;
+#endif  // CONFIG_REF_MV_BANK
 } ToolCfg;
 
 #define MAX_SUBGOP_CONFIGS 64

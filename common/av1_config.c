@@ -232,6 +232,9 @@ static int parse_color_config(struct aom_read_bit_buffer *reader,
 // Parse Sequence Header OBU for coding tools beyond AV1
 int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader) {
   int result = 0;
+#if CONFIG_REF_MV_BANK
+  AV1C_READ_BIT_OR_RETURN_ERROR(enable_refmvbank);
+#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_SDP
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_sdp);
 #endif

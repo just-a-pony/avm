@@ -505,6 +505,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
     seq->base_uv_dc_delta_q = -3;
   }
 #endif  // CONFIG_EXTQUANT
+#if CONFIG_REF_MV_BANK
+  seq->enable_refmvbank = tool_cfg->enable_refmvbank;
+#endif  // CONFIG_REF_MV_BANK
 }
 
 static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {

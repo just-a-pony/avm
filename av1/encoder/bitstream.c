@@ -3358,6 +3358,9 @@ static AOM_INLINE void write_sequence_header(
 
 static AOM_INLINE void write_sequence_header_beyond_av1(
     const SequenceHeader *const seq_params, struct aom_write_bit_buffer *wb) {
+#if CONFIG_REF_MV_BANK
+  aom_wb_write_bit(wb, seq_params->enable_refmvbank);
+#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_SDP
   aom_wb_write_bit(wb, seq_params->enable_sdp);
 #endif

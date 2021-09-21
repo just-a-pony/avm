@@ -794,6 +794,11 @@ static AOM_INLINE void prepare_enc_workers(AV1_COMP *cpi, AVxWorkerHook hook,
             thread_data->td->mb.tmp_pred_bufs[j];
       }
     }
+#if CONFIG_REF_MV_BANK
+    av1_zero(thread_data->td->mb.e_mbd.ref_mv_bank);
+    thread_data->td->mb.e_mbd.ref_mv_bank_pt =
+        &thread_data->td->mb.e_mbd.ref_mv_bank;
+#endif  // CONFIG_REF_MV_BANK
   }
 }
 

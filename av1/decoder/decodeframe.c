@@ -3104,7 +3104,12 @@ static AOM_INLINE void decode_tile_sb_row(AV1Decoder *pbi, ThreadData *const td,
 
     sync_read(&tile_data->dec_row_mt_sync, sb_row_in_tile, sb_col_in_tile);
 
-    // Decoding of the super-block
+#if CONFIG_REF_MV_BANK
+    DecoderCodingBlock *const dcb = &td->dcb;
+    MACROBLOCKD *const xd = &dcb->xd;
+    xd->ref_mv_bank.rmb_sb_hits = 0;
+#endif  // CONFIG_REF_MV_BANK
+        // Decoding of the super-block
 #if CONFIG_SDP
     decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                         cm->seq_params.sb_size, 0x2);
@@ -3180,6 +3185,11 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
   av1_reset_loop_filter_delta(xd, num_planes);
   av1_reset_loop_restoration(xd, num_planes);
 
+#if CONFIG_REF_MV_BANK
+  av1_zero(xd->ref_mv_bank);
+  xd->ref_mv_bank_pt = &td->ref_mv_bank;
+#endif  // CONFIG_REF_MV_BANK
+
   for (int mi_row = tile_info.mi_row_start; mi_row < tile_info.mi_row_end;
        mi_row += cm->seq_params.mib_size) {
     av1_zero_left_context(xd);
@@ -3187,6 +3197,13 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
     for (int mi_col = tile_info.mi_col_start; mi_col < tile_info.mi_col_end;
          mi_col += cm->seq_params.mib_size) {
       set_cb_buffer(pbi, dcb, &td->cb_buffer_base, num_planes, 0, 0);
+#if CONFIG_REF_MV_BANK
+      // td->ref_mv_bank is initialized as xd->ref_mv_bank, and used
+      // for MV referencing during decoding the tile.
+      // xd->ref_mv_bank is updated as decoding goes.
+      xd->ref_mv_bank.rmb_sb_hits = 0;
+      td->ref_mv_bank = xd->ref_mv_bank;
+#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_SDP
       decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                           cm->seq_params.sb_size, 0x3);
@@ -3620,6 +3637,11 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
   av1_reset_loop_filter_delta(xd, num_planes);
   av1_reset_loop_restoration(xd, num_planes);
 
+#if CONFIG_REF_MV_BANK
+  av1_zero(xd->ref_mv_bank);
+  xd->ref_mv_bank_pt = &td->ref_mv_bank;
+#endif  // CONFIG_REF_MV_BANK
+
   for (int mi_row = tile_info.mi_row_start; mi_row < tile_info.mi_row_end;
        mi_row += cm->seq_params.mib_size) {
     av1_zero_left_context(xd);
@@ -3628,7 +3650,11 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
          mi_col += cm->seq_params.mib_size) {
       set_cb_buffer(pbi, dcb, pbi->cb_buffer_base, num_planes, mi_row, mi_col);
 
-      // Bit-stream parsing of the superblock
+#if CONFIG_REF_MV_BANK
+      xd->ref_mv_bank.rmb_sb_hits = 0;
+      td->ref_mv_bank = xd->ref_mv_bank;
+#endif  // CONFIG_REF_MV_BANK
+        // Bit-stream parsing of the superblock
 #if CONFIG_SDP
       decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                           cm->seq_params.sb_size, 0x1);
@@ -4740,6 +4766,9 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
 
 void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
                                          SequenceHeader *seq_params) {
+#if CONFIG_REF_MV_BANK
+  seq_params->enable_refmvbank = aom_rb_read_bit(rb);
+#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_SDP
   seq_params->enable_sdp = aom_rb_read_bit(rb);
 #endif

@@ -2568,7 +2568,6 @@ static AOM_INLINE void get_block_level_tpl_stats(
     AV1_COMP *cpi, BLOCK_SIZE bsize, int mi_row, int mi_col, int *valid_refs,
     PruneInfoFromTpl *inter_cost_info_from_tpl) {
   const GF_GROUP *const gf_group = &cpi->gf_group;
-  AV1_COMMON *const cm = &cpi->common;
 
   assert(IMPLIES(gf_group->size > 0, gf_group->index < gf_group->size));
   const int tpl_idx = gf_group->index;
@@ -2578,6 +2577,7 @@ static AOM_INLINE void get_block_level_tpl_stats(
     return;
   }
 
+  AV1_COMMON *const cm = &cpi->common;
   const TplDepStats *tpl_stats = tpl_frame->tpl_stats_ptr;
   const int mi_wide = mi_size_wide[bsize];
   const int mi_high = mi_size_high[bsize];

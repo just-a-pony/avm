@@ -669,6 +669,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "maximum number of drl reference MVs per reference. "
               "(0 (auto), 2-8 (fixed)) default is 0 (auto)."),
 #endif  // CONFIG_NEW_INTER_MODES
-
+#if CONFIG_REF_MV_BANK
+  .enable_refmvbank = ARG_DEF(NULL, "enable-refmvbank", 1,
+                              "Enable reference MV bank (0: false "
+                              "1: true)"),
+#endif  // CONFIG_REF_MV_BANK
 #endif  // CONFIG_AV1_ENCODER
 };

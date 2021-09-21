@@ -712,6 +712,42 @@ static AOM_INLINE void process_single_ref_mv_candidate(
   }
 }
 
+#if CONFIG_REF_MV_BANK
+static AOM_INLINE bool check_rmb_cand(
+    CANDIDATE_MV cand_mv, CANDIDATE_MV *ref_mv_stack, uint16_t *ref_mv_weight,
+    uint8_t *refmv_count, int is_comp, int mi_row, int mi_col, int block_width,
+    int block_height, int frame_width, int frame_height) {
+  // Check if the MV candidate is already existing in the ref MV stack.
+  for (int i = 0; i < *refmv_count; ++i) {
+    if (ref_mv_stack[i].this_mv.as_int == cand_mv.this_mv.as_int &&
+        (!is_comp ||
+         ref_mv_stack[i].comp_mv.as_int == cand_mv.comp_mv.as_int)) {
+      return false;
+    }
+  }
+
+  // Check if the MV candidate is pointing to ref block inside frame boundary.
+  for (int i = 0; i < 1 + is_comp; ++i) {
+    const int mv_row =
+        (i ? cand_mv.comp_mv.as_mv.row : cand_mv.this_mv.as_mv.row) / 8;
+    const int mv_col =
+        (i ? cand_mv.comp_mv.as_mv.col : cand_mv.this_mv.as_mv.col) / 8;
+    const int ref_x = mi_col * MI_SIZE + mv_col;
+    const int ref_y = mi_row * MI_SIZE + mv_row;
+    if (ref_x <= -block_width || ref_y <= -block_height ||
+        ref_x >= frame_width || ref_y >= frame_height) {
+      return false;
+    }
+  }
+
+  ref_mv_stack[*refmv_count] = cand_mv;
+  ref_mv_weight[*refmv_count] = REF_CAT_LEVEL;
+  ++*refmv_count;
+
+  return true;
+}
+#endif  // CONFIG_REF_MV_BANK
+
 static AOM_INLINE void setup_ref_mv_list(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, MV_REFERENCE_FRAME ref_frame,
     uint8_t *const refmv_count,
@@ -1119,6 +1155,30 @@ static AOM_INLINE void setup_ref_mv_list(
     }
 #endif  // CONFIG_NEW_INTER_MODES
   }
+#if CONFIG_REF_MV_BANK
+  if (!cm->seq_params.enable_refmvbank) return;
+  const int ref_mv_limit =
+      AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
+  // If open slots are available, fetch reference MVs from the ref mv banks.
+  if (*refmv_count < ref_mv_limit && ref_frame != INTRA_FRAME) {
+    const REF_MV_BANK *ref_mv_bank = xd->ref_mv_bank_pt;
+    const CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[ref_frame];
+    const int count = ref_mv_bank->rmb_count[ref_frame];
+    const int start_idx = ref_mv_bank->rmb_start_idx[ref_frame];
+    const int is_comp = rf[1] > INTRA_FRAME;
+    const int block_width = xd->width * MI_SIZE;
+    const int block_height = xd->height * MI_SIZE;
+
+    for (int idx_bank = 0; idx_bank < count && *refmv_count < ref_mv_limit;
+         ++idx_bank) {
+      const int idx = (start_idx + count - 1 - idx_bank) % REF_MV_BANK_SIZE;
+      const CANDIDATE_MV cand_mv = queue[idx];
+      check_rmb_cand(cand_mv, ref_mv_stack, ref_mv_weight, refmv_count, is_comp,
+                     xd->mi_row, xd->mi_col, block_width, block_height,
+                     cm->width, cm->height);
+    }
+  }
+#endif  // CONFIG_REF_MV_BANK
 }
 
 void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
@@ -2113,3 +2173,61 @@ void av1_set_frame_refs(AV1_COMMON *const cm, int *remapped_ref_idx,
     assert(ref_flag_list[i] == 1);
   }
 }
+
+#if CONFIG_REF_MV_BANK
+static INLINE void update_ref_mv_bank(const MB_MODE_INFO *const mbmi,
+                                      REF_MV_BANK *ref_mv_bank) {
+  const MV_REFERENCE_FRAME ref_frame = av1_ref_frame_type(mbmi->ref_frame);
+  CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[ref_frame];
+  const int is_comp = has_second_ref(mbmi);
+  const int start_idx = ref_mv_bank->rmb_start_idx[ref_frame];
+  const int count = ref_mv_bank->rmb_count[ref_frame];
+  int found = -1;
+
+  // If max hits have been reached return.
+  if (ref_mv_bank->rmb_sb_hits >= MAX_RMB_SB_HITS) return;
+  // else increment count and proceed with updating.
+  ++ref_mv_bank->rmb_sb_hits;
+
+  // Check if current MV is already existing in the buffer.
+  for (int i = 0; i < count; ++i) {
+    const int idx = (start_idx + i) % REF_MV_BANK_SIZE;
+    if (mbmi->mv[0].as_int == queue[idx].this_mv.as_int &&
+        (!is_comp || mbmi->mv[1].as_int == queue[idx].comp_mv.as_int)) {
+      found = i;
+      break;
+    }
+  }
+
+  // If current MV is found in the buffer, move it to the end of the buffer.
+  if (found >= 0) {
+    const int idx = (start_idx + found) % REF_MV_BANK_SIZE;
+    const CANDIDATE_MV cand = queue[idx];
+    for (int i = found; i < count - 1; ++i) {
+      const int idx0 = (start_idx + i) % REF_MV_BANK_SIZE;
+      const int idx1 = (start_idx + i + 1) % REF_MV_BANK_SIZE;
+      queue[idx0] = queue[idx1];
+    }
+    const int tail = (start_idx + count - 1) % REF_MV_BANK_SIZE;
+    queue[tail] = cand;
+    return;
+  }
+
+  // If current MV is not found in the buffer, append it to the end of the
+  // buffer, and update the count and start_idx accordingly.
+  const int idx = (start_idx + count) % REF_MV_BANK_SIZE;
+  queue[idx].this_mv = mbmi->mv[0];
+  if (is_comp) queue[idx].comp_mv = mbmi->mv[1];
+  if (count < REF_MV_BANK_SIZE) {
+    ++ref_mv_bank->rmb_count[ref_frame];
+  } else {
+    ++ref_mv_bank->rmb_start_idx[ref_frame];
+  }
+}
+
+void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
+                            const MB_MODE_INFO *const mbmi) {
+  update_ref_mv_bank(mbmi, &xd->ref_mv_bank);
+  (void)cm;
+}
+#endif  // CONFIG_REF_MV_BANK

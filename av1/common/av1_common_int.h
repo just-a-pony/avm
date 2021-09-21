@@ -321,6 +321,9 @@ typedef struct SequenceHeader {
 #if CONFIG_CCSO
   uint8_t enable_ccso;  // To turn on/off CCSO
 #endif
+#if CONFIG_REF_MV_BANK
+  uint8_t enable_refmvbank;  // To turn on/off Ref MV Bank
+#endif                       // CONFIG_REF_MV_BANK
   BITSTREAM_PROFILE profile;
 
   // Color config.

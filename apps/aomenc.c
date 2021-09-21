@@ -447,6 +447,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_NEW_INTER_MODES
   &g_av1_codec_arg_defs.max_drl_refmvs,
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_REF_MV_BANK
+  &g_av1_codec_arg_defs.enable_refmvbank,
+#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_CCSO
   &g_av1_codec_arg_defs.enable_ccso,
 #endif
@@ -630,6 +633,9 @@ static void init_config(cfg_options_t *config) {
   config->enable_ref_frame_mvs = 1;
   config->enable_reduced_reference_set = 0;
   config->reduced_tx_type_set = 0;
+#if CONFIG_REF_MV_BANK
+  config->enable_refmvbank = 1;
+#endif
 }
 
 /* Parses global config arguments into the AvxEncoderConfig. Note that
@@ -1374,15 +1380,25 @@ static void show_stream_config(struct stream_state *stream,
           encoder_cfg->enable_reduced_reference_set);
   fprintf(stdout, "Reduced transform set          : %d\n",
           encoder_cfg->reduced_tx_type_set);
+
+#if CONFIG_NEW_INTER_MODES || CONFIG_REF_MV_BANK
+  fprintf(stdout, "Tool setting (Ref MVs)         :");
 #if CONFIG_NEW_INTER_MODES
-  fprintf(stdout, "Tool setting (Ref MVs)         : max-drl-refmvs (%d)\n",
-          encoder_cfg->max_drl_refmvs);
+  fprintf(stdout, " max-drl-refmvs (%d)", encoder_cfg->max_drl_refmvs);
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_NEW_INTER_MODES && CONFIG_REF_MV_BANK
+  fprintf(stdout, " ,");
+#endif  // CONFIG_NEW_INTER_MODES && CONFIG_REF_MV_BANK
+#if CONFIG_REF_MV_BANK
+  fprintf(stdout, " Refmv Bank (%d)", encoder_cfg->enable_refmvbank);
+#endif  // CONFIG_REF_MV_BANK
+  fprintf(stdout, "\n");
+#endif  // CONFIG_NEW_INTER_MODES || CONFIG_REF_MV_BANK
 
   fprintf(
       stdout, "Tool setting (Partition)       : T-Type (%d), 4:1/1:4 (%d)\n",
       encoder_cfg->enable_ab_partitions, encoder_cfg->enable_1to4_partitions);
-  fprintf(stdout, "Disable ml transform speed features          : %d\n",
+  fprintf(stdout, "Disable ml tx speed features   : %d\n",
           encoder_cfg->disable_ml_transform_speed_features);
 #if CONFIG_SDP
   fprintf(stdout, "                               : SDP (%d)\n",

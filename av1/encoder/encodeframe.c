@@ -739,6 +739,10 @@ static AOM_INLINE void encode_sb_row(AV1_COMP *cpi, ThreadData *td,
     x->source_variance = UINT_MAX;
     td->mb.cb_coef_buff = av1_get_cb_coeff_buffer(cpi, mi_row, mi_col);
 
+#if CONFIG_REF_MV_BANK
+    xd->ref_mv_bank.rmb_sb_hits = 0;
+#endif  // CONFIG_REF_MV_BANK
+
     // Get segment id and skip flag
     const struct segmentation *const seg = &cm->seg;
     int seg_skip = 0;
@@ -897,6 +901,11 @@ void av1_encode_tile(AV1_COMP *cpi, ThreadData *td, int tile_row,
 
   av1_crc32c_calculator_init(
       &td->mb.txfm_search_info.mb_rd_record.crc_calculator);
+
+#if CONFIG_REF_MV_BANK
+  av1_zero(td->mb.e_mbd.ref_mv_bank);
+  td->mb.e_mbd.ref_mv_bank_pt = &td->mb.e_mbd.ref_mv_bank;
+#endif  // CONFIG_REF_MV_BANK
 
   for (int mi_row = tile_info->mi_row_start; mi_row < tile_info->mi_row_end;
        mi_row += cm->seq_params.mib_size) {
