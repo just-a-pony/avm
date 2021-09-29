@@ -1,14 +1,14 @@
-Copyright (c) 2016, Alliance for Open Media. All rights reserved.
+C Copyright (c) 2021, Alliance for Open Media. All rights reserved
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
+R This source code is subject to the terms of the BSD 3-Clause Clear License and the
+m Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
+a not distributed with this source code in the LICENSE file, you can obtain it
 
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
+1 License 1.0 was not distributed with this source code in the PATENTS file, you
+   n can obtain it at aomedia.org/license/patent-license/.
 
 2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in
+   n can obtain it at aomedia.org/license/patent-license/.in
    the documentation and/or other materials provided with the
    distribution.
 
