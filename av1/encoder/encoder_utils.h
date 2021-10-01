@@ -877,6 +877,9 @@ static AOM_INLINE void set_size_independent_vars(AV1_COMP *cpi) {
   av1_set_rd_speed_thresholds(cpi);
   cm->features.interp_filter = SWITCHABLE;
   cm->features.switchable_motion_mode = 1;
+#if CONFIG_OPTFLOW_REFINEMENT
+  cm->features.opfl_refine_type = REFINE_SWITCHABLE;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 }
 
 static AOM_INLINE void release_scaled_references(AV1_COMP *cpi) {

@@ -606,21 +606,21 @@ specialize "aom_highbd_blend_a64_hmask", qw/sse4_1/;
 specialize "aom_highbd_blend_a64_vmask", qw/sse4_1/;
 specialize "aom_highbd_blend_a64_d16_mask", qw/sse4_1 avx2/;
 
-if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
-  #
-  # Block subtraction
-  #
-  add_proto qw/void aom_subtract_block/, "int rows, int cols, int16_t *diff_ptr, ptrdiff_t diff_stride, const uint8_t *src_ptr, ptrdiff_t src_stride, const uint8_t *pred_ptr, ptrdiff_t pred_stride";
-  specialize qw/aom_subtract_block neon msa sse2 avx2/;
+#
+# Block subtraction
+#
+add_proto qw/void aom_subtract_block/, "int rows, int cols, int16_t *diff_ptr, ptrdiff_t diff_stride, const uint8_t *src_ptr, ptrdiff_t src_stride, const uint8_t *pred_ptr, ptrdiff_t pred_stride";
+specialize qw/aom_subtract_block neon msa avx2/;
 
+add_proto qw/void aom_highbd_subtract_block/, "int rows, int cols, int16_t *diff_ptr, ptrdiff_t diff_stride, const uint8_t *src_ptr, ptrdiff_t src_stride, const uint8_t *pred_ptr, ptrdiff_t pred_stride, int bd";
+specialize qw/aom_highbd_subtract_block sse2/;
+
+if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
   add_proto qw/int64_t/, "aom_sse", "const uint8_t *a, int a_stride, const uint8_t *b,int b_stride, int width, int height";
   specialize qw/aom_sse  sse4_1 avx2 neon/;
 
   add_proto qw/void/, "aom_get_blk_sse_sum", "const int16_t *data, int stride, int bw, int bh, int *x_sum, int64_t *x2_sum";
   specialize qw/aom_get_blk_sse_sum sse2 avx2/;
-
-  add_proto qw/void aom_highbd_subtract_block/, "int rows, int cols, int16_t *diff_ptr, ptrdiff_t diff_stride, const uint8_t *src_ptr, ptrdiff_t src_stride, const uint8_t *pred_ptr, ptrdiff_t pred_stride, int bd";
-  specialize qw/aom_highbd_subtract_block sse2/;
 
   add_proto qw/int64_t/, "aom_highbd_sse", "const uint8_t *a8, int a_stride, const uint8_t *b8,int b_stride, int width, int height";
   specialize qw/aom_highbd_sse  sse4_1 avx2 neon/;

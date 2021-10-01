@@ -378,6 +378,12 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                                NULL);
     }
 #endif  // CONFIG_NEW_INTER_MODES
+
+#if CONFIG_OPTFLOW_REFINEMENT
+    for (i = 0; i < INTER_COMPOUND_MODE_CONTEXTS; ++i)
+      av1_cost_tokens_from_cdf(mode_costs->use_optflow_cost[i],
+                               fc->use_optflow_cdf[i], NULL);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
     for (i = 0; i < INTER_COMPOUND_MODE_CONTEXTS; ++i)
       av1_cost_tokens_from_cdf(mode_costs->inter_compound_mode_cost[i],
                                fc->inter_compound_mode_cdf[i], NULL);
@@ -1302,6 +1308,9 @@ int av1_get_switchable_rate(const MACROBLOCK *x, const MACROBLOCKD *xd,
                             InterpFilter interp_filter) {
   if (interp_filter == SWITCHABLE) {
     const MB_MODE_INFO *const mbmi = xd->mi[0];
+#if CONFIG_OPTFLOW_REFINEMENT
+    if (mbmi->mode > NEW_NEWMV) return 0;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_REMOVE_DUAL_FILTER
     const int ctx = av1_get_pred_context_switchable_interp(xd, 0);
     const int inter_filter_cost =
@@ -1409,6 +1418,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARLA] = 1870;
   rd->thresh_mult[THR_COMP_NEW_NEWLA] = 2400;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALLA] = 2750;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWLA] = 1530;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWLA] = 1530;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWLA] = 1530;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWLA] = 1530;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARL2A] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1419,6 +1434,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARL2A] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWL2A] = 1800;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALL2A] = 2500;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWL2A] = 1870;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWL2A] = 1870;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWL2A] = 1870;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWL2A] = 1870;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARL3A] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1429,6 +1450,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARL3A] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWL3A] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALL3A] = 3000;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWL3A] = 1700;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWL3A] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWL3A] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWL3A] = 1700;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARGA] = 1320;
 #if !CONFIG_NEW_INTER_MODES
@@ -1439,6 +1466,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARGA] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWGA] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALGA] = 2250;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWGA] = 2040;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWGA] = 2040;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWGA] = 2040;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWGA] = 2040;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARLB] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1449,6 +1482,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARLB] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWLB] = 2400;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALLB] = 2250;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWLB] = 1360;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWLB] = 1360;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWLB] = 1360;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWLB] = 1360;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARL2B] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1459,6 +1498,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARL2B] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWL2B] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALL2B] = 2500;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWL2B] = 1700;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWL2B] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWL2B] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWL2B] = 1700;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARL3B] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1469,6 +1514,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARL3B] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWL3B] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALL3B] = 2500;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWL3B] = 1870;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWL3B] = 1870;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWL3B] = 1870;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWL3B] = 1870;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARGB] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1479,6 +1530,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARGB] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWGB] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALGB] = 2500;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWGB] = 1700;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWGB] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWGB] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWGB] = 1700;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARLA2] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1489,6 +1546,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARLA2] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWLA2] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALLA2] = 2500;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWLA2] = 1700;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWLA2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWLA2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWLA2] = 1700;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARL2A2] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1499,6 +1562,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARL2A2] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWL2A2] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALL2A2] = 2500;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWL2A2] = 1700;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWL2A2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWL2A2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWL2A2] = 1700;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARL3A2] = 1440;
 #if !CONFIG_NEW_INTER_MODES
@@ -1509,6 +1578,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARL3A2] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWL3A2] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALL3A2] = 2500;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWL3A2] = 1700;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWL3A2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWL3A2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWL3A2] = 1700;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARGA2] = 1200;
 #if !CONFIG_NEW_INTER_MODES
@@ -1519,6 +1594,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARGA2] = 1700;
   rd->thresh_mult[THR_COMP_NEW_NEWGA2] = 2000;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALGA2] = 2750;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWGA2] = 1700;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWGA2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWGA2] = 1700;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWGA2] = 1700;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARLL2] = 1600;
 #if !CONFIG_NEW_INTER_MODES
@@ -1529,6 +1610,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARLL2] = 2200;
   rd->thresh_mult[THR_COMP_NEW_NEWLL2] = 2400;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALLL2] = 3200;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWLL2] = 2640;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWLL2] = 2640;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWLL2] = 2640;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWLL2] = 2640;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARLL3] = 1600;
 #if !CONFIG_NEW_INTER_MODES
@@ -1539,6 +1626,12 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARLL3] = 2200;
   rd->thresh_mult[THR_COMP_NEW_NEWLL3] = 2400;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALLL3] = 3200;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWLL3] = 2200;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWLL3] = 2200;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWLL3] = 2200;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWLL3] = 2200;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARLG] = 1760;
 #if !CONFIG_NEW_INTER_MODES
@@ -1549,17 +1642,28 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_COMP_NEW_NEARLG] = 2640;
   rd->thresh_mult[THR_COMP_NEW_NEWLG] = 2400;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALLG] = 3200;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWLG] = 1760;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWLG] = 1760;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWLG] = 1760;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWLG] = 1760;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_COMP_NEAR_NEARBA] = 1600;
 #if !CONFIG_NEW_INTER_MODES
   rd->thresh_mult[THR_COMP_NEAREST_NEWBA] = 2000;
   rd->thresh_mult[THR_COMP_NEW_NEARESTBA] = 2000;
-
 #endif  // !CONFIG_NEW_INTER_MODES
   rd->thresh_mult[THR_COMP_NEAR_NEWBA] = 2200;
   rd->thresh_mult[THR_COMP_NEW_NEARBA] = 1980;
   rd->thresh_mult[THR_COMP_NEW_NEWBA] = 2640;
   rd->thresh_mult[THR_COMP_GLOBAL_GLOBALBA] = 3200;
+#if CONFIG_OPTFLOW_REFINEMENT
+  rd->thresh_mult[THR_COMP_NEAR_NEAR_OPTFLOWBA] = 2200;
+  rd->thresh_mult[THR_COMP_NEAR_NEW_OPTFLOWBA] = 2200;
+  rd->thresh_mult[THR_COMP_NEW_NEAR_OPTFLOWBA] = 2200;
+  rd->thresh_mult[THR_COMP_NEW_NEW_OPTFLOWBA] = 2200;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   rd->thresh_mult[THR_DC] = 1000;
   rd->thresh_mult[THR_PAETH] = 1000;

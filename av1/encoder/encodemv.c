@@ -248,7 +248,7 @@ int_mv av1_get_ref_mv(const MACROBLOCK *x, int ref_idx) {
   const MACROBLOCKD *xd = &x->e_mbd;
   const MB_MODE_INFO *mbmi = xd->mi[0];
   int ref_mv_idx = mbmi->ref_mv_idx;
-  if (mbmi->mode == NEAR_NEWMV || mbmi->mode == NEW_NEARMV) {
+  if (have_nearmv_newmv_in_inter_mode(mbmi->mode)) {
     assert(has_second_ref(mbmi));
 #if !CONFIG_NEW_INTER_MODES
     ref_mv_idx += 1;

@@ -450,6 +450,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_REF_MV_BANK
   &g_av1_codec_arg_defs.enable_refmvbank,
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_OPTFLOW_REFINEMENT
+  &g_av1_codec_arg_defs.enable_opfl_refine,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_CCSO
   &g_av1_codec_arg_defs.enable_ccso,
 #endif
@@ -623,6 +626,9 @@ static void init_config(cfg_options_t *config) {
   config->enable_dual_filter = 1;
 #endif  // !CONFIG_REMOVE_DUAL_FILTER
   config->enable_angle_delta = 1;
+#if CONFIG_OPTFLOW_REFINEMENT
+  config->enable_opfl_refine = 1;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
   config->enable_intra_edge_filter = 1;
   config->enable_tx64 = 1;
   config->enable_smooth_interintra = 1;
@@ -1481,6 +1487,11 @@ static void show_stream_config(struct stream_state *stream,
           encoder_cfg->enable_interinter_wedge,
           encoder_cfg->enable_interintra_wedge,
           encoder_cfg->enable_ref_frame_mvs);
+
+#if CONFIG_OPTFLOW_REFINEMENT
+  fprintf(stdout, "                               : OptflowRefinement (%d)\n",
+          encoder_cfg->enable_opfl_refine);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   fprintf(stdout,
           "Tool setting (Transform)       : Flip & IDT (%d), TX_64 (%d)\n",

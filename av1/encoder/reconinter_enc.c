@@ -31,6 +31,9 @@
 static void enc_calc_subpel_params(const MV *const src_mv,
                                    InterPredParams *const inter_pred_params,
                                    MACROBLOCKD *xd, int mi_x, int mi_y, int ref,
+#if CONFIG_OPTFLOW_REFINEMENT
+                                   int use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
                                    uint8_t **mc_buf, uint8_t **pre,
                                    SubpelParams *subpel_params,
                                    int *src_stride) {
@@ -43,32 +46,68 @@ static void enc_calc_subpel_params(const MV *const src_mv,
   (void)mc_buf;
 
   const struct scale_factors *sf = inter_pred_params->scale_factors;
-
   struct buf_2d *pre_buf = &inter_pred_params->ref_frame_buf;
-  int ssx = inter_pred_params->subsampling_x;
-  int ssy = inter_pred_params->subsampling_y;
-  int orig_pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
+#if CONFIG_OPTFLOW_REFINEMENT
+  const int is_scaled = av1_is_scaled(sf);
+  if (is_scaled || !xd) {
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+    int ssx = inter_pred_params->subsampling_x;
+    int ssy = inter_pred_params->subsampling_y;
+    int orig_pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
+    int orig_pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
+#if CONFIG_OPTFLOW_REFINEMENT
+    if (use_optflow_refinement) {
+      orig_pos_y += ROUND_POWER_OF_TWO_SIGNED(src_mv->row * (1 << SUBPEL_BITS),
+                                              MV_REFINE_PREC_BITS + ssy);
+      orig_pos_x += ROUND_POWER_OF_TWO_SIGNED(src_mv->col * (1 << SUBPEL_BITS),
+                                              MV_REFINE_PREC_BITS + ssx);
+    } else {
+      orig_pos_y += src_mv->row * (1 << (1 - ssy));
+      orig_pos_x += src_mv->col * (1 << (1 - ssx));
+    }
+#else
   orig_pos_y += src_mv->row * (1 << (1 - ssy));
-  int orig_pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
   orig_pos_x += src_mv->col * (1 << (1 - ssx));
-  int pos_y = sf->scale_value_y(orig_pos_y, sf);
-  int pos_x = sf->scale_value_x(orig_pos_x, sf);
-  pos_x += SCALE_EXTRA_OFF;
-  pos_y += SCALE_EXTRA_OFF;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+    int pos_y = sf->scale_value_y(orig_pos_y, sf);
+    int pos_x = sf->scale_value_x(orig_pos_x, sf);
+    pos_x += SCALE_EXTRA_OFF;
+    pos_y += SCALE_EXTRA_OFF;
 
-  const int top = -AOM_LEFT_TOP_MARGIN_SCALED(ssy);
-  const int left = -AOM_LEFT_TOP_MARGIN_SCALED(ssx);
-  const int bottom = (pre_buf->height + AOM_INTERP_EXTEND) << SCALE_SUBPEL_BITS;
-  const int right = (pre_buf->width + AOM_INTERP_EXTEND) << SCALE_SUBPEL_BITS;
-  pos_y = clamp(pos_y, top, bottom);
-  pos_x = clamp(pos_x, left, right);
+    const int top = -AOM_LEFT_TOP_MARGIN_SCALED(ssy);
+    const int left = -AOM_LEFT_TOP_MARGIN_SCALED(ssx);
+    const int bottom = (pre_buf->height + AOM_INTERP_EXTEND)
+                       << SCALE_SUBPEL_BITS;
+    const int right = (pre_buf->width + AOM_INTERP_EXTEND) << SCALE_SUBPEL_BITS;
+    pos_y = clamp(pos_y, top, bottom);
+    pos_x = clamp(pos_x, left, right);
 
-  subpel_params->subpel_x = pos_x & SCALE_SUBPEL_MASK;
-  subpel_params->subpel_y = pos_y & SCALE_SUBPEL_MASK;
-  subpel_params->xs = sf->x_step_q4;
-  subpel_params->ys = sf->y_step_q4;
-  *pre = pre_buf->buf0 + (pos_y >> SCALE_SUBPEL_BITS) * pre_buf->stride +
-         (pos_x >> SCALE_SUBPEL_BITS);
+    subpel_params->subpel_x = pos_x & SCALE_SUBPEL_MASK;
+    subpel_params->subpel_y = pos_y & SCALE_SUBPEL_MASK;
+    subpel_params->xs = sf->x_step_q4;
+    subpel_params->ys = sf->y_step_q4;
+    *pre = pre_buf->buf0 + (pos_y >> SCALE_SUBPEL_BITS) * pre_buf->stride +
+           (pos_x >> SCALE_SUBPEL_BITS);
+#if CONFIG_OPTFLOW_REFINEMENT
+  } else {
+    int pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
+    int pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
+    const int bw = use_optflow_refinement ? inter_pred_params->orig_block_width
+                                          : inter_pred_params->block_width;
+    const int bh = use_optflow_refinement ? inter_pred_params->orig_block_height
+                                          : inter_pred_params->block_height;
+    const MV mv_q4 = clamp_mv_to_umv_border_sb(
+        xd, src_mv, bw, bh, use_optflow_refinement,
+        inter_pred_params->subsampling_x, inter_pred_params->subsampling_y);
+    subpel_params->xs = subpel_params->ys = SCALE_SUBPEL_SHIFTS;
+    subpel_params->subpel_x = (mv_q4.col & SUBPEL_MASK) << SCALE_EXTRA_BITS;
+    subpel_params->subpel_y = (mv_q4.row & SUBPEL_MASK) << SCALE_EXTRA_BITS;
+    pos_x += mv_q4.col;
+    pos_y += mv_q4.row;
+    *pre = pre_buf->buf0 + (pos_y >> SUBPEL_BITS) * pre_buf->stride +
+           (pos_x >> SUBPEL_BITS);
+  }
+#endif  // CONFIG_OPTFLOW_REFINEMENT
   *src_stride = pre_buf->stride;
 }
 
@@ -81,8 +120,8 @@ void av1_enc_build_one_inter_predictor(uint8_t *dst, int dst_stride,
 }
 
 static void enc_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                       int plane, const MB_MODE_INFO *mi,
-                                       int bw, int bh, int mi_x, int mi_y) {
+                                       int plane, MB_MODE_INFO *mi, int bw,
+                                       int bh, int mi_x, int mi_y) {
   av1_build_inter_predictors(cm, xd, plane, mi, 0 /* build_for_obmc */, bw, bh,
                              mi_x, mi_y, NULL /* mc_buf */,
                              enc_calc_subpel_params);

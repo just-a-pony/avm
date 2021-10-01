@@ -375,6 +375,9 @@ static int parse_sequence_header(const uint8_t *const buffer, size_t length,
       AV1C_READ_BIT_OR_RETURN_ERROR(enable_dist_wtd_comp);
 #endif  // !CONFIG_REMOVE_DIST_WTD_COMP
       AV1C_READ_BIT_OR_RETURN_ERROR(enable_ref_frame_mvs);
+#if CONFIG_OPTFLOW_REFINEMENT
+      AV1C_READ_BIT_OR_RETURN_ERROR(enable_opfl_refine);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
     }
 
     const int SELECT_SCREEN_CONTENT_TOOLS = 2;

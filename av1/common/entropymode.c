@@ -628,6 +628,27 @@ static const aom_cdf_prob default_drl2_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(16618) }, { AOM_CDF2(14980) }, { AOM_CDF2(15963) }
 };
 
+#if CONFIG_OPTFLOW_REFINEMENT
+static const aom_cdf_prob
+    default_use_optflow_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(2)] = {
+      { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+      { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+      { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+    };
+
+static const aom_cdf_prob
+    default_inter_compound_mode_cdf[INTER_COMPOUND_MODE_CONTEXTS]
+                                   [CDF_SIZE(INTER_COMPOUND_REF_TYPES)] = {
+                                     { AOM_CDF5(10510, 17103, 22330, 24536) },
+                                     { AOM_CDF5(14805, 20117, 24655, 25891) },
+                                     { AOM_CDF5(15700, 20333, 24425, 25305) },
+                                     { AOM_CDF5(15047, 20124, 24840, 25223) },
+                                     { AOM_CDF5(22632, 25637, 28394, 29608) },
+                                     { AOM_CDF5(15703, 20315, 24653, 25122) },
+                                     { AOM_CDF5(22458, 25512, 28304, 29008) },
+                                     { AOM_CDF5(21368, 24274, 26890, 27364) }
+                                   };
+#else
 static const aom_cdf_prob
     default_inter_compound_mode_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(
         INTER_COMPOUND_MODES)] = { { AOM_CDF5(10510, 17103, 22330, 24536) },
@@ -638,6 +659,7 @@ static const aom_cdf_prob
                                    { AOM_CDF5(15703, 20315, 24653, 25122) },
                                    { AOM_CDF5(22458, 25512, 28304, 29008) },
                                    { AOM_CDF5(21368, 24274, 26890, 27364) } };
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 #else
 static const aom_cdf_prob default_newmv_cdf[NEWMV_MODE_CONTEXTS][CDF_SIZE(
     2)] = { { AOM_CDF2(24035) }, { AOM_CDF2(16630) }, { AOM_CDF2(15339) },
@@ -1420,6 +1442,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #endif  // CONFIG_NEW_INTER_MODES
   av1_copy(fc->motion_mode_cdf, default_motion_mode_cdf);
   av1_copy(fc->obmc_cdf, default_obmc_cdf);
+#if CONFIG_OPTFLOW_REFINEMENT
+  av1_copy(fc->use_optflow_cdf, default_use_optflow_cdf);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
   av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
   av1_copy(fc->compound_type_cdf, default_compound_type_cdf);
   av1_copy(fc->wedge_idx_cdf, default_wedge_idx_cdf);

@@ -213,6 +213,23 @@ typedef struct {
   int cdef_bits; /*!< Number of CDEF strength values in bits */
 } CdefInfo;
 
+#if CONFIG_OPTFLOW_REFINEMENT
+enum {
+  /*!
+   * MV refinement disabled for the current frame.
+   */
+  REFINE_NONE = 0,
+  /*!
+   * MV refinement is switchable per block for the current frame.
+   */
+  REFINE_SWITCHABLE = 1,
+  /*!
+   * MV refinement applied to all compound blocks for the current frame.
+   */
+  REFINE_ALL = 2,
+} UENUM1BYTE(OPTFLOW_REFINE_TYPE);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+
 #if CONFIG_CCSO
 /** ccso info */
 typedef struct {
@@ -305,6 +322,10 @@ typedef struct SequenceHeader {
 #endif
   uint8_t enable_interintra_compound;  // enables/disables interintra_compound
   uint8_t enable_masked_compound;      // enables/disables masked compound
+#if CONFIG_OPTFLOW_REFINEMENT
+  aom_opfl_refine_type enable_opfl_refine;  // optical flow refinement type for
+                                            // this frame
+#endif
 #if !CONFIG_REMOVE_DUAL_FILTER
   uint8_t enable_dual_filter;    // 0 - disable dual interpolation filter
 #endif                           // !CONFIG_REMOVE_DUAL_FILTER
@@ -460,6 +481,13 @@ typedef struct {
    */
   int max_drl_bits;
 #endif  // CONFIG_NEW_INTER_MODES
+#if CONFIG_OPTFLOW_REFINEMENT
+  /*!
+   * Ternary symbol for optical flow refinement type. 0: do not refine,
+   * 1: always refine, 2: switchable at block level.
+   */
+  OPTFLOW_REFINE_TYPE opfl_refine_type;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 } FeatureFlags;
 
 /*!

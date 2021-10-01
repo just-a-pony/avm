@@ -119,6 +119,30 @@ else {
 add_proto qw/void av1_filter_intra_predictor/, "uint8_t *dst, ptrdiff_t stride, TX_SIZE tx_size, const uint8_t *above, const uint8_t *left, int mode";
 specialize qw/av1_filter_intra_predictor sse4_1 neon/;
 
+# optical flow interpolation function
+if (aom_config("CONFIG_OPTFLOW_REFINEMENT") eq "yes") {
+  add_proto qw/void av1_bicubic_grad_interpolation/, "const int16_t *pred_src,int16_t *x_grad,int16_t *y_grad,const int blk_width,const int blk_height";
+  specialize qw/av1_bicubic_grad_interpolation sse4_1/;
+
+  add_proto qw/void av1_bicubic_grad_interpolation_highbd/, "const int16_t *pred_src,int16_t *x_grad,int16_t *y_grad,const int blk_width,const int blk_height";
+  specialize qw/av1_bicubic_grad_interpolation_highbd sse4_1/;
+
+  add_proto qw/int av1_opfl_mv_refinement_nxn_lowbd/, " const uint8_t *p0, int pstride0, const uint8_t *p1, int pstride1, const int16_t *gx0, const int16_t *gy0, const int16_t *gx1, const int16_t *gy1, int gstride, int bw, int bh, int n, int d0, int d1, int grad_prec_bits, int mv_prec_bits, int *vx0, int *vy0, int *vx1, int *vy1";
+  specialize qw/av1_opfl_mv_refinement_nxn_lowbd sse4_1/;
+
+  add_proto qw/int av1_opfl_mv_refinement_nxn_highbd/, " const uint16_t *p0, int pstride0, const uint16_t *p1, int pstride1, const int16_t *gx0, const int16_t *gy0, const int16_t *gx1, const int16_t *gy1, int gstride, int bw, int bh, int n, int d0, int d1, int grad_prec_bits, int mv_prec_bits, int *vx0, int *vy0, int *vx1, int *vy1";
+  specialize qw/av1_opfl_mv_refinement_nxn_highbd sse4_1/;
+
+  add_proto qw/int av1_opfl_mv_refinement_nxn_interp_grad/, " const int16_t *pdiff, int pstride,const int16_t *gx, const int16_t *gy, int gstride, int bw, int bh, int n,int d0, int d1, int grad_prec_bits,int mv_prec_bits, int *vx0, int *vy0,int *vx1, int *vy1";
+  specialize qw/av1_opfl_mv_refinement_nxn_interp_grad sse4_1/;
+
+  add_proto qw/void av1_copy_pred_array/, "const uint8_t *src1, const uint8_t *src2, int16_t *dst1,int16_t *dst2, int bw, int bh,int d0, int d1";
+  specialize qw/av1_copy_pred_array sse4_1/;
+
+  add_proto qw/void av1_copy_pred_array_highbd/, "const uint16_t *src1, const uint16_t *src2, int16_t *dst1,int16_t *dst2, int bw, int bh, int d0, int d1";
+  specialize qw/av1_copy_pred_array_highbd sse4_1/;
+}
+
 # High bitdepth functions
 
 #

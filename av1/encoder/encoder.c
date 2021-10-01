@@ -450,6 +450,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_CCSO
   seq->enable_ccso = tool_cfg->enable_ccso;
 #endif
+#if CONFIG_OPTFLOW_REFINEMENT
+  seq->enable_opfl_refine = tool_cfg->enable_opfl_refine;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
   seq->enable_warped_motion = oxcf->motion_mode_cfg.enable_warped_motion;
   seq->enable_interintra_compound = tool_cfg->enable_interintra_comp;
   seq->enable_masked_compound = oxcf->comp_type_cfg.enable_masked_comp;
@@ -802,6 +805,9 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   cm->features.interp_filter =
       oxcf->tile_cfg.enable_large_scale_tile ? EIGHTTAP_REGULAR : SWITCHABLE;
   cm->features.switchable_motion_mode = 1;
+#if CONFIG_OPTFLOW_REFINEMENT
+  cm->features.opfl_refine_type = REFINE_SWITCHABLE;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   if (frm_dim_cfg->render_width > 0 && frm_dim_cfg->render_height > 0) {
     cm->render_width = frm_dim_cfg->render_width;
