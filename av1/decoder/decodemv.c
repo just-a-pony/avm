@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #include <assert.h>
@@ -364,13 +365,13 @@ static PREDICTION_MODE read_inter_compound_mode(MACROBLOCKD *xd, aom_reader *r,
   }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
   const int mode =
-      aom_read_symbol(r, xd->tile_ctx->inter_compound_mode_cdf[ctx],
 #if CONFIG_OPTFLOW_REFINEMENT
-                      INTER_COMPOUND_REF_TYPES,
+      aom_read_symbol(r, xd->tile_ctx->inter_compound_mode_cdf[ctx],
+                      INTER_COMPOUND_REF_TYPES, ACCT_STR);
 #else
-                      INTER_COMPOUND_MODES,
+      aom_read_symbol(r, xd->tile_ctx->inter_compound_mode_cdf[ctx],
+                      INTER_COMPOUND_MODES, ACCT_STR);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-                      ACCT_STR);
 #if CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
   if (use_optical_flow) {
