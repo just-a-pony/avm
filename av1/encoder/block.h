@@ -628,17 +628,7 @@ typedef struct {
   //! angle_delta_cost
   int angle_delta_cost[PARTITION_STRUCTURE_NUM][DIRECTIONAL_MODES]
                       [2 * MAX_ANGLE_DELTA + 1];
-#if CONFIG_ORIP
-  //! angle_delta_cost_hv
-  int angle_delta_cost_hv[PARTITION_STRUCTURE_NUM][TOTAL_NUM_ORIP_ANGLE_DELTA]
-                         [2 * MAX_ANGLE_DELTA + 1 + ADDITIONAL_ANGLE_DELTA];
-#endif
 #else
-#if CONFIG_ORIP
-  //! angle_delta_cost_hv
-  int angle_delta_cost_hv[TOTAL_NUM_ORIP_ANGLE_DELTA]
-                         [2 * MAX_ANGLE_DELTA + 1 + ADDITIONAL_ANGLE_DELTA];
-#endif
   //! angle_delta_cost
   int angle_delta_cost[DIRECTIONAL_MODES][2 * MAX_ANGLE_DELTA + 1];
 #endif

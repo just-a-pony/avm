@@ -589,30 +589,13 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
                            [mbmi->angle_delta[PLANE_TYPE_Y] + MAX_ANGLE_DELTA];
 #endif
 
-#if CONFIG_ORIP
-      int signal_intra_filter =
-          av1_signal_orip_for_horver_modes(cm, mbmi, PLANE_TYPE_Y, bsize);
-      if (signal_intra_filter) {
 #if CONFIG_SDP
-        update_cdf(fc->angle_delta_cdf_hv[PLANE_TYPE_Y][mbmi->mode - V_PRED],
-#else
-        update_cdf(fc->angle_delta_cdf_hv[mbmi->mode - V_PRED],
-#endif
-                   get_angle_delta_to_idx(mbmi->angle_delta[PLANE_TYPE_Y]),
-                   2 * MAX_ANGLE_DELTA + 1 + ADDITIONAL_ANGLE_DELTA);
-      } else {
-#endif
-#if CONFIG_SDP
-        update_cdf(fc->angle_delta_cdf[PLANE_TYPE_Y][mbmi->mode - V_PRED],
+      update_cdf(fc->angle_delta_cdf[PLANE_TYPE_Y][mbmi->mode - V_PRED],
 #else
     update_cdf(fc->angle_delta_cdf[mbmi->mode - V_PRED],
 #endif
-                   mbmi->angle_delta[PLANE_TYPE_Y] + MAX_ANGLE_DELTA,
-                   2 * MAX_ANGLE_DELTA + 1);
-
-#if CONFIG_ORIP
-      }
-#endif
+                 mbmi->angle_delta[PLANE_TYPE_Y] + MAX_ANGLE_DELTA,
+                 2 * MAX_ANGLE_DELTA + 1);
     }
 #if CONFIG_SDP
   }
@@ -1353,10 +1336,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->kf_y_cdf, ctx_tr->kf_y_cdf, INTRA_MODES);
   AVERAGE_CDF(ctx_left->angle_delta_cdf, ctx_tr->angle_delta_cdf,
               2 * MAX_ANGLE_DELTA + 1);
-#if CONFIG_ORIP
-  AVERAGE_CDF(ctx_left->angle_delta_cdf_hv, ctx_tr->angle_delta_cdf_hv,
-              2 * MAX_ANGLE_DELTA + 1 + ADDITIONAL_ANGLE_DELTA);
-#endif
+
 #if CONFIG_NEW_TX_PARTITION
   // Square blocks
   AVERAGE_CDF(ctx_left->intra_4way_txfm_partition_cdf[0],

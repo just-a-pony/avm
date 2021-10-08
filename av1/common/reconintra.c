@@ -1430,7 +1430,6 @@ static void build_intra_predictors_high(
 #endif
 #if CONFIG_ORIP
     ,
-    const int disable_intra_pred_filter_for_hor_ver_mode,
     const int seq_intra_pred_filter_flag
 #endif
 #if CONFIG_IBP_DIR || CONFIG_IBP_DC
@@ -1525,8 +1524,7 @@ static void build_intra_predictors_high(
 
 #if CONFIG_ORIP && !CONFIG_ORIP_NONDC_DISABLED
     if (apply_sub_block_based_refinement_filter &&
-        (p_angle == 90 || p_angle == 180) &&
-        !disable_intra_pred_filter_for_hor_ver_mode) {
+        (p_angle == 90 || p_angle == 180)) {
       need_above = 1;
       need_left = 1;
       need_above_left = 1;
@@ -1780,9 +1778,8 @@ static void build_intra_predictors_high(
 #if CONFIG_ORIP
 #if !CONFIG_ORIP_NONDC_DISABLED
     // Apply sub-block based filter for horizontal/vertical intra mode
-    apply_sub_block_based_refinement_filter &=
-        av1_allow_orip_dir(p_angle, disable_intra_pred_filter_for_hor_ver_mode);
-    if (apply_sub_block_based_refinement_filter) {
+    if (apply_sub_block_based_refinement_filter &&
+        av1_allow_orip_dir(p_angle)) {
       av1_apply_orip_4x4subblock_hbd(dst, dst_stride, tx_size, above_row,
                                      left_col, mode, xd->bd);
     }
@@ -1829,7 +1826,6 @@ static void build_intra_predictors(
 #endif
 #if CONFIG_ORIP
     ,
-    const int disable_intra_pred_filter_for_hor_ver_mode,
     const int seq_intra_pred_filter_flag
 #endif
 #if CONFIG_IBP_DIR || CONFIG_IBP_DC
@@ -1922,8 +1918,7 @@ static void build_intra_predictors(
 
 #if CONFIG_ORIP && !CONFIG_ORIP_NONDC_DISABLED
     if (apply_sub_block_based_refinement_filter &&
-        (p_angle == 90 || p_angle == 180) &&
-        !disable_intra_pred_filter_for_hor_ver_mode) {
+        (p_angle == 90 || p_angle == 180)) {
       need_above = 1;
       need_left = 1;
       need_above_left = 1;
@@ -2173,9 +2168,8 @@ static void build_intra_predictors(
 #if CONFIG_ORIP
 #if !CONFIG_ORIP_NONDC_DISABLED
     // Apply sub-block based filter for horizontal/vertical intra mode
-    apply_sub_block_based_refinement_filter &=
-        av1_allow_orip_dir(p_angle, disable_intra_pred_filter_for_hor_ver_mode);
-    if (apply_sub_block_based_refinement_filter) {
+    if (apply_sub_block_based_refinement_filter &&
+        av1_allow_orip_dir(p_angle)) {
       av1_apply_orip_4x4subblock(dst, dst_stride, tx_size, above_row, left_col,
                                  mode);
     }
@@ -2264,12 +2258,7 @@ void av1_predict_intra_block(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, int wpx, int hpx,
     TX_SIZE tx_size, PREDICTION_MODE mode, int angle_delta, int use_palette,
     FILTER_INTRA_MODE filter_intra_mode, const uint8_t *ref, int ref_stride,
-    uint8_t *dst, int dst_stride, int col_off, int row_off, int plane
-#if CONFIG_ORIP
-    ,
-    const int disable_intra_pred_filter_for_hor_ver_mode
-#endif
-) {
+    uint8_t *dst, int dst_stride, int col_off, int row_off, int plane) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const int txwpx = tx_size_wide[tx_size];
   const int txhpx = tx_size_high[tx_size];
@@ -2349,55 +2338,55 @@ void av1_predict_intra_block(
 #endif
 
   if (is_cur_buf_hbd(xd)) {
-    build_intra_predictors_high(
-        xd, ref, ref_stride, dst, dst_stride, mode, angle_delta,
-        filter_intra_mode, tx_size, disable_edge_filter,
-        have_top ? AOMMIN(txwpx, xr + txwpx) : 0,
-        have_top_right ? AOMMIN(txwpx, xr) : 0,
-        have_left ? AOMMIN(txhpx, yd + txhpx) : 0,
-        have_bottom_left ? AOMMIN(txhpx, yd) : 0, plane
+    build_intra_predictors_high(xd, ref, ref_stride, dst, dst_stride, mode,
+                                angle_delta, filter_intra_mode, tx_size,
+                                disable_edge_filter,
+                                have_top ? AOMMIN(txwpx, xr + txwpx) : 0,
+                                have_top_right ? AOMMIN(txwpx, xr) : 0,
+                                have_left ? AOMMIN(txhpx, yd + txhpx) : 0,
+                                have_bottom_left ? AOMMIN(txhpx, yd) : 0, plane
 #if CONFIG_MRLS
-        ,
-        is_sb_boundary
+                                ,
+                                is_sb_boundary
 #endif
 #if CONFIG_ORIP
-        ,
-        disable_intra_pred_filter_for_hor_ver_mode, cm->seq_params.enable_orip
+                                ,
+                                cm->seq_params.enable_orip
 #endif
 #if CONFIG_IBP_DIR || CONFIG_IBP_DC
-        ,
-        cm->seq_params.enable_ibp
+                                ,
+                                cm->seq_params.enable_ibp
 #endif
 #if CONFIG_IBP_DIR
-        ,
-        cm->ibp_directional_weights
+                                ,
+                                cm->ibp_directional_weights
 #endif
     );
     return;
   }
 
-  build_intra_predictors(
-      xd, ref, ref_stride, dst, dst_stride, mode, angle_delta,
-      filter_intra_mode, tx_size, disable_edge_filter,
-      have_top ? AOMMIN(txwpx, xr + txwpx) : 0,
-      have_top_right ? AOMMIN(txwpx, xr) : 0,
-      have_left ? AOMMIN(txhpx, yd + txhpx) : 0,
-      have_bottom_left ? AOMMIN(txhpx, yd) : 0, plane
+  build_intra_predictors(xd, ref, ref_stride, dst, dst_stride, mode,
+                         angle_delta, filter_intra_mode, tx_size,
+                         disable_edge_filter,
+                         have_top ? AOMMIN(txwpx, xr + txwpx) : 0,
+                         have_top_right ? AOMMIN(txwpx, xr) : 0,
+                         have_left ? AOMMIN(txhpx, yd + txhpx) : 0,
+                         have_bottom_left ? AOMMIN(txhpx, yd) : 0, plane
 #if CONFIG_MRLS
-      ,
-      is_sb_boundary
+                         ,
+                         is_sb_boundary
 #endif
 #if CONFIG_ORIP
-      ,
-      disable_intra_pred_filter_for_hor_ver_mode, cm->seq_params.enable_orip
+                         ,
+                         cm->seq_params.enable_orip
 #endif
 #if CONFIG_IBP_DIR || CONFIG_IBP_DC
-      ,
-      cm->seq_params.enable_ibp
+                         ,
+                         cm->seq_params.enable_ibp
 #endif
 #if CONFIG_IBP_DIR
-      ,
-      cm->ibp_directional_weights
+                         ,
+                         cm->ibp_directional_weights
 #endif
   );
 }
@@ -2417,34 +2406,7 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
           ? mbmi->filter_intra_mode_info.filter_intra_mode
           : FILTER_INTRA_MODES;
 
-#if CONFIG_ORIP
-#if CONFIG_SDP
-  const BLOCK_SIZE bsize = mbmi->sb_type[AOM_PLANE_Y];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
-  const int angle_delta =
-      cm->seq_params.enable_orip
-          ? ((mbmi->angle_delta[plane != AOM_PLANE_Y] == ANGLE_DELTA_VALUE_ORIP)
-                 ? 0
-                 : mbmi->angle_delta[plane != AOM_PLANE_Y] * ANGLE_STEP)
-          : mbmi->angle_delta[plane != AOM_PLANE_Y] * ANGLE_STEP;
-  const int disable_intra_pred_filter_for_hor_ver_mode =
-      cm->seq_params.enable_orip
-          ? ((mbmi->angle_delta[plane != AOM_PLANE_Y] == ANGLE_DELTA_VALUE_ORIP)
-                 ? 1
-                 : 0)
-          : 1;
-  if (cm->seq_params.enable_orip) {
-    int violate_orip = disable_intra_pred_filter_for_hor_ver_mode;
-    violate_orip &= !av1_signal_orip_for_horver_modes(
-        cm, mbmi, plane != AOM_PLANE_Y, bsize);
-    assert(violate_orip == 0);
-  }
-
-#else
   const int angle_delta = mbmi->angle_delta[plane != AOM_PLANE_Y] * ANGLE_STEP;
-#endif
 
   if (plane != AOM_PLANE_Y && mbmi->uv_mode == UV_CFL_PRED) {
 #if CONFIG_DEBUG
@@ -2471,13 +2433,7 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
       av1_predict_intra_block(cm, xd, pd->width, pd->height, tx_size, mode,
                               angle_delta, use_palette, filter_intra_mode, dst,
                               dst_stride, dst, dst_stride, blk_col, blk_row,
-#if CONFIG_ORIP
-                              plane,
-                              disable_intra_pred_filter_for_hor_ver_mode);
-#else
                               plane);
-#endif
-
       if (cfl->use_dc_pred_cache) {
         cfl_store_dc_pred(xd, dst, pred_plane, tx_size_wide[tx_size]);
         cfl->dc_pred_is_cached[pred_plane] = 1;
@@ -2499,12 +2455,7 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
 
   av1_predict_intra_block(cm, xd, pd->width, pd->height, tx_size, mode,
                           angle_delta, use_palette, filter_intra_mode, dst,
-#if CONFIG_ORIP
-                          dst_stride, dst, dst_stride, blk_col, blk_row, plane,
-                          disable_intra_pred_filter_for_hor_ver_mode);
-#else
                           dst_stride, dst, dst_stride, blk_col, blk_row, plane);
-#endif
 }
 
 void av1_init_intra_predictors(void) {

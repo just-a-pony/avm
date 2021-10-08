@@ -180,14 +180,6 @@ void av1_count_colors_highbd(const uint8_t *src8, int stride, int rows,
  *                                  the mode info for the current macroblock.
  */
 void set_y_mode_and_delta_angle(const int mode_idx, MB_MODE_INFO *const mbmi) {
-#if CONFIG_ORIP
-  if (mode_idx >= LUMA_MODE_COUNT) {
-    mbmi->mode = (mode_idx == LUMA_MODE_COUNT) ? H_PRED : V_PRED;
-    mbmi->angle_delta[PLANE_TYPE_Y] = ANGLE_DELTA_VALUE_ORIP;
-    return;
-  }
-#endif
-
   if (mode_idx < INTRA_MODE_END) {
     mbmi->mode = intra_rd_search_mode_order[mode_idx];
     mbmi->angle_delta[PLANE_TYPE_Y] = 0;
@@ -1112,16 +1104,8 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
     mbmi->mrl_index = mrl_idx;
 #endif
 
-#if CONFIG_ORIP && !CONFIG_ORIP_NONDC_DISABLED
-    int total_num_mode = cpi->common.seq_params.enable_orip
-                             ? (LUMA_MODE_COUNT + TOTAL_NUM_ORIP_ANGLE_DELTA)
-                             : LUMA_MODE_COUNT;
-    for (int mode_idx = INTRA_MODE_START; mode_idx < total_num_mode;
+    for (int mode_idx = INTRA_MODE_START; mode_idx < LUMA_MODE_COUNT;
          ++mode_idx) {
-#else
-  for (int mode_idx = INTRA_MODE_START; mode_idx < LUMA_MODE_COUNT;
-       ++mode_idx) {
-#endif
       set_y_mode_and_delta_angle(mode_idx, mbmi);
       RD_STATS this_rd_stats;
       int this_rate, this_rate_tokenonly, s;
@@ -1140,23 +1124,6 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
         continue;
       if (is_directional_mode && directional_mode_skip_mask[mbmi->mode])
         continue;
-
-#if CONFIG_ORIP
-      int signal_intra_filter = av1_signal_orip_for_horver_modes(
-          &cpi->common, mbmi, PLANE_TYPE_Y, bsize);
-      if (!signal_intra_filter &&
-          mbmi->angle_delta[PLANE_TYPE_Y] == ANGLE_DELTA_VALUE_ORIP)
-        continue;
-      if (mbmi->angle_delta[PLANE_TYPE_Y] == ANGLE_DELTA_VALUE_ORIP) {
-        if (mbmi->mode == H_PRED && best_mbmi.mode != H_PRED) {
-          continue;
-        } else if (mbmi->mode == V_PRED && best_mbmi.mode != V_PRED) {
-          continue;
-        } else if (best_mbmi.angle_delta[PLANE_TYPE_Y]) {
-          continue;
-        }
-      }
-#endif
 
 #if CONFIG_MRLS
       if (!is_directional_mode && mrl_idx) continue;
