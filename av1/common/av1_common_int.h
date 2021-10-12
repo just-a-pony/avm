@@ -1160,6 +1160,9 @@ typedef struct AV1Common {
   int spatial_layer_id;
 
 #if CONFIG_IBP_DIR
+  /*!
+   * Weights for IBP of directional modes.
+   */
   uint8_t *ibp_directional_weights[TX_SIZES_ALL][DIR_MODES_0_90];
 #endif
 
