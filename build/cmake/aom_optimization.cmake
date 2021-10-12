@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_BUILD_CMAKE_AOM_OPTIMIZATION_CMAKE_)
   return()
@@ -19,9 +19,13 @@ include("${AOM_ROOT}/build/cmake/util.cmake")
 # variable named by $translated_flag (or unset it, when MSVC needs no flag).
 function(get_msvc_intrinsic_flag flag translated_flag)
   if("${flag}" STREQUAL "-mavx")
-    set(${translated_flag} "/arch:AVX" PARENT_SCOPE)
+    set(${translated_flag}
+        "/arch:AVX"
+        PARENT_SCOPE)
   elseif("${flag}" STREQUAL "-mavx2")
-    set(${translated_flag} "/arch:AVX2" PARENT_SCOPE)
+    set(${translated_flag}
+        "/arch:AVX2"
+        PARENT_SCOPE)
   else()
 
     # MSVC does not need flags for intrinsics flavors other than AVX/AVX2.
@@ -75,7 +79,9 @@ function(add_intrinsics_object_library flag opt_name target_to_update sources)
 
   # Add the new lib target to the global list of aom library targets.
   list(APPEND AOM_LIB_TARGETS ${target_name})
-  set(AOM_LIB_TARGETS ${AOM_LIB_TARGETS} PARENT_SCOPE)
+  set(AOM_LIB_TARGETS
+      ${AOM_LIB_TARGETS}
+      PARENT_SCOPE)
 endfunction()
 
 # Adds sources in list named by $sources to $target and adds $flag to the
@@ -87,7 +93,10 @@ function(add_intrinsics_source_to_target flag target sources)
   endif()
   if(flag)
     foreach(source ${${sources}})
-      set_property(SOURCE ${source} APPEND PROPERTY COMPILE_FLAGS ${flag})
+      set_property(
+        SOURCE ${source}
+        APPEND
+        PROPERTY COMPILE_FLAGS ${flag})
     endforeach()
   endif()
 endfunction()
@@ -99,8 +108,8 @@ function(get_asm_obj_format out_format)
   if("${AOM_TARGET_CPU}" STREQUAL "x86_64")
     if("${AOM_TARGET_SYSTEM}" STREQUAL "Darwin")
       set(objformat "macho64")
-    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS"
-           OR "${AOM_TARGET_SYSTEM}" STREQUAL "Windows")
+    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS" OR "${AOM_TARGET_SYSTEM}"
+                                                     STREQUAL "Windows")
       set(objformat "win64")
     else()
       set(objformat "elf64")
@@ -108,8 +117,8 @@ function(get_asm_obj_format out_format)
   elseif("${AOM_TARGET_CPU}" STREQUAL "x86")
     if("${AOM_TARGET_SYSTEM}" STREQUAL "Darwin")
       set(objformat "macho32")
-    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS"
-           OR "${AOM_TARGET_SYSTEM}" STREQUAL "Windows")
+    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS" OR "${AOM_TARGET_SYSTEM}"
+                                                     STREQUAL "Windows")
       set(objformat "win32")
     else()
       set(objformat "elf32")
@@ -119,7 +128,9 @@ function(get_asm_obj_format out_format)
       FATAL_ERROR "Unknown obj format: ${AOM_TARGET_CPU}-${AOM_TARGET_SYSTEM}")
   endif()
 
-  set(${out_format} ${objformat} PARENT_SCOPE)
+  set(${out_format}
+      ${objformat}
+      PARENT_SCOPE)
 endfunction()
 
 # Adds library target named $lib_name for ASM files in variable named by
@@ -144,14 +155,14 @@ function(add_asm_library lib_name asm_sources)
   foreach(asm_source ${${asm_sources}})
     get_filename_component(asm_source_name "${asm_source}" NAME)
     set(asm_object "${asm_lib_obj_dir}/${asm_source_name}.o")
-    add_custom_command(OUTPUT "${asm_object}"
-                       COMMAND ${AS_EXECUTABLE} ARGS ${AOM_AS_FLAGS}
-                               -I${AOM_ROOT}/ -I${AOM_CONFIG_DIR}/ -o
-                               "${asm_object}" "${asm_source}"
-                       DEPENDS "${asm_source}"
-                       COMMENT "Building ASM object ${asm_object}"
-                       WORKING_DIRECTORY "${AOM_CONFIG_DIR}"
-                       VERBATIM)
+    add_custom_command(
+      OUTPUT "${asm_object}"
+      COMMAND ${AS_EXECUTABLE} ARGS ${AOM_AS_FLAGS} -I${AOM_ROOT}/
+              -I${AOM_CONFIG_DIR}/ -o "${asm_object}" "${asm_source}"
+      DEPENDS "${asm_source}"
+      COMMENT "Building ASM object ${asm_object}"
+      WORKING_DIRECTORY "${AOM_CONFIG_DIR}"
+      VERBATIM)
     target_sources(aom PRIVATE "${asm_object}")
     if(BUILD_SHARED_LIBS)
       target_sources(aom_static PRIVATE "${asm_object}")
@@ -167,7 +178,9 @@ function(add_asm_library lib_name asm_sources)
 
   # Add the new lib target to the global list of aom library targets.
   list(APPEND AOM_LIB_TARGETS ${lib_name})
-  set(AOM_LIB_TARGETS ${AOM_LIB_TARGETS} PARENT_SCOPE)
+  set(AOM_LIB_TARGETS
+      ${AOM_LIB_TARGETS}
+      PARENT_SCOPE)
 endfunction()
 
 # Terminates generation if nasm found in PATH does not meet requirements.
@@ -187,8 +200,8 @@ function(test_nasm)
         message(
           FATAL_ERROR "Unsupported nasm: macho32 object format not supported.")
       endif()
-    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS"
-           OR "${AOM_TARGET_SYSTEM}" STREQUAL "Windows")
+    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS" OR "${AOM_TARGET_SYSTEM}"
+                                                     STREQUAL "Windows")
       if(NOT "${nasm_helptext}" MATCHES "win32")
         message(
           FATAL_ERROR "Unsupported nasm: win32 object format not supported.")
@@ -205,8 +218,8 @@ function(test_nasm)
         message(
           FATAL_ERROR "Unsupported nasm: macho64 object format not supported.")
       endif()
-    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS"
-           OR "${AOM_TARGET_SYSTEM}" STREQUAL "Windows")
+    elseif("${AOM_TARGET_SYSTEM}" STREQUAL "MSYS" OR "${AOM_TARGET_SYSTEM}"
+                                                     STREQUAL "Windows")
       if(NOT "${nasm_helptext}" MATCHES "win64")
         message(
           FATAL_ERROR "Unsupported nasm: win64 object format not supported.")
@@ -227,10 +240,10 @@ endfunction()
 function(add_rtcd_build_step config output source symbol)
   add_custom_command(
     OUTPUT ${output}
-    COMMAND ${PERL_EXECUTABLE} ARGS "${AOM_ROOT}/build/cmake/rtcd.pl"
-            --arch=${AOM_TARGET_CPU}
-            --sym=${symbol} ${AOM_RTCD_FLAGS}
-            --config=${AOM_CONFIG_DIR}/config/aom_config.h ${config} > ${output}
+    COMMAND
+      ${PERL_EXECUTABLE} ARGS "${AOM_ROOT}/build/cmake/rtcd.pl"
+      --arch=${AOM_TARGET_CPU} --sym=${symbol} ${AOM_RTCD_FLAGS}
+      --config=${AOM_CONFIG_DIR}/config/aom_config.h ${config} > ${output}
     DEPENDS ${config}
     COMMENT "Generating ${output}"
     WORKING_DIRECTORY ${AOM_CONFIG_DIR}

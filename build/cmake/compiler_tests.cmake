@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_BUILD_CMAKE_COMPILER_TESTS_CMAKE_)
   return()
@@ -57,12 +57,18 @@ set(AOM_CXX_PASSED_TESTS)
 set(AOM_CXX_FAILED_TESTS)
 
 function(aom_push_var var new_value)
-  set(SAVED_${var} ${${var}} PARENT_SCOPE)
-  set(${var} "${${var}} ${new_value}" PARENT_SCOPE)
+  set(SAVED_${var}
+      ${${var}}
+      PARENT_SCOPE)
+  set(${var}
+      "${${var}} ${new_value}"
+      PARENT_SCOPE)
 endfunction()
 
 function(aom_pop_var var)
-  set(var ${SAVED_${var}} PARENT_SCOPE)
+  set(var
+      ${SAVED_${var}}
+      PARENT_SCOPE)
   unset(SAVED_${var} PARENT_SCOPE)
 endfunction()
 
@@ -84,7 +90,9 @@ function(aom_check_c_compiles test_name test_source result_var)
     unset(C_TEST_COMPILED CACHE)
     message("Running C compiler test: ${test_name}")
     check_c_source_compiles("${test_source} ${AOM_C_MAIN}" C_TEST_COMPILED)
-    set(${result_var} ${C_TEST_COMPILED} PARENT_SCOPE)
+    set(${result_var}
+        ${C_TEST_COMPILED}
+        PARENT_SCOPE)
 
     if(C_TEST_COMPILED)
       set(AOM_C_PASSED_TESTS
@@ -97,7 +105,9 @@ function(aom_check_c_compiles test_name test_source result_var)
       message("C Compiler test ${test_name} failed.")
     endif()
   elseif(NOT ${C_TEST_PASSED} EQUAL -1)
-    set(${result_var} 1 PARENT_SCOPE)
+    set(${result_var}
+        1
+        PARENT_SCOPE)
   else() # ${C_TEST_FAILED} NOT EQUAL -1
     unset(${result_var} PARENT_SCOPE)
   endif()
@@ -122,7 +132,9 @@ function(aom_check_cxx_compiles test_name test_source result_var)
     message("Running CXX compiler test: ${test_name}")
     check_cxx_source_compiles("${test_source} ${AOM_CXX_MAIN}"
                               CXX_TEST_COMPILED)
-    set(${result_var} ${CXX_TEST_COMPILED} PARENT_SCOPE)
+    set(${result_var}
+        ${CXX_TEST_COMPILED}
+        PARENT_SCOPE)
 
     if(CXX_TEST_COMPILED)
       set(AOM_CXX_PASSED_TESTS
@@ -135,7 +147,9 @@ function(aom_check_cxx_compiles test_name test_source result_var)
       message("CXX Compiler test ${test_name} failed.")
     endif()
   elseif(NOT ${CXX_TEST_PASSED} EQUAL -1)
-    set(${result_var} 1 PARENT_SCOPE)
+    set(${result_var}
+        1
+        PARENT_SCOPE)
   else() # ${CXX_TEST_FAILED} NOT EQUAL -1
     unset(${result_var} PARENT_SCOPE)
   endif()
@@ -152,28 +166,34 @@ function(aom_check_source_compiles test_name test_source result_var)
   aom_check_c_compiles(${test_name} ${test_source} C_PASSED)
   aom_check_cxx_compiles(${test_name} ${test_source} CXX_PASSED)
   if(C_PASSED AND CXX_PASSED)
-    set(${result_var} 1 PARENT_SCOPE)
+    set(${result_var}
+        1
+        PARENT_SCOPE)
   else()
-    set(${result_var} 0 PARENT_SCOPE)
+    set(${result_var}
+        0
+        PARENT_SCOPE)
   endif()
 endfunction()
 
 # When inline support is detected for the current compiler the supported
 # inlining keyword is written to $result in caller scope.
 function(aom_get_inline result)
-  aom_check_source_compiles("inline_check_1"
-                            "static inline void function(void) {}"
-                            HAVE_INLINE_1)
+  aom_check_source_compiles(
+    "inline_check_1" "static inline void function(void) {}" HAVE_INLINE_1)
   if(HAVE_INLINE_1 EQUAL 1)
-    set(${result} "inline" PARENT_SCOPE)
+    set(${result}
+        "inline"
+        PARENT_SCOPE)
     return()
   endif()
 
   # Check __inline.
-  aom_check_source_compiles("inline_check_2"
-                            "static __inline void function(void) {}"
-                            HAVE_INLINE_2)
+  aom_check_source_compiles(
+    "inline_check_2" "static __inline void function(void) {}" HAVE_INLINE_2)
   if(HAVE_INLINE_2 EQUAL 1)
-    set(${result} "__inline" PARENT_SCOPE)
+    set(${result}
+        "__inline"
+        PARENT_SCOPE)
   endif()
 endfunction()

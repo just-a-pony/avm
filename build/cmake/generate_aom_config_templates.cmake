@@ -1,17 +1,18 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 cmake_minimum_required(VERSION 3.5)
 
 string(TIMESTAMP year "%Y")
-set(asm_file_header_block "\;
+set(asm_file_header_block
+    "\;
 \; Copyright (c) ${year}, Alliance for Open Media. All rights reserved
 \;
 \; This source code is subject to the terms of the BSD 3-Clause Clear License and the
@@ -22,7 +23,8 @@ set(asm_file_header_block "\;
 \; can obtain it at aomedia.org/license/patent-license/.
 \;
 ")
-set(h_file_header_block "/*
+set(h_file_header_block
+    "/*
  * Copyright (c) ${year}, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 3-Clause Clear License and the
@@ -35,7 +37,8 @@ set(h_file_header_block "/*
 \#ifndef AOM_CONFIG_H_
 \#define AOM_CONFIG_H_
 ")
-set(cmake_file_header_block "##
+set(cmake_file_header_block
+    "##
 ## Copyright (c) ${year}, Alliance for Open Media. All rights reserved
 ##
 ## This source code is subject to the terms of the BSD 3-Clause Clear License and the
@@ -85,8 +88,8 @@ file(APPEND "${aom_config_h_template}" "\#endif  // AOM_CONFIG_H_")
 set(aom_asm_config_template "${AOM_CONFIG_DIR}/config/aom_config.asm.cmake")
 file(WRITE "${aom_asm_config_template}" ${asm_file_header_block})
 foreach(aom_var ${aom_build_vars})
-  if(NOT "${aom_var}" STREQUAL "INLINE"
-     AND NOT "${aom_var}" STREQUAL "AOM_RTCD_FLAGS")
+  if(NOT "${aom_var}" STREQUAL "INLINE" AND NOT "${aom_var}" STREQUAL
+                                            "AOM_RTCD_FLAGS")
     file(APPEND "${aom_asm_config_template}" "${aom_var} equ \${${aom_var}}\n")
   endif()
 endforeach()

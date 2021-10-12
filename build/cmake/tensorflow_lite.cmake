@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_BUILD_CMAKE_TENSORFLOW_LITE_CMAKE_)
   return()
@@ -34,15 +34,22 @@ function(checkout_submodule_)
   # Note that "git submodule update --init" must be run from inside the git
   # repository; the --git-dir flag does not work.
   message("Checking out Tensorflow-Lite submodule")
-  execute_process(COMMAND "${GIT_EXECUTABLE}" submodule update --init
-                  WORKING_DIRECTORY "${AOM_ROOT}"
-                  OUTPUT_VARIABLE submodule_out
-                  ERROR_VARIABLE submodule_err
-                  RESULT_VARIABLE submodule_result)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" submodule update --init
+    WORKING_DIRECTORY "${AOM_ROOT}"
+    OUTPUT_VARIABLE submodule_out
+    ERROR_VARIABLE submodule_err
+    RESULT_VARIABLE submodule_result)
   if(NOT ${submodule_result} EQUAL 0)
-    message(FATAL_ERROR "Unable to run 'git submodule update --init': "
-                        "Return code: " ${submodule_result} ", STDOUT: "
-                        ${submodule_out} ", STDERR: " ${submodule_err})
+    message(
+      FATAL_ERROR
+        "Unable to run 'git submodule update --init': "
+        "Return code: "
+        ${submodule_result}
+        ", STDOUT: "
+        ${submodule_out}
+        ", STDERR: "
+        ${submodule_err})
   endif()
 endfunction()
 
@@ -63,7 +70,7 @@ function(target_link_tf_lite_dep_ named_target subdir libname)
     ${named_target}
     PRIVATE
       "${CMAKE_BINARY_DIR}/tensorflow_lite/${subdir}${STATIC_LIBRARY_DIR}${CMAKE_STATIC_LIBRARY_PREFIX}${libname}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-    )
+  )
 endfunction()
 
 # Add TF-lite libraries onto the named target at link time (e.g., an executable
@@ -97,24 +104,22 @@ function(target_link_tf_lite_libraries named_target)
                            absl_cord)
   target_link_tf_lite_dep_(${named_target} _deps/abseil-cpp-build/absl/strings/
                            absl_str_format_internal)
-  target_link_tf_lite_dep_(${named_target}
-                           _deps/abseil-cpp-build/absl/synchronization/
-                           absl_synchronization)
-  target_link_tf_lite_dep_(${named_target}
-                           _deps/abseil-cpp-build/absl/debugging/
-                           absl_stacktrace)
-  target_link_tf_lite_dep_(${named_target}
-                           _deps/abseil-cpp-build/absl/debugging/
-                           absl_symbolize)
-  target_link_tf_lite_dep_(${named_target}
-                           _deps/abseil-cpp-build/absl/debugging/
-                           absl_debugging_internal)
-  target_link_tf_lite_dep_(${named_target}
-                           _deps/abseil-cpp-build/absl/debugging/
-                           absl_demangle_internal)
-  target_link_tf_lite_dep_(${named_target}
-                           _deps/abseil-cpp-build/absl/synchronization/
-                           absl_graphcycles_internal)
+  target_link_tf_lite_dep_(
+    ${named_target} _deps/abseil-cpp-build/absl/synchronization/
+    absl_synchronization)
+  target_link_tf_lite_dep_(
+    ${named_target} _deps/abseil-cpp-build/absl/debugging/ absl_stacktrace)
+  target_link_tf_lite_dep_(
+    ${named_target} _deps/abseil-cpp-build/absl/debugging/ absl_symbolize)
+  target_link_tf_lite_dep_(
+    ${named_target} _deps/abseil-cpp-build/absl/debugging/
+    absl_debugging_internal)
+  target_link_tf_lite_dep_(
+    ${named_target} _deps/abseil-cpp-build/absl/debugging/
+    absl_demangle_internal)
+  target_link_tf_lite_dep_(
+    ${named_target} _deps/abseil-cpp-build/absl/synchronization/
+    absl_graphcycles_internal)
   target_link_tf_lite_dep_(${named_target} _deps/abseil-cpp-build/absl/base/
                            absl_malloc_internal)
   target_link_tf_lite_dep_(${named_target} _deps/abseil-cpp-build/absl/time/
@@ -162,7 +167,9 @@ function(is_tflite_supported result)
   if(CMAKE_TOOLCHAIN_FILE)
     message("TOOLCHAIN: ${CMAKE_TOOLCHAIN_FILE}")
     message(WARNING "No cross-compile support for TensorFlow Lite; disabling")
-    set(${result} 0 PARENT_SCOPE)
+    set(${result}
+        0
+        PARENT_SCOPE)
     return()
   endif()
   # TF-Lite specifies a minimum CMake version of 3.16, but Jenkins uses 3.7.2.
@@ -172,10 +179,14 @@ function(is_tflite_supported result)
     message(
       WARNING "Tensorflow Lite requres CMake version 3.16 or higher; version "
               "${CMAKE_VERSION} detected; disabling")
-    set(${result} 0 PARENT_SCOPE)
+    set(${result}
+        0
+        PARENT_SCOPE)
     return()
   endif()
-  set(${result} 1 PARENT_SCOPE)
+  set(${result}
+      1
+      PARENT_SCOPE)
 endfunction()
 
 # Adds appropriate build rules / targets. Only invoke this function if
@@ -206,7 +217,7 @@ function(setup_tensorflow_lite)
   # supported in static builds. Use a dummy implementation (callers must not use
   # delegation).
   add_library(fake_dl OBJECT "${AOM_ROOT}/common/fake_dl.h"
-                      "${AOM_ROOT}/common/fake_dl.cc")
+                             "${AOM_ROOT}/common/fake_dl.cc")
 
   # TF-Lite depends on this, and downloads it during compilation.
   include_directories(
@@ -230,10 +241,16 @@ function(experiment_requires_tf_lite experiment_name)
   if(NOT ${supported})
     # Disable the experiment so Gerrit will not test this case.
     message(WARNING "Disabling ${experiment_name}.")
-    set(${experiment_name} 0 PARENT_SCOPE)
-    set(CONFIG_TENSORFLOW_LITE 0 PARENT_SCOPE)
+    set(${experiment_name}
+        0
+        PARENT_SCOPE)
+    set(CONFIG_TENSORFLOW_LITE
+        0
+        PARENT_SCOPE)
     return()
   endif()
   # Otherwise, enable TF-lite.
-  set(CONFIG_TENSORFLOW_LITE 1 PARENT_SCOPE)
+  set(CONFIG_TENSORFLOW_LITE
+      1
+      PARENT_SCOPE)
 endfunction()

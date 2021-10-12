@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #include <limits.h>
@@ -45,14 +46,13 @@ CYCLIC_REFRESH *av1_cyclic_refresh_alloc(int mi_rows, int mi_cols
     return NULL;
   }
 #if CONFIG_EXTQUANT
-  assert(bit_depth == AOM_BITS_8
-             ? (MAXQ_8_BITS <= (QINDEX_RANGE_8_BITS - 1))
-             : bit_depth == AOM_BITS_10
-                   ? (MAXQ_10_BITS <= (QINDEX_RANGE_10_BITS - 1))
-                   : (MAXQ <= (QINDEX_RANGE - 1)));
-  const uint16_t qinit = bit_depth == AOM_BITS_8
-                             ? MAXQ_8_BITS
-                             : bit_depth == AOM_BITS_10 ? MAXQ_10_BITS : MAXQ;
+  assert(bit_depth == AOM_BITS_8 ? (MAXQ_8_BITS <= (QINDEX_RANGE_8_BITS - 1))
+         : bit_depth == AOM_BITS_10
+             ? (MAXQ_10_BITS <= (QINDEX_RANGE_10_BITS - 1))
+             : (MAXQ <= (QINDEX_RANGE - 1)));
+  const uint16_t qinit = bit_depth == AOM_BITS_8    ? MAXQ_8_BITS
+                         : bit_depth == AOM_BITS_10 ? MAXQ_10_BITS
+                                                    : MAXQ;
   for (int i = 0; i < mi_rows * mi_cols; ++i) cr->last_coded_q_map[i] = qinit;
 #else
   assert(MAXQ <= 255);
@@ -457,9 +457,9 @@ void av1_cyclic_refresh_setup(AV1_COMP *const cpi) {
 #if CONFIG_EXTQUANT
       for (int i = 0; i <= (cm->mi_params.mi_rows * cm->mi_params.mi_cols); i++)
         cr->last_coded_q_map[i] =
-            cm->seq_params.bit_depth == AOM_BITS_8
-                ? MAXQ_8_BITS
-                : cm->seq_params.bit_depth == AOM_BITS_10 ? MAXQ_10_BITS : MAXQ;
+            cm->seq_params.bit_depth == AOM_BITS_8    ? MAXQ_8_BITS
+            : cm->seq_params.bit_depth == AOM_BITS_10 ? MAXQ_10_BITS
+                                                      : MAXQ;
 #else
       memset(cr->last_coded_q_map, MAXQ,
              cm->mi_params.mi_rows * cm->mi_params.mi_cols *
@@ -511,9 +511,9 @@ void av1_cyclic_refresh_setup(AV1_COMP *const cpi) {
     const int qindex2 = clamp(
         quant_params->base_qindex + quant_params->y_dc_delta_q + qindex_delta,
         0,
-        cm->seq_params.bit_depth == AOM_BITS_8
-            ? MAXQ_8_BITS
-            : cm->seq_params.bit_depth == AOM_BITS_10 ? MAXQ_10_BITS : MAXQ);
+        cm->seq_params.bit_depth == AOM_BITS_8    ? MAXQ_8_BITS
+        : cm->seq_params.bit_depth == AOM_BITS_10 ? MAXQ_10_BITS
+                                                  : MAXQ);
 #else
     const int qindex2 = clamp(
         quant_params->base_qindex + quant_params->y_dc_delta_q + qindex_delta,

@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #include <assert.h>
@@ -537,11 +538,10 @@ int av1_get_deltaq_offset(const AV1_COMP *cpi, int qindex, double beta) {
                            cpi->common.seq_params.bit_depth);
 #if CONFIG_EXTQUANT
     } while (newq > q &&
-             (qindex < (cpi->common.seq_params.bit_depth == AOM_BITS_8
-                            ? MAXQ_8_BITS
-                            : cpi->common.seq_params.bit_depth == AOM_BITS_10
-                                  ? MAXQ_10_BITS
-                                  : MAXQ)));
+             (qindex <
+              (cpi->common.seq_params.bit_depth == AOM_BITS_8    ? MAXQ_8_BITS
+               : cpi->common.seq_params.bit_depth == AOM_BITS_10 ? MAXQ_10_BITS
+                                                                 : MAXQ)));
 #else
     } while (newq > q && qindex < MAXQ);
 #endif
@@ -666,14 +666,14 @@ static void set_block_thresholds(const AV1_COMMON *cm, RD_OPT *rd) {
 
   for (segment_id = 0; segment_id < MAX_SEGMENTS; ++segment_id) {
 #if CONFIG_EXTQUANT
-    const int qindex = clamp(
-        av1_get_qindex(&cm->seg, segment_id, cm->quant_params.base_qindex,
-                       cm->seq_params.bit_depth) +
-            cm->quant_params.y_dc_delta_q,
-        0,
-        cm->seq_params.bit_depth == AOM_BITS_8
-            ? MAXQ_8_BITS
-            : cm->seq_params.bit_depth == AOM_BITS_10 ? MAXQ_10_BITS : MAXQ);
+    const int qindex =
+        clamp(av1_get_qindex(&cm->seg, segment_id, cm->quant_params.base_qindex,
+                             cm->seq_params.bit_depth) +
+                  cm->quant_params.y_dc_delta_q,
+              0,
+              cm->seq_params.bit_depth == AOM_BITS_8    ? MAXQ_8_BITS
+              : cm->seq_params.bit_depth == AOM_BITS_10 ? MAXQ_10_BITS
+                                                        : MAXQ);
 #else
     const int qindex = clamp(
         av1_get_qindex(&cm->seg, segment_id, cm->quant_params.base_qindex) +

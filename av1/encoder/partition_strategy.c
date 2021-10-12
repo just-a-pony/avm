@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #include <float.h>
@@ -1458,11 +1459,10 @@ int evaluate_ab_partition_based_on_split(
   // Threshold for number of winners
   // Conservative pruning for high quantizers
   const int num_win_thresh = AOMMIN(3 * (2 * (MAXQ - qindex) / MAXQ), 3);
-  int sub_part_win = (rect_part_win_info == NULL)
-                         ? (pc_tree->partitioning == rect_part)
-                         : (rect_part == PARTITION_HORZ)
-                               ? rect_part_win_info->rect_part_win[HORZ]
-                               : rect_part_win_info->rect_part_win[VERT];
+  int sub_part_win =
+      (rect_part_win_info == NULL)    ? (pc_tree->partitioning == rect_part)
+      : (rect_part == PARTITION_HORZ) ? rect_part_win_info->rect_part_win[HORZ]
+                                      : rect_part_win_info->rect_part_win[VERT];
   num_win += (sub_part_win) ? 1 : 0;
   if (pc_tree->split[split_idx1]) {
     num_win +=

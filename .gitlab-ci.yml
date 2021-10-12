@@ -26,11 +26,11 @@ Style Check:
     - |
       # Run clang-format
       for f in $(git ls-files '*.[hc]pp' '*.cc' '*.[ch]' | grep -v third_party); do
-        clang-format -i --style=file $f
+        clang-format -i --style=file $f -n -Werror
       done
     - |
       # Run cmake-format
-      git ls-files '*.cmake' 'CMakeLists.txt' | grep -v third_party | xargs cmake-format -i
+      git ls-files '*.cmake' 'CMakeLists.txt' | grep -v third_party | xargs cmake-format --check
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never

@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #ifndef AOM_AOM_DSP_SIMD_V64_INTRINSICS_C_H_
@@ -186,11 +187,10 @@ SIMD_INLINE c_v64 c_v64_sadd_u8(c_v64 a, c_v64 b) {
   c_v64 t;
   int c;
   for (c = 0; c < 8; c++)
-    t.u8[c] = (int16_t)a.u8[c] + (int16_t)b.u8[c] > 255
-                  ? 255
-                  : (int16_t)a.u8[c] + (int16_t)b.u8[c] < 0
-                        ? 0
-                        : (int16_t)a.u8[c] + (int16_t)b.u8[c];
+    t.u8[c] = (int16_t)a.u8[c] + (int16_t)b.u8[c] > 255 ? 255
+              : (int16_t)a.u8[c] + (int16_t)b.u8[c] < 0
+                  ? 0
+                  : (int16_t)a.u8[c] + (int16_t)b.u8[c];
   return t;
 }
 
@@ -198,11 +198,10 @@ SIMD_INLINE c_v64 c_v64_sadd_s8(c_v64 a, c_v64 b) {
   c_v64 t;
   int c;
   for (c = 0; c < 8; c++)
-    t.s8[c] = (int16_t)a.s8[c] + (int16_t)b.s8[c] > 127
-                  ? 127
-                  : (int16_t)a.s8[c] + (int16_t)b.s8[c] < -128
-                        ? -128
-                        : (int16_t)a.s8[c] + (int16_t)b.s8[c];
+    t.s8[c] = (int16_t)a.s8[c] + (int16_t)b.s8[c] > 127 ? 127
+              : (int16_t)a.s8[c] + (int16_t)b.s8[c] < -128
+                  ? -128
+                  : (int16_t)a.s8[c] + (int16_t)b.s8[c];
   return t;
 }
 
@@ -210,11 +209,10 @@ SIMD_INLINE c_v64 c_v64_sadd_s16(c_v64 a, c_v64 b) {
   c_v64 t;
   int c;
   for (c = 0; c < 4; c++)
-    t.s16[c] = (int32_t)a.s16[c] + (int32_t)b.s16[c] > 32767
-                   ? 32767
-                   : (int32_t)a.s16[c] + (int32_t)b.s16[c] < -32768
-                         ? -32768
-                         : (int32_t)a.s16[c] + (int32_t)b.s16[c];
+    t.s16[c] = (int32_t)a.s16[c] + (int32_t)b.s16[c] > 32767 ? 32767
+               : (int32_t)a.s16[c] + (int32_t)b.s16[c] < -32768
+                   ? -32768
+                   : (int32_t)a.s16[c] + (int32_t)b.s16[c];
   return t;
 }
 
@@ -260,11 +258,10 @@ SIMD_INLINE c_v64 c_v64_ssub_s16(c_v64 a, c_v64 b) {
   c_v64 t;
   int c;
   for (c = 0; c < 4; c++)
-    t.s16[c] = (int32_t)a.s16[c] - (int32_t)b.s16[c] < -32768
-                   ? -32768
-                   : (int32_t)a.s16[c] - (int32_t)b.s16[c] > 32767
-                         ? 32767
-                         : (int32_t)a.s16[c] - (int32_t)b.s16[c];
+    t.s16[c] = (int32_t)a.s16[c] - (int32_t)b.s16[c] < -32768 ? -32768
+               : (int32_t)a.s16[c] - (int32_t)b.s16[c] > 32767
+                   ? 32767
+                   : (int32_t)a.s16[c] - (int32_t)b.s16[c];
   return t;
 }
 

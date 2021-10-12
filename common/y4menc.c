@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #include <assert.h>
@@ -52,30 +53,25 @@ static const char *colorspace(unsigned int bit_depth,
   switch (bit_depth) {
     case 8: return colorspace8(csp, fmt);
     case 9:
-      return fmt == AOM_IMG_FMT_I44416
-                 ? "C444p9 XYSCSS=444P9"
-                 : fmt == AOM_IMG_FMT_I42216 ? "C422p9 XYSCSS=422P9"
-                                             : "C420p9 XYSCSS=420P9";
+      return fmt == AOM_IMG_FMT_I44416   ? "C444p9 XYSCSS=444P9"
+             : fmt == AOM_IMG_FMT_I42216 ? "C422p9 XYSCSS=422P9"
+                                         : "C420p9 XYSCSS=420P9";
     case 10:
-      return fmt == AOM_IMG_FMT_I44416
-                 ? "C444p10 XYSCSS=444P10"
-                 : fmt == AOM_IMG_FMT_I42216 ? "C422p10 XYSCSS=422P10"
-                                             : "C420p10 XYSCSS=420P10";
+      return fmt == AOM_IMG_FMT_I44416   ? "C444p10 XYSCSS=444P10"
+             : fmt == AOM_IMG_FMT_I42216 ? "C422p10 XYSCSS=422P10"
+                                         : "C420p10 XYSCSS=420P10";
     case 12:
-      return fmt == AOM_IMG_FMT_I44416
-                 ? "C444p12 XYSCSS=444P12"
-                 : fmt == AOM_IMG_FMT_I42216 ? "C422p12 XYSCSS=422P12"
-                                             : "C420p12 XYSCSS=420P12";
+      return fmt == AOM_IMG_FMT_I44416   ? "C444p12 XYSCSS=444P12"
+             : fmt == AOM_IMG_FMT_I42216 ? "C422p12 XYSCSS=422P12"
+                                         : "C420p12 XYSCSS=420P12";
     case 14:
-      return fmt == AOM_IMG_FMT_I44416
-                 ? "C444p14 XYSCSS=444P14"
-                 : fmt == AOM_IMG_FMT_I42216 ? "C422p14 XYSCSS=422P14"
-                                             : "C420p14 XYSCSS=420P14";
+      return fmt == AOM_IMG_FMT_I44416   ? "C444p14 XYSCSS=444P14"
+             : fmt == AOM_IMG_FMT_I42216 ? "C422p14 XYSCSS=422P14"
+                                         : "C420p14 XYSCSS=420P14";
     case 16:
-      return fmt == AOM_IMG_FMT_I44416
-                 ? "C444p16 XYSCSS=444P16"
-                 : fmt == AOM_IMG_FMT_I42216 ? "C422p16 XYSCSS=422P16"
-                                             : "C420p16 XYSCSS=420P16";
+      return fmt == AOM_IMG_FMT_I44416   ? "C444p16 XYSCSS=444P16"
+             : fmt == AOM_IMG_FMT_I42216 ? "C422p16 XYSCSS=422P16"
+                                         : "C420p16 XYSCSS=420P16";
     default: assert(0); return NULL;
   }
 }

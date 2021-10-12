@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 #include <stdlib.h>
 #include <string.h>
@@ -124,8 +125,8 @@ struct av1_extracfg {
   int enable_orip;  // enable ORIP
 #endif              // CONFIG_ORIP
 #if CONFIG_IST
-  int enable_ist;                // enable intra secondary transform
-#endif                           // CONFIG_IST
+  int enable_ist;  // enable intra secondary transform
+#endif             // CONFIG_IST
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   int enable_ibp;                // enable intra bi-prediction
 #endif                           // CONFIG_IBP_DC or CONFIG_IBP_DIR
@@ -164,7 +165,7 @@ struct av1_extracfg {
 #if CONFIG_OPTFLOW_REFINEMENT
   aom_opfl_refine_type enable_opfl_refine;  // optical flow refinement type
                                             // for sequence
-#endif                     // CONFIG_OPTFLOW_REFINEMENT
+#endif                                      // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_DENOISE
   float noise_level;
   int noise_block_size;
@@ -844,10 +845,9 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_ccso = extra_cfg->enable_ccso;
 #endif
   cfg->superblock_size =
-      (extra_cfg->superblock_size == AOM_SUPERBLOCK_SIZE_64X64)
-          ? 64
-          : (extra_cfg->superblock_size == AOM_SUPERBLOCK_SIZE_128X128) ? 128
-                                                                        : 0;
+      (extra_cfg->superblock_size == AOM_SUPERBLOCK_SIZE_64X64)     ? 64
+      : (extra_cfg->superblock_size == AOM_SUPERBLOCK_SIZE_128X128) ? 128
+                                                                    : 0;
   cfg->enable_warped_motion = extra_cfg->enable_warped_motion;
 #if !CONFIG_REMOVE_DIST_WTD_COMP
   cfg->enable_dist_wtd_comp = extra_cfg->enable_dist_wtd_comp;
@@ -922,11 +922,10 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_CCSO
   extra_cfg->enable_ccso = cfg->enable_ccso;
 #endif
-  extra_cfg->superblock_size = (cfg->superblock_size == 64)
-                                   ? AOM_SUPERBLOCK_SIZE_64X64
-                                   : (cfg->superblock_size == 128)
-                                         ? AOM_SUPERBLOCK_SIZE_128X128
-                                         : AOM_SUPERBLOCK_SIZE_DYNAMIC;
+  extra_cfg->superblock_size =
+      (cfg->superblock_size == 64)    ? AOM_SUPERBLOCK_SIZE_64X64
+      : (cfg->superblock_size == 128) ? AOM_SUPERBLOCK_SIZE_128X128
+                                      : AOM_SUPERBLOCK_SIZE_DYNAMIC;
   extra_cfg->enable_warped_motion = cfg->enable_warped_motion;
 #if !CONFIG_REMOVE_DIST_WTD_COMP
   extra_cfg->enable_dist_wtd_comp = cfg->enable_dist_wtd_comp;
@@ -1017,9 +1016,9 @@ static double get_modeled_qp_offset(int qp, int level, int bit_depth) {
     // At higher end of QP the slope of quant step-size grows exponentially,
     // captured by qp_threshold.
 #if CONFIG_EXTQUANT
-    const int max_q = (bit_depth == AOM_BITS_8)
-                          ? MAXQ_8_BITS
-                          : (bit_depth == AOM_BITS_10) ? MAXQ_10_BITS : MAXQ;
+    const int max_q = (bit_depth == AOM_BITS_8)    ? MAXQ_8_BITS
+                      : (bit_depth == AOM_BITS_10) ? MAXQ_10_BITS
+                                                   : MAXQ;
 #else
     const int max_q = MAXQ;
 #endif  // CONFIG_EXTQUANT

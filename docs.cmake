@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_DOCS_CMAKE_)
   return()
@@ -39,23 +39,23 @@ set(AOM_DOXYGEN_SOURCES
     "${AOM_ROOT}/usage.dox")
 
 if(CONFIG_AV1_DECODER)
-  set(AOM_DOXYGEN_EXAMPLE_SOURCES ${AOM_DOXYGEN_EXAMPLE_SOURCES}
-                                  "${AOM_ROOT}/apps/aomdec.c"
-                                  "${AOM_ROOT}/examples/decode_to_md5.c"
-                                  "${AOM_ROOT}/examples/decode_with_drops.c"
-                                  "${AOM_ROOT}/examples/simple_decoder.c")
+  set(AOM_DOXYGEN_EXAMPLE_SOURCES
+      ${AOM_DOXYGEN_EXAMPLE_SOURCES}
+      "${AOM_ROOT}/apps/aomdec.c"
+      "${AOM_ROOT}/examples/decode_to_md5.c"
+      "${AOM_ROOT}/examples/decode_with_drops.c"
+      "${AOM_ROOT}/examples/simple_decoder.c")
 
-  set(AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS ${AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS}
-                                       "Full featured decoder."
-                                       "Frame by frame MD5 checksum."
-                                       "Drops frames while decoding."
-                                       "Simplified decoder loop.")
+  set(AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS
+      ${AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS} "Full featured decoder."
+      "Frame by frame MD5 checksum." "Drops frames while decoding."
+      "Simplified decoder loop.")
 
   set(AOM_DOXYGEN_SECTIONS ${AOM_DOXYGEN_SECTIONS} "av1_decoder decoder")
 
-  set(AOM_DOXYGEN_SOURCES ${AOM_DOXYGEN_SOURCES} "${AOM_ROOT}/aom/aomdx.h"
-                          "${AOM_ROOT}/usage_dx.dox"
-                          "${AOM_ROOT}/av1/decoder/decoder.h")
+  set(AOM_DOXYGEN_SOURCES
+      ${AOM_DOXYGEN_SOURCES} "${AOM_ROOT}/aom/aomdx.h"
+      "${AOM_ROOT}/usage_dx.dox" "${AOM_ROOT}/av1/decoder/decoder.h")
 
   if(CONFIG_ANALYZER)
     set(AOM_DOXYGEN_EXAMPLE_SOURCES ${AOM_DOXYGEN_EXAMPLE_SOURCES}
@@ -78,19 +78,18 @@ if(CONFIG_AV1_DECODER)
 endif()
 
 if(CONFIG_AV1_ENCODER)
-  set(AOM_DOXYGEN_EXAMPLE_SOURCES ${AOM_DOXYGEN_EXAMPLE_SOURCES}
-                                  "${AOM_ROOT}/apps/aomenc.c"
-                                  "${AOM_ROOT}/examples/lossless_encoder.c"
-                                  "${AOM_ROOT}/examples/set_maps.c"
-                                  "${AOM_ROOT}/examples/simple_encoder.c"
-                                  "${AOM_ROOT}/examples/twopass_encoder.c")
+  set(AOM_DOXYGEN_EXAMPLE_SOURCES
+      ${AOM_DOXYGEN_EXAMPLE_SOURCES}
+      "${AOM_ROOT}/apps/aomenc.c"
+      "${AOM_ROOT}/examples/lossless_encoder.c"
+      "${AOM_ROOT}/examples/set_maps.c"
+      "${AOM_ROOT}/examples/simple_encoder.c"
+      "${AOM_ROOT}/examples/twopass_encoder.c")
 
-  set(AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS ${AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS}
-                                       "Full featured encoder."
-                                       "Simplified lossless encoder."
-                                       "Set active and ROI maps."
-                                       "Simplified encoder loop."
-                                       "Two-pass encoder loop.")
+  set(AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS
+      ${AOM_DOXYGEN_EXAMPLE_DESCRIPTIONS} "Full featured encoder."
+      "Simplified lossless encoder." "Set active and ROI maps."
+      "Simplified encoder loop." "Two-pass encoder loop.")
 
   set(AOM_DOXYGEN_EXAMPLE_SOURCES ${AOM_DOXYGEN_EXAMPLE_SOURCES}
                                   "${AOM_ROOT}/examples/scalable_encoder.c")
@@ -203,7 +202,9 @@ endfunction()
 function(get_name file_path name_var)
   get_filename_component(file_basename ${file_path} NAME)
   get_filename_component(${name_var} ${file_basename} NAME_WE)
-  set(${name_var} ${${name_var}} PARENT_SCOPE)
+  set(${name_var}
+      ${${name_var}}
+      PARENT_SCOPE)
 endfunction()
 
 function(setup_documentation_targets)
@@ -230,14 +231,16 @@ function(setup_documentation_targets)
 
   # Generate samples.dox, an index page that refers to the example_basename.dox
   # files that were just created.
-  set(samples_header "
+  set(samples_header
+      "
 /*!\\page samples Sample Code
 This SDK includes a number of sample applications. Each sample documents a
 feature of the SDK in both prose and the associated C code. The following
 samples are included:
 ")
 
-  set(utils_desc "
+  set(utils_desc
+      "
 In addition, the SDK contains a number of utilities. Since these utilities are
 built upon the concepts described in the sample code listed above, they are not
 documented in pieces like the samples are. Their source is included here for
@@ -323,12 +326,11 @@ reference. The following utilities are included:
   file(APPEND "${AOM_DOXYFILE}" "JAVADOC_BANNER = YES")
 
   # Add the doxygen generation rule.
-  add_custom_target(docs ALL
-                    COMMAND "${DOXYGEN_EXECUTABLE}" "${AOM_DOXYFILE}"
-                    DEPENDS "${AOM_DOXYFILE}" ${AOM_DOXYGEN_SOURCES}
-                            ${AOM_DOXYGEN_EXAMPLE_SOURCES}
-                            "${AOM_DOXYGEN_CONFIG_TEMPLATE}"
-                    SOURCES "${AOM_DOXYFILE}" ${AOM_DOXYGEN_SOURCES}
-                            ${AOM_DOXYGEN_EXAMPLE_SOURCES}
-                            "${AOM_DOXYGEN_CONFIG_TEMPLATE}")
+  add_custom_target(
+    docs ALL
+    COMMAND "${DOXYGEN_EXECUTABLE}" "${AOM_DOXYFILE}"
+    DEPENDS "${AOM_DOXYFILE}" ${AOM_DOXYGEN_SOURCES}
+            ${AOM_DOXYGEN_EXAMPLE_SOURCES} "${AOM_DOXYGEN_CONFIG_TEMPLATE}"
+    SOURCES "${AOM_DOXYFILE}" ${AOM_DOXYGEN_SOURCES}
+            ${AOM_DOXYGEN_EXAMPLE_SOURCES} "${AOM_DOXYGEN_CONFIG_TEMPLATE}")
 endfunction()

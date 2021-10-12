@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 cmake_minimum_required(VERSION 3.5)
 
@@ -25,13 +25,12 @@ include("${AOM_ROOT}/build/cmake/util.cmake")
 # before the version string 'v*'.
 unset(aom_version)
 if(EXISTS "${GIT_EXECUTABLE}")
-  execute_process(COMMAND ${GIT_EXECUTABLE}
-                          --git-dir=${AOM_ROOT}/.git describe
-                          --match "*-v[0-9]*"
-                          --match "v[0-9]*"
-                  OUTPUT_VARIABLE aom_version
-                  ERROR_QUIET
-                  RESULT_VARIABLE version_check_result)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} --git-dir=${AOM_ROOT}/.git describe --match
+            "*-v[0-9]*" --match "v[0-9]*"
+    OUTPUT_VARIABLE aom_version
+    ERROR_QUIET
+    RESULT_VARIABLE version_check_result)
 
   if(${version_check_result} EQUAL 0)
     string(STRIP "${aom_version}" aom_version)
@@ -69,8 +68,8 @@ endif()
 if(NOT "${aom_version}" STREQUAL "${last_aom_version}")
   # TODO(tomfinegan): Perl dependency is unnecessary. CMake can do everything
   # that is done by version.pl on its own (if a bit more verbosely...).
-  execute_process(COMMAND ${PERL_EXECUTABLE}
-                          "${AOM_ROOT}/build/cmake/version.pl"
-                          --version_data=${aom_version}
-                          --version_filename=${version_file} VERBATIM)
+  execute_process(
+    COMMAND
+      ${PERL_EXECUTABLE} "${AOM_ROOT}/build/cmake/version.pl"
+      --version_data=${aom_version} --version_filename=${version_file} VERBATIM)
 endif()

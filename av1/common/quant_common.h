@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #ifndef AOM_AV1_COMMON_QUANT_COMMON_H_
@@ -85,10 +86,9 @@ static INLINE int aom_get_qmlevel(int qindex, int first, int last
 ) {
 #if CONFIG_EXTQUANT
   return first + (qindex * (last + 1 - first)) /
-                     (bit_depth == AOM_BITS_8
-                          ? QINDEX_RANGE_8_BITS
-                          : bit_depth == AOM_BITS_10 ? QINDEX_RANGE_10_BITS
-                                                     : QINDEX_RANGE);
+                     (bit_depth == AOM_BITS_8    ? QINDEX_RANGE_8_BITS
+                      : bit_depth == AOM_BITS_10 ? QINDEX_RANGE_10_BITS
+                                                 : QINDEX_RANGE);
 #else
   return first + (qindex * (last + 1 - first)) / QINDEX_RANGE;
 #endif

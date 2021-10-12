@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_BUILD_CMAKE_COMPILER_FLAGS_CMAKE_)
   return()
@@ -30,9 +30,13 @@ set(AOM_FAILED_CXX_FLAGS)
 function(is_flag_present flag_cache flag out_is_present)
   string(FIND "${${flag_cache}}" "${flag}" flag_pos)
   if(${flag_pos} EQUAL -1)
-    set(${out_is_present} NO PARENT_SCOPE)
+    set(${out_is_present}
+        NO
+        PARENT_SCOPE)
   else()
-    set(${out_is_present} YES PARENT_SCOPE)
+    set(${out_is_present}
+        YES
+        PARENT_SCOPE)
   endif()
 endfunction()
 
@@ -40,7 +44,9 @@ endfunction()
 function(append_flag flags flag)
   string(FIND "${${flags}}" "${flag}" found)
   if(${found} EQUAL -1)
-    set(${flags} "${${flags}} ${flag}" CACHE STRING "" FORCE)
+    set(${flags}
+        "${${flags}} ${flag}"
+        CACHE STRING "" FORCE)
   endif()
 endfunction()
 
@@ -142,7 +148,9 @@ function(require_c_flag c_flag update_c_flags)
   append_flag(AOM_C_FLAGS "${c_flag}")
   if(update_c_flags)
     foreach(config ${AOM_C_CONFIGS})
-      set(${config} "${${config}} ${c_flag}" CACHE STRING "" FORCE)
+      set(${config}
+          "${${config}} ${c_flag}"
+          CACHE STRING "" FORCE)
     endforeach()
   endif()
 endfunction()
@@ -178,7 +186,9 @@ function(require_cxx_flag cxx_flag update_cxx_flags)
   append_flag(AOM_CXX_FLAGS "${cxx_flag}")
   if(update_cxx_flags)
     foreach(config ${AOM_CXX_CONFIGS})
-      set(${config} "${${config}} ${cxx_flag}" CACHE STRING "" FORCE)
+      set(${config}
+          "${${config}} ${cxx_flag}"
+          CACHE STRING "" FORCE)
     endforeach()
   endif()
 endfunction()
@@ -224,7 +234,9 @@ function(add_c_preproc_definition preproc_def)
   endif()
 
   foreach(config ${AOM_C_CONFIGS})
-    set(${config} "${${config}} ${preproc_def}" CACHE STRING "" FORCE)
+    set(${config}
+        "${${config}} ${preproc_def}"
+        CACHE STRING "" FORCE)
   endforeach()
 endfunction()
 
@@ -238,7 +250,9 @@ function(add_cxx_preproc_definition preproc_def)
   endif()
 
   foreach(config ${AOM_CXX_CONFIGS})
-    set(${config} "${${config}} ${preproc_def}" CACHE STRING "" FORCE)
+    set(${config}
+        "${${config}} ${preproc_def}"
+        CACHE STRING "" FORCE)
   endforeach()
 endfunction()
 

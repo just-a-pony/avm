@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #include <math.h>
@@ -335,14 +336,13 @@ static void pick_cdef_from_qp(AV1_COMMON *const cm) {
   cdef_info->cdef_bits = 0;
   cdef_info->nb_cdef_strengths = 1;
 #if CONFIG_EXTQUANT
-  int damping_offset = clamp(cm->quant_params.base_qindex -
-                                 (cm->seq_params.bit_depth == AOM_BITS_8
-                                      ? 0
-                                      : cm->seq_params.bit_depth == AOM_BITS_10
-                                            ? 2 * MAXQ_OFFSET
-                                            : 4 * MAXQ_OFFSET),
-                             MINQ, MAXQ_8_BITS) >>
-                       6;
+  int damping_offset =
+      clamp(cm->quant_params.base_qindex -
+                (cm->seq_params.bit_depth == AOM_BITS_8    ? 0
+                 : cm->seq_params.bit_depth == AOM_BITS_10 ? 2 * MAXQ_OFFSET
+                                                           : 4 * MAXQ_OFFSET),
+            MINQ, MAXQ_8_BITS) >>
+      6;
   cdef_info->cdef_damping = AOMMIN(3 + damping_offset, 6);
 #else
   cdef_info->cdef_damping = 3 + (cm->quant_params.base_qindex >> 6);
@@ -414,14 +414,13 @@ void av1_cdef_search(const YV12_BUFFER_CONFIG *frame,
   const int nhfb = (mi_params->mi_cols + MI_SIZE_64X64 - 1) / MI_SIZE_64X64;
   int *sb_index = aom_malloc(nvfb * nhfb * sizeof(*sb_index));
 #if CONFIG_EXTQUANT
-  int damping_offset = clamp(cm->quant_params.base_qindex -
-                                 (cm->seq_params.bit_depth == AOM_BITS_8
-                                      ? 0
-                                      : cm->seq_params.bit_depth == AOM_BITS_10
-                                            ? 2 * MAXQ_OFFSET
-                                            : 4 * MAXQ_OFFSET),
-                             MINQ, MAXQ_8_BITS) >>
-                       6;
+  int damping_offset =
+      clamp(cm->quant_params.base_qindex -
+                (cm->seq_params.bit_depth == AOM_BITS_8    ? 0
+                 : cm->seq_params.bit_depth == AOM_BITS_10 ? 2 * MAXQ_OFFSET
+                                                           : 4 * MAXQ_OFFSET),
+            MINQ, MAXQ_8_BITS) >>
+      6;
   const int damping = AOMMIN(3 + damping_offset, 6);
 #else
   const int damping = 3 + (cm->quant_params.base_qindex >> 6);

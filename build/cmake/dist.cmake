@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 cmake_minimum_required(VERSION 3.5)
 
@@ -14,11 +14,13 @@ cmake_minimum_required(VERSION 3.5)
 # $out_string. In CMake's eyes this converts the input string to a list.
 function(listify_string in_string out_string)
   string(REPLACE " " ";" ${out_string} ${in_string})
-  set(${out_string} "${${out_string}}" PARENT_SCOPE)
+  set(${out_string}
+      "${${out_string}}"
+      PARENT_SCOPE)
 endfunction()
 
-set(REQUIRED_ARGS "AOM_ROOT" "AOM_CONFIG_DIR" "AOM_DIST_DIR" "AOM_DIST_INCLUDES"
-                  "AOM_DIST_LIBS" "ENABLE_DOCS")
+set(REQUIRED_ARGS "AOM_ROOT" "AOM_CONFIG_DIR" "AOM_DIST_DIR"
+                  "AOM_DIST_INCLUDES" "AOM_DIST_LIBS" "ENABLE_DOCS")
 
 foreach(arg ${REQUIRED_ARGS})
   if("${${arg}}" STREQUAL "")

@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_BUILD_CMAKE_UTIL_CMAKE_)
   return()
@@ -21,11 +21,12 @@ set(AOM_GEN_SRC_DIR "${AOM_CONFIG_DIR}/gen_src")
 # variable referred to by $out_file_list_var parameter.
 macro(create_dummy_source_file basename extension out_file_list_var)
   set(dummy_source_file "${AOM_GEN_SRC_DIR}/${basename}_dummy.${extension}")
-  file(WRITE "${dummy_source_file}"
-       "// Generated file. DO NOT EDIT!\n"
-       "// ${target_name} needs a ${extension} file to force link language, \n"
-       "// or to silence a harmless CMake warning: Ignore me.\n"
-       "void aom_${target_name}_dummy_function(void) {}\n")
+  file(
+    WRITE "${dummy_source_file}"
+    "// Generated file. DO NOT EDIT!\n"
+    "// ${target_name} needs a ${extension} file to force link language, \n"
+    "// or to silence a harmless CMake warning: Ignore me.\n"
+    "void aom_${target_name}_dummy_function(void) {}\n")
   list(APPEND "${out_file_list_var}" "${dummy_source_file}")
 endmacro()
 
@@ -45,7 +46,9 @@ function(change_config_and_warn feature value cause)
   if(${feature} EQUAL ${value})
     return()
   endif()
-  set(${feature} ${value} PARENT_SCOPE)
+  set(${feature}
+      ${value}
+      PARENT_SCOPE)
   if(${value} EQUAL 1)
     set(verb "Enabled")
     set(reason "required for")
@@ -71,7 +74,9 @@ function(extract_version_string version_file version_string_out_var)
   if(${v_pos} EQUAL 0)
     string(SUBSTRING "${aom_version}" 1 -1 aom_version)
   endif()
-  set("${version_string_out_var}" "${aom_version}" PARENT_SCOPE)
+  set("${version_string_out_var}"
+      "${aom_version}"
+      PARENT_SCOPE)
 endfunction()
 
 # Sets CMake compiler launcher to $launcher_name when $launcher_name is found in
@@ -80,8 +85,12 @@ endfunction()
 function(set_compiler_launcher launcher_flag launcher_name)
   find_program(launcher_path "${launcher_name}")
   if(launcher_path)
-    set(CMAKE_C_COMPILER_LAUNCHER "${launcher_path}" PARENT_SCOPE)
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${launcher_path}" PARENT_SCOPE)
+    set(CMAKE_C_COMPILER_LAUNCHER
+        "${launcher_path}"
+        PARENT_SCOPE)
+    set(CMAKE_CXX_COMPILER_LAUNCHER
+        "${launcher_path}"
+        PARENT_SCOPE)
     message("--- Using ${launcher_name} as compiler launcher.")
   else()
     message(
@@ -111,9 +120,14 @@ macro(set_aom_detect_var name value helpstring)
   # Update the variable only when it does not carry the CMake assigned help
   # string for variables specified via the command line.
   unset(cache_helpstring)
-  get_property(cache_helpstring CACHE ${name} PROPERTY HELPSTRING)
+  get_property(
+    cache_helpstring
+    CACHE ${name}
+    PROPERTY HELPSTRING)
   if(NOT "${cache_helpstring}" STREQUAL "${cmake_cmdline_helpstring}")
-    set(${name} ${value} CACHE STRING "${helpstring}")
+    set(${name}
+        ${value}
+        CACHE STRING "${helpstring}")
     mark_as_advanced(${name})
   else()
     message(
@@ -141,9 +155,14 @@ macro(set_aom_config_var name value helpstring)
   # Update the variable only when it does not carry the CMake assigned help
   # string for variables specified via the command line.
   unset(cache_helpstring)
-  get_property(cache_helpstring CACHE ${name} PROPERTY HELPSTRING)
+  get_property(
+    cache_helpstring
+    CACHE ${name}
+    PROPERTY HELPSTRING)
   if(NOT "${cache_helpstring}" STREQUAL "${cmake_cmdline_helpstring}")
-    set(${name} ${value} CACHE STRING "${helpstring}")
+    set(${name}
+        ${value}
+        CACHE STRING "${helpstring}")
   endif()
 endmacro()
 
@@ -165,7 +184,10 @@ macro(set_aom_option_var name helpstring value)
   # Update the variable only when it does not carry the CMake assigned help
   # string for variables specified via the command line.
   unset(cache_helpstring)
-  get_property(cache_helpstring CACHE ${name} PROPERTY HELPSTRING)
+  get_property(
+    cache_helpstring
+    CACHE ${name}
+    PROPERTY HELPSTRING)
   if(NOT "${cache_helpstring}" STREQUAL "${cmake_cmdline_helpstring}")
     option(${name} "${helpstring}" ${value})
   endif()

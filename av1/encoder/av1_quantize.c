@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #include <math.h>
@@ -782,10 +783,9 @@ void av1_build_quantizer(aom_bit_depth_t bit_depth, int y_dc_delta_q,
   int i, q, quant_QTX;
 
 #if CONFIG_EXTQUANT
-  int qindex_range =
-      (bit_depth == AOM_BITS_8
-           ? QINDEX_RANGE_8_BITS
-           : bit_depth == AOM_BITS_10 ? QINDEX_RANGE_10_BITS : QINDEX_RANGE);
+  int qindex_range = (bit_depth == AOM_BITS_8    ? QINDEX_RANGE_8_BITS
+                      : bit_depth == AOM_BITS_10 ? QINDEX_RANGE_10_BITS
+                                                 : QINDEX_RANGE);
 #else
   int qindex_range = QINDEX_RANGE;
 #endif
@@ -932,15 +932,14 @@ void av1_init_plane_quantizers(const AV1_COMP *cpi, MACROBLOCK *x,
   const QUANTS *const quants = &cpi->enc_quant_dequant_params.quants;
   const Dequants *const dequants = &cpi->enc_quant_dequant_params.dequants;
 #if CONFIG_EXTQUANT
-  int current_qindex =
-      AOMMAX(0, AOMMIN(cm->seq_params.bit_depth == AOM_BITS_8
-                           ? QINDEX_RANGE_8_BITS - 1
-                           : cm->seq_params.bit_depth == AOM_BITS_10
-                                 ? QINDEX_RANGE_10_BITS - 1
-                                 : QINDEX_RANGE - 1,
-                       cm->delta_q_info.delta_q_present_flag
-                           ? quant_params->base_qindex + x->delta_qindex
-                           : quant_params->base_qindex));
+  int current_qindex = AOMMAX(
+      0, AOMMIN(cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_RANGE_8_BITS - 1
+                : cm->seq_params.bit_depth == AOM_BITS_10
+                    ? QINDEX_RANGE_10_BITS - 1
+                    : QINDEX_RANGE - 1,
+                cm->delta_q_info.delta_q_present_flag
+                    ? quant_params->base_qindex + x->delta_qindex
+                    : quant_params->base_qindex));
   const int qindex = av1_get_qindex(&cm->seg, segment_id, current_qindex,
                                     cm->seq_params.bit_depth);
 #else

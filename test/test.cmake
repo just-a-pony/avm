@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_TEST_TEST_CMAKE_)
   return()
@@ -21,225 +21,240 @@ include("${AOM_ROOT}/test/test_data_util.cmake")
 set(AOM_UNIT_TEST_DATA_LIST_FILE "${AOM_ROOT}/test/test-data.sha1")
 
 list(APPEND AOM_UNIT_TEST_WRAPPER_SOURCES "${AOM_GEN_SRC_DIR}/usage_exit.c"
-            "${AOM_ROOT}/test/test_libaom.cc")
+     "${AOM_ROOT}/test/test_libaom.cc")
 
-list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-            "${AOM_ROOT}/test/acm_random.h"
-            "${AOM_ROOT}/test/aom_integer_test.cc"
-            "${AOM_ROOT}/test/av1_config_test.cc"
-            "${AOM_ROOT}/test/av1_key_value_api_test.cc"
-            "${AOM_ROOT}/test/block_test.cc"
-            "${AOM_ROOT}/test/clear_system_state.h"
-            "${AOM_ROOT}/test/codec_factory.h"
-            "${AOM_ROOT}/test/decode_test_driver.cc"
-            "${AOM_ROOT}/test/decode_test_driver.h"
-            "${AOM_ROOT}/test/function_equivalence_test.h"
-            "${AOM_ROOT}/test/log2_test.cc"
-            "${AOM_ROOT}/test/md5_helper.h"
-            "${AOM_ROOT}/test/metadata_test.cc"
-            "${AOM_ROOT}/test/register_state_check.h"
-            "${AOM_ROOT}/test/test_vectors.cc"
-            "${AOM_ROOT}/test/test_vectors.h"
-            "${AOM_ROOT}/test/transform_test_base.h"
-            "${AOM_ROOT}/test/util.h"
-            "${AOM_ROOT}/test/video_source.h")
+list(
+  APPEND
+  AOM_UNIT_TEST_COMMON_SOURCES
+  "${AOM_ROOT}/test/acm_random.h"
+  "${AOM_ROOT}/test/aom_integer_test.cc"
+  "${AOM_ROOT}/test/av1_config_test.cc"
+  "${AOM_ROOT}/test/av1_key_value_api_test.cc"
+  "${AOM_ROOT}/test/block_test.cc"
+  "${AOM_ROOT}/test/clear_system_state.h"
+  "${AOM_ROOT}/test/codec_factory.h"
+  "${AOM_ROOT}/test/decode_test_driver.cc"
+  "${AOM_ROOT}/test/decode_test_driver.h"
+  "${AOM_ROOT}/test/function_equivalence_test.h"
+  "${AOM_ROOT}/test/log2_test.cc"
+  "${AOM_ROOT}/test/md5_helper.h"
+  "${AOM_ROOT}/test/metadata_test.cc"
+  "${AOM_ROOT}/test/register_state_check.h"
+  "${AOM_ROOT}/test/test_vectors.cc"
+  "${AOM_ROOT}/test/test_vectors.h"
+  "${AOM_ROOT}/test/transform_test_base.h"
+  "${AOM_ROOT}/test/util.h"
+  "${AOM_ROOT}/test/video_source.h")
 
 if(CONFIG_INTERNAL_STATS)
   list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-              "${AOM_ROOT}/test/hbd_metrics_test.cc")
+       "${AOM_ROOT}/test/hbd_metrics_test.cc")
 endif()
 
-list(APPEND AOM_UNIT_TEST_DECODER_SOURCES "${AOM_ROOT}/test/decode_api_test.cc"
-            "${AOM_ROOT}/test/external_frame_buffer_test.cc"
-            "${AOM_ROOT}/test/invalid_file_test.cc"
-            "${AOM_ROOT}/test/test_vector_test.cc"
-            "${AOM_ROOT}/test/ivf_video_source.h")
+list(
+  APPEND
+  AOM_UNIT_TEST_DECODER_SOURCES
+  "${AOM_ROOT}/test/decode_api_test.cc"
+  "${AOM_ROOT}/test/external_frame_buffer_test.cc"
+  "${AOM_ROOT}/test/invalid_file_test.cc"
+  "${AOM_ROOT}/test/test_vector_test.cc"
+  "${AOM_ROOT}/test/ivf_video_source.h")
 
-list(APPEND AOM_UNIT_TEST_ENCODER_SOURCES
-            "${AOM_ROOT}/test/aq_segment_test.cc"
-            "${AOM_ROOT}/test/borders_test.cc"
-            "${AOM_ROOT}/test/cpu_speed_test.cc"
-            "${AOM_ROOT}/test/encode_api_test.cc"
-            "${AOM_ROOT}/test/encode_small_width_height_test.cc"
-            "${AOM_ROOT}/test/encode_test_driver.cc"
-            "${AOM_ROOT}/test/encode_test_driver.h"
-            "${AOM_ROOT}/test/end_to_end_test.cc"
-            "${AOM_ROOT}/test/gf_pyr_height_test.cc"
-            "${AOM_ROOT}/test/horz_superres_test.cc"
-            "${AOM_ROOT}/test/i420_video_source.h"
-            "${AOM_ROOT}/test/level_test.cc"
-            "${AOM_ROOT}/test/monochrome_test.cc"
-            "${AOM_ROOT}/test/resize_test.cc"
-            "${AOM_ROOT}/test/y4m_test.cc"
-            "${AOM_ROOT}/test/y4m_video_source.h"
-            "${AOM_ROOT}/test/yuv_video_source.h"
-            "${AOM_ROOT}/test/time_stamp_test.cc")
+list(
+  APPEND
+  AOM_UNIT_TEST_ENCODER_SOURCES
+  "${AOM_ROOT}/test/aq_segment_test.cc"
+  "${AOM_ROOT}/test/borders_test.cc"
+  "${AOM_ROOT}/test/cpu_speed_test.cc"
+  "${AOM_ROOT}/test/encode_api_test.cc"
+  "${AOM_ROOT}/test/encode_small_width_height_test.cc"
+  "${AOM_ROOT}/test/encode_test_driver.cc"
+  "${AOM_ROOT}/test/encode_test_driver.h"
+  "${AOM_ROOT}/test/end_to_end_test.cc"
+  "${AOM_ROOT}/test/gf_pyr_height_test.cc"
+  "${AOM_ROOT}/test/horz_superres_test.cc"
+  "${AOM_ROOT}/test/i420_video_source.h"
+  "${AOM_ROOT}/test/level_test.cc"
+  "${AOM_ROOT}/test/monochrome_test.cc"
+  "${AOM_ROOT}/test/resize_test.cc"
+  "${AOM_ROOT}/test/y4m_test.cc"
+  "${AOM_ROOT}/test/y4m_video_source.h"
+  "${AOM_ROOT}/test/yuv_video_source.h"
+  "${AOM_ROOT}/test/time_stamp_test.cc")
 
 list(APPEND AOM_DECODE_PERF_TEST_SOURCES "${AOM_ROOT}/test/decode_perf_test.cc")
 list(APPEND AOM_UNIT_TEST_WEBM_SOURCES "${AOM_ROOT}/test/webm_video_source.h")
 list(APPEND AOM_TEST_INTRA_PRED_SPEED_SOURCES "${AOM_GEN_SRC_DIR}/usage_exit.c"
-            "${AOM_ROOT}/test/test_intra_pred_speed.cc")
+     "${AOM_ROOT}/test/test_intra_pred_speed.cc")
 
 if(NOT BUILD_SHARED_LIBS)
-  list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-              "${AOM_ROOT}/test/av1_common_int_test.cc"
-              "${AOM_ROOT}/test/cdef_test.cc"
-              "${AOM_ROOT}/test/cfl_test.cc"
-              "${AOM_ROOT}/test/convolve_test.cc"
-              "${AOM_ROOT}/test/hiprec_convolve_test.cc"
-              "${AOM_ROOT}/test/hiprec_convolve_test_util.cc"
-              "${AOM_ROOT}/test/hiprec_convolve_test_util.h"
-              "${AOM_ROOT}/test/intrabc_test.cc"
-              "${AOM_ROOT}/test/intrapred_test.cc"
-              "${AOM_ROOT}/test/lpf_test.cc"
-              "${AOM_ROOT}/test/opt_flow_test.cc"
-              "${AOM_ROOT}/test/scan_test.cc"
-              "${AOM_ROOT}/test/selfguided_filter_test.cc"
-              "${AOM_ROOT}/test/simd_cmp_impl.h"
-              "${AOM_ROOT}/test/simd_impl.h")
+  list(
+    APPEND
+    AOM_UNIT_TEST_COMMON_SOURCES
+    "${AOM_ROOT}/test/av1_common_int_test.cc"
+    "${AOM_ROOT}/test/cdef_test.cc"
+    "${AOM_ROOT}/test/cfl_test.cc"
+    "${AOM_ROOT}/test/convolve_test.cc"
+    "${AOM_ROOT}/test/hiprec_convolve_test.cc"
+    "${AOM_ROOT}/test/hiprec_convolve_test_util.cc"
+    "${AOM_ROOT}/test/hiprec_convolve_test_util.h"
+    "${AOM_ROOT}/test/intrabc_test.cc"
+    "${AOM_ROOT}/test/intrapred_test.cc"
+    "${AOM_ROOT}/test/lpf_test.cc"
+    "${AOM_ROOT}/test/opt_flow_test.cc"
+    "${AOM_ROOT}/test/scan_test.cc"
+    "${AOM_ROOT}/test/selfguided_filter_test.cc"
+    "${AOM_ROOT}/test/simd_cmp_impl.h"
+    "${AOM_ROOT}/test/simd_impl.h")
 
   if(CONFIG_ACCOUNTING)
     list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/accounting_test.cc")
+         "${AOM_ROOT}/test/accounting_test.cc")
   endif()
 
   if(CONFIG_AV1_DECODER AND CONFIG_AV1_ENCODER)
-    list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/altref_test.cc"
-                "${AOM_ROOT}/test/av1_encoder_parms_get_to_decoder.cc"
-                "${AOM_ROOT}/test/av1_ext_tile_test.cc"
-                "${AOM_ROOT}/test/binary_codes_test.cc"
-                "${AOM_ROOT}/test/boolcoder_test.cc"
-                "${AOM_ROOT}/test/cnn_test.cc"
-                "${AOM_ROOT}/test/coding_path_sync.cc"
-                "${AOM_ROOT}/test/decode_multithreaded_test.cc"
-                "${AOM_ROOT}/test/divu_small_test.cc"
-                "${AOM_ROOT}/test/dr_prediction_test.cc"
-                "${AOM_ROOT}/test/ec_test.cc"
-                "${AOM_ROOT}/test/error_resilience_test.cc"
-                "${AOM_ROOT}/test/ethread_test.cc"
-                "${AOM_ROOT}/test/film_grain_table_test.cc"
-                "${AOM_ROOT}/test/fwd_kf_test.cc"
-                "${AOM_ROOT}/test/kf_test.cc"
-                "${AOM_ROOT}/test/lossless_test.cc"
-                "${AOM_ROOT}/test/quant_test.cc"
-                "${AOM_ROOT}/test/sb_multipass_test.cc"
-                "${AOM_ROOT}/test/screen_content_test.cc"
-                "${AOM_ROOT}/test/segment_binarization_sync.cc"
-                "${AOM_ROOT}/test/still_picture_test.cc"
-                "${AOM_ROOT}/test/subgop_test.cc"
-                "${AOM_ROOT}/test/superframe_test.cc"
-                "${AOM_ROOT}/test/tile_config_test.cc"
-                "${AOM_ROOT}/test/tile_independence_test.cc"
-                "${AOM_ROOT}/test/temporal_filter_test.cc")
+    list(
+      APPEND
+      AOM_UNIT_TEST_COMMON_SOURCES
+      "${AOM_ROOT}/test/altref_test.cc"
+      "${AOM_ROOT}/test/av1_encoder_parms_get_to_decoder.cc"
+      "${AOM_ROOT}/test/av1_ext_tile_test.cc"
+      "${AOM_ROOT}/test/binary_codes_test.cc"
+      "${AOM_ROOT}/test/boolcoder_test.cc"
+      "${AOM_ROOT}/test/cnn_test.cc"
+      "${AOM_ROOT}/test/coding_path_sync.cc"
+      "${AOM_ROOT}/test/decode_multithreaded_test.cc"
+      "${AOM_ROOT}/test/divu_small_test.cc"
+      "${AOM_ROOT}/test/dr_prediction_test.cc"
+      "${AOM_ROOT}/test/ec_test.cc"
+      "${AOM_ROOT}/test/error_resilience_test.cc"
+      "${AOM_ROOT}/test/ethread_test.cc"
+      "${AOM_ROOT}/test/film_grain_table_test.cc"
+      "${AOM_ROOT}/test/fwd_kf_test.cc"
+      "${AOM_ROOT}/test/kf_test.cc"
+      "${AOM_ROOT}/test/lossless_test.cc"
+      "${AOM_ROOT}/test/quant_test.cc"
+      "${AOM_ROOT}/test/sb_multipass_test.cc"
+      "${AOM_ROOT}/test/screen_content_test.cc"
+      "${AOM_ROOT}/test/segment_binarization_sync.cc"
+      "${AOM_ROOT}/test/still_picture_test.cc"
+      "${AOM_ROOT}/test/subgop_test.cc"
+      "${AOM_ROOT}/test/superframe_test.cc"
+      "${AOM_ROOT}/test/tile_config_test.cc"
+      "${AOM_ROOT}/test/tile_independence_test.cc"
+      "${AOM_ROOT}/test/temporal_filter_test.cc")
   endif()
 
   list(APPEND AOM_UNIT_TEST_COMMON_INTRIN_NEON
-              "${AOM_ROOT}/test/simd_cmp_neon.cc")
+       "${AOM_ROOT}/test/simd_cmp_neon.cc")
   if(HAVE_NEON)
     list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/simd_neon_test.cc")
+         "${AOM_ROOT}/test/simd_neon_test.cc")
   endif()
 
   list(APPEND AOM_UNIT_TEST_COMMON_INTRIN_SSE2
-              "${AOM_ROOT}/test/simd_cmp_sse2.cc")
+       "${AOM_ROOT}/test/simd_cmp_sse2.cc")
   if(HAVE_SSE2)
     list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/simd_sse2_test.cc")
+         "${AOM_ROOT}/test/simd_sse2_test.cc")
   endif()
 
   list(APPEND AOM_UNIT_TEST_COMMON_INTRIN_SSSE3
-              "${AOM_ROOT}/test/simd_cmp_ssse3.cc")
+       "${AOM_ROOT}/test/simd_cmp_ssse3.cc")
   if(HAVE_SSSE3)
     list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/simd_ssse3_test.cc")
+         "${AOM_ROOT}/test/simd_ssse3_test.cc")
   endif()
 
   if(HAVE_SSE4)
     list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/simd_sse4_test.cc")
+         "${AOM_ROOT}/test/simd_sse4_test.cc")
   endif()
 
   if(HAVE_SSE4_1 OR HAVE_NEON)
     list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/filterintra_test.cc")
+         "${AOM_ROOT}/test/filterintra_test.cc")
   endif()
 
   list(APPEND AOM_UNIT_TEST_COMMON_INTRIN_AVX2
-              "${AOM_ROOT}/test/simd_cmp_avx2.cc")
+       "${AOM_ROOT}/test/simd_cmp_avx2.cc")
   if(HAVE_AVX2)
     list(APPEND AOM_UNIT_TEST_COMMON_SOURCES
-                "${AOM_ROOT}/test/simd_avx2_test.cc")
+         "${AOM_ROOT}/test/simd_avx2_test.cc")
   endif()
 
-  list(APPEND AOM_UNIT_TEST_ENCODER_SOURCES
-              "${AOM_ROOT}/test/arf_freq_test.cc"
-              "${AOM_ROOT}/test/av1_convolve_test.cc"
-              "${AOM_ROOT}/test/av1_fwd_txfm1d_test.cc"
-              "${AOM_ROOT}/test/av1_fwd_txfm2d_test.cc"
-              "${AOM_ROOT}/test/av1_inv_txfm1d_test.cc"
-              "${AOM_ROOT}/test/av1_inv_txfm2d_test.cc"
-              "${AOM_ROOT}/test/av1_nn_predict_test.cc"
-              "${AOM_ROOT}/test/av1_round_shift_array_test.cc"
-              "${AOM_ROOT}/test/av1_txfm_test.cc"
-              "${AOM_ROOT}/test/av1_txfm_test.h"
-              "${AOM_ROOT}/test/av1_wedge_utils_test.cc"
-              "${AOM_ROOT}/test/avg_test.cc"
-              "${AOM_ROOT}/test/blend_a64_mask_1d_test.cc"
-              "${AOM_ROOT}/test/blend_a64_mask_test.cc"
-              "${AOM_ROOT}/test/comp_avg_pred_test.cc"
-              "${AOM_ROOT}/test/comp_avg_pred_test.h"
-              "${AOM_ROOT}/test/comp_mask_variance_test.cc"
-              "${AOM_ROOT}/test/edge_detect_test.cc"
-              "${AOM_ROOT}/test/encodetxb_test.cc"
-              "${AOM_ROOT}/test/error_block_test.cc"
-              "${AOM_ROOT}/test/fft_test.cc"
-              "${AOM_ROOT}/test/fwht4x4_test.cc"
-              "${AOM_ROOT}/test/fdct4x4_test.cc"
-              "${AOM_ROOT}/test/hadamard_test.cc"
-              "${AOM_ROOT}/test/horver_correlation_test.cc"
-              "${AOM_ROOT}/test/masked_sad_test.cc"
-              "${AOM_ROOT}/test/masked_variance_test.cc"
-              "${AOM_ROOT}/test/motion_vector_test.cc"
-              "${AOM_ROOT}/test/noise_model_test.cc"
-              "${AOM_ROOT}/test/obmc_sad_test.cc"
-              "${AOM_ROOT}/test/obmc_variance_test.cc"
-              "${AOM_ROOT}/test/pickrst_test.cc"
-              "${AOM_ROOT}/test/quantize_func_test.cc"
-              "${AOM_ROOT}/test/sad_test.cc"
-              "${AOM_ROOT}/test/stream_iter_test.cc"
-              "${AOM_ROOT}/test/subtract_test.cc"
-              "${AOM_ROOT}/test/reconinter_test.cc"
-              "${AOM_ROOT}/test/sum_squares_test.cc"
-              "${AOM_ROOT}/test/sse_sum_test.cc"
-              "${AOM_ROOT}/test/variance_test.cc"
-              "${AOM_ROOT}/test/wiener_test.cc"
-              "${AOM_ROOT}/test/frame_error_test.cc"
-              "${AOM_ROOT}/test/warp_filter_test.cc"
-              "${AOM_ROOT}/test/warp_filter_test_util.cc"
-              "${AOM_ROOT}/test/warp_filter_test_util.h"
-              "${AOM_ROOT}/test/webmenc_test.cc")
+  list(
+    APPEND
+    AOM_UNIT_TEST_ENCODER_SOURCES
+    "${AOM_ROOT}/test/arf_freq_test.cc"
+    "${AOM_ROOT}/test/av1_convolve_test.cc"
+    "${AOM_ROOT}/test/av1_fwd_txfm1d_test.cc"
+    "${AOM_ROOT}/test/av1_fwd_txfm2d_test.cc"
+    "${AOM_ROOT}/test/av1_inv_txfm1d_test.cc"
+    "${AOM_ROOT}/test/av1_inv_txfm2d_test.cc"
+    "${AOM_ROOT}/test/av1_nn_predict_test.cc"
+    "${AOM_ROOT}/test/av1_round_shift_array_test.cc"
+    "${AOM_ROOT}/test/av1_txfm_test.cc"
+    "${AOM_ROOT}/test/av1_txfm_test.h"
+    "${AOM_ROOT}/test/av1_wedge_utils_test.cc"
+    "${AOM_ROOT}/test/avg_test.cc"
+    "${AOM_ROOT}/test/blend_a64_mask_1d_test.cc"
+    "${AOM_ROOT}/test/blend_a64_mask_test.cc"
+    "${AOM_ROOT}/test/comp_avg_pred_test.cc"
+    "${AOM_ROOT}/test/comp_avg_pred_test.h"
+    "${AOM_ROOT}/test/comp_mask_variance_test.cc"
+    "${AOM_ROOT}/test/edge_detect_test.cc"
+    "${AOM_ROOT}/test/encodetxb_test.cc"
+    "${AOM_ROOT}/test/error_block_test.cc"
+    "${AOM_ROOT}/test/fft_test.cc"
+    "${AOM_ROOT}/test/fwht4x4_test.cc"
+    "${AOM_ROOT}/test/fdct4x4_test.cc"
+    "${AOM_ROOT}/test/hadamard_test.cc"
+    "${AOM_ROOT}/test/horver_correlation_test.cc"
+    "${AOM_ROOT}/test/masked_sad_test.cc"
+    "${AOM_ROOT}/test/masked_variance_test.cc"
+    "${AOM_ROOT}/test/motion_vector_test.cc"
+    "${AOM_ROOT}/test/noise_model_test.cc"
+    "${AOM_ROOT}/test/obmc_sad_test.cc"
+    "${AOM_ROOT}/test/obmc_variance_test.cc"
+    "${AOM_ROOT}/test/pickrst_test.cc"
+    "${AOM_ROOT}/test/quantize_func_test.cc"
+    "${AOM_ROOT}/test/sad_test.cc"
+    "${AOM_ROOT}/test/stream_iter_test.cc"
+    "${AOM_ROOT}/test/subtract_test.cc"
+    "${AOM_ROOT}/test/reconinter_test.cc"
+    "${AOM_ROOT}/test/sum_squares_test.cc"
+    "${AOM_ROOT}/test/sse_sum_test.cc"
+    "${AOM_ROOT}/test/variance_test.cc"
+    "${AOM_ROOT}/test/wiener_test.cc"
+    "${AOM_ROOT}/test/frame_error_test.cc"
+    "${AOM_ROOT}/test/warp_filter_test.cc"
+    "${AOM_ROOT}/test/warp_filter_test_util.cc"
+    "${AOM_ROOT}/test/warp_filter_test_util.h"
+    "${AOM_ROOT}/test/webmenc_test.cc")
 
   if((HAVE_SSE4_1 OR HAVE_NEON))
     list(APPEND AOM_UNIT_TEST_ENCODER_SOURCES
-                "${AOM_ROOT}/test/av1_highbd_iht_test.cc")
+         "${AOM_ROOT}/test/av1_highbd_iht_test.cc")
   endif()
 
-  list(APPEND AOM_UNIT_TEST_ENCODER_INTRIN_SSE4_1
-              "${AOM_ROOT}/test/av1_quantize_test.cc"
-              "${AOM_ROOT}/test/corner_match_test.cc"
-              "${AOM_ROOT}/test/simd_cmp_sse4.cc")
+  list(
+    APPEND AOM_UNIT_TEST_ENCODER_INTRIN_SSE4_1
+    "${AOM_ROOT}/test/av1_quantize_test.cc"
+    "${AOM_ROOT}/test/corner_match_test.cc" "${AOM_ROOT}/test/simd_cmp_sse4.cc")
 
   if(NOT (HAVE_SSE2 OR HAVE_NEON))
     list(REMOVE_ITEM AOM_UNIT_TEST_ENCODER_SOURCES
-                     "${AOM_ROOT}/test/quantize_func_test.cc")
+         "${AOM_ROOT}/test/quantize_func_test.cc")
   endif()
 
   if(HAVE_SSE4_1)
-    list(APPEND AOM_UNIT_TEST_ENCODER_SOURCES
-                "${AOM_ROOT}/test/av1_convolve_scale_test.cc"
-                "${AOM_ROOT}/test/av1_horz_only_frame_superres_test.cc"
-                "${AOM_ROOT}/test/intra_edge_test.cc")
+    list(
+      APPEND
+      AOM_UNIT_TEST_ENCODER_SOURCES
+      "${AOM_ROOT}/test/av1_convolve_scale_test.cc"
+      "${AOM_ROOT}/test/av1_horz_only_frame_superres_test.cc"
+      "${AOM_ROOT}/test/intra_edge_test.cc")
 
   endif()
 
@@ -253,9 +268,10 @@ if(ENABLE_TESTS)
   find_package(PythonInterp)
   if(NOT PYTHONINTERP_FOUND)
     message(
-      FATAL_ERROR "--- Unit tests require Python, rerun cmake with "
-                  "-DENABLE_TESTS=0 to avoid this error, or install Python and "
-                  "make sure it's in your PATH.")
+      FATAL_ERROR
+        "--- Unit tests require Python, rerun cmake with "
+        "-DENABLE_TESTS=0 to avoid this error, or install Python and "
+        "make sure it's in your PATH.")
   endif()
 
   if(BUILD_SHARED_LIBS AND APPLE) # Silence an RPATH warning.
@@ -300,14 +316,15 @@ function(setup_aom_test_targets)
     add_dependencies(test_aom_encoder aom)
   endif()
 
-  add_executable(test_libaom ${AOM_UNIT_TEST_WRAPPER_SOURCES}
-                             $<TARGET_OBJECTS:aom_common_app_util>
-                             $<TARGET_OBJECTS:test_aom_common>)
+  add_executable(
+    test_libaom
+    ${AOM_UNIT_TEST_WRAPPER_SOURCES} $<TARGET_OBJECTS:aom_common_app_util>
+    $<TARGET_OBJECTS:test_aom_common>)
   list(APPEND AOM_APP_TARGETS test_libaom)
 
   if(CONFIG_AV1_DECODER)
     target_sources(test_libaom PRIVATE $<TARGET_OBJECTS:aom_decoder_app_util>
-                   $<TARGET_OBJECTS:test_aom_decoder>)
+                                       $<TARGET_OBJECTS:test_aom_decoder>)
 
     if(ENABLE_DECODE_PERF_TESTS AND CONFIG_WEBM_IO)
       target_sources(test_libaom PRIVATE ${AOM_DECODE_PERF_TEST_SOURCES})
@@ -316,16 +333,16 @@ function(setup_aom_test_targets)
 
   if(CONFIG_AV1_ENCODER)
     target_sources(test_libaom PRIVATE $<TARGET_OBJECTS:test_aom_encoder>
-                   $<TARGET_OBJECTS:aom_encoder_app_util>)
+                                       $<TARGET_OBJECTS:aom_encoder_app_util>)
 
     if(ENABLE_ENCODE_PERF_TESTS)
       target_sources(test_libaom PRIVATE ${AOM_ENCODE_PERF_TEST_SOURCES})
     endif()
 
     if(NOT BUILD_SHARED_LIBS)
-      add_executable(test_intra_pred_speed
-                     ${AOM_TEST_INTRA_PRED_SPEED_SOURCES}
-                     $<TARGET_OBJECTS:aom_common_app_util>)
+      add_executable(
+        test_intra_pred_speed ${AOM_TEST_INTRA_PRED_SPEED_SOURCES}
+                              $<TARGET_OBJECTS:aom_common_app_util>)
       target_link_libraries(test_intra_pred_speed ${AOM_LIB_LINK_TYPE} aom
                             aom_gtest)
       list(APPEND AOM_APP_TARGETS test_intra_pred_speed)
@@ -379,11 +396,11 @@ function(setup_aom_test_targets)
       list(GET test_file_checksums ${test_index} test_file_checksum)
       add_custom_target(
         testdata_${test_index}
-        COMMAND ${CMAKE_COMMAND}
-                -DAOM_CONFIG_DIR="${AOM_CONFIG_DIR}" -DAOM_ROOT="${AOM_ROOT}"
-                -DAOM_TEST_FILE="${test_file}"
-                -DAOM_TEST_CHECKSUM=${test_file_checksum} -P
-                "${AOM_ROOT}/test/test_data_download_worker.cmake")
+        COMMAND
+          ${CMAKE_COMMAND} -DAOM_CONFIG_DIR="${AOM_CONFIG_DIR}"
+          -DAOM_ROOT="${AOM_ROOT}" -DAOM_TEST_FILE="${test_file}"
+          -DAOM_TEST_CHECKSUM=${test_file_checksum} -P
+          "${AOM_ROOT}/test/test_data_download_worker.cmake")
       list(APPEND testdata_targets testdata_${test_index})
     endforeach()
 
@@ -408,13 +425,14 @@ function(setup_aom_test_targets)
       math(EXPR max_shard_index "${num_test_targets} - 1")
       foreach(shard_index RANGE ${max_shard_index})
         set(test_name "test_${shard_index}")
-        add_custom_target(${test_name}
-                          COMMAND ${CMAKE_COMMAND}
-                                  -DGTEST_SHARD_INDEX=${shard_index}
-                                  -DGTEST_TOTAL_SHARDS=${num_test_targets}
-                                  -DTEST_LIBAOM=$<TARGET_FILE:test_libaom> -P
-                                  "${AOM_ROOT}/test/test_runner.cmake"
-                          DEPENDS testdata test_libaom)
+        add_custom_target(
+          ${test_name}
+          COMMAND
+            ${CMAKE_COMMAND} -DGTEST_SHARD_INDEX=${shard_index}
+            -DGTEST_TOTAL_SHARDS=${num_test_targets}
+            -DTEST_LIBAOM=$<TARGET_FILE:test_libaom> -P
+            "${AOM_ROOT}/test/test_runner.cmake"
+          DEPENDS testdata test_libaom)
         list(APPEND test_targets ${test_name})
       endforeach()
       add_custom_target(runtests)
@@ -457,5 +475,7 @@ function(setup_aom_test_targets)
     endforeach()
   endforeach()
 
-  set(AOM_APP_TARGETS ${AOM_APP_TARGETS} PARENT_SCOPE)
+  set(AOM_APP_TARGETS
+      ${AOM_APP_TARGETS}
+      PARENT_SCOPE)
 endfunction()

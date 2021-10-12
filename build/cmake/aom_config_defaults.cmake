@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 
 include("${AOM_ROOT}/build/cmake/util.cmake")
 
@@ -171,10 +171,12 @@ set_aom_config_var(CONFIG_QBASED_QP_OFFSET 1
                    "AV2 experiment flag to adjust q_offset based on QP.")
 set_aom_config_var(CONFIG_OPTFLOW_REFINEMENT 1
                    "AV2 experiment flag for optical flow MV refinement")
-set_aom_config_var(CONFIG_IBP_DIR 1
-                   "AV2 experiment flag to enable intra bi-prediction for directional modes.")
-set_aom_config_var(CONFIG_IBP_DC 1
-                   "AV2 experiment flag to enable intra bi-prediction for DC mode.")
+set_aom_config_var(
+  CONFIG_IBP_DIR 1
+  "AV2 experiment flag to enable intra bi-prediction for directional modes.")
+set_aom_config_var(
+  CONFIG_IBP_DC 1
+  "AV2 experiment flag to enable intra bi-prediction for DC mode.")
 
 #
 # Variables in this section control optional features of the build system.
@@ -214,10 +216,10 @@ set_aom_option_var(ENABLE_VSX "Enables VSX optimizations on PowerPC targets."
                    ON)
 
 # x86/x86_64 assembly/intrinsics flags.
-set_aom_option_var(ENABLE_MMX "Enables MMX optimizations on x86/x86_64 targets."
-                   ON)
-set_aom_option_var(ENABLE_SSE "Enables SSE optimizations on x86/x86_64 targets."
-                   ON)
+set_aom_option_var(ENABLE_MMX
+                   "Enables MMX optimizations on x86/x86_64 targets." ON)
+set_aom_option_var(ENABLE_SSE
+                   "Enables SSE optimizations on x86/x86_64 targets." ON)
 set_aom_option_var(ENABLE_SSE2
                    "Enables SSE2 optimizations on x86/x86_64 targets." ON)
 set_aom_option_var(ENABLE_SSE3
@@ -228,7 +230,7 @@ set_aom_option_var(ENABLE_SSE4_1
                    "Enables SSE4_1 optimizations on x86/x86_64 targets." ON)
 set_aom_option_var(ENABLE_SSE4_2
                    "Enables SSE4_2 optimizations on x86/x86_64 targets." ON)
-set_aom_option_var(ENABLE_AVX "Enables AVX optimizations on x86/x86_64 targets."
-                   ON)
+set_aom_option_var(ENABLE_AVX
+                   "Enables AVX optimizations on x86/x86_64 targets." ON)
 set_aom_option_var(ENABLE_AVX2
                    "Enables AVX2 optimizations on x86/x86_64 targets." ON)

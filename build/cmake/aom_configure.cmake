@@ -1,12 +1,12 @@
 #
 # Copyright (c) 2021, Alliance for Open Media. All rights reserved
 #
-# This source code is subject to the terms of the BSD 3-Clause Clear License and the
-# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-# not distributed with this source code in the LICENSE file, you can obtain it
-# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-# License 1.0 was not distributed with this source code in the PATENTS file, you
-# can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and
+# the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+# License was not distributed with this source code in the LICENSE file, you can
+# obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance
+# for Open Media Patent License 1.0 was not distributed with this source code in
+# the PATENTS file, you can obtain it at aomedia.org/license/patent-license/.
 #
 if(AOM_BUILD_CMAKE_AOM_CONFIGURE_CMAKE_)
   return()
@@ -32,7 +32,10 @@ endif()
 # Generate the user config settings.
 list(APPEND aom_build_vars ${AOM_CONFIG_VARS} ${AOM_OPTION_VARS})
 foreach(cache_var ${aom_build_vars})
-  get_property(cache_var_helpstring CACHE ${cache_var} PROPERTY HELPSTRING)
+  get_property(
+    cache_var_helpstring
+    CACHE ${cache_var}
+    PROPERTY HELPSTRING)
   if("${cache_var_helpstring}" STREQUAL "${cmake_cmdline_helpstring}")
     set(AOM_CMAKE_CONFIG "${AOM_CMAKE_CONFIG} -D${cache_var}=${${cache_var}}")
   endif()
@@ -42,24 +45,25 @@ string(STRIP "${AOM_CMAKE_CONFIG}" AOM_CMAKE_CONFIG)
 # Detect target CPU.
 if(NOT AOM_TARGET_CPU)
   string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" cpu_lowercase)
-  if("${cpu_lowercase}" STREQUAL "amd64"
-     OR "${cpu_lowercase}" STREQUAL "x86_64")
+  if("${cpu_lowercase}" STREQUAL "amd64" OR "${cpu_lowercase}" STREQUAL
+                                            "x86_64")
     if(${CMAKE_SIZEOF_VOID_P} EQUAL 4)
       set(AOM_TARGET_CPU "x86")
     elseif(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
       set(AOM_TARGET_CPU "x86_64")
     else()
       message(
-        FATAL_ERROR "--- Unexpected pointer size (${CMAKE_SIZEOF_VOID_P}) for\n"
-                    "      CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}\n"
-                    "      CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}\n"
-                    "      CMAKE_GENERATOR=${CMAKE_GENERATOR}\n")
+        FATAL_ERROR
+          "--- Unexpected pointer size (${CMAKE_SIZEOF_VOID_P}) for\n"
+          "      CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}\n"
+          "      CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}\n"
+          "      CMAKE_GENERATOR=${CMAKE_GENERATOR}\n")
     endif()
-  elseif("${cpu_lowercase}" STREQUAL "i386"
-         OR "${cpu_lowercase}" STREQUAL "x86")
+  elseif("${cpu_lowercase}" STREQUAL "i386" OR "${cpu_lowercase}" STREQUAL
+                                               "x86")
     set(AOM_TARGET_CPU "x86")
-  elseif("${cpu_lowercase}" MATCHES "^arm"
-         OR "${cpu_lowercase}" MATCHES "^mips")
+  elseif("${cpu_lowercase}" MATCHES "^arm" OR "${cpu_lowercase}" MATCHES
+                                              "^mips")
     set(AOM_TARGET_CPU "${cpu_lowercase}")
   elseif("${cpu_lowercase}" MATCHES "aarch64")
     set(AOM_TARGET_CPU "arm64")
@@ -109,8 +113,8 @@ if(NOT MSVC)
     # TODO(tomfinegan): clang needs -pie in CMAKE_EXE_LINKER_FLAGS for this to
     # work.
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    if("${AOM_TARGET_SYSTEM}" STREQUAL "Linux"
-       AND "${AOM_TARGET_CPU}" MATCHES "^armv[78]")
+    if("${AOM_TARGET_SYSTEM}" STREQUAL "Linux" AND "${AOM_TARGET_CPU}" MATCHES
+                                                   "^armv[78]")
       set(AOM_AS_FLAGS ${AOM_AS_FLAGS} --defsym PIC=1)
     else()
       set(AOM_AS_FLAGS ${AOM_AS_FLAGS} -DPIC)
@@ -211,12 +215,15 @@ aom_check_source_compiles("unistd_check" "#include <unistd.h>" HAVE_UNISTD_H)
 
 if(NOT MSVC)
   aom_push_var(CMAKE_REQUIRED_LIBRARIES "m")
-  aom_check_c_compiles("fenv_check" "#define _GNU_SOURCE
+  aom_check_c_compiles(
+    "fenv_check"
+    "#define _GNU_SOURCE
                         #include <fenv.h>
                         void unused(void) {
                           (void)unused;
                           (void)feenableexcept(FE_DIVBYZERO | FE_INVALID);
-                        }" HAVE_FEXCEPT)
+                        }"
+    HAVE_FEXCEPT)
   aom_pop_var(CMAKE_REQUIRED_LIBRARIES)
 endif()
 
@@ -276,8 +283,8 @@ else()
   add_compiler_flag_if_supported("-Wunused")
   add_compiler_flag_if_supported("-Wvla")
 
-  if(CMAKE_C_COMPILER_ID MATCHES "GNU"
-     AND "${SANITIZE}" MATCHES "address|undefined")
+  if(CMAKE_C_COMPILER_ID MATCHES "GNU" AND "${SANITIZE}" MATCHES
+                                           "address|undefined")
 
     # This combination has more stack overhead, so we account for it by
     # providing higher stack limit than usual.
@@ -334,9 +341,9 @@ endif()
 set(aom_config_asm_template "${AOM_CONFIG_DIR}/config/aom_config.asm.cmake")
 set(aom_config_h_template "${AOM_CONFIG_DIR}/config/aom_config.h.cmake")
 execute_process(
-  COMMAND ${CMAKE_COMMAND}
-          -DAOM_CONFIG_DIR=${AOM_CONFIG_DIR} -DAOM_ROOT=${AOM_ROOT} -P
-          "${AOM_ROOT}/build/cmake/generate_aom_config_templates.cmake")
+  COMMAND
+    ${CMAKE_COMMAND} -DAOM_CONFIG_DIR=${AOM_CONFIG_DIR} -DAOM_ROOT=${AOM_ROOT}
+    -P "${AOM_ROOT}/build/cmake/generate_aom_config_templates.cmake")
 
 # Generate aom_config.{asm,h}.
 configure_file("${aom_config_asm_template}"
@@ -359,15 +366,18 @@ if(NOT PERL_FOUND)
   message(FATAL_ERROR "Perl is required to build libaom.")
 endif()
 
-set(AOM_RTCD_CONFIG_FILE_LIST "${AOM_ROOT}/aom_dsp/aom_dsp_rtcd_defs.pl"
-                              "${AOM_ROOT}/aom_scale/aom_scale_rtcd.pl"
-                              "${AOM_ROOT}/av1/common/av1_rtcd_defs.pl")
-set(AOM_RTCD_HEADER_FILE_LIST "${AOM_CONFIG_DIR}/config/aom_dsp_rtcd.h"
-                              "${AOM_CONFIG_DIR}/config/aom_scale_rtcd.h"
-                              "${AOM_CONFIG_DIR}/config/av1_rtcd.h")
-set(AOM_RTCD_SOURCE_FILE_LIST "${AOM_ROOT}/aom_dsp/aom_dsp_rtcd.c"
-                              "${AOM_ROOT}/aom_scale/aom_scale_rtcd.c"
-                              "${AOM_ROOT}/av1/common/av1_rtcd.c")
+set(AOM_RTCD_CONFIG_FILE_LIST
+    "${AOM_ROOT}/aom_dsp/aom_dsp_rtcd_defs.pl"
+    "${AOM_ROOT}/aom_scale/aom_scale_rtcd.pl"
+    "${AOM_ROOT}/av1/common/av1_rtcd_defs.pl")
+set(AOM_RTCD_HEADER_FILE_LIST
+    "${AOM_CONFIG_DIR}/config/aom_dsp_rtcd.h"
+    "${AOM_CONFIG_DIR}/config/aom_scale_rtcd.h"
+    "${AOM_CONFIG_DIR}/config/av1_rtcd.h")
+set(AOM_RTCD_SOURCE_FILE_LIST
+    "${AOM_ROOT}/aom_dsp/aom_dsp_rtcd.c"
+    "${AOM_ROOT}/aom_scale/aom_scale_rtcd.c"
+    "${AOM_ROOT}/av1/common/av1_rtcd.c")
 set(AOM_RTCD_SYMBOL_LIST aom_dsp_rtcd aom_scale_rtcd av1_rtcd)
 list(LENGTH AOM_RTCD_SYMBOL_LIST AOM_RTCD_CUSTOM_COMMAND_COUNT)
 math(EXPR AOM_RTCD_CUSTOM_COMMAND_COUNT "${AOM_RTCD_CUSTOM_COMMAND_COUNT} - 1")
@@ -380,16 +390,14 @@ foreach(NUM RANGE ${AOM_RTCD_CUSTOM_COMMAND_COUNT})
   execute_process(
     COMMAND
       ${PERL_EXECUTABLE} "${AOM_ROOT}/build/cmake/rtcd.pl"
-      --arch=${AOM_TARGET_CPU}
-      --sym=${AOM_RTCD_SYMBOL} ${AOM_RTCD_FLAGS}
+      --arch=${AOM_TARGET_CPU} --sym=${AOM_RTCD_SYMBOL} ${AOM_RTCD_FLAGS}
       --config=${AOM_CONFIG_DIR}/config/aom_config.h ${AOM_RTCD_CONFIG_FILE}
     OUTPUT_FILE ${AOM_RTCD_HEADER_FILE})
 endforeach()
 
 # Generate aom_version.h.
-execute_process(COMMAND ${CMAKE_COMMAND}
-                        -DAOM_CONFIG_DIR=${AOM_CONFIG_DIR}
-                        -DAOM_ROOT=${AOM_ROOT}
-                        -DGIT_EXECUTABLE=${GIT_EXECUTABLE}
-                        -DPERL_EXECUTABLE=${PERL_EXECUTABLE} -P
-                        "${AOM_ROOT}/build/cmake/version.cmake")
+execute_process(
+  COMMAND
+    ${CMAKE_COMMAND} -DAOM_CONFIG_DIR=${AOM_CONFIG_DIR} -DAOM_ROOT=${AOM_ROOT}
+    -DGIT_EXECUTABLE=${GIT_EXECUTABLE} -DPERL_EXECUTABLE=${PERL_EXECUTABLE} -P
+    "${AOM_ROOT}/build/cmake/version.cmake")

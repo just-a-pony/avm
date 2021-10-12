@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
- * This source code is subject to the terms of the BSD 3-Clause Clear License and the
- * Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
- * not distributed with this source code in the LICENSE file, you can obtain it
- * at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
- * License 1.0 was not distributed with this source code in the PATENTS file, you
- * can obtain it at aomedia.org/license/patent-license/.
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
  */
 
 #ifndef AOM_AOM_DSP_SIMD_V64_INTRINSICS_X86_H_
@@ -182,10 +183,18 @@ SIMD_INLINE v64 v64_pack_s32_u16(v64 a, v64 b) {
   int32_t al = v64_low_u32(a);
   int32_t bh = v64_high_u32(b);
   int32_t bl = v64_low_u32(b);
-  return v64_from_16(ah > 65535 ? 65535 : ah < 0 ? 0 : ah,
-                     al > 65535 ? 65535 : al < 0 ? 0 : al,
-                     bh > 65535 ? 65535 : bh < 0 ? 0 : bh,
-                     bl > 65535 ? 65535 : bl < 0 ? 0 : bl);
+  return v64_from_16(ah > 65535 ? 65535
+                     : ah < 0   ? 0
+                                : ah,
+                     al > 65535 ? 65535
+                     : al < 0   ? 0
+                                : al,
+                     bh > 65535 ? 65535
+                     : bh < 0   ? 0
+                                : bh,
+                     bl > 65535 ? 65535
+                     : bl < 0   ? 0
+                                : bl);
 #endif
 }
 
