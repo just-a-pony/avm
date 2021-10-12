@@ -105,8 +105,22 @@ static INLINE int av1_filter_intra_allowed(const AV1_COMMON *const cm,
 
 #if CONFIG_ORIP
 static INLINE int av1_allow_orip_smooth_dc(PREDICTION_MODE mode, int plane) {
+#if CONFIG_ORIP_DC_DISABLED
+#if CONFIG_ORIP_NONDC_DISABLED
+  return 0;
+#else
+  if (plane == AOM_PLANE_Y) return (mode == SMOOTH_PRED);
+  return (mode == UV_SMOOTH_PRED);
+#endif
+#else
+#if CONFIG_ORIP_NONDC_DISABLED
+  if (plane == AOM_PLANE_Y) return (mode == DC_PRED);
+  return 0;
+#else
   if (plane == AOM_PLANE_Y) return (mode == SMOOTH_PRED || mode == DC_PRED);
   return (mode == UV_SMOOTH_PRED);
+#endif
+#endif
 }
 static INLINE int av1_allow_orip_dir(int p_angle, int disable_filter) {
   return (!disable_filter && (p_angle == 90 || p_angle == 180));
@@ -194,6 +208,9 @@ static INLINE int av1_signal_orip_for_horver_modes(const AV1_COMMON *cm,
                                                    const MB_MODE_INFO *mbmi,
                                                    PLANE_TYPE plane,
                                                    BLOCK_SIZE bsize) {
+#if CONFIG_ORIP_NONDC_DISABLED
+  return 0;
+#endif
   if (!cm->seq_params.enable_orip) return 0;
 
 #if CONFIG_SDP
@@ -223,6 +240,14 @@ static INLINE int get_idx_to_angle_delta(int index) {
   return (index - MAX_ANGLE_DELTA);
 }
 
+#endif
+
+#if CONFIG_IBP_DIR
+static const int32_t transpose_tx_size[TX_SIZES_ALL] = {
+  TX_4X4,  TX_8X8,  TX_16X16, TX_32X32, TX_64X64, TX_8X4,   TX_4X8,
+  TX_16X8, TX_8X16, TX_32X16, TX_16X32, TX_64X32, TX_32X64, TX_16X4,
+  TX_4X16, TX_32X8, TX_8X32,  TX_64X16, TX_16X64,
+};
 #endif
 
 #ifdef __cplusplus

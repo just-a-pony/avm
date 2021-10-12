@@ -470,6 +470,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_IST
   seq->enable_ist = oxcf->txfm_cfg.enable_ist;
 #endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  seq->enable_ibp = oxcf->intra_mode_cfg.enable_ibp;
+#endif
   set_bitstream_level_tier(seq, cm, frm_dim_cfg->width, frm_dim_cfg->height,
                            oxcf->input_cfg.init_framerate);
 
@@ -1599,6 +1602,9 @@ void av1_remove_compressor(AV1_COMP *cpi) {
   }
 
   dealloc_compressor_data(cpi);
+#if CONFIG_IBP_DIR
+  free_ibp_info(cm->ibp_directional_weights);
+#endif
 
 #if CONFIG_INTERNAL_STATS
   aom_free(cpi->ssim_vars);

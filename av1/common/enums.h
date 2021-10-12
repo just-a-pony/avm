@@ -837,6 +837,12 @@ enum {
 #define MAX_EXTERNAL_REFERENCES 128
 #define MAX_TILES 512
 
+#if CONFIG_IBP_DIR || CONFIG_IBP_DC
+#define DIR_MODES_0_90 17
+#define IBP_WEIGHT_SHIFT 8
+#define IBP_WEIGHT_MAX 255
+#endif
+
 /*!\endcond */
 
 #ifdef __cplusplus

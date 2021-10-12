@@ -1111,7 +1111,7 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
     mbmi->mrl_index = mrl_idx;
 #endif
 
-#if CONFIG_ORIP
+#if CONFIG_ORIP && !CONFIG_ORIP_NONDC_DISABLED
     int total_num_mode = cpi->common.seq_params.enable_orip
                              ? (LUMA_MODE_COUNT + TOTAL_NUM_ORIP_ANGLE_DELTA)
                              : LUMA_MODE_COUNT;

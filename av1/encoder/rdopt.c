@@ -5971,7 +5971,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
     mbmi->mrl_index = mrl_index;
 #endif
 
-#if CONFIG_ORIP
+#if CONFIG_ORIP && !CONFIG_ORIP_NONDC_DISABLED
     int total_num_mode = cpi->common.seq_params.enable_orip
                              ? (LUMA_MODE_COUNT + TOTAL_NUM_ORIP_ANGLE_DELTA)
                              : LUMA_MODE_COUNT;

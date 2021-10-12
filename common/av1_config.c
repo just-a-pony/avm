@@ -250,6 +250,9 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader) {
 #if CONFIG_ORIP
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_orip);
 #endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  AV1C_READ_BIT_OR_RETURN_ERROR(enable_ibp);
+#endif
 
   return 0;
 }

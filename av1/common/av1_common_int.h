@@ -30,6 +30,9 @@
 #include "av1/common/tile_common.h"
 #include "av1/common/timing.h"
 #include "av1/common/odintrin.h"
+#if CONFIG_IBP_DIR
+#include "av1/common/warped_motion.h"
+#endif
 #include "av1/encoder/hash_motion.h"
 #include "aom_dsp/grain_synthesis.h"
 #include "aom_dsp/grain_table.h"
@@ -319,6 +322,9 @@ typedef struct SequenceHeader {
 #endif
 #if CONFIG_IST
   uint8_t enable_ist;  // enables/disables intra secondary transform
+#endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  uint8_t enable_ibp;  // enables/disables intra bi-prediction(IBP)
 #endif
   uint8_t enable_interintra_compound;  // enables/disables interintra_compound
   uint8_t enable_masked_compound;      // enables/disables masked compound
@@ -1151,6 +1157,10 @@ typedef struct AV1Common {
    * (in the range 0 ... (number_spatial_layers - 1)).
    */
   int spatial_layer_id;
+
+#if CONFIG_IBP_DIR
+  uint8_t *ibp_directional_weights[TX_SIZES_ALL][DIR_MODES_0_90];
+#endif
 
 #if TXCOEFF_TIMER
   int64_t cum_txcoeff_timer;
@@ -2254,7 +2264,162 @@ static INLINE int is_valid_seq_level_idx(AV1_LEVEL seq_level_idx) {
           seq_level_idx != SEQ_LEVEL_7_0 && seq_level_idx != SEQ_LEVEL_7_1 &&
           seq_level_idx != SEQ_LEVEL_7_2 && seq_level_idx != SEQ_LEVEL_7_3);
 }
+#if CONFIG_IBP_DIR
+// Intra derivative for second directional predictor of IBP
+// second_dr_intra_derivative[x] = 64*64/dr_intra_derivative[x]
+static const int16_t second_dr_intra_derivative[90] = {
+  0,    0, 0,        //
+  4,    0, 0,        // 3, ...
+  7,    0, 0,        // 6, ...
+  11,   0, 0, 0, 0,  // 9, ...
+  15,   0, 0,        // 14, ...
+  19,   0, 0,        // 17, ...
+  23,   0, 0,        // 20, ...
+  27,   0, 0,        // 23, ... (113 & 203 are base angles)
+  31,   0, 0,        // 26, ...
+  35,   0, 0,        // 29, ...
+  40,   0, 0, 0,     // 32, ...
+  46,   0, 0,        // 36, ...
+  51,   0, 0,        // 39, ...
+  58,   0, 0,        // 42, ...
+  64,   0, 0,        // 45, ... (45 & 135 are base angles)
+  72,   0, 0,        // 48, ...
+  80,   0, 0,        // 51, ...
+  91,   0, 0, 0,     // 54, ...
+  102,  0, 0,        // 58, ...
+  117,  0, 0,        // 61, ...
+  132,  0, 0,        // 64, ...
+  152,  0, 0,        // 67, ... (67 & 157 are base angles)
+  178,  0, 0,        // 70, ...
+  216,  0, 0,        // 73, ...
+  273,  0, 0, 0, 0,  // 76, ...
+  372,  0, 0,        // 81, ...
+  585,  0, 0,        // 84, ...
+  1365, 0, 0,        // 87, ...
+};
 
+// Generate the weights per pixel position for IBP
+static void av1_dr_prediction_z1_info(uint8_t *weights, int bw, int bh,
+                                      int txw_log2, int txh_log2, int dy,
+                                      int mode) {
+  int32_t r, c, y;
+
+  int len0 = -1;
+  int len1 = -1;
+  int f0 = 1024;
+  int f1 = 1024;
+  int f2 = 1024;
+  int d0 = 0;
+  int d1 = 0;
+  int d2 = 0;
+  if (mode == D67_PRED) {
+    f0 = ((bw <= 8) && (bh <= 8)) ? 512 : 1024;
+    f1 = ((bw <= 8) && (bh <= 8)) ? 256 : 512;
+    f2 = ((bw <= 8) && (bh <= 8)) ? 128 : 256;
+    d0 = ROUND_POWER_OF_TWO(f0 - f1, (txh_log2 - 1));
+    d1 = ROUND_POWER_OF_TWO(f1 - f2, (txw_log2 - 1));
+    d2 = ROUND_POWER_OF_TWO(f2, (txw_log2 - 1));
+  }
+  if (mode == V_PRED) {
+    f0 = ((bw <= 8) && (bh <= 8)) ? 256 : 512;
+    f1 = ((bw <= 8) && (bh <= 8)) ? 128 : 256;
+    f2 = ((bw <= 8) && (bh <= 8)) ? 64 : 128;
+    d0 = ROUND_POWER_OF_TWO(f0 - f1, (txh_log2 - 2));
+    d1 = ROUND_POWER_OF_TWO(f1 - f2, (txw_log2 - 1));
+    d2 = ROUND_POWER_OF_TWO(f2, (txw_log2 - 1));
+  }
+
+  for (r = 0; r < bh; ++r) {
+    if (mode == D67_PRED) {
+      len0 = (bh - r) >> 1;
+      len1 = ((bh - r) >> 1) + (bw >> 1);
+    }
+    if (mode == V_PRED) {
+      len0 = (bh - r) >> 2;
+      len1 = ((bh - r) >> 2) + (bw >> 1);
+    }
+    y = dy;
+    for (c = 0; c < bw; ++c, y += dy) {
+      uint32_t dist = ((r + 1) << 6) + y;
+      int16_t shift = 0;
+      int16_t div = resolve_divisor_32(dist, &shift);
+      shift -= DIV_LUT_BITS;
+      int32_t weight0 = ROUND_POWER_OF_TWO(y * div, shift);
+      if ((len0 > -1) && (len1 > -1)) {
+        int weight1 = IBP_WEIGHT_MAX - weight0;
+        if (c <= len0) {
+          int fac = ((len0 - c) * d0 + f1);
+          weight1 = (fac > f0) ? weight1 * f0 : weight1 * fac;
+        } else if (c <= len1) {
+          int fac = ((len1 - c) * d1 + f2);
+          weight1 = (fac > f1) ? weight1 * f1 : weight1 * fac;
+        } else {
+          int fac = (f2 - (c - len1) * d2);
+          weight1 = (fac < 0) ? 0 : weight1 * fac;
+        }
+        weight1 = ROUND_POWER_OF_TWO(weight1, 10);
+        weight0 = IBP_WEIGHT_MAX - weight1;
+      }
+      weights[c] = weight0;
+    }
+    weights += bw;
+  }
+}
+static const uint8_t angle_to_mode_index[90] = {
+  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,
+  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, 0, 16, 0, 0, 15, 0, 0, 14, 0, 0, 13,
+  0, 0, 12, 0, 0, 11, 0, 0, 10, 0, 0, 0, 9, 0,  0, 8, 0,  0, 7, 0,  0, 6, 0,
+  0, 5, 0,  0, 4, 0,  0, 3, 0,  0, 0, 0, 2, 0,  0, 1, 0,  0, 0, 0,  0
+};
+
+// Generate weights for IBP of one directional mode
+static INLINE void init_ibp_info_per_mode(
+    uint8_t *weights[TX_SIZES_ALL][DIR_MODES_0_90], int block_idx, int mode,
+    int delta, int txw, int txh, int txw_log2, int txh_log2) {
+  const int angle = mode_to_angle_map[mode] + delta * 3;
+  const int mode_idx = angle_to_mode_index[angle];
+  const int dy = second_dr_intra_derivative[angle];
+  weights[block_idx][mode_idx] =
+      (uint8_t *)(aom_calloc(txw * txh, sizeof(uint8_t)));
+  av1_dr_prediction_z1_info(weights[block_idx][mode_idx], txw, txh, txw_log2,
+                            txh_log2, dy, mode);
+  return;
+}
+
+// Generate weights for IBP of directional modes
+static INLINE void init_ibp_info(
+    uint8_t *weights[TX_SIZES_ALL][DIR_MODES_0_90]) {
+  assert(weights != NULL);
+  for (TX_SIZE iblock = TX_4X4; iblock < TX_SIZES_ALL; iblock++) {
+    const int txw = tx_size_wide[iblock];
+    const int txh = tx_size_high[iblock];
+    const int txw_log2 = tx_size_wide_log2[iblock];
+    const int txh_log2 = tx_size_high_log2[iblock];
+    for (int delta = -3; delta < 0; delta++) {
+      init_ibp_info_per_mode(weights, iblock, V_PRED, delta, txw, txh, txw_log2,
+                             txh_log2);
+      init_ibp_info_per_mode(weights, iblock, D67_PRED, delta, txw, txh,
+                             txw_log2, txh_log2);
+      init_ibp_info_per_mode(weights, iblock, D45_PRED, delta, txw, txh,
+                             txw_log2, txh_log2);
+    }
+    for (int delta = 0; delta <= 3; delta++) {
+      init_ibp_info_per_mode(weights, iblock, D67_PRED, delta, txw, txh,
+                             txw_log2, txh_log2);
+      init_ibp_info_per_mode(weights, iblock, D45_PRED, delta, txw, txh,
+                             txw_log2, txh_log2);
+    }
+  }
+}
+static INLINE void free_ibp_info(
+    uint8_t *weights[TX_SIZES_ALL][DIR_MODES_0_90]) {
+  for (int i = 0; i < TX_SIZES_ALL; i++) {
+    for (int j = 0; j < DIR_MODES_0_90; j++) {
+      aom_free(weights[i][j]);
+    }
+  }
+}
+#endif
 /*!\endcond */
 
 #ifdef __cplusplus

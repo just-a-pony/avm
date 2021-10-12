@@ -94,6 +94,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_IST
     GET_PARAMS(enable_ist);
 #endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+    GET_PARAMS(enable_ibp);
+#endif
     GET_PARAMS(enable_flip_idtx);
     GET_PARAMS(enable_deblocking);
     GET_PARAMS(enable_cdef);

@@ -126,6 +126,9 @@ struct av1_extracfg {
 #if CONFIG_IST
   int enable_ist;                // enable intra secondary transform
 #endif                           // CONFIG_IST
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  int enable_ibp;                // enable intra bi-prediction
+#endif                           // CONFIG_IBP_DC or CONFIG_IBP_DIR
   int min_partition_size;        // min partition size [4,8,16,32,64,128]
   int max_partition_size;        // max partition size [4,8,16,32,64,128]
   int enable_intra_edge_filter;  // enable intra-edge filter for sequence
@@ -410,6 +413,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_IST
   1,    // enable intra secondary transform
 #endif  // CONFIG_IST
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  1,    // enable intra bi-prediction
+#endif  // CONFIG_IBP_DC or CONFIG_IBP_DIR
   4,    // min_partition_size
   128,  // max_partition_size
   1,    // enable intra edge filter
@@ -873,6 +879,9 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_IST
   cfg->enable_ist = extra_cfg->enable_ist;
 #endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  cfg->enable_ibp = extra_cfg->enable_ibp;
+#endif
   cfg->max_partition_size = extra_cfg->max_partition_size;
   cfg->min_partition_size = extra_cfg->min_partition_size;
   cfg->enable_intra_edge_filter = extra_cfg->enable_intra_edge_filter;
@@ -948,6 +957,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #endif
 #if CONFIG_IST
   extra_cfg->enable_ist = cfg->enable_ist;
+#endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  extra_cfg->enable_ibp = cfg->enable_ibp;
 #endif
   extra_cfg->max_partition_size = cfg->max_partition_size;
   extra_cfg->min_partition_size = cfg->min_partition_size;
@@ -1413,6 +1425,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #endif
 #if CONFIG_ORIP
   intra_mode_cfg->enable_orip = extra_cfg->enable_orip;
+#endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  intra_mode_cfg->enable_ibp = extra_cfg->enable_ibp;
 #endif
 
   // Set transform size/type configuration.
@@ -2547,6 +2562,9 @@ static aom_codec_err_t encoder_init(aom_codec_ctx_t *ctx) {
             clamp(lap_lag_in_frames, 0, MAX_LAG_BUFFERS),
             &priv->stats_buf_context);
       }
+#if CONFIG_IBP_DIR
+      init_ibp_info(priv->cpi->common.ibp_directional_weights);
+#endif
     }
   }
 
@@ -3604,6 +3622,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.enable_ist = arg_parse_int_helper(&arg, err_string);
 #endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ibp, argv,
+                              err_string)) {
+    extra_cfg.enable_ibp = arg_parse_int_helper(&arg, err_string);
+#endif
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.min_partition_size,
                               argv, err_string)) {
     extra_cfg.min_partition_size = arg_parse_int_helper(&arg, err_string);
@@ -4030,6 +4053,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_IST
         1,
 #endif  // CONFIG_IST
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+        1,
+#endif  // CONFIG_IBP_DC or CONFIG_IBP_DIR
         1, 1,   1,   1,
 #if CONFIG_CCSO
         1,

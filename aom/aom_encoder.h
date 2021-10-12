@@ -282,6 +282,12 @@ typedef struct cfg_options {
    */
   unsigned int enable_ist;
 #endif  // CONFIG_IST
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  /*!\brief enable Intra Bi-Prediction (IBP)
+   *
+   */
+  unsigned int enable_ibp;
+#endif  // CONFIG_IBP_DC || CONFIG_IBP_DIR
   /*!\brief enable flip and identity transform type
    *
    */

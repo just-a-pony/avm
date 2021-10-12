@@ -444,6 +444,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_IST
   &g_av1_codec_arg_defs.enable_ist,
 #endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  &g_av1_codec_arg_defs.enable_ibp,
+#endif
 #if CONFIG_NEW_INTER_MODES
   &g_av1_codec_arg_defs.max_drl_refmvs,
 #endif  // CONFIG_NEW_INTER_MODES
@@ -599,6 +602,9 @@ static void init_config(cfg_options_t *config) {
 #endif
 #if CONFIG_IST
   config->enable_ist = 1;
+#endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+  config->enable_ibp = 1;
 #endif
   config->enable_flip_idtx = 1;
   config->enable_deblocking = 1;
@@ -1438,21 +1444,43 @@ static void show_stream_config(struct stream_state *stream,
 #if CONFIG_ORIP
           ", ORIP(%d)"
 #endif
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+          ", IBP(%d)"
+#endif
           "\n",
           encoder_cfg->enable_intra_edge_filter,
 
 #if CONFIG_MRLS
 #if CONFIG_ORIP
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+          encoder_cfg->enable_paeth_intra, encoder_cfg->enable_mrls,
+          encoder_cfg->enable_orip, encoder_cfg->enable_ibp);
+#else
           encoder_cfg->enable_paeth_intra, encoder_cfg->enable_mrls,
           encoder_cfg->enable_orip);
+#endif
+#else
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+          encoder_cfg->enable_paeth_intra, encoder_cfg->enable_mrls,
+          encoder_cfg->enable_ibp);
 #else
           encoder_cfg->enable_paeth_intra, encoder_cfg->enable_mrls);
 #endif
+#endif
 #else
 #if CONFIG_ORIP
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+          encoder_cfg->enable_paeth_intra, encoder_cfg->enable_orip,
+          encoder_cfg->enable_ibp);
+#else
           encoder_cfg->enable_paeth_intra, encoder_cfg->enable_orip);
+#endif
+#else
+#if CONFIG_IBP_DC || CONFIG_IBP_DIR
+          encoder_cfg->enable_paeth_intra, encoder_cfg->enable_ibp);
 #else
           encoder_cfg->enable_paeth_intra);
+#endif
 #endif
 #endif
   fprintf(stdout,
