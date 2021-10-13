@@ -23,7 +23,7 @@ if("${AOM_ROOT}" STREQUAL "${AOM_CONFIG_DIR}")
       "And re-run CMake from the aom_build directory.")
 endif()
 
-project(AOM C CXX)
+project(AVM C CXX)
 
 if(NOT EMSCRIPTEN)
   if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
