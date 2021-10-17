@@ -23,6 +23,38 @@
 extern "C" {
 #endif
 
+#if CONFIG_AIMC
+/*! \brief set the luma intra mode and delta angles for a given mode index.
+ * \param[in]    mode_idx           mode index in intra mode decision
+ *                                  process.
+ * \param[in]    mbmi               Pointer to structure holding
+ *                                  the mode info for the current macroblock.
+ */
+void set_y_mode_and_delta_angle(const int mode_idx, MB_MODE_INFO *const mbmi);
+int get_y_mode_idx_ctx(MACROBLOCKD *const xd);
+void get_y_intra_mode_set(MB_MODE_INFO *mi, MACROBLOCKD *const xd);
+void get_uv_intra_mode_set(MB_MODE_INFO *mi);
+static const PREDICTION_MODE reordered_y_mode[INTRA_MODES] = {
+  DC_PRED,   SMOOTH_PRED, SMOOTH_V_PRED, SMOOTH_H_PRED, PAETH_PRED,
+  D45_PRED,  D67_PRED,    V_PRED,        D113_PRED,     D135_PRED,
+  D157_PRED, H_PRED,      D203_PRED
+};
+static const int
+    default_mode_list_y[LUMA_MODE_COUNT - NON_DIRECTIONAL_MODES_COUNT] = {
+      17, 45, 3, 10, 24, 31, 38, 52,
+      //  (-2, +2)
+      15, 19, 43, 47, 1, 5, 8, 12, 22, 26, 29, 33, 36, 40, 50, 54,
+      //  (-1, +1)
+      16, 18, 44, 46, 2, 4, 9, 11, 23, 25, 30, 32, 37, 39, 51, 53,
+      //  (-3, +3)
+      14, 20, 42, 48, 0, 6, 7, 13, 21, 27, 28, 34, 35, 41, 49, 55
+    };
+static const int default_mode_list_uv[DIR_MODE_END - DIR_MODE_START] = {
+  UV_V_PRED,   UV_H_PRED,    UV_D45_PRED,  UV_D135_PRED,
+  UV_D67_PRED, UV_D113_PRED, UV_D157_PRED, UV_D203_PRED
+};
+#endif  // CONFIG_AIMC
+
 void av1_init_intra_predictors(void);
 void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                     int plane, int blk_col, int blk_row,

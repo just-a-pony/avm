@@ -88,6 +88,9 @@ typedef struct IntraModeSearchState {
   UV_PREDICTION_MODE mode_uv; /*!< \brief The best uv mode */
   PALETTE_MODE_INFO pmi_uv;   /*!< \brief Color map if mode_uv is palette */
   int8_t uv_angle_delta;      /*!< \brief Angle delta if mode_uv directional */
+#if CONFIG_AIMC
+  int uv_mode_idx;
+#endif  // CONFIG_AIMC
   /**@}*/
 
   /*!
@@ -95,6 +98,11 @@ typedef struct IntraModeSearchState {
    */
   int64_t best_pred_rd[REFERENCE_MODES];
 } IntraModeSearchState;
+
+#if CONFIG_AIMC
+int get_uv_mode_cost(MB_MODE_INFO *mbmi, const ModeCosts mode_costs,
+                     CFL_ALLOWED_TYPE cfl_allowed, int mode_index);
+#endif  // CONFIG_AIMC
 
 /*!\brief Evaluate a given intra-mode for inter frames.
  *
@@ -267,7 +275,7 @@ void av1_count_colors_highbd(const uint8_t *src8, int stride, int rows,
                              int cols, int bit_depth, int *val_count,
                              int *val_count_8bit, int *num_color_bins,
                              int *num_colors);
-
+#if !CONFIG_AIMC
 /*! \brief set the luma intra mode and delta angles for a given mode index.
  * \param[in]    mode_idx           mode index in intra mode decision
  *                                  process.
@@ -275,7 +283,7 @@ void av1_count_colors_highbd(const uint8_t *src8, int stride, int rows,
  *                                  the mode info for the current macroblock.
  */
 void set_y_mode_and_delta_angle(const int mode_idx, MB_MODE_INFO *const mbmi);
-
+#endif
 /*! \brief prune luma intra mode    based on the model rd.
  * \param[in]    this_model_rd      model rd for current mode.
  * \param[in]    best_model_rd      Best model RD seen for this block so

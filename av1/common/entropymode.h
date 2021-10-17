@@ -157,12 +157,23 @@ typedef struct frame_contexts {
   aom_cdf_prob switchable_restore_cdf[CDF_SIZE(RESTORE_SWITCHABLE_TYPES)];
   aom_cdf_prob wiener_restore_cdf[CDF_SIZE(2)];
   aom_cdf_prob sgrproj_restore_cdf[CDF_SIZE(2)];
+#if !CONFIG_AIMC
   aom_cdf_prob y_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTRA_MODES)];
   aom_cdf_prob uv_mode_cdf[CFL_ALLOWED_TYPES][INTRA_MODES]
                           [CDF_SIZE(UV_INTRA_MODES)];
+#endif  // !CONFIG_AIMC
 #if CONFIG_MRLS
   aom_cdf_prob mrl_index_cdf[CDF_SIZE(MRL_LINE_NUMBER)];
 #endif
+#if CONFIG_AIMC
+  // y mode cdf
+  aom_cdf_prob y_mode_set_cdf[CDF_SIZE(INTRA_MODE_SETS)];
+  aom_cdf_prob y_mode_idx_cdf_0[Y_MODE_CONTEXTS][CDF_SIZE(FIRST_MODE_COUNT)];
+  aom_cdf_prob y_mode_idx_cdf_1[Y_MODE_CONTEXTS][CDF_SIZE(SECOND_MODE_COUNT)];
+  // uv mode cdf
+  aom_cdf_prob uv_mode_cdf[CFL_ALLOWED_TYPES][UV_MODE_CONTEXTS]
+                          [CDF_SIZE(UV_INTRA_MODES)];
+#endif  // CONFIG_AIMC
 #if CONFIG_SDP
   aom_cdf_prob partition_cdf[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
                             [CDF_SIZE(EXT_PARTITION_TYPES)];
@@ -171,6 +182,7 @@ typedef struct frame_contexts {
 #endif
   aom_cdf_prob switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS]
                                     [CDF_SIZE(SWITCHABLE_FILTERS)];
+#if !CONFIG_AIMC
   /* kf_y_cdf is discarded after use, so does not require persistent storage.
      However, we keep it with the other CDFs in this struct since it needs to
      be copied to each tile to support parallelism just like the others.
@@ -185,6 +197,7 @@ typedef struct frame_contexts {
   aom_cdf_prob angle_delta_cdf[DIRECTIONAL_MODES]
                               [CDF_SIZE(2 * MAX_ANGLE_DELTA + 1)];
 #endif
+#endif  // !CONFIG_AIMC
 
 #if CONFIG_NEW_TX_PARTITION
   aom_cdf_prob intra_4way_txfm_partition_cdf[2][TX_SIZE_CONTEXTS][CDF_SIZE(4)];

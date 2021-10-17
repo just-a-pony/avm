@@ -363,6 +363,18 @@ typedef struct MB_MODE_INFO {
   /*! \brief Reference line index for multiple reference line selection. */
   uint8_t mrl_index;
 #endif
+#if CONFIG_AIMC
+  /*! \brief mode index of y mode and y delta angle after re-ordering. */
+  uint8_t y_mode_idx;
+  /*! \brief mode index of uv mode after re-ordering. */
+  uint8_t uv_mode_idx;
+  /*! \brief joint mode index of y mode and y delta angle before re-ordering. */
+  uint8_t joint_y_mode_delta_angle;
+  /*! \brief re-ordered mode list for y mode and y delta angle. */
+  uint8_t y_intra_mode_list[LUMA_MODE_COUNT];
+  /*! \brief re-ordered mode list for uv mode. */
+  uint8_t uv_intra_mode_list[UV_INTRA_MODES];
+#endif  // CONFIG_AIMC
   /**@}*/
 
   /*****************************************************************************
@@ -529,9 +541,13 @@ static INLINE MV_REFERENCE_FRAME comp_ref1(int ref_idx) {
   return lut[ref_idx];
 }
 
+#if CONFIG_AIMC
+PREDICTION_MODE av1_get_joint_mode(const MB_MODE_INFO *mi);
+#else
 PREDICTION_MODE av1_left_block_mode(const MB_MODE_INFO *left_mi);
 
 PREDICTION_MODE av1_above_block_mode(const MB_MODE_INFO *above_mi);
+#endif  // CONFIG_AIMC
 
 static INLINE int is_global_mv_block(const MB_MODE_INFO *const mbmi,
                                      TransformationType type) {
@@ -807,6 +823,18 @@ typedef struct macroblockd {
    * up_available == true; otherwise NULL.
    */
   MB_MODE_INFO *above_mbmi;
+#if CONFIG_AIMC
+  /*!
+   * MB_MODE_INFO for 4x4 block to the bottom-left of the current block, if
+   * left_available == true; otherwise NULL.
+   */
+  MB_MODE_INFO *bottom_left_mbmi;
+  /*!
+   * MB_MODE_INFO for 4x4 block to the top-right of the current block, if
+   * up_available == true; otherwise NULL.
+   */
+  MB_MODE_INFO *above_right_mbmi;
+#endif  // CONFIG_AIMC
   /*!
    * Above chroma reference block if is_chroma_ref == true for the current block
    * and chroma_up_available == true; otherwise NULL.

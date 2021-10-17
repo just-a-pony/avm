@@ -127,20 +127,35 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                              fc->skip_txfm_cdfs[i], NULL);
   }
 
+#if CONFIG_MRLS
+  av1_cost_tokens_from_cdf(mode_costs->mrl_index_cost, fc->mrl_index_cdf, NULL);
+#endif
+#if CONFIG_AIMC
+  av1_cost_tokens_from_cdf(mode_costs->y_primary_flag_cost, fc->y_mode_set_cdf,
+                           NULL);
+  for (i = 0; i < Y_MODE_CONTEXTS; ++i) {
+    // y mode costs
+    av1_cost_tokens_from_cdf(mode_costs->y_first_mode_costs[i],
+                             fc->y_mode_idx_cdf_0[i], NULL);
+    av1_cost_tokens_from_cdf(mode_costs->y_second_mode_costs[i],
+                             fc->y_mode_idx_cdf_1[i], NULL);
+  }
+#else
   for (i = 0; i < KF_MODE_CONTEXTS; ++i)
     for (j = 0; j < KF_MODE_CONTEXTS; ++j)
       av1_cost_tokens_from_cdf(mode_costs->y_mode_costs[i][j],
                                fc->kf_y_cdf[i][j], NULL);
-
-#if CONFIG_MRLS
-  av1_cost_tokens_from_cdf(mode_costs->mrl_index_cost, fc->mrl_index_cdf, NULL);
-#endif
-
   for (i = 0; i < BLOCK_SIZE_GROUPS; ++i)
     av1_cost_tokens_from_cdf(mode_costs->mbmode_cost[i], fc->y_mode_cdf[i],
                              NULL);
+#endif  // CONFIG_AIMC
+
   for (i = 0; i < CFL_ALLOWED_TYPES; ++i)
+#if CONFIG_AIMC
+    for (j = 0; j < UV_MODE_CONTEXTS; ++j)
+#else
     for (j = 0; j < INTRA_MODES; ++j)
+#endif
       av1_cost_tokens_from_cdf(mode_costs->intra_uv_mode_cost[i][j],
                                fc->uv_mode_cdf[i][j], NULL);
 
@@ -261,6 +276,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       }
     }
   }
+#if !CONFIG_AIMC
 #if CONFIG_SDP
   for (i = 0; i < PARTITION_STRUCTURE_NUM; ++i) {
     for (j = 0; j < DIRECTIONAL_MODES; ++j) {
@@ -275,6 +291,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                              fc->angle_delta_cdf[i], NULL);
   }
 #endif  // CONFIG_SDP
+#endif  // !CONFIG_AIMC
   av1_cost_tokens_from_cdf(mode_costs->intrabc_cost, fc->intrabc_cdf, NULL);
 
 #if CONFIG_IST

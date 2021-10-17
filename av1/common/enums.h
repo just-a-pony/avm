@@ -91,6 +91,14 @@ extern "C" {
 #if CONFIG_MRLS
 #define MRL_LINE_NUMBER 4
 #endif
+#if CONFIG_AIMC
+#define FIRST_MODE_COUNT 13
+#define SECOND_MODE_COUNT 16
+#define Y_MODE_CONTEXTS 3
+#define UV_MODE_CONTEXTS 2
+#define INTRA_MODE_SETS 4
+#define NON_DIRECTIONAL_MODES_COUNT 5
+#endif  // CONFIG_AIMC
 
 // Intra Secondary Transform
 #if CONFIG_IST
@@ -649,6 +657,11 @@ enum {
 #define DIRECTIONAL_MODES 8
 #define MAX_ANGLE_DELTA 3
 #define ANGLE_STEP 3
+
+#if CONFIG_AIMC
+// Total delta angles for one nominal directional mode
+#define TOTAL_ANGLE_DELTA_COUNT 7
+#endif
 
 #define INTER_SINGLE_MODES SINGLE_INTER_MODE_NUM
 #define INTER_COMPOUND_MODES COMP_INTER_MODE_NUM

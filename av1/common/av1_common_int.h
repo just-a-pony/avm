@@ -1513,6 +1513,19 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
     xd->left_mbmi = NULL;
   }
 
+#if CONFIG_AIMC
+  if (xd->up_available) {
+    xd->above_right_mbmi = xd->mi[-xd->mi_stride + bw - 1];
+  } else {
+    xd->above_right_mbmi = NULL;
+  }
+  if (xd->left_available) {
+    xd->bottom_left_mbmi = xd->mi[-1 + xd->mi_stride * (bh - 1)];
+  } else {
+    xd->bottom_left_mbmi = NULL;
+  }
+#endif  // CONFIG_AIMC
+
   const int chroma_ref = ((mi_row & 0x01) || !(bh & 0x01) || !ss_y) &&
                          ((mi_col & 0x01) || !(bw & 0x01) || !ss_x);
   xd->is_chroma_ref = chroma_ref;
@@ -1552,6 +1565,7 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
     if (!(mi_row & (xd->width - 1))) xd->is_first_horizontal_rect = 1;
 }
 
+#if !CONFIG_AIMC
 static INLINE aom_cdf_prob *get_y_mode_cdf(FRAME_CONTEXT *tile_ctx,
                                            const MB_MODE_INFO *above_mi,
                                            const MB_MODE_INFO *left_mi) {
@@ -1561,6 +1575,7 @@ static INLINE aom_cdf_prob *get_y_mode_cdf(FRAME_CONTEXT *tile_ctx,
   const int left_ctx = intra_mode_context[left];
   return tile_ctx->kf_y_cdf[above_ctx][left_ctx];
 }
+#endif  // !CONFIG_AIMC
 
 static INLINE void update_partition_context(MACROBLOCKD *xd, int mi_row,
                                             int mi_col, BLOCK_SIZE subsize,

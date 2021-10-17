@@ -291,9 +291,13 @@ void av1_update_inter_mode_stats(FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
                                  PREDICTION_MODE mode, int16_t mode_context);
 
 void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
-                         MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi,
+                         MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi
+#if !CONFIG_AIMC
+                         ,
                          const MB_MODE_INFO *above_mi,
-                         const MB_MODE_INFO *left_mi, const int intraonly);
+                         const MB_MODE_INFO *left_mi, const int intraonly
+#endif  // !CONFIG_AIMC
+);
 
 void av1_restore_context(MACROBLOCK *x, const RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
                          int mi_row, int mi_col, BLOCK_SIZE bsize,
