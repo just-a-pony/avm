@@ -1446,6 +1446,9 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
 
 static INLINE void read_mb_interp_filter(const MACROBLOCKD *const xd,
                                          InterpFilter interp_filter,
+#if CONFIG_OPTFLOW_REFINEMENT
+                                         const AV1_COMMON *cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if !CONFIG_REMOVE_DUAL_FILTER
                                          bool enable_dual_filter,
 #endif  // !CONFIG_REMOVE_DUAL_FILTER
@@ -1454,11 +1457,16 @@ static INLINE void read_mb_interp_filter(const MACROBLOCKD *const xd,
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
 #if CONFIG_OPTFLOW_REFINEMENT
-  if (!av1_is_interp_needed(xd) || mbmi->mode > NEW_NEWMV) {
+  if (!av1_is_interp_needed(xd) || mbmi->mode > NEW_NEWMV ||
+      use_opfl_refine_all(cm, mbmi)) {
 #else
   if (!av1_is_interp_needed(xd)) {
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-    set_default_interp_filters(mbmi, interp_filter);
+    set_default_interp_filters(mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+                               cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                               interp_filter);
     return;
   }
 
@@ -2045,6 +2053,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   }
 
   read_mb_interp_filter(xd, features->interp_filter,
+#if CONFIG_OPTFLOW_REFINEMENT
+                        cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if !CONFIG_REMOVE_DUAL_FILTER
                         cm->seq_params.enable_dual_filter,
 #endif  // !CONFIG_REMOVE_DUAL_FILTER

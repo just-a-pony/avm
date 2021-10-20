@@ -1009,6 +1009,7 @@ static AOM_INLINE void predict_inter_block(AV1_COMMON *const cm,
   if (mbmi->motion_mode == OBMC_CAUSAL) {
     dec_build_obmc_inter_predictors_sb(cm, dcb);
   }
+
 #if CONFIG_MISMATCH_DEBUG
   for (int plane = 0; plane < num_planes; ++plane) {
     const struct macroblockd_plane *pd = &xd->plane[plane];

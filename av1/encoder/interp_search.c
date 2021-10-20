@@ -105,9 +105,6 @@ int av1_find_interp_filter_match(
     const InterpFilter assign_filter, const int need_search,
     INTERPOLATION_FILTER_STATS *interp_filter_stats,
     int interp_filter_stats_idx) {
-#if CONFIG_OPTFLOW_REFINEMENT
-  if (mbmi->mode > NEW_NEWMV) return -1;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
   int match_found_idx = -1;
   if (cpi->sf.interp_sf.use_interp_filter && need_search)
     match_found_idx = find_interp_filter_in_stats(
@@ -115,7 +112,11 @@ int av1_find_interp_filter_match(
         cpi->sf.interp_sf.use_interp_filter);
 
   if (!need_search || match_found_idx == -1)
-    set_default_interp_filters(mbmi, assign_filter);
+    set_default_interp_filters(mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+                               &cpi->common,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                               assign_filter);
   return match_found_idx;
 }
 
@@ -732,7 +733,8 @@ int64_t av1_interpolation_filter_search(
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
 #if CONFIG_OPTFLOW_REFINEMENT
-  const int need_search = av1_is_interp_needed(xd) && mbmi->mode <= NEW_NEWMV;
+  const int need_search = av1_is_interp_needed(xd) && mbmi->mode <= NEW_NEWMV &&
+                          !use_opfl_refine_all(cm, mbmi);
 #else
   const int need_search = av1_is_interp_needed(xd);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
@@ -800,16 +802,20 @@ int64_t av1_interpolation_filter_search(
 #if CONFIG_REMOVE_DUAL_FILTER
 #if CONFIG_OPTFLOW_REFINEMENT
     assert(mbmi->interp_fltr ==
-           (mbmi->mode > NEW_NEWMV ? MULTITAP_SHARP : EIGHTTAP_REGULAR));
+           ((mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
+                ? MULTITAP_SHARP
+                : EIGHTTAP_REGULAR));
 #else
     assert(mbmi->interp_fltr == EIGHTTAP_REGULAR);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 #else
     const int_interpfilters filters =
 #if CONFIG_OPTFLOW_REFINEMENT
-        mbmi->mode > NEW_NEWMV ? av1_broadcast_interp_filter(MULTITAP_SHARP) :
+        (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
+            ? av1_broadcast_interp_filter(MULTITAP_SHARP)
+            :
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-                               av1_broadcast_interp_filter(EIGHTTAP_REGULAR);
+            av1_broadcast_interp_filter(EIGHTTAP_REGULAR);
     assert(mbmi->interp_filters.as_int == filters.as_int);
     (void)filters;
 #endif  // CONFIG_REMOVE_DUAL_FILTER
@@ -817,7 +823,8 @@ int64_t av1_interpolation_filter_search(
   }
   if (args->modelled_rd != NULL) {
 #if CONFIG_OPTFLOW_REFINEMENT
-    if (has_second_ref(mbmi) && mbmi->mode <= NEW_NEWMV) {
+    if (has_second_ref(mbmi) && mbmi->mode <= NEW_NEWMV &&
+        !use_opfl_refine_all(cm, mbmi)) {
 #else
     if (has_second_ref(mbmi)) {
 #endif  // CONFIG_OPTFLOW_REFINEMENT

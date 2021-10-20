@@ -2438,7 +2438,11 @@ static int64_t simple_translation_pred_rd(
     mbmi->comp_group_idx = 0;
     mbmi->compound_idx = 1;
   }
-  set_default_interp_filters(mbmi, cm->features.interp_filter);
+  set_default_interp_filters(mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+                             cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                             cm->features.interp_filter);
 
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
@@ -3912,7 +3916,11 @@ static AOM_INLINE void rd_pick_skip_mode(
   mbmi->skip_mode = mbmi->skip_txfm = 1;
 #endif
 
-  set_default_interp_filters(mbmi, cm->features.interp_filter);
+  set_default_interp_filters(mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+                             cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                             cm->features.interp_filter);
 
   set_ref_ptrs(cm, xd, mbmi->ref_frame[0], mbmi->ref_frame[1]);
   for (int i = 0; i < num_planes; i++) {
@@ -3998,6 +4006,9 @@ static AOM_INLINE void rd_pick_skip_mode(
     search_state->best_mbmode.filter_intra_mode_info.use_filter_intra = 0;
 
     set_default_interp_filters(&search_state->best_mbmode,
+#if CONFIG_OPTFLOW_REFINEMENT
+                               cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
                                cm->features.interp_filter);
 
     search_state->best_mode_index = mode_index;
@@ -4747,7 +4758,11 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
   mbmi->mv[0].as_int = mbmi->mv[1].as_int = 0;
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   mbmi->interintra_mode = (INTERINTRA_MODE)(II_DC_PRED - 1);
-  set_default_interp_filters(mbmi, cm->features.interp_filter);
+  set_default_interp_filters(mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+                             cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                             cm->features.interp_filter);
 }
 
 static AOM_INLINE void collect_single_states(const FeatureFlags *const features,
@@ -6282,7 +6297,11 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
   }
 
   const InterpFilter interp_filter = features->interp_filter;
-  set_default_interp_filters(mbmi, interp_filter);
+  set_default_interp_filters(mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+                             cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                             interp_filter);
 
   if (interp_filter != SWITCHABLE) {
     best_filter = interp_filter;

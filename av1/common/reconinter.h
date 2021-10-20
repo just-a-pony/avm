@@ -435,6 +435,18 @@ static INLINE int32_t divide_and_round_signed(int64_t num, int64_t den) {
 #endif  // NDEBUG
   return out;
 }
+
+// Return 1 if current frame is REFINE_ALL and the current block uses optical
+// flow refinement, i.e., inter mode is in {NEAR_NEARMV, NEAR_NEWMV,
+// NEW_NEARMV, NEW_NEWMV}, and compound type is simple compound average.
+static INLINE int use_opfl_refine_all(const AV1_COMMON *cm,
+                                      const MB_MODE_INFO *mbmi) {
+  return cm->features.opfl_refine_type == REFINE_ALL &&
+         mbmi->mode >= COMP_INTER_MODE_START &&
+         mbmi->mode < COMP_OPTFLOW_MODE_START &&
+         mbmi->mode != GLOBAL_GLOBALMV &&
+         mbmi->interinter_comp.type == COMPOUND_AVERAGE;
+}
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
 // TODO(jkoleszar): yet another mv clamping function :-(
@@ -521,15 +533,19 @@ void av1_setup_pre_planes(MACROBLOCKD *xd, int idx,
                           const struct scale_factors *sf, const int num_planes);
 
 static INLINE void set_default_interp_filters(
-    MB_MODE_INFO *const mbmi, InterpFilter frame_interp_filter) {
+    MB_MODE_INFO *const mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+    const AV1_COMMON *cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+    InterpFilter frame_interp_filter) {
 #if CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_REMOVE_DUAL_FILTER
-  mbmi->interp_fltr = mbmi->mode > NEW_NEWMV
+  mbmi->interp_fltr = (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
                           ? MULTITAP_SHARP
                           : av1_unswitchable_filter(frame_interp_filter);
 #else
   mbmi->interp_filters =
-      mbmi->mode > NEW_NEWMV
+      (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
           ? av1_broadcast_interp_filter(av1_unswitchable_filter(MULTITAP_SHARP))
           : av1_broadcast_interp_filter(
                 av1_unswitchable_filter(frame_interp_filter));
