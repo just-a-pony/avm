@@ -1391,8 +1391,6 @@ class AV1OptFlowCopyPredTest : public AV1OptFlowTest<pred_buffer_copy> {
   int16_t *dst_buf2_ref_;
   int16_t *dst_buf1_test_;
   int16_t *dst_buf2_test_;
-  int d0_;
-  int d1_;
   static constexpr int kMaxOrderHintBits = 8;
 };
 
@@ -1566,8 +1564,6 @@ class AV1OptFlowCopyPredHighbdTest
   int16_t *dst_buf2_ref_;
   int16_t *dst_buf1_test_;
   int16_t *dst_buf2_test_;
-  int d0_;
-  int d1_;
   static constexpr int kMaxOrderHintBits = 8;
 };
 
