@@ -212,6 +212,10 @@ static void init_txfm_param(const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
   if ((txfm_param->intra_mode < PAETH_PRED) &&
       !xd->lossless[mbmi->segment_id] &&
       !(mbmi->filter_intra_mode_info.use_filter_intra)) {
+#if CONFIG_IST_FIX_B076
+    // updated EOB condition
+    txfm_param->sec_tx_type = get_secondary_tx_type(tx_type);
+#else
     const int width = tx_size_wide[tx_size];
     const int height = tx_size_high[tx_size];
     const int sb_size = (width >= 8 && height >= 8) ? 8 : 4;
@@ -221,6 +225,7 @@ static void init_txfm_param(const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
     else if ((sb_size == 8) && (eob > (IST_8x8_HEIGHT - 1)))
       ist_eob = 0;
     if (ist_eob) txfm_param->sec_tx_type = get_secondary_tx_type(tx_type);
+#endif  // CONFIG_IST_FIX_B076
   }
 #else
   txfm_param->tx_type = tx_type;
@@ -416,15 +421,27 @@ void av1_inv_stxfm(tran_low_t *coeff, TxfmParam *txfm_param) {
 
     const int sb_size = (width >= 8 && height >= 8) ? 8 : 4;
     const int16_t *scan_order_out;
+#if CONFIG_IST_FIX_B076
+    // Align scan order of IST with primary transform scan order
+    const SCAN_ORDER *scan_order_in =
+        get_scan(txfm_param->tx_size, txfm_param->tx_type);
+    const int16_t *const scan = scan_order_in->scan;
+#else
     const int16_t *scan_order_in = (sb_size == 4)
                                        ? stx_scan_orders_4x4[log2width - 2]
                                        : stx_scan_orders_8x8[log2width - 2];
+#endif  // CONFIG_IST_FIX_B076
     tran_low_t buf0[64] = { 0 }, buf1[64] = { 0 };
     tran_low_t *tmp = buf0;
     tran_low_t *src = coeff;
 
     for (int r = 0; r < sb_size * sb_size; r++) {
+#if CONFIG_IST_FIX_B076
+      // Align scan order of IST with primary transform scan order
+      *tmp = src[scan[r]];
+#else
       *tmp = src[scan_order_in[r]];
+#endif  // CONFIG_IST_FIX_B076
       tmp++;
     }
     int8_t transpose = 0;

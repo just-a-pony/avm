@@ -1550,6 +1550,21 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
       }
     }
   }
+#if CONFIG_IST_FIX_B076
+  // CDF update for txsize_sqr_up_map[tx_size] >= TX_32X32
+  else if (!is_inter &&
+#if CONFIG_SDP
+           cm->quant_params.base_qindex > 0 &&
+           !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
+#else
+           cm->quant_params.base_qindex > 0 && !mbmi->skip_txfm &&
+#endif
+           !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP)) {
+    if (cm->seq_params.enable_ist)
+      update_cdf(fc->stx_cdf[txsize_sqr_map[tx_size]],
+                 get_secondary_tx_type(tx_type), STX_TYPES);
+  }
+#endif  // CONFIG_IST_FIX_B076
 }
 
 void av1_update_and_record_txb_context(int plane, int block, int blk_row,

@@ -180,6 +180,8 @@ set_aom_config_var(
 set_aom_config_var(CONFIG_AIMC 1 "AV2 adaptive intra mode coding flag.")
 set_aom_config_var(CONFIG_COMPLEXITY_SCALABLE_MVP 1
                    "Enable complexity scalable mvp")
+set_aom_config_var(CONFIG_IST_FIX_B076 1
+                   "AV2 experiment flag to enable IST scan alignment.")
 #
 # Variables in this section control optional features of the build system.
 #

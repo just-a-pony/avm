@@ -31,4 +31,8 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_OPTFLOW_REFINEMENT 0 !CONFIG_NEW_INTER_MODES)
   endif()
 
+  if(CONFIG_IST)
+    change_config_and_warn(CONFIG_IST_FIX_B076 1 CONFIG_IST)
+  endif()
+
 endmacro()
