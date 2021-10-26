@@ -2754,6 +2754,7 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
   cm->cur_frame->buf.color_range = seq_params->color_range;
   cm->cur_frame->buf.render_width = cm->render_width;
   cm->cur_frame->buf.render_height = cm->render_height;
+  cm->cur_frame->buf.bit_depth = (unsigned int)seq_params->bit_depth;
 
   // Pick the loop filter level for the frame.
   if (!cm->features.allow_intrabc) {

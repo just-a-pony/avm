@@ -12,6 +12,7 @@
 
 #include <stdbool.h>
 #include "common/rawenc.h"
+#include "av1/common/av1_common_int.h"
 
 #define BATCH_SIZE 8
 // When writing greyscale color, batch 8 writes for low bit-depth, 4 writes
@@ -79,9 +80,21 @@ static void raw_write_image_file_or_md5(const aom_image_t *img,
     }
     const unsigned char *buf = img->planes[plane];
     const int stride = img->stride[plane];
-    for (int y = 0; y < h; ++y) {
-      writer_func(file_or_md5, buf, bytes_per_sample, w);
-      buf += stride;
+    if (high_bitdepth && img->bit_depth == 8) {
+      // convert 16-bit buffer to 8-bit (input bitdepth) buffer
+      uint8_t *buf8 = (uint8_t *)aom_malloc(sizeof(*buf8) * w);
+      for (int y = 0; y < h; ++y) {
+        uint16_t *buf16 = (uint16_t *)buf;
+        for (int x = 0; x < w; ++x) buf8[x] = buf16[x] & 0xff;
+
+        writer_func(file_or_md5, buf8, 1, w);
+        buf += stride;
+      }
+    } else {
+      for (int y = 0; y < h; ++y) {
+        writer_func(file_or_md5, buf, bytes_per_sample, w);
+        buf += stride;
+      }
     }
   }
 }
