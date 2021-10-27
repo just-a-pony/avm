@@ -482,7 +482,7 @@ typedef struct {
    * a frame decode.
    */
   REFRESH_FRAME_CONTEXT_MODE refresh_frame_context;
-#if CONFIG_NEW_INTER_MODES
+#if CONFIG_NEW_INTER_MODES || CONFIG_REF_MV_BANK
   /*!
    * Max_drl_bits. Note number of ref MVs allowed is max_drl_bits + 1
    */
