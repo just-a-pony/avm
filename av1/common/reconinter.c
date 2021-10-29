@@ -635,10 +635,6 @@ static AOM_INLINE void init_smooth_interintra_masks() {
 #define OPFL_CLAMP_MV_DELTA 1
 #define OPFL_MV_DELTA_LIMIT (1 << MV_REFINE_PREC_BITS)
 
-static INLINE int opfl_get_subblock_size_log2(int bw, int bh, int plane) {
-  return (plane || (bh <= 8 && bw <= 8)) ? OF_MIN_BSIZE_LOG2 : OF_BSIZE_LOG2;
-}
-
 static INLINE int opfl_get_subblock_size(int bw, int bh, int plane) {
   return (plane || (bh <= 8 && bw <= 8)) ? OF_MIN_BSIZE : OF_BSIZE;
 }
