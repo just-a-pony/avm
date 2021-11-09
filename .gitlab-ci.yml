@@ -22,15 +22,23 @@ Style Check:
   stage: check
   interruptible: true
   image: registry.gitlab.com/aomediacodec/aom-testing/alpine3:20210901124702
+  variables:
+    DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
   script:
+    - 'echo "Diff ref is: $DIFF_REF"'
+    - git fetch --unshallow
     - |
-      # Run clang-format
-      for f in $(git ls-files '*.[hc]pp' '*.cc' '*.[ch]' | grep -v third_party); do
+      # Run clang-format check.
+      for f in $(git diff --diff-filter=ACMR --name-only $DIFF_REF '*.[hc]pp' '*.cc' '*.[ch]' \
+        | grep -v third_party); do
         clang-format -i --style=file $f -n -Werror
       done
     - |
-      # Run cmake-format
-      git ls-files '*.cmake' 'CMakeLists.txt' | grep -v third_party | xargs cmake-format --check
+      # Run cmake-format check.
+      for f in $(git diff --diff-filter=ACMR --name-only $DIFF_REF '*.cmake' 'CMakeLists.txt' \
+        | grep -v third_party); do
+        cmake-format --check
+      done
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
