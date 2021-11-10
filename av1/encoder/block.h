@@ -650,11 +650,13 @@ typedef struct {
   int mrl_index_cost[MRL_LINE_NUMBER];
 #endif
 #if CONFIG_AIMC
-  // y mode cost
+  //! y primary flag cost
   int y_primary_flag_cost[INTRA_MODE_SETS];
+  //! y first mode cost
   int y_first_mode_costs[Y_MODE_CONTEXTS][FIRST_MODE_COUNT];
+  //! y second mode cost
   int y_second_mode_costs[Y_MODE_CONTEXTS][SECOND_MODE_COUNT];
-  // uv mode cost
+  //! uv mode cost
   int intra_uv_mode_cost[CFL_ALLOWED_TYPES][UV_MODE_CONTEXTS][UV_INTRA_MODES];
 #endif  // CONFIG_AIMC
 

@@ -89,8 +89,8 @@ typedef struct IntraModeSearchState {
   PALETTE_MODE_INFO pmi_uv;   /*!< \brief Color map if mode_uv is palette */
   int8_t uv_angle_delta;      /*!< \brief Angle delta if mode_uv directional */
 #if CONFIG_AIMC
-  int uv_mode_idx;
-#endif  // CONFIG_AIMC
+  int uv_mode_idx; /*!< \brief UV mode Index */
+#endif             // CONFIG_AIMC
   /**@}*/
 
   /*!
@@ -100,6 +100,8 @@ typedef struct IntraModeSearchState {
 } IntraModeSearchState;
 
 #if CONFIG_AIMC
+/*!\brief Get mode cost for chroma channels.
+ */
 int get_uv_mode_cost(MB_MODE_INFO *mbmi, const ModeCosts mode_costs,
                      CFL_ALLOWED_TYPE cfl_allowed, int mode_index);
 #endif  // CONFIG_AIMC

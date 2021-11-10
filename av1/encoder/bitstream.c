@@ -851,11 +851,13 @@ static AOM_INLINE void write_filter_intra_mode_info(
   }
 }
 
+#if !CONFIG_AIMC
 static AOM_INLINE void write_angle_delta(aom_writer *w, int angle_delta,
                                          aom_cdf_prob *cdf) {
   aom_write_symbol(w, angle_delta + MAX_ANGLE_DELTA, cdf,
                    2 * MAX_ANGLE_DELTA + 1);
 }
+#endif  // !CONFIG_AIMC
 
 static AOM_INLINE void write_mb_interp_filter(AV1_COMMON *const cm,
                                               const MACROBLOCKD *xd,
