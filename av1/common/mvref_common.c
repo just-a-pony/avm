@@ -1190,8 +1190,13 @@ static AOM_INLINE void setup_ref_mv_list(
   }
 #if CONFIG_REF_MV_BANK
   if (!cm->seq_params.enable_refmvbank) return;
+#if CONFIG_NEW_INTER_MODES
   const int ref_mv_limit =
       AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
+#else
+  const int ref_mv_limit =
+      AOMMIN(USABLE_REF_MV_STACK_SIZE, MAX_REF_MV_STACK_SIZE);
+#endif  // CONFIG_NEW_INTER_MODES
   // If open slots are available, fetch reference MVs from the ref mv banks.
   if (*refmv_count < ref_mv_limit && ref_frame != INTRA_FRAME) {
     const REF_MV_BANK *ref_mv_bank = xd->ref_mv_bank_pt;
@@ -1210,6 +1215,16 @@ static AOM_INLINE void setup_ref_mv_list(
                      xd->mi_row, xd->mi_col, block_width, block_height,
                      cm->width, cm->height);
     }
+#if !CONFIG_NEW_INTER_MODES
+    if (mv_ref_list != NULL) {
+      for (int idx = *refmv_count; idx < MAX_MV_REF_CANDIDATES; ++idx)
+        mv_ref_list[idx].as_int = gm_mv_candidates[0].as_int;
+      for (int idx = 0; idx < AOMMIN(MAX_MV_REF_CANDIDATES, *refmv_count);
+           ++idx) {
+        mv_ref_list[idx].as_int = ref_mv_stack[idx].this_mv.as_int;
+      }
+    }
+#endif  // !CONFIG_NEW_INTER_MODES
   }
 #endif  // CONFIG_REF_MV_BANK
 }
