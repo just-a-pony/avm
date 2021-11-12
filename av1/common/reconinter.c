@@ -2154,17 +2154,17 @@ const uint8_t *av1_get_obmc_mask(int length) {
   }
 }
 
-static INLINE void increment_int_ptr(MACROBLOCKD *xd, int rel_mi_row,
-                                     int rel_mi_col, uint8_t op_mi_size,
-                                     int dir, MB_MODE_INFO *mi, void *fun_ctxt,
-                                     const int num_planes) {
+static INLINE void increment_uint8_t_ptr(MACROBLOCKD *xd, int rel_mi_row,
+                                         int rel_mi_col, uint8_t op_mi_size,
+                                         int dir, MB_MODE_INFO *mi,
+                                         void *fun_ctxt, const int num_planes) {
   (void)xd;
   (void)rel_mi_row;
   (void)rel_mi_col;
   (void)op_mi_size;
   (void)dir;
   (void)mi;
-  ++*(int *)fun_ctxt;
+  ++*(uint8_t *)fun_ctxt;
   (void)num_planes;
 }
 
@@ -2179,9 +2179,10 @@ void av1_count_overlappable_neighbors(const AV1_COMMON *cm, MACROBLOCKD *xd) {
   if (!is_motion_variation_allowed_bsize(mbmi->sb_type)) return;
 #endif
 
-  foreach_overlappable_nb_above(cm, xd, INT_MAX, increment_int_ptr,
+  foreach_overlappable_nb_above(cm, xd, INT_MAX, increment_uint8_t_ptr,
                                 &mbmi->overlappable_neighbors[0]);
-  foreach_overlappable_nb_left(cm, xd, INT_MAX, increment_int_ptr,
+  if (mbmi->overlappable_neighbors[0]) return;
+  foreach_overlappable_nb_left(cm, xd, INT_MAX, increment_uint8_t_ptr,
                                &mbmi->overlappable_neighbors[1]);
 }
 
