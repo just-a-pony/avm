@@ -63,11 +63,11 @@ void av1_copy_frame_mvs(const AV1_COMMON *const cm,
 
 #if CONFIG_TMVP_IMPROVEMENT
       if (mi->ref_frame[0] > INTRA_FRAME && mi->ref_frame[1] == NONE_FRAME) {
-        if ((abs(mi->mv[0].as_mv.row) > REFMVS_LIMIT) ||
-            (abs(mi->mv[0].as_mv.col) > REFMVS_LIMIT))
-          continue;
-        mv->ref_frame = mi->ref_frame[0];
-        mv->mv.as_int = mi->mv[0].as_int;
+        if ((abs(mi->mv[0].as_mv.row) <= REFMVS_LIMIT) &&
+            (abs(mi->mv[0].as_mv.col) <= REFMVS_LIMIT)) {
+          mv->ref_frame = mi->ref_frame[0];
+          mv->mv.as_int = mi->mv[0].as_int;
+        }
       } else {
 #endif  // CONFIG_TMVP_IMPROVEMENT
         for (int idx = 0; idx < 2; ++idx) {
