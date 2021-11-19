@@ -335,12 +335,6 @@ typedef struct {
  * \brief Encoder flags for compound prediction modes.
  */
 typedef struct {
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  /*!
-   * Flag to indicate if distance-weighted compound type should be enabled.
-   */
-  bool enable_dist_wtd_comp;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   /*!
    * Flag to indicate if masked (wedge/diff-wtd) compound type should be
    * enabled.
@@ -1252,7 +1246,6 @@ typedef struct FRAME_COUNTS {
 #endif  // CONFIG_NEW_TX_PARTITION
   unsigned int skip_mode[SKIP_MODE_CONTEXTS][2];
   unsigned int skip_txfm[SKIP_CONTEXTS][2];
-  unsigned int compound_index[COMP_INDEX_CONTEXTS][2];
   unsigned int comp_group_idx[COMP_GROUP_IDX_CONTEXTS][2];
   unsigned int delta_q[DELTA_Q_PROBS][2];
   unsigned int delta_lf_multi[FRAME_LF_COUNT][DELTA_LF_PROBS][2];

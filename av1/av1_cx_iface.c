@@ -136,10 +136,7 @@ struct av1_extracfg {
   int enable_order_hint;         // enable order hint for sequence
   int enable_tx64;               // enable 64-pt transform usage for sequence
   int enable_flip_idtx;          // enable flip and identity transform types
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  int enable_dist_wtd_comp;          // enable dist wtd compound for sequence
-#endif                               // !CONFIG_REMOVE_DIST_WTD_COMP
-  int max_reference_frames;          // maximum number of references per frame
+  int max_reference_frames;      // maximum number of references per frame
   int enable_reduced_reference_set;  // enable reduced set of references
   int enable_ref_frame_mvs;          // sequence level
   int allow_ref_frame_mvs;           // frame level
@@ -415,17 +412,14 @@ static struct av1_extracfg default_extra_cfg = {
   1,    // enable intra secondary transform
 #endif  // CONFIG_IST
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
-  1,    // enable intra bi-prediction
-#endif  // CONFIG_IBP_DC or CONFIG_IBP_DIR
-  4,    // min_partition_size
-  128,  // max_partition_size
-  1,    // enable intra edge filter
-  1,    // frame order hint
-  1,    // enable 64-pt transform usage
-  1,    // enable flip and identity transform
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  1,                       // dist-wtd compound
-#endif                     // !CONFIG_REMOVE_DIST_WTD_COMP
+  1,                       // enable intra bi-prediction
+#endif                     // CONFIG_IBP_DC or CONFIG_IBP_DIR
+  4,                       // min_partition_size
+  128,                     // max_partition_size
+  1,                       // enable intra edge filter
+  1,                       // frame order hint
+  1,                       // enable 64-pt transform usage
+  1,                       // enable flip and identity transform
   7,                       // max_reference_frames
   0,                       // enable_reduced_reference_set
   1,                       // enable_ref_frame_mvs sequence level
@@ -849,9 +843,6 @@ static void update_encoder_config(cfg_options_t *cfg,
       : (extra_cfg->superblock_size == AOM_SUPERBLOCK_SIZE_128X128) ? 128
                                                                     : 0;
   cfg->enable_warped_motion = extra_cfg->enable_warped_motion;
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  cfg->enable_dist_wtd_comp = extra_cfg->enable_dist_wtd_comp;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   cfg->enable_diff_wtd_comp = extra_cfg->enable_diff_wtd_comp;
 #if !CONFIG_REMOVE_DUAL_FILTER
   cfg->enable_dual_filter = extra_cfg->enable_dual_filter;
@@ -927,9 +918,6 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
       : (cfg->superblock_size == 128) ? AOM_SUPERBLOCK_SIZE_128X128
                                       : AOM_SUPERBLOCK_SIZE_DYNAMIC;
   extra_cfg->enable_warped_motion = cfg->enable_warped_motion;
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  extra_cfg->enable_dist_wtd_comp = cfg->enable_dist_wtd_comp;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   extra_cfg->enable_diff_wtd_comp = cfg->enable_diff_wtd_comp;
 #if !CONFIG_REMOVE_DUAL_FILTER
   extra_cfg->enable_dual_filter = cfg->enable_dual_filter;
@@ -1443,10 +1431,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #endif
 
   // Set compound type configuration.
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  comp_type_cfg->enable_dist_wtd_comp =
-      extra_cfg->enable_dist_wtd_comp & extra_cfg->enable_order_hint;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   comp_type_cfg->enable_masked_comp = extra_cfg->enable_masked_comp;
   comp_type_cfg->enable_diff_wtd_comp =
       extra_cfg->enable_masked_comp & extra_cfg->enable_diff_wtd_comp;
@@ -2003,15 +1987,6 @@ static aom_codec_err_t ctrl_set_enable_flip_idtx(aom_codec_alg_priv_t *ctx,
   extra_cfg.enable_flip_idtx = CAST(AV1E_SET_ENABLE_FLIP_IDTX, args);
   return update_extra_cfg(ctx, &extra_cfg);
 }
-
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-static aom_codec_err_t ctrl_set_enable_dist_wtd_comp(aom_codec_alg_priv_t *ctx,
-                                                     va_list args) {
-  struct av1_extracfg extra_cfg = ctx->extra_cfg;
-  extra_cfg.enable_dist_wtd_comp = CAST(AV1E_SET_ENABLE_DIST_WTD_COMP, args);
-  return update_extra_cfg(ctx, &extra_cfg);
-}
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
 
 static aom_codec_err_t ctrl_set_max_reference_frames(aom_codec_alg_priv_t *ctx,
                                                      va_list args) {
@@ -3646,11 +3621,6 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_flip_idtx,
                               argv, err_string)) {
     extra_cfg.enable_flip_idtx = arg_parse_int_helper(&arg, err_string);
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_dist_wtd_comp,
-                              argv, err_string)) {
-    extra_cfg.enable_dist_wtd_comp = arg_parse_int_helper(&arg, err_string);
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.max_reference_frames,
                               argv, err_string)) {
     extra_cfg.max_reference_frames = arg_parse_int_helper(&arg, err_string);
@@ -3885,9 +3855,6 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_ENABLE_ORDER_HINT, ctrl_set_enable_order_hint },
   { AV1E_SET_ENABLE_TX64, ctrl_set_enable_tx64 },
   { AV1E_SET_ENABLE_FLIP_IDTX, ctrl_set_enable_flip_idtx },
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  { AV1E_SET_ENABLE_DIST_WTD_COMP, ctrl_set_enable_dist_wtd_comp },
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   { AV1E_SET_MAX_REFERENCE_FRAMES, ctrl_set_max_reference_frames },
   { AV1E_SET_REDUCED_REFERENCE_SET, ctrl_set_enable_reduced_reference_set },
   { AV1E_SET_ENABLE_REF_FRAME_MVS, ctrl_set_enable_ref_frame_mvs },
@@ -4059,11 +4026,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_CCSO
         1,
 #endif
-        1, 1,   1,
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-        1,
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
-        1, 1,   1,   0, 0, 1, 1, 1, 1,
+        1, 1,   1,   1, 1, 1, 0, 0, 1, 1, 1, 1,
 #if !CONFIG_REMOVE_DUAL_FILTER
         1,
 #endif  // !CONFIG_REMOVE_DUAL_FILTER

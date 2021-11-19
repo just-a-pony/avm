@@ -110,11 +110,7 @@ TEST(Av1Config, WriteInvalidInputs) {
   ASSERT_EQ(-1, write_av1config(&av1_config, 4, &bytes_written, NULL));
 }
 
-#if !CONFIG_REMOVE_DIST_WTD_COMP && !CONFIG_REMOVE_DUAL_FILTER
-TEST(Av1Config, GetAv1ConfigFromLobfObu) {
-#else
 TEST(Av1Config, DISABLED_GetAv1ConfigFromLobfObu) {
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP && !CONFIG_REMOVE_DUAL_FILTER
   // Test parsing of a Sequence Header OBU with the reduced_still_picture_header
   // unset-- aka a full Sequence Header OBU.
   ASSERT_TRUE(VerifyAv1c(kLobfFullSequenceHeaderObu,
@@ -126,11 +122,7 @@ TEST(Av1Config, DISABLED_GetAv1ConfigFromLobfObu) {
                          false));
 }
 
-#if !CONFIG_REMOVE_DIST_WTD_COMP && !CONFIG_REMOVE_DUAL_FILTER
-TEST(Av1Config, GetAv1ConfigFromAnnexBObu) {
-#else
 TEST(Av1Config, DISABLED_GetAv1ConfigFromAnnexBObu) {
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP && !CONFIG_REMOVE_DUAL_FILTER
   // Test parsing of a Sequence Header OBU with the reduced_still_picture_header
   // unset-- aka a full Sequence Header OBU.
   ASSERT_TRUE(VerifyAv1c(kAnnexBFullSequenceHeaderObu,
@@ -142,11 +134,7 @@ TEST(Av1Config, DISABLED_GetAv1ConfigFromAnnexBObu) {
                          true));
 }
 
-#if !CONFIG_REMOVE_DIST_WTD_COMP && !CONFIG_REMOVE_DUAL_FILTER
-TEST(Av1Config, ReadWriteConfig) {
-#else
 TEST(Av1Config, DISABLED_ReadWriteConfig) {
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP && !CONFIG_REMOVE_DUAL_FILTER
   Av1Config av1_config;
   memset(&av1_config, 0, sizeof(av1_config));
 

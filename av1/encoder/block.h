@@ -779,10 +779,6 @@ typedef struct {
    * \name Inter Costs: Compound Masks
    ****************************************************************************/
   /**@{*/
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  //! comp_idx_cost
-  int comp_idx_cost[COMP_INDEX_CONTEXTS][2];
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   //! comp_group_idx_cost
   int comp_group_idx_cost[COMP_GROUP_IDX_CONTEXTS][2];
   /**@}*/
@@ -1161,9 +1157,6 @@ typedef struct macroblock {
   // TODO(any): try to consolidate this speed feature with winner mode
   // processing.
   struct inter_modes_info *inter_modes_info;
-
-  //! How to blend the compound predictions.
-  uint8_t compound_idx;
 
   //! A caches of results of compound type search so they can be reused later.
   COMP_RD_STATS comp_rd_stats[MAX_COMP_RD_STATS];

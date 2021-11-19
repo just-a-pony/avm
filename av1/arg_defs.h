@@ -165,9 +165,6 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t enable_order_hint;
   arg_def_t enable_tx64;
   arg_def_t enable_flip_idtx;
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  arg_def_t enable_dist_wtd_comp;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   arg_def_t enable_masked_comp;
   arg_def_t enable_onesided_comp;
   arg_def_t enable_interintra_comp;

@@ -279,9 +279,6 @@ static INLINE int is_interinter_compound_used(COMPOUND_TYPE type,
   const int comp_allowed = is_comp_ref_allowed(sb_type);
   switch (type) {
     case COMPOUND_AVERAGE:
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-    case COMPOUND_DISTWTD:
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
     case COMPOUND_DIFFWTD: return comp_allowed;
     case COMPOUND_WEDGE:
       return comp_allowed && av1_wedge_params_lookup[sb_type].wedge_types > 0;
@@ -601,12 +598,6 @@ static INLINE const uint8_t *av1_get_contiguous_soft_mask(int8_t wedge_index,
                                                           BLOCK_SIZE sb_type) {
   return av1_wedge_params_lookup[sb_type].masks[wedge_sign][wedge_index];
 }
-
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-void av1_dist_wtd_comp_weight_assign(const AV1_COMMON *cm,
-                                     const MB_MODE_INFO *mbmi, int *fwd_offset,
-                                     int *bck_offset, int is_compound);
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
 
 const uint8_t *av1_get_compound_type_mask(
     const INTERINTER_COMPOUND_DATA *const comp_data, BLOCK_SIZE sb_type);

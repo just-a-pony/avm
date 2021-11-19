@@ -29,7 +29,6 @@ static INLINE int is_interp_filter_good_match(
 
   if (skip_level == 1 && is_comp) {
     if (st->comp_type != mi->interinter_comp.type) return INT_MAX;
-    if (st->compound_idx != mi->compound_idx) return INT_MAX;
   }
 
   int mv_diff = 0;
@@ -54,7 +53,6 @@ static INLINE int save_interp_filter_search_stat(
       { mbmi->mv[0], mbmi->mv[1] },
       { mbmi->ref_frame[0], mbmi->ref_frame[1] },
       mbmi->interinter_comp.type,
-      mbmi->compound_idx,
       rd,
       pred_sse
     };
@@ -677,8 +675,7 @@ static INLINE void calc_interp_skip_pred_flag(MACROBLOCK *const x,
   // vertical filter decision may be incorrect as temporary MC evaluation
   // overwrites the mask. Make skip_ver as 0 for this case so that mask is
   // populated during luma MC
-  if (is_compound && mbmi->compound_idx == 1 &&
-      mbmi->interinter_comp.type == COMPOUND_DIFFWTD) {
+  if (is_compound && mbmi->interinter_comp.type == COMPOUND_DIFFWTD) {
     assert(mbmi->comp_group_idx == 1);
     if (*skip_hor == 0 && *skip_ver == 1) *skip_ver = 0;
   }

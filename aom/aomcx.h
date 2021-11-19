@@ -848,23 +848,9 @@ enum aome_enc_control_id {
    */
   AV1E_SET_ENABLE_FLIP_IDTX = 81,
 
-/* Note: enum value 82 unused */
+  /* Note: enum value 82 unused */
 
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  /*!\brief Codec control function to turn on / off dist-wtd compound mode
-   * at sequence level, int parameter
-   *
-   * This will enable or disable distance-weighted compound mode.
-   * \attention If AV1E_SET_ENABLE_ORDER_HINT is 0, then this flag is forced
-   * to 0.
-   *
-   * - 0 = disable
-   * - 1 = enable (default)
-   */
-  AV1E_SET_ENABLE_DIST_WTD_COMP = 83,
-#else
-/* Note: enum value 83 unused */
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
+  /* Note: enum value 83 unused */
 
   /*!\brief Codec control function to turn on / off ref frame mvs (mfmv) usage
    * at sequence level, int parameter
@@ -1598,11 +1584,6 @@ AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_TX64, int)
 
 AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_FLIP_IDTX, int)
 #define AOM_CTRL_AV1E_SET_ENABLE_FLIP_IDTX
-
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_DIST_WTD_COMP, int)
-#define AOM_CTRL_AV1E_SET_ENABLE_DIST_WTD_COMP
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
 
 AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_REF_FRAME_MVS, int)
 #define AOM_CTRL_AV1E_SET_ENABLE_REF_FRAME_MVS

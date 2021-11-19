@@ -108,9 +108,6 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_obmc);
     GET_PARAMS(enable_warped_motion);
     GET_PARAMS(enable_global_motion);
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-    GET_PARAMS(enable_dist_wtd_comp);
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
     GET_PARAMS(enable_diff_wtd_comp);
     GET_PARAMS(enable_interintra_comp);
     GET_PARAMS(enable_masked_comp);

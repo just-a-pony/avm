@@ -152,9 +152,6 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_SET_ENABLE_ORDER_HINT,
                                         AV1E_SET_ENABLE_TX64,
                                         AV1E_SET_ENABLE_FLIP_IDTX,
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-                                        AV1E_SET_ENABLE_DIST_WTD_COMP,
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
                                         AV1E_SET_ENABLE_MASKED_COMP,
                                         AV1E_SET_ENABLE_ONESIDED_COMP,
                                         AV1E_SET_ENABLE_INTERINTRA_COMP,
@@ -352,9 +349,6 @@ const arg_def_t *av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.enable_order_hint,
   &g_av1_codec_arg_defs.enable_tx64,
   &g_av1_codec_arg_defs.enable_flip_idtx,
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  &g_av1_codec_arg_defs.enable_dist_wtd_comp,
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   &g_av1_codec_arg_defs.enable_masked_comp,
   &g_av1_codec_arg_defs.enable_onesided_comp,
   &g_av1_codec_arg_defs.enable_interintra_comp,
@@ -617,9 +611,6 @@ static void init_config(cfg_options_t *config) {
   config->enable_obmc = 1;
   config->enable_warped_motion = 1;
   config->enable_global_motion = 1;
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  config->enable_dist_wtd_comp = 1;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   config->enable_diff_wtd_comp = 1;
   config->enable_interintra_comp = 1;
   config->enable_masked_comp = 1;
@@ -1490,19 +1481,11 @@ static void show_stream_config(struct stream_state *stream,
           encoder_cfg->enable_obmc, encoder_cfg->enable_warped_motion,
           encoder_cfg->enable_global_motion);
 
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  fprintf(stdout,
-          "                               : DistCompound (%d), DiffCompound "
-          "(%d), InterIntra (%d)\n",
-          encoder_cfg->enable_dist_wtd_comp, encoder_cfg->enable_diff_wtd_comp,
-          encoder_cfg->enable_interintra_comp);
-#else
   fprintf(stdout,
           "                               : DiffCompound "
           "(%d), InterIntra (%d)\n",
           encoder_cfg->enable_diff_wtd_comp,
           encoder_cfg->enable_interintra_comp);
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
 
   fprintf(stdout,
           "                               : MaskCompound: (%d), "

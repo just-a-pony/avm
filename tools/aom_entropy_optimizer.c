@@ -636,13 +636,7 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob "
                      "default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(2)]");
 
-  /* joint compound flag */
-  cts_each_dim[0] = COMP_INDEX_CONTEXTS;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.compound_index[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob default_compound_idx_cdfs"
-                     "[COMP_INDEX_CONTEXTS][CDF_SIZE(2)]");
-
+  /* joint compound group index */
   cts_each_dim[0] = COMP_GROUP_IDX_CONTEXTS;
   cts_each_dim[1] = 2;
   optimize_cdf_table(&fc.comp_group_idx[0][0], probsfile, 2, cts_each_dim,

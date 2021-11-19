@@ -4821,9 +4821,6 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
     seq_params->enable_dual_filter = 0;
 #endif  // !CONFIG_REMOVE_DUAL_FILTER
     seq_params->order_hint_info.enable_order_hint = 0;
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-    seq_params->order_hint_info.enable_dist_wtd_comp = 0;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
     seq_params->order_hint_info.enable_ref_frame_mvs = 0;
     seq_params->force_screen_content_tools = 2;  // SELECT_SCREEN_CONTENT_TOOLS
     seq_params->force_integer_mv = 2;            // SELECT_INTEGER_MV
@@ -4840,10 +4837,6 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
 #endif  // !CONFIG_REMOVE_DUAL_FILTER
 
     seq_params->order_hint_info.enable_order_hint = aom_rb_read_bit(rb);
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-    seq_params->order_hint_info.enable_dist_wtd_comp =
-        seq_params->order_hint_info.enable_order_hint ? aom_rb_read_bit(rb) : 0;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
     seq_params->order_hint_info.enable_ref_frame_mvs =
         seq_params->order_hint_info.enable_order_hint ? aom_rb_read_bit(rb) : 0;
 

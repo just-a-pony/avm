@@ -1305,18 +1305,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
                      mbmi->comp_group_idx, 2);
         }
 
-        if (mbmi->comp_group_idx == 0) {
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-          const int comp_index_ctx = get_comp_index_context(cm, xd);
-#if CONFIG_ENTROPY_STATS
-          ++counts->compound_index[comp_index_ctx][mbmi->compound_idx];
-#endif
-          update_cdf(fc->compound_index_cdf[comp_index_ctx], mbmi->compound_idx,
-                     2);
-#else
-          assert(mbmi->compound_idx == 1);
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
-        } else {
+        if (mbmi->comp_group_idx == 1) {
           assert(masked_compound_used);
           if (is_interinter_compound_used(COMPOUND_WEDGE, bsize)) {
 #if CONFIG_ENTROPY_STATS
@@ -1546,8 +1535,7 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       mbmi->delta_lf_from_base = xd->delta_lf_from_base;
     }
     if (has_second_ref(mbmi)) {
-      if (mbmi->compound_idx == 0 ||
-          mbmi->interinter_comp.type == COMPOUND_AVERAGE)
+      if (mbmi->interinter_comp.type == COMPOUND_AVERAGE)
         mbmi->comp_group_idx = 0;
       else
         mbmi->comp_group_idx = 1;

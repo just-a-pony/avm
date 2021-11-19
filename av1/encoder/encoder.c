@@ -436,12 +436,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if !CONFIG_REMOVE_DUAL_FILTER
   seq->enable_dual_filter = tool_cfg->enable_dual_filter;
 #endif  // !CONFIG_REMOVE_DUAL_FILTER
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  seq->order_hint_info.enable_dist_wtd_comp =
-      oxcf->comp_type_cfg.enable_dist_wtd_comp;
-  seq->order_hint_info.enable_dist_wtd_comp &=
-      seq->order_hint_info.enable_order_hint;
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   seq->order_hint_info.enable_ref_frame_mvs = tool_cfg->ref_frame_mvs_present;
   seq->order_hint_info.enable_ref_frame_mvs &=
       seq->order_hint_info.enable_order_hint;

@@ -413,12 +413,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "ADST_FLIPADST, FLIPADST_ADST, IDTX, V_DCT, H_DCT, V_ADST, "
               "H_ADST, V_FLIPADST, H_FLIPADST"),
 
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  .enable_dist_wtd_comp = ARG_DEF(NULL, "enable-dist-wtd-comp", 1,
-                                  "Enable distance-weighted compound "
-                                  "(0: false, 1: true (default))"),
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
-
   .enable_masked_comp = ARG_DEF(NULL, "enable-masked-comp", 1,
                                 "Enable masked (wedge/diff-wtd) compound "
                                 "(0: false, 1: true (default))"),

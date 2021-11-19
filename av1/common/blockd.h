@@ -427,8 +427,6 @@ typedef struct MB_MODE_INFO {
 #endif
   /*! \brief Indicates if masked compound is used(1) or not (0). */
   uint8_t comp_group_idx : 1;
-  /*! \brief Indicates whether dist_wtd_comp(0) is used or not (0). */
-  uint8_t compound_idx : 1;
   /*! \brief Whether to use interintra wedge */
   uint8_t use_wedge_interintra : 1;
   /*! \brief CDEF strength per BLOCK_64X64 */

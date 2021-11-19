@@ -1094,19 +1094,6 @@ static const aom_cdf_prob default_skip_txfm_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)] = {
 static const aom_cdf_prob default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(
     2)] = { { AOM_CDF2(32621) }, { AOM_CDF2(20708) }, { AOM_CDF2(8127) } };
 
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-static const aom_cdf_prob
-    default_compound_idx_cdfs[COMP_INDEX_CONTEXTS][CDF_SIZE(2)] = {
-      { AOM_CDF2(18244) }, { AOM_CDF2(12865) }, { AOM_CDF2(7053) },
-      { AOM_CDF2(13259) }, { AOM_CDF2(9334) },  { AOM_CDF2(4644) }
-    };
-
-static const aom_cdf_prob
-    default_comp_group_idx_cdfs[COMP_GROUP_IDX_CONTEXTS][CDF_SIZE(2)] = {
-      { AOM_CDF2(26607) }, { AOM_CDF2(22891) }, { AOM_CDF2(18840) },
-      { AOM_CDF2(24594) }, { AOM_CDF2(19934) }, { AOM_CDF2(22674) }
-    };
-#else
 static const aom_cdf_prob
     default_comp_group_idx_cdfs[COMP_GROUP_IDX_CONTEXTS][CDF_SIZE(2)] = {
       { AOM_CDF2(16384) }, { AOM_CDF2(19384) }, { AOM_CDF2(19384) },
@@ -1114,7 +1101,6 @@ static const aom_cdf_prob
       { AOM_CDF2(15384) }, { AOM_CDF2(17384) }, { AOM_CDF2(17384) },
       { AOM_CDF2(20384) }, { AOM_CDF2(17384) }, { AOM_CDF2(17384) },
     };
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
 
 static const aom_cdf_prob default_intrabc_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     30531) };
@@ -1441,9 +1427,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #else
   av1_copy(fc->txfm_partition_cdf, default_txfm_partition_cdf);
 #endif  // CONFIG_NEW_TX_PARTITION
-#if !CONFIG_REMOVE_DIST_WTD_COMP
-  av1_copy(fc->compound_index_cdf, default_compound_idx_cdfs);
-#endif  // !CONFIG_REMOVE_DIST_WTD_COMP
   av1_copy(fc->comp_group_idx_cdf, default_comp_group_idx_cdfs);
 #if CONFIG_NEW_INTER_MODES
   av1_copy(fc->inter_single_mode_cdf, default_inter_single_mode_cdf);
