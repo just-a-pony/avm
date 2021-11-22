@@ -865,7 +865,7 @@ static AOM_INLINE void write_mb_interp_filter(AV1_COMMON *const cm,
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
-  if (!av1_is_interp_needed(xd)) {
+  if (!av1_is_interp_needed(cm, xd)) {
 #if CONFIG_DEBUG
 #if CONFIG_OPTFLOW_REFINEMENT
     // Sharp filter is always used whenever optical flow refinement is applied.

@@ -557,9 +557,15 @@ static INLINE void set_default_interp_filters(
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 }
 
-static INLINE int av1_is_interp_needed(const MACROBLOCKD *const xd) {
+static INLINE int av1_is_interp_needed(const AV1_COMMON *const cm,
+                                       const MACROBLOCKD *const xd) {
+  (void)cm;
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   if (mbmi->skip_mode) return 0;
+#if CONFIG_OPTFLOW_REFINEMENT
+  // No interpolation filter search when optical flow MV refinement is used.
+  if (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi)) return 0;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
   if (mbmi->motion_mode == WARPED_CAUSAL) return 0;
   if (is_nontrans_global_motion(xd, xd->mi[0])) return 0;
   return 1;

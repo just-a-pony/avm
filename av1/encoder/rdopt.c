@@ -1666,7 +1666,7 @@ static int64_t motion_mode_rd(
   MB_MODE_INFO best_mbmi;
   const int interp_filter = features->interp_filter;
   const int switchable_rate =
-      av1_is_interp_needed(xd)
+      av1_is_interp_needed(cm, xd)
           ? av1_get_switchable_rate(x, xd,
 #if !CONFIG_REMOVE_DUAL_FILTER
                                     cm->seq_params.enable_dual_filter,
@@ -2979,7 +2979,7 @@ static int process_compound_inter_mode(
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
   // Find matching interp filter or set to default interp filter
-  const int need_search = av1_is_interp_needed(xd);
+  const int need_search = av1_is_interp_needed(cm, xd);
   const InterpFilter assign_filter = cm->features.interp_filter;
   int is_luma_interp_done = 0;
   av1_find_interp_filter_match(mbmi, cpi, assign_filter, need_search,
@@ -6296,7 +6296,7 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
     best_filter = interp_filter;
   } else {
     best_filter = EIGHTTAP_REGULAR;
-    if (av1_is_interp_needed(xd)) {
+    if (av1_is_interp_needed(cm, xd)) {
       int rs;
       int best_rs = INT_MAX;
       for (i = 0; i < SWITCHABLE_FILTERS; ++i) {
