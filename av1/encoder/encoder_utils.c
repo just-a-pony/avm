@@ -583,7 +583,10 @@ BLOCK_SIZE av1_select_sb_size(const AV1_COMP *const cpi) {
 
   assert(oxcf->tool_cfg.superblock_size == AOM_SUPERBLOCK_SIZE_DYNAMIC);
 
-  if (cpi->svc.number_spatial_layers > 1 ||
+  if (
+#if CONFIG_SVC_ENCODER
+      cpi->svc.number_spatial_layers > 1 ||
+#endif  // CONFIG_SVC_ENCODER
       oxcf->resize_cfg.resize_mode != RESIZE_NONE) {
     // Use the configured size (top resolution) for spatial layers or
     // on resize.

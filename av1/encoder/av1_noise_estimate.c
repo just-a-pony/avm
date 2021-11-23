@@ -23,13 +23,15 @@
 #include "av1/encoder/encoder.h"
 
 #if CONFIG_AV1_TEMPORAL_DENOISING
+#if CONFIG_SVC_ENCODER
 // For SVC: only do noise estimation on top spatial layer.
 static INLINE int noise_est_svc(const struct AV1_COMP *const cpi) {
   return (!cpi->use_svc ||
           (cpi->use_svc &&
            cpi->svc.spatial_layer_id == cpi->svc.number_spatial_layers - 1));
 }
-#endif
+#endif  // CONFIG_SVC_ENCODER
+#endif  // CONFIG_AV1_TEMPORAL_DENOISING
 
 void av1_noise_estimate_init(NOISE_ESTIMATE *const ne, int width, int height) {
   ne->enabled = 0;
@@ -62,7 +64,10 @@ static int enable_noise_estimation(AV1_COMP *const cpi) {
 
 // Enable noise estimation if denoising is on.
 #if CONFIG_AV1_TEMPORAL_DENOISING
-  if (cpi->oxcf.noise_sensitivity > 0 && noise_est_svc(cpi) &&
+  if (cpi->oxcf.noise_sensitivity > 0 &&
+#if CONFIG_SVC_ENCODER
+      noise_est_svc(cpi) &&
+#endif  // CONFIG_SVC_ENCODER
       cpi->common.width >= 320 && cpi->common.height >= 180)
     return 1;
 #endif
@@ -72,7 +77,10 @@ static int enable_noise_estimation(AV1_COMP *const cpi) {
   // Not enabled for low resolutions.
   if (cpi->oxcf.pass == 0 && cpi->oxcf.rc_cfg.mode == AOM_CBR &&
       cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ && cpi->oxcf.speed >= 5 &&
-      resize_pending == 0 && !cpi->use_svc &&
+      resize_pending == 0 &&
+#if CONFIG_SVC_ENCODER
+      !cpi->use_svc &&
+#endif  // CONFIG_SVC_ENCODER
       cpi->oxcf.tune_cfg.content != AOM_CONTENT_SCREEN &&
       cpi->common.width * cpi->common.height >= 640 * 360)
     return 1;
@@ -117,7 +125,9 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
 
   NOISE_ESTIMATE *const ne = &cpi->noise_estimate;
+#if CONFIG_SVC_ENCODER
   const int low_res = (cm->width <= 352 && cm->height <= 288);
+#endif  // CONFIG_SVC_ENCODER
   // Estimate of noise level every frame_period frames.
   int frame_period = 8;
   int thresh_consec_zeromv = 6;
@@ -125,7 +135,11 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
   // Estimate is between current source and last source.
   YV12_BUFFER_CONFIG *last_source = cpi->last_source;
 #if CONFIG_AV1_TEMPORAL_DENOISING
-  if (cpi->oxcf.noise_sensitivity > 0 && noise_est_svc(cpi)) {
+  if (cpi->oxcf.noise_sensitivity > 0
+#if CONFIG_SVC_ENCODER
+      && noise_est_svc(cpi)
+#endif  // CONFIG_SVC_ENCODER
+  ) {
     last_source = &cpi->denoiser.last_source;
     // Tune these thresholds for different resolutions when denoising is
     // enabled.
@@ -135,14 +149,23 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
   }
 #endif
   ne->enabled = enable_noise_estimation(cpi);
+#if CONFIG_SVC_ENCODER
   if (cpi->svc.number_spatial_layers > 1)
     frame_counter = cpi->svc.current_superframe;
+#endif  // CONFIG_SVC_ENCODER
   if (!ne->enabled || frame_counter % frame_period != 0 ||
       last_source == NULL ||
-      (cpi->svc.number_spatial_layers == 1 &&
-       (ne->last_w != cm->width || ne->last_h != cm->height))) {
+      (
+#if CONFIG_SVC_ENCODER
+          cpi->svc.number_spatial_layers == 1 &&
+#endif  // CONFIG_SVC_ENCODER
+          (ne->last_w != cm->width || ne->last_h != cm->height))) {
 #if CONFIG_AV1_TEMPORAL_DENOISING
-    if (cpi->oxcf.noise_sensitivity > 0 && noise_est_svc(cpi))
+    if (cpi->oxcf.noise_sensitivity > 0
+#if CONFIG_SVC_ENCODER
+        && noise_est_svc(cpi)
+#endif  // CONFIG_SVC_ENCODER
+    )
       copy_frame(&cpi->denoiser.last_source, cpi->source);
 #endif
     if (last_source != NULL) {
@@ -150,6 +173,7 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
       ne->last_h = cm->height;
     }
     return;
+#if CONFIG_SVC_ENCODER
   } else if (frame_counter > 60 && cpi->svc.num_encoded_top_layer > 1 &&
              cpi->rc.frames_since_key > cpi->svc.number_spatial_layers &&
              cpi->svc.spatial_layer_id == cpi->svc.number_spatial_layers - 1 &&
@@ -166,6 +190,7 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
     }
 #endif
     return;
+#endif  // CONFIG_SVC_ENCODER
   } else {
     unsigned int bin_size = 100;
     unsigned int hist[MAX_VAR_HIST_BINS] = { 0 };
@@ -293,13 +318,21 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
       ne->count = 0;
       ne->level = av1_noise_estimate_extract_level(ne);
 #if CONFIG_AV1_TEMPORAL_DENOISING
-      if (cpi->oxcf.noise_sensitivity > 0 && noise_est_svc(cpi))
+      if (cpi->oxcf.noise_sensitivity > 0
+#if CONFIG_SVC_ENCODER
+          && noise_est_svc(cpi)
+#endif  // CONFIG_SVC_ENCODER
+      )
         av1_denoiser_set_noise_level(cpi, ne->level);
 #endif
     }
   }
 #if CONFIG_AV1_TEMPORAL_DENOISING
-  if (cpi->oxcf.noise_sensitivity > 0 && noise_est_svc(cpi))
+  if (cpi->oxcf.noise_sensitivity > 0
+#if CONFIG_SVC_ENCODER
+      && noise_est_svc(cpi)
+#endif  // CONFIG_SVC_ENCODER
+  )
     copy_frame(&cpi->denoiser.last_source, cpi->source);
 #endif
 }

@@ -148,13 +148,16 @@ static INLINE void update_keyframe_counters(AV1_COMP *cpi) {
 }
 
 static INLINE int is_frame_droppable(
+#if CONFIG_SVC_ENCODER
     const SVC *const svc,
+#endif  // CONFIG_SVC_ENCODER
     const ExtRefreshFrameFlagsInfo *const ext_refresh_frame_flags) {
   // Droppable frame is only used by external refresh flags. VoD setting won't
   // trigger its use case.
-  if (svc->external_ref_frame_config)
-    return svc->non_reference_frame;
-  else if (ext_refresh_frame_flags->update_pending)
+#if CONFIG_SVC_ENCODER
+  if (svc->external_ref_frame_config) return svc->non_reference_frame;
+#endif  // CONFIG_SVC_ENCODER
+  if (ext_refresh_frame_flags->update_pending)
     return !(ext_refresh_frame_flags->alt_ref_frame ||
              ext_refresh_frame_flags->alt2_ref_frame ||
              ext_refresh_frame_flags->bwd_ref_frame ||
@@ -169,8 +172,11 @@ static INLINE void update_frames_till_gf_update(AV1_COMP *cpi) {
   // is a work-around to handle the condition when a frame is drop.
   // We should fix the cpi->common.show_frame flag
   // instead of checking the other condition to update the counter properly.
-  if (cpi->common.show_frame ||
-      is_frame_droppable(&cpi->svc, &cpi->ext_flags.refresh_frame)) {
+  if (cpi->common.show_frame || is_frame_droppable(
+#if CONFIG_SVC_ENCODER
+                                    &cpi->svc,
+#endif  // CONFIG_SVC_ENCODER
+                                    &cpi->ext_flags.refresh_frame)) {
     // Decrement count down till next gf
     if (cpi->rc.frames_till_gf_update_due > 0)
       cpi->rc.frames_till_gf_update_due--;
@@ -275,7 +281,9 @@ static int choose_primary_ref_frame(
   // frame bit allocation.
   if (cm->tiles.large_scale) return (LAST_FRAME - LAST_FRAME);
 
+#if CONFIG_SVC_ENCODER
   if (cpi->use_svc) return av1_svc_primary_ref_frame(cpi);
+#endif  // CONFIG_SVC_ENCODER
 
   // Find the most recent reference frame with the same reference type as the
   // current frame
@@ -435,11 +443,13 @@ static void adjust_frame_rate(AV1_COMP *cpi, int64_t ts_start, int64_t ts_end) {
   // Clear down mmx registers
   aom_clear_system_state();
 
+#if CONFIG_SVC_ENCODER
   if (cpi->use_svc && cpi->svc.spatial_layer_id > 0) {
     cpi->framerate = cpi->svc.base_framerate;
     av1_rc_update_framerate(cpi, cpi->common.width, cpi->common.height);
     return;
   }
+#endif  // CONFIG_SVC_ENCODER
 
   if (ts_start == time_stamps->first_ever) {
     this_duration = ts_end - ts_start;
@@ -786,7 +796,9 @@ int av1_get_refresh_frame_flags(
   const ExtRefreshFrameFlagsInfo *const ext_refresh_frame_flags =
       &cpi->ext_flags.refresh_frame;
 
+#if CONFIG_SVC_ENCODER
   const SVC *const svc = &cpi->svc;
+#endif  // CONFIG_SVC_ENCODER
   // Switch frames and shown key-frames overwrite all reference slots
   if ((frame_params->frame_type == KEY_FRAME && !cpi->no_show_fwd_kf) ||
       frame_params->frame_type == S_FRAME)
@@ -800,11 +812,16 @@ int av1_get_refresh_frame_flags(
     return 0;
   }
 
+#if CONFIG_SVC_ENCODER
   if (is_frame_droppable(svc, ext_refresh_frame_flags)) return 0;
+#else
+  if (is_frame_droppable(ext_refresh_frame_flags)) return 0;
+#endif  // CONFIG_SVC_ENCODER
 
   int refresh_mask = 0;
 
   if (ext_refresh_frame_flags->update_pending) {
+#if CONFIG_SVC_ENCODER
     if (svc->external_ref_frame_config) {
       for (unsigned int i = 0; i < INTER_REFS_PER_FRAME; i++) {
         int ref_frame_map_idx = svc->ref_idx[i];
@@ -812,6 +829,7 @@ int av1_get_refresh_frame_flags(
       }
       return refresh_mask;
     }
+#endif  // CONFIG_SVC_ENCODER
     // Unfortunately the encoder interface reflects the old refresh_*_frame
     // flags so we have to replicate the old refresh_frame_flags logic here in
     // order to preserve the behaviour of the flag overrides.
@@ -1448,9 +1466,11 @@ int av1_encode_strategy(AV1_COMP *const cpi, size_t *const size,
       const int cur_frame_disp =
           cpi->common.current_frame.frame_number + order_offset;
       av1_get_ref_frames(cpi, cur_frame_disp, ref_frame_map_pairs);
+#if CONFIG_SVC_ENCODER
     } else if (cpi->svc.external_ref_frame_config) {
       for (unsigned int i = 0; i < INTER_REFS_PER_FRAME; i++)
         cm->remapped_ref_idx[i] = cpi->svc.ref_idx[i];
+#endif  // CONFIG_SVC_ENCODER
     }
 
     // Get the reference frames
@@ -1560,10 +1580,16 @@ int av1_encode_strategy(AV1_COMP *const cpi, size_t *const size,
 
   // Leave a signal for a higher level caller about if this frame is droppable
   if (*size > 0) {
-    cpi->droppable = is_frame_droppable(&cpi->svc, &ext_flags->refresh_frame);
+    cpi->droppable = is_frame_droppable(
+#if CONFIG_SVC_ENCODER
+        &cpi->svc,
+#endif  // CONFIG_SVC_ENCODER
+        &ext_flags->refresh_frame);
   }
 
+#if CONFIG_SVC_ENCODER
   if (cpi->use_svc) av1_save_layer_context(cpi);
+#endif  // CONFIG_SVC_ENCODER
 
   return AOM_CODEC_OK;
 }

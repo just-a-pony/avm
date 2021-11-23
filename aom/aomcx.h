@@ -1201,8 +1201,9 @@ enum aome_enc_control_id {
    */
   AV1E_SET_MIN_CR = 144,
 
-  /* NOTE: enums 145-149 unused */
+/* NOTE: enums 145-149 unused */
 
+#if CONFIG_SVC_ENCODER
   /*!\brief Codec control function to set the layer id, aom_svc_layer_id_t*
    * parameter
    */
@@ -1218,6 +1219,7 @@ enum aome_enc_control_id {
    * aom_svc_ref_frame_config_t* parameter
    */
   AV1E_SET_SVC_REF_FRAME_CONFIG = 152,
+#endif  // CONFIG_SVC_ENCODER
 
   /*!\brief Codec control function to set the path to the VMAF model used when
    * tuning the encoder for VMAF, const char* parameter
@@ -1389,6 +1391,7 @@ typedef enum {
   AOM_TUNE_VMAF_NEG_MAX_GAIN = 7,
 } aom_tune_metric;
 
+#if CONFIG_SVC_ENCODER
 #define AOM_MAX_LAYERS 32   /**< Max number of layers */
 #define AOM_MAX_SS_LAYERS 4 /**< Max number of spatial layers */
 #define AOM_MAX_TS_LAYERS 8 /**< Max number of temporal layers */
@@ -1422,6 +1425,7 @@ typedef struct aom_svc_ref_frame_config {
   int ref_idx[7];
   int refresh[8]; /**< Refresh flag for each of the 8 slots. */
 } aom_svc_ref_frame_config_t;
+#endif  // CONFIG_SVC_ENCODER
 
 /*!\cond */
 /*!\brief Encoder control function parameter type
@@ -1809,6 +1813,7 @@ AOM_CTRL_USE_TYPE(AV1E_SET_TIER_MASK, unsigned int)
 AOM_CTRL_USE_TYPE(AV1E_SET_MIN_CR, unsigned int)
 #define AOM_CTRL_AV1E_SET_MIN_CR
 
+#if CONFIG_SVC_ENCODER
 AOM_CTRL_USE_TYPE(AV1E_SET_SVC_LAYER_ID, aom_svc_layer_id_t *)
 #define AOME_CTRL_AV1E_SET_SVC_LAYER_ID
 
@@ -1817,6 +1822,7 @@ AOM_CTRL_USE_TYPE(AV1E_SET_SVC_PARAMS, aom_svc_params_t *)
 
 AOM_CTRL_USE_TYPE(AV1E_SET_SVC_REF_FRAME_CONFIG, aom_svc_ref_frame_config_t *)
 #define AOME_CTRL_AV1E_SET_SVC_REF_FRAME_CONFIG
+#endif  // CONFIG_SVC_ENCODER
 
 AOM_CTRL_USE_TYPE(AV1E_ENABLE_SB_MULTIPASS_UNIT_TEST, unsigned int)
 #define AOM_CTRL_AV1E_ENABLE_SB_MULTIPASS_UNIT_TEST

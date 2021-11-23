@@ -241,8 +241,6 @@ list(
   "${AOM_ROOT}/av1/encoder/subgop.h"
   "${AOM_ROOT}/av1/encoder/superres_scale.c"
   "${AOM_ROOT}/av1/encoder/superres_scale.h"
-  "${AOM_ROOT}/av1/encoder/svc_layercontext.c"
-  "${AOM_ROOT}/av1/encoder/svc_layercontext.h"
   "${AOM_ROOT}/av1/encoder/temporal_filter.c"
   "${AOM_ROOT}/av1/encoder/temporal_filter.h"
   "${AOM_ROOT}/av1/encoder/tokenize.c"
@@ -265,6 +263,12 @@ list(
   "${AOM_ROOT}/third_party/vector/vector.h"
   "${AOM_ROOT}/av1/encoder/dwt.c"
   "${AOM_ROOT}/av1/encoder/dwt.h")
+
+if(CONFIG_SVC_ENCODER)
+  list(APPEND AOM_AV1_ENCODER_SOURCES
+       "${AOM_ROOT}/av1/encoder/svc_layercontext.c"
+       "${AOM_ROOT}/av1/encoder/svc_layercontext.h")
+endif()
 
 if(CONFIG_TUNE_VMAF)
   list(APPEND AOM_AV1_ENCODER_SOURCES "${AOM_ROOT}/av1/encoder/tune_vmaf.c"

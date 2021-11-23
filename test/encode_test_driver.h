@@ -115,6 +115,7 @@ class Encoder {
     ASSERT_EQ(AOM_CODEC_OK, res) << EncoderError();
   }
 
+#if CONFIG_SVC_ENCODER
   void Control(int ctrl_id, struct aom_svc_layer_id *arg) {
     const aom_codec_err_t res = aom_codec_control(&encoder_, ctrl_id, arg);
     ASSERT_EQ(AOM_CODEC_OK, res) << EncoderError();
@@ -129,6 +130,7 @@ class Encoder {
     const aom_codec_err_t res = aom_codec_control(&encoder_, ctrl_id, arg);
     ASSERT_EQ(AOM_CODEC_OK, res) << EncoderError();
   }
+#endif  // CONFIG_SVC_ENCODER
 
   void Control(int ctrl_id, const char *arg) {
     const aom_codec_err_t res = aom_codec_control(&encoder_, ctrl_id, arg);
