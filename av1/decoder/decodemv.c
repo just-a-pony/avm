@@ -1446,9 +1446,7 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
 
 static INLINE void read_mb_interp_filter(const MACROBLOCKD *const xd,
                                          InterpFilter interp_filter,
-#if CONFIG_OPTFLOW_REFINEMENT
                                          const AV1_COMMON *cm,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if !CONFIG_REMOVE_DUAL_FILTER
                                          bool enable_dual_filter,
 #endif  // !CONFIG_REMOVE_DUAL_FILTER
@@ -2041,10 +2039,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
     }
   }
 
-  read_mb_interp_filter(xd, features->interp_filter,
-#if CONFIG_OPTFLOW_REFINEMENT
-                        cm,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
+  read_mb_interp_filter(xd, features->interp_filter, cm,
 #if !CONFIG_REMOVE_DUAL_FILTER
                         cm->seq_params.enable_dual_filter,
 #endif  // !CONFIG_REMOVE_DUAL_FILTER
