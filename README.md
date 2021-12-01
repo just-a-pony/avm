@@ -263,40 +263,46 @@ is the default maximum value.
 We are using the Google C Coding Style defined by the
 [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html).
 
-The coding style used by this project is enforced with clang-format using the
-configuration contained in the
-[.clang-format](https://gitlab.com/AOMediaCodec/avm/-/blob/main/.clang-format)
-file in the root of the repository.
+The coding style used by this project is enforced with `clang-format` and
+`cmake-format`.
 
-You can download clang-format using your system's package manager, or directly
-from [llvm.org](http://llvm.org/releases/download.html). You can also view the
-[documentation](https://clang.llvm.org/docs/ClangFormat.html) on llvm.org.
-Output from clang-format varies by clang-format version,
-for best results your version should match the one used by Gitlab CI. You can find the clang-format
-version by reading the comment in the `.clang-format` file linked above.
+- `clang-format` can be installed with your system's package manager, or directly
+from [llvm.org](http://llvm.org/releases/download.html). For best results, your
+version should match the one used by Gitlab CI, noted as a comment in
+[.clang-format](https://gitlab.com/AOMediaCodec/avm/-/blob/main/.clang-format).
 
-Before pushing changes for review you can format your code with:
+- `cmake-format` can be obtained by installing
+[cmakelang](https://pypi.org/project/cmakelang/). Again, for best results, your
+version should match the one used by Gitlab CI, noted as a comment in
+[.cmake-format.py](https://gitlab.com/AOMediaCodec/avm/-/blob/main/.cmake-format.py)
 
-~~~
-    # Apply clang-format to modified .c, .h and .cc files
-    $ clang-format -i --style=file \
-      $(git diff --name-only --diff-filter=ACMR '*.[hc]' '*.cc')
-~~~
 
-Check the .clang-format file for the version used to generate it if there is any
-difference between your local formatting and the review system.
+Before pushing changes for review, format your code using the tools above.
 
-Some Git installations have clang-format integration. Here are some examples:
+We recommend automating the formatting by adding a
+[pre-commit hook](https://git-scm.com/docs/githooks#_pre_commit) at
+`.git/hooks/pre-commit`. An example pre-commit hook is provided below:
 
 ~~~
-    # Apply clang-format to all staged changes:
-    $ git clang-format
+#!/bin/bash
+CLANG_FORMAT_PATH=/usr/bin/
+CMAKE_FORMAT_PATH=${HOME}/.local/bin/
 
-    # Clang format all staged and unstaged changes:
-    $ git clang-format -f
+echo "Applying clang-format ..."
+for file in $(git diff-index --cached --name-only HEAD -- "*.[hc]pp" "*.cc" "*.[ch]") ; do
+  ${CLANG_FORMAT_PATH}/clang-format -i --style=file ${file}
+  git add ${file}
+  echo "Formatted file: $file"
+done
+echo "Done."
 
-    # Clang format all staged and unstaged changes interactively:
-    $ git clang-format -f -p
+echo "Applying cmake-format ..."
+for file in $(git diff-index --cached --name-only HEAD -- '*.cmake' CMakeLists.txt) ; do
+  ${CMAKE_FORMAT_PATH}/cmake-format -i ${file}
+  git add ${file}
+  echo "Formatted file: $file"
+done
+echo "Done."
 ~~~
 
 ## Submitting patches
