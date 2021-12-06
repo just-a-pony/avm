@@ -379,6 +379,108 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
   int best_rate_uv[CFL_JOINT_SIGNS][CFL_PRED_PLANES];
 #endif  // CONFIG_DEBUG
 
+#if CONFIG_CONTEXT_DERIVATION
+  const int skip_trellis = 0;
+  int8_t best_joint_sign = -1;
+  // process CFL_PRED_U
+  RD_STATS rd_stats;
+  av1_init_rd_stats(&rd_stats);
+  for (int plane = 0; plane < CFL_PRED_PLANES; plane++) {
+    for (int joint_sign = 0; joint_sign < CFL_JOINT_SIGNS; joint_sign++) {
+      best_rd_uv[joint_sign][plane] = INT64_MAX;
+      best_c[joint_sign][plane] = 0;
+    }
+  }
+  // Collect RD stats for an alpha value of zero in CFL_PRED_U.
+  // Skip i == CFL_SIGN_ZERO as (0, 0) is invalid.
+  for (int i = CFL_SIGN_NEG; i < CFL_SIGNS; i++) {
+    const int8_t joint_sign =
+        PLANE_SIGN_TO_JOINT_SIGN(CFL_PRED_U, CFL_SIGN_ZERO, i);
+    mbmi->cfl_alpha_idx = 0;
+    mbmi->cfl_alpha_signs = joint_sign;
+    av1_txfm_rd_in_plane(x, cpi, &rd_stats, best_rd, 0, 1, plane_bsize, tx_size,
+                         FTXS_NONE, skip_trellis);
+    if (rd_stats.rate == INT_MAX) break;
+    const int alpha_rate = mode_costs->cfl_cost[joint_sign][CFL_PRED_U][0];
+    best_rd_uv[joint_sign][CFL_PRED_U] =
+        RDCOST(x->rdmult, rd_stats.rate + alpha_rate, rd_stats.dist);
+#if CONFIG_DEBUG
+    best_rate_uv[joint_sign][CFL_PRED_U] = rd_stats.rate;
+#endif  // CONFIG_DEBUG
+  }
+  // Collect RD stats for alpha values other than zero in CFL_PRED_U.
+  for (int pn_sign = CFL_SIGN_NEG; pn_sign < CFL_SIGNS; pn_sign++) {
+    int progress = 0;
+    for (int c = 0; c < CFL_ALPHABET_SIZE; c++) {
+      int flag = 0;
+      if (c > 2 && progress < c) break;
+      av1_init_rd_stats(&rd_stats);
+      for (int i = 0; i < CFL_SIGNS; i++) {
+        const int8_t joint_sign =
+            PLANE_SIGN_TO_JOINT_SIGN(CFL_PRED_U, pn_sign, i);
+        mbmi->cfl_alpha_idx = (c << CFL_ALPHABET_SIZE_LOG2) + c;
+        mbmi->cfl_alpha_signs = joint_sign;
+        av1_txfm_rd_in_plane(x, cpi, &rd_stats, best_rd, 0, 1, plane_bsize,
+                             tx_size, FTXS_NONE, skip_trellis);
+        if (rd_stats.rate == INT_MAX) break;
+        const int alpha_rate = mode_costs->cfl_cost[joint_sign][CFL_PRED_U][c];
+        int64_t this_rd =
+            RDCOST(x->rdmult, rd_stats.rate + alpha_rate, rd_stats.dist);
+        if (this_rd >= best_rd_uv[joint_sign][CFL_PRED_U]) continue;
+        best_rd_uv[joint_sign][CFL_PRED_U] = this_rd;
+        best_c[joint_sign][CFL_PRED_U] = c;
+#if CONFIG_DEBUG
+        best_rate_uv[joint_sign][CFL_PRED_U] = rd_stats.rate;
+#endif  // CONFIG_DEBUG
+        flag = 2;
+        if (best_rd_uv[joint_sign][CFL_PRED_V] == INT64_MAX) continue;
+        this_rd += mode_rd + best_rd_uv[joint_sign][CFL_PRED_V];
+        if (this_rd >= best_rd) continue;
+        best_rd = this_rd;
+        best_joint_sign = joint_sign;
+      }
+      progress += flag;
+    }
+  }
+  // process CFL_PRED_V
+  // Collect RD stats for all alpha values and joint_signs for CFL_PRED_V
+  // taking into consideration the best alpha for CFL_PRED_U for that
+  // joint_sign. This is necessary due to cross component dependency from
+  // CONFIG_CONTEXT_DERIVATION. The combined (CFL_PRED_U and CFL_PRED_V) RDCOST
+  // will be used to decide the best_joint_sign.
+  for (int joint_sign = 0; joint_sign < CFL_JOINT_SIGNS; joint_sign++) {
+    int progress = 0;
+    for (int c = 0; c < CFL_ALPHABET_SIZE; c++) {
+      int flag = 0;
+      if (c > 2 && progress < c) break;
+      av1_init_rd_stats(&rd_stats);
+      mbmi->cfl_alpha_idx =
+          (best_c[joint_sign][CFL_PRED_U] << CFL_ALPHABET_SIZE_LOG2) + c;
+      mbmi->cfl_alpha_signs = joint_sign;
+      av1_txfm_rd_in_plane(x, cpi, &rd_stats, best_rd, 0, 1, plane_bsize,
+                           tx_size, FTXS_NONE, skip_trellis);
+      av1_txfm_rd_in_plane(x, cpi, &rd_stats, best_rd, 0, 2, plane_bsize,
+                           tx_size, FTXS_NONE, skip_trellis);
+      if (rd_stats.rate == INT_MAX) break;
+      const int alpha_rate = mode_costs->cfl_cost[joint_sign][CFL_PRED_V][c];
+      int64_t this_rd =
+          RDCOST(x->rdmult, rd_stats.rate + alpha_rate, rd_stats.dist);
+      if (this_rd >= best_rd_uv[joint_sign][CFL_PRED_V]) continue;
+      best_rd_uv[joint_sign][CFL_PRED_V] = this_rd;
+      best_c[joint_sign][CFL_PRED_V] = c;
+#if CONFIG_DEBUG
+      best_rate_uv[joint_sign][CFL_PRED_V] = rd_stats.rate;
+#endif  // CONFIG_DEBUG
+      flag = 2;
+      if (best_rd_uv[joint_sign][CFL_PRED_U] == INT64_MAX) continue;
+      this_rd += mode_rd + best_rd_uv[joint_sign][CFL_PRED_U];
+      if (this_rd >= best_rd) continue;
+      best_rd = this_rd;
+      best_joint_sign = joint_sign;
+      progress += flag;
+    }
+  }
+#else
   const int skip_trellis = 0;
   for (int plane = 0; plane < CFL_PRED_PLANES; plane++) {
     RD_STATS rd_stats;
@@ -447,6 +549,7 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
       }
     }
   }
+#endif
 
   int best_rate_overhead = INT_MAX;
   uint8_t ind = 0;
