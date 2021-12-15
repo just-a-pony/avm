@@ -288,7 +288,7 @@ Previous Build (x86_64-linux-gcc):
 
 Build (x86-linux-gcc):
   extends: .build-common
-  image: registry.gitlab.com/epirat/images/ubuntu2004-multilib:20210216213329
+  image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004-multilib:20211208021551
   variables:
     EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86-linux.cmake
