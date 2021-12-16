@@ -546,13 +546,22 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
     const int mode_idx = mbmi->y_mode_idx;
     int mode_set_index = mode_idx < FIRST_MODE_COUNT ? 0 : 1;
     mode_set_index += ((mode_idx - FIRST_MODE_COUNT) / SECOND_MODE_COUNT);
+#if CONFIG_ENTROPY_STATS
+    ++counts->y_mode_set_idx[mode_set_index];
+#endif
     update_cdf(fc->y_mode_set_cdf, mode_set_index, INTRA_MODE_SETS);
     if (mode_set_index == 0) {
+#if CONFIG_ENTROPY_STATS
+      ++counts->y_mode_idx_0[context][mode_idx];
+#endif
       update_cdf(fc->y_mode_idx_cdf_0[context], mode_idx, FIRST_MODE_COUNT);
     } else {
-      update_cdf(fc->y_mode_idx_cdf_1[context],
-                 mode_idx - FIRST_MODE_COUNT -
-                     SECOND_MODE_COUNT * (mode_set_index - 1),
+      const int mode_idx_in_set = mode_idx - FIRST_MODE_COUNT -
+                                  SECOND_MODE_COUNT * (mode_set_index - 1);
+#if CONFIG_ENTROPY_STATS
+      ++counts->y_mode_idx_1[context][mode_idx_in_set];
+#endif
+      update_cdf(fc->y_mode_idx_cdf_1[context], mode_idx_in_set,
                  SECOND_MODE_COUNT);
     }
 #else
@@ -574,6 +583,9 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
 #endif  // CONFIG_AIMC
 #if CONFIG_MRLS
     if (cm->seq_params.enable_mrls && av1_is_directional_mode(mbmi->mode)) {
+#if CONFIG_ENTROPY_STATS
+      ++counts->mrl_index[mbmi->mrl_index];
+#endif
       update_cdf(fc->mrl_index_cdf, mbmi->mrl_index, MRL_LINE_NUMBER);
     }
 #endif
@@ -631,11 +643,17 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
 #endif
     const UV_PREDICTION_MODE uv_mode = mbmi->uv_mode;
     const CFL_ALLOWED_TYPE cfl_allowed = is_cfl_allowed(xd);
-#if CONFIG_ENTROPY_STATS && !CONFIG_AIMC
-    ++counts->uv_mode[cfl_allowed][y_mode][uv_mode];
-#endif  // CONFIG_ENTROPY_STATS && !CONFIG_AIMC
 #if CONFIG_AIMC
     const int uv_context = av1_is_directional_mode(mbmi->mode) ? 1 : 0;
+#endif  // CONFIG_AIMC
+#if CONFIG_ENTROPY_STATS
+#if CONFIG_AIMC
+    ++counts->uv_mode[cfl_allowed][uv_context][uv_mode];
+#else
+    ++counts->uv_mode[cfl_allowed][y_mode][uv_mode];
+#endif  // CONFIG_AIMC
+#endif  // CONFIG_ENTROPY_STATS
+#if CONFIG_AIMC
     update_cdf(fc->uv_mode_cdf[cfl_allowed][uv_context], mbmi->uv_mode_idx,
                UV_INTRA_MODES - !cfl_allowed);
 #else

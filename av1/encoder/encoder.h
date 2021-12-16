@@ -1151,10 +1151,20 @@ typedef struct FRAME_COUNTS {
 // Note: This structure should only contain 'unsigned int' fields, or
 // aggregates built solely from 'unsigned int' fields/elements
 #if CONFIG_ENTROPY_STATS
+#if CONFIG_AIMC
+  unsigned int y_mode_set_idx[INTRA_MODE_SETS];
+  unsigned int y_mode_idx_0[Y_MODE_CONTEXTS][FIRST_MODE_COUNT];
+  unsigned int y_mode_idx_1[Y_MODE_CONTEXTS][SECOND_MODE_COUNT];
+  unsigned int uv_mode[CFL_ALLOWED_TYPES][UV_MODE_CONTEXTS][UV_INTRA_MODES];
+#else
   unsigned int kf_y_mode[KF_MODE_CONTEXTS][KF_MODE_CONTEXTS][INTRA_MODES];
   unsigned int angle_delta[DIRECTIONAL_MODES][2 * MAX_ANGLE_DELTA + 1];
   unsigned int y_mode[BLOCK_SIZE_GROUPS][INTRA_MODES];
   unsigned int uv_mode[CFL_ALLOWED_TYPES][INTRA_MODES][UV_INTRA_MODES];
+#endif
+#if CONFIG_MRLS
+  unsigned int mrl_index[MRL_LINE_NUMBER];
+#endif
   unsigned int cfl_sign[CFL_JOINT_SIGNS];
   unsigned int cfl_alpha[CFL_ALPHA_CONTEXTS][CFL_ALPHABET_SIZE];
   unsigned int palette_y_mode[PALATTE_BSIZE_CTXS][PALETTE_Y_MODE_CONTEXTS][2];
