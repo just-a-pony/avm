@@ -316,7 +316,11 @@ void av1_dist_wtd_convolve_2d_copy_sse2(const uint8_t *src, int src_stride,
           else
             *(uint32_t *)(&dst0[j]) = _mm_cvtsi128_si32(res_8);
         } else {
+#if CONFIG_OPTFLOW_REFINEMENT
+          _mm_storeu_si128((__m128i *)(&dst[j]), res_unsigned);
+#else
           _mm_store_si128((__m128i *)(&dst[j]), res_unsigned);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
         }
       }
       src += src_stride;

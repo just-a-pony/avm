@@ -116,7 +116,11 @@ void av1_dist_wtd_convolve_2d_ssse3(
 
         // Pack in the column order 0, 2, 4, 6, 1, 3, 5, 7
         __m128i res = _mm_packs_epi32(res_even, res_odd);
+#if CONFIG_OPTFLOW_REFINEMENT
+        _mm_storeu_si128((__m128i *)&im_block[i * im_stride + j], res);
+#else
         _mm_store_si128((__m128i *)&im_block[i * im_stride + j], res);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
       }
     }
   }
@@ -224,7 +228,11 @@ void av1_dist_wtd_convolve_2d_ssse3(
             *(uint32_t *)(&dst0[i * dst_stride0 + j]) =
                 _mm_cvtsi128_si32(res_8);
         } else {
+#if CONFIG_OPTFLOW_REFINEMENT
+          _mm_storeu_si128((__m128i *)(&dst[i * dst_stride + j]), res_unsigned);
+#else
           _mm_store_si128((__m128i *)(&dst[i * dst_stride + j]), res_unsigned);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
         }
       }
     }
