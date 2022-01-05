@@ -57,53 +57,6 @@ enum {
   INTERP_SKIP_LUMA_SKIP_CHROMA,
 } UENUM1BYTE(INTERP_EVAL_PLANE);
 
-#if !CONFIG_REMOVE_DUAL_FILTER
-enum {
-  INTERP_HORZ_NEQ_VERT_NEQ = 0,
-  INTERP_HORZ_EQ_VERT_NEQ,
-  INTERP_HORZ_NEQ_VERT_EQ,
-  INTERP_HORZ_EQ_VERT_EQ,
-  INTERP_PRED_TYPE_ALL,
-} UENUM1BYTE(INTERP_PRED_TYPE);
-
-static const uint16_t
-    av1_interp_dual_filt_mask[INTERP_PRED_TYPE_ALL - 2][SWITCHABLE_FILTERS] = {
-      { (1 << REG_REG) | (1 << SMOOTH_REG) | (1 << SHARP_REG),
-        (1 << REG_SMOOTH) | (1 << SMOOTH_SMOOTH) | (1 << SHARP_SMOOTH),
-        (1 << REG_SHARP) | (1 << SMOOTH_SHARP) | (1 << SHARP_SHARP) },
-      { (1 << REG_REG) | (1 << REG_SMOOTH) | (1 << REG_SHARP),
-        (1 << SMOOTH_REG) | (1 << SMOOTH_SMOOTH) | (1 << SMOOTH_SHARP),
-        (1 << SHARP_REG) | (1 << SHARP_SMOOTH) | (1 << SHARP_SHARP) }
-    };
-
-// Pack two InterpFilter's into a uint32_t: since there are at most 10 filters,
-// we can use 16 bits for each and have more than enough space. This reduces
-// argument passing and unifies the operation of setting a (pair of) filters.
-typedef struct InterpFilters {
-  uint16_t y_filter;
-  uint16_t x_filter;
-} InterpFilters;
-
-typedef union int_interpfilters {
-  uint32_t as_int;
-  InterpFilters as_filters;
-} int_interpfilters;
-
-static INLINE InterpFilter av1_extract_interp_filter(int_interpfilters filters,
-                                                     int dir) {
-  return (InterpFilter)((dir) ? filters.as_filters.x_filter
-                              : filters.as_filters.y_filter);
-}
-
-static INLINE int_interpfilters
-av1_broadcast_interp_filter(InterpFilter filter) {
-  int_interpfilters filters;
-  filters.as_filters.x_filter = filter;
-  filters.as_filters.y_filter = filter;
-  return filters;
-}
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
-
 static INLINE InterpFilter av1_unswitchable_filter(InterpFilter filter) {
   return filter == SWITCHABLE ? EIGHTTAP_REGULAR : filter;
 }
@@ -280,24 +233,6 @@ static INLINE const InterpFilterParams *av1_get_filter(int subpel_search) {
     default: assert(0); return NULL;
   }
 }
-
-#if !CONFIG_REMOVE_DUAL_FILTER
-static INLINE void reset_interp_filter_allowed_mask(
-    uint16_t *allow_interp_mask, DUAL_FILTER_TYPE filt_type) {
-  uint16_t tmp = (~(1 << filt_type)) & 0xffff;
-  *allow_interp_mask &= (tmp & ALLOW_ALL_INTERP_FILT_MASK);
-}
-
-static INLINE void set_interp_filter_allowed_mask(uint16_t *allow_interp_mask,
-                                                  DUAL_FILTER_TYPE filt_type) {
-  *allow_interp_mask |= (1 << filt_type);
-}
-
-static INLINE uint8_t get_interp_filter_allowed_mask(
-    uint16_t allow_interp_mask, DUAL_FILTER_TYPE filt_type) {
-  return (allow_interp_mask >> filt_type) & 1;
-}
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
 
 #ifdef __cplusplus
 }  // extern "C"

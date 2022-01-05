@@ -117,9 +117,6 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_cfl_intra);
     GET_PARAMS(enable_smooth_intra);
     GET_PARAMS(enable_filter_intra);
-#if !CONFIG_REMOVE_DUAL_FILTER
-    GET_PARAMS(enable_dual_filter);
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
     GET_PARAMS(enable_angle_delta);
 #if CONFIG_OPTFLOW_REFINEMENT
     GET_PARAMS(enable_opfl_refine);

@@ -157,9 +157,6 @@ typedef struct av1_codec_arg_definitions {
 #endif
   arg_def_t min_partition_size;
   arg_def_t max_partition_size;
-#if !CONFIG_REMOVE_DUAL_FILTER
-  arg_def_t enable_dual_filter;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
   arg_def_t enable_chroma_deltaq;
   arg_def_t enable_intra_edge_filter;
   arg_def_t enable_order_hint;

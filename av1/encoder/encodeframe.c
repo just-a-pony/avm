@@ -1432,36 +1432,6 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
         (frame_probs->warped_probs[update_type] + new_prob) >> 1;
   }
 
-#if !CONFIG_REMOVE_DUAL_FILTER
-  if (cm->current_frame.frame_type != KEY_FRAME &&
-      cpi->sf.interp_sf.adaptive_interp_filter_search == 2 &&
-      features->interp_filter == SWITCHABLE) {
-    const FRAME_UPDATE_TYPE update_type = get_frame_update_type(&cpi->gf_group);
-
-    for (i = 0; i < SWITCHABLE_FILTER_CONTEXTS; i++) {
-      int sum = 0;
-      int j;
-      int left = 1536;
-
-      for (j = 0; j < SWITCHABLE_FILTERS; j++) {
-        sum += cpi->td.counts->switchable_interp[i][j];
-      }
-
-      for (j = SWITCHABLE_FILTERS - 1; j >= 0; j--) {
-        const int new_prob =
-            sum ? 1536 * cpi->td.counts->switchable_interp[i][j] / sum
-                : (j ? 0 : 1536);
-        int prob = (frame_probs->switchable_interp_probs[update_type][i][j] +
-                    new_prob) >>
-                   1;
-        left -= prob;
-        if (j == 0) prob += left;
-        frame_probs->switchable_interp_probs[update_type][i][j] = prob;
-      }
-    }
-  }
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
-
   if ((!is_stat_generation_stage(cpi) && av1_use_hash_me(cpi)) ||
       hash_table_created) {
     av1_hash_table_destroy(&intrabc_hash_info->intrabc_hash_table);

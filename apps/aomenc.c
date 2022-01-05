@@ -144,9 +144,6 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_SET_ENABLE_1TO4_PARTITIONS,
                                         AV1E_SET_MIN_PARTITION_SIZE,
                                         AV1E_SET_MAX_PARTITION_SIZE,
-#if !CONFIG_REMOVE_DUAL_FILTER
-                                        AV1E_SET_ENABLE_DUAL_FILTER,
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
                                         AV1E_SET_ENABLE_CHROMA_DELTAQ,
                                         AV1E_SET_ENABLE_INTRA_EDGE_FILTER,
                                         AV1E_SET_ENABLE_ORDER_HINT,
@@ -341,9 +338,6 @@ const arg_def_t *av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.enable_1to4_partitions,
   &g_av1_codec_arg_defs.min_partition_size,
   &g_av1_codec_arg_defs.max_partition_size,
-#if !CONFIG_REMOVE_DUAL_FILTER
-  &g_av1_codec_arg_defs.enable_dual_filter,
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
   &g_av1_codec_arg_defs.enable_chroma_deltaq,
   &g_av1_codec_arg_defs.enable_intra_edge_filter,
   &g_av1_codec_arg_defs.enable_order_hint,
@@ -620,9 +614,6 @@ static void init_config(cfg_options_t *config) {
   config->enable_cfl_intra = 1;
   config->enable_smooth_intra = 1;
   config->enable_filter_intra = 1;
-#if !CONFIG_REMOVE_DUAL_FILTER
-  config->enable_dual_filter = 1;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
   config->enable_angle_delta = 1;
 #if CONFIG_OPTFLOW_REFINEMENT
   config->enable_opfl_refine = 1;
@@ -1417,15 +1408,8 @@ static void show_stream_config(struct stream_state *stream,
           "FilterIntra (%d)\n",
           encoder_cfg->enable_smooth_intra, encoder_cfg->enable_cfl_intra,
           encoder_cfg->enable_filter_intra);
-#if CONFIG_REMOVE_DUAL_FILTER
   fprintf(stdout, "                               : IntraDeltaAngle (%d)\n",
           encoder_cfg->enable_angle_delta);
-#else
-  fprintf(stdout,
-          "                               : DualFilter (%d), IntraDeltaAngle "
-          "(%d)\n",
-          encoder_cfg->enable_dual_filter, encoder_cfg->enable_angle_delta);
-#endif  // CONFIG_REMOVE_DUAL_FILTER
 
   fprintf(stdout,
           "                               : "

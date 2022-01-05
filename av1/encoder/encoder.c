@@ -441,9 +441,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->frame_id_length = FRAME_ID_LENGTH;
   seq->delta_frame_id_length = DELTA_FRAME_ID_LENGTH;
 
-#if !CONFIG_REMOVE_DUAL_FILTER
-  seq->enable_dual_filter = tool_cfg->enable_dual_filter;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
   seq->order_hint_info.enable_ref_frame_mvs = tool_cfg->ref_frame_mvs_present;
   seq->order_hint_info.enable_ref_frame_mvs &=
       seq->order_hint_info.enable_order_hint;

@@ -331,10 +331,6 @@ static void set_good_speed_features_framesize_independent(
   sf->inter_sf.reduce_inter_modes = 1;
   sf->inter_sf.selective_ref_frame = 1;
 
-#if !CONFIG_REMOVE_DUAL_FILTER
-  sf->interp_sf.use_fast_interpolation_filter_search = 1;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
-
   sf->intra_sf.intra_pruning_with_hog = 1;
   sf->intra_sf.intra_pruning_with_hog_thresh = -1.2f;
 
@@ -434,10 +430,6 @@ static void set_good_speed_features_framesize_independent(
     sf->inter_sf.selective_ref_frame = 3;
 
     // TODO(Sachin): Enable/Enhance this speed feature for speed 2 & 3
-#if !CONFIG_REMOVE_DUAL_FILTER
-    sf->interp_sf.adaptive_interp_filter_search = 1;
-    sf->interp_sf.disable_dual_filter = 1;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
 #if CONFIG_IST
     sf->tx_sf.tx_type_search.skip_stx_search = 1;
 #endif
@@ -541,10 +533,6 @@ static void set_good_speed_features_framesize_independent(
 
     sf->interp_sf.cb_pred_filter_search = 1;
     sf->interp_sf.use_interp_filter = 2;
-#if !CONFIG_REMOVE_DUAL_FILTER
-    sf->interp_sf.skip_sharp_interp_filter_search = 1;
-    sf->interp_sf.adaptive_interp_filter_search = 2;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
 
     sf->intra_sf.intra_uv_mode_mask[TX_16X16] = UV_INTRA_DC_H_V_CFL;
     sf->intra_sf.intra_uv_mode_mask[TX_32X32] = UV_INTRA_DC_H_V_CFL;
@@ -766,12 +754,6 @@ static AOM_INLINE void init_inter_sf(INTER_MODE_SPEED_FEATURES *inter_sf) {
 
 static AOM_INLINE void init_interp_sf(INTERP_FILTER_SPEED_FEATURES *interp_sf) {
   interp_sf->cb_pred_filter_search = 0;
-#if !CONFIG_REMOVE_DUAL_FILTER
-  interp_sf->adaptive_interp_filter_search = 0;
-  interp_sf->disable_dual_filter = 0;
-  interp_sf->use_fast_interpolation_filter_search = 0;
-  interp_sf->skip_sharp_interp_filter_search = 0;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
   interp_sf->use_interp_filter = 0;
 }
 
@@ -943,10 +925,6 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
     set_good_speed_features_framesize_independent(cpi, sf, speed);
 
   if (!cpi->seq_params_locked) {
-#if !CONFIG_REMOVE_DUAL_FILTER
-    cpi->common.seq_params.enable_dual_filter &=
-        !sf->interp_sf.disable_dual_filter;
-#endif  // CONFIG_REMOVE_DUAL_FILTER
     cpi->common.seq_params.enable_restoration &= !sf->lpf_sf.disable_lr_filter;
 
     cpi->common.seq_params.enable_masked_compound &=

@@ -817,10 +817,6 @@ typedef struct {
   // When enabled, the encoder will use a full header even for still pictures.
   // When disabled, a reduced header is used for still pictures.
   bool full_still_picture_hdr;
-#if !CONFIG_REMOVE_DUAL_FILTER
-  // Indicates if dual interpolation filters should be enabled.
-  bool enable_dual_filter;
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
   // Indicates if frame order hint should be enabled or not.
   bool enable_order_hint;
   // Indicates if ref_frame_mvs should be enabled at the sequence level.
@@ -1132,17 +1128,6 @@ typedef struct {
    * type is pruned.
    */
   int tx_type_probs[FRAME_UPDATE_TYPES][TX_SIZES_ALL][TX_TYPES];
-
-#if !CONFIG_REMOVE_DUAL_FILTER
-  /*!
-   * switchable_interp_probs[i][j][k] is the probability of kth interpolation
-   * filter being the best for jth filter context and ith frame update type,
-   * averaged over past frames. If switchable_interp_probs[i][j][k] < thresh,
-   * then interpolation filter search is pruned for that case.
-   */
-  int switchable_interp_probs[FRAME_UPDATE_TYPES][SWITCHABLE_FILTER_CONTEXTS]
-                             [SWITCHABLE_FILTERS];
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
 } FrameProbInfo;
 
 /*!\cond */

@@ -201,12 +201,7 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
                            int use_hbd_buf, int is_intrabc,
                            const struct scale_factors *sf,
                            const struct buf_2d *ref_buf,
-#if CONFIG_REMOVE_DUAL_FILTER
-                           InterpFilter interp_filter
-#else
-                           int_interpfilters interp_filters
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-);
+                           InterpFilter interp_filter);
 
 void av1_init_comp_mode(InterPredParams *inter_pred_params);
 
@@ -536,24 +531,11 @@ static INLINE void set_default_interp_filters(
 #endif  // CONFIG_OPTFLOW_REFINEMENT
     InterpFilter frame_interp_filter) {
 #if CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_REMOVE_DUAL_FILTER
   mbmi->interp_fltr = (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
                           ? MULTITAP_SHARP
                           : av1_unswitchable_filter(frame_interp_filter);
 #else
-  mbmi->interp_filters =
-      (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
-          ? av1_broadcast_interp_filter(av1_unswitchable_filter(MULTITAP_SHARP))
-          : av1_broadcast_interp_filter(
-                av1_unswitchable_filter(frame_interp_filter));
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-#else
-#if CONFIG_REMOVE_DUAL_FILTER
   mbmi->interp_fltr = av1_unswitchable_filter(frame_interp_filter);
-#else
-  mbmi->interp_filters =
-      av1_broadcast_interp_filter(av1_unswitchable_filter(frame_interp_filter));
-#endif  // CONFIG_REMOVE_DUAL_FILTER
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 }
 

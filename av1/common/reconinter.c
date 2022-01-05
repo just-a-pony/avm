@@ -63,12 +63,7 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
                            int use_hbd_buf, int is_intrabc,
                            const struct scale_factors *sf,
                            const struct buf_2d *ref_buf,
-#if CONFIG_REMOVE_DUAL_FILTER
-                           InterpFilter interp_filter
-#else
-                           int_interpfilters interp_filters
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-) {
+                           InterpFilter interp_filter) {
   inter_pred_params->block_width = block_width;
   inter_pred_params->block_height = block_height;
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -92,21 +87,11 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
     inter_pred_params->interp_filter_params[1] = &av1_intrabc_filter_params;
   } else {
     inter_pred_params->interp_filter_params[0] =
-        av1_get_interp_filter_params_with_block_size(
-#if CONFIG_REMOVE_DUAL_FILTER
-            interp_filter,
-#else
-            interp_filters.as_filters.x_filter,
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-            block_width);
+        av1_get_interp_filter_params_with_block_size(interp_filter,
+                                                     block_width);
     inter_pred_params->interp_filter_params[1] =
-        av1_get_interp_filter_params_with_block_size(
-#if CONFIG_REMOVE_DUAL_FILTER
-            interp_filter,
-#else
-            interp_filters.as_filters.y_filter,
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-            block_height);
+        av1_get_interp_filter_params_with_block_size(interp_filter,
+                                                     block_height);
   }
 }
 
@@ -683,11 +668,7 @@ void av1_opfl_build_inter_predictor(
 #else
                         is_cur_buf_hbd(xd), mi->use_intrabc, sf, pre_buf,
 #endif  // CONFIG_SDP
-#if CONFIG_REMOVE_DUAL_FILTER
                         mi->interp_fltr);
-#else
-                        mi->interp_filters);
-#endif  // CONFIG_REMOVE_DUAL_FILTER
 
   inter_pred_params->conv_params = get_conv_params_no_round(
       0, plane, xd->tmp_conv_dst, MAX_SB_SIZE, is_compound, xd->bd);
@@ -1788,13 +1769,7 @@ static void build_inter_predictors_sub8x8(
 #else
                             xd->bd, is_cur_buf_hbd(xd), mi->use_intrabc, sf,
 #endif
-                            &pre_buf,
-#if CONFIG_REMOVE_DUAL_FILTER
-                            this_mbmi->interp_fltr
-#else
-                            this_mbmi->interp_filters
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-      );
+                            &pre_buf, this_mbmi->interp_fltr);
       inter_pred_params.conv_params =
           get_conv_params_no_round(ref, plane, NULL, 0, is_compound, xd->bd);
 
@@ -1860,16 +1835,8 @@ static void build_inter_predictors_8x8_and_bigger(
   assert(IMPLIES(
       use_optflow_refinement && mi->interinter_comp.type != COMPOUND_AVERAGE,
       cm->features.opfl_refine_type == REFINE_ALL));
-#if CONFIG_REMOVE_DUAL_FILTER
   assert(IMPLIES(use_optflow_refinement && mi->interp_fltr != MULTITAP_SHARP,
                  cm->features.opfl_refine_type == REFINE_ALL));
-#else
-  assert(
-      IMPLIES(use_optflow_refinement &&
-                  (mi->interp_filters.as_filters.x_filter != MULTITAP_SHARP ||
-                   mi->interp_filters.as_filters.y_filter != MULTITAP_SHARP),
-              cm->features.opfl_refine_type == REFINE_ALL));
-#endif
 
   // Arrays to hold optical flow offsets.
   int vx0[N_OF_OFFSETS] = { 0 };
@@ -1940,12 +1907,7 @@ static void build_inter_predictors_8x8_and_bigger(
 #else
                           is_cur_buf_hbd(xd), mi->use_intrabc, sf, pre_buf,
 #endif
-#if CONFIG_REMOVE_DUAL_FILTER
-                          mi->interp_fltr
-#else
-                          mi->interp_filters
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-    );
+                          mi->interp_fltr);
     if (is_compound) av1_init_comp_mode(&inter_pred_params);
     inter_pred_params.conv_params = get_conv_params_no_round(
         ref, plane, xd->tmp_conv_dst, MAX_SB_SIZE, is_compound, xd->bd);
@@ -1972,21 +1934,9 @@ static void build_inter_predictors_8x8_and_bigger(
     if (use_optflow_refinement && plane == 0) {
       int n = opfl_get_subblock_size(bw, bh, plane);
       inter_pred_params.interp_filter_params[0] =
-          av1_get_interp_filter_params_with_block_size(
-#if CONFIG_REMOVE_DUAL_FILTER
-              mi->interp_fltr,
-#else
-              mi->interp_filters.as_filters.x_filter,
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-              n);
+          av1_get_interp_filter_params_with_block_size(mi->interp_fltr, n);
       inter_pred_params.interp_filter_params[1] =
-          av1_get_interp_filter_params_with_block_size(
-#if CONFIG_REMOVE_DUAL_FILTER
-              mi->interp_fltr,
-#else
-              mi->interp_filters.as_filters.y_filter,
-#endif  // CONFIG_REMOVE_DUAL_FILTER
-              n);
+          av1_get_interp_filter_params_with_block_size(mi->interp_fltr, n);
       av1_opfl_rebuild_inter_predictor(dst, dst_buf->stride, plane, mv_refined,
                                        &inter_pred_params, xd, mi_x, mi_y, ref,
                                        mc_buf, calc_subpel_params_func);

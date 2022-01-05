@@ -322,11 +322,7 @@ typedef struct MB_MODE_INFO {
   TX_PARTITION_TYPE partition_type[INTER_TX_SIZE_BUF_LEN];
 #endif  // CONFIG_NEW_TX_PARTITION
   /*! \brief Filter used in subpel interpolation. */
-#if CONFIG_REMOVE_DUAL_FILTER
   int interp_fltr;
-#else
-  int_interpfilters interp_filters;
-#endif  // CONFIG_REMOVE_DUAL_FILTER
   /*! \brief The motion mode used by the inter prediction. */
   MOTION_MODE motion_mode;
   /*! \brief Number of samples used by warp causal */

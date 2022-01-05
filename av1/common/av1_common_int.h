@@ -328,11 +328,7 @@ typedef struct SequenceHeader {
 #if CONFIG_OPTFLOW_REFINEMENT
   aom_opfl_refine_type enable_opfl_refine;  // optical flow refinement type for
                                             // this frame
-#endif
-#if !CONFIG_REMOVE_DUAL_FILTER
-  uint8_t enable_dual_filter;    // 0 - disable dual interpolation filter
-#endif                           // !CONFIG_REMOVE_DUAL_FILTER
-                                 // 1 - enable vert/horz filter selection
+#endif                           // 1 - enable vert/horz filter selection
   uint8_t enable_warped_motion;  // 0 - disable warp for the sequence
                                  // 1 - enable warp for the sequence
   uint8_t enable_superres;       // 0 - Disable superres for the sequence

@@ -643,54 +643,6 @@ void av1_setup_frame(AV1_COMP *cpi) {
   cpi->vaq_refresh = 0;
 }
 
-#if !CONFIG_REMOVE_DUAL_FILTER
-static int get_interp_filter_selected(const AV1_COMMON *const cm,
-                                      MV_REFERENCE_FRAME ref,
-                                      InterpFilter ifilter) {
-  const RefCntBuffer *const buf = get_ref_frame_buf(cm, ref);
-  if (buf == NULL) return 0;
-  return buf->interp_filter_selected[ifilter];
-}
-
-uint16_t av1_setup_interp_filter_search_mask(AV1_COMP *cpi) {
-  const AV1_COMMON *const cm = &cpi->common;
-  int ref_total[REF_FRAMES] = { 0 };
-  uint16_t mask = ALLOW_ALL_INTERP_FILT_MASK;
-
-  if (cpi->last_frame_type == KEY_FRAME || cpi->refresh_frame.alt_ref_frame)
-    return mask;
-
-  for (MV_REFERENCE_FRAME ref = LAST_FRAME; ref <= ALTREF_FRAME; ++ref) {
-    for (InterpFilter ifilter = EIGHTTAP_REGULAR; ifilter <= MULTITAP_SHARP;
-         ++ifilter) {
-      ref_total[ref] += get_interp_filter_selected(cm, ref, ifilter);
-    }
-  }
-  int ref_total_total = (ref_total[LAST2_FRAME] + ref_total[LAST3_FRAME] +
-                         ref_total[GOLDEN_FRAME] + ref_total[BWDREF_FRAME] +
-                         ref_total[ALTREF2_FRAME] + ref_total[ALTREF_FRAME]);
-
-  for (InterpFilter ifilter = EIGHTTAP_REGULAR; ifilter <= MULTITAP_SHARP;
-       ++ifilter) {
-    int last_score = get_interp_filter_selected(cm, LAST_FRAME, ifilter) * 30;
-    if (ref_total[LAST_FRAME] && last_score <= ref_total[LAST_FRAME]) {
-      int filter_score =
-          get_interp_filter_selected(cm, LAST2_FRAME, ifilter) * 20 +
-          get_interp_filter_selected(cm, LAST3_FRAME, ifilter) * 20 +
-          get_interp_filter_selected(cm, GOLDEN_FRAME, ifilter) * 20 +
-          get_interp_filter_selected(cm, BWDREF_FRAME, ifilter) * 10 +
-          get_interp_filter_selected(cm, ALTREF2_FRAME, ifilter) * 10 +
-          get_interp_filter_selected(cm, ALTREF_FRAME, ifilter) * 10;
-      if (filter_score < ref_total_total) {
-        DUAL_FILTER_TYPE filt_type = ifilter + SWITCHABLE_FILTERS * ifilter;
-        reset_interp_filter_allowed_mask(&mask, filt_type);
-      }
-    }
-  }
-  return mask;
-}
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
-
 #define STRICT_PSNR_DIFF_THRESH 0.9
 // Encode key frame with/without screen content tools to determine whether
 // screen content tools should be enabled for this key frame group or not.

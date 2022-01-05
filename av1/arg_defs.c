@@ -387,13 +387,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "max-partition-size", 1,
               "Set max partition size "
               "(4:4x4, 8:8x8, 16:16x16, 32:32x32, 64:64x64, 128:128x128)"),
-
-#if !CONFIG_REMOVE_DUAL_FILTER
-  .enable_dual_filter = ARG_DEF(NULL, "enable-dual-filter", 1,
-                                "Enable dual filter "
-                                "(0: false, 1: true (default))"),
-#endif  // !CONFIG_REMOVE_DUAL_FILTER
-
   .enable_chroma_deltaq = ARG_DEF(NULL, "enable-chroma-deltaq", 1,
                                   "Enable chroma delta quant "
                                   "(0: false (default), 1: true)"),
