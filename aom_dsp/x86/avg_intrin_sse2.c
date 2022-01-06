@@ -440,7 +440,7 @@ int aom_satd_sse2(const tran_low_t *coeff, int length) {
   return _mm_cvtsi128_si32(accum);
 }
 
-void aom_int_pro_row_sse2(int16_t *hbuf, const uint8_t *ref,
+void aom_int_pro_row_sse2(int16_t hbuf[16], const uint8_t *ref,
                           const int ref_stride, const int height) {
   int idx = 1;
   __m128i zero = _mm_setzero_si128();
@@ -488,8 +488,7 @@ void aom_int_pro_row_sse2(int16_t *hbuf, const uint8_t *ref,
   }
 
   _mm_storeu_si128((__m128i *)hbuf, s0);
-  hbuf += 8;
-  _mm_storeu_si128((__m128i *)hbuf, s1);
+  _mm_storeu_si128((__m128i *)(hbuf + 8), s1);
 }
 
 int16_t aom_int_pro_col_sse2(const uint8_t *ref, const int width) {
