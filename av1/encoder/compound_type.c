@@ -416,28 +416,25 @@ static int64_t pick_interintra_wedge(const AV1_COMP *const cpi,
   return rd;
 }
 
-static AOM_INLINE void get_inter_predictors_masked_compound(
-    MACROBLOCK *x, const BLOCK_SIZE bsize, uint8_t **preds0, uint8_t **preds1,
-    int16_t *residual1, int16_t *diff10, int *strides) {
+static AOM_INLINE void get_inter_predictor_masked_compound_y(
+    MACROBLOCK *x, const BLOCK_SIZE bsize, uint8_t *pred0, uint8_t *pred1,
+    int16_t *residual1, int16_t *diff10, int stride) {
   MACROBLOCKD *xd = &x->e_mbd;
   const int bw = block_size_wide[bsize];
   const int bh = block_size_high[bsize];
   // get inter predictors to use for masked compound modes
-  av1_build_inter_predictors_for_planes_single_buf(xd, bsize, 0, 0, 0, preds0,
-                                                   strides);
-  av1_build_inter_predictors_for_planes_single_buf(xd, bsize, 0, 0, 1, preds1,
-                                                   strides);
+  av1_build_inter_predictor_single_buf_y(xd, bsize, 0, pred0, stride);
+  av1_build_inter_predictor_single_buf_y(xd, bsize, 1, pred1, stride);
   const struct buf_2d *const src = &x->plane[0].src;
 
   if (is_cur_buf_hbd(xd)) {
     aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride,
-                              CONVERT_TO_BYTEPTR(*preds1), bw, xd->bd);
-    aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(*preds1),
-                              bw, CONVERT_TO_BYTEPTR(*preds0), bw, xd->bd);
+                              CONVERT_TO_BYTEPTR(pred1), bw, xd->bd);
+    aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(pred1), bw,
+                              CONVERT_TO_BYTEPTR(pred0), bw, xd->bd);
   } else {
-    aom_subtract_block(bh, bw, residual1, bw, src->buf, src->stride, *preds1,
-                       bw);
-    aom_subtract_block(bh, bw, diff10, bw, *preds1, bw, *preds0, bw);
+    aom_subtract_block(bh, bw, residual1, bw, src->buf, src->stride, pred1, bw);
+    aom_subtract_block(bh, bw, diff10, bw, pred1, bw, pred0, bw);
   }
 }
 
@@ -1037,8 +1034,8 @@ static INLINE void backup_stats(COMPOUND_TYPE cur_type, int32_t *comp_rate,
 static int64_t masked_compound_type_rd(
     const AV1_COMP *const cpi, MACROBLOCK *x, const int_mv *const cur_mv,
     const BLOCK_SIZE bsize, const PREDICTION_MODE this_mode, int *rs2,
-    int rate_mv, const BUFFER_SET *ctx, int *out_rate_mv, uint8_t **preds0,
-    uint8_t **preds1, int16_t *residual1, int16_t *diff10, int *strides,
+    int rate_mv, const BUFFER_SET *ctx, int *out_rate_mv, uint8_t *pred0,
+    uint8_t *pred1, int16_t *residual1, int16_t *diff10, int stride,
     int mode_rate, int64_t rd_thresh, int *calc_pred_masked_compound,
     int32_t *comp_rate, int64_t *comp_dist, int32_t *comp_model_rate,
     int64_t *comp_model_dist, const int64_t comp_best_model_rd,
@@ -1060,18 +1057,18 @@ static int64_t masked_compound_type_rd(
   // this may increase memory requirements as compound segment mask needs to be
   // stored in each record.
   if (*calc_pred_masked_compound) {
-    get_inter_predictors_masked_compound(x, bsize, preds0, preds1, residual1,
-                                         diff10, strides);
+    get_inter_predictor_masked_compound_y(x, bsize, pred0, pred1, residual1,
+                                          diff10, stride);
     *calc_pred_masked_compound = 0;
   }
   if (cpi->sf.inter_sf.prune_wedge_pred_diff_based &&
       compound_type == COMPOUND_WEDGE) {
     unsigned int sse;
     if (is_cur_buf_hbd(xd))
-      (void)cpi->fn_ptr[bsize].vf(CONVERT_TO_BYTEPTR(*preds0), *strides,
-                                  CONVERT_TO_BYTEPTR(*preds1), *strides, &sse);
+      (void)cpi->fn_ptr[bsize].vf(CONVERT_TO_BYTEPTR(pred0), stride,
+                                  CONVERT_TO_BYTEPTR(pred1), stride, &sse);
     else
-      (void)cpi->fn_ptr[bsize].vf(*preds0, *strides, *preds1, *strides, &sse);
+      (void)cpi->fn_ptr[bsize].vf(pred0, stride, pred1, stride, &sse);
     const unsigned int mse =
         ROUND_POWER_OF_TWO(sse, num_pels_log2_lookup[bsize]);
     // If two predictors are very similar, skip wedge compound mode search
@@ -1085,7 +1082,7 @@ static int64_t masked_compound_type_rd(
   // compound_type == COMPOUND_DIFFWTD, calls pick_interinter_seg()
   uint64_t cur_sse = UINT64_MAX;
   best_rd_cur = pick_interinter_mask[compound_type - COMPOUND_WEDGE](
-      cpi, x, bsize, *preds0, *preds1, residual1, diff10, &cur_sse);
+      cpi, x, bsize, pred0, pred1, residual1, diff10, &cur_sse);
   *rs2 += get_interinter_compound_mask_rate(&x->mode_costs, mbmi);
   best_rd_cur += RDCOST(x->rdmult, *rs2 + rate_mv, 0);
   assert(cur_sse != UINT64_MAX);
@@ -1139,16 +1136,12 @@ static int64_t masked_compound_type_rd(
       CompoundTypeRdBuffers tmp_buf;
       int64_t tmp_rd = INT64_MAX;
       alloc_compound_type_rd_buffers_no_check(&tmp_buf);
-
-      uint8_t *tmp_preds0[1] = { tmp_buf.pred0 };
-      uint8_t *tmp_preds1[1] = { tmp_buf.pred1 };
-
-      get_inter_predictors_masked_compound(x, bsize, tmp_preds0, tmp_preds1,
-                                           tmp_buf.residual1, tmp_buf.diff10,
-                                           strides);
+      get_inter_predictor_masked_compound_y(x, bsize, tmp_buf.pred0,
+                                            tmp_buf.pred1, tmp_buf.residual1,
+                                            tmp_buf.diff10, stride);
 
       tmp_rd = pick_interinter_mask[compound_type - COMPOUND_WEDGE](
-          cpi, x, bsize, *tmp_preds0, *tmp_preds1, tmp_buf.residual1,
+          cpi, x, bsize, tmp_buf.pred0, tmp_buf.pred1, tmp_buf.residual1,
           tmp_buf.diff10, &cur_sse);
       // we can reuse rs2 here
       tmp_rd += RDCOST(x->rdmult, *rs2 + *out_rate_mv, 0);
@@ -1158,18 +1151,18 @@ static int64_t masked_compound_type_rd(
         mbmi->mv[0].as_int = cur_mv[0].as_int;
         mbmi->mv[1].as_int = cur_mv[1].as_int;
         *out_rate_mv = rate_mv;
-        av1_build_wedge_inter_predictor_from_buf(xd, bsize, 0, 0, preds0,
-                                                 strides, preds1, strides);
+        av1_build_wedge_inter_predictor_from_buf_y(xd, bsize, pred0, stride,
+                                                   pred1, stride);
       } else {
         // build the final prediciton using the updated mv
-        av1_build_wedge_inter_predictor_from_buf(xd, bsize, 0, 0, tmp_preds0,
-                                                 strides, tmp_preds1, strides);
+        av1_build_wedge_inter_predictor_from_buf_y(
+            xd, bsize, tmp_buf.pred0, stride, tmp_buf.pred1, stride);
       }
       release_compound_type_rd_buffers(&tmp_buf);
     } else {
       *out_rate_mv = rate_mv;
-      av1_build_wedge_inter_predictor_from_buf(xd, bsize, 0, 0, preds0, strides,
-                                               preds1, strides);
+      av1_build_wedge_inter_predictor_from_buf_y(xd, bsize, pred0, stride,
+                                                 pred1, stride);
     }
     // Get the RD cost from model RD
     model_rd_sb_fn[MODELRD_TYPE_MASKED_COMPOUND](
@@ -1183,8 +1176,8 @@ static int64_t masked_compound_type_rd(
         mbmi->mv[0].as_int = cur_mv[0].as_int;
         mbmi->mv[1].as_int = cur_mv[1].as_int;
         *out_rate_mv = rate_mv;
-        av1_build_wedge_inter_predictor_from_buf(xd, bsize, 0, 0, preds0,
-                                                 strides, preds1, strides);
+        av1_build_wedge_inter_predictor_from_buf_y(xd, bsize, pred0, stride,
+                                                   pred1, stride);
         *comp_model_rd_cur = best_rd_cur;
       }
     }
@@ -1255,9 +1248,6 @@ int av1_compound_type_rd(const AV1_COMP *const cpi, MACROBLOCK *x,
   best_type_stats.best_compmode_interinter_cost = 0;
   best_type_stats.comp_best_model_rd = INT64_MAX;
 
-  uint8_t *preds0[1] = { buffers->pred0 };
-  uint8_t *preds1[1] = { buffers->pred1 };
-  int strides[1] = { bw };
   int tmp_rate_mv;
   const int num_pix = 1 << num_pels_log2_lookup[bsize];
   const int mask_len = 2 * num_pix * sizeof(uint8_t);
@@ -1412,11 +1402,11 @@ int av1_compound_type_rd(const AV1_COMP *const cpi, MACROBLOCK *x,
         const int64_t tmp_rd_thresh = AOMMIN(*rd, rd_thresh);
         best_rd_cur = masked_compound_type_rd(
             cpi, x, cur_mv, bsize, this_mode, &rs2, *rate_mv, orig_dst,
-            &tmp_rate_mv, preds0, preds1, buffers->residual1, buffers->diff10,
-            strides, rd_stats->rate, tmp_rd_thresh, &calc_pred_masked_compound,
-            comp_rate, comp_dist, comp_model_rate, comp_model_dist,
-            best_type_stats.comp_best_model_rd, &comp_model_rd_cur, comp_rs2,
-            ref_skip_rd);
+            &tmp_rate_mv, buffers->pred0, buffers->pred1, buffers->residual1,
+            buffers->diff10, bw, rd_stats->rate, tmp_rd_thresh,
+            &calc_pred_masked_compound, comp_rate, comp_dist, comp_model_rate,
+            comp_model_dist, best_type_stats.comp_best_model_rd,
+            &comp_model_rd_cur, comp_rs2, ref_skip_rd);
       }
     }
     // Update stats for best compound type

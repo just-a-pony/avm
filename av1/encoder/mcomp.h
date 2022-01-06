@@ -202,7 +202,7 @@ typedef struct {
 void av1_make_default_fullpel_ms_params(
     FULLPEL_MOTION_SEARCH_PARAMS *ms_params, const struct AV1_COMP *cpi,
     const MACROBLOCK *x, BLOCK_SIZE bsize, const MV *ref_mv,
-    const search_site_config search_sites[NUM_SEARCH_METHODS],
+    const search_site_config search_sites[NUM_DISTINCT_SEARCH_METHODS],
     int fine_search_interval);
 
 // Sets up configs for fullpixel diamond search method.
