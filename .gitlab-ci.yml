@@ -913,6 +913,75 @@ Linux All Unit Test:
     paths:
       - aom_nightly_build/coverage_*.json
 
+# This is not doable with a big matrix, as
+# GitLab has an arbitrary limit of expanding matrices
+# to 50 jobs only, everything higher than that will fail.
+.common-linux-unit-optim:
+  stage: test
+  interruptible: true
+  extends: .common-nightly
+  parallel: 18
+  variables:
+    LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
+    GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
+    GTEST_OUTPUT: "xml:report.xml"
+  script:
+    - cd aom_nightly_build
+    - |
+      case "${AOM_OPTIM_LEVEL}" in
+        sse) export AOM_SIMD_CAPS_MASK=0x3 ;;
+        sse2) export AOM_SIMD_CAPS_MASK=0x7 ;;
+        sse3) export AOM_SIMD_CAPS_MASK=0xf ;;
+        ssse3) export AOM_SIMD_CAPS_MASK=0x1f ;;
+        sse4_1) export AOM_SIMD_CAPS_MASK=0x3f ;;
+        # sse4_2 was added *after* avx2 so the mask is a little weird
+        sse4_2) export AOM_SIMD_CAPS_MASK=0x13f ;;
+        avx2) export AOM_SIMD_CAPS_MASK=0x1ff ;;
+      esac
+
+      test_filter="-C*:MMX*:SSE*:SSSE*:AVX*"
+
+    - ./test_libaom --gtest_filter=${test_filter}
+  needs:
+    - 'Test Data'
+    - 'Linux Nightly Build'
+  artifacts:
+    when: always
+    reports:
+      junit: ./aom_nightly_build/report.xml
+  before_script:
+    - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
+
+Linux Unit (x86_64, sse2):
+  extends: .common-linux-unit-optim
+  variables:
+    AOM_OPTIM_LEVEL: sse2
+
+Linux Unit (x86_64, sse3):
+  extends: .common-linux-unit-optim
+  variables:
+    AOM_OPTIM_LEVEL: sse3
+
+Linux Unit (x86_64, ssse3):
+  extends: .common-linux-unit-optim
+  variables:
+    AOM_OPTIM_LEVEL: ssse3
+
+Linux Unit (x86_64, sse4_1):
+  extends: .common-linux-unit-optim
+  variables:
+    AOM_OPTIM_LEVEL: sse4_1
+
+Linux Unit (x86_64, sse4_2):
+  extends: .common-linux-unit-optim
+  variables:
+    AOM_OPTIM_LEVEL: sse4_2
+
+Linux Unit (x86_64, avx2):
+  extends: .common-linux-unit-optim
+  variables:
+    AOM_OPTIM_LEVEL: avx2
+
 Coverage Report:
   stage: report
   interruptible: true
