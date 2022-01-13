@@ -783,7 +783,13 @@ void av1_encode_sb(const struct AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
   };
   const AV1_COMMON *const cm = &cpi->common;
   const int num_planes = av1_num_planes(cm);
+#if CONFIG_SDP
+  const int plane_start = (xd->tree_type == CHROMA_PART);
+  const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
+  for (int plane = plane_start; plane < plane_end; ++plane) {
+#else
   for (int plane = 0; plane < num_planes; ++plane) {
+#endif
     const struct macroblockd_plane *const pd = &xd->plane[plane];
     const int subsampling_x = pd->subsampling_x;
     const int subsampling_y = pd->subsampling_y;
