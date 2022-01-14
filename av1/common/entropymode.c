@@ -1198,10 +1198,11 @@ static const aom_cdf_prob default_tx_size_cdf[MAX_TX_CATS][TX_SIZE_CONTEXTS]
 #endif  // CONFIG_NEW_TX_PARTITION
 
 #if CONFIG_IST
+// Updated CDF initialization values
 static const aom_cdf_prob default_stx_cdf[TX_SIZES][CDF_SIZE(STX_TYPES)] = {
-  { AOM_CDF4(8192, 16384, 24576) }, { AOM_CDF4(8192, 16384, 24576) },
-  { AOM_CDF4(8192, 16384, 24576) }, { AOM_CDF4(8192, 16384, 24576) },
-  { AOM_CDF4(8192, 16384, 24576) },
+  { AOM_CDF4(1542, 11565, 24287) },  { AOM_CDF4(4776, 13664, 21624) },
+  { AOM_CDF4(7447, 17278, 24725) },  { AOM_CDF4(5783, 17348, 21203) },
+  { AOM_CDF4(17873, 20852, 23831) },
 };
 #endif
 

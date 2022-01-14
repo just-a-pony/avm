@@ -1719,8 +1719,12 @@ uint8_t av1_get_txb_entropy_context(const tran_low_t *qcoeff,
 static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
                                  MACROBLOCKD *xd, int blk_row, int blk_col,
                                  int plane, TX_SIZE tx_size,
-                                 FRAME_COUNTS *counts,
-                                 uint8_t allow_update_cdf) {
+                                 FRAME_COUNTS *counts, uint8_t allow_update_cdf
+#if CONFIG_IST_FIX_B098
+                                 ,
+                                 int eob
+#endif  // CONFIG_IST_FIX_B098
+) {
   MB_MODE_INFO *mbmi = xd->mi[0];
 #if CONFIG_SDP
   int is_inter = is_inter_block(mbmi, xd->tree_type);
@@ -1808,7 +1812,13 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
 #endif
               av1_num_ext_tx_set[tx_set_type]);
 #if CONFIG_IST
+          // Modified condition for CDF update
+#if CONFIG_IST_FIX_B098
+          if (cm->seq_params.enable_ist &&
+              block_signals_sec_tx_type(xd, tx_size, tx_type, eob))
+#else
           if (cm->seq_params.enable_ist)
+#endif  // CONFIG_IST_FIX_B098
             update_cdf(fc->stx_cdf[txsize_sqr_map[tx_size]],
                        get_secondary_tx_type(tx_type), STX_TYPES);
 #endif
@@ -1826,7 +1836,13 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
            cm->quant_params.base_qindex > 0 && !mbmi->skip_txfm &&
 #endif
            !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP)) {
+    // Modified condition for CDF update
+#if CONFIG_IST_FIX_B098
+    if (cm->seq_params.enable_ist &&
+        block_signals_sec_tx_type(xd, tx_size, tx_type, eob))
+#else
     if (cm->seq_params.enable_ist)
+#endif  // CONFIG_IST_FIX_B098
       update_cdf(fc->stx_cdf[txsize_sqr_map[tx_size]],
                  get_secondary_tx_type(tx_type), STX_TYPES);
   }
@@ -1932,7 +1948,12 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
     uint8_t *const levels = set_levels(levels_buf, width);
     av1_txb_init_levels(tcoeff, width, height, levels);
     update_tx_type_count(cpi, cm, xd, blk_row, blk_col, plane, tx_size,
-                         td->counts, allow_update_cdf);
+                         td->counts, allow_update_cdf
+#if CONFIG_IST_FIX_B098
+                         ,
+                         eob
+#endif  // CONFIG_IST_FIX_B098
+    );
 
 #if CONFIG_IST
     const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];

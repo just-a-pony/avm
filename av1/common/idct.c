@@ -231,7 +231,19 @@ static void init_txfm_param(const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
   txfm_param->tx_type = tx_type;
 #endif
   txfm_param->tx_size = tx_size;
+  // EOB needs to adjusted after inverse IST
+#if CONFIG_IST_FIX_B098
+  if (txfm_param->sec_tx_type) {
+    // txfm_param->eob = av1_get_max_eob(tx_size);
+    const int sb_size =
+        (tx_size_wide[tx_size] >= 8 && tx_size_high[tx_size] >= 8) ? 8 : 4;
+    txfm_param->eob = (sb_size == 4) ? IST_4x4_WIDTH : IST_8x8_WIDTH;
+  } else {
+    txfm_param->eob = eob;
+  }
+#else
   txfm_param->eob = eob;
+#endif  // CONFIG_IST_FIX_B098
   txfm_param->lossless = xd->lossless[xd->mi[0]->segment_id];
   txfm_param->bd = xd->bd;
   txfm_param->is_hbd = is_cur_buf_hbd(xd);

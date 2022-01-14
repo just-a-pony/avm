@@ -184,6 +184,9 @@ set_aom_config_var(
 # Source of throughput analysis : CWG-B065
 set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
                    "AV2 experiment flag to measure throughput.")
+set_aom_config_var(
+  CONFIG_IST_FIX_B098 1
+  "AV2 experiment flag to enable IST SIMD fix and further encoder updates.")
 #
 # Variables in this section control optional features of the build system.
 #
