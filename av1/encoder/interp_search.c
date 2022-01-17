@@ -121,7 +121,9 @@ static INLINE int get_switchable_rate(MACROBLOCK *const x,
                                       const InterpFilter interp_fltr,
                                       const int ctx[2]) {
 #if CONFIG_OPTFLOW_REFINEMENT
-  if (x->e_mbd.mi[0]->mode > NEW_NEWMV) return 0;
+  // When optical flow refinement is used, interp filter type is always set
+  // to MULTITAP_SHARP, and thus is not switchable.
+  assert(x->e_mbd.mi[0]->mode <= NEW_NEWMV);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
   const int inter_filter_cost =
       x->mode_costs.switchable_interp_costs[ctx[0]][interp_fltr];
@@ -175,7 +177,14 @@ static INLINE int64_t interpolation_filter_rd(
   this_rd_stats = *rd_stats_luma;
   const InterpFilter last_best = mbmi->interp_fltr;
   mbmi->interp_fltr = filter_idx;
+#if CONFIG_OPTFLOW_REFINEMENT
+  const int tmp_rs =
+      (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
+          ? 0
+          : get_switchable_rate(x, mbmi->interp_fltr, switchable_ctx);
+#else
   const int tmp_rs = get_switchable_rate(x, mbmi->interp_fltr, switchable_ctx);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   int64_t min_rd = RDCOST(x->rdmult, tmp_rs, 0);
   if (min_rd > *rd) {
@@ -419,7 +428,14 @@ int64_t av1_interpolation_filter_search(
   int switchable_ctx[2];
   switchable_ctx[0] = av1_get_pred_context_switchable_interp(xd, 0);
   switchable_ctx[1] = av1_get_pred_context_switchable_interp(xd, 1);
+#if CONFIG_OPTFLOW_REFINEMENT
+  *switchable_rate =
+      (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
+          ? 0
+          : get_switchable_rate(x, mbmi->interp_fltr, switchable_ctx);
+#else
   *switchable_rate = get_switchable_rate(x, mbmi->interp_fltr, switchable_ctx);
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   // Do MC evaluation for default filter_type.
   // Luma MC

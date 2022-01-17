@@ -1325,7 +1325,7 @@ int av1_get_switchable_rate(const MACROBLOCK *x, const MACROBLOCKD *xd,
   if (interp_filter == SWITCHABLE) {
     const MB_MODE_INFO *const mbmi = xd->mi[0];
 #if CONFIG_OPTFLOW_REFINEMENT
-    if (mbmi->mode > NEW_NEWMV) return 0;
+    assert(mbmi->mode <= NEW_NEWMV);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
     const int ctx = av1_get_pred_context_switchable_interp(xd, 0);
     const int inter_filter_cost =
