@@ -486,7 +486,6 @@ void av1_highbd_convolve_2d_scale_sse4_1(
   const int ytaps = filter_params_y->taps;
   const int fo_vert = ytaps / 2 - 1;
 
-  memset(tmp, 0, sizeof(tmp));
   assert((xtaps == 8) && (ytaps == 8));
   (void)xtaps;
 
