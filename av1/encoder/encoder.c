@@ -2525,6 +2525,17 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
   // Determine whether to use screen content tools using two fast encoding.
   av1_determine_sc_tools_with_encoding(cpi, q);
 
+#if CONFIG_IBC_SR_EXT
+  if (cm->features.allow_intrabc) {
+    cm->features.allow_global_intrabc =
+        (oxcf->kf_cfg.enable_intrabc_ext != 2) && frame_is_intra_only(cm);
+    cm->features.allow_local_intrabc = !!oxcf->kf_cfg.enable_intrabc_ext;
+  } else {
+    cm->features.allow_global_intrabc = 0;
+    cm->features.allow_local_intrabc = 0;
+  }
+#endif  // CONFIG_IBC_SR_EXT
+
 #if CONFIG_USE_VMAF_RC
   if (oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
     av1_vmaf_neg_preprocessing(cpi, cpi->unscaled_source);
@@ -2784,7 +2795,7 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
   cm->cur_frame->buf.bit_depth = (unsigned int)seq_params->bit_depth;
 
   // Pick the loop filter level for the frame.
-  if (!cm->features.allow_intrabc) {
+  if (!is_global_intrabc_allowed(cm)) {
     loopfilter_frame(cpi, cm);
   } else {
     cm->lf.filter_level[0] = 0;
@@ -3016,10 +3027,23 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
   start_timing(cpi, encode_frame_to_data_rate_time);
 #endif
 
+#if CONFIG_IBC_SR_EXT
+  av1_set_screen_content_options(cpi, features);
+  cpi->is_screen_content_type = features->allow_screen_content_tools;
+  if (cm->features.allow_intrabc) {
+    cm->features.allow_global_intrabc =
+        (oxcf->kf_cfg.enable_intrabc_ext != 2) && frame_is_intra_only(cm);
+    cm->features.allow_local_intrabc = !!oxcf->kf_cfg.enable_intrabc_ext;
+  } else {
+    cm->features.allow_global_intrabc = 0;
+    cm->features.allow_local_intrabc = 0;
+  }
+#else
   if (frame_is_intra_only(cm)) {
     av1_set_screen_content_options(cpi, features);
     cpi->is_screen_content_type = features->allow_screen_content_tools;
   }
+#endif  // CONFIG_IBC_SR_EXT
 
   // frame type has been decided outside of this function call
   cm->cur_frame->frame_type = current_frame->frame_type;

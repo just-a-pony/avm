@@ -428,8 +428,14 @@ typedef struct {
    * If true, palette tool and/or intra block copy tools may be used.
    */
   bool allow_screen_content_tools;
-  bool allow_intrabc;       /*!< If true, intra block copy tool may be used. */
-  bool allow_warped_motion; /*!< If true, frame may use warped motion mode. */
+  bool allow_intrabc; /*!< If true, intra block copy tool may be used. */
+#if CONFIG_IBC_SR_EXT
+  bool allow_global_intrabc; /*!< If true, intra block copy tool may use the
+                               global search range. */
+  bool allow_local_intrabc;  /*!< If true, intra block copy tool may use the
+                              local  search range. */
+#endif                       // CONFIG_IBC_SR_EXT
+  bool allow_warped_motion;  /*!< If true, frame may use warped motion mode. */
   /*!
    * If true, using previous frames' motion vectors for prediction is allowed.
    */
@@ -2456,6 +2462,15 @@ static INLINE void free_ibp_info(
   }
 }
 #endif
+
+static INLINE int is_global_intrabc_allowed(const AV1_COMMON *const cm) {
+#if CONFIG_IBC_SR_EXT
+  return frame_is_intra_only(cm) && cm->features.allow_intrabc &&
+         cm->features.allow_global_intrabc;
+#else
+  return cm->features.allow_intrabc;
+#endif
+}
 /*!\endcond */
 
 #ifdef __cplusplus

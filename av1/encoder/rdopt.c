@@ -3504,9 +3504,23 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
 
   MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
   MV_REFERENCE_FRAME ref_frame = INTRA_FRAME;
+#if CONFIG_IBC_SR_EXT
+#if CONFIG_SDP
+  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 1;
+#else
+  mbmi->use_intrabc = 1;
+#endif  // CONFIG_SDP
+#endif  // CONFIG_IBC_SR_EXT
   av1_find_mv_refs(cm, xd, mbmi, ref_frame, mbmi_ext->ref_mv_count,
                    xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs,
                    mbmi_ext->mode_context);
+#if CONFIG_IBC_SR_EXT
+#if CONFIG_SDP
+  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
+#else
+  mbmi->use_intrabc = 0;
+#endif  // CONFIG_SDP
+#endif  // CONFIG_IBC_SR_EXT
   // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
   // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
   av1_copy_usable_ref_mv_stack_and_weight(xd, mbmi_ext, ref_frame);
@@ -3563,36 +3577,88 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
                                      &dv_ref.as_mv, lookahead_search_sites,
                                      /*fine_search_interval=*/0);
   fullms_params.is_intra_mode = 1;
+#if CONFIG_IBC_SR_EXT
+  fullms_params.xd = xd;
+  fullms_params.cm = cm;
+  fullms_params.mib_size_log2 = cm->seq_params.mib_size_log2;
+  fullms_params.mi_col = mi_col;
+  fullms_params.mi_row = mi_row;
+#endif  // CONFIG_IBC_SR_EXT
 
   for (enum IntrabcMotionDirection dir = IBC_MOTION_ABOVE;
        dir < IBC_MOTION_DIRECTIONS; ++dir) {
-    switch (dir) {
-      case IBC_MOTION_ABOVE:
-        fullms_params.mv_limits.col_min =
-            (tile->mi_col_start - mi_col) * MI_SIZE;
-        fullms_params.mv_limits.col_max =
-            (tile->mi_col_end - mi_col) * MI_SIZE - w;
-        fullms_params.mv_limits.row_min =
-            (tile->mi_row_start - mi_row) * MI_SIZE;
+#if CONFIG_IBC_SR_EXT
+    if (frame_is_intra_only(cm) && cm->features.allow_global_intrabc) {
+#endif  // CONFIG_IBC_SR_EXT
+      switch (dir) {
+        case IBC_MOTION_ABOVE:
+          fullms_params.mv_limits.col_min =
+              (tile->mi_col_start - mi_col) * MI_SIZE;
+          fullms_params.mv_limits.col_max =
+              (tile->mi_col_end - mi_col) * MI_SIZE - w;
+          fullms_params.mv_limits.row_min =
+              (tile->mi_row_start - mi_row) * MI_SIZE;
+#if CONFIG_IBC_SR_EXT
+          fullms_params.mv_limits.row_max = -h;
+#else
         fullms_params.mv_limits.row_max =
             (sb_row * cm->seq_params.mib_size - mi_row) * MI_SIZE - h;
-        break;
-      case IBC_MOTION_LEFT:
-        fullms_params.mv_limits.col_min =
-            (tile->mi_col_start - mi_col) * MI_SIZE;
+#endif  // CONFIG_IBC_SR_EXT
+          break;
+        case IBC_MOTION_LEFT:
+          fullms_params.mv_limits.col_min =
+              (tile->mi_col_start - mi_col) * MI_SIZE;
+#if CONFIG_IBC_SR_EXT
+          fullms_params.mv_limits.col_max = -w;
+#else
         fullms_params.mv_limits.col_max =
             (sb_col * cm->seq_params.mib_size - mi_col) * MI_SIZE - w;
+#endif  // CONFIG_IBC_SR_EXT
         // TODO(aconverse@google.com): Minimize the overlap between above and
         // left areas.
-        fullms_params.mv_limits.row_min =
-            (tile->mi_row_start - mi_row) * MI_SIZE;
-        int bottom_coded_mi_edge =
-            AOMMIN((sb_row + 1) * cm->seq_params.mib_size, tile->mi_row_end);
-        fullms_params.mv_limits.row_max =
-            (bottom_coded_mi_edge - mi_row) * MI_SIZE - h;
-        break;
-      default: assert(0);
+          fullms_params.mv_limits.row_min =
+              (tile->mi_row_start - mi_row) * MI_SIZE;
+          int bottom_coded_mi_edge =
+              AOMMIN((sb_row + 1) * cm->seq_params.mib_size, tile->mi_row_end);
+          fullms_params.mv_limits.row_max =
+              (bottom_coded_mi_edge - mi_row) * MI_SIZE - h;
+          break;
+        default: assert(0);
+      }
+#if CONFIG_IBC_SR_EXT
+    } else {
+      int left_coded_mi_edge =
+          AOMMAX((sb_col - 1) * cm->seq_params.mib_size, tile->mi_col_start);
+      int right_coded_mi_edge =
+          AOMMIN((sb_col + 1) * cm->seq_params.mib_size, tile->mi_col_end);
+      int up_coded_mi_edge =
+          AOMMAX((sb_row)*cm->seq_params.mib_size, tile->mi_row_start);
+      int bottom_coded_mi_edge =
+          AOMMIN((sb_row + 1) * cm->seq_params.mib_size, tile->mi_row_end);
+
+      switch (dir) {
+        case IBC_MOTION_ABOVE:
+          fullms_params.mv_limits.col_min =
+              (left_coded_mi_edge - mi_col) * MI_SIZE;
+          fullms_params.mv_limits.col_max =
+              (right_coded_mi_edge - mi_col) * MI_SIZE - w;
+          fullms_params.mv_limits.row_min =
+              (up_coded_mi_edge - mi_row) * MI_SIZE;
+          fullms_params.mv_limits.row_max = -h;
+          break;
+        case IBC_MOTION_LEFT:
+          fullms_params.mv_limits.col_min =
+              (left_coded_mi_edge - mi_col) * MI_SIZE;
+          fullms_params.mv_limits.col_max = -w;
+          fullms_params.mv_limits.row_min =
+              (up_coded_mi_edge - mi_row) * MI_SIZE;
+          fullms_params.mv_limits.row_max =
+              (bottom_coded_mi_edge - mi_row) * MI_SIZE - h;
+          break;
+        default: assert(0);
+      }
     }
+#endif  // CONFIG_IBC_SR_EXT
     assert(fullms_params.mv_limits.col_min >= fullms_params.mv_limits.col_min);
     assert(fullms_params.mv_limits.col_max <= fullms_params.mv_limits.col_max);
     assert(fullms_params.mv_limits.row_min >= fullms_params.mv_limits.row_min);
@@ -3849,6 +3915,13 @@ static AOM_INLINE void rd_pick_skip_mode(
   mbmi->uv_mode = UV_DC_PRED;
   mbmi->ref_frame[0] = ref_frame;
   mbmi->ref_frame[1] = second_ref_frame;
+#if CONFIG_IBC_SR_EXT
+#if CONFIG_SDP
+  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
+#else
+  mbmi->use_intrabc = 0;
+#endif  // CONFIG_SDP
+#endif  // CONFIG_IBC_SR_EXT
   const uint8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
   if (x->mbmi_ext->ref_mv_count[ref_frame_type] == UINT8_MAX) {
     if (x->mbmi_ext->ref_mv_count[ref_frame] == UINT8_MAX ||
@@ -4716,7 +4789,11 @@ static int inter_mode_search_order_independent_skip(
 
 static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
                              const MV_REFERENCE_FRAME *ref_frames,
+#if CONFIG_IBC_SR_EXT
+                             const AV1_COMMON *cm, MACROBLOCKD *const xd) {
+#else
                              const AV1_COMMON *cm) {
+#endif  // CONFIG_IBC_SR_EXT
   PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
   mbmi->ref_mv_idx = 0;
   mbmi->mode = curr_mode;
@@ -4734,6 +4811,13 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
                              cm,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
                              cm->features.interp_filter);
+#if CONFIG_IBC_SR_EXT
+#if CONFIG_SDP
+  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
+#else
+  mbmi->use_intrabc = 0;
+#endif  // CONFIG_SDP
+#endif  // CONFIG_IBC_SR_EXT
 }
 
 static AOM_INLINE void collect_single_states(const FeatureFlags *const features,
@@ -5552,6 +5636,13 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   const ModeCosts *mode_costs = &x->mode_costs;
   const int *comp_inter_cost =
       mode_costs->comp_inter_cost[av1_get_reference_mode_context(xd)];
+#if CONFIG_IBC_SR_EXT
+#if CONFIG_SDP
+  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
+#else
+  mbmi->use_intrabc = 0;
+#endif  // CONFIG_SDP
+#endif  // CONFIG_IBC_SR_EXT
 
   InterModeSearchState search_state;
   init_inter_mode_search_state(&search_state, cpi, x, bsize, best_rd_so_far);
@@ -5755,7 +5846,11 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         ref_frame > INTRA_FRAME && second_ref_frame == NONE_FRAME;
     const int comp_pred = second_ref_frame > INTRA_FRAME;
 
+#if CONFIG_IBC_SR_EXT
+    init_mbmi(mbmi, this_mode, ref_frames, cm, xd);
+#else
     init_mbmi(mbmi, this_mode, ref_frames, cm);
+#endif  // CONFIG_IBC_SR_EXT
 
 #if CONFIG_OPTFLOW_REFINEMENT
     // Optical flow compound modes are only enabled with enable_order_hint
@@ -5997,7 +6092,11 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 
       assert(av1_mode_defs[mode_enum].ref_frame[0] == INTRA_FRAME);
       assert(av1_mode_defs[mode_enum].ref_frame[1] == NONE_FRAME);
-      init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm);
+#if CONFIG_IBC_SR_EXT
+      init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm, xd);
+#else
+    init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm);
+#endif  // CONFIG_IBC_SR_EXT
       txfm_info->skip_txfm = 0;
 
       RD_STATS intra_rd_stats, intra_rd_stats_y, intra_rd_stats_uv;
@@ -6081,6 +6180,43 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       rd_pick_skip_mode(rd_cost, &search_state, cpi, x, bsize, yv12_mb);
     }
   }
+
+#if CONFIG_IBC_SR_EXT
+  if (search_state.best_skip2 == 0) {
+    const int try_intrabc = cpi->oxcf.kf_cfg.enable_intrabc &&
+                            cpi->oxcf.kf_cfg.enable_intrabc_ext &&
+                            av1_allow_intrabc(cm) &&
+                            (xd->tree_type != CHROMA_PART);
+    if (try_intrabc) {
+      this_rd_cost.rdcost = INT64_MAX;
+      mbmi->ref_frame[0] = INTRA_FRAME;
+      mbmi->ref_frame[1] = NONE_FRAME;
+      mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
+      mbmi->mv[0].as_int = 0;
+      mbmi->skip_mode = 0;
+      mbmi->mode = 0;
+
+      rd_pick_intrabc_mode_sb(cpi, x, ctx, &this_rd_cost, bsize, INT64_MAX);
+
+      if (this_rd_cost.rdcost < search_state.best_rd) {
+        search_state.best_mode_index = THR_DC;
+        rd_cost->rate = this_rd_cost.rate;
+        rd_cost->dist = this_rd_cost.dist;
+        rd_cost->rdcost = this_rd_cost.rdcost;
+
+        search_state.best_rd = rd_cost->rdcost;
+        search_state.best_mbmode = *mbmi;
+        search_state.best_skip2 = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
+        search_state.best_mode_skippable =
+            mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
+        memcpy(ctx->blk_skip, txfm_info->blk_skip,
+               sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+        av1_copy_array(ctx->tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
+        ctx->rd_stats.skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
+      }
+    }
+  }
+#endif  // CONFIG_IBC_SR_EXT
 
   // Make sure that the ref_mv_idx is only nonzero when we're
   // using a mode which can support ref_mv_idx

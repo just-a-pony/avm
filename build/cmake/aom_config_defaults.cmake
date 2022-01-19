@@ -187,6 +187,7 @@ set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
 set_aom_config_var(
   CONFIG_IST_FIX_B098 1
   "AV2 experiment flag to enable IST SIMD fix and further encoder updates.")
+set_aom_config_var(CONFIG_IBC_SR_EXT 1 "Enables IntraBC search range extension")
 #
 # Variables in this section control optional features of the build system.
 #

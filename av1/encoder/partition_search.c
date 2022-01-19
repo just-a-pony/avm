@@ -552,7 +552,12 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
         ++x->txfm_search_info.txb_split_count;
     }
 #if CONFIG_REF_MV_BANK
+#if CONFIG_IBC_SR_EXT
+    if (cm->seq_params.enable_refmvbank && is_inter &&
+        !is_intrabc_block(mbmi, xd->tree_type))
+#else
     if (cm->seq_params.enable_refmvbank && is_inter)
+#endif  // CONFIG_IBC_SR_EXT
       av1_update_ref_mv_bank(cm, xd, mbmi);
 #endif  // CONFIG_REF_MV_BANK
   }
@@ -623,6 +628,9 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
     }
   }
 #endif
+#if CONFIG_IBC_SR_EXT
+  av1_mark_block_as_coded(xd, mi_row, mi_col, bsize, cm->seq_params.sb_size);
+#endif  // CONFIG_IBC_SR_EXT
 }
 
 static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,

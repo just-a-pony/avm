@@ -313,6 +313,145 @@ static INLINE void av1_find_ref_dv(int_mv *ref_dv, const TileInfo *const tile,
   convert_fullmv_to_mv(ref_dv);
 }
 
+#if CONFIG_IBC_SR_EXT == 1
+static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
+                                                 const MACROBLOCKD *xd,
+                                                 int mi_row, int mi_col, int bh,
+                                                 int bw, int mib_size_log2) {
+  if (((dv.col >> 3) + bw) > 0 && ((dv.row >> 3) + bh) > 0) return 0;
+
+  const int SCALE_PX_TO_MV = 8;
+  const int src_top_edge = mi_row * MI_SIZE * SCALE_PX_TO_MV + dv.row;
+  const int src_left_edge = mi_col * MI_SIZE * SCALE_PX_TO_MV + dv.col;
+  const int src_bottom_edge = (mi_row * MI_SIZE + bh) * SCALE_PX_TO_MV + dv.row;
+  const int src_right_edge = (mi_col * MI_SIZE + bw) * SCALE_PX_TO_MV + dv.col;
+
+  const int src_top_y = src_top_edge >> 3;
+  const int src_left_x = src_left_edge >> 3;
+  const int src_bottom_y = (src_bottom_edge >> 3) - 1;
+  const int src_right_x = (src_right_edge >> 3) - 1;
+
+  const int active_left_x = mi_col * MI_SIZE;
+  const int active_top_y = mi_row * MI_SIZE;
+
+  const int sb_size_log2 = mib_size_log2 + MI_SIZE_LOG2;
+
+  const int sb_size = 1 << sb_size_log2;
+  const int sb_mi_size = sb_size >> MI_SIZE_LOG2;
+
+  int valid_size_log2 = sb_size_log2 > 6 ? 6 : sb_size_log2;
+  int valid =
+      src_top_y >> valid_size_log2 == active_top_y >> valid_size_log2 &&
+      src_left_x >> valid_size_log2 == active_left_x >> valid_size_log2 &&
+      src_bottom_y >> valid_size_log2 == active_top_y >> valid_size_log2 &&
+      src_right_x >> valid_size_log2 == active_left_x >> valid_size_log2;
+
+  if (valid) {
+    const int LT_mi_col_offset =
+        (src_left_x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int LT_mi_row_offset = (src_top_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int LT_pos =
+        LT_mi_row_offset * xd->is_mi_coded_stride + LT_mi_col_offset;
+    if (xd->is_mi_coded[LT_pos] == 0) return 0;
+
+    const int BR_mi_col_offset =
+        (src_right_x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int BR_mi_row_offset =
+        (src_bottom_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int BR_pos =
+        BR_mi_row_offset * xd->is_mi_coded_stride + BR_mi_col_offset;
+    if (xd->is_mi_coded[BR_pos] == 0) return 0;
+    assert(src_right_x < active_left_x || src_bottom_y < active_top_y);
+
+    return 1;
+  }
+
+  return 0;
+}
+#endif  // CONFIG_IBC_SR_EXT == 1
+
+#if CONFIG_IBC_SR_EXT == 2
+static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
+                                           int mi_row, int mi_col, int bh,
+                                           int bw, int mib_size_log2) {
+  const int SCALE_PX_TO_MV = 8;
+  const int src_top_edge = mi_row * MI_SIZE * SCALE_PX_TO_MV + dv.row;
+  const int src_left_edge = mi_col * MI_SIZE * SCALE_PX_TO_MV + dv.col;
+  const int src_bottom_edge = (mi_row * MI_SIZE + bh) * SCALE_PX_TO_MV + dv.row;
+  const int src_right_edge = (mi_col * MI_SIZE + bw) * SCALE_PX_TO_MV + dv.col;
+  const int src_top_y = src_top_edge >> 3;
+  const int src_left_x = src_left_edge >> 3;
+  const int src_bottom_y = (src_bottom_edge >> 3) - 1;
+  const int src_right_x = (src_right_edge >> 3) - 1;
+  const int active_left_x = mi_col * MI_SIZE;
+  const int active_top_y = mi_row * MI_SIZE;
+
+  const int sb_size_log2 = mib_size_log2 + MI_SIZE_LOG2;
+  if ((src_top_y >> sb_size_log2) < (active_top_y >> sb_size_log2)) return 0;
+
+  if ((src_bottom_y >> sb_size_log2) > (active_top_y >> sb_size_log2)) return 0;
+
+  if (((dv.col >> 3) + bw) > 0 && ((dv.row >> 3) + bh) > 0) return 0;
+
+  const int numLeftSB =
+      (1 << ((7 - sb_size_log2) << 1)) - ((sb_size_log2 < 7) ? 1 : 0);
+  const int valid_SB =
+      ((src_right_x >> sb_size_log2) <= (active_left_x >> sb_size_log2)) &&
+      ((src_left_x >> sb_size_log2) >=
+       ((active_left_x >> sb_size_log2) - numLeftSB));
+  if (!valid_SB) return 0;
+
+  int TL_same_sb = 0;
+  int BR_same_sb = 0;
+  const int sb_size = 1 << sb_size_log2;
+  const int sb_mi_size = sb_size >> MI_SIZE_LOG2;
+  if ((sb_size_log2 == 7)) {
+    if ((src_left_x >> sb_size_log2) == ((active_left_x >> sb_size_log2) - 1)) {
+      const int src_colo_left_x = src_left_x + sb_size;
+      const int src_colo_top_y = src_top_y;
+      const int offset64x = (src_colo_left_x >> 6) << 6;
+      const int offset64y = (src_colo_top_y >> 6) << 6;
+      const int mi_col_offset = (offset64x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+      const int mi_row_offset = (offset64y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+      const int pos = mi_row_offset * xd->is_mi_coded_stride + mi_col_offset;
+      if (xd->is_mi_coded[pos]) return 0;
+      if (offset64x == active_left_x && offset64y == active_top_y) return 0;
+      TL_same_sb = 0;
+    } else {
+      TL_same_sb = 1;
+    }
+  } else {
+    if ((src_left_x >> sb_size_log2) < (active_left_x >> sb_size_log2)) {
+      TL_same_sb = 0;
+    } else {
+      TL_same_sb = 1;
+    }
+  }
+
+  if (TL_same_sb) {
+    const int LT_mi_col_offset =
+        (src_left_x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int LT_mi_row_offset = (src_top_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int LT_pos =
+        LT_mi_row_offset * xd->is_mi_coded_stride + LT_mi_col_offset;
+    if (xd->is_mi_coded[LT_pos] == 0) return 0;
+  }
+
+  BR_same_sb = (src_right_x >> sb_size_log2) == (active_left_x >> sb_size_log2);
+  if (BR_same_sb) {
+    const int BR_mi_col_offset =
+        (src_right_x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int BR_mi_row_offset =
+        (src_bottom_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
+    const int BR_pos =
+        BR_mi_row_offset * xd->is_mi_coded_stride + BR_mi_col_offset;
+    if (xd->is_mi_coded[BR_pos] == 0) return 0;
+    assert(src_right_x < active_left_x || src_bottom_y < active_top_y);
+  }
+  return 1;
+}
+#endif  // CONFIG_IBC_SR_EXT == 2
+
 static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
                                   const MACROBLOCKD *xd, int mi_row, int mi_col,
                                   BLOCK_SIZE bsize, int mib_size_log2) {
@@ -349,6 +488,49 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
     if (bh < 8 && pd->subsampling_y)
       if (src_top_edge < tile_top_edge + 4 * SCALE_PX_TO_MV) return 0;
   }
+
+#if CONFIG_IBC_SR_EXT
+  if (cm->features.allow_local_intrabc) {
+    if (bw <= 64 || bh <= 64) {
+      int valid = 0;
+      int tmp_row = mi_row;
+      int tmp_col = mi_col;
+      int tmp_bh = bh;
+      int tmp_bw = bw;
+      if (!frame_is_intra_only(cm)) {
+        if (xd->is_chroma_ref && av1_num_planes(cm) > 1) {
+          const struct macroblockd_plane *const pd = &xd->plane[1];
+          if ((bw < 8 && pd->subsampling_x) && (bh < 8 && pd->subsampling_y)) {
+            tmp_row = mi_row / 2 * 2;
+            tmp_col = mi_col / 2 * 2;
+            tmp_bh = 8;
+            tmp_bw = 8;
+          } else if (bw < 8 && pd->subsampling_x) {
+            tmp_col = mi_col / 2 * 2;
+            tmp_bw = 8;
+          } else if (bh < 8 && pd->subsampling_y) {
+            tmp_row = mi_row / 2 * 2;
+            tmp_bh = 8;
+          }
+        }
+      }
+      // The size of local search range is determined by the value of
+      // CONFIG_IBC_SR_EXT. 0: disabled, 1: 64x64 (default), 2: 128x128.
+#if CONFIG_IBC_SR_EXT == 1
+      valid = av1_is_dv_in_local_range_64x64(dv, xd, tmp_row, tmp_col, tmp_bh,
+                                             tmp_bw, mib_size_log2);
+#endif  // CONFIG_IBC_SR_EXT == 1
+#if CONFIG_IBC_SR_EXT == 2
+      valid = av1_is_dv_in_local_range(dv, xd, tmp_row, tmp_col, tmp_bh, tmp_bw,
+                                       mib_size_log2);
+#endif  // CONFIG_IBC_SR_EXT == 2
+      if (valid) return 1;
+    }
+  }
+  if (!frame_is_intra_only(cm)) return 0;
+
+  if (!cm->features.allow_global_intrabc) return 0;
+#endif  // CONFIG_IBC_SR_EXT
 
   // Is the bottom right within an already coded SB? Also consider additional
   // constraints to facilitate HW decoder.

@@ -165,6 +165,13 @@ typedef struct {
   // A function pointer to the simd function for fast computation
   const aom_variance_fn_ptr_t *vfp;
 
+#if CONFIG_IBC_SR_EXT
+  const MACROBLOCKD *xd;
+  int mib_size_log2;
+  const AV1_COMMON *cm;
+  int mi_row;
+  int mi_col;
+#endif  // CONFIG_IBC_SR_EXT
   MSBuffers ms_buffers;
 
   // WARNING: search_method should be regarded as a private variable and should

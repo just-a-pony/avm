@@ -737,6 +737,11 @@ int_mv av1_simple_motion_search(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   mbmi->interp_fltr = EIGHTTAP_REGULAR;
 
+#if CONFIG_IBC_SR_EXT
+  mbmi->use_intrabc[0] = 0;
+  mbmi->use_intrabc[1] = 0;
+#endif  // CONFIG_IBC_SR_EXT
+
   const YV12_BUFFER_CONFIG *yv12 = get_ref_frame_yv12_buf(cm, ref);
   const YV12_BUFFER_CONFIG *scaled_ref_frame =
       av1_get_scaled_ref_frame(cpi, ref);

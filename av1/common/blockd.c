@@ -52,6 +52,41 @@ PREDICTION_MODE av1_above_block_mode(const MB_MODE_INFO *above_mi) {
 }
 #endif  // CONFIG_AIMC
 
+#if CONFIG_IBC_SR_EXT
+void av1_reset_is_mi_coded_map(MACROBLOCKD *xd, int stride) {
+  av1_zero(xd->is_mi_coded);
+  xd->is_mi_coded_stride = stride;
+}
+
+void av1_mark_block_as_coded(MACROBLOCKD *xd, int mi_row, int mi_col,
+                             BLOCK_SIZE bsize, BLOCK_SIZE sb_size) {
+  const int sb_mi_size = mi_size_wide[sb_size];
+  const int mi_row_offset = mi_row & (sb_mi_size - 1);
+  const int mi_col_offset = mi_col & (sb_mi_size - 1);
+
+  for (int r = 0; r < mi_size_high[bsize]; ++r)
+    for (int c = 0; c < mi_size_wide[bsize]; ++c) {
+      const int pos =
+          (mi_row_offset + r) * xd->is_mi_coded_stride + mi_col_offset + c;
+      xd->is_mi_coded[pos] = 1;
+    }
+}
+
+void av1_mark_block_as_not_coded(MACROBLOCKD *xd, int mi_row, int mi_col,
+                                 BLOCK_SIZE bsize, BLOCK_SIZE sb_size) {
+  const int sb_mi_size = mi_size_wide[sb_size];
+  const int mi_row_offset = mi_row & (sb_mi_size - 1);
+  const int mi_col_offset = mi_col & (sb_mi_size - 1);
+
+  for (int r = 0; r < mi_size_high[bsize]; ++r) {
+    uint8_t *row_ptr =
+        &xd->is_mi_coded[(mi_row_offset + r) * xd->is_mi_coded_stride +
+                         mi_col_offset];
+    memset(row_ptr, 0, mi_size_wide[bsize] * sizeof(xd->is_mi_coded[0]));
+  }
+}
+#endif  // CONFIG_IBC_SR_EXT
+
 void av1_set_entropy_contexts(const MACROBLOCKD *xd,
                               struct macroblockd_plane *pd, int plane,
                               BLOCK_SIZE plane_bsize, TX_SIZE tx_size,

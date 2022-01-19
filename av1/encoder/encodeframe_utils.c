@@ -708,6 +708,20 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
   }
 }
 
+#if CONFIG_IBC_SR_EXT
+static BLOCK_SIZE len_to_bsize(int length) {
+  switch (length) {
+    case 128: return BLOCK_128X128;
+    case 64: return BLOCK_64X64;
+    case 32: return BLOCK_32X32;
+    case 16: return BLOCK_16X16;
+    case 8: return BLOCK_8X8;
+    case 4: return BLOCK_4X4;
+    default: assert(0 && "Invalid block size"); return BLOCK_16X16;
+  }
+}
+#endif  // CONFIG_IBC_SR_EXT
+
 void av1_restore_context(MACROBLOCK *x, const RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
                          int mi_row, int mi_col, BLOCK_SIZE bsize,
                          const int num_planes) {
@@ -753,6 +767,10 @@ void av1_restore_context(MACROBLOCK *x, const RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
          sizeof(*xd->above_txfm_context) * mi_width);
   memcpy(xd->left_txfm_context, ctx->tl,
          sizeof(*xd->left_txfm_context) * mi_height);
+#if CONFIG_IBC_SR_EXT
+  av1_mark_block_as_not_coded(xd, mi_row, mi_col, bsize,
+                              len_to_bsize(x->e_mbd.is_mi_coded_stride * 4));
+#endif  // CONFIG_IBC_SR_EXT
 }
 
 void av1_save_context(const MACROBLOCK *x, RD_SEARCH_MACROBLOCK_CONTEXT *ctx,

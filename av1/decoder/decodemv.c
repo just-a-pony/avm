@@ -46,7 +46,7 @@ static void read_cdef(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
   const int skip_txfm = xd->mi[0]->skip_txfm;
 #endif
   if (cm->features.coded_lossless) return;
-  if (cm->features.allow_intrabc) {
+  if (is_global_intrabc_allowed(cm)) {
     assert(cm->cdef_info.cdef_bits == 0);
     return;
   }
@@ -91,7 +91,7 @@ static void read_cdef(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
 #if CONFIG_CCSO
 static void read_ccso(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
   if (cm->features.coded_lossless) return;
-  if (cm->features.allow_intrabc) return;
+  if (is_global_intrabc_allowed(cm)) return;
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
@@ -2040,7 +2040,12 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
     xd->cfl.store_y = store_cfl_required(cm, xd);
 
 #if CONFIG_REF_MV_BANK
-  if (cm->seq_params.enable_refmvbank) av1_update_ref_mv_bank(cm, xd, mbmi);
+#if CONFIG_IBC_SR_EXT
+  if (cm->seq_params.enable_refmvbank && !is_intrabc_block(mbmi, xd->tree_type))
+#else
+  if (cm->seq_params.enable_refmvbank)
+#endif  // CONFIG_IBC_SR_EXT
+    av1_update_ref_mv_bank(cm, xd, mbmi);
 #endif  // CONFIG_REF_MV_BANK
 
 #if DEC_MISMATCH_DEBUG
@@ -2106,6 +2111,20 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   xd->left_txfm_context =
       xd->left_txfm_context_buffer + (xd->mi_row & MAX_MIB_MASK);
 
+#if CONFIG_IBC_SR_EXT
+#if CONFIG_SDP
+  if (!inter_block && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+#else
+  if (!inter_block && av1_allow_intrabc(cm)) {
+#endif
+    mbmi->ref_frame[0] = INTRA_FRAME;
+    mbmi->ref_frame[1] = NONE_FRAME;
+    mbmi->palette_mode_info.palette_size[0] = 0;
+    mbmi->palette_mode_info.palette_size[1] = 0;
+    read_intrabc_info(cm, dcb, r);
+    if (is_intrabc_block(mbmi, xd->tree_type)) return;
+  }
+#endif  // CONFIG_IBC_SR_EXT
   if (inter_block)
     read_inter_block_mode_info(pbi, dcb, mbmi, r);
   else

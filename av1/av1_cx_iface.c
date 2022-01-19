@@ -155,6 +155,9 @@ struct av1_extracfg {
   int enable_overlay;  // enable overlay for filtered arf frames
   int enable_palette;
   int enable_intrabc;
+#if CONFIG_IBC_SR_EXT
+  int enable_intrabc_ext;  // enable search range extension for intrabc
+#endif                     // CONFIG_IBC_SR_EXT
   int enable_angle_delta;
 #if CONFIG_OPTFLOW_REFINEMENT
   aom_opfl_refine_type enable_opfl_refine;  // optical flow refinement type
@@ -436,7 +439,10 @@ static struct av1_extracfg default_extra_cfg = {
   1,                       // enable overlay
   1,                       // enable palette
   !CONFIG_SHARP_SETTINGS,  // enable intrabc
-  1,                       // enable angle delta
+#if CONFIG_IBC_SR_EXT
+  1,    // enable search range extension for intrabc
+#endif  // CONFIG_IBC_SR_EXT
+  1,    // enable angle delta
 #if CONFIG_OPTFLOW_REFINEMENT
   1,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
@@ -882,6 +888,9 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_obmc = extra_cfg->enable_obmc;
   cfg->enable_palette = extra_cfg->enable_palette;
   cfg->enable_intrabc = extra_cfg->enable_intrabc;
+#if CONFIG_IBC_SR_EXT
+  cfg->enable_intrabc_ext = extra_cfg->enable_intrabc_ext;
+#endif  // CONFIG_IBC_SR_EXT
   cfg->enable_trellis_quant = extra_cfg->enable_trellis_quant;
   cfg->enable_ref_frame_mvs =
       (extra_cfg->allow_ref_frame_mvs || extra_cfg->enable_ref_frame_mvs);
@@ -954,6 +963,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_obmc = cfg->enable_obmc;
   extra_cfg->enable_palette = cfg->enable_palette;
   extra_cfg->enable_intrabc = cfg->enable_intrabc;
+#if CONFIG_IBC_SR_EXT
+  extra_cfg->enable_intrabc_ext = cfg->enable_intrabc_ext;
+#endif  // CONFIG_IBC_SR_EXT
   extra_cfg->enable_trellis_quant = cfg->enable_trellis_quant;
   extra_cfg->enable_ref_frame_mvs = cfg->enable_ref_frame_mvs;
   extra_cfg->enable_onesided_comp = cfg->enable_onesided_comp;
@@ -1275,6 +1287,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   kf_cfg->enable_sframe = extra_cfg->s_frame_mode;
   kf_cfg->enable_keyframe_filtering = extra_cfg->enable_keyframe_filtering;
   kf_cfg->enable_intrabc = extra_cfg->enable_intrabc;
+#if CONFIG_IBC_SR_EXT
+  kf_cfg->enable_intrabc_ext = extra_cfg->enable_intrabc_ext;
+#endif  // CONFIG_IBC_SR_EXT
 
   oxcf->speed = extra_cfg->cpu_used;
 
@@ -3662,6 +3677,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_intrabc, argv,
                               err_string)) {
     extra_cfg.enable_intrabc = arg_parse_int_helper(&arg, err_string);
+#if CONFIG_IBC_SR_EXT
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_intrabc_ext,
+                              argv, err_string)) {
+    extra_cfg.enable_intrabc_ext = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_IBC_SR_EXT
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_angle_delta,
                               argv, err_string)) {
     extra_cfg.enable_angle_delta = arg_parse_int_helper(&arg, err_string);
@@ -4004,7 +4024,11 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_CCSO
         1,
 #endif
-        1, 1,   1,   1, 1, 1, 0, 0, 1, 1, 1, 1, 1,
+        1, 1,   1,   1, 1, 1, 0, 0, 1,
+#if CONFIG_IBC_SR_EXT
+        1,
+#endif  // CONFIG_IBC_SR_EXT
+        1, 1,   1,   1,
 #if CONFIG_OPTFLOW_REFINEMENT
         1,
 #endif  // CONFIG_OPTFLOW_REFINEMENT

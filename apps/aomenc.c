@@ -448,6 +448,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_CCSO
   &g_av1_codec_arg_defs.enable_ccso,
 #endif
+#if CONFIG_IBC_SR_EXT
+  &g_av1_codec_arg_defs.enable_intrabc_ext,
+#endif  // CONFIG_IBC_SR_EXT
   NULL,
 };
 
@@ -611,6 +614,9 @@ static void init_config(cfg_options_t *config) {
   config->enable_onesided_comp = 1;
   config->enable_palette = 1;
   config->enable_intrabc = 1;
+#if CONFIG_IBC_SR_EXT
+  config->enable_intrabc_ext = 1;
+#endif  // CONFIG_IBC_SR_EXT
   config->enable_cfl_intra = 1;
   config->enable_smooth_intra = 1;
   config->enable_filter_intra = 1;
@@ -1506,8 +1512,16 @@ static void show_stream_config(struct stream_state *stream,
           encoder_cfg->enable_restoration);
 
   fprintf(stdout,
-          "Tool setting (Others)          : Palette (%d), IntraBC (%d)\n",
-          encoder_cfg->enable_palette, encoder_cfg->enable_intrabc);
+          "Tool setting (Others)          : Palette (%d), "
+#if CONFIG_IBC_SR_EXT
+          "IntraBCExt (%d), "
+#endif  // CONFIG_IBC_SR_EXT
+          "IntraBC (%d)\n",
+          encoder_cfg->enable_palette,
+#if CONFIG_IBC_SR_EXT
+          encoder_cfg->enable_intrabc_ext,
+#endif  // CONFIG_IBC_SR_EXT
+          encoder_cfg->enable_intrabc);
 
   fprintf(stdout, "\n\n");
 }
