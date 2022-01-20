@@ -854,7 +854,7 @@ typedef struct macroblockd {
    * 'tx_type_map' in one of 'CommonModeInfoParams', 'PICK_MODE_CONTEXT' or
    * 'MACROBLOCK' structs.
    */
-  uint8_t *tx_type_map;
+  TX_TYPE *tx_type_map;
   /*!
    * Stride for 'tx_type_map'. Note that this may / may not be same as
    * 'mi_stride', depending on which actual array 'tx_type_map' points to.

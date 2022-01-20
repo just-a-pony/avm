@@ -195,7 +195,7 @@ void av1_rd_pick_palette_intra_sby(
     int64_t *best_rd, int64_t *best_model_rd, int *rate, int *rate_tokenonly,
     int64_t *distortion, int *skippable, int *beat_best_rd,
     struct PICK_MODE_CONTEXT *ctx, uint8_t *best_blk_skip,
-    uint8_t *tx_type_map);
+    TX_TYPE *tx_type_map);
 
 /*!\brief Search for the best palette in the chroma plane.
  *

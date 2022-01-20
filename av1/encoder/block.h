@@ -276,7 +276,7 @@ typedef struct {
   //! Map showing which txfm block skips the txfm process.
   uint8_t blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   //! Map showing the txfm types for each blcok.
-  uint8_t tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  TX_TYPE tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   //! Rd_stats for the whole partition block.
   RD_STATS rd_stats;
   //! Hash value of the current record.
@@ -548,7 +548,7 @@ typedef struct {
    * of each element stores secondary tx_type Bits 0~3 of each element stores
    * primary tx_type
    */
-  uint8_t tx_type_map_[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  TX_TYPE tx_type_map_[MAX_MIB_SIZE * MAX_MIB_SIZE];
 
   /** \name Txfm hash records
    * Hash records of the transform search results based on the residue. There

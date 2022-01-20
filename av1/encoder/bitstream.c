@@ -1154,7 +1154,7 @@ void av1_write_sec_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
     FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
     const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];
     if (!is_inter) {
-      uint8_t stx_flag = get_secondary_tx_type(tx_type);
+      TX_TYPE stx_flag = get_secondary_tx_type(tx_type);
       assert(stx_flag <= STX_TYPES - 1);
       if (block_signals_sec_tx_type(xd, tx_size, tx_type, eob)) {
         aom_write_symbol(w, stx_flag, ec_ctx->stx_cdf[square_tx_size],
@@ -1162,7 +1162,7 @@ void av1_write_sec_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
       }
     }
   } else if (!is_inter && !xd->lossless[mbmi->segment_id]) {
-    uint8_t stx_flag = get_secondary_tx_type(tx_type);
+    TX_TYPE stx_flag = get_secondary_tx_type(tx_type);
     assert(stx_flag <= STX_TYPES - 1);
     FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
     const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];

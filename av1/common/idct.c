@@ -417,7 +417,7 @@ void inv_stxfm_c(tran_low_t *src, tran_low_t *dst, const PREDICTION_MODE mode,
 }
 
 void av1_inv_stxfm(tran_low_t *coeff, TxfmParam *txfm_param) {
-  const uint8_t stx_type = txfm_param->sec_tx_type;
+  const TX_TYPE stx_type = txfm_param->sec_tx_type;
 
   const int width = tx_size_wide[txfm_param->tx_size] <= 32
                         ? tx_size_wide[txfm_param->tx_size]

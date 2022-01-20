@@ -263,7 +263,7 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
     // Encoder will fetch tx types when writing bitstream.
     if (!dry_run) {
       const int grid_idx = get_mi_grid_idx(mi_params, mi_row, mi_col);
-      uint8_t *const tx_type_map = mi_params->tx_type_map + grid_idx;
+      TX_TYPE *const tx_type_map = mi_params->tx_type_map + grid_idx;
       const int mi_stride = mi_params->mi_stride;
       for (int blk_row = 0; blk_row < bh; ++blk_row) {
         av1_copy_array(tx_type_map + blk_row * mi_stride,

@@ -40,7 +40,7 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
   TX_PARTITION_TYPE best_tx_partition = TX_PARTITION_NONE;
 #endif  // CONFIG_NEW_TX_PARTITION
   FILTER_INTRA_MODE_INFO filter_intra_mode_info;
-  uint8_t best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   (void)ctx;
   av1_zero(filter_intra_mode_info);
   mbmi->filter_intra_mode_info.use_filter_intra = 1;
@@ -790,7 +790,7 @@ int av1_search_palette_mode(IntraModeSearchState *intra_search_state,
   uint8_t *const color_map = xd->plane[0].color_index_map;
   MB_MODE_INFO best_mbmi_palette = *mbmi;
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
-  uint8_t best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   const ModeCosts *mode_costs = &x->mode_costs;
   const int *const intra_mode_cost =
       mode_costs->mbmode_cost[size_group_lookup[bsize]];
@@ -963,7 +963,7 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   memcpy(best_blk_skip, x->txfm_search_info.blk_skip,
          sizeof(best_blk_skip[0]) * ctx->num_4x4_blk);
-  uint8_t best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
 #if CONFIG_NEW_TX_PARTITION
   TX_SIZE best_tx_partition = mbmi->partition_type[0];
 #endif  // CONFIG_NEW_TX_PARTITION

@@ -1820,7 +1820,7 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
           if (cm->seq_params.enable_ist)
 #endif  // CONFIG_IST_FIX_B098
             update_cdf(fc->stx_cdf[txsize_sqr_map[tx_size]],
-                       get_secondary_tx_type(tx_type), STX_TYPES);
+                       (int8_t)get_secondary_tx_type(tx_type), STX_TYPES);
 #endif
         }
       }
@@ -1844,7 +1844,7 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
     if (cm->seq_params.enable_ist)
 #endif  // CONFIG_IST_FIX_B098
       update_cdf(fc->stx_cdf[txsize_sqr_map[tx_size]],
-                 get_secondary_tx_type(tx_type), STX_TYPES);
+                 (int8_t)get_secondary_tx_type(tx_type), STX_TYPES);
   }
 #endif  // CONFIG_IST_FIX_B076
 }

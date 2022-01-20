@@ -313,7 +313,7 @@ void av1_highbd_fwd_txfm(const int16_t *src_diff, tran_low_t *coeff,
 
 #if CONFIG_IST
 void av1_fwd_stxfm(tran_low_t *coeff, TxfmParam *txfm_param) {
-  const uint8_t stx_type = txfm_param->sec_tx_type;
+  const TX_TYPE stx_type = txfm_param->sec_tx_type;
 
   const int width = tx_size_wide[txfm_param->tx_size] <= 32
                         ? tx_size_wide[txfm_param->tx_size]

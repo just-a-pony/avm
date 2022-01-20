@@ -3302,7 +3302,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
   if (!tx_select)
     chosen_tx_size = tx_size_from_tx_mode(bs, txfm_params->tx_mode_search_type);
 
-  uint8_t best_txk_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  TX_TYPE best_txk_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_SIZE best_tx_size = max_tx_size;
   TX_PARTITION_TYPE best_partition_type = TX_PARTITION_NONE;
@@ -3416,7 +3416,7 @@ static AOM_INLINE void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
   }
 
   const int skip_trellis = 0;
-  uint8_t best_txk_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  TX_TYPE best_txk_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_SIZE best_tx_size = max_rect_tx_size;
   int64_t best_rd = INT64_MAX;
