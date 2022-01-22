@@ -371,15 +371,16 @@ void av1_quant(MACROBLOCK *x, int plane, int block, TxfmParam *txfm_param,
 #if CONFIG_CONTEXT_DERIVATION
   MACROBLOCKD *const xd = &x->e_mbd;
   const int16_t *const scan = scan_order->scan;
-  if (plane == AOM_PLANE_U) {
-    xd->eob_u_flag = *eob ? 1 : 0;
+  if (plane == AOM_PLANE_V) {
+    tran_low_t *const qcoeff_u = x->plane[AOM_PLANE_U].qcoeff + block_offset;
+    xd->eob_u_flag = x->plane[AOM_PLANE_U].eobs[block] ? 1 : 0;
     const int width = get_txb_wide(txfm_param->tx_size);
     const int height = get_txb_high(txfm_param->tx_size);
     memset(xd->tmp_sign, 0, width * height * sizeof(int32_t));
-    for (int c = 0; c < *eob; ++c) {
+    for (int c = 0; c < x->plane[AOM_PLANE_U].eobs[block]; ++c) {
       const int pos = scan[c];
-      int sign = (qcoeff[pos] < 0) ? 1 : 0;
-      if (abs(qcoeff[pos])) xd->tmp_sign[pos] = (sign ? 2 : 1);
+      int sign = (qcoeff_u[pos] < 0) ? 1 : 0;
+      if (abs(qcoeff_u[pos])) xd->tmp_sign[pos] = (sign ? 2 : 1);
     }
   }
 #endif  // CONFIG_CONTEXT_DERIVATION
