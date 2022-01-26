@@ -428,6 +428,10 @@ typedef struct MB_MODE_INFO {
   /*! \brief CDEF strength per BLOCK_64X64 */
   int8_t cdef_strength : 4;
 #if CONFIG_CCSO
+#if CONFIG_CCSO_EXT
+  /*! \brief Whether to use cross-component sample offset for the Y plane. */
+  uint8_t ccso_blk_y : 2;
+#endif
   /*! \brief Whether to use cross-component sample offset for the U plane. */
   uint8_t ccso_blk_u : 2;
   /*! \brief Whether to use cross-component sample offset for the V plane. */
@@ -1147,6 +1151,10 @@ typedef struct macroblockd {
   uint8_t enable_ist;
 #endif
 #if CONFIG_CCSO
+#if CONFIG_CCSO_EXT
+  /** ccso blk y */
+  uint8_t ccso_blk_y;
+#endif
   /** ccso blk u */
   uint8_t ccso_blk_u;
   /** ccso blk v */

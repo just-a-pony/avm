@@ -43,4 +43,10 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_IST_FIX_B098 1 CONFIG_IST)
   endif()
 
+  # CONFIG_CCSO_EXT is dependent on CONFIG_CCSO. If CONFIG_CCSO is off,
+  # CONFIG_CCSO_EXT needs to be turned off.
+  if(NOT CONFIG_CCSO_EXT AND CONFIG_CCSO)
+    change_config_and_warn(CONFIG_CCSO_EXT 0 !CONFIG_CCSO)
+  endif()
+
 endmacro()

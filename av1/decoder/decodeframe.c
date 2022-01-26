@@ -2293,22 +2293,39 @@ static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
 static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {
   if (is_global_intrabc_allowed(cm)) return;
+#if CONFIG_CCSO_EXT
+  const int ccso_offset[8] = { 0, 1, -1, 3, -3, 7, -7, -10 };
+  for (int plane = 0; plane < av1_num_planes(cm); plane++) {
+#else
   const int ccso_offset[8] = { 0, 1, -1, 3, -3, 5, -5, -7 };
-  for (int plane = 1; plane < 3; plane++) {
-    cm->ccso_info.ccso_enable[plane - 1] = aom_rb_read_literal(rb, 1);
-    if (cm->ccso_info.ccso_enable[plane - 1]) {
-      cm->ccso_info.quant_idx[plane - 1] = aom_rb_read_literal(rb, 2);
-      cm->ccso_info.ext_filter_support[plane - 1] = aom_rb_read_literal(rb, 3);
+  for (int plane = 0; plane < 2; plane++) {
+#endif
+    cm->ccso_info.ccso_enable[plane] = aom_rb_read_literal(rb, 1);
+    if (cm->ccso_info.ccso_enable[plane]) {
+      cm->ccso_info.quant_idx[plane] = aom_rb_read_literal(rb, 2);
+      cm->ccso_info.ext_filter_support[plane] = aom_rb_read_literal(rb, 3);
+#if CONFIG_CCSO_EXT
+      cm->ccso_info.max_band_log2[plane] = aom_rb_read_literal(rb, 2);
+      const int max_band = 1 << cm->ccso_info.max_band_log2[plane];
+#endif
       for (int d0 = 0; d0 < CCSO_INPUT_INTERVAL; d0++) {
         for (int d1 = 0; d1 < CCSO_INPUT_INTERVAL; d1++) {
+#if !CONFIG_CCSO_EXT
           const int lut_idx_ext = (d0 << 2) + d1;
+#else
+          for (int band_num = 0; band_num < max_band; band_num++) {
+            const int lut_idx_ext = (band_num << 4) + (d0 << 2) + d1;
+#endif
           const int offset_idx = aom_rb_read_literal(rb, 3);
-          cm->ccso_info.filter_offset[plane - 1][lut_idx_ext] =
+          cm->ccso_info.filter_offset[plane][lut_idx_ext] =
               ccso_offset[offset_idx];
         }
+#if CONFIG_CCSO_EXT
       }
+#endif
     }
   }
+}
 }
 #endif
 
@@ -4048,7 +4065,7 @@ static AOM_INLINE void reset_dec_workers(AV1Decoder *pbi,
 #if CONFIG_THROUGHPUT_ANALYSIS
     aom_accounting_cal_total(pbi);
 #else
-    aom_accounting_dump(&pbi->accounting);
+      aom_accounting_dump(&pbi->accounting);
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
     aom_accounting_reset(&pbi->accounting);
   }
@@ -5984,7 +6001,11 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_CCSO
     const int use_ccso =
         !pbi->skip_loop_filter && !cm->features.coded_lossless &&
-        (cm->ccso_info.ccso_enable[0] || cm->ccso_info.ccso_enable[1]);
+        (cm->ccso_info.ccso_enable[0] || cm->ccso_info.ccso_enable[1]
+#if CONFIG_CCSO_EXT
+         || cm->ccso_info.ccso_enable[2]
+#endif
+        );
     uint16_t *ext_rec_y;
     if (use_ccso) {
       av1_setup_dst_planes(xd->plane, cm->seq_params.sb_size,
@@ -5999,20 +6020,40 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
         int pic_height = xd->plane[pli].dst.height;
         int pic_width = xd->plane[pli].dst.width;
         const int dst_stride = xd->plane[pli].dst.stride;
+#if CONFIG_CCSO_EXT
+        ext_rec_y += CCSO_PADDING_SIZE * ccso_stride_ext + CCSO_PADDING_SIZE;
+#endif
         for (int r = 0; r < pic_height; ++r) {
           for (int c = 0; c < pic_width; ++c) {
             if (cm->seq_params.use_highbitdepth) {
-              ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
-                        CCSO_PADDING_SIZE] =
-                  CONVERT_TO_SHORTPTR(
-                      xd->plane[pli].dst.buf)[r * dst_stride + c];
+#if CONFIG_CCSO_EXT
+              ext_rec_y[c] = CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[c];
+#else
+                ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
+                          CCSO_PADDING_SIZE] =
+                    CONVERT_TO_SHORTPTR(
+                        xd->plane[pli].dst.buf)[r * dst_stride + c];
+#endif
             } else {
-              ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
-                        CCSO_PADDING_SIZE] =
-                  xd->plane[pli].dst.buf[r * dst_stride + c];
+#if CONFIG_CCSO_EXT
+              ext_rec_y[c] = xd->plane[pli].dst.buf[c];
+#else
+                ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
+                          CCSO_PADDING_SIZE] =
+                    xd->plane[pli].dst.buf[r * dst_stride + c];
+#endif
             }
           }
+#if CONFIG_CCSO_EXT
+          ext_rec_y += ccso_stride_ext;
+          xd->plane[0].dst.buf += dst_stride;
         }
+        ext_rec_y -= CCSO_PADDING_SIZE * ccso_stride_ext + CCSO_PADDING_SIZE;
+        ext_rec_y -= pic_height * ccso_stride_ext;
+        xd->plane[0].dst.buf -= pic_height * ccso_stride_ext;
+#else
+          }
+#endif
       }
       extend_ccso_border(ext_rec_y, CCSO_PADDING_SIZE, xd);
     }

@@ -526,7 +526,11 @@ if ($opts{config} !~ /libs-x86-win32-vs.*/) {
 
 # Cross-component Sample Offset
 if (aom_config("CONFIG_CCSO") eq "yes") {
-	add_proto qw/void ccso_filter_block_hbd/, "const uint16_t *temp_rec_y_buf, uint16_t *rec_uv_16, const int x, const int y, const int pic_width_c, const int pic_height_c, int *rec_luma_idx, const int8_t *offset_buf, const int *ccso_stride_idx, const int *dst_stride_idx, const int y_uv_hori_scale, const int y_uv_vert_scale, const int pad_stride, const int quant_step_size, const int inv_quant_step, const int *rec_idx, const int maxval";
+  if (aom_config("CONFIG_CCSO_EXT") eq "yes") {
+    add_proto qw/void ccso_filter_block_hbd/, "const uint16_t *temp_rec_y_buf, uint16_t *rec_uv_16, const int x, const int y, const int pic_width_c, const int pic_height_c, int *rec_luma_idx, const int8_t *offset_buf, const int shift_bits, const int *ccso_stride_idx, const int *dst_stride_idx, const int y_uv_hori_scale, const int y_uv_vert_scale, const int pad_stride, const int quant_step_size, const int inv_quant_step, const int *rec_idx, const int maxval, const int filter_unit_size";
+  } else {
+    add_proto qw/void ccso_filter_block_hbd/, "const uint16_t *temp_rec_y_buf, uint16_t *rec_uv_16, const int x, const int y, const int pic_width_c, const int pic_height_c, int *rec_luma_idx, const int8_t *offset_buf, const int *ccso_stride_idx, const int *dst_stride_idx, const int y_uv_hori_scale, const int y_uv_vert_scale, const int pad_stride, const int quant_step_size, const int inv_quant_step, const int *rec_idx, const int maxval";
+  }
 }
 
 # WARPED_MOTION / GLOBAL_MOTION functions

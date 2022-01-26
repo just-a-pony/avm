@@ -165,7 +165,11 @@ class Decoder {
 };
 
 // Try to reveal a mismatch between LBD and HBD coding paths.
+#if CONFIG_CCSO_EXT
+TEST(DISABLED_CodingPathSync, SearchForHbdLbdMismatch) {
+#else
 TEST(CodingPathSync, SearchForHbdLbdMismatch) {
+#endif
   const int count_tests = 10;
   for (int i = 0; i < count_tests; ++i) {
     Decoder dec_hbd(0);
@@ -184,7 +188,11 @@ TEST(CodingPathSync, SearchForHbdLbdMismatch) {
   }
 }
 
+#if CONFIG_CCSO_EXT
+TEST(DISABLED_CodingPathSyncLarge, SearchForHbdLbdMismatchLarge) {
+#else
 TEST(CodingPathSyncLarge, SearchForHbdLbdMismatchLarge) {
+#endif
   const int count_tests = 100;
   const int seed = 1234;
   for (int i = 0; i < count_tests; ++i) {

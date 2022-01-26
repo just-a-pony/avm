@@ -238,13 +238,17 @@ enum {
 /** ccso info */
 typedef struct {
   /** ccso enable */
-  bool ccso_enable[2];
+  bool ccso_enable[CCSO_NUM_COMPONENTS];
   /** ccso filter offset */
-  int8_t filter_offset[2][16];
+  int8_t filter_offset[CCSO_NUM_COMPONENTS][CCSO_BAND_NUM * 16];
+#if CONFIG_CCSO_EXT
+  /** ccso log2 of max bands */
+  int max_band_log2[CCSO_NUM_COMPONENTS];
+#endif
   /** quant index */
-  uint8_t quant_idx[2];
+  uint8_t quant_idx[CCSO_NUM_COMPONENTS];
   /** extended filter support */
-  uint8_t ext_filter_support[2];
+  uint8_t ext_filter_support[CCSO_NUM_COMPONENTS];
 } CcsoInfo;
 #endif
 

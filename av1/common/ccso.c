@@ -93,10 +93,231 @@ void derive_ccso_sample_pos(int *rec_idx, const int ccso_stride,
   }
 }
 
+#if CONFIG_CCSO_EXT
+/* Apply CCSO on luma component when multiple bands are applied */
+void ccso_apply_luma_mb_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
+                               const uint16_t *src_y, uint16_t *dst_yuv,
+                               const int dst_stride, const uint8_t thr,
+                               const uint8_t filter_sup,
+                               const uint8_t max_band_log2) {
+  const CommonModeInfoParams *const mi_params = &cm->mi_params;
+  const int ccso_ext_stride = xd->plane[0].dst.width + (CCSO_PADDING_SIZE << 1);
+  const int pic_height = xd->plane[plane].dst.height;
+  const int pic_width = xd->plane[plane].dst.width;
+  const uint8_t shift_bits = cm->seq_params.bit_depth - max_band_log2;
+  const int max_val = (1 << cm->seq_params.bit_depth) - 1;
+  int src_cls[2];
+  const int neg_thr = thr * -1;
+  int src_loc[2];
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
+  const int blk_log2 = plane > 0 ? CCSO_BLK_SIZE : CCSO_BLK_SIZE + 1;
+  const int blk_size = 1 << blk_log2;
+  src_y += CCSO_PADDING_SIZE * ccso_ext_stride + CCSO_PADDING_SIZE;
+  for (int y = 0; y < pic_height; y += blk_size) {
+    for (int x = 0; x < pic_width; x += blk_size) {
+      const int ccso_blk_idx =
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_y)) *
+              (y >> blk_log2) * mi_params->mi_stride +
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_x)) *
+              (x >> blk_log2);
+      const bool use_ccso = mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_y;
+      if (!use_ccso) continue;
+      const int y_end = AOMMIN(pic_height - y, blk_size);
+      const int x_end = AOMMIN(pic_width - x, blk_size);
+      for (int y_start = 0; y_start < y_end; y_start++) {
+        for (int x_start = 0; x_start < x_end; x_start++) {
+          const int x_pos = x + x_start;
+          cal_filter_support(src_cls, &src_y[x_pos], thr, neg_thr, src_loc);
+          const int band_num = src_y[x_pos] >> shift_bits;
+          const int lut_idx_ext =
+              (band_num << 4) + (src_cls[0] << 2) + src_cls[1];
+          const int offset_val =
+              cm->ccso_info.filter_offset[plane][lut_idx_ext];
+          dst_yuv[x_pos] = clamp(offset_val + dst_yuv[x_pos], 0, max_val);
+        }
+        dst_yuv += dst_stride;
+        src_y += ccso_ext_stride;
+      }
+      dst_yuv -= dst_stride * y_end;
+      src_y -= ccso_ext_stride * y_end;
+    }
+    dst_yuv += (dst_stride << blk_log2);
+    src_y += (ccso_ext_stride << blk_log2);
+  }
+}
+
+/* Apply CCSO on luma component when single band is applied */
+void ccso_apply_luma_sb_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
+                               const uint16_t *src_y, uint16_t *dst_yuv,
+                               const int dst_stride, const uint8_t thr,
+                               const uint8_t filter_sup,
+                               const uint8_t max_band_log2) {
+  (void)max_band_log2;
+  const CommonModeInfoParams *const mi_params = &cm->mi_params;
+  const int ccso_ext_stride = xd->plane[0].dst.width + (CCSO_PADDING_SIZE << 1);
+  const int pic_height = xd->plane[plane].dst.height;
+  const int pic_width = xd->plane[plane].dst.width;
+  const int max_val = (1 << cm->seq_params.bit_depth) - 1;
+  int src_cls[2];
+  const int neg_thr = thr * -1;
+  int src_loc[2];
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
+  const int blk_log2 = plane > 0 ? CCSO_BLK_SIZE : CCSO_BLK_SIZE + 1;
+  const int blk_size = 1 << blk_log2;
+  src_y += CCSO_PADDING_SIZE * ccso_ext_stride + CCSO_PADDING_SIZE;
+  for (int y = 0; y < pic_height; y += blk_size) {
+    for (int x = 0; x < pic_width; x += blk_size) {
+      const int ccso_blk_idx =
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_y)) *
+              (y >> blk_log2) * mi_params->mi_stride +
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_x)) *
+              (x >> blk_log2);
+      const bool use_ccso = mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_y;
+      if (!use_ccso) continue;
+      const int y_end = AOMMIN(pic_height - y, blk_size);
+      const int x_end = AOMMIN(pic_width - x, blk_size);
+      for (int y_start = 0; y_start < y_end; y_start++) {
+        for (int x_start = 0; x_start < x_end; x_start++) {
+          const int x_pos = x + x_start;
+          cal_filter_support(src_cls, &src_y[x_pos], thr, neg_thr, src_loc);
+          const int lut_idx_ext = (src_cls[0] << 2) + src_cls[1];
+          const int offset_val =
+              cm->ccso_info.filter_offset[plane][lut_idx_ext];
+          dst_yuv[x_pos] = clamp(offset_val + dst_yuv[x_pos], 0, max_val);
+        }
+        dst_yuv += dst_stride;
+        src_y += ccso_ext_stride;
+      }
+      dst_yuv -= dst_stride * y_end;
+      src_y -= ccso_ext_stride * y_end;
+    }
+    dst_yuv += (dst_stride << blk_log2);
+    src_y += (ccso_ext_stride << blk_log2);
+  }
+}
+
+/* Apply CCSO on chroma component when multiple bands are applied */
+void ccso_apply_chroma_mb_filter(AV1_COMMON *cm, MACROBLOCKD *xd,
+                                 const int plane, const uint16_t *src_y,
+                                 uint16_t *dst_yuv, const int dst_stride,
+                                 const uint8_t thr, const uint8_t filter_sup,
+                                 const uint8_t max_band_log2) {
+  const CommonModeInfoParams *const mi_params = &cm->mi_params;
+  const int ccso_ext_stride = xd->plane[0].dst.width + (CCSO_PADDING_SIZE << 1);
+  const int pic_height = xd->plane[plane].dst.height;
+  const int pic_width = xd->plane[plane].dst.width;
+  const int y_uv_hscale = xd->plane[plane].subsampling_x;
+  const int y_uv_vscale = xd->plane[plane].subsampling_y;
+  const int scaled_ext_stride = (ccso_ext_stride << y_uv_vscale);
+  const uint8_t shift_bits = cm->seq_params.bit_depth - max_band_log2;
+  const int max_val = (1 << cm->seq_params.bit_depth) - 1;
+  int src_cls[2];
+  const int neg_thr = thr * -1;
+  int src_loc[2];
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
+  const int blk_log2 = plane > 0 ? CCSO_BLK_SIZE : CCSO_BLK_SIZE + 1;
+  const int blk_size = 1 << blk_log2;
+  src_y += CCSO_PADDING_SIZE * ccso_ext_stride + CCSO_PADDING_SIZE;
+  for (int y = 0; y < pic_height; y += blk_size) {
+    for (int x = 0; x < pic_width; x += blk_size) {
+      const int ccso_blk_idx =
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_y)) *
+              (y >> blk_log2) * mi_params->mi_stride +
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_x)) *
+              (x >> blk_log2);
+      const bool use_ccso =
+          (plane == 1) ? mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_u
+                       : mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_v;
+      if (!use_ccso) continue;
+      const int y_end = AOMMIN(pic_height - y, blk_size);
+      const int x_end = AOMMIN(pic_width - x, blk_size);
+      for (int y_start = 0; y_start < y_end; y_start++) {
+        for (int x_start = 0; x_start < x_end; x_start++) {
+          const int x_pos = x + x_start;
+          cal_filter_support(src_cls, &src_y[x_pos << y_uv_hscale], thr,
+                             neg_thr, src_loc);
+          const int band_num = src_y[x_pos << y_uv_hscale] >> shift_bits;
+          const int lut_idx_ext =
+              (band_num << 4) + (src_cls[0] << 2) + src_cls[1];
+          const int offset_val =
+              cm->ccso_info.filter_offset[plane][lut_idx_ext];
+          dst_yuv[x_pos] = clamp(offset_val + dst_yuv[x_pos], 0, max_val);
+        }
+        dst_yuv += dst_stride;
+        src_y += scaled_ext_stride;
+      }
+      dst_yuv -= dst_stride * y_end;
+      src_y -= scaled_ext_stride * y_end;
+    }
+    dst_yuv += (dst_stride << blk_log2);
+    src_y += (ccso_ext_stride << (blk_log2 + y_uv_vscale));
+  }
+}
+
+/* Apply CCSO on chroma component when single bands is applied */
+void ccso_apply_chroma_sb_filter(AV1_COMMON *cm, MACROBLOCKD *xd,
+                                 const int plane, const uint16_t *src_y,
+                                 uint16_t *dst_yuv, const int dst_stride,
+                                 const uint8_t thr, const uint8_t filter_sup,
+                                 const uint8_t max_band_log2) {
+  (void)max_band_log2;
+  const CommonModeInfoParams *const mi_params = &cm->mi_params;
+  const int ccso_ext_stride = xd->plane[0].dst.width + (CCSO_PADDING_SIZE << 1);
+  const int pic_height = xd->plane[plane].dst.height;
+  const int pic_width = xd->plane[plane].dst.width;
+  const int y_uv_hscale = xd->plane[plane].subsampling_x;
+  const int y_uv_vscale = xd->plane[plane].subsampling_y;
+  const int scaled_ext_stride = (ccso_ext_stride << y_uv_vscale);
+  const int max_val = (1 << cm->seq_params.bit_depth) - 1;
+  int src_cls[2];
+  const int neg_thr = thr * -1;
+  int src_loc[2];
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
+  const int blk_log2 = plane > 0 ? CCSO_BLK_SIZE : CCSO_BLK_SIZE + 1;
+  const int blk_size = 1 << blk_log2;
+  src_y += CCSO_PADDING_SIZE * ccso_ext_stride + CCSO_PADDING_SIZE;
+  for (int y = 0; y < pic_height; y += blk_size) {
+    for (int x = 0; x < pic_width; x += blk_size) {
+      const int ccso_blk_idx =
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_y)) *
+              (y >> blk_log2) * mi_params->mi_stride +
+          (blk_size >> (MI_SIZE_LOG2 - xd->plane[plane].subsampling_x)) *
+              (x >> blk_log2);
+      const bool use_ccso =
+          (plane == 1) ? mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_u
+                       : mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_v;
+      if (!use_ccso) continue;
+      const int y_end = AOMMIN(pic_height - y, blk_size);
+      const int x_end = AOMMIN(pic_width - x, blk_size);
+      for (int y_start = 0; y_start < y_end; y_start++) {
+        for (int x_start = 0; x_start < x_end; x_start++) {
+          const int x_pos = x + x_start;
+          cal_filter_support(src_cls, &src_y[x_pos << y_uv_hscale], thr,
+                             neg_thr, src_loc);
+          const int lut_idx_ext = (src_cls[0] << 2) + src_cls[1];
+          const int offset_val =
+              cm->ccso_info.filter_offset[plane][lut_idx_ext];
+          dst_yuv[x_pos] = clamp(offset_val + dst_yuv[x_pos], 0, max_val);
+        }
+        dst_yuv += dst_stride;
+        src_y += scaled_ext_stride;
+      }
+      dst_yuv -= dst_stride * y_end;
+      src_y -= scaled_ext_stride * y_end;
+    }
+    dst_yuv += (dst_stride << blk_log2);
+    src_y += (ccso_ext_stride << (blk_log2 + y_uv_vscale));
+  }
+}
+#endif
+
 /* Apply CCSO for one color component (low bit-depth) */
 void apply_ccso_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
                        const uint16_t *temp_rec_y_buf, uint8_t *rec_yv_8,
                        const int dst_stride, const int8_t *filter_offset,
+#if CONFIG_CCSO_EXT
+                       const int shift_bits,
+#endif
                        const uint8_t quant_step_size,
                        const uint8_t ext_filter_support) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
@@ -154,13 +375,24 @@ void apply_ccso_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
 
       for (int y_off = 0; y_off < y_offset; y_off++) {
         for (int x_off = 0; x_off < x_offset; x_off++) {
+#if CONFIG_CCSO_EXT
+          const int band_num =
+              temp_rec_y_buf[((ccso_stride_ext_idx[y_off] << y_uv_vert_scale) +
+                              ((x + x_off) << y_uv_hori_scale)) +
+                             pad_stride] >>
+              shift_bits;
+#endif
           cal_filter_support(
               rec_luma_idx,
               &temp_rec_y_buf[((ccso_stride_ext_idx[y_off] << y_uv_vert_scale) +
                                ((x + x_off) << y_uv_hori_scale)) +
                               pad_stride],
               quant_step_size, inv_quant_step, rec_idx);
-          int offset_val = offset_buf[(rec_luma_idx[0] << 2) + rec_luma_idx[1]];
+          int offset_val = offset_buf[
+#if CONFIG_CCSO_EXT
+              (band_num << 4) +
+#endif
+              (rec_luma_idx[0] << 2) + rec_luma_idx[1]];
           rec_yv_8[dst_stride_idx[y_off] + x + x_off] =
               clamp(offset_val + rec_yv_8[dst_stride_idx[y_off] + x + x_off], 0,
                     (1 << cm->seq_params.bit_depth) - 1);
@@ -176,32 +408,46 @@ void apply_ccso_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
 void ccso_filter_block_hbd_c(
     const uint16_t *temp_rec_y_buf, uint16_t *rec_uv_16, const int x,
     const int y, const int pic_width_c, const int pic_height_c,
-    int *rec_luma_idx, const int8_t *offset_buf, const int *ccso_stride_idx,
-    const int *dst_stride_idx, const int y_uv_hori_scale,
-    const int y_uv_vert_scale, const int pad_stride, const int quant_step_size,
-    const int inv_quant_step, const int *rec_idx, const int maxval) {
+    int *rec_luma_idx, const int8_t *offset_buf,
+#if CONFIG_CCSO_EXT
+    const int shift_bits,
+#endif
+    const int *ccso_stride_idx, const int *dst_stride_idx,
+    const int y_uv_hori_scale, const int y_uv_vert_scale, const int pad_stride,
+    const int quant_step_size, const int inv_quant_step, const int *rec_idx,
+    const int maxval, const int filter_unit_size) {
   int y_offset;
   int x_offset;
-  if (y + (1 << CCSO_BLK_SIZE) >= pic_height_c)
+  if (y + filter_unit_size >= pic_height_c)
     y_offset = pic_height_c - y;
   else
-    y_offset = (1 << CCSO_BLK_SIZE);
+    y_offset = filter_unit_size;
 
-  if (x + (1 << CCSO_BLK_SIZE) >= pic_width_c)
+  if (x + filter_unit_size >= pic_width_c)
     x_offset = pic_width_c - x;
   else
-    x_offset = (1 << CCSO_BLK_SIZE);
+    x_offset = filter_unit_size;
 
   for (int y_off = 0; y_off < y_offset; y_off++) {
     for (int x_off = 0; x_off < x_offset; x_off++) {
+#if CONFIG_CCSO_EXT
+      const int band_num =
+          temp_rec_y_buf[((ccso_stride_idx[y_off] << y_uv_vert_scale) +
+                          ((x + x_off) << y_uv_hori_scale)) +
+                         pad_stride] >>
+          shift_bits;
+#endif
       cal_filter_support(
           rec_luma_idx,
           &temp_rec_y_buf[((ccso_stride_idx[y_off] << y_uv_vert_scale) +
                            ((x + x_off) << y_uv_hori_scale)) +
                           pad_stride],
           quant_step_size, inv_quant_step, rec_idx);
-      const int offset_val =
-          offset_buf[(rec_luma_idx[0] << 2) + rec_luma_idx[1]];
+      const int offset_val = offset_buf[
+#if CONFIG_CCSO_EXT
+          (band_num << 4) +
+#endif
+          (rec_luma_idx[0] << 2) + rec_luma_idx[1]];
       rec_uv_16[dst_stride_idx[y_off] + x + x_off] = clamp(
           offset_val + rec_uv_16[dst_stride_idx[y_off] + x + x_off], 0, maxval);
     }
@@ -216,55 +462,76 @@ void apply_ccso_filter_hbd(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
                            const uint8_t ext_filter_support) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const int ccso_stride_ext = xd->plane[0].dst.width + (CCSO_PADDING_SIZE << 1);
-  const int pic_height_c = xd->plane[1].dst.height;
-  const int pic_width_c = xd->plane[1].dst.width;
+  const int pic_height_c = xd->plane[plane].dst.height;
+  const int pic_width_c = xd->plane[plane].dst.width;
   int rec_luma_idx[2];
   int inv_quant_step = quant_step_size * -1;
   int rec_idx[2];
   const int maxval = (1 << cm->seq_params.bit_depth) - 1;
-
+#if CONFIG_CCSO_EXT
+  const int shift_bits =
+      cm->seq_params.bit_depth - cm->ccso_info.max_band_log2[plane];
+#endif
   derive_ccso_sample_pos(rec_idx, ccso_stride_ext, ext_filter_support);
 
   const int8_t *offset_buf;
-  if (plane > 0) {
+  if (filter_offset == NULL) {
+#if CONFIG_CCSO_EXT
+    offset_buf = cm->ccso_info.filter_offset[plane];
+#else
     offset_buf = cm->ccso_info.filter_offset[plane - 1];
+#endif
   } else {
     offset_buf = filter_offset;
   }
-  int ccso_stride_ext_idx[1 << CCSO_BLK_SIZE];
-  int dst_stride_idx[1 << CCSO_BLK_SIZE];
-  for (int i = 0; i < (1 << CCSO_BLK_SIZE); i++) {
+  const int log2_filter_unit_size =
+      plane > 0 ? CCSO_BLK_SIZE : CCSO_BLK_SIZE + 1;
+  const int filter_unit_size = 1 << log2_filter_unit_size;
+  int ccso_stride_ext_idx[1 << (CCSO_BLK_SIZE + 1)];
+  int dst_stride_idx[1 << (CCSO_BLK_SIZE + 1)];
+  for (int i = 0; i < filter_unit_size; i++) {
     ccso_stride_ext_idx[i] = ccso_stride_ext * i;
     dst_stride_idx[i] = dst_stride * i;
   }
   const int pad_stride =
       CCSO_PADDING_SIZE * ccso_stride_ext + CCSO_PADDING_SIZE;
-  const int y_uv_hori_scale = xd->plane[1].subsampling_x;
-  const int y_uv_vert_scale = xd->plane[1].subsampling_y;
-  for (int y = 0; y < pic_height_c; y += (1 << CCSO_BLK_SIZE)) {
-    for (int x = 0; x < pic_width_c; x += (1 << CCSO_BLK_SIZE)) {
-      if (plane > 0) {
+  const int y_uv_hori_scale = xd->plane[plane].subsampling_x;
+  const int y_uv_vert_scale = xd->plane[plane].subsampling_y;
+  for (int y = 0; y < pic_height_c; y += filter_unit_size) {
+    for (int x = 0; x < pic_width_c; x += filter_unit_size) {
+      if (filter_offset == NULL) {
         const int ccso_blk_idx =
-            (1 << CCSO_BLK_SIZE >>
+            (filter_unit_size >>
              (MI_SIZE_LOG2 - xd->plane[plane].subsampling_y)) *
-                (y >> CCSO_BLK_SIZE) * mi_params->mi_stride +
-            (1 << CCSO_BLK_SIZE >>
+                (y >> log2_filter_unit_size) * mi_params->mi_stride +
+            (filter_unit_size >>
              (MI_SIZE_LOG2 - xd->plane[plane].subsampling_x)) *
-                (x >> CCSO_BLK_SIZE);
+                (x >> log2_filter_unit_size);
+
         const bool use_ccso =
             (plane == 1) ? mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_u
+#if CONFIG_CCSO_EXT
+            : (plane == 0) ? mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_y
+                           : mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_v;
+#else
                          : mi_params->mi_grid_base[ccso_blk_idx]->ccso_blk_v;
+#endif
         if (!use_ccso) continue;
       }
 
       ccso_filter_block_hbd(temp_rec_y_buf, rec_uv_16, x, y, pic_width_c,
                             pic_height_c, rec_luma_idx, offset_buf,
+#if CONFIG_CCSO_EXT
+                            shift_bits,
+#endif
                             ccso_stride_ext_idx, dst_stride_idx,
                             y_uv_hori_scale, y_uv_vert_scale, pad_stride,
-                            quant_step_size, inv_quant_step, rec_idx, maxval);
+                            quant_step_size, inv_quant_step, rec_idx, maxval,
+                            filter_unit_size);
     }
-    temp_rec_y_buf += (ccso_stride_ext << (CCSO_BLK_SIZE + y_uv_vert_scale));
-    rec_uv_16 += (dst_stride << CCSO_BLK_SIZE);
+    temp_rec_y_buf +=
+        (ccso_stride_ext << (log2_filter_unit_size + y_uv_vert_scale));
+    rec_uv_16 += (dst_stride << log2_filter_unit_size);
   }
 }
 
@@ -276,6 +543,24 @@ void ccso_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd,
                        num_planes);
 
   const uint8_t quant_sz[4] = { 16, 8, 32, 64 };
+#if CONFIG_CCSO_EXT
+  for (int plane = 0; plane < num_planes; plane++) {
+    const int dst_stride = xd->plane[plane].dst.stride;
+    const uint8_t quant_step_size = quant_sz[cm->ccso_info.quant_idx[plane]];
+    if (cm->ccso_info.ccso_enable[plane] && cm->seq_params.use_highbitdepth) {
+      CCSO_FILTER_FUNC apply_ccso_filter_func =
+          cm->ccso_info.max_band_log2[plane]
+              ? (plane > 0 ? ccso_apply_chroma_mb_filter
+                           : ccso_apply_luma_mb_filter)
+              : (plane > 0 ? ccso_apply_chroma_sb_filter
+                           : ccso_apply_luma_sb_filter);
+      apply_ccso_filter_func(cm, xd, plane, ext_rec_y,
+                             &CONVERT_TO_SHORTPTR(xd->plane[plane].dst.buf)[0],
+                             dst_stride, quant_step_size,
+                             cm->ccso_info.ext_filter_support[plane],
+                             cm->ccso_info.max_band_log2[plane]);
+    }
+#else
   for (int plane = 1; plane < 3; plane++) {
     const int dst_stride = xd->plane[plane].dst.stride;
     const uint8_t quant_step_size =
@@ -292,5 +577,6 @@ void ccso_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd,
             NULL, quant_step_size, cm->ccso_info.ext_filter_support[plane - 1]);
       }
     }
+#endif
   }
 }

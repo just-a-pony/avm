@@ -1267,15 +1267,36 @@ static AOM_INLINE void write_ccso(AV1_COMMON *cm, MACROBLOCKD *const xd,
       mi_params->mi_grid_base[(mi_row & ~blk_size_y) * mi_params->mi_stride +
                               (mi_col & ~blk_size_x)];
 
+#if CONFIG_CCSO_EXT
   if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
       cm->ccso_info.ccso_enable[0]) {
+    aom_write_symbol(w, mbmi->ccso_blk_y == 0 ? 0 : 1,
+                     xd->tile_ctx->ccso_cdf[0], 2);
+    xd->ccso_blk_y = mbmi->ccso_blk_y;
+  }
+#endif
+
+  if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
+#if CONFIG_CCSO_EXT
+      cm->ccso_info.ccso_enable[1]) {
+    aom_write_symbol(w, mbmi->ccso_blk_u == 0 ? 0 : 1,
+                     xd->tile_ctx->ccso_cdf[1], 2);
+#else
+      cm->ccso_info.ccso_enable[0]) {
     aom_write_bit(w, mbmi->ccso_blk_u == 0 ? 0 : 1);
+#endif
     xd->ccso_blk_u = mbmi->ccso_blk_u;
   }
 
   if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
+#if CONFIG_CCSO_EXT
+      cm->ccso_info.ccso_enable[2]) {
+    aom_write_symbol(w, mbmi->ccso_blk_v == 0 ? 0 : 1,
+                     xd->tile_ctx->ccso_cdf[2], 2);
+#else
       cm->ccso_info.ccso_enable[1]) {
     aom_write_bit(w, mbmi->ccso_blk_v == 0 ? 0 : 1);
+#endif
     xd->ccso_blk_v = mbmi->ccso_blk_v;
   }
 }
@@ -1837,7 +1858,11 @@ static AOM_INLINE void write_mb_modes_kf(
 #if CONFIG_CCSO
   if (cm->seq_params.enable_ccso
 #if CONFIG_SDP
+#if CONFIG_CCSO_EXT
+      && xd->tree_type != CHROMA_PART
+#else
       && xd->tree_type != LUMA_PART
+#endif
 #endif
   )
     write_ccso(cm, xd, w);
@@ -2777,15 +2802,29 @@ static AOM_INLINE void encode_cdef(const AV1_COMMON *cm,
 static AOM_INLINE void encode_ccso(const AV1_COMMON *cm,
                                    struct aom_write_bit_buffer *wb) {
   if (is_global_intrabc_allowed(cm)) return;
+#if CONFIG_CCSO_EXT
+  const int ccso_offset[8] = { 0, 1, -1, 3, -3, 7, -7, -10 };
+  for (int plane = 0; plane < av1_num_planes(cm); plane++) {
+#else
   const int ccso_offset[8] = { 0, 1, -1, 3, -3, 5, -5, -7 };
   for (int plane = 0; plane < 2; plane++) {
+#endif
     aom_wb_write_literal(wb, cm->ccso_info.ccso_enable[plane], 1);
     if (cm->ccso_info.ccso_enable[plane]) {
       aom_wb_write_literal(wb, cm->ccso_info.quant_idx[plane], 2);
       aom_wb_write_literal(wb, cm->ccso_info.ext_filter_support[plane], 3);
+#if CONFIG_CCSO_EXT
+      aom_wb_write_literal(wb, cm->ccso_info.max_band_log2[plane], 2);
+      const int max_band = 1 << cm->ccso_info.max_band_log2[plane];
+#endif
       for (int d0 = 0; d0 < CCSO_INPUT_INTERVAL; d0++) {
         for (int d1 = 0; d1 < CCSO_INPUT_INTERVAL; d1++) {
+#if !CONFIG_CCSO_EXT
           const int lut_idx_ext = (d0 << 2) + d1;
+#else
+          for (int band_num = 0; band_num < max_band; band_num++) {
+            const int lut_idx_ext = (band_num << 4) + (d0 << 2) + d1;
+#endif
           for (int offset_idx = 0; offset_idx < 8; offset_idx++) {
             if (cm->ccso_info.filter_offset[plane][lut_idx_ext] ==
                 ccso_offset[offset_idx]) {
@@ -2793,10 +2832,13 @@ static AOM_INLINE void encode_ccso(const AV1_COMMON *cm,
               break;
             }
           }
+#if CONFIG_CCSO_EXT
         }
+#endif
       }
     }
   }
+}
 }
 #endif
 

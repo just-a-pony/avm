@@ -1363,6 +1363,11 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->switchable_restore_cdf, ctx_tr->switchable_restore_cdf,
               RESTORE_SWITCHABLE_TYPES);
   AVERAGE_CDF(ctx_left->wiener_restore_cdf, ctx_tr->wiener_restore_cdf, 2);
+#if CONFIG_CCSO_EXT
+  for (int plane = 0; plane < MAX_MB_PLANE; plane++) {
+    AVERAGE_CDF(ctx_left->ccso_cdf[plane], ctx_tr->ccso_cdf[plane], 2);
+  }
+#endif
   AVERAGE_CDF(ctx_left->sgrproj_restore_cdf, ctx_tr->sgrproj_restore_cdf, 2);
 #if CONFIG_MRLS
   AVERAGE_CDF(ctx_left->mrl_index_cdf, ctx_tr->mrl_index_cdf, MRL_LINE_NUMBER);

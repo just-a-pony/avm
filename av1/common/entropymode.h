@@ -168,6 +168,9 @@ typedef struct frame_contexts {
   aom_cdf_prob filter_intra_mode_cdf[CDF_SIZE(FILTER_INTRA_MODES)];
   aom_cdf_prob switchable_restore_cdf[CDF_SIZE(RESTORE_SWITCHABLE_TYPES)];
   aom_cdf_prob wiener_restore_cdf[CDF_SIZE(2)];
+#if CONFIG_CCSO_EXT
+  aom_cdf_prob ccso_cdf[3][CDF_SIZE(2)];
+#endif
   aom_cdf_prob sgrproj_restore_cdf[CDF_SIZE(2)];
 #if !CONFIG_AIMC
   aom_cdf_prob y_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTRA_MODES)];

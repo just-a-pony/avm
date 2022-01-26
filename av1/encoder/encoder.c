@@ -2086,8 +2086,8 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
                                    MACROBLOCKD *xd, int use_restoration,
                                    int use_cdef) {
 #if CONFIG_CCSO
-  uint16_t *rec_uv[2];
-  uint16_t *org_uv[2];
+  uint16_t *rec_uv[CCSO_NUM_COMPONENTS];
+  uint16_t *org_uv[CCSO_NUM_COMPONENTS];
   uint16_t *ext_rec_y;
   uint8_t *ref_buffer;
   const YV12_BUFFER_CONFIG *ref = cpi->source;
@@ -2099,11 +2099,11 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
                        0, 0, 0, num_planes);
   const int ccso_stride = xd->plane[0].dst.width;
   const int ccso_stride_ext = xd->plane[0].dst.width + (CCSO_PADDING_SIZE << 1);
-  for (int pli = 0; pli < 2; pli++) {
-    rec_uv[pli] =
-        aom_malloc(sizeof(*rec_uv) * xd->plane[0].dst.height * ccso_stride);
-    org_uv[pli] =
-        aom_malloc(sizeof(*org_uv) * xd->plane[0].dst.height * ccso_stride);
+  for (int pli = 0; pli < num_planes; pli++) {
+    rec_uv[pli] = aom_malloc(sizeof(*rec_uv[pli]) * xd->plane[0].dst.height *
+                             ccso_stride);
+    org_uv[pli] = aom_malloc(sizeof(*org_uv[pli]) * xd->plane[0].dst.height *
+                             ccso_stride);
   }
   if (use_ccso) {
     ext_rec_y =
@@ -2165,11 +2165,19 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
     av1_setup_dst_planes(xd->plane, cm->seq_params.sb_size, &cm->cur_frame->buf,
                          0, 0, 0, num_planes);
     // Reading original and reconstructed chroma samples as input
-    for (int pli = 1; pli < 3; pli++) {
+#if CONFIG_CCSO_EXT
+    for (int pli = 0; pli < num_planes; pli++) {
+#else
+    for (int pli = 1; pli < num_planes; pli++) {
+#endif
       const int pic_height = xd->plane[pli].dst.height;
       const int pic_width = xd->plane[pli].dst.width;
       const int dst_stride = xd->plane[pli].dst.stride;
       switch (pli) {
+        case 0:
+          ref_buffer = ref->y_buffer;
+          ref_stride = ref->y_stride;
+          break;
         case 1:
           ref_buffer = ref->u_buffer;
           ref_stride = ref->uv_stride;
@@ -2183,15 +2191,14 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
       for (int r = 0; r < pic_height; ++r) {
         for (int c = 0; c < pic_width; ++c) {
           if (cm->seq_params.use_highbitdepth) {
-            rec_uv[pli - 1][r * ccso_stride + c] =
+            rec_uv[pli][r * ccso_stride + c] =
                 CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[r * dst_stride + c];
-            org_uv[pli - 1][r * ccso_stride + c] =
+            org_uv[pli][r * ccso_stride + c] =
                 CONVERT_TO_SHORTPTR(ref_buffer)[r * ref_stride + c];
           } else {
-            rec_uv[pli - 1][r * ccso_stride + c] =
+            rec_uv[pli][r * ccso_stride + c] =
                 xd->plane[pli].dst.buf[r * dst_stride + c];
-            org_uv[pli - 1][r * ccso_stride + c] =
-                ref_buffer[r * ref_stride + c];
+            org_uv[pli][r * ccso_stride + c] = ref_buffer[r * ref_stride + c];
           }
         }
       }
@@ -2200,7 +2207,11 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
     ccso_frame(&cm->cur_frame->buf, cm, xd, ext_rec_y);
     aom_free(ext_rec_y);
   }
-  for (int pli = 0; pli < 2; pli++) {
+#if CONFIG_CCSO_EXT
+  for (int pli = 0; pli < num_planes; pli++) {
+#else
+  for (int pli = 1; pli < num_planes; pli++) {
+#endif
     aom_free(rec_uv[pli]);
     aom_free(org_uv[pli]);
   }

@@ -100,9 +100,28 @@ static void read_ccso(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
   const int blk_size_x =
       (1 << (CCSO_BLK_SIZE + xd->plane[1].subsampling_x - MI_SIZE_LOG2)) - 1;
 
+#if CONFIG_CCSO_EXT
   if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
       cm->ccso_info.ccso_enable[0]) {
+    const int blk_idc =
+        aom_read_symbol(r, xd->tile_ctx->ccso_cdf[0], 2, ACCT_STR);
+    xd->ccso_blk_y = blk_idc;
+    mi_params
+        ->mi_grid_base[(mi_row & ~blk_size_y) * mi_params->mi_stride +
+                       (mi_col & ~blk_size_x)]
+        ->ccso_blk_y = blk_idc;
+  }
+#endif
+
+  if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
+#if CONFIG_CCSO_EXT
+      cm->ccso_info.ccso_enable[1]) {
+    const int blk_idc =
+        aom_read_symbol(r, xd->tile_ctx->ccso_cdf[1], 2, ACCT_STR);
+#else
+      cm->ccso_info.ccso_enable[0]) {
     const int blk_idc = aom_read_bit(r, ACCT_STR);
+#endif
     xd->ccso_blk_u = blk_idc;
     mi_params
         ->mi_grid_base[(mi_row & ~blk_size_y) * mi_params->mi_stride +
@@ -111,8 +130,14 @@ static void read_ccso(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
   }
 
   if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
+#if CONFIG_CCSO_EXT
+      cm->ccso_info.ccso_enable[2]) {
+    const int blk_idc =
+        aom_read_symbol(r, xd->tile_ctx->ccso_cdf[2], 2, ACCT_STR);
+#else
       cm->ccso_info.ccso_enable[1]) {
     const int blk_idc = aom_read_bit(r, ACCT_STR);
+#endif
     xd->ccso_blk_v = blk_idc;
     mi_params
         ->mi_grid_base[(mi_row & ~blk_size_y) * mi_params->mi_stride +
@@ -1115,7 +1140,11 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
 #if CONFIG_CCSO
   if (cm->seq_params.enable_ccso
 #if CONFIG_SDP
+#if CONFIG_CCSO_EXT
+      && xd->tree_type != CHROMA_PART
+#else
       && xd->tree_type != LUMA_PART
+#endif
 #endif
   )
     read_ccso(cm, r, xd);

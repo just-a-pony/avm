@@ -33,6 +33,13 @@ extern "C" {
 #if CONFIG_CCSO
 #define CCSO_BLK_SIZE 7
 #define CCSO_PADDING_SIZE 5
+#if CONFIG_CCSO_EXT
+#define CCSO_BAND_NUM 8
+#define CCSO_NUM_COMPONENTS 3
+#else
+#define CCSO_BAND_NUM 1
+#define CCSO_NUM_COMPONENTS 2
+#endif
 #endif
 
 // Max superblock size

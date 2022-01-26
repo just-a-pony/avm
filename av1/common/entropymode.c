@@ -1124,6 +1124,10 @@ static const aom_cdf_prob default_switchable_restore_cdf[CDF_SIZE(
 static const aom_cdf_prob default_wiener_restore_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     11570) };
 
+#if CONFIG_CCSO_EXT
+static const aom_cdf_prob default_ccso_cdf[CDF_SIZE(2)] = { AOM_CDF2(11570) };
+#endif
+
 static const aom_cdf_prob default_sgrproj_restore_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     16855) };
 
@@ -1469,6 +1473,11 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->filter_intra_mode_cdf, default_filter_intra_mode_cdf);
   av1_copy(fc->switchable_restore_cdf, default_switchable_restore_cdf);
   av1_copy(fc->wiener_restore_cdf, default_wiener_restore_cdf);
+#if CONFIG_CCSO_EXT
+  for (int plane = 0; plane < MAX_MB_PLANE; plane++) {
+    av1_copy(fc->ccso_cdf[plane], default_ccso_cdf);
+  }
+#endif
   av1_copy(fc->sgrproj_restore_cdf, default_sgrproj_restore_cdf);
 #if CONFIG_AIMC
   av1_copy(fc->y_mode_set_cdf, default_y_mode_set_cdf);
