@@ -458,6 +458,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_masked_compound = oxcf->comp_type_cfg.enable_masked_comp;
   seq->enable_intra_edge_filter = oxcf->intra_mode_cfg.enable_intra_edge_filter;
   seq->enable_filter_intra = oxcf->intra_mode_cfg.enable_filter_intra;
+
 #if CONFIG_SDP
   seq->enable_sdp = oxcf->part_cfg.enable_sdp;
 #endif
@@ -473,6 +474,12 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   seq->enable_ibp = oxcf->intra_mode_cfg.enable_ibp;
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  seq->enable_adaptive_mvd = tool_cfg->enable_adaptive_mvd;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  seq->enable_joint_mvd = tool_cfg->enable_joint_mvd;
+#endif  // CONFIG_JOINT_MVD
   set_bitstream_level_tier(seq, cm, frm_dim_cfg->width, frm_dim_cfg->height,
                            oxcf->input_cfg.init_framerate);
 

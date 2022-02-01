@@ -4921,6 +4921,9 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   seq_params->enable_ibp = aom_rb_read_bit(rb);
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  seq_params->enable_adaptive_mvd = aom_rb_read_bit(rb);
+#endif  // CONFIG_ADAPTIVE_MVD
 }
 
 static int read_global_motion_params(WarpedMotionParams *params,

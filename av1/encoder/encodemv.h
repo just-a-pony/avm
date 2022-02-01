@@ -23,10 +23,16 @@ void av1_encode_mv(AV1_COMP *cpi, aom_writer *w, const MV *mv, const MV *ref,
                    nmv_context *mvctx, int usehp);
 
 void av1_update_mv_stats(const MV *mv, const MV *ref, nmv_context *mvctx,
+#if CONFIG_ADAPTIVE_MVD
+                         int is_adaptive_mvd,
+#endif  // CONFIG_ADAPTIVE_MVD
                          MvSubpelPrecision precision);
 
-void av1_build_nmv_cost_table(int *mvjoint, int *mvcost[2],
-                              const nmv_context *mvctx,
+void av1_build_nmv_cost_table(int *mvjoint,
+#if CONFIG_ADAPTIVE_MVD
+                              int *amvd_mvjoint, int *amvd_mvcost[2],
+#endif  // CONFIG_ADAPTIVE_MVD
+                              int *mvcost[2], const nmv_context *mvctx,
                               MvSubpelPrecision precision);
 
 void av1_update_mv_count(ThreadData *td);
@@ -111,11 +117,17 @@ static INLINE int av1_check_newmv_joint_nonzero(const AV1_COMMON *cm,
       return 0;
     }
 #if CONFIG_NEW_INTER_MODES
+  } else if (this_mode == NEW_NEARMV
 #if CONFIG_OPTFLOW_REFINEMENT
-  } else if (this_mode == NEW_NEARMV || this_mode == NEW_NEARMV_OPTFLOW) {
-#else
-  } else if (this_mode == NEW_NEARMV) {
-#endif  // CONFIG_OPTFLOW_REFINEMENT
+             || this_mode == NEW_NEARMV_OPTFLOW
+#endif
+#if CONFIG_JOINT_MVD
+             || this_mode == JOINT_NEWMV
+#endif  // CONFIG_JOINT_MVD
+#if CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
+             || this_mode == JOINT_NEWMV_OPTFLOW
+#endif  // CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
+  ) {
 #else
   } else if (this_mode == NEW_NEARESTMV || this_mode == NEW_NEARMV) {
 #endif  // CONFIG_NEW_INTER_MODES

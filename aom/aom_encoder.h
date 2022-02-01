@@ -289,6 +289,18 @@ typedef struct cfg_options {
    */
   unsigned int enable_ibp;
 #endif  // CONFIG_IBP_DC || CONFIG_IBP_DIR
+#if CONFIG_ADAPTIVE_MVD
+  /*!\brief enable Adaptive MVD resolution
+   *
+   */
+  unsigned int enable_adaptive_mvd;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  /*!\brief enable joint MVD coding
+   *
+   */
+  unsigned int enable_joint_mvd;
+#endif
   /*!\brief enable flip and identity transform type
    *
    */

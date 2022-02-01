@@ -15,10 +15,17 @@
 
 static const nmv_context default_nmv_context = {
   { AOM_CDF4(4096, 11264, 19328) },  // joints_cdf
+#if CONFIG_ADAPTIVE_MVD
+  { AOM_CDF4(1024, 19328, 32740) },  // amvd_joints_cdf
+#endif                               // CONFIG_ADAPTIVE_MVD
   { {
         // Vertical component
         { AOM_CDF11(28672, 30976, 31858, 32320, 32551, 32656, 32740, 32757,
                     32762, 32767) },  // class_cdf // fp
+#if CONFIG_ADAPTIVE_MVD
+        { AOM_CDF11(24672, 27976, 29858, 31320, 32758, 32759, 32760, 32762,
+                    32764, 32767) },  // class_cdf // fp
+#endif                                // CONFIG_ADAPTIVE_MVD
         { { AOM_CDF4(16384, 24576, 26624) },
           { AOM_CDF4(12288, 21248, 24128) } },  // class0_fp_cdf
         { AOM_CDF4(8192, 17408, 21248) },       // fp_cdf
@@ -41,6 +48,10 @@ static const nmv_context default_nmv_context = {
         // Horizontal component
         { AOM_CDF11(28672, 30976, 31858, 32320, 32551, 32656, 32740, 32757,
                     32762, 32767) },  // class_cdf // fp
+#if CONFIG_ADAPTIVE_MVD
+        { AOM_CDF11(24672, 27976, 29858, 31320, 32758, 32759, 32760, 32762,
+                    32764, 32767) },  // class_cdf // fp
+#endif                                // CONFIG_ADAPTIVE_MVD
         { { AOM_CDF4(16384, 24576, 26624) },
           { AOM_CDF4(12288, 21248, 24128) } },  // class0_fp_cdf
         { AOM_CDF4(8192, 17408, 21248) },       // fp_cdf

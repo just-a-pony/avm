@@ -816,6 +816,14 @@ typedef struct {
   // Indicates if ccso should be enabled.
   bool enable_ccso;
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  // Indicates if adaptive MVD resolution should be enabled.
+  bool enable_adaptive_mvd;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  // Indicates if joint mvd coding should be enabled.
+  bool enable_joint_mvd;
+#endif  // CONFIG_JOINT_MVD
   // When enabled, video mode should be used even for single frame input.
   bool force_video_mode;
   // Indicates if the error resiliency features should be enabled.

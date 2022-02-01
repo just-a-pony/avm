@@ -306,10 +306,13 @@ static INLINE int16_t av1_drl_ctx(int16_t mode_ctx) {
 #endif  // CONFIG_NEW_INTER_MODES
 
 #if CONFIG_OPTFLOW_REFINEMENT
-static const int comp_idx_to_opfl_mode[5] = { NEAR_NEARMV_OPTFLOW,
-                                              NEAR_NEWMV_OPTFLOW,
-                                              NEW_NEARMV_OPTFLOW, -1,
-                                              NEW_NEWMV_OPTFLOW };
+static const int comp_idx_to_opfl_mode[INTER_COMPOUND_REF_TYPES] = {
+  NEAR_NEARMV_OPTFLOW, NEAR_NEWMV_OPTFLOW, NEW_NEARMV_OPTFLOW, -1,
+  NEW_NEWMV_OPTFLOW,
+#if CONFIG_JOINT_MVD
+  JOINT_NEWMV_OPTFLOW,
+#endif  // CONFIG_JOINT_MVD
+};
 
 static INLINE int opfl_get_comp_idx(int mode) {
   switch (mode) {
@@ -322,6 +325,10 @@ static INLINE int opfl_get_comp_idx(int mode) {
     case NEW_NEWMV:
     case NEW_NEWMV_OPTFLOW: return INTER_COMPOUND_OFFSET(NEW_NEWMV);
     case GLOBAL_GLOBALMV: return INTER_COMPOUND_OFFSET(GLOBAL_GLOBALMV);
+#if CONFIG_JOINT_MVD
+    case JOINT_NEWMV:
+    case JOINT_NEWMV_OPTFLOW: return INTER_COMPOUND_OFFSET(JOINT_NEWMV);
+#endif  // CONFIG_JOINT_MVD
     default: assert(0); return 0;
   }
 }

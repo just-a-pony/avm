@@ -451,6 +451,12 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_IBC_SR_EXT
   &g_av1_codec_arg_defs.enable_intrabc_ext,
 #endif  // CONFIG_IBC_SR_EXT
+#if CONFIG_ADAPTIVE_MVD
+  &g_av1_codec_arg_defs.enable_adaptive_mvd,
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  &g_av1_codec_arg_defs.enable_joint_mvd,
+#endif  // CONFIG_JOINT_MVD
   NULL,
 };
 
@@ -597,6 +603,12 @@ static void init_config(cfg_options_t *config) {
 #endif
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   config->enable_ibp = 1;
+#endif
+#if CONFIG_ADAPTIVE_MVD
+  config->enable_adaptive_mvd = 1;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  config->enable_joint_mvd = 1;
 #endif
   config->enable_flip_idtx = 1;
   config->enable_deblocking = 1;
@@ -1482,7 +1494,15 @@ static void show_stream_config(struct stream_state *stream,
           "OneSideCompound (%d), SmoothInterIntra (%d)\n",
           encoder_cfg->enable_masked_comp, encoder_cfg->enable_onesided_comp,
           encoder_cfg->enable_smooth_interintra);
-
+#if CONFIG_ADAPTIVE_MVD
+  fprintf(stdout,
+          "                               : Adaptive MVD resolution: (%d)\n",
+          encoder_cfg->enable_adaptive_mvd);
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  fprintf(stdout, "                               : Joint MVD coding: (%d)\n",
+          encoder_cfg->enable_joint_mvd);
+#endif
   fprintf(stdout,
           "                               : InterInterWedge (%d), "
           "InterIntraWedge (%d), RefFrameMv (%d)\n",

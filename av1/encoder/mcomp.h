@@ -15,6 +15,9 @@
 
 #include "av1/common/mv.h"
 #include "av1/encoder/block.h"
+#if CONFIG_ADAPTIVE_MVD || CONFIG_JOINT_MVD
+#include "av1/common/reconinter.h"
+#endif  // CONFIG_ADAPTIVE_MVD || CONFIG_JOINT_MVD
 
 #include "aom_dsp/variance.h"
 
@@ -349,6 +352,24 @@ typedef struct {
   // Distortion calculation params
   SUBPEL_SEARCH_VAR_PARAMS var_params;
 } SUBPEL_MOTION_SEARCH_PARAMS;
+
+#if CONFIG_JOINT_MVD
+// motion search for joint MVD coding
+int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
+                     SUBPEL_MOTION_SEARCH_PARAMS *ms_params, MV ref_mv,
+                     MV *start_mv, MV *bestmv, int *distortion,
+                     unsigned int *sse1, int ref_idx, MV *other_mv,
+                     MV *best_other_mv, uint8_t *second_pred,
+                     InterPredParams *inter_pred_params,
+                     int_mv *last_mv_search_list);
+#endif  // CONFIG_JOINT_MVD
+#if CONFIG_ADAPTIVE_MVD
+// motion search for near_new and new_near mode when adaptive MVD resolution is
+// applied
+int adaptive_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
+                        SUBPEL_MOTION_SEARCH_PARAMS *ms_params, MV start_mv,
+                        MV *bestmv, int *distortion, unsigned int *sse1);
+#endif  // CONFIG_ADAPTIVE_MVD
 
 void av1_make_default_subpel_ms_params(SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
                                        const struct AV1_COMP *cpi,

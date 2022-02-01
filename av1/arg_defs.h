@@ -155,6 +155,12 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   arg_def_t enable_ibp;
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  arg_def_t enable_adaptive_mvd;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  arg_def_t enable_joint_mvd;
+#endif  // CONFIG_JOINT_MVD
   arg_def_t min_partition_size;
   arg_def_t max_partition_size;
   arg_def_t enable_chroma_deltaq;

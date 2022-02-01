@@ -125,8 +125,15 @@ struct av1_extracfg {
   int enable_ist;  // enable intra secondary transform
 #endif             // CONFIG_IST
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
-  int enable_ibp;                // enable intra bi-prediction
-#endif                           // CONFIG_IBP_DC or CONFIG_IBP_DIR
+  int enable_ibp;  // enable intra bi-prediction
+#endif             // CONFIG_IBP_DC or CONFIG_IBP_DIR
+
+#if CONFIG_ADAPTIVE_MVD
+  int enable_adaptive_mvd;  // enable adaptive MVD resolution
+#endif                      // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  int enable_joint_mvd;          // enable joint MVD coding
+#endif                           // CONFIG_ADAPTIVE_MVD
   int min_partition_size;        // min partition size [4,8,16,32,64,128]
   int max_partition_size;        // max partition size [4,8,16,32,64,128]
   int enable_intra_edge_filter;  // enable intra-edge filter for sequence
@@ -409,14 +416,22 @@ static struct av1_extracfg default_extra_cfg = {
   1,    // enable intra secondary transform
 #endif  // CONFIG_IST
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
-  1,                       // enable intra bi-prediction
-#endif                     // CONFIG_IBP_DC or CONFIG_IBP_DIR
-  4,                       // min_partition_size
-  128,                     // max_partition_size
-  1,                       // enable intra edge filter
-  1,                       // frame order hint
-  1,                       // enable 64-pt transform usage
-  1,                       // enable flip and identity transform
+  1,    // enable intra bi-prediction
+#endif  // CONFIG_IBP_DC or CONFIG_IBP_DIR
+
+#if CONFIG_ADAPTIVE_MVD
+  1,    // enable adaptive mvd resolution
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  1,    // enable joint mvd coding
+#endif  // CONFIG_JOINT_MVD
+  4,    // min_partition_size
+  128,  // max_partition_size
+  1,    // enable intra edge filter
+  1,    // frame order hint
+  1,    // enable 64-pt transform usage
+  1,    // enable flip and identity transform
+
   7,                       // max_reference_frames
   0,                       // enable_reduced_reference_set
   1,                       // enable_ref_frame_mvs sequence level
@@ -870,6 +885,12 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   cfg->enable_ibp = extra_cfg->enable_ibp;
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  cfg->enable_adaptive_mvd = extra_cfg->enable_adaptive_mvd;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  cfg->enable_joint_mvd = extra_cfg->enable_joint_mvd;
+#endif  // CONFIG_JOINT_MVD
   cfg->max_partition_size = extra_cfg->max_partition_size;
   cfg->min_partition_size = extra_cfg->min_partition_size;
   cfg->enable_intra_edge_filter = extra_cfg->enable_intra_edge_filter;
@@ -945,6 +966,12 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   extra_cfg->enable_ibp = cfg->enable_ibp;
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  extra_cfg->enable_adaptive_mvd = cfg->enable_adaptive_mvd;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  extra_cfg->enable_joint_mvd = cfg->enable_joint_mvd;
+#endif  // CONFIG_JOINT_MVD
   extra_cfg->max_partition_size = cfg->max_partition_size;
   extra_cfg->min_partition_size = cfg->min_partition_size;
   extra_cfg->enable_intra_edge_filter = cfg->enable_intra_edge_filter;
@@ -1180,6 +1207,12 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_CCSO
   tool_cfg->enable_ccso = extra_cfg->enable_ccso;
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  tool_cfg->enable_adaptive_mvd = extra_cfg->enable_adaptive_mvd;
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  tool_cfg->enable_joint_mvd = extra_cfg->enable_joint_mvd;
+#endif  // CONFIG_JOINT_MVD
   tool_cfg->force_video_mode = extra_cfg->force_video_mode;
   tool_cfg->enable_palette = extra_cfg->enable_palette;
   // FIXME(debargha): Should this be:
@@ -3595,6 +3628,16 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.enable_ibp = arg_parse_int_helper(&arg, err_string);
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_adaptive_mvd,
+                              argv, err_string)) {
+    extra_cfg.enable_adaptive_mvd = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_joint_mvd,
+                              argv, err_string)) {
+    extra_cfg.enable_joint_mvd = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_JOINT_MVD
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.min_partition_size,
                               argv, err_string)) {
     extra_cfg.min_partition_size = arg_parse_int_helper(&arg, err_string);
@@ -4020,6 +4063,12 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
         1,
 #endif  // CONFIG_IBP_DC or CONFIG_IBP_DIR
+#if CONFIG_ADAPTIVE_MVD
+        1,
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+        1,
+#endif  // CONFIG_JOINT_MVD
         1, 1,   1,   1,
 #if CONFIG_CCSO
         1,

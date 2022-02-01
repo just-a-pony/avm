@@ -819,15 +819,36 @@ void av1_fill_mv_costs(const FRAME_CONTEXT *fc, int integer_mv, int usehp,
   mv_costs->nmv_cost[1] = &mv_costs->nmv_cost_alloc[1][MV_MAX];
   mv_costs->nmv_cost_hp[0] = &mv_costs->nmv_cost_hp_alloc[0][MV_MAX];
   mv_costs->nmv_cost_hp[1] = &mv_costs->nmv_cost_hp_alloc[1][MV_MAX];
+#if CONFIG_ADAPTIVE_MVD
+  mv_costs->amvd_nmv_cost[0] = &mv_costs->amvd_nmv_cost_alloc[0][MV_MAX];
+  mv_costs->amvd_nmv_cost[1] = &mv_costs->amvd_nmv_cost_alloc[1][MV_MAX];
+  mv_costs->amvd_nmv_cost_hp[0] = &mv_costs->amvd_nmv_cost_hp_alloc[0][MV_MAX];
+  mv_costs->amvd_nmv_cost_hp[1] = &mv_costs->amvd_nmv_cost_hp_alloc[1][MV_MAX];
+#endif  // CONFIG_ADAPTIVE_MVD
   if (integer_mv) {
     mv_costs->mv_cost_stack = (int **)&mv_costs->nmv_cost;
-    av1_build_nmv_cost_table(mv_costs->nmv_joint_cost, mv_costs->mv_cost_stack,
-                             &fc->nmvc, MV_SUBPEL_NONE);
+#if CONFIG_ADAPTIVE_MVD
+    mv_costs->amvd_mv_cost_stack = (int **)&mv_costs->amvd_nmv_cost;
+#endif  // CONFIG_ADAPTIVE_MVD
+    av1_build_nmv_cost_table(
+        mv_costs->nmv_joint_cost,
+#if CONFIG_ADAPTIVE_MVD
+        mv_costs->amvd_nmv_joint_cost, mv_costs->amvd_mv_cost_stack,
+#endif  // CONFIG_ADAPTIVE_MVD
+        mv_costs->mv_cost_stack, &fc->nmvc, MV_SUBPEL_NONE);
   } else {
     mv_costs->mv_cost_stack =
         usehp ? mv_costs->nmv_cost_hp : mv_costs->nmv_cost;
-    av1_build_nmv_cost_table(mv_costs->nmv_joint_cost, mv_costs->mv_cost_stack,
-                             &fc->nmvc, usehp);
+#if CONFIG_ADAPTIVE_MVD
+    mv_costs->amvd_mv_cost_stack =
+        usehp ? mv_costs->amvd_nmv_cost_hp : mv_costs->amvd_nmv_cost;
+#endif  // CONFIG_ADAPTIVE_MVD
+    av1_build_nmv_cost_table(mv_costs->nmv_joint_cost,
+#if CONFIG_ADAPTIVE_MVD
+                             mv_costs->amvd_nmv_joint_cost,
+                             mv_costs->amvd_mv_cost_stack,
+#endif  // CONFIG_ADAPTIVE_MVD
+                             mv_costs->mv_cost_stack, &fc->nmvc, usehp);
   }
 }
 
@@ -856,8 +877,11 @@ void av1_initialize_rd_consts(AV1_COMP *cpi) {
     IntraBCMVCosts *const dv_costs = &cpi->dv_costs;
     int *dvcost[2] = { &dv_costs->mv_component[0][MV_MAX],
                        &dv_costs->mv_component[1][MV_MAX] };
-    av1_build_nmv_cost_table(dv_costs->joint_mv, dvcost, &cm->fc->ndvc,
-                             MV_SUBPEL_NONE);
+    av1_build_nmv_cost_table(dv_costs->joint_mv,
+#if CONFIG_ADAPTIVE_MVD
+                             dv_costs->amvd_joint_mv, dvcost,
+#endif  // CONFIG_ADAPTIVE_MVD
+                             dvcost, &cm->fc->ndvc, MV_SUBPEL_NONE);
   }
 
   if (!is_stat_generation_stage(cpi)) {
@@ -1325,7 +1349,7 @@ int av1_get_switchable_rate(const MACROBLOCK *x, const MACROBLOCKD *xd,
   if (interp_filter == SWITCHABLE) {
     const MB_MODE_INFO *const mbmi = xd->mi[0];
 #if CONFIG_OPTFLOW_REFINEMENT
-    assert(mbmi->mode <= NEW_NEWMV);
+    assert(mbmi->mode < NEAR_NEARMV_OPTFLOW);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
     const int ctx = av1_get_pred_context_switchable_interp(xd, 0);
     const int inter_filter_cost =

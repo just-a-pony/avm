@@ -98,6 +98,12 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
     GET_PARAMS(enable_ibp);
 #endif
+#if CONFIG_ADAPTIVE_MVD
+    GET_PARAMS(enable_adaptive_mvd);
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+    GET_PARAMS(enable_joint_mvd);
+#endif  // CONFIG_JOINT_MVD
     GET_PARAMS(enable_flip_idtx);
     GET_PARAMS(enable_deblocking);
     GET_PARAMS(enable_cdef);

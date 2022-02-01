@@ -190,6 +190,8 @@ set_aom_config_var(
 set_aom_config_var(CONFIG_IBC_SR_EXT 1 "Enables IntraBC search range extension")
 set_aom_config_var(CONFIG_CCSO_EXT 1
                    "AV2 experiment flag to enable extended CCSO.")
+set_aom_config_var(CONFIG_ADAPTIVE_MVD 1 "Enable adaptive MVD resolution")
+set_aom_config_var(CONFIG_JOINT_MVD 1 "Enable joint MVD coding")
 #
 # Variables in this section control optional features of the build system.
 #

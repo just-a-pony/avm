@@ -1820,13 +1820,12 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_OPTFLOW_REFINEMENT
   int_mv mv_refined[2 * N_OF_OFFSETS];
   const int use_optflow_refinement =
-      (mi->mode > NEW_NEWMV ||
+      (mi->mode >= NEAR_NEARMV_OPTFLOW ||
        (cm->features.opfl_refine_type == REFINE_ALL &&
         mi->mode != GLOBAL_GLOBALMV &&
         mi->interinter_comp.type == COMPOUND_AVERAGE)) &&
       is_compound && is_opfl_refine_allowed(cm, mi);
-
-  assert(IMPLIES(mi->mode > NEW_NEWMV,
+  assert(IMPLIES(mi->mode >= NEAR_NEARMV_OPTFLOW,
                  cm->features.opfl_refine_type == REFINE_SWITCHABLE));
   assert(IMPLIES(use_optflow_refinement, !build_for_obmc));
 

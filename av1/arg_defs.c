@@ -377,6 +377,16 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                         "Enable intra bi-prediction"
                         "(0: false, 1: true (default))"),
 #endif
+#if CONFIG_ADAPTIVE_MVD
+  .enable_adaptive_mvd = ARG_DEF(NULL, "enable-adaptive-mvd", 1,
+                                 "Enable adaptive MVD resolution"
+                                 "(0: false, 1: true (default))"),
+#endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_JOINT_MVD
+  .enable_joint_mvd = ARG_DEF(NULL, "enable-joint-mvd", 1,
+                              "Enable joint MVD coding"
+                              "(0: false, 1: true (default))"),
+#endif  // CONFIG_JOINT_MVD
   .min_partition_size =
       ARG_DEF(NULL, "min-partition-size", 1,
               "Set min partition size "
