@@ -36,7 +36,7 @@ Linux Nightly Build:
 Linux All Unit Test:
   stage: test
   interruptible: true
-  parallel: 20
+  parallel: 24
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
     GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
@@ -102,7 +102,7 @@ Coverage Report:
 .common-linux-unit-optim:
   stage: test
   interruptible: true
-  parallel: 18
+  parallel: 20
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
     GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
@@ -181,7 +181,7 @@ Linux Unit (x86_64, avx2):
 .sanitizer-common-nigtly:
   stage: test
   interruptible: true
-  parallel: 20
+  parallel: 24
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
     GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
