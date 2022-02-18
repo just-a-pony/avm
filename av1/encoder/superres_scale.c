@@ -350,14 +350,6 @@ static size_params_type calculate_next_size_params(AV1_COMP *cpi) {
   size_params_type rsz = { frm_dim_cfg->width, frm_dim_cfg->height,
                            SCALE_NUMERATOR };
   int resize_denom = SCALE_NUMERATOR;
-#if CONFIG_SVC_ENCODER
-  if (has_no_stats_stage(cpi) && cpi->use_svc &&
-      cpi->svc.spatial_layer_id < cpi->svc.number_spatial_layers - 1) {
-    rsz.resize_width = cpi->common.width;
-    rsz.resize_height = cpi->common.height;
-    return rsz;
-  }
-#endif  // CONFIG_SVC_ENCODER
   if (is_stat_generation_stage(cpi)) return rsz;
   if (resize_pending_params->width && resize_pending_params->height) {
     rsz.resize_width = resize_pending_params->width;

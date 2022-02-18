@@ -319,10 +319,6 @@ static AOM_INLINE void dealloc_compressor_data(AV1_COMP *cpi) {
     aom_free(cpi->level_params.level_info[i]);
   }
 
-#if CONFIG_SVC_ENCODER
-  if (cpi->use_svc) av1_free_svc_cyclic_refresh(cpi);
-#endif  // CONFIG_SVC_ENCODE
-
   if (cpi->consec_zero_mv) {
     aom_free(cpi->consec_zero_mv);
     cpi->consec_zero_mv = NULL;

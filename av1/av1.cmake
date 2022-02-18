@@ -264,12 +264,6 @@ list(
   "${AOM_ROOT}/av1/encoder/dwt.c"
   "${AOM_ROOT}/av1/encoder/dwt.h")
 
-if(CONFIG_SVC_ENCODER)
-  list(APPEND AOM_AV1_ENCODER_SOURCES
-       "${AOM_ROOT}/av1/encoder/svc_layercontext.c"
-       "${AOM_ROOT}/av1/encoder/svc_layercontext.h")
-endif()
-
 if(CONFIG_TUNE_VMAF)
   list(APPEND AOM_AV1_ENCODER_SOURCES "${AOM_ROOT}/av1/encoder/tune_vmaf.c"
        "${AOM_ROOT}/av1/encoder/tune_vmaf.h")

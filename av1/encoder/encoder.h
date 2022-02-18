@@ -44,9 +44,6 @@
 #include "av1/encoder/ratectrl.h"
 #include "av1/encoder/rd.h"
 #include "av1/encoder/speed_features.h"
-#if CONFIG_SVC_ENCODER
-#include "av1/encoder/svc_layercontext.h"
-#endif  // CONFIG_SVC_ENCODER
 #include "av1/encoder/tokenize.h"
 #include "av1/encoder/tpl_model.h"
 #include "av1/encoder/av1_noise_estimate.h"
@@ -2714,17 +2711,6 @@ typedef struct AV1_COMP {
   TuneVMAFInfo vmaf_info;
 #endif
 
-#if CONFIG_SVC_ENCODER
-  /*!
-   * Indicates whether to use SVC.
-   */
-  int use_svc;
-  /*!
-   * Parameters for scalable video coding.
-   */
-  SVC svc;
-#endif  // CONFIG_SVC_ENCODER
-
   /*!
    * Flag indicating whether look ahead processing (LAP) is enabled.
    */
@@ -2869,13 +2855,8 @@ void av1_change_config(AV1_COMP *cpi, const AV1EncoderConfig *oxcf);
 void av1_check_initial_width(AV1_COMP *cpi, int use_highbitdepth,
                              int subsampling_x, int subsampling_y);
 
-#if CONFIG_SVC_ENCODER
-void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
-                               const AV1EncoderConfig *oxcf, int use_svc);
-#else
 void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
                                const AV1EncoderConfig *oxcf);
-#endif  // CONFIG_SVC_ENCODER
 
 /*!\endcond */
 

@@ -264,27 +264,6 @@ int av1_rc_clamp_iframe_target_size(const AV1_COMP *const cpi, int target) {
   return target;
 }
 
-#if CONFIG_SVC_ENCODER
-// Update the buffer level for higher temporal layers, given the encoded current
-// temporal layer.
-static void update_layer_buffer_level(SVC *svc, int encoded_frame_size) {
-  const int current_temporal_layer = svc->temporal_layer_id;
-  for (int i = current_temporal_layer + 1; i < svc->number_temporal_layers;
-       ++i) {
-    const int layer =
-        LAYER_IDS_TO_IDX(svc->spatial_layer_id, i, svc->number_temporal_layers);
-    LAYER_CONTEXT *lc = &svc->layer_context[layer];
-    RATE_CONTROL *lrc = &lc->rc;
-    lrc->bits_off_target +=
-        (int)(lc->target_bandwidth / lc->framerate) - encoded_frame_size;
-    // Clip buffer level to maximum buffer size for the layer.
-    lrc->bits_off_target =
-        AOMMIN(lrc->bits_off_target, lrc->maximum_buffer_size);
-    lrc->buffer_level = lrc->bits_off_target;
-  }
-}
-#endif  // CONFIG_SVC_ENCODER
-
 // Update the buffer level: leaky bucket model.
 static void update_buffer_level(AV1_COMP *cpi, int encoded_frame_size) {
   const AV1_COMMON *const cm = &cpi->common;
@@ -299,10 +278,6 @@ static void update_buffer_level(AV1_COMP *cpi, int encoded_frame_size) {
   // Clip the buffer level to the maximum specified buffer size.
   rc->bits_off_target = AOMMIN(rc->bits_off_target, rc->maximum_buffer_size);
   rc->buffer_level = rc->bits_off_target;
-
-#if CONFIG_SVC_ENCODER
-  if (cpi->use_svc) update_layer_buffer_level(&cpi->svc, encoded_frame_size);
-#endif  // CONFIG_SVC_ENCODER
 }
 
 int av1_rc_get_default_min_gf_interval(int width, int height,
@@ -446,11 +421,8 @@ static int adjust_q_cbr(const AV1_COMP *cpi, int q, int active_worst_quality) {
       (cm->width != cm->prev_frame->width ||
        cm->height != cm->prev_frame->height || change_avg_frame_bandwidth);
   // Apply some control/clamp to QP under certain conditions.
-  if (cm->current_frame.frame_type != KEY_FRAME &&
-#if CONFIG_SVC_ENCODER
-      !cpi->use_svc &&
-#endif  // CONFIG_SVC_ENCODER
-      rc->frames_since_key > 1 && !change_target_bits_mb &&
+  if (cm->current_frame.frame_type != KEY_FRAME && rc->frames_since_key > 1 &&
+      !change_target_bits_mb &&
       (!cpi->oxcf.rc_cfg.gf_cbr_boost_pct ||
        !(refresh_frame_flags->alt_ref_frame ||
          refresh_frame_flags->golden_frame))) {
@@ -465,12 +437,8 @@ static int adjust_q_cbr(const AV1_COMP *cpi, int q, int active_worst_quality) {
   }
   // For single spatial layer: if resolution has increased push q closer
   // to the active_worst to avoid excess overshoot.
-  if (cm->prev_frame &&
-#if CONFIG_SVC_ENCODER
-      cpi->svc.number_spatial_layers <= 1 &&
-#endif  // CONFIG_SVC_ENCODER
-      (cm->width * cm->height >
-       1.5 * cm->prev_frame->width * cm->prev_frame->height))
+  if (cm->prev_frame && (cm->width * cm->height >
+                         1.5 * cm->prev_frame->width * cm->prev_frame->height))
     q = (q + active_worst_quality) >> 1;
   return AOMMAX(AOMMIN(q, cpi->rc.worst_quality), cpi->rc.best_quality);
 }
@@ -521,9 +489,6 @@ static double get_rate_correction_factor(const AV1_COMP *cpi, int width,
     if ((refresh_frame_flags->alt_ref_frame ||
          refresh_frame_flags->golden_frame) &&
         !rc->is_src_frame_alt_ref &&
-#if CONFIG_SVC_ENCODER
-        !cpi->use_svc &&
-#endif  // CONFIG_SVC_ENCODER
         (cpi->oxcf.rc_cfg.mode != AOM_CBR ||
          cpi->oxcf.rc_cfg.gf_cbr_boost_pct > 20))
       rcf = rc->rate_correction_factors[GF_ARF_STD];
@@ -568,9 +533,6 @@ static void set_rate_correction_factor(AV1_COMP *cpi, double factor, int width,
     if ((refresh_frame_flags->alt_ref_frame ||
          refresh_frame_flags->golden_frame) &&
         !rc->is_src_frame_alt_ref &&
-#if CONFIG_SVC_ENCODER
-        !cpi->use_svc &&
-#endif  // CONFIG_SVC_ENCODER
         (cpi->oxcf.rc_cfg.mode != AOM_CBR ||
          cpi->oxcf.rc_cfg.gf_cbr_boost_pct > 20))
       rc->rate_correction_factors[GF_ARF_STD] = factor;
@@ -926,11 +888,7 @@ static int calc_active_best_quality_no_stats_cbr(const AV1_COMP *cpi,
       active_best_quality +=
           av1_compute_qdelta(rc, q_val, q_val * q_adj_factor, bit_depth);
     }
-  } else if (!rc->is_src_frame_alt_ref &&
-#if CONFIG_SVC_ENCODER
-             !cpi->use_svc &&
-#endif  // CONFIG_SVC_ENCODER
-             cpi->oxcf.rc_cfg.gf_cbr_boost_pct &&
+  } else if (!rc->is_src_frame_alt_ref && cpi->oxcf.rc_cfg.gf_cbr_boost_pct &&
              (refresh_frame_flags->golden_frame ||
               refresh_frame_flags->alt_ref_frame)) {
     // Use the lower of active_worst_quality and recent
@@ -1837,11 +1795,7 @@ void av1_rc_postencode_update(AV1_COMP *cpi, uint64_t bytes_used) {
     rc->avg_frame_qindex[KEY_FRAME] =
         ROUND_POWER_OF_TWO(3 * rc->avg_frame_qindex[KEY_FRAME] + qindex, 2);
   } else {
-    if (
-#if CONFIG_SVC_ENCODER
-        (cpi->use_svc && cpi->oxcf.rc_cfg.mode == AOM_CBR) ||
-#endif  // CONFIG_SVC_ENCODER
-        (!rc->is_src_frame_alt_ref &&
+    if ((!rc->is_src_frame_alt_ref &&
          !(refresh_frame_flags->golden_frame || is_intrnl_arf ||
            refresh_frame_flags->alt_ref_frame))) {
       rc->last_q[INTER_FRAME] = qindex;
@@ -2159,19 +2113,6 @@ int av1_calc_pframe_target_size_one_pass_cbr(
   } else {
     target = rc->avg_frame_bandwidth;
   }
-#if CONFIG_SVC_ENCODER
-  if (cpi->use_svc) {
-    // Note that for layers, avg_frame_bandwidth is the cumulative
-    // per-frame-bandwidth. For the target size of this frame, use the
-    // layer average frame size (i.e., non-cumulative per-frame-bw).
-    int layer =
-        LAYER_IDS_TO_IDX(cpi->svc.spatial_layer_id, cpi->svc.temporal_layer_id,
-                         cpi->svc.number_temporal_layers);
-    const LAYER_CONTEXT *lc = &cpi->svc.layer_context[layer];
-    target = lc->avg_frame_size;
-    min_frame_target = AOMMAX(lc->avg_frame_size >> 4, FRAME_OVERHEAD_BITS);
-  }
-#endif  // CONFIG_SVC_ENCODER
   if (diff > 0) {
     // Lower the target bandwidth for this frame.
     const int pct_low =

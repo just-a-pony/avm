@@ -392,12 +392,7 @@ static void set_bitstream_level_tier(SequenceHeader *seq, AV1_COMMON *cm,
 }
 
 void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
-                               const AV1EncoderConfig *oxcf
-#if CONFIG_SVC_ENCODER
-                               ,
-                               int use_svc
-#endif  // CONFIG_SVC_ENCODER
-) {
+                               const AV1EncoderConfig *oxcf) {
   const FrameDimensionCfg *const frm_dim_cfg = &oxcf->frm_dim_cfg;
   const ToolCfg *const tool_cfg = &oxcf->tool_cfg;
 
@@ -410,11 +405,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->order_hint_info.enable_order_hint = tool_cfg->enable_order_hint;
   seq->frame_id_numbers_present_flag =
       !(seq->still_picture && seq->reduced_still_picture_hdr) &&
-      !oxcf->tile_cfg.enable_large_scale_tile &&
-#if CONFIG_SVC_ENCODER
-      !use_svc &&
-#endif  // CONFIG_SVC_ENCODER
-      tool_cfg->error_resilient_mode;
+      !oxcf->tile_cfg.enable_large_scale_tile && tool_cfg->error_resilient_mode;
   if (seq->still_picture && seq->reduced_still_picture_hdr) {
     seq->order_hint_info.enable_order_hint = 0;
     seq->force_screen_content_tools = 2;
@@ -609,13 +600,6 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
   cpi->td.counts = &cpi->counts;
 
   // Set init SVC parameters.
-#if CONFIG_SVC_ENCODER
-  cpi->use_svc = 0;
-  cpi->svc.external_ref_frame_config = 0;
-  cpi->svc.non_reference_frame = 0;
-  cpi->svc.number_spatial_layers = 1;
-  cpi->svc.number_temporal_layers = 1;
-#endif  // CONFIG_SVC_ENCODER
   cm->number_spatial_layers = 1;
   cm->number_temporal_layers = 1;
   cm->spatial_layer_id = 0;
@@ -859,12 +843,7 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
 
   set_tile_info(cm, &cpi->oxcf.tile_cfg);
 
-#if CONFIG_SVC_ENCODER
-  if (!cpi->svc.external_ref_frame_config)
-    cpi->ext_flags.refresh_frame.update_pending = 0;
-#else
   cpi->ext_flags.refresh_frame.update_pending = 0;
-#endif  // CONFIG_SVC_ENCODER
   cpi->ext_flags.refresh_frame_context_pending = 0;
 
   highbd_set_var_fns(cpi);
@@ -876,17 +855,8 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
         (cm->number_spatial_layers > 1 || cm->number_temporal_layers > 1)
             ? cm->number_spatial_layers * cm->number_temporal_layers - 1
             : 0;
-#if CONFIG_SVC_ENCODER
-    av1_init_seq_coding_tools(&cm->seq_params, cm, oxcf, cpi->use_svc);
-#else
     av1_init_seq_coding_tools(&cm->seq_params, cm, oxcf);
-#endif  // CONFIG_SVC_ENCODER
   }
-
-#if CONFIG_SVC_ENCODER
-  if (cpi->use_svc)
-    av1_update_layer_context_change_config(cpi, rc_cfg->target_bandwidth);
-#endif  // CONFIG_SVC_ENCODER
 
   // restore the value of lag_in_frame for LAP stage.
   if (lap_lag_in_frames != -1) {
@@ -2326,9 +2296,6 @@ static void loopfilter_frame(AV1_COMP *cpi, AV1_COMMON *cm) {
 static int encode_without_recode(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
   const QuantizationCfg *const q_cfg = &cpi->oxcf.q_cfg;
-#if CONFIG_SVC_ENCODER
-  SVC *const svc = &cpi->svc;
-#endif  // CONFIG_SVC_ENCODER
   ResizePendingParams *const resize_pending_params =
       &cpi->resize_pending_params;
   const int resize_pending =
@@ -2338,25 +2305,14 @@ static int encode_without_recode(AV1_COMP *cpi) {
 
   int top_index = 0, bottom_index = 0, q = 0;
   YV12_BUFFER_CONFIG *unscaled = cpi->unscaled_source;
-#if CONFIG_SVC_ENCODER
-  InterpFilter filter_scaler =
-      cpi->use_svc ? svc->downsample_filter_type[svc->spatial_layer_id]
-                   : EIGHTTAP_SMOOTH;
-  int phase_scaler =
-      cpi->use_svc ? svc->downsample_filter_phase[svc->spatial_layer_id] : 0;
-#else
   InterpFilter filter_scaler = EIGHTTAP_SMOOTH;
   int phase_scaler = 0;
-#endif  // CONFIG_SVC_ENCODER
 
   set_size_independent_vars(cpi);
   cpi->source->buf_8bit_valid = 0;
   av1_setup_frame_size(cpi);
   av1_set_size_dependent_vars(cpi, &q, &bottom_index, &top_index);
 
-#if CONFIG_SVC_ENCODER
-  if (!cpi->use_svc)
-#endif  // CONFIG_SVC_ENCODER
   {
     phase_scaler = 8;
     // 2:1 scaling.
@@ -2400,15 +2356,6 @@ static int encode_without_recode(AV1_COMP *cpi) {
         phase_scaler, true, false);
   }
 
-#if CONFIG_SVC_ENCODER
-  // For 1 spatial layer encoding: if the (non-LAST) reference has different
-  // resolution from the source then disable that reference. This is to avoid
-  // significant increase in encode time from scaling the references in
-  // av1_scale_references. Note GOLDEN is forced to update on the (first/tigger)
-  // resized frame and ALTREF will be refreshed ~4 frames later, so both
-  // references become available again after few frames.
-  if (svc->number_spatial_layers == 1)
-#endif  // CONFIG_SVC_ENCODER
   {
     if (cpi->ref_frame_flags & av1_ref_frame_flag_list[GOLDEN_FRAME]) {
       const YV12_BUFFER_CONFIG *const ref =
@@ -2427,11 +2374,7 @@ static int encode_without_recode(AV1_COMP *cpi) {
   // For SVC the inter-layer/spatial prediction is not done for newmv
   // (zero_mode is forced), and since the scaled references are only
   // use for newmv search, we can avoid scaling here.
-  if (!frame_is_intra_only(cm)
-#if CONFIG_SVC_ENCODER
-      && !(cpi->use_svc && cpi->svc.force_zero_mode_spatial_ref)
-#endif  // CONFIG_SVC_ENCODER
-  )
+  if (!frame_is_intra_only(cm))
     av1_scale_references(cpi, filter_scaler, phase_scaler, 1);
 
   av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
@@ -3282,11 +3225,6 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     }
   }
 
-#if CONFIG_SVC_ENCODER
-  if (cpi->svc.spatial_layer_id == cpi->svc.number_spatial_layers - 1)
-    cpi->svc.num_encoded_top_layer++;
-#endif  // CONFIG_SVC_ENCODER
-
   if (cm->seg.enabled) {
     if (cm->seg.update_map) {
       update_reference_segmentation_map(cpi);
@@ -3649,11 +3587,6 @@ int av1_get_compressed_data(AV1_COMP *cpi, unsigned int *frame_flags,
   aom_bitstream_queue_set_frame_write(cm->current_frame.order_hint * 2 +
                                       cm->show_frame);
 #endif
-#if CONFIG_SVC_ENCODER
-  if (cpi->use_svc && cm->number_spatial_layers > 1) {
-    av1_one_pass_cbr_svc_start_layer(cpi);
-  }
-#endif  // CONFIG_SVC_ENCODER
 
   cm->showable_frame = 0;
   *size = 0;
@@ -3846,35 +3779,6 @@ int av1_convert_sect5obus_to_annexb(uint8_t *buffer, size_t *frame_size) {
   return AOM_CODEC_OK;
 }
 
-#if CONFIG_SVC_ENCODER
-static void svc_set_updates_external_ref_frame_config(
-    ExtRefreshFrameFlagsInfo *const ext_refresh_frame_flags, SVC *const svc) {
-  ext_refresh_frame_flags->update_pending = 1;
-  ext_refresh_frame_flags->last_frame = svc->refresh[svc->ref_idx[0]];
-  ext_refresh_frame_flags->golden_frame = svc->refresh[svc->ref_idx[3]];
-  ext_refresh_frame_flags->bwd_ref_frame = svc->refresh[svc->ref_idx[4]];
-  ext_refresh_frame_flags->alt2_ref_frame = svc->refresh[svc->ref_idx[5]];
-  ext_refresh_frame_flags->alt_ref_frame = svc->refresh[svc->ref_idx[6]];
-  svc->non_reference_frame = 1;
-  for (int i = 0; i < REF_FRAMES; i++) {
-    if (svc->refresh[i] == 1) {
-      svc->non_reference_frame = 0;
-      break;
-    }
-  }
-}
-
-static int svc_set_references_external_ref_frame_config(AV1_COMP *cpi) {
-  // LAST_FRAME (0), LAST2_FRAME(1), LAST3_FRAME(2), GOLDEN_FRAME(3),
-  // BWDREF_FRAME(4), ALTREF2_FRAME(5), ALTREF_FRAME(6).
-  int ref = AOM_REFFRAME_ALL;
-  for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
-    if (!cpi->svc.reference[i]) ref ^= (1 << i);
-  }
-  return ref;
-}
-#endif  // CONFIG_SVC_ENCODER
-
 void av1_apply_encoding_flags(AV1_COMP *cpi, aom_enc_frame_flags_t flags) {
   // TODO(yunqingwang): For what references to use, external encoding flags
   // should be consistent with internal reference frame selection. Need to
@@ -3908,13 +3812,6 @@ void av1_apply_encoding_flags(AV1_COMP *cpi, aom_enc_frame_flags_t flags) {
     }
 
     av1_use_as_reference(&ext_flags->ref_frame_flags, ref);
-  } else {
-#if CONFIG_SVC_ENCODER
-    if (cpi->svc.external_ref_frame_config) {
-      int ref = svc_set_references_external_ref_frame_config(cpi);
-      av1_use_as_reference(&ext_flags->ref_frame_flags, ref);
-    }
-#endif  // CONFIG_SVC_ENCODER
   }
 
   if (flags &
@@ -3939,13 +3836,7 @@ void av1_apply_encoding_flags(AV1_COMP *cpi, aom_enc_frame_flags_t flags) {
     ext_refresh_frame_flags->alt2_ref_frame = (upd & AOM_ALT2_FLAG) != 0;
     ext_refresh_frame_flags->update_pending = 1;
   } else {
-#if CONFIG_SVC_ENCODER
-    if (cpi->svc.external_ref_frame_config)
-      svc_set_updates_external_ref_frame_config(ext_refresh_frame_flags,
-                                                &cpi->svc);
-    else
-#endif  // CONFIG_SVC_ENCODER
-      ext_refresh_frame_flags->update_pending = 0;
+    ext_refresh_frame_flags->update_pending = 0;
   }
 
   ext_flags->use_ref_frame_mvs = cpi->oxcf.tool_cfg.enable_ref_frame_mvs &

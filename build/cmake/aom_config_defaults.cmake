@@ -107,7 +107,6 @@ set_aom_config_var(DECODE_HEIGHT_LIMIT 0 "Set limit for decode height.")
 set_aom_config_var(DECODE_WIDTH_LIMIT 0 "Set limit for decode width.")
 set_aom_config_var(CONFIG_TUNE_VMAF 0 "Enable encoding tuning for VMAF.")
 set_aom_config_var(CONFIG_USE_VMAF_RC 0 "Use libvmaf_rc tune for VMAF_NEG.")
-set_aom_config_var(CONFIG_SVC_ENCODER 0 "Use SVC encoder features.")
 
 # AV1 experiment flags.
 set_aom_config_var(CONFIG_SPEED_STATS 0 "AV1 experiment flag.")
