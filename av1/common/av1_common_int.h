@@ -1166,12 +1166,12 @@ typedef struct AV1Common {
    * TODO(jingning): This can be combined with sign_bias later.
    */
   int8_t ref_frame_side[REF_FRAMES];
-#if CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   /*!
    * relative distance between reference 'k' and current frame.
    */
   int8_t ref_frame_relative_dist[REF_FRAMES];
-#endif  // CONFIG_SMVP_IMPROVEMENT
+#endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   /*!
    * Number of temporal layers: may be > 1 for SVC (scalable vector coding).
    */

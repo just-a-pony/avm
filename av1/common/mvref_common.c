@@ -1583,13 +1583,13 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
 
     ref_buf[ref_idx] = buf;
     ref_order_hint[ref_idx] = order_hint;
-#if CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
     const int relative_dist =
         get_relative_dist(order_hint_info, order_hint, cur_order_hint);
     if (relative_dist > 0) {
 #else
     if (get_relative_dist(order_hint_info, order_hint, cur_order_hint) > 0) {
-#endif  // CONFIG_SMVP_IMPROVEMENT
+#endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
       cm->ref_frame_side[ref_frame] = 1;
 #if CONFIG_TMVP_IMPROVEMENT
       has_bwd_ref = 1;
@@ -1598,9 +1598,9 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
       cm->ref_frame_side[ref_frame] = -1;
     }
 
-#if CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
     cm->ref_frame_relative_dist[ref_frame] = abs(relative_dist);
-#endif  // CONFIG_SMVP_IMPROVEMENT
+#endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   }
 
   int ref_stamp = MFMV_STACK_SIZE - 1;
@@ -1669,7 +1669,7 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
   if (ref_stamp >= 0) motion_field_projection(cm, LAST2_FRAME, 2);
 }
 
-#if CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
 void av1_setup_ref_frame_sides(AV1_COMMON *cm) {
   const OrderHintInfo *const order_hint_info = &cm->seq_params.order_hint_info;
 
@@ -1693,7 +1693,7 @@ void av1_setup_ref_frame_sides(AV1_COMMON *cm) {
     cm->ref_frame_relative_dist[ref_frame] = abs(relative_dist);
   }
 }
-#endif  // CONFIG_SMVP_IMPROVEMENT
+#endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
 
 static INLINE void record_samples(const MB_MODE_INFO *mbmi,
 #if CONFIG_COMPOUND_WARP_SAMPLES
