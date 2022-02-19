@@ -257,6 +257,6 @@ AV1_INSTANTIATE_TEST_SUITE(KeyFrameIntervalTestLarge, GOODQUALITY_TEST_MODES,
 // lag in frames bug is fixed.
 AV1_INSTANTIATE_TEST_SUITE(ForcedKeyTestLarge, GOODQUALITY_TEST_MODES,
                            ::testing::Values(0, 1), ::testing::Values(0, 1),
-                           ::testing::Values(2, 5),
+                           ::testing::Values(5),
                            ::testing::Values(AOM_Q, AOM_VBR, AOM_CQ));
 }  // namespace
