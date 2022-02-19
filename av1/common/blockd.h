@@ -768,8 +768,9 @@ typedef struct macroblockd {
   int mi_col; /*!< Column position in mi units. */
   /**@}*/
 #if CONFIG_IBC_SR_EXT
-  /* An array for recording whether an mi(4x4) is coded. Reset at sb level */
+  /*! An array for recording whether an mi(4x4) is coded. Reset at sb level */
   uint8_t is_mi_coded[1024];
+  /*! Stride for `is_mi_coded` array. */
   int is_mi_coded_stride;
 #endif  // CONFIG_IBC_SR_EXT
 
