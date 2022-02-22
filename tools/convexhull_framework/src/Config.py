@@ -44,7 +44,11 @@ PSNR_V_WEIGHT = 1.0
 APSNR_Y_WEIGHT = 4.0
 APSNR_U_WEIGHT = 1.0
 APSNR_V_WEIGHT = 1.0
-if CTC_VERSION == '2.0':
+
+if CTC_VERSION == '2.1':
+    CTC_RegularXLSTemplate = os.path.join(BinPath, 'AOM_CWG_Regular_CTC_v7.2.xlsm')
+    CTC_ASXLSTemplate = os.path.join(BinPath, 'AOM_CWG_AS_CTC_v9.7.xlsm')
+elif CTC_VERSION == '2.0':
     CTC_RegularXLSTemplate = os.path.join(BinPath, 'AOM_CWG_Regular_CTC_v7.1.xlsm')
     CTC_ASXLSTemplate = os.path.join(BinPath, 'AOM_CWG_AS_CTC_v9.7.xlsm')
 else:
@@ -82,7 +86,7 @@ AV1DEC = os.path.join(BinPath, 'av1dec.exe')
 HMENC = os.path.join(BinPath, "TAppEncoderStatic.exe")
 HEVCCfgFile = os.path.join(BinPath, "s2-hm-01.cfg")
 
-if CTC_VERSION == '2.0':
+if CTC_VERSION == '2.0' or CTC_VERSION == "2.1":
     QPs = {
         "LD": [110, 135, 160, 185, 210, 235],
         "RA": [110, 135, 160, 185, 210, 235],

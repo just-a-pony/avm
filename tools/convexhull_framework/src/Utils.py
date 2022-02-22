@@ -23,7 +23,7 @@ import scipy.interpolate
 import matplotlib.pyplot as plt
 from operator import itemgetter
 from Config import LogLevels, ContentPath, Platform, Path_RDResults, QPs, PSNR_Y_WEIGHT, PSNR_U_WEIGHT, PSNR_V_WEIGHT, \
-APSNR_Y_WEIGHT, APSNR_U_WEIGHT, APSNR_V_WEIGHT, CTC_VERSION, InterpolatePieces, UsePCHIPInterpolation, FFMPEG
+APSNR_Y_WEIGHT, APSNR_U_WEIGHT, APSNR_V_WEIGHT, InterpolatePieces, UsePCHIPInterpolation, FFMPEG
 from AV2CTCVideo import Y4M_CLIPs, CTC_TEST_SET
 from CalcBDRate import BD_RATE
 

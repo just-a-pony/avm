@@ -124,5 +124,7 @@ def VMAF_CalQualityMetrics(origfile, recfile, logfilePath, LogCmdOnly=False):
 
 def VMAF_GatherQualityMetrics(recfile, logfilePath):
     vmaf_log = GetVMAFLogFile(recfile, logfilePath)
+    if not os.path.exists(vmaf_log):
+        return [], []
     results, per_frame_log = ParseVMAFLogFile(vmaf_log)
     return results, per_frame_log

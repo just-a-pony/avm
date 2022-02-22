@@ -14,12 +14,12 @@ __author__ = "maggie.sun@intel.com, ryanlei@fb.com"
 Python file for definition of AV2 CTC testing clips/sets
 """
 
-CTC_VERSION = '2.0'
+CTC_VERSION = '2.1'
 
 CTC_TEST_SET = {
-    "AI": ["A1", "A2", "A3", "A4", "A5", "B1", "G1", "G2", "E"],
-    "RA": ["A1", "A2", "A3", "A4", "A5", "B1", "G1", "G2", "E"],
-    "LD": ["A2", "A3", "A4", "A5", "B1"],
+    "AI": ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "G1", "G2", "E"],
+    "RA": ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "G1", "G2", "E"],
+    "LD": ["A2", "A3", "A4", "A5", "B1", "B2"],
     "AS": ["A1"],
     "STILL": ["F1", "F2"],
 }
@@ -73,19 +73,17 @@ Y4M_CLIPs = {
                    "ParkJoy_480x270_50.y4m",
                    "SparksElevator_480x270p_5994_10bit.y4m",
                    "Vertical_Bayshore_270x480_2997.y4m"],
-"B1"            : ["AOV5_1920x1080_60_8bit_420.y4m",
-                   "Baolei_2048x1080_60fps.y4m",
-                   "CosmosTreeTrunk_sdr_2048x858_25_8bit.y4m",
+"B1"            : ["CosmosTreeTrunk_sdr_2048x858_25_8bit.y4m",
+                   "DOTA2_1920x1080_60_8bit_420.y4m",
                    "EuroTruckSimulator2_1920x1080p60.y4m",
                    "GlassHalf_1920x1080p_24p_8bit_420.y4m",
                    "Life_1080p30.y4m",
                    "MINECRAFT_1080p_60_8bit.y4m",
-                   "MissionControlClip3_1920x1080_60_420.y4m",
                    "Sniper_1920x1080P_30fps_8bit.y4m",
                    "SolLevanteDragons_sdr_1920x1080_24_10bit.y4m",
                    "SolLevanteFace_sdr_1920x1080_24_10bit.y4m",
-                   "Wikipedia_1920x1080p30.y4m"]
-                   if CTC_VERSION == "1.0" else
+                   "WITCHER3_1920x1080_60_8bit_420.y4m"]
+                   if CTC_VERSION == "2.1" else
                   ["CosmosTreeTrunk_sdr_2048x858_25_8bit.y4m",
                    "DOTA2_1920x1080_60_8bit_420.y4m",
                    "EuroTruckSimulator2_1920x1080p60.y4m",
@@ -97,7 +95,31 @@ Y4M_CLIPs = {
                    "SolLevanteDragons_sdr_1920x1080_24_10bit.y4m",
                    "SolLevanteFace_sdr_1920x1080_24_10bit.y4m",
                    "Wikipedia_1920x1080p30.y4m",
-                   "WITCHER3_1920x1080_60_8bit_420.y4m"],
+                   "WITCHER3_1920x1080_60_8bit_420.y4m"]
+                   if CTC_VERSION == "2.0" else
+                  ["AOV5_1920x1080_60_8bit_420.y4m",
+                   "Baolei_2048x1080_60fps.y4m",
+                   "CosmosTreeTrunk_sdr_2048x858_25_8bit.y4m",
+                   "EuroTruckSimulator2_1920x1080p60.y4m",
+                   "GlassHalf_1920x1080p_24p_8bit_420.y4m",
+                   "Life_1080p30.y4m",
+                   "MINECRAFT_1080p_60_8bit.y4m",
+                   "MissionControlClip3_1920x1080_60_420.y4m",
+                   "Sniper_1920x1080P_30fps_8bit.y4m",
+                   "SolLevanteDragons_sdr_1920x1080_24_10bit.y4m",
+                   "SolLevanteFace_sdr_1920x1080_24_10bit.y4m",
+                   "Wikipedia_1920x1080p30.y4m"],
+"B2"            : ["BigBuckBunnyStudio1_1920x1080_60fps_10bit_420_020_0149.y4m",
+                   "Debugging_1920x1080_30fps_8bit_420.y4m",
+                   "MissionControlClip1_1920x1080_60fps_10bit_420_0450_0579.y4m",
+                   "MissionControlClip3_1920x1080_60_420.y4m",
+                   "MobileDeviceScreenSharing.y4m",
+                   "SceneComposition_1.y4m",
+                   "SceneComposition_2.y4m",
+                   "Slides1_1920x1080_30fps_8bit_420.y4m",
+                   "Slides2r_1920x1080_30fps_8bit_420.y4m",
+                   "Spreadsheet_1920x1080_30fps_8bit_420_130f.y4m",
+                   "Wikipedia_1920x1080p30.y4m"],
 "F1"            : ["animals_00.y4m",
                    "animals_03.y4m",
                    "animals_09.y4m",

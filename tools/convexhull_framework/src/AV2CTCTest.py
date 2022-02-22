@@ -112,7 +112,7 @@ def GetTempLayerID(poc):
 
 
 def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
-                              test_cfg, clip_list, log_path):
+                              test_cfg, clip_list, log_path, missing):
     Utils.Logger.info("start saving RD results to excel file.......")
     if not os.path.exists(Path_RDResults):
         os.makedirs(Path_RDResults)
@@ -148,14 +148,24 @@ def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
     if CodecName == "hevc":
         QPSet = HEVC_QPs[test_cfg]
 
+
     for clip in clip_list:
         for qp in QPSet:
             bs, dec = GetBsReconFileName(EncodeMethod, CodecName, EncodePreset,
                                          test_cfg, clip, qp)
+            if not os.path.exists(bs):
+                missing.write("\n%s is missing" % bs)
+                continue
+
             filesize = os.path.getsize(bs)
             bitrate = round((filesize * 8 * (clip.fps_num / clip.fps_denom)
                        / FrameNum[test_cfg]) / 1000.0, 6)
+
             quality, perframe_vmaf_log = GatherQualityMetrics(dec, Path_QualityLog)
+            if not quality:
+                missing.write("\n%s is missing" % bs)
+                continue
+
             csv.write("%s,%s,%s,%s,%s,%s,%s,%.2f,%d,%s,%d,"
                       %(test_cfg,EncodeMethod,CodecName,EncodePreset,clip.file_class,
                         clip.file_name, str(clip.width)+'x'+str(clip.height),
@@ -259,10 +269,12 @@ if __name__ == "__main__":
         if SaveMemory:
             Cleanfolder(Path_DecodedYuv)
     elif Function == 'summary':
+        Missing = open("Missing.log", 'wt')
         for test_cfg in TEST_CONFIGURATIONS:
             clip_list = CreateClipList(test_cfg)
             GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
-                                      test_cfg, clip_list, Path_EncLog)
+                                      test_cfg, clip_list, Path_EncLog, Missing)
+        Missing.close()
         Utils.Logger.info("RD data summary file generated")
     else:
         Utils.Logger.error("invalid parameter value of Function")
