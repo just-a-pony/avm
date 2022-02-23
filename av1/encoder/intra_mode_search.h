@@ -57,6 +57,13 @@ typedef struct IntraModeSearchState {
   int best_mrl_index;
 #endif
 
+#if CONFIG_FORWARDSKIP
+  /*!
+   * \brief The best forward skip mode found.
+   */
+  int best_fsc;
+#endif  // CONFIG_FORWARDSKIP
+
   /** \name Speed feature variables
    * Variables to help with pruning some luma intra-modes during inter frame
    * coding process.
@@ -161,6 +168,49 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
                               int64_t best_rd, int64_t *best_intra_rd,
                               int64_t *best_model_rd,
                               int64_t top_intra_model_rd[]);
+
+#if CONFIG_FORWARDSKIP
+/*!\brief Search for the best forward skip coding mode for intra blocks.
+ *
+ * \ingroup intra_mode_search
+ * \callergraph
+ * \callgraph
+ * This function searches for the best forward skip coding mode when
+ * the current frame is an intra frame.
+ *
+ * \param[in]    cpi                Top-level encoder structure.
+ * \param[in]    x                  Pointer to structure holding all the data
+ *                                  for the current macroblock.
+ * \param[in]    rate               The total rate needed to predict the current
+ *                                  chroma block.
+ * \param[in]    rate_tokenonly     The rate without the cost of sending the
+ *                                  prediction modes.
+ *                                  chroma block.
+ *                                  after the reconstruction.
+ * \param[in]    distortion         The chroma distortion of the best prediction
+ *                                  after the reconstruction.
+ * \param[in]    skippable          Whether we can skip txfm process.
+ * \param[in]    bsize              Current partition block size.
+ * \param[in]    mode_costs         Costs associated with different intra modes.
+ * \param[in]    best_rd            Best RD seen for this block so far.
+ * \param[in]    best_model_rd      Best model RD seen for this block so far.
+ * \param[in]    ctx                Structure to hold the number of 4x4 blks to
+ *                                  copy the tx_type and txfm_skip arrays.
+ * \param[in]    best_mbmi          Pointer to structure holding
+ *                                  the mode info for the best macroblock.
+ */
+void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
+                     int *rate_tokenonly, int64_t *distortion, int *skippable,
+                     BLOCK_SIZE bsize,
+#if CONFIG_AIMC
+                     int mode_costs,
+#else
+                     const int *mode_costs,
+#endif  // CONFIG_AIMC
+                     uint8_t *directional_mode_skip_mask, int64_t *best_rd,
+                     int64_t *best_model_rd, PICK_MODE_CONTEXT *ctx,
+                     MB_MODE_INFO *best_mbmi);
+#endif  // CONFIG_FORWARDSKIP
 
 /*!\brief Evaluate luma palette mode for inter frames.
  *

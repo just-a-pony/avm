@@ -556,6 +556,25 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
       update_cdf(fc->y_mode_idx_cdf_1[context], mode_idx_in_set,
                  SECOND_MODE_COUNT);
     }
+#if CONFIG_FORWARDSKIP
+    if (allow_fsc_intra(cm, xd, bsize, mbmi)) {
+      const int intraonly = frame_is_intra_only(cm);
+#if CONFIG_ENTROPY_STATS
+      const MB_MODE_INFO *above_mi = xd->above_mbmi;
+      const MB_MODE_INFO *left_mi = xd->left_mbmi;
+      const uint8_t fsc_above =
+          (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+      const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+      const int fsc_ctx = intraonly ? fsc_above + fsc_left : 3;
+      ++counts->fsc_mode[fsc_ctx][fsc_bsize_groups[bsize]]
+                        [mbmi->fsc_mode[xd->tree_type == CHROMA_PART]];
+#endif  // CONFIG_ENTROPY_STATS
+      aom_cdf_prob *fsc_cdf =
+          get_fsc_mode_cdf(fc, xd->above_mbmi, xd->left_mbmi, bsize, intraonly);
+      update_cdf(fsc_cdf, mbmi->fsc_mode[xd->tree_type == CHROMA_PART],
+                 FSC_MODES);
+    }
+#endif  // CONFIG_FORWARDSKIP
 #else
   if (intraonly) {
 #if CONFIG_ENTROPY_STATS
@@ -572,6 +591,21 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
 #endif  // CONFIG_ENTROPY_STATS
     update_cdf(fc->y_mode_cdf[size_group_lookup[bsize]], y_mode, INTRA_MODES);
   }
+#if CONFIG_FORWARDSKIP
+  if (allow_fsc_intra(cm, xd, bsize, mbmi)) {
+#if CONFIG_ENTROPY_STATS
+    const uint8_t fsc_above = (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+    const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+    const int fsc_ctx = intraonly ? fsc_above + fsc_left : 3;
+    ++counts->fsc_mode[fsc_ctx][fsc_bsize_groups[bsize]]
+                      [mbmi->fsc_mode[xd->tree_type == CHROMA_PART]];
+#endif  // CONFIG_ENTROPY_STATS
+    aom_cdf_prob *fsc_cdf =
+        get_fsc_mode_cdf(fc, xd->above_mbmi, xd->left_mbmi, bsize, intraonly);
+    update_cdf(fsc_cdf, mbmi->fsc_mode[xd->tree_type == CHROMA_PART],
+               FSC_MODES);
+  }
+#endif  // CONFIG_FORWARDSKIP
 #endif  // CONFIG_AIMC
 #if CONFIG_MRLS
     if (cm->seq_params.enable_mrls && av1_is_directional_mode(mbmi->mode)) {
@@ -1284,6 +1318,12 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->eob_flag_cdf1024, ctx_tr->eob_flag_cdf1024, 11);
   AVERAGE_CDF(ctx_left->coeff_base_eob_cdf, ctx_tr->coeff_base_eob_cdf, 3);
   AVERAGE_CDF(ctx_left->coeff_base_cdf, ctx_tr->coeff_base_cdf, 4);
+#if CONFIG_FORWARDSKIP
+  AVERAGE_CDF(ctx_left->idtx_sign_cdf, ctx_tr->idtx_sign_cdf, 2);
+  AVERAGE_CDF(ctx_left->coeff_base_cdf_idtx, ctx_tr->coeff_base_cdf_idtx, 4);
+  AVERAGE_CDF(ctx_left->coeff_br_cdf_idtx, ctx_tr->coeff_br_cdf_idtx,
+              BR_CDF_SIZE);
+#endif  // CONFIG_FORWARDSKIP
   AVERAGE_CDF(ctx_left->coeff_br_cdf, ctx_tr->coeff_br_cdf, BR_CDF_SIZE);
 #if CONFIG_NEW_INTER_MODES
   AVERAGE_CDF(ctx_left->inter_single_mode_cdf, ctx_tr->inter_single_mode_cdf,
@@ -1376,6 +1416,9 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   }
 #endif
   AVERAGE_CDF(ctx_left->sgrproj_restore_cdf, ctx_tr->sgrproj_restore_cdf, 2);
+#if CONFIG_FORWARDSKIP
+  AVERAGE_CDF(ctx_left->fsc_mode_cdf, ctx_tr->fsc_mode_cdf, FSC_MODES);
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_MRLS
   AVERAGE_CDF(ctx_left->mrl_index_cdf, ctx_tr->mrl_index_cdf, MRL_LINE_NUMBER);
 #endif
@@ -1456,10 +1499,10 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
     AVERAGE_CDF(ctx_left->delta_lf_multi_cdf[i], ctx_tr->delta_lf_multi_cdf[i],
                 DELTA_LF_PROBS + 1);
   }
-  AVG_CDF_STRIDE(ctx_left->intra_ext_tx_cdf[1], ctx_tr->intra_ext_tx_cdf[1], 7,
-                 CDF_SIZE(TX_TYPES));
-  AVG_CDF_STRIDE(ctx_left->intra_ext_tx_cdf[2], ctx_tr->intra_ext_tx_cdf[2], 5,
-                 CDF_SIZE(TX_TYPES));
+  AVG_CDF_STRIDE(ctx_left->intra_ext_tx_cdf[1], ctx_tr->intra_ext_tx_cdf[1],
+                 INTRA_TX_SET1, CDF_SIZE(TX_TYPES));
+  AVG_CDF_STRIDE(ctx_left->intra_ext_tx_cdf[2], ctx_tr->intra_ext_tx_cdf[2],
+                 INTRA_TX_SET2, CDF_SIZE(TX_TYPES));
   AVG_CDF_STRIDE(ctx_left->inter_ext_tx_cdf[1], ctx_tr->inter_ext_tx_cdf[1], 16,
                  CDF_SIZE(TX_TYPES));
   AVG_CDF_STRIDE(ctx_left->inter_ext_tx_cdf[2], ctx_tr->inter_ext_tx_cdf[2], 12,

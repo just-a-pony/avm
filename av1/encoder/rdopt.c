@@ -3867,6 +3867,10 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     mbmi->angle_delta[PLANE_TYPE_UV] = 0;
 #endif
 
+#if CONFIG_FORWARDSKIP
+    mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
+    mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
+#endif  // CONFIG_FORWARDSKIP
     mbmi->mode = DC_PRED;
     mbmi->uv_mode = UV_DC_PRED;
     mbmi->motion_mode = SIMPLE_TRANSLATION;
@@ -4728,6 +4732,9 @@ static AOM_INLINE void init_intra_mode_search_state(
 #if CONFIG_MRLS
   intra_search_state->best_mrl_index = 0;
 #endif
+#if CONFIG_FORWARDSKIP
+  intra_search_state->best_fsc = 0;
+#endif  // CONFIG_FORWARDSKIP
   intra_search_state->dir_mode_skip_mask_ready = 0;
   av1_zero(intra_search_state->directional_mode_skip_mask);
   intra_search_state->rate_uv_intra = INT_MAX;
@@ -6035,6 +6042,10 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       if (comp_pred) xd->plane[i].pre[1] = yv12_mb[second_ref_frame][i];
     }
 
+#if CONFIG_FORWARDSKIP
+    mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
+    mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
+#endif  // CONFIG_FORWARDSKIP
     mbmi->angle_delta[PLANE_TYPE_Y] = 0;
     mbmi->angle_delta[PLANE_TYPE_UV] = 0;
     mbmi->filter_intra_mode_info.use_filter_intra = 0;
@@ -6197,86 +6208,123 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   for (i = 0; i < TOP_INTRA_MODEL_COUNT; i++) {
     top_intra_model_rd[i] = INT64_MAX;
   }
+
 #if CONFIG_AIMC
   get_y_intra_mode_set(mbmi, xd);
 #endif  // CONFIG_AIMC
+
+#if CONFIG_FORWARDSKIP
+  for (int fsc_mode = 0;
+       fsc_mode < (allow_fsc_intra(cm, xd, bsize, mbmi) ? FSC_MODES : 1);
+       fsc_mode++) {
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_MRLS
-  uint8_t enable_mrls_flag = cm->seq_params.enable_mrls;
-  for (int mrl_index = 0; mrl_index < (enable_mrls_flag ? MRL_LINE_NUMBER : 1);
-       mrl_index++) {
-    mbmi->mrl_index = mrl_index;
+    uint8_t enable_mrls_flag = cm->seq_params.enable_mrls
+#if CONFIG_FORWARDSKIP
+                               && !fsc_mode
+#endif  // CONFIG_FORWARDSKIP
+        ;
+    for (int mrl_index = 0;
+         mrl_index < (enable_mrls_flag ? MRL_LINE_NUMBER : 1); mrl_index++) {
+#if CONFIG_FORWARDSKIP
+      mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = fsc_mode;
+#endif  // CONFIG_FORWARDSKIP
+      mbmi->mrl_index = mrl_index;
 #endif
-    for (int mode_idx = INTRA_MODE_START; mode_idx < LUMA_MODE_COUNT;
-         ++mode_idx) {
-      if (sf->intra_sf.skip_intra_in_interframe &&
-          search_state.intra_search_state.skip_intra_modes)
-        break;
+      for (int mode_idx = INTRA_MODE_START; mode_idx < LUMA_MODE_COUNT;
+           ++mode_idx) {
+        if (sf->intra_sf.skip_intra_in_interframe &&
+            search_state.intra_search_state.skip_intra_modes)
+          break;
 #if CONFIG_AIMC
-      mbmi->y_mode_idx = mode_idx;
-      mbmi->joint_y_mode_delta_angle = mbmi->y_intra_mode_list[mode_idx];
-      set_y_mode_and_delta_angle(mbmi->joint_y_mode_delta_angle, mbmi);
+        mbmi->y_mode_idx = mode_idx;
+        mbmi->joint_y_mode_delta_angle = mbmi->y_intra_mode_list[mode_idx];
+        set_y_mode_and_delta_angle(mbmi->joint_y_mode_delta_angle, mbmi);
 #else
     set_y_mode_and_delta_angle(mode_idx, mbmi);
 #endif  // CONFIG_AIMC
-      THR_MODES mode_enum = 0;
-      for (i = 0; i < INTRA_MODE_END; i++) {
-        if (mbmi->mode == av1_mode_defs[intra_mode_idx_ls[i]].mode) {
-          mode_enum = intra_mode_idx_ls[i];
-          break;
+        THR_MODES mode_enum = 0;
+        for (i = 0; i < INTRA_MODE_END; i++) {
+          if (mbmi->mode == av1_mode_defs[intra_mode_idx_ls[i]].mode) {
+            mode_enum = intra_mode_idx_ls[i];
+            break;
+          }
         }
-      }
-      if ((!cpi->oxcf.intra_mode_cfg.enable_smooth_intra ||
-           cpi->sf.intra_sf.disable_smooth_intra) &&
-          (mbmi->mode == SMOOTH_PRED || mbmi->mode == SMOOTH_H_PRED ||
-           mbmi->mode == SMOOTH_V_PRED))
-        continue;
-      if (!cpi->oxcf.intra_mode_cfg.enable_paeth_intra &&
-          mbmi->mode == PAETH_PRED)
-        continue;
+        if ((!cpi->oxcf.intra_mode_cfg.enable_smooth_intra ||
+             cpi->sf.intra_sf.disable_smooth_intra) &&
+            (mbmi->mode == SMOOTH_PRED || mbmi->mode == SMOOTH_H_PRED ||
+             mbmi->mode == SMOOTH_V_PRED))
+          continue;
+        if (!cpi->oxcf.intra_mode_cfg.enable_paeth_intra &&
+            mbmi->mode == PAETH_PRED)
+          continue;
 #if !CONFIG_AIMC
-      if (av1_is_directional_mode(mbmi->mode) &&
-          av1_use_angle_delta(bsize) == 0 &&
-          mbmi->angle_delta[PLANE_TYPE_Y] != 0)
-        continue;
+        if (av1_is_directional_mode(mbmi->mode) &&
+            av1_use_angle_delta(bsize) == 0 &&
+            mbmi->angle_delta[PLANE_TYPE_Y] != 0)
+          continue;
 #endif  // !CONFIG_AIMC
 #if CONFIG_MRLS
-      if (mbmi->mrl_index > 0 && av1_is_directional_mode(mbmi->mode) == 0) {
-        continue;
-      }
+        if (mbmi->mrl_index > 0 && av1_is_directional_mode(mbmi->mode) == 0) {
+          continue;
+        }
 #endif
-      const PREDICTION_MODE this_mode = mbmi->mode;
+#if CONFIG_FORWARDSKIP
+        if (!allow_fsc_intra(cm, xd, bsize, mbmi) &&
+            mbmi->fsc_mode[PLANE_TYPE_Y] > 0) {
+          continue;
+        }
+#if CONFIG_MRLS
+        if (mbmi->mrl_index > 0 && mbmi->fsc_mode[PLANE_TYPE_Y]) {
+          continue;
+        }
+#endif  // CONFIG_MRLS
+#if !CONFIG_AIMC
+        if (mbmi->angle_delta[PLANE_TYPE_Y] && mbmi->fsc_mode[PLANE_TYPE_Y]) {
+          continue;
+        }
+        if (mbmi->angle_delta[PLANE_TYPE_UV] &&
+            mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) {
+          continue;
+        }
+#endif  // CONFIG_AIMC
+#endif  // CONFIG_FORWARDSKIP
+        const PREDICTION_MODE this_mode = mbmi->mode;
 
-      assert(av1_mode_defs[mode_enum].ref_frame[0] == INTRA_FRAME);
-      assert(av1_mode_defs[mode_enum].ref_frame[1] == NONE_FRAME);
+        assert(av1_mode_defs[mode_enum].ref_frame[0] == INTRA_FRAME);
+        assert(av1_mode_defs[mode_enum].ref_frame[1] == NONE_FRAME);
 #if CONFIG_IBC_SR_EXT
-      init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm, xd);
+        init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm, xd);
 #else
     init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm);
 #endif  // CONFIG_IBC_SR_EXT
-      txfm_info->skip_txfm = 0;
+        txfm_info->skip_txfm = 0;
 
-      RD_STATS intra_rd_stats, intra_rd_stats_y, intra_rd_stats_uv;
-      intra_rd_stats.rdcost = av1_handle_intra_mode(
-          &search_state.intra_search_state, cpi, x, bsize, intra_ref_frame_cost,
-          ctx, &intra_rd_stats, &intra_rd_stats_y, &intra_rd_stats_uv,
-          search_state.best_rd, &search_state.best_intra_rd, &best_model_rd,
-          top_intra_model_rd);
+        RD_STATS intra_rd_stats, intra_rd_stats_y, intra_rd_stats_uv;
+        intra_rd_stats.rdcost = av1_handle_intra_mode(
+            &search_state.intra_search_state, cpi, x, bsize,
+            intra_ref_frame_cost, ctx, &intra_rd_stats, &intra_rd_stats_y,
+            &intra_rd_stats_uv, search_state.best_rd,
+            &search_state.best_intra_rd, &best_model_rd, top_intra_model_rd);
 
-      // Collect mode stats for multiwinner mode processing
-      const int txfm_search_done = 1;
-      store_winner_mode_stats(
-          &cpi->common, x, mbmi, &intra_rd_stats, &intra_rd_stats_y,
-          &intra_rd_stats_uv, mode_enum, NULL, bsize, intra_rd_stats.rdcost,
-          cpi->sf.winner_mode_sf.multi_winner_mode_type, txfm_search_done);
-      if (intra_rd_stats.rdcost < search_state.best_rd) {
-        update_search_state(&search_state, rd_cost, ctx, &intra_rd_stats,
-                            &intra_rd_stats_y, &intra_rd_stats_uv, mode_enum, x,
-                            txfm_search_done);
+        // Collect mode stats for multiwinner mode processing
+        const int txfm_search_done = 1;
+        store_winner_mode_stats(
+            &cpi->common, x, mbmi, &intra_rd_stats, &intra_rd_stats_y,
+            &intra_rd_stats_uv, mode_enum, NULL, bsize, intra_rd_stats.rdcost,
+            cpi->sf.winner_mode_sf.multi_winner_mode_type, txfm_search_done);
+        if (intra_rd_stats.rdcost < search_state.best_rd) {
+          update_search_state(&search_state, rd_cost, ctx, &intra_rd_stats,
+                              &intra_rd_stats_y, &intra_rd_stats_uv, mode_enum,
+                              x, txfm_search_done);
+        }
       }
-    }
 #if CONFIG_MRLS
-  }
+    }
 #endif
+#if CONFIG_FORWARDSKIP
+  }
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_COLLECT_COMPONENT_TIMING
   end_timing(cpi, handle_intra_mode_time);
 #endif

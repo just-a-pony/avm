@@ -257,6 +257,11 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
   // Can only activate one mode.
   assert(((mbmi->mode != DC_PRED) + use_palette + use_intrabc +
           use_filter_intra) <= 1);
+#if CONFIG_FORWARDSKIP
+  const int use_fsc = mbmi->fsc_mode[PLANE_TYPE_Y];
+  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
+  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_SDP
   const int try_palette =
       av1_allow_palette(cpi->common.features.allow_screen_content_tools,
@@ -290,6 +295,16 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
       total_rate += palette_mode_cost;
     }
   }
+#if CONFIG_FORWARDSKIP
+  if (allow_fsc_intra(&cpi->common, xd, bsize, mbmi)) {
+    const uint8_t fsc_above = (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+    const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+    const int fsc_ctx =
+        frame_is_intra_only(&cpi->common) ? fsc_above + fsc_left : 3;
+    total_rate +=
+        mode_costs->fsc_cost[fsc_ctx][fsc_bsize_groups[bsize]][use_fsc];
+  }
+#endif  // CONFIG_FORWARDSKIP
   if (av1_filter_intra_allowed(&cpi->common, mbmi)) {
 #if CONFIG_SDP
     total_rate +=

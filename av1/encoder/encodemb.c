@@ -275,15 +275,42 @@ void av1_xform_dc_only(MACROBLOCK *x, int plane, int block,
       (tran_low_t)((per_px_mean * dc_coeff_scale[txfm_param->tx_size]) >> 12);
 }
 
-void av1_xform_quant(MACROBLOCK *x, int plane, int block, int blk_row,
-                     int blk_col, BLOCK_SIZE plane_bsize, TxfmParam *txfm_param,
-                     QUANT_PARAM *qparam) {
+void av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+    const AV1_COMMON *cm,
+#endif  // CONFIG_FORWARDSKIP
+    MACROBLOCK *x, int plane, int block, int blk_row, int blk_col,
+    BLOCK_SIZE plane_bsize, TxfmParam *txfm_param, QUANT_PARAM *qparam) {
+#if CONFIG_FORWARDSKIP
+  MACROBLOCKD *const xd = &x->e_mbd;
+  MB_MODE_INFO *const mbmi = xd->mi[0];
+  const struct macroblock_plane *const p = &x->plane[plane];
+  const int is_inter = is_inter_block(mbmi, xd->tree_type);
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_IST
   av1_xform(x, plane, block, blk_row, blk_col, plane_bsize, txfm_param, 0);
 #else
   av1_xform(x, plane, block, blk_row, blk_col, plane_bsize, txfm_param);
 #endif
+#if CONFIG_FORWARDSKIP
+  const uint8_t fsc_mode =
+      (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] && plane == PLANE_TYPE_Y) ||
+      use_inter_fsc(cm, plane, txfm_param->tx_type, is_inter);
+  if (fsc_mode) qparam->use_optimize_b = false;
+#endif  // CONFIG_FORWARDSKIP
   av1_quant(x, plane, block, txfm_param, qparam);
+#if CONFIG_FORWARDSKIP
+  if (fsc_mode) {
+#if CONFIG_IST
+    if (get_primary_tx_type(txfm_param->tx_type) == IDTX) {
+#else
+    if (txfm_param->tx_type == IDTX) {
+#endif  // CONFIG_IST
+      uint16_t *const eob = &p->eobs[block];
+      if (*eob != 0) *eob = av1_get_max_eob(txfm_param->tx_size);
+    }
+  }
+#endif  // CONFIG_FORWARDSKIP
 }
 
 void av1_xform(MACROBLOCK *x, int plane, int block, int blk_row, int blk_col,
@@ -411,6 +438,9 @@ void av1_setup_xform(const AV1_COMMON *cm, MACROBLOCK *x,
   if ((txfm_param->intra_mode < PAETH_PRED) &&
       !xd->lossless[mbmi->segment_id] &&
       !(mbmi->filter_intra_mode_info.use_filter_intra) &&
+#if CONFIG_FORWARDSKIP
+      !(mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) &&
+#endif  // CONFIG_FORWARDSKIP
       cm->seq_params.enable_ist) {
     txfm_param->sec_tx_type = get_secondary_tx_type(tx_type);
   }
@@ -447,6 +477,16 @@ void av1_setup_quant(TX_SIZE tx_size, int use_optimize_b, int xform_quant_idx,
   qparam->qmatrix = NULL;
   qparam->iqmatrix = NULL;
 }
+
+#if CONFIG_FORWARDSKIP
+void av1_update_trellisq(int use_optimize_b, int xform_quant_idx,
+                         int use_quant_b_adapt, QUANT_PARAM *qparam) {
+  qparam->use_quant_b_adapt = use_quant_b_adapt;
+  qparam->use_optimize_b = use_optimize_b;
+  qparam->xform_quant_idx = xform_quant_idx;
+}
+#endif  // CONFIG_FORWARDSKIP
+
 void av1_setup_qmatrix(const CommonQuantParams *quant_params,
                        const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
                        TX_TYPE tx_type, QUANT_PARAM *qparam) {
@@ -490,7 +530,17 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
                               cm->features.reduced_tx_set_used);
     TxfmParam txfm_param;
     QUANT_PARAM quant_param;
-    const int use_trellis = is_trellis_used(args->enable_optimize_b, dry_run);
+#if CONFIG_FORWARDSKIP
+    const int is_inter = is_inter_block(mbmi, xd->tree_type);
+    const int fsc_mode = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+                          plane == PLANE_TYPE_Y) ||
+                         use_inter_fsc(cm, plane, tx_type, is_inter);
+#endif  // CONFIG_FORWARDSKIP
+    const int use_trellis = is_trellis_used(args->enable_optimize_b, dry_run)
+#if CONFIG_FORWARDSKIP
+                            && !fsc_mode
+#endif  // CONFIG_FORWARDSKIP
+        ;
     int quant_idx;
     if (use_trellis)
       quant_idx = AV1_XFORM_QUANT_FP;
@@ -506,8 +556,12 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
                     cpi->oxcf.q_cfg.quant_b_adapt, &quant_param);
     av1_setup_qmatrix(&cm->quant_params, xd, plane, tx_size, tx_type,
                       &quant_param);
-    av1_xform_quant(x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
-                    &quant_param);
+    av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
+        &quant_param);
 
     // Whether trellis or dropout optimization is required for inter frames.
     const bool do_trellis = INTER_BLOCK_OPT_TYPE == TRELLIS_OPT ||
@@ -517,11 +571,20 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
 
     if (quant_param.use_optimize_b && do_trellis) {
       TXB_CTX txb_ctx;
-      get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx);
+      get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx
+#if CONFIG_FORWARDSKIP
+                  ,
+                  mbmi->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+      );
       av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, &txb_ctx,
                      &dummy_rate_cost);
     }
-    if (!quant_param.use_optimize_b && do_dropout) {
+    if (!quant_param.use_optimize_b && do_dropout
+#if CONFIG_FORWARDSKIP
+        && !fsc_mode
+#endif  // CONFIG_FORWARDSKIP
+    ) {
       av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
                          cm->quant_params.base_qindex);
     }
@@ -731,9 +794,12 @@ static void encode_block_pass1(int plane, int block, int blk_row, int blk_col,
                   &quant_param);
   av1_setup_qmatrix(&cm->quant_params, xd, plane, tx_size, DCT_DCT,
                     &quant_param);
-
-  av1_xform_quant(x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
-                  &quant_param);
+  av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+      cm,
+#endif  // CONFIG_FORWARDSKIP
+      x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
+      &quant_param);
 
   if (p->eobs[block] > 0) {
     txfm_param.eob = p->eobs[block];
@@ -857,6 +923,10 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = args->x;
   MACROBLOCKD *const xd = &x->e_mbd;
+#if CONFIG_FORWARDSKIP
+  MB_MODE_INFO *const mbmi = xd->mi[0];
+  const int is_inter = is_inter_block(mbmi, xd->tree_type);
+#endif  // CONFIG_FORWARDSKIP
   struct macroblock_plane *const p = &x->plane[plane];
   struct macroblockd_plane *const pd = &xd->plane[plane];
   tran_low_t *dqcoeff = p->dqcoeff + BLOCK_OFFSET(block);
@@ -897,8 +967,17 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
                               cm->features.reduced_tx_set_used);
     TxfmParam txfm_param;
     QUANT_PARAM quant_param;
+#if CONFIG_FORWARDSKIP
+    const uint8_t fsc_mode = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+                              plane == PLANE_TYPE_Y) ||
+                             use_inter_fsc(cm, plane, tx_type, is_inter);
+#endif  // CONFIG_FORWARDSKIP
     const int use_trellis =
-        is_trellis_used(args->enable_optimize_b, args->dry_run);
+        is_trellis_used(args->enable_optimize_b, args->dry_run)
+#if CONFIG_FORWARDSKIP
+        && !fsc_mode
+#endif  // CONFIG_FORWARDSKIP
+        ;
     int quant_idx;
     if (use_trellis)
       quant_idx = AV1_XFORM_QUANT_FP;
@@ -915,9 +994,12 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
                     cpi->oxcf.q_cfg.quant_b_adapt, &quant_param);
     av1_setup_qmatrix(&cm->quant_params, xd, plane, tx_size, tx_type,
                       &quant_param);
-
-    av1_xform_quant(x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
-                    &quant_param);
+    av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
+        &quant_param);
 #if DEBUG_EXTQUANT
     if (args->dry_run == OUTPUT_ENABLED) {
       fprintf(cm->fEncCoeffLog, "tx_type = %d, eob = %d\n", tx_type, *eob);
@@ -944,11 +1026,20 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
 
     if (quant_param.use_optimize_b && do_trellis) {
       TXB_CTX txb_ctx;
-      get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx);
+      get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx
+#if CONFIG_FORWARDSKIP
+                  ,
+                  mbmi->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+      );
       av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, &txb_ctx,
                      &dummy_rate_cost);
     }
-    if (do_dropout) {
+    if (do_dropout
+#if CONFIG_FORWARDSKIP
+        && !fsc_mode
+#endif  // CONFIG_FORWARDSKIP
+    ) {
       av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
                          cm->quant_params.base_qindex);
     }

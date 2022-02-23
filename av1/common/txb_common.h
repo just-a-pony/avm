@@ -67,6 +67,38 @@ static INLINE int get_padded_idx(const int idx, const int bwl) {
   return idx + ((idx >> bwl) << TX_PAD_HOR_LOG2);
 }
 
+#if CONFIG_FORWARDSKIP
+// This function sets the signs buffer for coefficient coding.
+static INLINE int8_t *set_signs(int8_t *const signs_buf, const int width) {
+  return signs_buf + TX_PAD_TOP * (width + TX_PAD_HOR);
+}
+
+// This function returns the coefficient index after left padding.
+static INLINE int get_padded_idx_left(const int idx, const int bwl) {
+  return TX_PAD_LEFT + idx + ((idx >> bwl) << TX_PAD_HOR_LOG2);
+}
+
+/*
+ This function returns the base range coefficient coding context index
+ for forward skip residual coding for a given coefficient index.
+ It assumes padding from left and sums left and above level
+ samples: levels[pos - 1] + levels[pos - stride] and adds an
+ appropriate offset depending on row and column.
+*/
+static AOM_FORCE_INLINE int get_br_ctx_skip(const uint8_t *const levels,
+                                            const int c, const int bwl) {
+  const int row = c >> bwl;
+  const int col = (c - (row << bwl)) + TX_PAD_LEFT;
+  const int stride = (1 << bwl) + TX_PAD_LEFT;
+  const int pos = row * stride + col;
+  int mag = levels[pos - 1];
+  mag += levels[pos - stride];
+  mag = AOMMIN(mag, 6);
+  if ((row < 2) && (col < (2 + TX_PAD_LEFT))) return mag;
+  return mag + 7;
+}
+#endif  // CONFIG_FORWARDSKIP
+
 static INLINE int get_br_ctx_2d(const uint8_t *const levels,
                                 const int c,  // raster order
                                 const int bwl) {
@@ -144,6 +176,48 @@ static const uint8_t clip_max3[256] = {
   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
 };
 
+#if CONFIG_FORWARDSKIP
+// This function returns the neighboring left + above levels with clipping.
+static AOM_FORCE_INLINE int get_nz_mag_skip(const uint8_t *const levels,
+                                            const int bwl) {
+  int mag = clip_max3[levels[-1]];                      // { 0, -1 }
+  mag += clip_max3[levels[-(1 << bwl) - TX_PAD_LEFT]];  // { -1, 0 }
+  return mag;
+}
+
+/*
+ This helper function computes the sign context index for FSC residual
+ coding for a given coefficient index. Bottom, left and bottom-left
+ samples are used to derive the index.
+*/
+static AOM_FORCE_INLINE int get_sign_skip(const int8_t *const signs,
+                                          const uint8_t *const levels,
+                                          const int bwl) {
+  int signc = 0;
+  if (levels[1]) signc += signs[1];  // { 0, +1 }
+  if (levels[(1 << bwl) + TX_PAD_LEFT])
+    signc += signs[(1 << bwl) + TX_PAD_LEFT];  // { +1, 0 }
+  if (levels[(1 << bwl) + TX_PAD_LEFT + 1])
+    signc += signs[(1 << bwl) + TX_PAD_LEFT + 1];  // { +1, +1 }
+  if (signc > 2) return 5;
+  if (signc < -2) return 6;
+  if (signc > 0) return 1;
+  if (signc < 0) return 2;
+  return 0;
+}
+
+// This function returns the sign context index for residual coding.
+static INLINE int get_sign_ctx_skip(const int8_t *const signs,
+                                    const uint8_t *const levels,
+                                    const int coeff_idx, const int bwl) {
+  const int8_t *const signs_pt = signs + get_padded_idx(coeff_idx, bwl);
+  const uint8_t *const level_pt = levels + get_padded_idx_left(coeff_idx, bwl);
+  int sign_ctx = get_sign_skip(signs_pt, level_pt, bwl);
+  if (level_pt[0] > COEFF_BASE_RANGE && sign_ctx != 0) sign_ctx += 2;
+  return sign_ctx;
+}
+#endif  // CONFIG_FORWARDSKIP
+
 static AOM_FORCE_INLINE int get_nz_mag(const uint8_t *const levels,
                                        const int bwl, const TX_CLASS tx_class) {
   int mag;
@@ -182,6 +256,18 @@ static const int nz_map_ctx_offset_1d[32] = {
   NZ_MAP_CTX_10, NZ_MAP_CTX_10, NZ_MAP_CTX_10, NZ_MAP_CTX_10, NZ_MAP_CTX_10,
   NZ_MAP_CTX_10, NZ_MAP_CTX_10,
 };
+
+#if CONFIG_FORWARDSKIP
+static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats_skip(const int stats,
+                                                           const int coeff_idx,
+                                                           const int bwl) {
+  const int ctx = AOMMIN(stats, 6);
+  const int row = (coeff_idx >> bwl);
+  const int col = (coeff_idx - (row << bwl)) + TX_PAD_LEFT;
+  if ((row < 2) && (col < (2 + TX_PAD_LEFT))) return ctx;
+  return ctx + 7;
+}
+#endif  // CONFIG_FORWARDSKIP
 
 static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats(
     const int stats,
@@ -230,6 +316,21 @@ static INLINE int get_lower_levels_ctx_eob(int bwl, int height, int scan_idx) {
   return 3;
 }
 
+#if CONFIG_FORWARDSKIP
+static INLINE int get_upper_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
+                                          int bwl) {
+  int mag;
+  levels = levels + get_padded_idx_left(coeff_idx, bwl);
+  mag = AOMMIN(levels[-1], 3);                          // { 0, -1 }
+  mag += AOMMIN(levels[-(1 << bwl) - TX_PAD_LEFT], 3);  // { -1, 0 }
+  const int ctx = AOMMIN(mag, 6);
+  const int row = (coeff_idx >> bwl);
+  const int col = (coeff_idx - (row << bwl)) + TX_PAD_LEFT;
+  if ((row < 2) && (col < (2 + TX_PAD_LEFT))) return ctx;
+  return ctx + 7;
+}
+#endif  // CONFIG_FORWARDSKIP
+
 static INLINE int get_lower_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
                                           int bwl, TX_SIZE tx_size) {
   assert(coeff_idx > 0);
@@ -275,12 +376,59 @@ static INLINE void set_dc_sign(int *cul_level, int dc_val) {
     *cul_level += 2 << COEFF_CONTEXT_BITS;
 }
 
+#if CONFIG_FORWARDSKIP
+static INLINE void get_txb_ctx_skip(const BLOCK_SIZE plane_bsize,
+                                    const TX_SIZE tx_size,
+                                    const ENTROPY_CONTEXT *const a,
+                                    const ENTROPY_CONTEXT *const l,
+                                    TXB_CTX *const txb_ctx) {
+  const int txb_w_unit = tx_size_wide_unit[tx_size];
+  const int txb_h_unit = tx_size_high_unit[tx_size];
+  const int skip_offset = 13;
+  txb_ctx->dc_sign_ctx = 0;
+  if (plane_bsize == txsize_to_bsize[tx_size]) {
+    txb_ctx->txb_skip_ctx = skip_offset;
+  } else {
+    static const uint8_t skip_contexts[5][5] = { { 1, 2, 2, 2, 3 },
+                                                 { 2, 4, 4, 4, 5 },
+                                                 { 2, 4, 4, 4, 5 },
+                                                 { 2, 4, 4, 4, 5 },
+                                                 { 3, 5, 5, 5, 6 } };
+    int top = 0;
+    int left = 0;
+    int k = 0;
+    do {
+      top |= a[k];
+    } while (++k < txb_w_unit);
+    top &= COEFF_CONTEXT_MASK;
+    top = AOMMIN(top, 4);
+    k = 0;
+    do {
+      left |= l[k];
+    } while (++k < txb_h_unit);
+    left &= COEFF_CONTEXT_MASK;
+    left = AOMMIN(left, 4);
+    txb_ctx->txb_skip_ctx = skip_contexts[top][left] + skip_offset;
+  }
+}
+#endif  // CONFIG_FORWARDSKIP
+
 static INLINE void get_txb_ctx(const BLOCK_SIZE plane_bsize,
                                const TX_SIZE tx_size, const int plane,
                                const ENTROPY_CONTEXT *const a,
                                const ENTROPY_CONTEXT *const l,
+#if CONFIG_FORWARDSKIP
+                               TXB_CTX *const txb_ctx, uint8_t fsc_mode) {
+#else
                                TXB_CTX *const txb_ctx) {
+#endif
 #define MAX_TX_SIZE_UNIT 16
+#if CONFIG_FORWARDSKIP
+  if (fsc_mode && plane == PLANE_TYPE_Y) {
+    get_txb_ctx_skip(plane_bsize, tx_size, a, l, txb_ctx);
+    return;
+  }
+#endif
   static const int8_t signs[3] = { 0, -1, 1 };
   static const int8_t dc_sign_contexts[4 * MAX_TX_SIZE_UNIT + 1] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,

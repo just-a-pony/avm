@@ -563,7 +563,12 @@ static AOM_INLINE void set_skip_txfm(MACROBLOCK *x, RD_STATS *rd_stats,
   ENTROPY_CONTEXT *tl = ctxl;
   const TX_SIZE txs_ctx = get_txsize_entropy_ctx(tx_size);
   TXB_CTX txb_ctx;
-  get_txb_ctx(bsize, tx_size, 0, ta, tl, &txb_ctx);
+  get_txb_ctx(bsize, tx_size, 0, ta, tl, &txb_ctx
+#if CONFIG_FORWARDSKIP
+              ,
+              mbmi->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+  );
   const int zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][PLANE_TYPE_Y]
                                 .txb_skip_cost[txb_ctx.txb_skip_ctx][1];
   rd_stats->rate = zero_blk_rate *
@@ -1175,8 +1180,12 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                       cpi->oxcf.q_cfg.quant_b_adapt, &quant_param_intra);
       av1_setup_qmatrix(&cm->quant_params, xd, plane, tx_size, best_tx_type,
                         &quant_param_intra);
-      av1_xform_quant(x, plane, block, blk_row, blk_col, plane_bsize,
-                      &txfm_param_intra, &quant_param_intra);
+      av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+          cm,
+#endif  // CONFIG_FORWARDSKIP
+          x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param_intra,
+          &quant_param_intra);
       if (quant_param_intra.use_optimize_b) {
         av1_optimize_b(cpi, x, plane, block, tx_size, best_tx_type, txb_ctx,
                        rate_cost);
@@ -1347,13 +1356,26 @@ static INLINE int is_intra_hash_match(const AV1_COMP *cpi, MACROBLOCK *x,
       find_tx_size_rd_info(&txfm_info->txb_rd_record_intra, intra_hash);
   *intra_txb_rd_info =
       &txfm_info->txb_rd_record_intra.tx_rd_info[intra_hash_idx];
+#if CONFIG_FORWARDSKIP
+  *cur_joint_ctx = txb_ctx->txb_skip_ctx;
+  if (xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART] == 0) {
+    *cur_joint_ctx += (txb_ctx->dc_sign_ctx << 8);
+  }
+#else
   *cur_joint_ctx = (txb_ctx->dc_sign_ctx << 8) + txb_ctx->txb_skip_ctx;
+#endif  // CONFIG_FORWARDSKIP
   if ((*intra_txb_rd_info)->entropy_context == *cur_joint_ctx &&
       txfm_info->txb_rd_record_intra.tx_rd_info[intra_hash_idx].valid) {
     xd->tx_type_map[tx_type_map_idx] = (*intra_txb_rd_info)->tx_type;
     const TX_TYPE ref_tx_type =
         av1_get_tx_type(xd, get_plane_type(plane), blk_row, blk_col, tx_size,
                         cpi->common.features.reduced_tx_set_used);
+#if CONFIG_FORWARDSKIP
+    const int fsc_invalid =
+        !xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART] &&
+        (*intra_txb_rd_info)->tx_type == IDTX;
+    if (fsc_invalid) return 0;
+#endif  // CONFIG_FORWARDSKIP
     return (ref_tx_type == (*intra_txb_rd_info)->tx_type);
   }
   return 0;
@@ -1463,13 +1485,19 @@ uint16_t prune_txk_type_separ(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
     tx_type = idx_map[idx];
     txfm_param.tx_type = tx_type;
 
-    av1_xform_quant(x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
-                    &quant_param);
-
+    av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
+        &quant_param);
     dist_block_tx_domain(x, plane, block, tx_size, &dist, &sse);
 
-    rate_cost = av1_cost_coeffs_txb_laplacian(x, plane, block, tx_size, tx_type,
-                                              txb_ctx, reduced_tx_set_used, 0);
+    rate_cost = av1_cost_coeffs_txb_laplacian(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, tx_size, tx_type, txb_ctx, reduced_tx_set_used, 0);
 
     rds_h[idx] = RDCOST(x->rdmult, rate_cost, dist);
 
@@ -1493,13 +1521,20 @@ uint16_t prune_txk_type_separ(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
     tx_type = idx_map_v[idx_v[idx] * 4];
     txfm_param.tx_type = tx_type;
 
-    av1_xform_quant(x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
-                    &quant_param);
+    av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
+        &quant_param);
 
     dist_block_tx_domain(x, plane, block, tx_size, &dist, &sse);
 
-    rate_cost = av1_cost_coeffs_txb_laplacian(x, plane, block, tx_size, tx_type,
-                                              txb_ctx, reduced_tx_set_used, 0);
+    rate_cost = av1_cost_coeffs_txb_laplacian(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, tx_size, tx_type, txb_ctx, reduced_tx_set_used, 0);
 
     rds_v[idx] = RDCOST(x->rdmult, rate_cost, dist);
 
@@ -1582,11 +1617,18 @@ uint16_t prune_txk_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
     txfm_param.tx_type = tx_type;
 
     // do txfm and quantization
-    av1_xform_quant(x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
-                    &quant_param);
+    av1_xform_quant(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, blk_row, blk_col, plane_bsize, &txfm_param,
+        &quant_param);
     // estimate rate cost
-    rate_cost = av1_cost_coeffs_txb_laplacian(x, plane, block, tx_size, tx_type,
-                                              txb_ctx, reduced_tx_set_used, 0);
+    rate_cost = av1_cost_coeffs_txb_laplacian(
+#if CONFIG_FORWARDSKIP
+        cm,
+#endif  // CONFIG_FORWARDSKIP
+        x, plane, block, tx_size, tx_type, txb_ctx, reduced_tx_set_used, 0);
     // tx domain dist
     dist_block_tx_domain(x, plane, block, tx_size, &dist, &sse);
 
@@ -2116,6 +2158,20 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
     }
   }
 
+#if CONFIG_FORWARDSKIP
+  if (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+      txsize_sqr_up_map[tx_size] < TX_32X32 && plane == PLANE_TYPE_Y) {
+    txk_allowed = IDTX;
+    allowed_tx_mask = (1 << txk_allowed);
+  }
+
+  if (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] == 0 && is_inter == 0 &&
+      (allowed_tx_mask >> IDTX)) {
+    uint16_t fsc_mask = UINT16_MAX - (1 << IDTX);
+    allowed_tx_mask &= fsc_mask;
+  }
+#endif  // CONFIG_FORWARDSKIP
+
   // Need to have at least one transform type allowed.
   if (allowed_tx_mask == 0) {
     txk_allowed = (plane ? uv_tx_type : DCT_DCT);
@@ -2151,16 +2207,21 @@ static INLINE void update_txb_coeff_cost(RD_STATS *rd_stats, int plane,
 }
 #endif
 
-static INLINE int cost_coeffs(MACROBLOCK *x, int plane, int block,
-                              TX_SIZE tx_size, const TX_TYPE tx_type,
-                              const TXB_CTX *const txb_ctx,
-                              int reduced_tx_set_used) {
+static INLINE int cost_coeffs(
+#if CONFIG_FORWARDSKIP
+    const AV1_COMMON *cm,
+#endif  // CONFIG_FORWARDSKIP
+    MACROBLOCK *x, int plane, int block, TX_SIZE tx_size, const TX_TYPE tx_type,
+    const TXB_CTX *const txb_ctx, int reduced_tx_set_used) {
 #if TXCOEFF_COST_TIMER
   struct aom_usec_timer timer;
   aom_usec_timer_start(&timer);
 #endif
-  const int cost = av1_cost_coeffs_txb(x, plane, block, tx_size, tx_type,
-                                       txb_ctx, reduced_tx_set_used);
+  const int cost = av1_cost_coeffs_txb(
+#if CONFIG_FORWARDSKIP
+      cm,
+#endif  // CONFIG_FORWARDSKIP
+      x, plane, block, tx_size, tx_type, txb_ctx, reduced_tx_set_used);
 #if TXCOEFF_COST_TIMER
   AV1_COMMON *tmp_cm = (AV1_COMMON *)&cpi->common;
   aom_usec_timer_mark(&timer);
@@ -2257,7 +2318,12 @@ static INLINE void predict_dc_only_block(
     const TX_SIZE txs_ctx = get_txsize_entropy_ctx(tx_size);
     TXB_CTX txb_ctx_tmp;
     const PLANE_TYPE plane_type = get_plane_type(plane);
-    get_txb_ctx(plane_bsize, tx_size, plane, ta, tl, &txb_ctx_tmp);
+    get_txb_ctx(plane_bsize, tx_size, plane, ta, tl, &txb_ctx_tmp
+#if CONFIG_FORWARDSKIP
+                ,
+                mbmi->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+    );
 #if CONFIG_CONTEXT_DERIVATION
     int zero_blk_rate = 0;
     if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U) {
@@ -2317,6 +2383,11 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 
   skip_trellis |= !is_trellis_used(cpi->optimize_seg_arr[xd->mi[0]->segment_id],
                                    DRY_RUN_NORMAL);
+#if CONFIG_FORWARDSKIP
+  uint8_t fsc_mode =
+      (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] && plane == PLANE_TYPE_Y);
+  skip_trellis |= fsc_mode;
+#endif  // CONFIG_FORWARDSKIP
 
   // Hashing based speed feature for intra block. If the hash of the residue
   // is found in the hash table, use the previous RD search results stored in
@@ -2460,18 +2531,51 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                   plane,
 #endif
                   tx_size, DCT_DCT, &txfm_param);
+
+#if CONFIG_FORWARDSKIP
+  const int xform_quant_b =
+      USE_B_QUANT_NO_TRELLIS ? AV1_XFORM_QUANT_B : AV1_XFORM_QUANT_FP;
+  av1_setup_quant(tx_size, !skip_trellis,
+                  skip_trellis ? xform_quant_b : AV1_XFORM_QUANT_FP,
+#else
   av1_setup_quant(tx_size, !skip_trellis,
                   skip_trellis ? (USE_B_QUANT_NO_TRELLIS ? AV1_XFORM_QUANT_B
                                                          : AV1_XFORM_QUANT_FP)
                                : AV1_XFORM_QUANT_FP,
+#endif  // CONFIG_FORWARDSKIP
                   cpi->oxcf.q_cfg.quant_b_adapt, &quant_param);
 
   // Iterate through all transform type candidates.
   for (int idx = 0; idx < TX_TYPES; ++idx) {
+#if CONFIG_FORWARDSKIP
+    int skip_trellis_in =
+        skip_trellis || use_inter_fsc(cm, plane, txk_map[idx], is_inter);
+    av1_update_trellisq(!skip_trellis_in,
+                        skip_trellis_in ? xform_quant_b : AV1_XFORM_QUANT_FP,
+                        cpi->oxcf.q_cfg.quant_b_adapt, &quant_param);
+    if (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+        (TX_TYPE)txk_map[idx] != IDTX && plane == PLANE_TYPE_Y) {
+      continue;
+    }
+    if (!mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+        (TX_TYPE)txk_map[idx] == IDTX && !is_inter) {
+      continue;
+    }
+    if (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+        (tx_size_wide[tx_size] > FSC_MAXWIDTH ||
+         tx_size_high[tx_size] > FSC_MAXHEIGHT) &&
+        plane == PLANE_TYPE_Y) {
+      continue;
+    }
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_IST
     bool skip_idx = false;
     xd->enable_ist = cm->seq_params.enable_ist &&
-                     !cpi->sf.tx_sf.tx_type_search.skip_stx_search;
+                     !cpi->sf.tx_sf.tx_type_search.skip_stx_search
+#if CONFIG_FORWARDSKIP
+                     && !mbmi->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+        ;
     const int max_stx = xd->enable_ist ? 4 : 1;
     for (int stx = 0; stx < max_stx; ++stx) {
       TX_TYPE tx_type = (TX_TYPE)txk_map[idx];
@@ -2485,6 +2589,9 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
           ((tx_type != DCT_DCT && tx_type != ADST_ADST) || plane != 0 ||
            is_inter_block(mbmi, xd->tree_type) || dc_only_blk ||
            intra_mode >= PAETH_PRED || filter || !is_depth0 ||
+#if CONFIG_FORWARDSKIP
+           mbmi->fsc_mode[xd->tree_type == CHROMA_PART] ||
+#endif  // CONFIG_FORWARDSKIP
            xd->lossless[mbmi->segment_id]);
 #else
       const bool skip_stx =
@@ -2527,17 +2634,44 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #endif
               x, &quant_param, plane, block, tx_size,
               cpi->oxcf.q_cfg.quant_b_adapt, qstep,
-              txfm_params->coeff_opt_satd_threshold, skip_trellis, dc_only_blk);
+              txfm_params->coeff_opt_satd_threshold,
+#if CONFIG_FORWARDSKIP
+              skip_trellis_in,
+#else
+        skip_trellis,
+#endif  // CONFIG_FORWARDSKIP
+              dc_only_blk);
 
+#if CONFIG_FORWARDSKIP
+      uint8_t fsc_mode_in = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+                             plane == PLANE_TYPE_Y) ||
+                            use_inter_fsc(cm, plane, best_tx_type, is_inter);
+      if (fsc_mode_in) quant_param.use_optimize_b = false;
       av1_quant(x, plane, block, &txfm_param, &quant_param);
-
+      if (fsc_mode_in) {
+#if CONFIG_IST
+        if (get_primary_tx_type(tx_type) == IDTX) {
+#else
+        if (tx_type == IDTX) {
+#endif  // CONFIG_IST
+          uint16_t *const eob = &p->eobs[block];
+          if (*eob != 0) *eob = av1_get_max_eob(txfm_param.tx_size);
+        }
+      }
+#else
+    av1_quant(x, plane, block, &txfm_param, &quant_param);
+#endif  // CONFIG_FORWARDSKIP
       // Calculate rate cost of quantized coefficients.
       if (quant_param.use_optimize_b) {
         av1_optimize_b(cpi, x, plane, block, tx_size, tx_type, txb_ctx,
                        &rate_cost);
       } else {
-        rate_cost = cost_coeffs(x, plane, block, tx_size, tx_type, txb_ctx,
-                                cm->features.reduced_tx_set_used);
+        rate_cost = cost_coeffs(
+#if CONFIG_FORWARDSKIP
+            cm,
+#endif  // CONFIG_FORWARDSKIP
+            x, plane, block, tx_size, tx_type, txb_ctx,
+            cm->features.reduced_tx_set_used);
       }
 
       // If rd cost based on coeff rate alone is already more than best_rd,
@@ -2549,7 +2683,11 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
         // When eob is 0, pixel domain distortion is more efficient and
         // accurate.
         this_rd_stats.dist = this_rd_stats.sse = block_sse;
-      } else if (dc_only_blk) {
+#if CONFIG_FORWARDSKIP
+      } else if (dc_only_blk || (fsc_mode_in && plane == PLANE_TYPE_Y)) {
+#else
+    } else if (dc_only_blk) {
+#endif  // CONFIG_FORWARDSKIP
         this_rd_stats.sse = block_sse;
         this_rd_stats.dist = dist_block_px_domain(
             cpi, x, plane, plane_bsize, block, blk_row, blk_col, tx_size);
@@ -2689,6 +2827,12 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #else
   skip_trellis = skip_trellis_based_on_satd[best_tx_type];
 #endif
+#if CONFIG_FORWARDSKIP
+  skip_trellis &=
+      (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] && plane == PLANE_TYPE_Y) ||
+      use_inter_fsc(cm, plane, best_tx_type, is_inter);
+#endif  // CONFIG_FORWARDSKIP
+
   // Point dqcoeff to the quantized coefficients corresponding to the best
   // transform type, then we can skip transform and quantization, e.g. in the
   // final pixel domain distortion calculation and recon_intra().
@@ -2798,7 +2942,12 @@ static AOM_INLINE void try_tx_block_no_split(
   const ENTROPY_CONTEXT *const ptl = tl + blk_row;
   const TX_SIZE txs_ctx = get_txsize_entropy_ctx(tx_size);
   TXB_CTX txb_ctx;
-  get_txb_ctx(plane_bsize, tx_size, 0, pta, ptl, &txb_ctx);
+  get_txb_ctx(plane_bsize, tx_size, 0, pta, ptl, &txb_ctx
+#if CONFIG_FORWARDSKIP
+              ,
+              mbmi->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+  );
   const int zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][PLANE_TYPE_Y]
                                 .txb_skip_cost[txb_ctx.txb_skip_ctx][1];
   rd_stats->zero_rate = zero_blk_rate;
@@ -3489,10 +3638,23 @@ static AOM_INLINE void block_rd_txfm(int plane, int block, int blk_row,
   }
 
   TXB_CTX txb_ctx;
-  get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx);
+  get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx
+#if CONFIG_FORWARDSKIP
+              ,
+              xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+  );
   search_tx_type(cpi, x, plane, block, blk_row, blk_col, plane_bsize, tx_size,
                  &txb_ctx, args->ftxs_mode, args->skip_trellis,
                  args->best_rd - args->current_rd, &this_rd_stats);
+#if CONFIG_FORWARDSKIP
+  if (this_rd_stats.dist == INT64_MAX) {
+    args->exit_early = 1;
+    args->incomplete_exit = 1;
+    return;
+  }
+#endif  // CONFIG_FORWARDSKIP
+
 #if CONFIG_SDP
   if (plane == AOM_PLANE_Y && xd->cfl.store_y && xd->tree_type == SHARED_PART) {
 #else
@@ -3664,7 +3826,12 @@ static AOM_INLINE void tx_block_yrd(
     ENTROPY_CONTEXT *tl = left_ctx + blk_row;
     const TX_SIZE txs_ctx = get_txsize_entropy_ctx(tx_size);
     TXB_CTX txb_ctx;
-    get_txb_ctx(plane_bsize, tx_size, 0, ta, tl, &txb_ctx);
+    get_txb_ctx(plane_bsize, tx_size, 0, ta, tl, &txb_ctx
+#if CONFIG_FORWARDSKIP
+                ,
+                mbmi->fsc_mode[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_FORWARDSKIP
+    );
 
     const int zero_blk_rate =
         x->coeff_costs.coeff_costs[txs_ctx][get_plane_type(0)]

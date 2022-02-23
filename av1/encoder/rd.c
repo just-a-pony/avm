@@ -130,6 +130,16 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
 #if CONFIG_MRLS
   av1_cost_tokens_from_cdf(mode_costs->mrl_index_cost, fc->mrl_index_cdf, NULL);
 #endif
+
+#if CONFIG_FORWARDSKIP
+  for (i = 0; i < FSC_MODE_CONTEXTS; ++i) {
+    for (j = 0; j < FSC_BSIZE_CONTEXTS; ++j) {
+      av1_cost_tokens_from_cdf(mode_costs->fsc_cost[i][j],
+                               fc->fsc_mode_cdf[i][j], NULL);
+    }
+  }
+#endif  // CONFIG_FORWARDSKIP
+
 #if CONFIG_AIMC
   av1_cost_tokens_from_cdf(mode_costs->y_primary_flag_cost, fc->y_mode_set_cdf,
                            NULL);
@@ -271,7 +281,11 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
           av1_cost_tokens_from_cdf(
               mode_costs->intra_tx_type_costs[s][i][j],
               fc->intra_ext_tx_cdf[s][i][j],
+#if CONFIG_FORWARDSKIP
+              av1_ext_tx_inv_intra[av1_ext_tx_set_idx_to_type[0][s]]);
+#else
               av1_ext_tx_inv[av1_ext_tx_set_idx_to_type[0][s]]);
+#endif  // CONFIG_FORWARDSKIP
         }
       }
     }
@@ -811,6 +825,49 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
       }
     }
   }
+#if CONFIG_FORWARDSKIP
+  for (int tx_size = 0; tx_size < TX_SIZES; ++tx_size) {
+    int plane = PLANE_TYPE_Y;
+    LV_MAP_COEFF_COST *pcost = &coeff_costs->coeff_costs[tx_size][plane];
+    for (int ctx = 0; ctx < IDTX_SIG_COEF_CONTEXTS; ++ctx)
+      av1_cost_tokens_from_cdf(pcost->idtx_base_cost[ctx],
+                               fc->coeff_base_cdf_idtx[ctx], NULL);
+    for (int ctx = 0; ctx < IDTX_SIG_COEF_CONTEXTS; ++ctx) {
+      pcost->idtx_base_cost[ctx][4] = 0;
+      pcost->idtx_base_cost[ctx][5] = pcost->idtx_base_cost[ctx][1] +
+                                      av1_cost_literal(1) -
+                                      pcost->idtx_base_cost[ctx][0];
+      pcost->idtx_base_cost[ctx][6] =
+          pcost->idtx_base_cost[ctx][2] - pcost->idtx_base_cost[ctx][1];
+      pcost->idtx_base_cost[ctx][7] =
+          pcost->idtx_base_cost[ctx][3] - pcost->idtx_base_cost[ctx][2];
+    }
+    for (int ctx = 0; ctx < IDTX_SIGN_CONTEXTS; ++ctx)
+      av1_cost_tokens_from_cdf(pcost->idtx_sign_cost[ctx],
+                               fc->idtx_sign_cdf[ctx], NULL);
+    for (int ctx = 0; ctx < IDTX_LEVEL_CONTEXTS; ++ctx) {
+      int br_rate_skip[BR_CDF_SIZE];
+      int prev_cost_skip = 0;
+      int i, j;
+      av1_cost_tokens_from_cdf(br_rate_skip, fc->coeff_br_cdf_idtx[ctx], NULL);
+      for (i = 0; i < COEFF_BASE_RANGE; i += BR_CDF_SIZE - 1) {
+        for (j = 0; j < BR_CDF_SIZE - 1; j++) {
+          pcost->lps_cost_skip[ctx][i + j] = prev_cost_skip + br_rate_skip[j];
+        }
+        prev_cost_skip += br_rate_skip[j];
+      }
+      pcost->lps_cost_skip[ctx][i] = prev_cost_skip;
+    }
+    for (int ctx = 0; ctx < IDTX_LEVEL_CONTEXTS; ++ctx) {
+      pcost->lps_cost_skip[ctx][0 + COEFF_BASE_RANGE + 1] =
+          pcost->lps_cost_skip[ctx][0];
+      for (int i = 1; i <= COEFF_BASE_RANGE; ++i) {
+        pcost->lps_cost_skip[ctx][i + COEFF_BASE_RANGE + 1] =
+            pcost->lps_cost_skip[ctx][i] - pcost->lps_cost_skip[ctx][i - 1];
+      }
+    }
+  }
+#endif  // CONFIG_FORWARDSKIP
 }
 
 void av1_fill_mv_costs(const FRAME_CONTEXT *fc, int integer_mv, int usehp,

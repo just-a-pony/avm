@@ -63,6 +63,11 @@ extern "C" {
 
 #define KF_MODE_CONTEXTS 5
 
+#if CONFIG_FORWARDSKIP
+#define FSC_MODE_CONTEXTS 4
+#define FSC_BSIZE_CONTEXTS 5
+#endif  // CONFIG_FORWARDSKIP
+
 struct AV1Common;
 
 typedef struct {
@@ -94,6 +99,11 @@ typedef struct frame_contexts {
                                  [CDF_SIZE(3)];
   aom_cdf_prob coeff_base_cdf[TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS]
                              [CDF_SIZE(4)];
+#if CONFIG_FORWARDSKIP
+  aom_cdf_prob idtx_sign_cdf[IDTX_SIGN_CONTEXTS][CDF_SIZE(2)];
+  aom_cdf_prob coeff_base_cdf_idtx[IDTX_SIG_COEF_CONTEXTS][CDF_SIZE(4)];
+  aom_cdf_prob coeff_br_cdf_idtx[IDTX_LEVEL_CONTEXTS][CDF_SIZE(BR_CDF_SIZE)];
+#endif  // CONFIG_FORWARDSKIP
   aom_cdf_prob coeff_br_cdf[TX_SIZES][PLANE_TYPES][LEVEL_CONTEXTS]
                            [CDF_SIZE(BR_CDF_SIZE)];
 
@@ -180,6 +190,10 @@ typedef struct frame_contexts {
 #if CONFIG_MRLS
   aom_cdf_prob mrl_index_cdf[CDF_SIZE(MRL_LINE_NUMBER)];
 #endif
+#if CONFIG_FORWARDSKIP
+  aom_cdf_prob fsc_mode_cdf[FSC_MODE_CONTEXTS][FSC_BSIZE_CONTEXTS]
+                           [CDF_SIZE(FSC_MODES)];
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_AIMC
   // y mode cdf
   aom_cdf_prob y_mode_set_cdf[CDF_SIZE(INTRA_MODE_SETS)];
@@ -236,6 +250,26 @@ typedef struct frame_contexts {
 #endif
   int initialized;
 } FRAME_CONTEXT;
+
+#if CONFIG_FORWARDSKIP
+static const int av1_ext_tx_ind_intra[EXT_TX_SET_TYPES][TX_TYPES] = {
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 2, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 4, 5, 3, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0 },
+  { 2, 3, 4, 7, 5, 6, 8, 9, 10, 0, 0, 1, 0, 0, 0, 0 },
+  { 6, 7, 8, 11, 9, 10, 12, 13, 14, 0, 1, 2, 3, 4, 5, 0 },
+};
+
+static const int av1_ext_tx_inv_intra[EXT_TX_SET_TYPES][TX_TYPES] = {
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 3, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 10, 11, 3, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 10, 11, 0, 1, 2, 4, 5, 3, 6, 7, 8, 0, 0, 0, 0, 0 },
+  { 10, 11, 12, 13, 14, 15, 0, 1, 2, 4, 5, 3, 6, 7, 8, 0 },
+};
+#endif  // CONFIG_FORWARDSKIP
 
 static const int av1_ext_tx_ind[EXT_TX_SET_TYPES][TX_TYPES] = {
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },

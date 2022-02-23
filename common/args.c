@@ -89,6 +89,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_MRLS
     GET_PARAMS(enable_mrls);
 #endif
+#if CONFIG_FORWARDSKIP
+    GET_PARAMS(enable_fsc);
+#endif  // CONFIG_FORWARDSKIP
 #if CONFIG_ORIP
     GET_PARAMS(enable_orip);
 #endif
