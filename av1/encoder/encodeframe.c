@@ -509,14 +509,12 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
   RD_STATS dummy_rdc;
   SIMPLE_MOTION_DATA_TREE *const sms_root = td->sms_root;
 
-#if CONFIG_SDP
   const int total_loop_num =
       (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
        cm->seq_params.enable_sdp)
           ? 2
           : 1;
   MACROBLOCKD *const xd = &x->e_mbd;
-#endif
 
   init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row, mi_col,
                     1);
@@ -528,22 +526,18 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
     const BLOCK_SIZE bsize =
         seg_skip ? sb_size : sf->part_sf.fixed_partition_size;
     av1_set_fixed_partitioning(cpi, tile_info, mi, mi_row, mi_col, bsize);
-#if CONFIG_SDP
     for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
       xd->tree_type =
           (total_loop_num == 1 ? SHARED_PART
                                : (loop_idx == 0 ? LUMA_PART : CHROMA_PART));
       init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
                         mi_col, 1);
-#endif
       PC_TREE *const pc_root = av1_alloc_pc_tree_node(sb_size);
       av1_rd_use_partition(cpi, td, tile_data, mi, tp, mi_row, mi_col, sb_size,
                            &dummy_rate, &dummy_dist, 1, pc_root);
       av1_free_pc_tree_recursive(pc_root, num_planes, 0, 0);
-#if CONFIG_SDP
     }
     xd->tree_type = SHARED_PART;
-#endif
   } else if (cpi->partition_search_skippable_frame) {
     // partition search by adjusting a fixed-size partition for which the size
     // is determined by the source variance
@@ -551,22 +545,18 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
     const BLOCK_SIZE bsize =
         get_rd_var_based_fixed_partition(cpi, x, mi_row, mi_col);
     av1_set_fixed_partitioning(cpi, tile_info, mi, mi_row, mi_col, bsize);
-#if CONFIG_SDP
     for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
       xd->tree_type =
           (total_loop_num == 1 ? SHARED_PART
                                : (loop_idx == 0 ? LUMA_PART : CHROMA_PART));
       init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
                         mi_col, 1);
-#endif
       PC_TREE *const pc_root = av1_alloc_pc_tree_node(sb_size);
       av1_rd_use_partition(cpi, td, tile_data, mi, tp, mi_row, mi_col, sb_size,
                            &dummy_rate, &dummy_dist, 1, pc_root);
       av1_free_pc_tree_recursive(pc_root, num_planes, 0, 0);
-#if CONFIG_SDP
     }
     xd->tree_type = SHARED_PART;
-#endif
   } else {
     // The most exhaustive recursive partition search
     SuperBlockEnc *sb_enc = &x->sb_enc;
@@ -591,42 +581,34 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
         cpi->oxcf.unit_test_cfg.sb_multipass_unit_test ? 2 : 1;
 
     if (num_passes == 1) {
-#if CONFIG_SDP
       for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
         xd->tree_type =
             (total_loop_num == 1 ? SHARED_PART
                                  : (loop_idx == 0 ? LUMA_PART : CHROMA_PART));
         init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
                           mi_col, 1);
-#endif
         PC_TREE *const pc_root = av1_alloc_pc_tree_node(sb_size);
         av1_rd_pick_partition(cpi, td, tile_data, tp, mi_row, mi_col, sb_size,
                               &dummy_rdc, dummy_rdc, pc_root, sms_root, NULL,
                               SB_SINGLE_PASS, NULL);
-#if CONFIG_SDP
       }
       xd->tree_type = SHARED_PART;
-#endif
     } else {
       // First pass
       SB_FIRST_PASS_STATS sb_fp_stats;
       av1_backup_sb_state(&sb_fp_stats, cpi, td, tile_data, mi_row, mi_col);
-#if CONFIG_SDP
       for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
         xd->tree_type =
             (total_loop_num == 1 ? SHARED_PART
                                  : (loop_idx == 0 ? LUMA_PART : CHROMA_PART));
         init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
                           mi_col, 1);
-#endif
         PC_TREE *const pc_root_p0 = av1_alloc_pc_tree_node(sb_size);
         av1_rd_pick_partition(cpi, td, tile_data, tp, mi_row, mi_col, sb_size,
                               &dummy_rdc, dummy_rdc, pc_root_p0, sms_root, NULL,
                               SB_DRY_PASS, NULL);
-#if CONFIG_SDP
       }
       xd->tree_type = SHARED_PART;
-#endif
 
       // Second pass
       init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
@@ -635,22 +617,18 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
       av1_reset_simple_motion_tree_partition(sms_root, sb_size);
 
       av1_restore_sb_state(&sb_fp_stats, cpi, td, tile_data, mi_row, mi_col);
-#if CONFIG_SDP
       for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
         xd->tree_type =
             (total_loop_num == 1 ? SHARED_PART
                                  : (loop_idx == 0 ? LUMA_PART : CHROMA_PART));
         init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
                           mi_col, 1);
-#endif
         PC_TREE *const pc_root_p1 = av1_alloc_pc_tree_node(sb_size);
         av1_rd_pick_partition(cpi, td, tile_data, tp, mi_row, mi_col, sb_size,
                               &dummy_rdc, dummy_rdc, pc_root_p1, sms_root, NULL,
                               SB_WET_PASS, NULL);
-#if CONFIG_SDP
       }
       xd->tree_type = SHARED_PART;
-#endif
     }
     // Reset to 0 so that it wouldn't be used elsewhere mistakenly.
     sb_enc->tpl_data_count = 0;

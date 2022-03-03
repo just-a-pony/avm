@@ -112,9 +112,7 @@ struct av1_extracfg {
   int enable_ab_partitions;    // enable AB partitions for sequence
   int enable_1to4_partitions;  // enable 1:4 and 4:1 partitions for sequence
   int disable_ml_transform_speed_features;  // disable all ml transform speedups
-#if CONFIG_SDP
   int enable_sdp;  // enable semi-decoupled partitioning
-#endif             // CONFIG_SDP
 #if CONFIG_MRLS
   int enable_mrls;  // enable multiple reference line selection
 #endif              // CONFIG_MRLS
@@ -406,9 +404,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,                            // enable ab shape partitions
   1,                            // enable 1:4 and 4:1 partitions
   0,                            // disable ml based transform speed features
-#if CONFIG_SDP
-  1,    // enable semi-decoupled partitioning
-#endif  // CONFIG_SDP
+  1,                            // enable semi-decoupled partitioning
 #if CONFIG_MRLS
   1,    // enable multiple reference line selection
 #endif  // CONFIG_MRLS
@@ -774,13 +770,11 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK(extra_cfg, mv_cost_upd_freq, 0, 3);
 
   RANGE_CHECK(extra_cfg, min_partition_size, 4, 128);
-#if CONFIG_SDP
   // when sdp is enabled, the maximum partition size must be equal to or greater
   // than 8x8
   if (extra_cfg->enable_sdp)
     RANGE_CHECK(extra_cfg, max_partition_size, 8, 128);
   else
-#endif
     RANGE_CHECK(extra_cfg, max_partition_size, 4, 128);
   RANGE_CHECK_HI(extra_cfg, min_partition_size, extra_cfg->max_partition_size);
 
@@ -876,9 +870,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_1to4_partitions = extra_cfg->enable_1to4_partitions;
   cfg->disable_ml_transform_speed_features =
       extra_cfg->disable_ml_transform_speed_features;
-#if CONFIG_SDP
   cfg->enable_sdp = extra_cfg->enable_sdp;
-#endif
 #if CONFIG_MRLS
   cfg->enable_mrls = extra_cfg->enable_mrls;
 #endif
@@ -960,9 +952,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
       cfg->disable_ml_transform_speed_features;
   extra_cfg->disable_ml_partition_speed_features =
       cfg->disable_ml_partition_speed_features;
-#if CONFIG_SDP
   extra_cfg->enable_sdp = cfg->enable_sdp;
-#endif
 #if CONFIG_MRLS
   extra_cfg->enable_mrls = cfg->enable_mrls;
 #endif
@@ -1438,9 +1428,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   part_cfg->enable_rect_partitions = extra_cfg->enable_rect_partitions;
   part_cfg->enable_ab_partitions = extra_cfg->enable_ab_partitions;
   part_cfg->enable_1to4_partitions = extra_cfg->enable_1to4_partitions;
-#if CONFIG_SDP
   part_cfg->enable_sdp = extra_cfg->enable_sdp;
-#endif
   part_cfg->min_partition_size = extra_cfg->min_partition_size;
   part_cfg->max_partition_size = extra_cfg->max_partition_size;
 
@@ -3540,11 +3528,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                  argv, err_string)) {
     extra_cfg.disable_ml_transform_speed_features =
         arg_parse_int_helper(&arg, err_string);
-#if CONFIG_SDP
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_sdp, argv,
                               err_string)) {
     extra_cfg.enable_sdp = arg_parse_int_helper(&arg, err_string);
-#endif
 #if CONFIG_MRLS
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_mrls, argv,
                               err_string)) {
@@ -3984,10 +3970,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
     0,                           // use_fixed_qp_offsets
     { -1, -1, -1, -1, -1, -1 },  // fixed_qp_offsets
     {
-        0, 128, 128, 4, 1, 1, 1, 0, 0,
-#if CONFIG_SDP
-        1,
-#endif  // CONFIG_SDP
+        0, 128, 128, 4, 1, 1, 1, 0, 0, 1,
 #if CONFIG_MRLS
         1,
 #endif

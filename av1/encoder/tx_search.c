@@ -491,11 +491,7 @@ static int predict_skip_txfm(const AV1_COMMON *cm, MACROBLOCK *x,
   param.is_hbd = is_cur_buf_hbd(xd);
   param.lossless = 0;
   param.tx_set_type = av1_get_ext_tx_set_type(
-#if CONFIG_SDP
       param.tx_size, is_inter_block(xd->mi[0], xd->tree_type), reduced_tx_set);
-#else
-      param.tx_size, is_inter_block(xd->mi[0]), reduced_tx_set);
-#endif
   const int bd_idx = (xd->bd == 8) ? 0 : ((xd->bd == 10) ? 1 : 2);
   const uint32_t max_qcoef_thresh = skip_pred_threshold[bd_idx][bsize];
   const int16_t *src_diff = x->plane[0].src_diff;
@@ -1154,11 +1150,7 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   const AV1_COMMON *cm = &cpi->common;
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
   if (!is_inter && best_eob &&
       (blk_row + tx_size_high_unit[tx_size] < mi_size_high[plane_bsize] ||
        blk_col + tx_size_wide_unit[tx_size] < mi_size_wide[plane_bsize])) {
@@ -1340,16 +1332,10 @@ static INLINE int is_intra_hash_match(const AV1_COMP *cpi, MACROBLOCK *x,
                                       uint16_t *cur_joint_ctx) {
   MACROBLOCKD *xd = &x->e_mbd;
   TxfmSearchInfo *txfm_info = &x->txfm_search_info;
-#if CONFIG_SDP
   assert(cpi->sf.tx_sf.use_intra_txb_hash &&
          frame_is_intra_only(&cpi->common) &&
          !is_inter_block(xd->mi[0], xd->tree_type) && plane == 0 &&
          tx_size_wide[tx_size] == tx_size_high[tx_size]);
-#else
-  assert(cpi->sf.tx_sf.use_intra_txb_hash &&
-         frame_is_intra_only(&cpi->common) && !is_inter_block(xd->mi[0]) &&
-         plane == 0 && tx_size_wide[tx_size] == tx_size_high[tx_size]);
-#endif
   const uint32_t intra_hash =
       get_intra_txb_hash(x, plane, blk_row, blk_col, plane_bsize, tx_size);
   const int intra_hash_idx =
@@ -2040,11 +2026,7 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
   const TxfmSearchParams *txfm_params = &x->txfm_search_params;
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
   const int fast_tx_search = ftxs_mode & FTXS_DCT_AND_1D_DCT_ONLY;
   // if txk_allowed = TX_TYPES, >1 tx types are allowed, else, if txk_allowed <
   // TX_TYPES, only that specific tx type is allowed.
@@ -2346,12 +2328,8 @@ static INLINE void predict_dc_only_block(
   } else if (block_var < var_threshold) {
     // Predict DC only blocks based on residual variance.
     // For chroma plane, this early prediction is disabled for intra blocks.
-#if CONFIG_SDP
     if ((plane == 0) || (plane > 0 && is_inter_block(mbmi, xd->tree_type)))
       *dc_only_blk = 1;
-#else
-    if ((plane == 0) || (plane > 0 && is_inter_block(mbmi))) *dc_only_blk = 1;
-#endif
   }
 }
 
@@ -2394,11 +2372,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   // the table and terminate early.
   TXB_RD_INFO *intra_txb_rd_info = NULL;
   uint16_t cur_joint_ctx = 0;
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
   const int use_intra_txb_hash =
       cpi->sf.tx_sf.use_intra_txb_hash && frame_is_intra_only(cm) &&
       !is_inter && plane == 0 && tx_size_wide[tx_size] == tx_size_high[tx_size];
@@ -2584,7 +2558,6 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
           (plane == AOM_PLANE_Y) ? mbmi->mode : get_uv_mode(mbmi->uv_mode);
       const int filter = mbmi->filter_intra_mode_info.use_filter_intra;
       const int is_depth0 = tx_size_is_depth0(tx_size, plane_bsize);
-#if CONFIG_SDP
       const bool skip_stx =
           ((tx_type != DCT_DCT && tx_type != ADST_ADST) || plane != 0 ||
            is_inter_block(mbmi, xd->tree_type) || dc_only_blk ||
@@ -2593,12 +2566,6 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
            mbmi->fsc_mode[xd->tree_type == CHROMA_PART] ||
 #endif  // CONFIG_FORWARDSKIP
            xd->lossless[mbmi->segment_id]);
-#else
-      const bool skip_stx =
-          ((tx_type != DCT_DCT && tx_type != ADST_ADST) || plane != 0 ||
-           is_inter_block(mbmi) || dc_only_blk || intra_mode >= PAETH_PRED ||
-           filter || !is_depth0 || xd->lossless[mbmi->segment_id]);
-#endif
       if (skip_stx && stx) continue;
       tx_type += (stx << 4);
       txfm_param.tx_type = get_primary_tx_type(tx_type);
@@ -2879,11 +2846,7 @@ static AOM_INLINE void tx_type_rd(const AV1_COMP *cpi, MACROBLOCK *x,
   const uint16_t cur_joint_ctx =
       (txb_ctx->dc_sign_ctx << 8) + txb_ctx->txb_skip_ctx;
   MACROBLOCKD *xd = &x->e_mbd;
-#if CONFIG_SDP
   assert(is_inter_block(xd->mi[0], xd->tree_type));
-#else
-  assert(is_inter_block(xd->mi[0]));
-#endif
   const int tx_type_map_idx = blk_row * xd->tx_type_map_stride + blk_col;
   // Look up RD and terminate early in case when we've already processed exactly
   // the same residue with exactly the same entropy context.
@@ -3137,15 +3100,9 @@ static void select_tx_partition_type(
 
     // Add rate cost of signalling this partition type
     if (max_tx_size > TX_4X4) {
-#if CONFIG_SDP
       partition_rd_stats.rate += inter_tx_partition_cost(
           x, is_rect, type, tx_above + blk_col, tx_left + blk_row,
           mbmi->sb_type[xd->tree_type == CHROMA_PART], max_tx_size);
-#else
-      partition_rd_stats.rate += inter_tx_partition_cost(
-          x, is_rect, type, tx_above + blk_col, tx_left + blk_row,
-          mbmi->sb_type, max_tx_size);
-#endif
     }
 
     // Get transform sizes created by this partition type
@@ -3281,14 +3238,9 @@ static AOM_INLINE void select_tx_block(
   assert(blk_row < max_block_high(xd, plane_bsize, 0) &&
          blk_col < max_block_wide(xd, plane_bsize, 0));
   MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   const int ctx = txfm_partition_context(
       tx_above + blk_col, tx_left + blk_row,
       mbmi->sb_type[xd->tree_type == CHROMA_PART], tx_size);
-#else
-  const int ctx = txfm_partition_context(tx_above + blk_col, tx_left + blk_row,
-                                         mbmi->sb_type, tx_size);
-#endif
   struct macroblock_plane *const p = &x->plane[0];
 
   const int try_no_split =
@@ -3404,13 +3356,9 @@ static AOM_INLINE void choose_largest_tx_size(const AV1_COMP *const cpi,
   const int no_skip_txfm_rate = x->mode_costs.skip_txfm_cost[skip_ctx][0];
   const int skip_txfm_rate = x->mode_costs.skip_txfm_cost[skip_ctx][1];
   // Skip RDcost is used only for Inter blocks
-  const int64_t skip_txfm_rd =
-#if CONFIG_SDP
-      is_inter_block(mbmi, xd->tree_type) ? RDCOST(x->rdmult, skip_txfm_rate, 0)
-                                          : INT64_MAX;
-#else
-      is_inter_block(mbmi) ? RDCOST(x->rdmult, skip_txfm_rate, 0) : INT64_MAX;
-#endif
+  const int64_t skip_txfm_rd = is_inter_block(mbmi, xd->tree_type)
+                                   ? RDCOST(x->rdmult, skip_txfm_rate, 0)
+                                   : INT64_MAX;
   const int64_t no_skip_txfm_rd = RDCOST(x->rdmult, no_skip_txfm_rate, 0);
   const int skip_trellis = 0;
   av1_txfm_rd_in_plane(x, cpi, rd_stats, ref_best_rd,
@@ -3549,14 +3497,9 @@ static AOM_INLINE void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
 
   if (tx_select) {
     start_tx = max_rect_tx_size;
-    init_depth =
-        get_search_init_depth(mi_size_wide[bs], mi_size_high[bs],
-#if CONFIG_SDP
-                              is_inter_block(mbmi, xd->tree_type), &cpi->sf,
-#else
-                              is_inter_block(mbmi), &cpi->sf,
-#endif
-                              txfm_params->tx_size_search_method);
+    init_depth = get_search_init_depth(
+        mi_size_wide[bs], mi_size_high[bs], is_inter_block(mbmi, xd->tree_type),
+        &cpi->sf, txfm_params->tx_size_search_method);
   } else {
     const TX_SIZE chosen_tx_size =
         tx_size_from_tx_mode(bs, txfm_params->tx_mode_search_type);
@@ -3620,11 +3563,7 @@ static AOM_INLINE void block_rd_txfm(int plane, int block, int blk_row,
 
   MACROBLOCK *const x = args->x;
   MACROBLOCKD *const xd = &x->e_mbd;
-#if CONFIG_SDP
   const int is_inter = is_inter_block(xd->mi[0], xd->tree_type);
-#else
-  const int is_inter = is_inter_block(xd->mi[0]);
-#endif
   const AV1_COMP *cpi = args->cpi;
   ENTROPY_CONTEXT *a = args->t_above + blk_col;
   ENTROPY_CONTEXT *l = args->t_left + blk_row;
@@ -3655,11 +3594,7 @@ static AOM_INLINE void block_rd_txfm(int plane, int block, int blk_row,
   }
 #endif  // CONFIG_FORWARDSKIP
 
-#if CONFIG_SDP
   if (plane == AOM_PLANE_Y && xd->cfl.store_y && xd->tree_type == SHARED_PART) {
-#else
-  if (plane == AOM_PLANE_Y && xd->cfl.store_y) {
-#endif
     assert(!is_inter || plane_bsize < BLOCK_8X8);
     cfl_store_tx(xd, blk_row, blk_col, tx_size, plane_bsize);
   }
@@ -3708,15 +3643,9 @@ int64_t av1_uniform_txfm_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
   MB_MODE_INFO *const mbmi = xd->mi[0];
   const TxfmSearchParams *txfm_params = &x->txfm_search_params;
   const ModeCosts *mode_costs = &x->mode_costs;
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   const int tx_select = txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
                         block_signals_txsize(mbmi->sb_type[PLANE_TYPE_Y]);
-#else
-  const int is_inter = is_inter_block(mbmi);
-  const int tx_select = txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
-                        block_signals_txsize(mbmi->sb_type);
-#endif
   int tx_size_rate = 0;
   if (tx_select) {
 #if CONFIG_NEW_TX_PARTITION
@@ -3725,22 +3654,12 @@ int64_t av1_uniform_txfm_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
     tx_size_rate = is_inter ? inter_tx_partition_cost(
                                   x, is_rect, 0, xd->above_txfm_context,
                                   xd->left_txfm_context,
-#if CONFIG_SDP
-                                  mbmi->sb_type[PLANE_TYPE_Y],
-#else
-                                  mbmi->sb_type,
-#endif  // CONFIG_SDP
-                                  max_tx_size)
+                                  mbmi->sb_type[PLANE_TYPE_Y], max_tx_size)
                             : tx_size_cost(x, bs, tx_size);
-#else  // CONFIG_NEW_TX_PARTITION
-#if CONFIG_SDP
+#else   // CONFIG_NEW_TX_PARTITION
     const int ctx =
         txfm_partition_context(xd->above_txfm_context, xd->left_txfm_context,
                                mbmi->sb_type[PLANE_TYPE_Y], tx_size);
-#else
-    const int ctx = txfm_partition_context(
-        xd->above_txfm_context, xd->left_txfm_context, mbmi->sb_type, tx_size);
-#endif
     tx_size_rate = is_inter ? mode_costs->txfm_partition_cost[ctx][0]
                             : tx_size_cost(x, bs, tx_size);
 #endif  // CONFIG_NEW_TX_PARTITION
@@ -3800,11 +3719,7 @@ static AOM_INLINE void tx_block_yrd(
   assert(tx_size < TX_SIZES_ALL);
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   assert(is_inter_block(mbmi, xd->tree_type));
-#else
-  assert(is_inter_block(mbmi));
-#endif
   const int max_blocks_high = max_block_high(xd, plane_bsize, 0);
   const int max_blocks_wide = max_block_wide(xd, plane_bsize, 0);
 
@@ -3812,13 +3727,8 @@ static AOM_INLINE void tx_block_yrd(
 
   const TX_SIZE plane_tx_size = mbmi->inter_tx_size[av1_get_txb_size_index(
       plane_bsize, blk_row, blk_col)];
-#if CONFIG_SDP
   const int ctx = txfm_partition_context(tx_above + blk_col, tx_left + blk_row,
                                          mbmi->sb_type[PLANE_TYPE_Y], tx_size);
-#else
-  const int ctx = txfm_partition_context(tx_above + blk_col, tx_left + blk_row,
-                                         mbmi->sb_type, tx_size);
-#endif
 
   av1_init_rd_stats(rd_stats);
   if (tx_size == plane_tx_size) {
@@ -3979,11 +3889,7 @@ static int64_t select_tx_size_and_type(const AV1_COMP *cpi, MACROBLOCK *x,
                                        TXB_RD_INFO_NODE *rd_info_tree) {
   MACROBLOCKD *const xd = &x->e_mbd;
   const TxfmSearchParams *txfm_params = &x->txfm_search_params;
-#if CONFIG_SDP
   assert(is_inter_block(xd->mi[0], xd->tree_type));
-#else
-  assert(is_inter_block(xd->mi[0]));
-#endif
   assert(bsize < BLOCK_SIZES_ALL);
   const int fast_tx_search = txfm_params->tx_size_search_method > USE_FULL_RD;
   int64_t rd_thresh = ref_best_rd;
@@ -4109,11 +4015,7 @@ void av1_pick_recursive_tx_size_type_yrd(const AV1_COMP *cpi, MACROBLOCK *x,
                                          int64_t ref_best_rd) {
   MACROBLOCKD *const xd = &x->e_mbd;
   const TxfmSearchParams *txfm_params = &x->txfm_search_params;
-#if CONFIG_SDP
   assert(is_inter_block(xd->mi[0], xd->tree_type));
-#else
-  assert(is_inter_block(xd->mi[0]));
-#endif
 
   av1_invalid_rd_stats(rd_stats);
 
@@ -4202,13 +4104,8 @@ void av1_pick_uniform_tx_size_type_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   const TxfmSearchParams *tx_params = &x->txfm_search_params;
-#if CONFIG_SDP
   assert(bs == mbmi->sb_type[PLANE_TYPE_Y]);
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  assert(bs == mbmi->sb_type);
-  const int is_inter = is_inter_block(mbmi);
-#endif
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
 
@@ -4278,11 +4175,7 @@ int av1_txfm_uvrd(const AV1_COMP *const cpi, MACROBLOCK *x, RD_STATS *rd_stats,
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_U];
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
   int64_t this_rd = 0, skip_txfm_rd = 0;
   const BLOCK_SIZE plane_bsize =
       get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
@@ -4364,11 +4257,7 @@ void av1_txfm_rd_in_plane(MACROBLOCK *x, const AV1_COMP *cpi,
                                          &args);
 
   MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
   const int invalid_rd = is_inter ? args.incomplete_exit : args.exit_early;
 
   if (invalid_rd) {
@@ -4444,11 +4333,7 @@ int av1_txfm_search(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
 
   av1_init_rd_stats(rd_stats_uv);
   const int num_planes = av1_num_planes(cm);
-#if CONFIG_SDP
   if (num_planes > 1 && xd->tree_type != LUMA_PART) {
-#else
-  if (num_planes > 1) {
-#endif
     int64_t ref_best_chroma_rd = ref_best_rd;
     // Calculate best rd cost possible for chroma
     if (cpi->sf.inter_sf.perform_best_rd_based_gating_for_chroma &&
@@ -4478,22 +4363,14 @@ int av1_txfm_search(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
     rd_stats->dist = rd_stats->sse;
     rd_stats_y->dist = rd_stats_y->sse;
     rd_stats_uv->dist = rd_stats_uv->sse;
-#if CONFIG_SDP
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-#else
-    mbmi->skip_txfm = 1;
-#endif
     if (rd_stats->skip_txfm) {
       const int64_t tmprd = RDCOST(x->rdmult, rd_stats->rate, rd_stats->dist);
       if (tmprd > ref_best_rd) return 0;
     }
   } else {
     rd_stats->rate += skip_txfm_cost[0];
-#if CONFIG_SDP
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
-#else
-    mbmi->skip_txfm = 0;
-#endif
   }
 
   return 1;

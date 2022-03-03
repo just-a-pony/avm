@@ -63,11 +63,7 @@ static void count_segs(const AV1_COMMON *cm, MACROBLOCKD *xd,
 
   // Temporal prediction not allowed on key frames
   if (cm->current_frame.frame_type != KEY_FRAME) {
-#if CONFIG_SDP
     const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
-#else
-    const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
     // Test to see if the segment id matches the predicted value.
     const int pred_segment_id =
         cm->last_frame_seg_map
@@ -109,12 +105,8 @@ static void count_segs_sb(const AV1_COMMON *cm, MACROBLOCKD *xd,
   if (bsize == BLOCK_8X8)
     partition = PARTITION_NONE;
   else
-#if CONFIG_SDP
     partition =
         get_partition(cm, xd->tree_type == CHROMA_PART, mi_row, mi_col, bsize);
-#else
-    partition = get_partition(cm, mi_row, mi_col, bsize);
-#endif
   switch (partition) {
     case PARTITION_NONE: CSEGS(bs, bs, 0, 0); break;
     case PARTITION_HORZ:

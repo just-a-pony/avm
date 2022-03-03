@@ -203,12 +203,8 @@ typedef struct frame_contexts {
   aom_cdf_prob uv_mode_cdf[CFL_ALLOWED_TYPES][UV_MODE_CONTEXTS]
                           [CDF_SIZE(UV_INTRA_MODES)];
 #endif  // CONFIG_AIMC
-#if CONFIG_SDP
   aom_cdf_prob partition_cdf[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
                             [CDF_SIZE(EXT_PARTITION_TYPES)];
-#else
-  aom_cdf_prob partition_cdf[PARTITION_CONTEXTS][CDF_SIZE(EXT_PARTITION_TYPES)];
-#endif
   aom_cdf_prob switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS]
                                     [CDF_SIZE(SWITCHABLE_FILTERS)];
 #if !CONFIG_AIMC
@@ -219,13 +215,8 @@ typedef struct frame_contexts {
   aom_cdf_prob kf_y_cdf[KF_MODE_CONTEXTS][KF_MODE_CONTEXTS]
                        [CDF_SIZE(INTRA_MODES)];
 
-#if CONFIG_SDP
   aom_cdf_prob angle_delta_cdf[PARTITION_STRUCTURE_NUM][DIRECTIONAL_MODES]
                               [CDF_SIZE(2 * MAX_ANGLE_DELTA + 1)];
-#else
-  aom_cdf_prob angle_delta_cdf[DIRECTIONAL_MODES]
-                              [CDF_SIZE(2 * MAX_ANGLE_DELTA + 1)];
-#endif
 #endif  // !CONFIG_AIMC
 
 #if CONFIG_NEW_TX_PARTITION

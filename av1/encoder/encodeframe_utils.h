@@ -32,13 +32,8 @@ enum {
 typedef struct {
   ENTROPY_CONTEXT a[MAX_MIB_SIZE * MAX_MB_PLANE];
   ENTROPY_CONTEXT l[MAX_MIB_SIZE * MAX_MB_PLANE];
-#if CONFIG_SDP
   PARTITION_CONTEXT sa[MAX_MIB_SIZE * MAX_MB_PLANE];
   PARTITION_CONTEXT sl[MAX_MIB_SIZE * MAX_MB_PLANE];
-#else
-  PARTITION_CONTEXT sa[MAX_MIB_SIZE];
-  PARTITION_CONTEXT sl[MAX_MIB_SIZE];
-#endif
   TXFM_CONTEXT *p_ta;
   TXFM_CONTEXT *p_tl;
   TXFM_CONTEXT ta[MAX_MIB_SIZE];
@@ -297,13 +292,8 @@ void av1_save_context(const MACROBLOCK *x, RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
 void av1_set_fixed_partitioning(AV1_COMP *cpi, const TileInfo *const tile,
                                 MB_MODE_INFO **mib, int mi_row, int mi_col,
                                 BLOCK_SIZE bsize);
-#if CONFIG_SDP
 int av1_is_leaf_split_partition(AV1_COMMON *cm, MACROBLOCKD *const xd,
-                                int mi_row, int mi_col,
-#else
-int av1_is_leaf_split_partition(AV1_COMMON *cm, int mi_row, int mi_col,
-#endif
-                                BLOCK_SIZE bsize);
+                                int mi_row, int mi_col, BLOCK_SIZE bsize);
 
 void av1_reset_simple_motion_tree_partition(SIMPLE_MOTION_DATA_TREE *sms_tree,
                                             BLOCK_SIZE bsize);

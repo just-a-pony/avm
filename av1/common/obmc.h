@@ -35,13 +35,8 @@ static INLINE void foreach_overlappable_nb_above(const AV1_COMMON *cm,
   for (int above_mi_col = mi_col; above_mi_col < end_col && nb_count < nb_max;
        above_mi_col += mi_step) {
     MB_MODE_INFO **above_mi = prev_row_mi + above_mi_col;
-#if CONFIG_SDP
     mi_step = AOMMIN(mi_size_wide[above_mi[0]->sb_type[PLANE_TYPE_Y]],
                      mi_size_wide[BLOCK_64X64]);
-#else
-    mi_step =
-        AOMMIN(mi_size_wide[above_mi[0]->sb_type], mi_size_wide[BLOCK_64X64]);
-#endif
     // If we're considering a block with width 4, it should be treated as
     // half of a pair of blocks with chroma information in the second. Move
     // above_mi_col back to the start of the pair if needed, set above_mbmi
@@ -52,11 +47,7 @@ static INLINE void foreach_overlappable_nb_above(const AV1_COMMON *cm,
       above_mi = prev_row_mi + above_mi_col + 1;
       mi_step = 2;
     }
-#if CONFIG_SDP
     if (is_neighbor_overlappable(*above_mi, xd->tree_type)) {
-#else
-    if (is_neighbor_overlappable(*above_mi)) {
-#endif
       ++nb_count;
       fun(xd, 0, above_mi_col - mi_col, AOMMIN(xd->width, mi_step), 0,
           *above_mi, fun_ctxt, num_planes);
@@ -81,23 +72,14 @@ static INLINE void foreach_overlappable_nb_left(const AV1_COMMON *cm,
   for (int left_mi_row = mi_row; left_mi_row < end_row && nb_count < nb_max;
        left_mi_row += mi_step) {
     MB_MODE_INFO **left_mi = prev_col_mi + left_mi_row * xd->mi_stride;
-#if CONFIG_SDP
     mi_step = AOMMIN(mi_size_high[left_mi[0]->sb_type[PLANE_TYPE_Y]],
                      mi_size_high[BLOCK_64X64]);
-#else
-    mi_step =
-        AOMMIN(mi_size_high[left_mi[0]->sb_type], mi_size_high[BLOCK_64X64]);
-#endif
     if (mi_step == 1) {
       left_mi_row &= ~1;
       left_mi = prev_col_mi + (left_mi_row + 1) * xd->mi_stride;
       mi_step = 2;
     }
-#if CONFIG_SDP
     if (is_neighbor_overlappable(*left_mi, xd->tree_type)) {
-#else
-    if (is_neighbor_overlappable(*left_mi)) {
-#endif
       ++nb_count;
       fun(xd, left_mi_row - mi_row, 0, AOMMIN(xd->height, mi_step), 1, *left_mi,
           fun_ctxt, num_planes);

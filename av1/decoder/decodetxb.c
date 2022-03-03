@@ -176,11 +176,7 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   MB_MODE_INFO *const mbmi = xd->mi[0];
   if (plane == 0) {
     const int txk_type_idx =
-#if CONFIG_SDP
         av1_get_txk_type_index(mbmi->sb_type[0], blk_row, blk_col);
-#else
-        av1_get_txk_type_index(mbmi->sb_type, blk_row, blk_col);
-#endif  // CONFIG_SDP
     mbmi->tx_skip[txk_type_idx] = all_zero;
   }
 #endif  // CONFIG_INSPECTION
@@ -355,11 +351,7 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
 #if CONFIG_INSPECTION
   if (plane == 0) {
     const int txk_type_idx =
-#if CONFIG_SDP
         av1_get_txk_type_index(mbmi->sb_type[0], blk_row, blk_col);
-#else
-        av1_get_txk_type_index(mbmi->sb_type, blk_row, blk_col);
-#endif
     mbmi->tx_skip[txk_type_idx] = all_zero;
   }
 #endif
@@ -635,11 +627,7 @@ void av1_read_coeffs_txb_facade(const AV1_COMMON *const cm,
   MACROBLOCKD *const xd = &dcb->xd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[plane > 0];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   assert(bsize < BLOCK_SIZES_ALL);
   const BLOCK_SIZE plane_bsize =
       get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
@@ -680,11 +668,7 @@ void av1_read_coeffs_txb_facade(const AV1_COMMON *const cm,
 #endif  // CONFIG_FORWARDSKIP
   av1_set_entropy_contexts(xd, pd, plane, plane_bsize, tx_size, cul_level, col,
                            row);
-#if CONFIG_SDP
   if (is_inter_block(mbmi, xd->tree_type)) {
-#else
-  if (is_inter_block(mbmi)) {
-#endif
 #if !CONFIG_FORWARDSKIP
     const PLANE_TYPE plane_type = get_plane_type(plane);
     // tx_type will be read out in av1_read_coeffs_txb_facade

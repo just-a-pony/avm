@@ -249,11 +249,7 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
   const int use_palette = mbmi->palette_mode_info.palette_size[0] > 0;
   const int use_filter_intra = mbmi->filter_intra_mode_info.use_filter_intra;
   const MACROBLOCKD *xd = &x->e_mbd;
-#if CONFIG_SDP
   const int use_intrabc = mbmi->use_intrabc[PLANE_TYPE_Y];
-#else
-  const int use_intrabc = mbmi->use_intrabc;
-#endif
   // Can only activate one mode.
   assert(((mbmi->mode != DC_PRED) + use_palette + use_intrabc +
           use_filter_intra) <= 1);
@@ -262,14 +258,9 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
   const MB_MODE_INFO *const above_mi = xd->above_mbmi;
   const MB_MODE_INFO *const left_mi = xd->left_mbmi;
 #endif  // CONFIG_FORWARDSKIP
-#if CONFIG_SDP
   const int try_palette =
       av1_allow_palette(cpi->common.features.allow_screen_content_tools,
                         mbmi->sb_type[PLANE_TYPE_Y]);
-#else
-  const int try_palette = av1_allow_palette(
-      cpi->common.features.allow_screen_content_tools, mbmi->sb_type);
-#endif
   if (try_palette && mbmi->mode == DC_PRED) {
     const int bsize_ctx = av1_get_palette_bsize_ctx(bsize);
     const int mode_ctx = av1_get_palette_mode_ctx(xd);
@@ -306,14 +297,9 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
   }
 #endif  // CONFIG_FORWARDSKIP
   if (av1_filter_intra_allowed(&cpi->common, mbmi)) {
-#if CONFIG_SDP
     total_rate +=
         mode_costs
             ->filter_intra_cost[mbmi->sb_type[PLANE_TYPE_Y]][use_filter_intra];
-#else
-    total_rate +=
-        mode_costs->filter_intra_cost[mbmi->sb_type][use_filter_intra];
-#endif
     if (use_filter_intra) {
       total_rate +=
           mode_costs->filter_intra_mode_cost[mbmi->filter_intra_mode_info
@@ -323,25 +309,14 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
 #if !CONFIG_AIMC
   if (av1_is_directional_mode(mbmi->mode)) {
     if (av1_use_angle_delta(bsize)) {
-#if CONFIG_SDP
       total_rate +=
           mode_costs->angle_delta_cost[PLANE_TYPE_Y][mbmi->mode - V_PRED]
                                       [MAX_ANGLE_DELTA +
                                        mbmi->angle_delta[PLANE_TYPE_Y]];
-#else
-      total_rate +=
-          mode_costs->angle_delta_cost[mbmi->mode - V_PRED]
-                                      [MAX_ANGLE_DELTA +
-                                       mbmi->angle_delta[PLANE_TYPE_Y]];
-#endif
     }
   }
 #endif  // !CONFIG_AIMC
-#if CONFIG_SDP
   if (av1_allow_intrabc(&cpi->common) && xd->tree_type != CHROMA_PART)
-#else
-  if (av1_allow_intrabc(&cpi->common))
-#endif
     total_rate += mode_costs->intrabc_cost[use_intrabc];
   return total_rate;
 }
@@ -359,21 +334,12 @@ static AOM_INLINE int intra_mode_info_cost_uv(const AV1_COMP *cpi,
   const int use_palette = mbmi->palette_mode_info.palette_size[1] > 0;
   const UV_PREDICTION_MODE mode = mbmi->uv_mode;
   // Can only activate one mode.
-#if CONFIG_SDP
   assert(mbmi->use_intrabc[PLANE_TYPE_UV] == 0);
   assert(((mode != UV_DC_PRED) + use_palette +
           mbmi->use_intrabc[PLANE_TYPE_UV]) <= 1);
-#else
-  assert(((mode != UV_DC_PRED) + use_palette + mbmi->use_intrabc) <= 1);
-#endif
-#if CONFIG_SDP
   const int try_palette =
       av1_allow_palette(cpi->common.features.allow_screen_content_tools,
                         mbmi->sb_type[PLANE_TYPE_UV]);
-#else
-  const int try_palette = av1_allow_palette(
-      cpi->common.features.allow_screen_content_tools, mbmi->sb_type);
-#endif
   if (try_palette && mode == UV_DC_PRED) {
     const PALETTE_MODE_INFO *pmi = &mbmi->palette_mode_info;
     total_rate +=
@@ -399,7 +365,6 @@ static AOM_INLINE int intra_mode_info_cost_uv(const AV1_COMP *cpi,
 #if !CONFIG_AIMC
   if (av1_is_directional_mode(get_uv_mode(mode))) {
     if (av1_use_angle_delta(bsize)) {
-#if CONFIG_SDP
       if (cpi->common.seq_params.enable_sdp) {
         total_rate +=
             mode_costs->angle_delta_cost[PLANE_TYPE_UV][mode - V_PRED]
@@ -411,12 +376,6 @@ static AOM_INLINE int intra_mode_info_cost_uv(const AV1_COMP *cpi,
                                         [mbmi->angle_delta[PLANE_TYPE_UV] +
                                          MAX_ANGLE_DELTA];
       }
-#else
-      total_rate +=
-          mode_costs->angle_delta_cost[mode - V_PRED]
-                                      [mbmi->angle_delta[PLANE_TYPE_UV] +
-                                       MAX_ANGLE_DELTA];
-#endif
     }
   }
 #endif  // !CONFIG_AIMC
@@ -431,11 +390,7 @@ static int64_t intra_model_yrd(const AV1_COMP *const cpi, MACROBLOCK *const x,
   const AV1_COMMON *cm = &cpi->common;
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   assert(!is_inter_block(mbmi, xd->tree_type));
-#else
-  assert(!is_inter_block(mbmi));
-#endif
   RD_STATS this_rd_stats;
   int row, col;
   int64_t temp_sse, this_rd;
@@ -460,18 +415,11 @@ static int64_t intra_model_yrd(const AV1_COMP *const cpi, MACROBLOCK *const x,
       &this_rd_stats.skip_txfm, &temp_sse, NULL, NULL, NULL);
 #if !CONFIG_AIMC
   if (av1_is_directional_mode(mbmi->mode) && av1_use_angle_delta(bsize)) {
-#if CONFIG_SDP
     mode_cost += mode_costs->angle_delta_cost[PLANE_TYPE_Y][mbmi->mode - V_PRED]
                                              [MAX_ANGLE_DELTA +
                                               mbmi->angle_delta[PLANE_TYPE_Y]];
-#else
-    mode_cost += mode_costs->angle_delta_cost[mbmi->mode - V_PRED]
-                                             [MAX_ANGLE_DELTA +
-                                              mbmi->angle_delta[PLANE_TYPE_Y]];
-#endif  // CONFIG_SDP
   }
 #endif  // !CONFIG_AIMC
-#if CONFIG_SDP
   if (mbmi->mode == DC_PRED &&
       av1_filter_intra_allowed_bsize(cm, mbmi->sb_type[PLANE_TYPE_Y])) {
     if (mbmi->filter_intra_mode_info.use_filter_intra) {
@@ -483,17 +431,6 @@ static int64_t intra_model_yrd(const AV1_COMP *const cpi, MACROBLOCK *const x,
       mode_cost +=
           mode_costs->filter_intra_cost[mbmi->sb_type[PLANE_TYPE_Y]][0];
     }
-#else
-  if (mbmi->mode == DC_PRED &&
-      av1_filter_intra_allowed_bsize(cm, mbmi->sb_type)) {
-    if (mbmi->filter_intra_mode_info.use_filter_intra) {
-      const int mode = mbmi->filter_intra_mode_info.filter_intra_mode;
-      mode_cost += mode_costs->filter_intra_cost[mbmi->sb_type][1] +
-                   mode_costs->filter_intra_mode_cost[mode];
-    } else {
-      mode_cost += mode_costs->filter_intra_cost[mbmi->sb_type][0];
-    }
-#endif
   }
   this_rd =
       RDCOST(x->rdmult, this_rd_stats.rate + mode_cost, this_rd_stats.dist);

@@ -246,11 +246,7 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
       cpi->mbmi_ext_info.frame_base +
       get_mi_ext_idx(mi_row, mi_col, cm->mi_params.mi_alloc_bsize,
                      cpi->mbmi_ext_info.stride);
-#if CONFIG_SDP
   if (!is_inter_block(mbmi, SHARED_PART)) {
-#else
-  if (!is_inter_block(mbmi)) {
-#endif
     mv_stats->intra_count++;
     return;
   }
@@ -299,11 +295,7 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
   }
 
   // Add texture information
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const int num_rows = block_size_high[bsize];
   const int num_cols = block_size_wide[bsize];
   const int y_stride = cpi->source->y_stride;
@@ -350,12 +342,8 @@ static AOM_INLINE void collect_mv_stats_sb(MV_STATS *mv_stats,
 
   if (mi_row >= cm->mi_params.mi_rows || mi_col >= cm->mi_params.mi_cols)
     return;
-#if CONFIG_SDP
   const PARTITION_TYPE partition =
       get_partition(cm, SHARED_PART, mi_row, mi_col, bsize);
-#else
-  const PARTITION_TYPE partition = get_partition(cm, mi_row, mi_col, bsize);
-#endif
   const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
 
   const int hbs = mi_size_wide[bsize] / 2;

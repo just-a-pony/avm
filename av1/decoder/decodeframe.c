@@ -185,11 +185,7 @@ static AOM_INLINE void read_coeffs_tx_intra_block(
     const AV1_COMMON *const cm, DecoderCodingBlock *dcb, aom_reader *const r,
     const int plane, const int row, const int col, const TX_SIZE tx_size) {
   MB_MODE_INFO *mbmi = dcb->xd.mi[0];
-#if CONFIG_SDP
   if (!mbmi->skip_txfm[dcb->xd.tree_type == CHROMA_PART]) {
-#else
-  if (!mbmi->skip_txfm) {
-#endif
 #if TXCOEFF_TIMER
     struct aom_usec_timer timer;
     aom_usec_timer_start(&timer);
@@ -241,11 +237,7 @@ static AOM_INLINE void predict_and_reconstruct_intra_block(
   PLANE_TYPE plane_type = get_plane_type(plane);
 
   av1_predict_intra_block_facade(cm, xd, plane, col, row, tx_size);
-#if CONFIG_SDP
   if (!mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
-#else
-  if (!mbmi->skip_txfm) {
-#endif
     eob_info *eob_data = dcb->eob_data[plane] + dcb->txb_offset[plane];
     if (eob_data->eob) {
       const bool reduced_tx_set_used = cm->features.reduced_tx_set_used;
@@ -258,17 +250,9 @@ static AOM_INLINE void predict_and_reconstruct_intra_block(
                               reduced_tx_set_used);
     }
   }
-#if CONFIG_SDP
   if (plane == AOM_PLANE_Y && store_cfl_required(cm, xd) &&
       xd->tree_type == SHARED_PART) {
-#else
-  if (plane == AOM_PLANE_Y && store_cfl_required(cm, xd)) {
-#endif
-#if CONFIG_SDP
     cfl_store_tx(xd, row, col, tx_size, mbmi->sb_type[AOM_PLANE_Y]);
-#else
-    cfl_store_tx(xd, row, col, tx_size, mbmi->sb_type);
-#endif
   }
 }
 
@@ -318,7 +302,6 @@ static AOM_INLINE void decode_reconstruct_tx(
   DecoderCodingBlock *const dcb = &td->dcb;
   MACROBLOCKD *const xd = &dcb->xd;
   const struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_SDP
   if (xd->tree_type == SHARED_PART)
     assert(mbmi->sb_type[PLANE_TYPE_Y] == mbmi->sb_type[PLANE_TYPE_UV]);
   const TX_SIZE plane_tx_size =
@@ -326,13 +309,6 @@ static AOM_INLINE void decode_reconstruct_tx(
                                     pd->subsampling_y)
             : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
                                                          blk_col)];
-#else
-  const TX_SIZE plane_tx_size =
-      plane ? av1_get_max_uv_txsize(mbmi->sb_type, pd->subsampling_x,
-                                    pd->subsampling_y)
-            : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
-                                                         blk_col)];
-#endif
   // Scale to match transform block unit.
   const int max_blocks_high = max_block_high(xd, plane_bsize, plane);
   const int max_blocks_wide = max_block_wide(xd, plane_bsize, plane);
@@ -410,19 +386,13 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
   const TileInfo *const tile = &xd->tile;
 
   set_mi_offsets(mi_params, xd, mi_row, mi_col);
-#if CONFIG_SDP
   xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART] = bsize;
-#else
-  xd->mi[0]->sb_type = bsize;
-#endif
 #if CONFIG_RD_DEBUG
   xd->mi[0]->mi_row = mi_row;
   xd->mi[0]->mi_col = mi_col;
 #endif
 
-#if CONFIG_SDP
   if (xd->tree_type == SHARED_PART) {
-#endif
     assert(x_mis && y_mis);
     for (int x = 1; x < x_mis; ++x) xd->mi[x] = xd->mi[0];
     int idx = mi_params->mi_stride;
@@ -430,9 +400,7 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
       memcpy(&xd->mi[idx], &xd->mi[0], x_mis * sizeof(xd->mi[0]));
       idx += mi_params->mi_stride;
     }
-#if CONFIG_SDP
   }
-#endif
 
   set_plane_n4(xd, bw, bh, num_planes);
   set_entropy_context(xd, mi_row, mi_col, num_planes);
@@ -827,11 +795,7 @@ static INLINE void dec_build_prediction_by_above_pred(
                                            &backup_mbmi, ctxt, num_planes);
   mi_x = above_mi_col << MI_SIZE_LOG2;
   mi_y = xd->mi_row << MI_SIZE_LOG2;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
 
   for (int j = 0; j < num_planes; ++j) {
     const struct macroblockd_plane *pd = &xd->plane[j];
@@ -861,11 +825,7 @@ static AOM_INLINE void dec_build_prediction_by_above_preds(
   struct build_prediction_ctxt ctxt = {
     cm, tmp_buf, tmp_width, tmp_height, tmp_stride, xd->mb_to_right_edge, dcb
   };
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
   foreach_overlappable_nb_above(cm, xd,
                                 max_neighbor_obmc[mi_size_wide_log2[bsize]],
                                 dec_build_prediction_by_above_pred, &ctxt);
@@ -890,11 +850,7 @@ static INLINE void dec_build_prediction_by_left_pred(
                                           &backup_mbmi, ctxt, num_planes);
   mi_x = xd->mi_col << MI_SIZE_LOG2;
   mi_y = left_mi_row << MI_SIZE_LOG2;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
 
   for (int j = 0; j < num_planes; ++j) {
     const struct macroblockd_plane *pd = &xd->plane[j];
@@ -925,11 +881,7 @@ static AOM_INLINE void dec_build_prediction_by_left_preds(
   struct build_prediction_ctxt ctxt = {
     cm, tmp_buf, tmp_width, tmp_height, tmp_stride, xd->mb_to_bottom_edge, dcb
   };
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
   foreach_overlappable_nb_left(cm, xd,
                                max_neighbor_obmc[mi_size_high_log2[bsize]],
                                dec_build_prediction_by_left_pred, &ctxt);
@@ -959,13 +911,8 @@ static AOM_INLINE void dec_build_obmc_inter_predictors_sb(
                                      dst_stride2);
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
-#if CONFIG_SDP
   av1_setup_dst_planes(xd->plane, xd->mi[0]->sb_type[PLANE_TYPE_Y],
                        &cm->cur_frame->buf, mi_row, mi_col, 0, num_planes);
-#else
-  av1_setup_dst_planes(xd->plane, xd->mi[0]->sb_type, &cm->cur_frame->buf,
-                       mi_row, mi_col, 0, num_planes);
-#endif
   av1_build_obmc_inter_prediction(cm, xd, dst_buf1, dst_stride1, dst_buf2,
                                   dst_stride2);
 }
@@ -973,16 +920,8 @@ static AOM_INLINE void dec_build_obmc_inter_predictors_sb(
 static AOM_INLINE void cfl_store_inter_block(AV1_COMMON *const cm,
                                              MACROBLOCKD *const xd) {
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   if (store_cfl_required(cm, xd) && xd->tree_type == SHARED_PART) {
-#else
-  if (store_cfl_required(cm, xd)) {
-#endif
-#if CONFIG_SDP
     cfl_store_block(xd, mbmi->sb_type[PLANE_TYPE_Y], mbmi->tx_size);
-#else
-    cfl_store_block(xd, mbmi->sb_type, mbmi->tx_size);
-#endif
   }
 }
 
@@ -997,11 +936,7 @@ static AOM_INLINE void predict_inter_block(AV1_COMMON *const cm,
   for (int ref = 0; ref < 1 + has_second_ref(mbmi); ++ref) {
     const MV_REFERENCE_FRAME frame = mbmi->ref_frame[ref];
     if (frame < LAST_FRAME) {
-#if CONFIG_SDP
       assert(is_intrabc_block(mbmi, xd->tree_type));
-#else
-      assert(is_intrabc_block(mbmi));
-#endif
       assert(frame == INTRA_FRAME);
       assert(ref == 0);
     } else {
@@ -1042,37 +977,26 @@ static AOM_INLINE void set_color_index_map_offset(MACROBLOCKD *const xd,
   (void)r;
   Av1ColorMapParam params;
   const MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   av1_get_block_dimensions(mbmi->sb_type[plane > 0], plane, xd,
                            &params.plane_width, &params.plane_height, NULL,
                            NULL);
-#else
-  av1_get_block_dimensions(mbmi->sb_type, plane, xd, &params.plane_width,
-                           &params.plane_height, NULL, NULL);
-#endif
   xd->color_index_map_offset[plane] += params.plane_width * params.plane_height;
 }
 
 static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
                                                 ThreadData *const td,
                                                 aom_reader *r,
-#if CONFIG_SDP
                                                 PARTITION_TYPE partition,
-#endif
                                                 BLOCK_SIZE bsize) {
   AV1_COMMON *const cm = &pbi->common;
   DecoderCodingBlock *const dcb = &td->dcb;
   MACROBLOCKD *const xd = &dcb->xd;
   const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   xd->mi[0]->partition = partition;
   const int plane_start = (xd->tree_type == CHROMA_PART);
   const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
   if (!is_inter_block(mbmi, xd->tree_type)) {
-#else
-  if (!is_inter_block(mbmi)) {
-#endif
     int row, col;
     assert(bsize == get_plane_block_size(bsize, xd->plane[0].subsampling_x,
                                          xd->plane[0].subsampling_y));
@@ -1086,11 +1010,7 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
 
     for (row = 0; row < max_blocks_high; row += mu_blocks_high) {
       for (col = 0; col < max_blocks_wide; col += mu_blocks_wide) {
-#if CONFIG_SDP
         for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-        for (int plane = 0; plane < num_planes; ++plane) {
-#endif
           if (plane && !xd->is_chroma_ref) break;
           const struct macroblockd_plane *const pd = &xd->plane[plane];
           const TX_SIZE tx_size = av1_get_tx_size(plane, xd);
@@ -1119,11 +1039,7 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
   } else {
     td->predict_inter_block_visit(cm, dcb, bsize);
     // Reconstruction
-#if CONFIG_SDP
     if (!mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
-#else
-    if (!mbmi->skip_txfm) {
-#endif
       int eobtotal = 0;
 
       const int max_blocks_wide = max_block_wide(xd, bsize, 0);
@@ -1142,11 +1058,7 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
 
       for (row = 0; row < max_blocks_high; row += mu_blocks_high) {
         for (col = 0; col < max_blocks_wide; col += mu_blocks_wide) {
-#if CONFIG_SDP
           for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-          for (int plane = 0; plane < num_planes; ++plane) {
-#endif
             if (plane && !xd->is_chroma_ref) break;
             const struct macroblockd_plane *const pd = &xd->plane[plane];
             const int ss_x = pd->subsampling_x;
@@ -1205,14 +1117,9 @@ static AOM_INLINE void set_inter_tx_size(MB_MODE_INFO *mbmi, int stride_log2,
 static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                                  TX_SIZE max_tx_size, int blk_row, int blk_col,
                                  aom_reader *r) {
-#if CONFIG_SDP
   int plane_type = (xd->tree_type == CHROMA_PART);
   const BLOCK_SIZE bsize = mbmi->sb_type[plane_type];
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-  const int is_inter = is_inter_block(mbmi);
-#endif
   const int max_blocks_high = max_block_high(xd, bsize, 0);
   const int max_blocks_wide = max_block_wide(xd, bsize, 0);
   if (is_inter && (blk_row >= max_blocks_high || blk_col >= max_blocks_wide))
@@ -1324,12 +1231,8 @@ static AOM_INLINE void read_tx_size_vartx(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                                           aom_reader *r) {
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   int is_split = 0;
-#if CONFIG_SDP
   int plane_type = (xd->tree_type == CHROMA_PART);
   const BLOCK_SIZE bsize = mbmi->sb_type[plane_type];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const int max_blocks_high = max_block_high(xd, bsize, 0);
   const int max_blocks_wide = max_block_wide(xd, bsize, 0);
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
@@ -1350,15 +1253,9 @@ static AOM_INLINE void read_tx_size_vartx(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                           xd->left_txfm_context + blk_row, tx_size, tx_size);
     return;
   }
-#if CONFIG_SDP
   const int ctx = txfm_partition_context(xd->above_txfm_context + blk_col,
                                          xd->left_txfm_context + blk_row,
                                          mbmi->sb_type[plane_type], tx_size);
-#else
-  const int ctx = txfm_partition_context(xd->above_txfm_context + blk_col,
-                                         xd->left_txfm_context + blk_row,
-                                         mbmi->sb_type, tx_size);
-#endif
   is_split = aom_read_symbol(r, ec_ctx->txfm_partition_cdf[ctx], 2, ACCT_STR);
 
   if (is_split) {
@@ -1419,11 +1316,7 @@ static TX_SIZE read_selected_tx_size(const MACROBLOCKD *const xd,
                                      aom_reader *r) {
   // TODO(debargha): Clean up the logic here. This function should only
   // be called for intra.
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
   const int32_t tx_size_cat = bsize_to_tx_size_cat(bsize);
   const int max_depths = bsize_to_max_depth(bsize);
   const int ctx = get_tx_size_context(xd);
@@ -1438,11 +1331,7 @@ static TX_SIZE read_selected_tx_size(const MACROBLOCKD *const xd,
 
 static TX_SIZE read_tx_size(MACROBLOCKD *xd, TX_MODE tx_mode, int is_inter,
                             int allow_select_inter, aom_reader *r) {
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
   if (xd->lossless[xd->mi[0]->segment_id]) return TX_4X4;
 
   if (block_signals_txsize(bsize)) {
@@ -1478,20 +1367,12 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
   AV1_COMMON *cm = &pbi->common;
   const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   int inter_block_tx = is_inter_block(mbmi, xd->tree_type) ||
                        is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type != CHROMA_PART) {
-#else
-  int inter_block_tx = is_inter_block(mbmi) || is_intrabc_block(mbmi);
-#endif
     if (cm->features.tx_mode == TX_MODE_SELECT && block_signals_txsize(bsize) &&
-#if CONFIG_SDP
         !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] && inter_block_tx &&
         !xd->lossless[mbmi->segment_id]) {
-#else
-      !mbmi->skip_txfm && inter_block_tx && !xd->lossless[mbmi->segment_id]) {
-#endif
       const TX_SIZE max_tx_size = max_txsize_rect_lookup[bsize];
       const int bh = tx_size_high_unit[max_tx_size];
       const int bw = tx_size_wide_unit[max_tx_size];
@@ -1503,30 +1384,22 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
 #if CONFIG_NEW_TX_PARTITION
           read_tx_partition(xd, mbmi, max_tx_size, idy, idx, r);
 #else
-        read_tx_size_vartx(xd, mbmi, max_tx_size, 0,
+          read_tx_size_vartx(xd, mbmi, max_tx_size, 0,
 #if CONFIG_LPF_MASK
-                           cm, mi_row, mi_col, 1,
+                             cm, mi_row, mi_col, 1,
 #endif
-                           idy, idx, r);
+                             idy, idx, r);
 #endif  // CONFIG_NEW_TX_PARTITION
     } else {
       mbmi->tx_size =
           read_tx_size(xd, cm->features.tx_mode, inter_block_tx,
-#if CONFIG_SDP
                        !mbmi->skip_txfm[xd->tree_type == CHROMA_PART], r);
-#else
-                     !mbmi->skip_txfm, r);
-#endif
       if (inter_block_tx)
         memset(mbmi->inter_tx_size, mbmi->tx_size, sizeof(mbmi->inter_tx_size));
       set_txfm_ctxs(mbmi->tx_size, xd->width, xd->height,
-#if CONFIG_SDP
                     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
                         is_inter_block(mbmi, xd->tree_type),
                     xd);
-#else
-                  mbmi->skip_txfm && is_inter_block(mbmi), xd);
-#endif
 #if CONFIG_LPF_MASK
       const int w = mi_size_wide[bsize];
       const int h = mi_size_high[bsize];
@@ -1542,9 +1415,7 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
       }
 #endif
     }
-#if CONFIG_SDP
   }
-#endif
 #if CONFIG_LPF_MASK
   const int w = mi_size_wide[bsize];
   const int h = mi_size_high[bsize];
@@ -1589,19 +1460,10 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
       }
     }
   }
-#if CONFIG_SDP
   if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART])
     av1_reset_entropy_context(xd, bsize, num_planes);
-#else
-  if (mbmi->skip_txfm) av1_reset_entropy_context(xd, bsize, num_planes);
-#endif
-#if CONFIG_SDP
   decode_token_recon_block(pbi, td, r, partition, bsize);
-#else
-  decode_token_recon_block(pbi, td, r, bsize);
-#endif
 
-#if CONFIG_SDP
   if (xd->tree_type != SHARED_PART) {
     const int bh = mi_size_high[bsize];
     const int bw = mi_size_wide[bsize];
@@ -1641,7 +1503,6 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
       }
     }
   }
-#endif
 #if CONFIG_IBC_SR_EXT
   av1_mark_block_as_coded(xd, mi_row, mi_col, bsize, cm->seq_params.sb_size);
 #endif  // CONFIG_IBC_SR_EXT
@@ -1684,33 +1545,22 @@ static AOM_INLINE void decode_block(AV1Decoder *const pbi, ThreadData *const td,
                                     BLOCK_SIZE bsize) {
   (void)partition;
   set_offsets_for_pred_and_recon(pbi, td, mi_row, mi_col, bsize);
-#if CONFIG_SDP
   decode_token_recon_block(pbi, td, r, partition, bsize);
-#else
-  decode_token_recon_block(pbi, td, r, bsize);
-#endif
 #if CONFIG_IBC_SR_EXT
   av1_mark_block_as_coded(&td->dcb.xd, mi_row, mi_col, bsize,
                           pbi->common.seq_params.sb_size);
 #endif  // CONFIG_IBC_SR_EXT
 }
 
-#if CONFIG_SDP
 static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
                                      MACROBLOCKD *xd, int mi_row, int mi_col,
                                      aom_reader *r, int has_rows, int has_cols,
                                      BLOCK_SIZE bsize) {
-#else
-static PARTITION_TYPE read_partition(MACROBLOCKD *xd, int mi_row, int mi_col,
-                                     aom_reader *r, int has_rows, int has_cols,
-                                     BLOCK_SIZE bsize) {
-#endif
   const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
   if (!has_rows && !has_cols) return PARTITION_SPLIT;
 
-#if CONFIG_SDP
   const int plane = xd->tree_type == CHROMA_PART;
   if (plane == 1 && bsize == BLOCK_8X8) {
     return PARTITION_NONE;
@@ -1722,14 +1572,9 @@ static PARTITION_TYPE read_partition(MACROBLOCKD *xd, int mi_row, int mi_col,
     // if luma blocks uses smaller blocks, then chroma will also split
     if (luma_split_flag > 3) return PARTITION_SPLIT;
   }
-#endif
 
   assert(ctx >= 0);
-#if CONFIG_SDP
   aom_cdf_prob *partition_cdf = ec_ctx->partition_cdf[plane][ctx];
-#else
-  aom_cdf_prob *partition_cdf = ec_ctx->partition_cdf[ctx];
-#endif
   if (has_rows && has_cols) {
     return (PARTITION_TYPE)aom_read_symbol(
         r, partition_cdf, partition_cdf_length(bsize), ACCT_STR);
@@ -1781,13 +1626,9 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 
   if (parse_decode_flag & 1) {
     const int num_planes = av1_num_planes(cm);
-#if CONFIG_SDP
     const int plane_start = (xd->tree_type == CHROMA_PART);
     const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
     for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-    for (int plane = 0; plane < num_planes; ++plane) {
-#endif
       int rcol0, rcol1, rrow0, rrow1;
       if (av1_loop_restoration_corners_in_sb(cm, plane, mi_row, mi_col, bsize,
                                              &rcol0, &rcol1, &rrow0, &rrow1)) {
@@ -1800,23 +1641,13 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
         }
       }
     }
-#if CONFIG_SDP
     partition = (bsize < BLOCK_8X8)
                     ? PARTITION_NONE
                     : read_partition(cm, xd, mi_row, mi_col, reader, has_rows,
                                      has_cols, bsize);
-#else
-    partition = (bsize < BLOCK_8X8) ? PARTITION_NONE
-                                    : read_partition(xd, mi_row, mi_col, reader,
-                                                     has_rows, has_cols, bsize);
-#endif
   } else {
-#if CONFIG_SDP
     partition =
         get_partition(cm, xd->tree_type == CHROMA_PART, mi_row, mi_col, bsize);
-#else
-    partition = get_partition(cm, mi_row, mi_col, bsize);
-#endif
   }
   subsize = get_partition_subsize(bsize, partition);
   if (subsize == BLOCK_INVALID) {
@@ -1923,7 +1754,6 @@ static AOM_INLINE void setup_bool_decoder(
   r->allow_update_cdf = allow_update_cdf;
 }
 
-#if CONFIG_SDP
 static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
                                            ThreadData *const td, int mi_row,
                                            int mi_col, aom_reader *reader,
@@ -1946,7 +1776,6 @@ static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
     xd->tree_type = SHARED_PART;
   }
 }
-#endif
 
 static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
                                           struct aom_read_bit_buffer *rb) {
@@ -3194,13 +3023,8 @@ static AOM_INLINE void decode_tile_sb_row(AV1Decoder *pbi, ThreadData *const td,
     xd->ref_mv_bank.rmb_sb_hits = 0;
 #endif  // CONFIG_REF_MV_BANK
         // Decoding of the super-block
-#if CONFIG_SDP
     decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                         cm->seq_params.sb_size, 0x2);
-#else
-    decode_partition(pbi, td, mi_row, mi_col, td->bit_reader,
-                     cm->seq_params.sb_size, 0x2);
-#endif
 
     sync_write(&tile_data->dec_row_mt_sync, sb_row_in_tile, sb_col_in_tile,
                sb_cols_in_tile);
@@ -3291,14 +3115,8 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
       xd->ref_mv_bank.rmb_sb_hits = 0;
       td->ref_mv_bank = xd->ref_mv_bank;
 #endif  // CONFIG_REF_MV_BANK
-#if CONFIG_SDP
       decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                           cm->seq_params.sb_size, 0x3);
-#else
-      // Bit-stream parsing and decoding of the superblock
-      decode_partition(pbi, td, mi_row, mi_col, td->bit_reader,
-                       cm->seq_params.sb_size, 0x3);
-#endif
       if (aom_reader_has_overflowed(td->bit_reader)) {
         aom_merge_corrupted_flag(&dcb->corrupted, 1);
         return;
@@ -3790,13 +3608,8 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
       td->ref_mv_bank = xd->ref_mv_bank;
 #endif  // CONFIG_REF_MV_BANK
         // Bit-stream parsing of the superblock
-#if CONFIG_SDP
       decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                           cm->seq_params.sb_size, 0x1);
-#else
-      decode_partition(pbi, td, mi_row, mi_col, td->bit_reader,
-                       cm->seq_params.sb_size, 0x1);
-#endif
 
       if (aom_reader_has_overflowed(td->bit_reader)) {
         aom_merge_corrupted_flag(&dcb->corrupted, 1);
@@ -4898,9 +4711,7 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #if CONFIG_REF_MV_BANK
   seq_params->enable_refmvbank = aom_rb_read_bit(rb);
 #endif  // CONFIG_REF_MV_BANK
-#if CONFIG_SDP
   seq_params->enable_sdp = aom_rb_read_bit(rb);
-#endif
 #if CONFIG_IST
   seq_params->enable_ist = aom_rb_read_bit(rb);
 #endif
@@ -5888,11 +5699,7 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
       (uint32_t)aom_rb_bytes_read(rb);  // Size of the uncompressed header
   YV12_BUFFER_CONFIG *new_fb = &cm->cur_frame->buf;
   xd->cur_buf = new_fb;
-#if CONFIG_SDP
   if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
-#else
-  if (av1_allow_intrabc(cm)) {
-#endif
     av1_setup_scale_factors_for_frame(
         &cm->sf_identity, xd->cur_buf->y_crop_width, xd->cur_buf->y_crop_height,
         xd->cur_buf->y_crop_width, xd->cur_buf->y_crop_height);

@@ -948,13 +948,8 @@ static int64_t get_sse(const AV1_COMP *cpi, const MACROBLOCK *x,
     if (plane && !xd->is_chroma_ref) break;
     const struct macroblock_plane *const p = &x->plane[plane];
     const struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_SDP
     const BLOCK_SIZE bs = get_plane_block_size(
         mbmi->sb_type[plane > 0], pd->subsampling_x, pd->subsampling_y);
-#else
-    const BLOCK_SIZE bs = get_plane_block_size(mbmi->sb_type, pd->subsampling_x,
-                                               pd->subsampling_y);
-#endif
     unsigned int sse;
 
     cpi->fn_ptr[bs].vf(p->src.buf, p->src.stride, pd->dst.buf, pd->dst.stride,
@@ -1087,11 +1082,7 @@ static AOM_INLINE void estimate_ref_frame_costs(
   } else {
     int intra_inter_ctx = av1_get_intra_inter_context(xd);
 #if CONFIG_CONTEXT_DERIVATION
-#if CONFIG_SDP
     const int skip_txfm = xd->mi[0]->skip_txfm[xd->tree_type == CHROMA_PART];
-#else
-    const int skip_txfm = xd->mi[0]->skip_txfm;
-#endif
     ref_costs_single[INTRA_FRAME] =
         mode_costs->intra_inter_cost[skip_txfm][intra_inter_ctx][0];
     unsigned int base_cost =
@@ -1262,9 +1253,7 @@ static AOM_INLINE void store_coding_context(
   ctx->best_mode_index = mode_index;
 #endif  // CONFIG_INTERNAL_STATS
   ctx->mic = *xd->mi[0];
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART)
-#endif
     av1_copy_mbmi_ext_to_mbmi_ext_frame(
         &ctx->mbmi_ext_best, x->mbmi_ext,
         av1_ref_frame_type(xd->mi[0]->ref_frame));
@@ -2031,11 +2020,7 @@ static int64_t motion_mode_rd(
                               rd_stats->rdcost, rd_stats, rd_stats_y,
                               rd_stats_uv, mbmi);
       }
-#if CONFIG_SDP
       mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
-#else
-      mbmi->skip_txfm = 0;
-#endif
     } else {
       // Perform full transform search
       int64_t skip_rd = INT64_MAX;
@@ -2068,23 +2053,12 @@ static int64_t motion_mode_rd(
       }
       if (cpi->sf.inter_sf.inter_mode_rd_model_estimation == 1) {
         const int skip_ctx = av1_get_skip_txfm_context(xd);
-#if CONFIG_SDP
         inter_mode_data_push(
             tile_data, mbmi->sb_type[PLANE_TYPE_Y], rd_stats->sse,
             rd_stats->dist,
             rd_stats_y->rate + rd_stats_uv->rate +
-#if CONFIG_SDP
                 mode_costs->skip_txfm_cost
                     [skip_ctx][mbmi->skip_txfm[xd->tree_type == CHROMA_PART]]);
-#else
-                mode_costs->skip_txfm_cost[skip_ctx][mbmi->skip_txfm]);
-#endif
-#else
-        inter_mode_data_push(
-            tile_data, mbmi->sb_type, rd_stats->sse, rd_stats->dist,
-            rd_stats_y->rate + rd_stats_uv->rate +
-                mode_costs->skip_txfm_cost[skip_ctx][mbmi->skip_txfm]);
-#endif
       }
     }
 
@@ -2109,11 +2083,7 @@ static int64_t motion_mode_rd(
       memcpy(best_blk_skip, txfm_info->blk_skip,
              sizeof(txfm_info->blk_skip[0]) * xd->height * xd->width);
       av1_copy_array(best_tx_type_map, xd->tx_type_map, xd->height * xd->width);
-#if CONFIG_SDP
       best_xskip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
-#else
-      best_xskip_txfm = mbmi->skip_txfm;
-#endif
     }
   }
   // Update RD and mbmi stats for selected motion mode
@@ -2780,17 +2750,9 @@ static AOM_INLINE int find_ref_match_in_above_nbs(const int total_mi_cols,
   for (int above_mi_col = mi_col; above_mi_col < end_col;
        above_mi_col += mi_step) {
     MB_MODE_INFO **above_mi = prev_row_mi + above_mi_col;
-#if CONFIG_SDP
     mi_step = mi_size_wide[above_mi[0]->sb_type[PLANE_TYPE_Y]];
-#else
-    mi_step = mi_size_wide[above_mi[0]->sb_type];
-#endif
     int match_found = 0;
-#if CONFIG_SDP
     if (is_inter_block(*above_mi, xd->tree_type))
-#else
-    if (is_inter_block(*above_mi))
-#endif
       match_found = ref_match_found_in_nb_blocks(*cur_mbmi, *above_mi);
     if (match_found) return 1;
   }
@@ -2810,17 +2772,9 @@ static AOM_INLINE int find_ref_match_in_left_nbs(const int total_mi_rows,
   for (int left_mi_row = mi_row; left_mi_row < end_row;
        left_mi_row += mi_step) {
     MB_MODE_INFO **left_mi = prev_col_mi + left_mi_row * xd->mi_stride;
-#if CONFIG_SDP
     mi_step = mi_size_high[left_mi[0]->sb_type[PLANE_TYPE_Y]];
-#else
-    mi_step = mi_size_high[left_mi[0]->sb_type];
-#endif
     int match_found = 0;
-#if CONFIG_SDP
     if (is_inter_block(*left_mi, xd->tree_type))
-#else
-    if (is_inter_block(*left_mi))
-#endif
       match_found = ref_match_found_in_nb_blocks(*cur_mbmi, *left_mi);
     if (match_found) return 1;
   }
@@ -3635,18 +3589,11 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
                                        RD_STATS *rd_stats, BLOCK_SIZE bsize,
                                        int64_t best_rd) {
   const AV1_COMMON *const cm = &cpi->common;
-#if CONFIG_SDP
   MACROBLOCKD *const xd = &x->e_mbd;
   if (!av1_allow_intrabc(cm) || (xd->tree_type == CHROMA_PART) ||
       !cpi->oxcf.kf_cfg.enable_intrabc)
-#else
-  if (!av1_allow_intrabc(cm) || !cpi->oxcf.kf_cfg.enable_intrabc)
-#endif
     return INT64_MAX;
   const int num_planes = av1_num_planes(cm);
-#if !CONFIG_SDP
-  MACROBLOCKD *const xd = &x->e_mbd;
-#endif
   const TileInfo *tile = &xd->tile;
   MB_MODE_INFO *mbmi = xd->mi[0];
   TxfmSearchInfo *txfm_info = &x->txfm_search_info;
@@ -3661,21 +3608,13 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
   MV_REFERENCE_FRAME ref_frame = INTRA_FRAME;
 #if CONFIG_IBC_SR_EXT
-#if CONFIG_SDP
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 1;
-#else
-  mbmi->use_intrabc = 1;
-#endif  // CONFIG_SDP
 #endif  // CONFIG_IBC_SR_EXT
   av1_find_mv_refs(cm, xd, mbmi, ref_frame, mbmi_ext->ref_mv_count,
                    xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs,
                    mbmi_ext->mode_context);
 #if CONFIG_IBC_SR_EXT
-#if CONFIG_SDP
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
-#else
-  mbmi->use_intrabc = 0;
-#endif  // CONFIG_SDP
 #endif  // CONFIG_IBC_SR_EXT
   // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
   // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
@@ -3855,12 +3794,8 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     assert((dv.row & 7) == 0);
     memset(&mbmi->palette_mode_info, 0, sizeof(mbmi->palette_mode_info));
     mbmi->filter_intra_mode_info.use_filter_intra = 0;
-#if CONFIG_SDP
     mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 1;
     assert(xd->tree_type != CHROMA_PART);
-#else
-    mbmi->use_intrabc = 1;
-#endif
 
 #if CONFIG_ORIP
     mbmi->angle_delta[PLANE_TYPE_Y] = 0;
@@ -3876,11 +3811,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     mbmi->motion_mode = SIMPLE_TRANSLATION;
     mbmi->mv[0].as_mv = dv;
     mbmi->interp_fltr = BILINEAR;
-#if CONFIG_SDP
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
-#else
-    mbmi->skip_txfm = 0;
-#endif
     av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
                                   av1_num_planes(cm) - 1);
 
@@ -3939,40 +3870,24 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
   ctx->rd_stats.skip_txfm = 0;
   mbmi->ref_frame[0] = INTRA_FRAME;
   mbmi->ref_frame[1] = NONE_FRAME;
-#if CONFIG_SDP
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
   if (xd->tree_type != CHROMA_PART) {
     mbmi->mv[0].as_int = 0;
     mbmi->skip_mode = 0;
   }
-#else
-  mbmi->use_intrabc = 0;
-  mbmi->mv[0].as_int = 0;
-  mbmi->skip_mode = 0;
-#endif
-#if CONFIG_SDP
   const int64_t intra_yrd =
       (xd->tree_type == CHROMA_PART)
           ? 0
           : av1_rd_pick_intra_sby_mode(cpi, x, &rate_y, &rate_y_tokenonly,
                                        &dist_y, &y_skip_txfm, bsize, best_rd,
                                        ctx);
-#else
-  const int64_t intra_yrd =
-      av1_rd_pick_intra_sby_mode(cpi, x, &rate_y, &rate_y_tokenonly, &dist_y,
-                                 &y_skip_txfm, bsize, best_rd, ctx);
-#endif
 
   // Initialize default mode evaluation params
   set_mode_eval_params(cpi, x, DEFAULT_EVAL);
 
   if (intra_yrd < best_rd) {
     // Search intra modes for uv planes if needed
-#if CONFIG_SDP
     if (num_planes > 1 && xd->tree_type != LUMA_PART) {
-#else
-    if (num_planes > 1) {
-#endif
       // Set up the tx variables for reproducing the y predictions in case we
       // need it for chroma-from-luma.
       if (xd->is_chroma_ref && store_cfl_required_rdo(cm, x)) {
@@ -4000,11 +3915,7 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
   if (rd_cost->rate != INT_MAX && rd_cost->rdcost < best_rd)
     best_rd = rd_cost->rdcost;
   if (rd_pick_intrabc_mode_sb(cpi, x, ctx, rd_cost, bsize, best_rd) < best_rd) {
-#if CONFIG_SDP
     ctx->rd_stats.skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
-#else
-    ctx->rd_stats.skip_txfm = mbmi->skip_txfm;
-#endif
     memcpy(ctx->blk_skip, txfm_info->blk_skip,
            sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
     assert(rd_cost->rate != INT_MAX);
@@ -4012,9 +3923,7 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
   if (rd_cost->rate == INT_MAX) return;
 
   ctx->mic = *xd->mi[0];
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART)
-#endif
     av1_copy_mbmi_ext_to_mbmi_ext_frame(
         &ctx->mbmi_ext_best, x->mbmi_ext,
         av1_ref_frame_type(xd->mi[0]->ref_frame));
@@ -4076,11 +3985,7 @@ static AOM_INLINE void rd_pick_skip_mode(
   mbmi->ref_frame[0] = ref_frame;
   mbmi->ref_frame[1] = second_ref_frame;
 #if CONFIG_IBC_SR_EXT
-#if CONFIG_SDP
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
-#else
-  mbmi->use_intrabc = 0;
-#endif  // CONFIG_SDP
 #endif  // CONFIG_IBC_SR_EXT
   const uint8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
   if (x->mbmi_ext->ref_mv_count[ref_frame_type] == UINT8_MAX) {
@@ -4115,11 +4020,7 @@ static AOM_INLINE void rd_pick_skip_mode(
   mbmi->interinter_comp.type = COMPOUND_AVERAGE;
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   mbmi->ref_mv_idx = 0;
-#if CONFIG_SDP
   mbmi->skip_mode = mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-#else
-  mbmi->skip_mode = mbmi->skip_txfm = 1;
-#endif
 
   set_default_interp_filters(mbmi,
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -4160,13 +4061,8 @@ static AOM_INLINE void rd_pick_skip_mode(
     assert(mode_index != THR_INVALID);
     search_state->best_mbmode.skip_mode = 1;
     search_state->best_mbmode = *mbmi;
-#if CONFIG_SDP
     search_state->best_mbmode.skip_mode =
         search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-#else
-    search_state->best_mbmode.skip_mode = search_state->best_mbmode.skip_txfm =
-        1;
-#endif
 #if CONFIG_NEW_INTER_MODES
     search_state->best_mbmode.mode = NEAR_NEARMV;
 #else
@@ -4188,12 +4084,8 @@ static AOM_INLINE void rd_pick_skip_mode(
            sizeof(search_state->best_mbmode.inter_tx_size));
     set_txfm_ctxs(
         search_state->best_mbmode.tx_size, xd->width, xd->height,
-#if CONFIG_SDP
         search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART] &&
             is_inter_block(mbmi, xd->tree_type),
-#else
-        search_state->best_mbmode.skip_txfm && is_inter_block(mbmi),
-#endif
         xd);
 
     // Set up color-related variables for skip mode.
@@ -4975,11 +4867,7 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
                              cm->features.interp_filter);
 #if CONFIG_IBC_SR_EXT
-#if CONFIG_SDP
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
-#else
-  mbmi->use_intrabc = 0;
-#endif  // CONFIG_SDP
 #endif  // CONFIG_IBC_SR_EXT
 }
 
@@ -5237,11 +5125,7 @@ static int compound_skip_by_single_states(
 static INLINE void match_ref_frame(const MB_MODE_INFO *const mbmi,
                                    const MV_REFERENCE_FRAME *ref_frames,
                                    int *const is_ref_match) {
-#if CONFIG_SDP
   if (is_inter_block(mbmi, SHARED_PART)) {
-#else
-  if (is_inter_block(mbmi)) {
-#endif
     is_ref_match[0] |= ref_frames[0] == mbmi->ref_frame[0];
     is_ref_match[1] |= ref_frames[1] == mbmi->ref_frame[0];
     if (has_second_ref(mbmi)) {
@@ -5350,12 +5234,8 @@ static INLINE void update_search_state(
   const int skip_ctx = av1_get_skip_txfm_context(xd);
   const int mode_is_intra =
       (av1_mode_defs[new_best_mode].mode < INTRA_MODE_END);
-#if CONFIG_SDP
   const int skip_txfm =
       mbmi->skip_txfm[xd->tree_type == CHROMA_PART] && !mode_is_intra;
-#else
-  const int skip_txfm = mbmi->skip_txfm && !mode_is_intra;
-#endif
   const TxfmSearchInfo *txfm_info = &x->txfm_search_info;
 
   search_state->best_rd = new_best_rd_stats->rdcost;
@@ -5699,22 +5579,11 @@ static void tx_search_best_inter_candidates(
                          mode_rate, search_state->best_rd)) {
       continue;
     } else if (cpi->sf.inter_sf.inter_mode_rd_model_estimation == 1) {
-#if CONFIG_SDP
       inter_mode_data_push(
           tile_data, mbmi->sb_type[PLANE_TYPE_Y], rd_stats.sse, rd_stats.dist,
           rd_stats_y.rate + rd_stats_uv.rate +
-#if CONFIG_SDP
               mode_costs->skip_txfm_cost
                   [skip_ctx][mbmi->skip_txfm[xd->tree_type == CHROMA_PART]]);
-#else
-              mode_costs->skip_txfm_cost[skip_ctx][mbmi->skip_txfm]);
-#endif
-#else
-      inter_mode_data_push(
-          tile_data, mbmi->sb_type, rd_stats.sse, rd_stats.dist,
-          rd_stats_y.rate + rd_stats_uv.rate +
-              mode_costs->skip_txfm_cost[skip_ctx][mbmi->skip_txfm]);
-#endif
     }
     rd_stats.rdcost = RDCOST(x->rdmult, rd_stats.rate, rd_stats.dist);
 
@@ -5800,11 +5669,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   const int *comp_inter_cost =
       mode_costs->comp_inter_cost[av1_get_reference_mode_context(xd)];
 #if CONFIG_IBC_SR_EXT
-#if CONFIG_SDP
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
-#else
-  mbmi->use_intrabc = 0;
-#endif  // CONFIG_SDP
 #endif  // CONFIG_IBC_SR_EXT
 
   InterModeSearchState search_state;
@@ -6058,14 +5923,9 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
     const int ref_frame_cost = comp_pred
                                    ? ref_costs_comp[ref_frame][second_ref_frame]
                                    : ref_costs_single[ref_frame];
-#if CONFIG_SDP
     const int compmode_cost = is_comp_ref_allowed(mbmi->sb_type[PLANE_TYPE_Y])
                                   ? comp_inter_cost[comp_pred]
                                   : 0;
-#else
-    const int compmode_cost =
-        is_comp_ref_allowed(mbmi->sb_type) ? comp_inter_cost[comp_pred] : 0;
-#endif
     const int real_compmode_cost =
         cm->current_frame.reference_mode == REFERENCE_MODE_SELECT
             ? compmode_cost
@@ -6095,11 +5955,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       update_best_single_mode(&search_state, this_mode, ref_frame, this_rd);
 
     if (this_rd == INT64_MAX) continue;
-#if CONFIG_SDP
     if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
-#else
-    if (mbmi->skip_txfm) {
-#endif
       rd_stats_y.rate = 0;
       rd_stats_uv.rate = 0;
     }
@@ -6171,12 +6027,8 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       float nn_features[6];
       float scores[2] = { 0.0f };
       float probs[2] = { 0.0f };
-#if CONFIG_SDP
       nn_features[0] = (float)search_state.best_mbmode
                            .skip_txfm[xd->tree_type != CHROMA_PART ? 0 : 1];
-#else
-      nn_features[0] = (float)search_state.best_mbmode.skip_txfm;
-#endif
       nn_features[1] = (float)mi_size_wide_log2[bsize];
       nn_features[2] = (float)mi_size_high_log2[bsize];
       nn_features[3] = (float)intra_cost;
@@ -6190,14 +6042,9 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       av1_nn_softmax(scores, probs, 2);
 
       if (probs[1] > 0.8) search_state.intra_search_state.skip_intra_modes = 1;
-#if CONFIG_SDP
     } else if ((search_state.best_mbmode
                     .skip_txfm[xd->tree_type == CHROMA_PART]) &&
                (sf->intra_sf.skip_intra_in_interframe >= 2)) {
-#else
-    } else if ((search_state.best_mbmode.skip_txfm) &&
-               (sf->intra_sf.skip_intra_in_interframe >= 2)) {
-#endif
       search_state.intra_search_state.skip_intra_modes = 1;
     }
   }
@@ -6341,18 +6188,11 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   set_mode_eval_params(cpi, x, DEFAULT_EVAL);
 
   // Only try palette mode when the best mode so far is an intra mode.
-#if CONFIG_SDP
   const int try_palette =
       cpi->oxcf.tool_cfg.enable_palette &&
       av1_allow_palette(features->allow_screen_content_tools,
                         mbmi->sb_type[PLANE_TYPE_Y]) &&
       !is_inter_mode(search_state.best_mbmode.mode);
-#else
-  const int try_palette =
-      cpi->oxcf.tool_cfg.enable_palette &&
-      av1_allow_palette(features->allow_screen_content_tools, mbmi->sb_type) &&
-      !is_inter_mode(search_state.best_mbmode.mode);
-#endif
   RD_STATS this_rd_cost;
   int this_skippable = 0;
   if (try_palette) {
@@ -6449,15 +6289,9 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 
   const InterpFilter interp_filter = features->interp_filter;
   (void)interp_filter;
-#if CONFIG_SDP
   assert((interp_filter == SWITCHABLE) ||
          (interp_filter == search_state.best_mbmode.interp_fltr) ||
          !is_inter_block(&search_state.best_mbmode, xd->tree_type));
-#else
-  assert((interp_filter == SWITCHABLE) ||
-         (interp_filter == search_state.best_mbmode.interp_fltr) ||
-         !is_inter_block(&search_state.best_mbmode));
-#endif
 
   if (!cpi->rc.is_src_frame_alt_ref && cpi->sf.inter_sf.adaptive_rd_thresh) {
     av1_update_rd_thresh_fact(cm, x->thresh_freq_fact,
@@ -6791,11 +6625,7 @@ static AOM_INLINE void calc_target_weighted_pred(
     const AV1_COMMON *cm, const MACROBLOCK *x, const MACROBLOCKD *xd,
     const uint8_t *above, int above_stride, const uint8_t *left,
     int left_stride) {
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
   const int bw = xd->width << MI_SIZE_LOG2;
   const int bh = xd->height << MI_SIZE_LOG2;
   const OBMCBuffer *obmc_buffer = &x->obmc_buffer;

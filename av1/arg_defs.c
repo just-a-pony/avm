@@ -351,11 +351,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "disable-ml-transform-speed-features", 1,
               "Disable ML transform speed features "
               "(0: false (default), 1: true)"),
-#if CONFIG_SDP
   .enable_sdp = ARG_DEF(NULL, "enable-sdp", 1,
                         "Enable semi decoupled partitioning for key frame"
                         "(0: false, 1: true (default))"),
-#endif
 #if CONFIG_MRLS
   .enable_mrls =
       ARG_DEF(NULL, "enable-mrls", 1,

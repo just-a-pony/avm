@@ -248,11 +248,7 @@ static int64_t pick_intra_angle_routine_sbuv(
     int rate_overhead, int64_t best_rd_in, int *rate, RD_STATS *rd_stats,
     int *best_angle_delta, int64_t *best_rd) {
   MB_MODE_INFO *mbmi = x->e_mbd.mi[0];
-#if CONFIG_SDP
   assert(!is_inter_block(mbmi, x->e_mbd.tree_type));
-#else
-  assert(!is_inter_block(mbmi));
-#endif
   int this_rate;
   int64_t this_rd;
   RD_STATS tokenonly_rd_stats;
@@ -287,11 +283,7 @@ static int rd_pick_intra_angle_sbuv(const AV1_COMP *const cpi, MACROBLOCK *x,
                                     RD_STATS *rd_stats) {
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   assert(!is_inter_block(mbmi, xd->tree_type));
-#else
-  assert(!is_inter_block(mbmi));
-#endif
   int i, angle_delta, best_angle_delta = 0;
   int64_t this_rd, best_rd_in, rd_cost[2 * (MAX_ANGLE_DELTA + 2)];
 
@@ -349,19 +341,9 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
   MB_MODE_INFO *const mbmi = xd->mi[0];
   const MACROBLOCKD_PLANE *pd = &xd->plane[AOM_PLANE_U];
   const ModeCosts *mode_costs = &x->mode_costs;
-#if CONFIG_SDP
   assert(xd->tree_type != LUMA_PART);
   const BLOCK_SIZE plane_bsize = get_plane_block_size(
       mbmi->sb_type[PLANE_TYPE_UV], pd->subsampling_x, pd->subsampling_y);
-#else
-  const BLOCK_SIZE plane_bsize =
-#if CONFIG_SDP
-      get_plane_block_size(mbmi->sb_type[xd->tree_type == CHROMA_PART],
-                           pd->subsampling_x, pd->subsampling_y);
-#else
-      get_plane_block_size(mbmi->sb_type, pd->subsampling_x, pd->subsampling_y);
-#endif
-#endif
 
   assert(is_cfl_allowed(xd) && cpi->oxcf.intra_mode_cfg.enable_cfl_intra);
   assert(plane_bsize < BLOCK_SIZES_ALL);
@@ -604,11 +586,7 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   assert(!is_inter_block(mbmi, xd->tree_type));
-#else
-  assert(!is_inter_block(mbmi));
-#endif
   MB_MODE_INFO best_mbmi = *mbmi;
   int64_t best_rd = INT64_MAX, this_rd;
   const ModeCosts *mode_costs = &x->mode_costs;
@@ -628,29 +606,19 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   // Only store reconstructed luma when there's chroma RDO. When there's no
   // chroma RDO, the reconstructed luma will be stored in encode_superblock().
   xd->cfl.store_y = store_cfl_required_rdo(cm, x);
-#if CONFIG_SDP
   if (xd->tree_type == SHARED_PART) {
-#endif
     if (xd->cfl.store_y) {
       // Restore reconstructed luma values.
       // TODO(chiyotsai@google.com): right now we are re-computing the txfm in
       // this function everytime we search through uv modes. There is some
       // potential speed up here if we cache the result to avoid redundant
       // computation.
-#if CONFIG_SDP
       av1_encode_intra_block_plane(cpi, x, mbmi->sb_type[PLANE_TYPE_Y],
                                    AOM_PLANE_Y, DRY_RUN_NORMAL,
                                    cpi->optimize_seg_arr[mbmi->segment_id]);
-#else
-    av1_encode_intra_block_plane(cpi, x, mbmi->sb_type, AOM_PLANE_Y,
-                                 DRY_RUN_NORMAL,
-                                 cpi->optimize_seg_arr[mbmi->segment_id]);
-#endif
       xd->cfl.store_y = 0;
     }
-#if CONFIG_SDP
   }
-#endif
 
   // Search through all non-palette modes.
 #if CONFIG_AIMC
@@ -697,14 +665,9 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
     }
 #else
     const int is_directional_mode = av1_is_directional_mode(get_uv_mode(mode));
-#if CONFIG_SDP
     if (is_directional_mode &&
         av1_use_angle_delta(mbmi->sb_type[PLANE_TYPE_UV]) &&
         intra_mode_cfg->enable_angle_delta) {
-#else
-    if (is_directional_mode && av1_use_angle_delta(mbmi->sb_type) &&
-        intra_mode_cfg->enable_angle_delta) {
-#endif
       // Search through angle delta
       const int rate_overhead =
           mode_costs->intra_uv_mode_cost[is_cfl_allowed(xd)][mbmi->mode][mode];
@@ -743,17 +706,10 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   }
 
   // Search palette mode
-#if CONFIG_SDP
   const int try_palette =
       cpi->oxcf.tool_cfg.enable_palette &&
       av1_allow_palette(cpi->common.features.allow_screen_content_tools,
                         mbmi->sb_type[PLANE_TYPE_UV]);
-#else
-  const int try_palette =
-      cpi->oxcf.tool_cfg.enable_palette &&
-      av1_allow_palette(cpi->common.features.allow_screen_content_tools,
-                        mbmi->sb_type);
-#endif
   if (try_palette) {
     uint8_t *best_palette_color_map = x->palette_buffer->best_palette_color_map;
 #if CONFIG_AIMC
@@ -806,11 +762,7 @@ int av1_search_palette_mode(IntraModeSearchState *intra_search_state,
   const int cols = block_size_wide[bsize];
 
 #if CONFIG_IBC_SR_EXT
-#if CONFIG_SDP
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
-#else
-  mbmi->use_intrabc = 0;
-#endif  // CONFIG_SDP
 #endif  // CONFIG_IBC_SR_EXT
   mbmi->mode = DC_PRED;
   mbmi->uv_mode = UV_DC_PRED;
@@ -910,12 +862,8 @@ static AOM_INLINE int intra_block_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
   av1_pick_uniform_tx_size_type_yrd(cpi, x, &rd_stats, bsize, INT64_MAX);
   if (rd_stats.rate == INT_MAX) return 0;
   int this_rate_tokenonly = rd_stats.rate;
-#if CONFIG_SDP
   if (!xd->lossless[mbmi->segment_id] &&
       block_signals_txsize(mbmi->sb_type[PLANE_TYPE_Y])) {
-#else
-  if (!xd->lossless[mbmi->segment_id] && block_signals_txsize(mbmi->sb_type)) {
-#endif
     // av1_pick_uniform_tx_size_type_yrd above includes the cost of the tx_size
     // in the tokenonly rate, but for intra blocks, tx_size is always coded
     // (prediction granularity), so we account for it in the full rate,
@@ -1145,17 +1093,10 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
     // TODO(chiyotsai@google.com): Consolidate the chroma search code here with
     // the one in av1_search_palette_mode.
     PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
-#if CONFIG_SDP
     const int try_palette =
         cpi->oxcf.tool_cfg.enable_palette &&
         av1_allow_palette(cm->features.allow_screen_content_tools,
                           mbmi->sb_type[PLANE_TYPE_Y]);
-#else
-    const int try_palette =
-        cpi->oxcf.tool_cfg.enable_palette &&
-        av1_allow_palette(cm->features.allow_screen_content_tools,
-                          mbmi->sb_type);
-#endif
 #if !CONFIG_AIMC
     if (intra_search_state->rate_uv_intra == INT_MAX) {
 #endif  // !CONFIG_AIMC
@@ -1464,11 +1405,7 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                                    PICK_MODE_CONTEXT *ctx) {
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   assert(!is_inter_block(mbmi, xd->tree_type));
-#else
-  assert(!is_inter_block(mbmi));
-#endif
   int64_t best_model_rd = INT64_MAX;
   int is_directional_mode;
 #if CONFIG_FORWARDSKIP
@@ -1479,17 +1416,10 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   // function
   int beat_best_rd = 0;
   PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
-#if CONFIG_SDP
   const int try_palette =
       cpi->oxcf.tool_cfg.enable_palette &&
       av1_allow_palette(cpi->common.features.allow_screen_content_tools,
                         mbmi->sb_type[PLANE_TYPE_Y]);
-#else
-  const int try_palette =
-      cpi->oxcf.tool_cfg.enable_palette &&
-      av1_allow_palette(cpi->common.features.allow_screen_content_tools,
-                        mbmi->sb_type);
-#endif
   uint8_t *best_palette_color_map =
       try_palette ? x->palette_buffer->best_palette_color_map : NULL;
 #if CONFIG_AIMC
@@ -1606,7 +1536,7 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
 #elif CONFIG_MRLS
                                     bmode_costs[mbmi->mode] + mrl_idx_cost);
 #else
-                                      bmode_costs[mbmi->mode]);
+                                    bmode_costs[mbmi->mode]);
 #endif  // CONFIG_AIMC
 
       if (prune_intra_y_mode(this_model_rd, &best_model_rd, top_intra_model_rd))
@@ -1617,13 +1547,8 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
       s = this_rd_stats.skip_txfm;
 
       if (this_rate_tokenonly == INT_MAX) continue;
-#if CONFIG_SDP
       if (!xd->lossless[mbmi->segment_id] &&
           block_signals_txsize(mbmi->sb_type[PLANE_TYPE_Y])) {
-#else
-    if (!xd->lossless[mbmi->segment_id] &&
-        block_signals_txsize(mbmi->sb_type)) {
-#endif
         // av1_pick_uniform_tx_size_type_yrd above includes the cost of the
         // tx_size in the tokenonly rate, but for intra blocks, tx_size is
         // always coded (prediction granularity), so we account for it in the

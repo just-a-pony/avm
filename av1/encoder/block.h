@@ -261,11 +261,7 @@ typedef struct {
   //! \copydoc MB_MODE_INFO_EXT::mode_context
   int16_t mode_context;
   //! Offset of current coding block's coeff buffer relative to the sb.
-#if CONFIG_SDP
   int cb_offset[MAX_MB_PLANE];
-#else
-  int cb_offset;
-#endif
 } MB_MODE_INFO_EXT_FRAME;
 
 /*! \brief Txfm search results for a partition
@@ -614,12 +610,8 @@ typedef struct {
    ****************************************************************************/
   /**@{*/
   //! Cost for coding the partition.
-#if CONFIG_SDP
   int partition_cost[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
                     [EXT_PARTITION_TYPES];
-#else
-  int partition_cost[PARTITION_CONTEXTS][EXT_PARTITION_TYPES];
-#endif
   /**@}*/
 
   /*****************************************************************************
@@ -638,14 +630,9 @@ typedef struct {
   int filter_intra_cost[BLOCK_SIZES_ALL][2];
   //! filter_intra_mode_cost
   int filter_intra_mode_cost[FILTER_INTRA_MODES];
-#if CONFIG_SDP
   //! angle_delta_cost
   int angle_delta_cost[PARTITION_STRUCTURE_NUM][DIRECTIONAL_MODES]
                       [2 * MAX_ANGLE_DELTA + 1];
-#else
-  //! angle_delta_cost
-  int angle_delta_cost[DIRECTIONAL_MODES][2 * MAX_ANGLE_DELTA + 1];
-#endif
 
 #if CONFIG_MRLS
   //! mrl_index_cost
@@ -989,11 +976,7 @@ typedef struct macroblock {
    */
   CB_COEFF_BUFFER *cb_coef_buff;
   //! Offset of current coding block's coeff buffer relative to the sb.
-#if CONFIG_SDP
   int cb_offset[MAX_MB_PLANE];
-#else
-  uint16_t cb_offset;
-#endif
 
   //! Modified source and masks used for fast OBMC search.
   OBMCBuffer obmc_buffer;
@@ -1316,14 +1299,9 @@ static INLINE int is_rect_tx_allowed_bsize(BLOCK_SIZE bsize) {
 
 static INLINE int is_rect_tx_allowed(const MACROBLOCKD *xd,
                                      const MB_MODE_INFO *mbmi) {
-#if CONFIG_SDP
   return is_rect_tx_allowed_bsize(
              mbmi->sb_type[xd->tree_type == CHROMA_PART]) &&
          !xd->lossless[mbmi->segment_id];
-#else
-  return is_rect_tx_allowed_bsize(mbmi->sb_type) &&
-         !xd->lossless[mbmi->segment_id];
-#endif
 }
 
 #if !CONFIG_IST && !CONFIG_NEW_TX_PARTITION
@@ -1360,10 +1338,6 @@ static INLINE void set_blk_skip(uint8_t txb_skip[], int plane, int blk_idx,
 
 static INLINE int is_blk_skip(uint8_t *txb_skip, int plane, int blk_idx) {
 #ifndef NDEBUG
-  // Check if this is initialized
-#if !CONFIG_SDP
-  assert(!(txb_skip[blk_idx] & (1UL << (plane + 4))));
-#endif
   // The magic number is 0x77, this is to test if there is garbage data
   assert((txb_skip[blk_idx] & 0x88) == 0);
 #endif

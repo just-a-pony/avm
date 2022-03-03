@@ -450,9 +450,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_intra_edge_filter = oxcf->intra_mode_cfg.enable_intra_edge_filter;
   seq->enable_filter_intra = oxcf->intra_mode_cfg.enable_filter_intra;
 
-#if CONFIG_SDP
   seq->enable_sdp = oxcf->part_cfg.enable_sdp;
-#endif
 #if CONFIG_MRLS
   seq->enable_mrls = oxcf->intra_mode_cfg.enable_mrls;
 #endif

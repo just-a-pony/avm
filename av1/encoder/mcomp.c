@@ -3284,12 +3284,8 @@ int av1_find_best_sub_pixel_tree_pruned_evenmore(
   int hstep = INIT_SUBPEL_STEP_SIZE;  // Step size, initialized to 4/8=1/2 pel
   unsigned int besterr = INT_MAX;
   *bestmv = start_mv;
-#if CONFIG_SDP
   const struct scale_factors *const sf =
       is_intrabc_block(xd->mi[0], xd->tree_type)
-#else
-  const struct scale_factors *const sf = is_intrabc_block(xd->mi[0])
-#endif
           ? &cm->sf_identity
           : xd->block_ref_scale_factors[0];
   const int is_scaled = av1_is_scaled(sf);
@@ -3372,12 +3368,8 @@ int av1_find_best_sub_pixel_tree_pruned_more(
   int hstep = INIT_SUBPEL_STEP_SIZE;  // Step size, initialized to 4/8=1/2 pel
   unsigned int besterr = INT_MAX;
   *bestmv = start_mv;
-#if CONFIG_SDP
   const struct scale_factors *const sf =
       is_intrabc_block(xd->mi[0], xd->tree_type)
-#else
-  const struct scale_factors *const sf = is_intrabc_block(xd->mi[0])
-#endif
           ? &cm->sf_identity
           : xd->block_ref_scale_factors[0];
   const int is_scaled = av1_is_scaled(sf);
@@ -3461,12 +3453,8 @@ int av1_find_best_sub_pixel_tree_pruned(
   int hstep = INIT_SUBPEL_STEP_SIZE;  // Step size, initialized to 4/8=1/2 pel
   unsigned int besterr = INT_MAX;
   *bestmv = start_mv;
-#if CONFIG_SDP
   const struct scale_factors *const sf =
       is_intrabc_block(xd->mi[0], xd->tree_type)
-#else
-  const struct scale_factors *const sf = is_intrabc_block(xd->mi[0])
-#endif
           ? &cm->sf_identity
           : xd->block_ref_scale_factors[0];
   const int is_scaled = av1_is_scaled(sf);
@@ -3604,12 +3592,8 @@ int av1_find_best_sub_pixel_tree(MACROBLOCKD *xd, const AV1_COMMON *const cm,
   unsigned int besterr = INT_MAX;
 
   *bestmv = start_mv;
-#if CONFIG_SDP
   const struct scale_factors *const sf =
       is_intrabc_block(xd->mi[0], xd->tree_type)
-#else
-  const struct scale_factors *const sf = is_intrabc_block(xd->mi[0])
-#endif
           ? &cm->sf_identity
           : xd->block_ref_scale_factors[0];
   const int is_scaled = av1_is_scaled(sf);

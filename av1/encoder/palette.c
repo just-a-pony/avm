@@ -271,12 +271,8 @@ static AOM_INLINE void palette_rd_y(
   if (tokenonly_rd_stats.rate == INT_MAX) return;
   int this_rate = tokenonly_rd_stats.rate + palette_mode_cost;
   int64_t this_rd = RDCOST(x->rdmult, this_rate, tokenonly_rd_stats.dist);
-#if CONFIG_SDP
   if (!xd->lossless[mbmi->segment_id] &&
       block_signals_txsize(mbmi->sb_type[PLANE_TYPE_Y])) {
-#else
-  if (!xd->lossless[mbmi->segment_id] && block_signals_txsize(mbmi->sb_type)) {
-#endif
     tokenonly_rd_stats.rate -= tx_size_cost(x, bsize, mbmi->tx_size);
   }
   // Collect mode stats for multiwinner mode processing
@@ -425,18 +421,12 @@ void av1_rd_pick_palette_intra_sby(
 #if CONFIG_FORWARDSKIP
   mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = 0;
 #endif  // CONFIG_FORWARDSKIP
-#if CONFIG_SDP
   assert(!is_inter_block(mbmi, xd->tree_type));
-#else
-  assert(!is_inter_block(mbmi));
-#endif
   assert(av1_allow_palette(cpi->common.features.allow_screen_content_tools,
                            bsize));
   assert(PALETTE_MAX_SIZE == 8);
   assert(PALETTE_MIN_SIZE == 2);
-#if CONFIG_ORIP
   mbmi->angle_delta[PLANE_TYPE_Y] = 0;
-#endif
 
   const int src_stride = x->plane[0].src.stride;
   const uint8_t *const src = x->plane[0].src.buf;
@@ -663,25 +653,15 @@ void av1_rd_pick_palette_intra_sbuv(const AV1_COMP *cpi, MACROBLOCK *x,
                                     int *skippable) {
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   assert(!is_inter_block(mbmi, xd->tree_type));
   assert(xd->tree_type != LUMA_PART);
   assert(av1_allow_palette(cpi->common.features.allow_screen_content_tools,
                            mbmi->sb_type[PLANE_TYPE_UV]));
-#else
-  assert(!is_inter_block(mbmi));
-  assert(av1_allow_palette(cpi->common.features.allow_screen_content_tools,
-                           mbmi->sb_type));
-#endif
   PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_UV];
 #if CONFIG_FORWARDSKIP
   mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
 #endif  // CONFIG_FORWARDSKIP
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const SequenceHeader *const seq_params = &cpi->common.seq_params;
   int this_rate;
   int64_t this_rd;
@@ -841,12 +821,8 @@ void av1_restore_uv_color_map(const AV1_COMP *cpi, MACROBLOCK *x) {
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
-#if CONFIG_SDP
   assert(xd->tree_type != LUMA_PART);
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_UV];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   int src_stride = x->plane[1].src.stride;
   const uint8_t *const src_u = x->plane[1].src.buf;
   const uint8_t *const src_v = x->plane[2].src.buf;

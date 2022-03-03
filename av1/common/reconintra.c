@@ -1328,11 +1328,7 @@ static int is_smooth(const MB_MODE_INFO *mbmi, int plane) {
   } else {
     // uv_mode is not set for inter blocks, so need to explicitly
     // detect that case.
-#if CONFIG_SDP
     if (is_inter_block(mbmi, SHARED_PART)) return 0;
-#else
-    if (is_inter_block(mbmi)) return 0;
-#endif
 
     const UV_PREDICTION_MODE uv_mode = mbmi->uv_mode;
     return (uv_mode == UV_SMOOTH_PRED || uv_mode == UV_SMOOTH_V_PRED ||
@@ -1630,12 +1626,7 @@ static void build_intra_predictors_high(
   int need_above_left = extend_modes[mode] & NEED_ABOVELEFT;
 #if CONFIG_MRLS
   const uint8_t mrl_index =
-      (plane == PLANE_TYPE_Y && is_inter_block(xd->mi[0]
-#if CONFIG_SDP
-                                               ,
-                                               xd->tree_type
-#endif
-                                               ) == 0)
+      (plane == PLANE_TYPE_Y && is_inter_block(xd->mi[0], xd->tree_type) == 0)
           ? xd->mi[0]->mrl_index
           : 0;
   const int above_mrl_idx = is_sb_boundary ? 0 : mrl_index;
@@ -2004,12 +1995,7 @@ static void build_intra_predictors(
   int i;
 #if CONFIG_MRLS
   const uint8_t mrl_index =
-      (plane == PLANE_TYPE_Y && is_inter_block(xd->mi[0]
-#if CONFIG_SDP
-                                               ,
-                                               xd->tree_type
-#endif
-                                               ) == 0)
+      (plane == PLANE_TYPE_Y && is_inter_block(xd->mi[0], xd->tree_type) == 0)
           ? xd->mi[0]->mrl_index
           : 0;
   const int above_mrl_idx = is_sb_boundary ? 0 : mrl_index;
@@ -2477,11 +2463,7 @@ void av1_predict_intra_block(
       (yd > 0) && (mi_row + ((row_off + txh) << ss_y) < xd->tile.mi_row_end);
 
   const PARTITION_TYPE partition = mbmi->partition;
-#if CONFIG_SDP
   BLOCK_SIZE bsize = mbmi->sb_type[plane > 0];
-#else
-  BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   // force 4x4 chroma component block size.
   if (ss_x || ss_y) {
     bsize = scale_chroma_bsize(bsize, ss_x, ss_y);
@@ -2575,13 +2557,9 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
   if (plane != AOM_PLANE_Y && mbmi->uv_mode == UV_CFL_PRED) {
 #if CONFIG_DEBUG
     assert(is_cfl_allowed(xd));
-    const BLOCK_SIZE plane_bsize = get_plane_block_size(
-#if CONFIG_SDP
-        mbmi->sb_type[xd->tree_type == CHROMA_PART], pd->subsampling_x,
-        pd->subsampling_y);
-#else
-        mbmi->sb_type, pd->subsampling_x, pd->subsampling_y);
-#endif
+    const BLOCK_SIZE plane_bsize =
+        get_plane_block_size(mbmi->sb_type[xd->tree_type == CHROMA_PART],
+                             pd->subsampling_x, pd->subsampling_y);
     (void)plane_bsize;
     assert(plane_bsize < BLOCK_SIZES_ALL);
     if (!xd->lossless[mbmi->segment_id]) {
@@ -2605,14 +2583,12 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
     } else {
       cfl_load_dc_pred(xd, dst, dst_stride, tx_size, pred_plane);
     }
-#if CONFIG_SDP
     if (xd->tree_type == CHROMA_PART) {
       const int luma_tx_size =
           av1_get_max_uv_txsize(mbmi->sb_type[PLANE_TYPE_UV], 0, 0);
       cfl_store_tx(xd, blk_row, blk_col, luma_tx_size,
                    mbmi->sb_type[PLANE_TYPE_UV]);
     }
-#endif
     cfl_predict_block(xd, dst, dst_stride, tx_size, plane);
     return;
   }

@@ -19,14 +19,10 @@
 // Can we use CfL for the current block?
 static INLINE CFL_ALLOWED_TYPE is_cfl_allowed(const MACROBLOCKD *xd) {
   const MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   if (xd->tree_type == LUMA_PART) return CFL_DISALLOWED;
   const BLOCK_SIZE bsize =
       mbmi->sb_type[xd->tree_type == SHARED_PART ? PLANE_TYPE_Y
                                                  : PLANE_TYPE_UV];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   assert(bsize < BLOCK_SIZES_ALL);
   if (xd->lossless[mbmi->segment_id]) {
     // In lossless, CfL is available when the partition size is equal to the
@@ -60,11 +56,7 @@ static INLINE CFL_ALLOWED_TYPE store_cfl_required(const AV1_COMMON *cm,
 
   // If this block has chroma information, we know whether we're
   // actually going to perform a CfL prediction
-#if CONFIG_SDP
   return (CFL_ALLOWED_TYPE)(!is_inter_block(mbmi, xd->tree_type) &&
-#else
-  return (CFL_ALLOWED_TYPE)(!is_inter_block(mbmi) &&
-#endif
                             mbmi->uv_mode == UV_CFL_PRED);
 }
 

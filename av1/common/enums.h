@@ -89,10 +89,8 @@ extern "C" {
 #define MAX_MODE_LF_DELTAS 2
 
 // Semi-Decoupled Partitioning
-#if CONFIG_SDP
 #define SHARED_PART_SIZE 128
 #define PARTITION_STRUCTURE_NUM 2
-#endif
 
 // Multiple reference line selection for intra prediction
 #if CONFIG_MRLS
@@ -177,14 +175,12 @@ typedef enum ATTRIBUTE_PACKED {
   BLOCK_LARGEST = (BLOCK_SIZES - 1)
 } BLOCK_SIZE;
 
-#if CONFIG_SDP
 enum {
   SHARED_PART = 0,
   LUMA_PART = 1,
   CHROMA_PART = 2,
   TREES_TYPES,
 } UENUM1BYTE(TREE_TYPE);
-#endif
 
 // 4X4, 8X8, 16X16, 32X32, 64X64, 128X128
 #define SQR_BLOCK_SIZES 6

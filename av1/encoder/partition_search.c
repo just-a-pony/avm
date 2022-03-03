@@ -44,13 +44,8 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
                                              FRAME_COUNTS *counts) {
   (void)counts;
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-  const int is_inter = is_inter_block(mbmi);
-#endif
   const int txb_size_index =
       is_inter ? av1_get_txb_size_index(bsize, blk_row, blk_col) : 0;
   const int is_rect = is_rect_tx(max_tx_size);
@@ -144,11 +139,7 @@ static void update_txfm_count(MACROBLOCK *x, MACROBLOCKD *xd,
                               int blk_row, int blk_col,
                               uint8_t allow_update_cdf) {
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const int max_blocks_high = max_block_high(xd, bsize, 0);
   const int max_blocks_wide = max_block_wide(xd, bsize, 0);
   const int txb_size_index = av1_get_txb_size_index(bsize, blk_row, blk_col);
@@ -174,15 +165,9 @@ static void update_txfm_count(MACROBLOCK *x, MACROBLOCKD *xd,
   txfm_partition_update(xd->above_txfm_context + blk_col,
                         xd->left_txfm_context + blk_row, this_size, tx_size);
 #else  // CONFIG_NEW_TX_PARTITION
-#if CONFIG_SDP
   int ctx = txfm_partition_context(
       xd->above_txfm_context + blk_col, xd->left_txfm_context + blk_row,
       mbmi->sb_type[xd->tree_type == CHROMA_PART], tx_size);
-#else
-  int ctx = txfm_partition_context(xd->above_txfm_context + blk_col,
-                                   xd->left_txfm_context + blk_row,
-                                   mbmi->sb_type, tx_size);
-#endif
   const TX_SIZE plane_tx_size = mbmi->inter_tx_size[txb_size_index];
   if (depth == MAX_VARTX_DEPTH) {
     // Don't add to counts in this case
@@ -261,11 +246,7 @@ static void tx_partition_count_update(const AV1_COMMON *const cm, MACROBLOCK *x,
 static void set_txfm_context(MACROBLOCKD *xd, TX_SIZE tx_size, int blk_row,
                              int blk_col) {
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const int max_blocks_high = max_block_high(xd, bsize, 0);
   const int max_blocks_wide = max_block_wide(xd, bsize, 0);
   const int txb_size_index = av1_get_txb_size_index(bsize, blk_row, blk_col);
@@ -356,11 +337,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   const int mis = cm->mi_params.mi_stride;
   const int mi_width = mi_size_wide[bsize];
   const int mi_height = mi_size_high[bsize];
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
 
   // Initialize tx_mode and tx_size_search_method
   TxfmSearchParams *txfm_params = &x->txfm_search_params;
@@ -371,25 +348,13 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
   if (!is_inter) {
-#if CONFIG_SDP
     if (xd->tree_type != LUMA_PART) {
       xd->cfl.store_y = store_cfl_required(cm, xd);
     }
-#else
-    xd->cfl.store_y = store_cfl_required(cm, xd);
-#endif
-#if CONFIG_SDP
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-#else
-    mbmi->skip_txfm = 1;
-#endif
-#if CONFIG_SDP
     const int plane_start = (xd->tree_type == CHROMA_PART);
     const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
     for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-    for (int plane = 0; plane < num_planes; ++plane) {
-#endif
       av1_encode_intra_block_plane(cpi, x, bsize, plane, dry_run,
                                    cpi->optimize_seg_arr[mbmi->segment_id]);
     }
@@ -399,19 +364,11 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
     // write_segment_id().
     if (!cpi->common.seg.segid_preskip && cpi->common.seg.update_map &&
         cpi->enc_seg.has_lossless_segment)
-#if CONFIG_SDP
       mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
-#else
-      mbmi->skip_txfm = 0;
-#endif
 
     xd->cfl.store_y = 0;
     if (av1_allow_palette(cm->features.allow_screen_content_tools, bsize)) {
-#if CONFIG_SDP
       for (int plane = plane_start; plane < AOMMIN(2, plane_end); ++plane) {
-#else
-      for (int plane = 0; plane < AOMMIN(2, num_planes); ++plane) {
-#endif
         if (mbmi->palette_mode_info.palette_size[plane] > 0) {
           if (!dry_run) {
             av1_tokenize_color_map(x, plane, t, bsize, mbmi->tx_size,
@@ -435,11 +392,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
     for (ref = 0; ref < 1 + is_compound; ++ref) {
       const YV12_BUFFER_CONFIG *cfg =
           get_ref_frame_yv12_buf(cm, mbmi->ref_frame[ref]);
-#if CONFIG_SDP
       assert(IMPLIES(!is_intrabc_block(mbmi, xd->tree_type), cfg));
-#else
-      assert(IMPLIES(!is_intrabc_block(mbmi), cfg));
-#endif
       av1_setup_pre_planes(xd, ref, cfg, mi_row, mi_col,
                            xd->block_ref_scale_factors[ref], num_planes);
     }
@@ -477,7 +430,6 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   }
 
   if (!dry_run) {
-#if CONFIG_SDP
     if (av1_allow_intrabc(cm) && is_intrabc_block(mbmi, xd->tree_type))
       td->intrabc_used = 1;
     if (txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
@@ -485,28 +437,14 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
         mbmi->sb_type[xd->tree_type == CHROMA_PART] > BLOCK_4X4 &&
         !(is_inter &&
           (mbmi->skip_txfm[xd->tree_type == CHROMA_PART] || seg_skip))) {
-#else
-    if (av1_allow_intrabc(cm) && is_intrabc_block(mbmi)) td->intrabc_used = 1;
-    if (txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
-        !xd->lossless[mbmi->segment_id] && mbmi->sb_type > BLOCK_4X4 &&
-        !(is_inter && (mbmi->skip_txfm || seg_skip))) {
-#endif
       if (is_inter) {
         tx_partition_count_update(cm, x, bsize, td->counts,
                                   tile_data->allow_update_cdf);
       } else {
-#if CONFIG_SDP
         if (mbmi->tx_size != max_txsize_rect_lookup[bsize] &&
             xd->tree_type != CHROMA_PART)
-#else
-        if (mbmi->tx_size != max_txsize_rect_lookup[bsize])
-#endif
           ++x->txfm_search_info.txb_split_count;
-#if CONFIG_SDP
         if (block_signals_txsize(bsize) && xd->tree_type != CHROMA_PART) {
-#else
-        if (block_signals_txsize(bsize)) {
-#endif
 #if CONFIG_NEW_TX_PARTITION
           const TX_SIZE max_tx_size = max_txsize_rect_lookup[bsize];
           update_partition_cdfs_and_counts(
@@ -525,9 +463,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
 #endif  // CONFIG_NEW_TX_PARTITION
         }
       }
-#if CONFIG_SDP
       if (xd->tree_type != CHROMA_PART)
-#endif
         assert(
             IMPLIES(is_rect_tx(mbmi->tx_size), is_rect_tx_allowed(xd, mbmi)));
     } else {
@@ -564,21 +500,11 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       av1_update_ref_mv_bank(cm, xd, mbmi);
 #endif  // CONFIG_REF_MV_BANK
   }
-#if CONFIG_SDP
   if (txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
       block_signals_txsize(mbmi->sb_type[xd->tree_type == CHROMA_PART]) &&
       is_inter &&
-#if CONFIG_SDP
       !(mbmi->skip_txfm[xd->tree_type == CHROMA_PART] || seg_skip) &&
       !xd->lossless[mbmi->segment_id]) {
-#else
-      !(mbmi->skip_txfm || seg_skip) && !xd->lossless[mbmi->segment_id]) {
-#endif
-#else
-  if (txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
-      block_signals_txsize(mbmi->sb_type) && is_inter &&
-      !(mbmi->skip_txfm || seg_skip) && !xd->lossless[mbmi->segment_id]) {
-#endif
     if (dry_run) tx_partition_set_contexts(cm, xd, bsize);
   } else {
     TX_SIZE tx_size = mbmi->tx_size;
@@ -594,26 +520,16 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
     }
     mbmi->tx_size = tx_size;
     set_txfm_ctxs(tx_size, xd->width, xd->height,
-#if CONFIG_SDP
                   (mbmi->skip_txfm[xd->tree_type == CHROMA_PART] || seg_skip) &&
                       is_inter_block(mbmi, xd->tree_type),
                   xd);
-#else
-                  (mbmi->skip_txfm || seg_skip) && is_inter_block(mbmi), xd);
-#endif
   }
 
-#if CONFIG_SDP
   if (is_inter_block(mbmi, xd->tree_type) && !xd->is_chroma_ref &&
       is_cfl_allowed(xd)) {
     cfl_store_block(xd, mbmi->sb_type[xd->tree_type == CHROMA_PART],
                     mbmi->tx_size);
-#else
-  if (is_inter_block(mbmi) && !xd->is_chroma_ref && is_cfl_allowed(xd)) {
-    cfl_store_block(xd, mbmi->sb_type, mbmi->tx_size);
-#endif
   }
-#if CONFIG_SDP
   if (xd->tree_type == LUMA_PART) {
     const CommonModeInfoParams *const mi_params = &cm->mi_params;
     for (int y = 0; y < mi_height; y++) {
@@ -630,7 +546,6 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       }
     }
   }
-#endif
 #if CONFIG_IBC_SR_EXT
   av1_mark_block_as_coded(xd, mi_row, mi_col, bsize, cm->seq_params.sb_size);
 #endif  // CONFIG_IBC_SR_EXT
@@ -640,12 +555,8 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
                                int mi_row, int mi_col, BLOCK_SIZE bsize,
                                AQ_MODE aq_mode, MB_MODE_INFO *mbmi) {
   x->rdmult = cpi->rd.RDMULT;
-#if CONFIG_SDP
   MACROBLOCKD *const xd = &x->e_mbd;
   if (aq_mode != NO_AQ && xd->tree_type == SHARED_PART) {
-#else
-  if (aq_mode != NO_AQ) {
-#endif
     assert(mbmi != NULL);
     if (aq_mode == VARIANCE_AQ) {
       if (cpi->vaq_refresh) {
@@ -793,21 +704,15 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
     return;
   }
 
-#if CONFIG_SDP
   AV1_COMMON *const cm = &cpi->common;
   const int num_planes = av1_num_planes(cm);
   MACROBLOCKD *const xd = &x->e_mbd;
   int plane_type = (xd->tree_type == CHROMA_PART);
-#endif
 
   av1_set_offsets(cpi, &tile_data->tile_info, x, mi_row, mi_col, bsize);
 
   if (ctx->rd_mode_is_ready) {
-#if CONFIG_SDP
     assert(ctx->mic.sb_type[plane_type] == bsize);
-#else
-    assert(ctx->mic.sb_type == bsize);
-#endif
     assert(ctx->mic.partition == partition);
     rd_cost->rate = ctx->rd_stats.rate;
     rd_cost->dist = ctx->rd_stats.dist;
@@ -815,11 +720,6 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
     return;
   }
 
-#if !CONFIG_SDP
-  AV1_COMMON *const cm = &cpi->common;
-  const int num_planes = av1_num_planes(cm);
-  MACROBLOCKD *const xd = &x->e_mbd;
-#endif
   MB_MODE_INFO *mbmi;
   struct macroblock_plane *const p = x->plane;
   struct macroblockd_plane *const pd = xd->plane;
@@ -835,12 +735,8 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
   aom_clear_system_state();
 
   mbmi = xd->mi[0];
-#if CONFIG_SDP
   mbmi->sb_type[plane_type] = bsize;
   if (xd->tree_type == SHARED_PART) mbmi->sb_type[PLANE_TYPE_UV] = bsize;
-#else
-  mbmi->sb_type = bsize;
-#endif
   mbmi->partition = partition;
 
 #if CONFIG_RD_DEBUG
@@ -864,11 +760,7 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
 
   ctx->skippable = 0;
   // Set to zero to make sure we do not use the previous encoded frame stats
-#if CONFIG_SDP
   mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
-#else
-  mbmi->skip_txfm = 0;
-#endif
   // Reset skip mode flag.
   mbmi->skip_mode = 0;
 
@@ -972,11 +864,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
   const CurrentFrame *const current_frame = &cm->current_frame;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   FRAME_CONTEXT *fc = xd->tile_ctx;
   const int seg_ref_active =
       segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_REF_FRAME);
@@ -993,19 +881,11 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   if (!mbmi->skip_mode && !seg_ref_active) {
     const int skip_ctx = av1_get_skip_txfm_context(xd);
 #if CONFIG_ENTROPY_STATS
-#if CONFIG_SDP
     td->counts
         ->skip_txfm[skip_ctx][mbmi->skip_txfm[xd->tree_type == CHROMA_PART]]++;
-#else
-    td->counts->skip_txfm[skip_ctx][mbmi->skip_txfm]++;
 #endif
-#endif
-#if CONFIG_SDP
     update_cdf(fc->skip_txfm_cdfs[skip_ctx],
                mbmi->skip_txfm[xd->tree_type == CHROMA_PART], 2);
-#else
-    update_cdf(fc->skip_txfm_cdfs[skip_ctx], mbmi->skip_txfm, 2);
-#endif
   }
 
 #if CONFIG_ENTROPY_STATS
@@ -1052,11 +932,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
     }
   }
 #endif
-#if CONFIG_SDP
   if (!is_inter_block(mbmi, xd->tree_type)) {
-#else
-  if (!is_inter_block(mbmi)) {
-#endif
     av1_sum_intra_stats(cm, td->counts, xd, mbmi
 #if !CONFIG_AIMC
                         ,
@@ -1064,41 +940,24 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif  // !CONFIG_AIMC
     );
   }
-#if CONFIG_SDP
   if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
     update_cdf(fc->intrabc_cdf, is_intrabc_block(mbmi, xd->tree_type), 2);
-#else
-  if (av1_allow_intrabc(cm)) {
-    update_cdf(fc->intrabc_cdf, is_intrabc_block(mbmi), 2);
-#endif
 #if CONFIG_ENTROPY_STATS
-#if CONFIG_SDP
     ++td->counts->intrabc[is_intrabc_block(mbmi, xd->tree_type)];
-#else
-    ++td->counts->intrabc[is_intrabc_block(mbmi)];
-#endif
 #endif  // CONFIG_ENTROPY_STATS
   }
 
   if (frame_is_intra_only(cm) || mbmi->skip_mode) return;
 
   FRAME_COUNTS *const counts = td->counts;
-#if CONFIG_SDP
   const int inter_block = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int inter_block = is_inter_block(mbmi);
-#endif
 
   if (!seg_ref_active) {
 #if CONFIG_ENTROPY_STATS && !CONFIG_CONTEXT_DERIVATION
     counts->intra_inter[av1_get_intra_inter_context(xd)][inter_block]++;
 #endif  // CONFIG_ENTROPY_STATS && !CONFIG_CONTEXT_DERIVATION
 #if CONFIG_CONTEXT_DERIVATION
-#if CONFIG_SDP
     const int skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
-#else
-    const int skip_txfm = mbmi->skip_txfm;
-#endif  // CONFIG_SDP
 #if CONFIG_ENTROPY_STATS
     counts->intra_inter[skip_txfm][av1_get_intra_inter_context(xd)]
                        [inter_block]++;
@@ -1426,11 +1285,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       }
     }
 #endif  // CONFIG_NEW_INTER_MODES
-#if CONFIG_SDP
     if (have_newmv_in_inter_mode(mbmi->mode) && xd->tree_type != CHROMA_PART) {
-#else
-    if (have_newmv_in_inter_mode(mbmi->mode)) {
-#endif
       const int allow_hp = cm->features.cur_frame_force_integer_mv
                                ? MV_SUBPEL_NONE
                                : cm->features.allow_high_precision_mv;
@@ -1518,37 +1373,21 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   mbmi->partition = partition;
   av1_update_state(cpi, td, ctx, mi_row, mi_col, bsize, dry_run);
 
-#if CONFIG_SDP
   int plane_type = (xd->tree_type == CHROMA_PART);
-#endif
 
   if (!dry_run) {
-#if CONFIG_SDP
     x->mbmi_ext_frame->cb_offset[plane_type] = x->cb_offset[plane_type];
     assert(x->cb_offset[plane_type] <
            (1 << num_pels_log2_lookup[cpi->common.seq_params.sb_size]));
-#else
-    x->mbmi_ext_frame->cb_offset = x->cb_offset;
-    assert(x->cb_offset <
-           (1 << num_pels_log2_lookup[cpi->common.seq_params.sb_size]));
-#endif
   }
 
   encode_superblock(cpi, tile_data, td, tp, dry_run, bsize, rate);
 
   if (!dry_run) {
     const AV1_COMMON *const cm = &cpi->common;
-#if CONFIG_SDP
     x->cb_offset[plane_type] += block_size_wide[bsize] * block_size_high[bsize];
-#else
-    x->cb_offset += block_size_wide[bsize] * block_size_high[bsize];
-#endif
-#if CONFIG_SDP
     if (bsize == cpi->common.seq_params.sb_size &&
         mbmi->skip_txfm[xd->tree_type == CHROMA_PART] == 1 &&
-#else
-    if (bsize == cpi->common.seq_params.sb_size && mbmi->skip_txfm == 1 &&
-#endif
         cm->delta_q_info.delta_lf_present_flag) {
       const int frame_lf_count =
           av1_num_planes(cm) > 1 ? FRAME_LF_COUNT : FRAME_LF_COUNT - 2;
@@ -1569,12 +1408,8 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
         ((mi_col & (cm->seq_params.mib_size - 1)) == 0);
     const DeltaQInfo *const delta_q_info = &cm->delta_q_info;
     if (delta_q_info->delta_q_present_flag &&
-#if CONFIG_SDP
         (bsize != cm->seq_params.sb_size ||
          !mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) &&
-#else
-        (bsize != cm->seq_params.sb_size || !mbmi->skip_txfm) &&
-#endif
         super_block_upper_left) {
       xd->current_base_qindex = mbmi->current_qindex;
       if (delta_q_info->delta_lf_present_flag) {
@@ -1606,11 +1441,7 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
         // If the segment reference feature is enabled we have only a single
         // reference frame allowed for the segment so exclude it from
         // the reference frame counts used to work out probabilities.
-#if CONFIG_SDP
         if (is_inter_block(mbmi, xd->tree_type)) {
-#else
-        if (is_inter_block(mbmi)) {
-#endif
           av1_collect_neighbors_ref_counts(xd);
           if (cm->current_frame.reference_mode == REFERENCE_MODE_SELECT) {
             if (has_second_ref(mbmi)) {
@@ -1630,11 +1461,7 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
          cpi->sf.inter_sf.prune_obmc_prob_thresh > 0) ||
         (cm->features.allow_warped_motion &&
          cpi->sf.inter_sf.prune_warped_prob_thresh > 0)) {
-#if CONFIG_SDP
       const int inter_block = is_inter_block(mbmi, xd->tree_type);
-#else
-      const int inter_block = is_inter_block(mbmi);
-#endif
       const int seg_ref_active =
           segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_REF_FRAME);
       if (!seg_ref_active && inter_block) {
@@ -1660,9 +1487,7 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   // level (x->mbmi_ext) to frame level (cpi->mbmi_ext_info.frame_base). This
   // frame level buffer (cpi->mbmi_ext_info.frame_base) will be used during
   // bitstream preparation.
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART)
-#endif
     av1_copy_mbmi_ext_to_mbmi_ext_frame(
         x->mbmi_ext_frame, x->mbmi_ext,
         av1_ref_frame_type(xd->mi[0]->ref_frame));
@@ -1721,9 +1546,7 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
     const int has_rows = (mi_row + hbs) < mi_params->mi_rows;
     const int has_cols = (mi_col + hbs) < mi_params->mi_cols;
 
-#if CONFIG_SDP
     const int plane_index = xd->tree_type == CHROMA_PART;
-#endif
 
     if (has_rows && has_cols) {
 #if CONFIG_ENTROPY_STATS
@@ -1732,7 +1555,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
 
       if (tile_data->allow_update_cdf) {
         FRAME_CONTEXT *fc = xd->tile_ctx;
-#if CONFIG_SDP
         int luma_split_flag = 0;
         int parent_block_width = block_size_wide[bsize];
         if (xd->tree_type == CHROMA_PART &&
@@ -1747,10 +1569,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
           // if luma blocks uses smaller blocks, then chroma will also split
           assert(partition == PARTITION_SPLIT);
         }
-#else
-        update_cdf(fc->partition_cdf[ctx], partition,
-                   partition_cdf_length(bsize));
-#endif
       }
     }
   }
@@ -1893,19 +1711,13 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
                      ? partition_plane_context(xd, mi_row, mi_col, bsize)
                      : 0;
   const PARTITION_TYPE partition =
-#if CONFIG_SDP
       (bsize >= BLOCK_8X8) ? get_partition(cm, xd->tree_type == CHROMA_PART,
                                            mi_row, mi_col, bsize)
-#else
-      (bsize >= BLOCK_8X8) ? get_partition(cm, mi_row, mi_col, bsize)
-#endif
                            : PARTITION_NONE;
   const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
   RD_SEARCH_MACROBLOCK_CONTEXT x_ctx;
   RD_STATS last_part_rdc, invalid_rdc;
-#if CONFIG_SDP
   int plane_type = (xd->tree_type == CHROMA_PART);
-#endif
 
   if (pc_tree->none == NULL) {
     pc_tree->none = av1_alloc_pmc(cm, bsize, &td->shared_coeff_buf);
@@ -2038,22 +1850,14 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
   }
 
   if (last_part_rdc.rate < INT_MAX) {
-#if CONFIG_SDP
     last_part_rdc.rate +=
         mode_costs->partition_cost[xd->tree_type == CHROMA_PART][pl][partition];
-#else
-    last_part_rdc.rate += mode_costs->partition_cost[pl][partition];
-#endif
     last_part_rdc.rdcost =
         RDCOST(x->rdmult, last_part_rdc.rate, last_part_rdc.dist);
   }
 
   // If last_part is better set the partitioning to that.
-#if CONFIG_SDP
   mib[0]->sb_type[plane_type] = bsize;
-#else
-  mib[0]->sb_type = bsize;
-#endif
   if (bsize >= BLOCK_8X8) pc_tree->partitioning = partition;
 
   av1_restore_context(x, &x_ctx, mi_row, mi_col, bsize, num_planes);
@@ -2069,11 +1873,7 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
       // int rate_coeffs = 0;
       // encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, DRY_RUN_COSTCOEFFS,
       //           bsize, pc_tree, &rate_coeffs);
-#if CONFIG_SDP
       x->cb_offset[plane_type] = 0;
-#else
-      x->cb_offset = 0;
-#endif
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, OUTPUT_ENABLED, bsize,
                 pc_tree, NULL);
     } else {
@@ -2145,12 +1945,8 @@ static bool rd_test_partition3(AV1_COMP *const cpi, ThreadData *td,
   const int pl = partition_plane_context(xd, mi_row, mi_col, bsize);
   RD_STATS sum_rdc;
   av1_init_rd_stats(&sum_rdc);
-#if CONFIG_SDP
   sum_rdc.rate =
       x->mode_costs.partition_cost[xd->tree_type == CHROMA_PART][pl][partition];
-#else
-  sum_rdc.rate = x->mode_costs.partition_cost[pl][partition];
-#endif
   sum_rdc.rdcost = RDCOST(x->rdmult, sum_rdc.rate, 0);
   // Loop over sub-partitions in AB partition type.
   for (int i = 0; i < SUB_PARTITIONS_AB; i++) {
@@ -2215,14 +2011,9 @@ static void init_partition_search_state_params(
 
   // Partition cost buffer update
   ModeCosts *mode_costs = &x->mode_costs;
-#if CONFIG_SDP
   part_search_state->partition_cost =
       mode_costs->partition_cost[xd->tree_type == CHROMA_PART]
                                 [part_search_state->pl_ctx_idx];
-#else
-  part_search_state->partition_cost =
-      mode_costs->partition_cost[part_search_state->pl_ctx_idx];
-#endif
 
   // Initialize HORZ and VERT win flags as true for all split partitions.
   for (int i = 0; i < SUB_PARTITIONS_SPLIT; i++) {
@@ -2249,7 +2040,6 @@ static void init_partition_search_state_params(
 
   // Initialize partition search flags to defaults.
   part_search_state->terminate_partition_search = 0;
-#if CONFIG_SDP
   part_search_state->do_square_split =
       blk_params->bsize_at_least_8x8 &&
       (xd->tree_type != CHROMA_PART || bsize > BLOCK_8X8);
@@ -2276,28 +2066,6 @@ static void init_partition_search_state_params(
       get_plane_block_size(get_partition_subsize(bsize, PARTITION_VERT),
                            part_search_state->ss_x,
                            part_search_state->ss_y) != BLOCK_INVALID;
-#else
-  part_search_state->do_square_split = blk_params->bsize_at_least_8x8;
-  part_search_state->do_rectangular_split =
-      cpi->oxcf.part_cfg.enable_rect_partitions;
-  av1_zero(part_search_state->prune_rect_part);
-
-  // Initialize allowed partition types for the partition block.
-  part_search_state->partition_none_allowed =
-      blk_params->has_rows && blk_params->has_cols;
-  part_search_state->partition_rect_allowed[HORZ] =
-      blk_params->has_cols && blk_params->bsize_at_least_8x8 &&
-      cpi->oxcf.part_cfg.enable_rect_partitions &&
-      get_plane_block_size(get_partition_subsize(bsize, PARTITION_HORZ),
-                           part_search_state->ss_x,
-                           part_search_state->ss_y) != BLOCK_INVALID;
-  part_search_state->partition_rect_allowed[VERT] =
-      blk_params->has_rows && blk_params->bsize_at_least_8x8 &&
-      cpi->oxcf.part_cfg.enable_rect_partitions &&
-      get_plane_block_size(get_partition_subsize(bsize, PARTITION_VERT),
-                           part_search_state->ss_x,
-                           part_search_state->ss_y) != BLOCK_INVALID;
-#endif
 
   // Reset the flag indicating whether a partition leading to a rdcost lower
   // than the bound best_rdc has been found.
@@ -2306,22 +2074,13 @@ static void init_partition_search_state_params(
 
 // Override partition cost buffer for the edge blocks.
 static void set_partition_cost_for_edge_blk(
-#if CONFIG_SDP
     AV1_COMMON const *cm, MACROBLOCKD *const xd,
     PartitionSearchState *part_search_state) {
-#else
-    AV1_COMMON const *cm, PartitionSearchState *part_search_state) {
-#endif
   PartitionBlkParams blk_params = part_search_state->part_blk_params;
   assert(blk_params.bsize_at_least_8x8 && part_search_state->pl_ctx_idx >= 0);
-#if CONFIG_SDP
   const int plane = xd->tree_type == CHROMA_PART;
   const aom_cdf_prob *partition_cdf =
       cm->fc->partition_cdf[plane][part_search_state->pl_ctx_idx];
-#else
-  const aom_cdf_prob *partition_cdf =
-      cm->fc->partition_cdf[part_search_state->pl_ctx_idx];
-#endif
   const int max_cost = av1_cost_symbol(0);
   for (PARTITION_TYPE i = 0; i < PARTITION_TYPES; ++i)
     part_search_state->tmp_partition_cost[i] = max_cost;
@@ -2927,12 +2686,10 @@ static AOM_INLINE void set_part_none_allowed_flag(
     part_search_state->partition_none_allowed = 1;
   assert(part_search_state->terminate_partition_search == 0);
 
-#if CONFIG_SDP
   if (part_search_state->partition_none_allowed == BLOCK_INVALID) {
     part_search_state->partition_none_allowed = 0;
     return;
   }
-#endif
 
   // Set PARTITION_NONE for screen content.
   if (cpi->is_screen_content_type)
@@ -3375,11 +3132,7 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
   // Override partition costs at the edges of the frame in the same
   // way as in read_partition (see decodeframe.c).
   if (!(blk_params.has_rows && blk_params.has_cols))
-#if CONFIG_SDP
     set_partition_cost_for_edge_blk(cm, xd, &part_search_state);
-#else
-    set_partition_cost_for_edge_blk(cm, &part_search_state);
-#endif
 
   // Disable rectangular partitions for inner blocks when the current block is
   // forced to only use square partitions.
@@ -3439,7 +3192,6 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
       &part_search_state.partition_none_allowed, partition_horz_allowed,
       partition_vert_allowed, &part_search_state.do_square_split);
 
-#if CONFIG_SDP
   int luma_split_flag = 0;
   int parent_block_width = block_size_wide[bsize];
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
@@ -3452,7 +3204,6 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
     part_search_state.partition_rect_allowed[HORZ] = 0;
     part_search_state.partition_rect_allowed[VERT] = 0;
   }
-#endif
 
   // Partition search
 BEGIN_PARTITION_SEARCH:
@@ -3508,17 +3259,10 @@ BEGIN_PARTITION_SEARCH:
   assert(IMPLIES(!cpi->oxcf.part_cfg.enable_rect_partitions,
                  !part_search_state.do_rectangular_split));
 
-#if CONFIG_SDP
   const int ext_partition_allowed =
       part_search_state.do_rectangular_split &&
       bsize > cpi->sf.part_sf.ext_partition_eval_thresh &&
       blk_params.has_rows && blk_params.has_cols && ((luma_split_flag <= 3));
-#else
-  const int ext_partition_allowed =
-      part_search_state.do_rectangular_split &&
-      bsize > cpi->sf.part_sf.ext_partition_eval_thresh &&
-      blk_params.has_rows && blk_params.has_cols;
-#endif
 
   // AB partitions search stage.
   ab_partitions_search(cpi, td, tile_data, tp, x, &x_ctx, pc_tree,
@@ -3530,18 +3274,9 @@ BEGIN_PARTITION_SEARCH:
 
   // Disable 4-way partition search flags for width less than twice the minimum
   // width.
-#if CONFIG_SDP
-#if CONFIG_SDP
   if (blk_params.width < (blk_params.min_partition_size_1d << 2) ||
       (xd->tree_type == CHROMA_PART && bsize <= BLOCK_16X16) ||
       (luma_split_flag > 3)) {
-#else
-  if (blk_params.width < (blk_params.min_partition_size_1d << 2) ||
-      (xd->tree_type == CHROMA_PART && bsize <= BLOCK_16X16)) {
-#endif
-#else
-  if (blk_params.width < (blk_params.min_partition_size_1d << 2)) {
-#endif
     part4_search_allowed[HORZ4] = 0;
     part4_search_allowed[VERT4] = 0;
   } else {
@@ -3599,11 +3334,9 @@ BEGIN_PARTITION_SEARCH:
   // necessary for the related speed features.
   sms_tree->partitioning = pc_tree->partitioning;
 
-#if CONFIG_SDP
   if (luma_split_flag > 3) {
     assert(pc_tree->partitioning == PARTITION_SPLIT);
   }
-#endif
 
 #if CONFIG_COLLECT_PARTITION_STATS
   if (best_rdc.rate < INT_MAX && best_rdc.dist < INT64_MAX) {
@@ -3653,11 +3386,7 @@ BEGIN_PARTITION_SEARCH:
       // Encode the superblock.
       const int emit_output = multi_pass_mode != SB_DRY_PASS;
       const RUN_TYPE run_type = emit_output ? OUTPUT_ENABLED : DRY_RUN_NORMAL;
-#if CONFIG_SDP
       x->cb_offset[xd->tree_type == CHROMA_PART] = 0;
-#else
-      x->cb_offset = 0;
-#endif
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, run_type, bsize,
                 pc_tree, NULL);
       // Dealloc the whole PC_TREE after a superblock is done.

@@ -142,29 +142,16 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
   const int max_blocks_wide = max_block_wide(xd, plane_bsize, plane);
 
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
-#if CONFIG_SDP
   const TX_SIZE plane_tx_size =
       plane ? av1_get_max_uv_txsize(mbmi->sb_type[xd->tree_type == CHROMA_PART],
                                     pd->subsampling_x, pd->subsampling_y)
             : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
                                                          blk_col)];
-#else
-  const TX_SIZE plane_tx_size =
-      plane ? av1_get_max_uv_txsize(mbmi->sb_type, pd->subsampling_x,
-                                    pd->subsampling_y)
-            : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
-                                                         blk_col)];
-#endif
 
   if (tx_size == plane_tx_size || plane) {
-#if CONFIG_SDP
     plane_bsize =
         get_plane_block_size(mbmi->sb_type[xd->tree_type == CHROMA_PART],
                              pd->subsampling_x, pd->subsampling_y);
-#else
-    plane_bsize = get_plane_block_size(mbmi->sb_type, pd->subsampling_x,
-                                       pd->subsampling_y);
-#endif
     av1_update_and_record_txb_context(plane, block, blk_row, blk_col,
                                       plane_bsize, tx_size, arg);
 
@@ -175,14 +162,9 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
     get_tx_partition_sizes(mbmi->partition_type[index], tx_size, sub_txs);
     int cur_partition = 0;
     int bsw = 0, bsh = 0;
-#if CONFIG_SDP
     plane_bsize =
         get_plane_block_size(mbmi->sb_type[xd->tree_type == CHROMA_PART],
                              pd->subsampling_x, pd->subsampling_y);
-#else
-    plane_bsize = get_plane_block_size(mbmi->sb_type, pd->subsampling_x,
-                                       pd->subsampling_y);
-#endif
     for (int r = 0; r < tx_size_high_unit[tx_size]; r += bsh) {
       for (int c = 0; c < tx_size_wide_unit[tx_size]; c += bsw) {
         const TX_SIZE sub_tx = sub_txs[cur_partition];
@@ -238,21 +220,13 @@ void av1_tokenize_sb_vartx(const AV1_COMP *cpi, ThreadData *td,
   const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *const mbmi = xd->mi[0];
   struct tokenize_b_args arg = { cpi, td, 0, allow_update_cdf, dry_run };
-#if CONFIG_SDP
   if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
-#else
-  if (mbmi->skip_txfm) {
-#endif
     av1_reset_entropy_context(xd, bsize, num_planes);
     return;
   }
-#if CONFIG_SDP
   const int plane_start = (xd->tree_type == CHROMA_PART);
   const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
   for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-  for (int plane = 0; plane < num_planes; ++plane) {
-#endif
     if (plane && !xd->is_chroma_ref) break;
     const struct macroblockd_plane *const pd = &xd->plane[plane];
     const int ss_x = pd->subsampling_x;

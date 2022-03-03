@@ -513,15 +513,10 @@ static AOM_INLINE void simple_motion_search_prune_part_features(
   // Neighbor stuff
   const int has_above = !!xd->above_mbmi;
   const int has_left = !!xd->left_mbmi;
-#if CONFIG_SDP
   const BLOCK_SIZE above_bsize =
       has_above ? xd->above_mbmi->sb_type[xd->tree_type == CHROMA_PART] : bsize;
   const BLOCK_SIZE left_bsize =
       has_left ? xd->left_mbmi->sb_type[xd->tree_type == CHROMA_PART] : bsize;
-#else
-  const BLOCK_SIZE above_bsize = has_above ? xd->above_mbmi->sb_type : bsize;
-  const BLOCK_SIZE left_bsize = has_left ? xd->left_mbmi->sb_type : bsize;
-#endif
   features[f_idx++] = (float)has_above;
   features[f_idx++] = (float)mi_size_wide_log2[above_bsize];
   features[f_idx++] = (float)mi_size_high_log2[above_bsize];
@@ -1349,19 +1344,13 @@ void av1_prune_partitions_before_search(
     int *do_square_split, int *prune_horz, int *prune_vert) {
   const AV1_COMMON *const cm = &cpi->common;
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
-
-#if CONFIG_SDP
   MACROBLOCKD *const xd = &x->e_mbd;
-#endif
 
   // A CNN-based speed feature pruning out either split or all non-split
   // partition in INTRA frame coding.
   const int try_intra_cnn_split =
       !cpi->is_screen_content_type && frame_is_intra_only(cm) &&
-      cpi->sf.part_sf.intra_cnn_split &&
-#if CONFIG_SDP
-      xd->tree_type != CHROMA_PART &&
-#endif
+      cpi->sf.part_sf.intra_cnn_split && xd->tree_type != CHROMA_PART &&
       cm->seq_params.sb_size >= BLOCK_64X64 && bsize <= BLOCK_64X64 &&
       bsize >= BLOCK_8X8 &&
       mi_row + mi_size_high[bsize] <= mi_params->mi_rows &&
@@ -1496,7 +1485,6 @@ void av1_prune_ab_partitions(
   const PartitionCfg *const part_cfg = &cpi->oxcf.part_cfg;
   // The standard AB partitions are allowed initially if ext-partition-types are
   // allowed.
-#if CONFIG_SDP
   const MACROBLOCKD *xd = &x->e_mbd;
   int horzab_partition_allowed =
       ext_partition_allowed & part_cfg->enable_ab_partitions &&
@@ -1504,12 +1492,6 @@ void av1_prune_ab_partitions(
   int vertab_partition_allowed =
       ext_partition_allowed & part_cfg->enable_ab_partitions &&
       (xd->tree_type != CHROMA_PART || bsize > BLOCK_8X8);
-#else
-  int horzab_partition_allowed =
-      ext_partition_allowed & part_cfg->enable_ab_partitions;
-  int vertab_partition_allowed =
-      ext_partition_allowed & part_cfg->enable_ab_partitions;
-#endif
 
   // Pruning: pruning out AB partitions on one main direction based on the
   // current best partition and source variance.

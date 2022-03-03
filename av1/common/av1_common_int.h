@@ -309,9 +309,7 @@ typedef struct SequenceHeader {
   uint8_t force_integer_mv;            // 0 - Don't force. MV can use subpel
                                        // 1 - force to integer
                                        // 2 - adaptive
-#if CONFIG_SDP
   uint8_t enable_sdp;  // enables/disables semi-decoupled partitioning
-#endif
 #if CONFIG_MRLS
   uint8_t enable_mrls;  // enables/disables multiple reference line selection
 #endif
@@ -809,11 +807,7 @@ struct CommonContexts {
    * Context used by 'FRAME_CONTEXT.partition_cdf' to transmit partition type.
    * partition[i][j] is the context for ith tile row, jth mi_col.
    */
-#if CONFIG_SDP
   PARTITION_CONTEXT **partition[MAX_MB_PLANE];
-#else
-  PARTITION_CONTEXT **partition;
-#endif
 
   /*!
    * Context used to derive context for multiple symbols:
@@ -1422,13 +1416,8 @@ static INLINE void av1_init_above_context(CommonContexts *above_contexts,
                                           MACROBLOCKD *xd) {
   for (int i = 0; i < num_planes; ++i) {
     xd->above_entropy_context[i] = above_contexts->entropy[i][tile_row];
-#if CONFIG_SDP
     xd->above_partition_context[i] = above_contexts->partition[i][tile_row];
-#endif
   }
-#if !CONFIG_SDP
-  xd->above_partition_context = above_contexts->partition[tile_row];
-#endif
   xd->above_txfm_context = above_contexts->txfm[tile_row];
 }
 
@@ -1467,18 +1456,10 @@ static INLINE void set_entropy_context(MACROBLOCKD *xd, int mi_row, int mi_col,
   int i;
   int row_offset = mi_row;
   int col_offset = mi_col;
-#if CONFIG_SDP
   for (i = (xd->tree_type == CHROMA_PART); i < num_planes; ++i) {
-#else
-  for (i = 0; i < num_planes; ++i) {
-#endif
     struct macroblockd_plane *const pd = &xd->plane[i];
     // Offset the buffer pointer
-#if CONFIG_SDP
     const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
-#else
-    const BLOCK_SIZE bsize = xd->mi[0]->sb_type;
-#endif
     if (pd->subsampling_y && (mi_row & 0x01) && (mi_size_high[bsize] == 1))
       row_offset = mi_row - 1;
     if (pd->subsampling_x && (mi_col & 0x01) && (mi_size_wide[bsize] == 1))
@@ -1500,11 +1481,7 @@ static INLINE int calc_mi_size(int len) {
 static INLINE void set_plane_n4(MACROBLOCKD *const xd, int bw, int bh,
                                 const int num_planes) {
   int i;
-#if CONFIG_SDP
   for (i = (xd->tree_type == CHROMA_PART); i < num_planes; i++) {
-#else
-  for (i = 0; i < num_planes; i++) {
-#endif
     xd->plane[i].width = (bw * MI_SIZE) >> xd->plane[i].subsampling_x;
     xd->plane[i].height = (bh * MI_SIZE) >> xd->plane[i].subsampling_y;
 
@@ -1631,17 +1608,11 @@ static INLINE aom_cdf_prob *get_y_mode_cdf(FRAME_CONTEXT *tile_ctx,
 static INLINE void update_partition_context(MACROBLOCKD *xd, int mi_row,
                                             int mi_col, BLOCK_SIZE subsize,
                                             BLOCK_SIZE bsize) {
-#if CONFIG_SDP
   const int plane = xd->tree_type == CHROMA_PART;
   PARTITION_CONTEXT *const above_ctx =
       xd->above_partition_context[plane] + mi_col;
   PARTITION_CONTEXT *const left_ctx =
       xd->left_partition_context[plane] + (mi_row & MAX_MIB_MASK);
-#else
-  PARTITION_CONTEXT *const above_ctx = xd->above_partition_context + mi_col;
-  PARTITION_CONTEXT *const left_ctx =
-      xd->left_partition_context + (mi_row & MAX_MIB_MASK);
-#endif
 
   const int bw = mi_size_wide[bsize];
   const int bh = mi_size_high[bsize];
@@ -1736,17 +1707,11 @@ static INLINE void update_ext_partition_context(MACROBLOCKD *xd, int mi_row,
 
 static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
                                           int mi_col, BLOCK_SIZE bsize) {
-#if CONFIG_SDP
   const int plane = xd->tree_type == CHROMA_PART;
   const PARTITION_CONTEXT *above_ctx =
       xd->above_partition_context[plane] + mi_col;
   const PARTITION_CONTEXT *left_ctx =
       xd->left_partition_context[plane] + (mi_row & MAX_MIB_MASK);
-#else
-  const PARTITION_CONTEXT *above_ctx = xd->above_partition_context + mi_col;
-  const PARTITION_CONTEXT *left_ctx =
-      xd->left_partition_context + (mi_row & MAX_MIB_MASK);
-#endif
   // Minimum partition point is 8x8. Offset the bsl accordingly.
   const int bsl = mi_size_wide_log2[bsize] - mi_size_wide_log2[BLOCK_8X8];
   int above = (*above_ctx >> bsl) & 1, left = (*left_ctx >> bsl) & 1;
@@ -1823,7 +1788,6 @@ static INLINE void av1_zero_above_context(AV1_COMMON *const cm,
                          "Invalid value of planes");
     }
   }
-#if CONFIG_SDP
   av1_zero_array(above_contexts->partition[0][tile_row] + mi_col_start,
                  aligned_width);
   if (num_planes > 1) {
@@ -1838,10 +1802,6 @@ static INLINE void av1_zero_above_context(AV1_COMMON *const cm,
                          "Invalid value of planes");
     }
   }
-#else
-  av1_zero_array(above_contexts->partition[tile_row] + mi_col_start,
-                 aligned_width);
-#endif
 
   memset(above_contexts->txfm[tile_row] + mi_col_start,
          tx_size_wide[TX_SIZES_LARGEST], aligned_width * sizeof(TXFM_CONTEXT));
@@ -1911,14 +1871,11 @@ static INLINE void set_mi_offsets(const CommonModeInfoParams *const mi_params,
   // 'xd->mi' should point to an offset in 'mi_grid_base';
   xd->mi = mi_params->mi_grid_base + mi_grid_idx;
   // 'xd->tx_type_map' should point to an offset in 'mi_params->tx_type_map'.
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART)
-#endif
     xd->tx_type_map = mi_params->tx_type_map + mi_grid_idx;
   xd->tx_type_map_stride = mi_params->mi_stride;
 }
 
-#if CONFIG_SDP
 // For this partition block, set pointers in mi_params->mi_grid_base and xd->mi.
 static INLINE void set_blk_offsets(const CommonModeInfoParams *const mi_params,
                                    MACROBLOCKD *const xd, int mi_row,
@@ -1970,7 +1927,6 @@ static INLINE int get_luma_split_flag(
   }
   return luma_split_flag;
 }
-#endif
 
 static INLINE void txfm_partition_update(TXFM_CONTEXT *above_ctx,
                                          TXFM_CONTEXT *left_ctx,
@@ -2204,22 +2160,15 @@ static INLINE int txfm_partition_context(const TXFM_CONTEXT *const above_ctx,
 // Compute the next partition in the direction of the sb_type stored in the mi
 // array, starting with bsize.
 static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
-#if CONFIG_SDP
-                                           const int plane_type,
-#endif
-                                           int mi_row, int mi_col,
-                                           BLOCK_SIZE bsize) {
+                                           const int plane_type, int mi_row,
+                                           int mi_col, BLOCK_SIZE bsize) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   if (mi_row >= mi_params->mi_rows || mi_col >= mi_params->mi_cols)
     return PARTITION_INVALID;
 
   const int offset = mi_row * mi_params->mi_stride + mi_col;
   MB_MODE_INFO **mi = mi_params->mi_grid_base + offset;
-#if CONFIG_SDP
   const BLOCK_SIZE subsize = mi[0]->sb_type[plane_type];
-#else
-  const BLOCK_SIZE subsize = mi[0]->sb_type;
-#endif
 
   assert(bsize < BLOCK_SIZES_ALL);
 
@@ -2243,11 +2192,7 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
       // half was split.
       if (sshigh * 4 == bhigh) return PARTITION_HORZ_4;
       assert(sshigh * 2 == bhigh);
-#if CONFIG_SDP
       if (mbmi_below->sb_type[plane_type] == subsize)
-#else
-      if (mbmi_below->sb_type == subsize)
-#endif
         return PARTITION_HORZ;
       else
         return PARTITION_HORZ_B;
@@ -2257,11 +2202,7 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
       // half was split.
       if (sswide * 4 == bwide) return PARTITION_VERT_4;
       assert(sswide * 2 == bhigh);
-#if CONFIG_SDP
       if (mbmi_right->sb_type[plane_type] == subsize)
-#else
-      if (mbmi_right->sb_type == subsize)
-#endif
         return PARTITION_VERT;
       else
         return PARTITION_VERT_B;
@@ -2274,15 +2215,10 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
       // PARTITION_HORZ_A, the lower block with have width bwide. Otherwise
       // it's PARTITION_SPLIT.
       if (sswide * 2 != bwide || sshigh * 2 != bhigh) return PARTITION_SPLIT;
-#if CONFIG_SDP
       if (mi_size_wide[mbmi_below->sb_type[plane_type]] == bwide)
         return PARTITION_HORZ_A;
       if (mi_size_high[mbmi_right->sb_type[plane_type]] == bhigh)
         return PARTITION_VERT_A;
-#else
-      if (mi_size_wide[mbmi_below->sb_type] == bwide) return PARTITION_HORZ_A;
-      if (mi_size_high[mbmi_right->sb_type] == bhigh) return PARTITION_VERT_A;
-#endif
       return PARTITION_SPLIT;
     }
   }

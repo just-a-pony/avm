@@ -259,12 +259,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int disable_ml_transform_speed_features;
-#if CONFIG_SDP
   /*!\brief enable Semi-decoupled partitioning
    *
    */
   unsigned int enable_sdp;
-#endif  // CONFIG_SDP
 #if CONFIG_MRLS
   /*!\brief enable Multiple reference line selection
    *

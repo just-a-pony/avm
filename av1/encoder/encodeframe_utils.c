@@ -153,41 +153,22 @@ static void reset_tx_size(MACROBLOCK *x, MB_MODE_INFO *mbmi,
                           const TX_MODE tx_mode) {
   MACROBLOCKD *const xd = &x->e_mbd;
   TxfmSearchInfo *txfm_info = &x->txfm_search_info;
-#if CONFIG_SDP
   int plane_index = xd->tree_type == CHROMA_PART;
-#endif
   if (xd->lossless[mbmi->segment_id]) {
     mbmi->tx_size = TX_4X4;
   } else if (tx_mode != TX_MODE_SELECT) {
-#if CONFIG_SDP
     mbmi->tx_size = tx_size_from_tx_mode(mbmi->sb_type[plane_index], tx_mode);
-#else
-    mbmi->tx_size = tx_size_from_tx_mode(mbmi->sb_type, tx_mode);
-#endif
   } else {
-#if CONFIG_SDP
     BLOCK_SIZE bsize = mbmi->sb_type[plane_index];
-#else
-    BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
     TX_SIZE min_tx_size = depth_to_tx_size(MAX_TX_DEPTH, bsize);
     mbmi->tx_size = (TX_SIZE)TXSIZEMAX(mbmi->tx_size, min_tx_size);
   }
-#if CONFIG_SDP
   if (is_inter_block(mbmi, xd->tree_type)) {
-#else
-  if (is_inter_block(mbmi)) {
-#endif
     memset(mbmi->inter_tx_size, mbmi->tx_size, sizeof(mbmi->inter_tx_size));
   }
   const int stride = xd->tx_type_map_stride;
-#if CONFIG_SDP
   const int bw = mi_size_wide[mbmi->sb_type[plane_index]];
   for (int row = 0; row < mi_size_high[mbmi->sb_type[plane_index]]; ++row) {
-#else
-  const int bw = mi_size_wide[mbmi->sb_type];
-  for (int row = 0; row < mi_size_high[mbmi->sb_type]; ++row) {
-#endif
     memset(xd->tx_type_map + row * stride, DCT_DCT,
            bw * sizeof(xd->tx_type_map[0]));
   }
@@ -226,27 +207,16 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
   MB_MODE_INFO *const mi_addr = xd->mi[0];
   const struct segmentation *const seg = &cm->seg;
   assert(bsize < BLOCK_SIZES_ALL);
-#if CONFIG_SDP
   const int bw = mi_size_wide[mi->sb_type[xd->tree_type == CHROMA_PART]];
   const int bh = mi_size_high[mi->sb_type[xd->tree_type == CHROMA_PART]];
-#else
-  const int bw = mi_size_wide[mi->sb_type];
-  const int bh = mi_size_high[mi->sb_type];
-#endif
   const int mis = mi_params->mi_stride;
   const int mi_width = mi_size_wide[bsize];
   const int mi_height = mi_size_high[bsize];
   TxfmSearchInfo *txfm_info = &x->txfm_search_info;
-#if CONFIG_SDP
   assert(mi->sb_type[xd->tree_type == CHROMA_PART] == bsize);
-#else
-  assert(mi->sb_type == bsize);
-#endif
 
   *mi_addr = *mi;
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART)
-#endif
     copy_mbmi_ext_frame_to_mbmi_ext(x->mbmi_ext, &ctx->mbmi_ext_best,
                                     av1_ref_frame_type(ctx->mic.ref_frame));
 
@@ -254,9 +224,7 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
          sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
 
   txfm_info->skip_txfm = ctx->rd_stats.skip_txfm;
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART) {
-#endif
     xd->tx_type_map = ctx->tx_type_map;
     xd->tx_type_map_stride = mi_size_wide[bsize];
     // If not dry_run, copy the transform type data into the frame level buffer.
@@ -272,9 +240,7 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
       xd->tx_type_map = tx_type_map;
       xd->tx_type_map_stride = mi_stride;
     }
-#if CONFIG_SDP
   }
-#endif
 
   // If segmentation in use
   if (seg->enabled) {
@@ -288,12 +254,8 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
     }
     // Else for cyclic refresh mode update the segment map, set the segment id
     // and then update the quantizer.
-#if CONFIG_SDP
     if (cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ &&
         xd->tree_type == SHARED_PART) {
-#else
-    if (cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ) {
-#endif
       av1_cyclic_refresh_update_segment(cpi, mi_addr, mi_row, mi_col, bsize,
                                         ctx->rd_stats.rate, ctx->rd_stats.dist,
                                         txfm_info->skip_txfm);
@@ -301,11 +263,7 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
     if (mi_addr->uv_mode == UV_CFL_PRED && !is_cfl_allowed(xd))
       mi_addr->uv_mode = UV_DC_PRED;
   }
-#if CONFIG_SDP
   for (i = (xd->tree_type == CHROMA_PART); i < num_planes; ++i) {
-#else
-  for (i = 0; i < num_planes; ++i) {
-#endif
     p[i].coeff = ctx->coeff[i];
     p[i].qcoeff = ctx->qcoeff[i];
     p[i].dqcoeff = ctx->dqcoeff[i];
@@ -319,7 +277,6 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
     for (x_idx = 0; x_idx < mi_width; x_idx++) {
       if ((xd->mb_to_right_edge >> (3 + MI_SIZE_LOG2)) + mi_width > x_idx &&
           (xd->mb_to_bottom_edge >> (3 + MI_SIZE_LOG2)) + mi_height > y) {
-#if CONFIG_SDP
         const int mi_idx =
             get_alloc_mi_idx(mi_params, mi_row + y, mi_col + x_idx);
         xd->mi[x_idx + y * mis] = &mi_params->mi_alloc[mi_idx];
@@ -343,9 +300,6 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
         } else {
           xd->mi[x_idx + y * mis] = mi_addr;
         }
-#else
-        xd->mi[x_idx + y * mis] = mi_addr;
-#endif
       }
     }
   }
@@ -383,11 +337,7 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
   }
 #endif
   if (!frame_is_intra_only(cm)) {
-#if CONFIG_SDP
     if (is_inter_block(mi_addr, xd->tree_type)) {
-#else
-    if (is_inter_block(mi_addr)) {
-#endif
       // TODO(sarahparker): global motion stats need to be handled per-tile
       // to be compatible with tile-based threading.
       update_global_motion_used(mi_addr->mode, bsize, mi_addr, rdc);
@@ -459,20 +409,12 @@ void av1_update_inter_mode_stats(FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
 static void update_palette_cdf(MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi,
                                FRAME_COUNTS *counts) {
   FRAME_CONTEXT *fc = xd->tile_ctx;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
   const int palette_bsize_ctx = av1_get_palette_bsize_ctx(bsize);
 
   (void)counts;
-#if CONFIG_SDP
   if (mbmi->mode == DC_PRED && xd->tree_type != CHROMA_PART) {
-#else
-  if (mbmi->mode == DC_PRED) {
-#endif
     const int n = pmi->palette_size[0];
     const int palette_mode_ctx = av1_get_palette_mode_ctx(xd);
 
@@ -489,11 +431,7 @@ static void update_palette_cdf(MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi,
                  n - PALETTE_MIN_SIZE, PALETTE_SIZES);
     }
   }
-#if CONFIG_SDP
   if (mbmi->uv_mode == UV_DC_PRED && xd->tree_type != LUMA_PART) {
-#else
-  if (mbmi->uv_mode == UV_DC_PRED) {
-#endif
     const int n = pmi->palette_size[1];
     const int palette_uv_mode_ctx = (pmi->palette_size[0] > 0);
 
@@ -525,14 +463,8 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
   const PREDICTION_MODE y_mode = mbmi->mode;
 #endif  // !CONFIG_AIMC
   (void)counts;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART) {
-#endif
 #if CONFIG_AIMC
     const int context = get_y_mode_idx_ctx(xd);
     const int mode_idx = mbmi->y_mode_idx;
@@ -576,35 +508,36 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
     }
 #endif  // CONFIG_FORWARDSKIP
 #else
-  if (intraonly) {
+    if (intraonly) {
 #if CONFIG_ENTROPY_STATS
-    const PREDICTION_MODE above = av1_above_block_mode(above_mi);
-    const PREDICTION_MODE left = av1_left_block_mode(left_mi);
-    const int above_ctx = intra_mode_context[above];
-    const int left_ctx = intra_mode_context[left];
-    ++counts->kf_y_mode[above_ctx][left_ctx][y_mode];
+      const PREDICTION_MODE above = av1_above_block_mode(above_mi);
+      const PREDICTION_MODE left = av1_left_block_mode(left_mi);
+      const int above_ctx = intra_mode_context[above];
+      const int left_ctx = intra_mode_context[left];
+      ++counts->kf_y_mode[above_ctx][left_ctx][y_mode];
 #endif  // CONFIG_ENTROPY_STATS
-    update_cdf(get_y_mode_cdf(fc, above_mi, left_mi), y_mode, INTRA_MODES);
-  } else {
+      update_cdf(get_y_mode_cdf(fc, above_mi, left_mi), y_mode, INTRA_MODES);
+    } else {
 #if CONFIG_ENTROPY_STATS
-    ++counts->y_mode[size_group_lookup[bsize]][y_mode];
+      ++counts->y_mode[size_group_lookup[bsize]][y_mode];
 #endif  // CONFIG_ENTROPY_STATS
-    update_cdf(fc->y_mode_cdf[size_group_lookup[bsize]], y_mode, INTRA_MODES);
-  }
+      update_cdf(fc->y_mode_cdf[size_group_lookup[bsize]], y_mode, INTRA_MODES);
+    }
 #if CONFIG_FORWARDSKIP
-  if (allow_fsc_intra(cm, xd, bsize, mbmi)) {
+    if (allow_fsc_intra(cm, xd, bsize, mbmi)) {
 #if CONFIG_ENTROPY_STATS
-    const uint8_t fsc_above = (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-    const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-    const int fsc_ctx = intraonly ? fsc_above + fsc_left : 3;
-    ++counts->fsc_mode[fsc_ctx][fsc_bsize_groups[bsize]]
-                      [mbmi->fsc_mode[xd->tree_type == CHROMA_PART]];
+      const uint8_t fsc_above =
+          (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+      const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
+      const int fsc_ctx = intraonly ? fsc_above + fsc_left : 3;
+      ++counts->fsc_mode[fsc_ctx][fsc_bsize_groups[bsize]]
+                        [mbmi->fsc_mode[xd->tree_type == CHROMA_PART]];
 #endif  // CONFIG_ENTROPY_STATS
-    aom_cdf_prob *fsc_cdf =
-        get_fsc_mode_cdf(fc, xd->above_mbmi, xd->left_mbmi, bsize, intraonly);
-    update_cdf(fsc_cdf, mbmi->fsc_mode[xd->tree_type == CHROMA_PART],
-               FSC_MODES);
-  }
+      aom_cdf_prob *fsc_cdf =
+          get_fsc_mode_cdf(fc, xd->above_mbmi, xd->left_mbmi, bsize, intraonly);
+      update_cdf(fsc_cdf, mbmi->fsc_mode[xd->tree_type == CHROMA_PART],
+                 FSC_MODES);
+    }
 #endif  // CONFIG_FORWARDSKIP
 #endif  // CONFIG_AIMC
 #if CONFIG_MRLS
@@ -619,24 +552,16 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
       const int use_filter_intra_mode =
           mbmi->filter_intra_mode_info.use_filter_intra;
 #if CONFIG_ENTROPY_STATS
-#if CONFIG_SDP
       ++counts->filter_intra[mbmi->sb_type[xd->tree_type == CHROMA_PART]]
                             [use_filter_intra_mode];
-#else
-      ++counts->filter_intra[mbmi->sb_type][use_filter_intra_mode];
-#endif
       if (use_filter_intra_mode) {
         ++counts->filter_intra_mode[mbmi->filter_intra_mode_info
                                         .filter_intra_mode];
       }
 #endif  // CONFIG_ENTROPY_STATS
-#if CONFIG_SDP
       update_cdf(
           fc->filter_intra_cdfs[mbmi->sb_type[xd->tree_type == CHROMA_PART]],
           use_filter_intra_mode, 2);
-#else
-    update_cdf(fc->filter_intra_cdfs[mbmi->sb_type], use_filter_intra_mode, 2);
-#endif
       if (use_filter_intra_mode) {
         update_cdf(fc->filter_intra_mode_cdf,
                    mbmi->filter_intra_mode_info.filter_intra_mode,
@@ -650,23 +575,15 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
                            [mbmi->angle_delta[PLANE_TYPE_Y] + MAX_ANGLE_DELTA];
 #endif
 
-#if CONFIG_SDP
       update_cdf(fc->angle_delta_cdf[PLANE_TYPE_Y][mbmi->mode - V_PRED],
-#else
-      update_cdf(fc->angle_delta_cdf[mbmi->mode - V_PRED],
-#endif
                  mbmi->angle_delta[PLANE_TYPE_Y] + MAX_ANGLE_DELTA,
                  2 * MAX_ANGLE_DELTA + 1);
     }
 #endif  // !CONFIG_AIMC
-#if CONFIG_SDP
   }
-#endif
 
   if (!xd->is_chroma_ref) return;
-#if CONFIG_SDP
   if (xd->tree_type != LUMA_PART) {
-#endif
     const UV_PREDICTION_MODE uv_mode = mbmi->uv_mode;
     const CFL_ALLOWED_TYPE cfl_allowed = is_cfl_allowed(xd);
 #if CONFIG_AIMC
@@ -683,8 +600,8 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
     update_cdf(fc->uv_mode_cdf[cfl_allowed][uv_context], mbmi->uv_mode_idx,
                UV_INTRA_MODES - !cfl_allowed);
 #else
-  update_cdf(fc->uv_mode_cdf[cfl_allowed][y_mode], uv_mode,
-             UV_INTRA_MODES - !cfl_allowed);
+    update_cdf(fc->uv_mode_cdf[cfl_allowed][y_mode], uv_mode,
+               UV_INTRA_MODES - !cfl_allowed);
 #endif  // CONFIG_AIMC
     if (uv_mode == UV_CFL_PRED) {
       const int8_t joint_sign = mbmi->cfl_alpha_signs;
@@ -718,7 +635,6 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
       ++counts->angle_delta[uv_mode - UV_V_PRED]
                            [mbmi->angle_delta[PLANE_TYPE_UV] + MAX_ANGLE_DELTA];
 #endif
-#if CONFIG_SDP
       if (cm->seq_params.enable_sdp)
         update_cdf(fc->angle_delta_cdf[PLANE_TYPE_UV][uv_mode - UV_V_PRED],
                    mbmi->angle_delta[PLANE_TYPE_UV] + MAX_ANGLE_DELTA,
@@ -727,16 +643,9 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
         update_cdf(fc->angle_delta_cdf[PLANE_TYPE_Y][uv_mode - UV_V_PRED],
                    mbmi->angle_delta[PLANE_TYPE_UV] + MAX_ANGLE_DELTA,
                    2 * MAX_ANGLE_DELTA + 1);
-#else
-      update_cdf(fc->angle_delta_cdf[uv_mode - UV_V_PRED],
-                 mbmi->angle_delta[PLANE_TYPE_UV] + MAX_ANGLE_DELTA,
-                 2 * MAX_ANGLE_DELTA + 1);
-#endif
     }
 #endif  // !CONFIG_AIMC
-#if CONFIG_SDP
   }
-#endif
   if (av1_allow_palette(cm->features.allow_screen_content_tools, bsize)) {
     update_palette_cdf(xd, mbmi, counts);
   }
@@ -765,11 +674,7 @@ void av1_restore_context(MACROBLOCK *x, const RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
   const int num_4x4_blocks_high = mi_size_high[bsize];
   int mi_width = mi_size_wide[bsize];
   int mi_height = mi_size_high[bsize];
-#if CONFIG_SDP
   for (p = (xd->tree_type == CHROMA_PART); p < num_planes; p++) {
-#else
-  for (p = 0; p < num_planes; p++) {
-#endif
     int tx_col = mi_col;
     int tx_row = mi_row & MAX_MIB_MASK;
     memcpy(
@@ -781,20 +686,12 @@ void av1_restore_context(MACROBLOCK *x, const RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
            ctx->l + num_4x4_blocks_high * p,
            (sizeof(ENTROPY_CONTEXT) * num_4x4_blocks_high) >>
                xd->plane[p].subsampling_y);
-#if CONFIG_SDP
     memcpy(xd->above_partition_context[p] + mi_col, ctx->sa + mi_width * p,
            sizeof(*xd->above_partition_context[p]) * mi_width);
     memcpy(xd->left_partition_context[p] + (mi_row & MAX_MIB_MASK),
            ctx->sl + mi_height * p,
            sizeof(xd->left_partition_context[p][0]) * mi_height);
-#endif
   }
-#if !CONFIG_SDP
-  memcpy(xd->above_partition_context + mi_col, ctx->sa,
-         sizeof(*xd->above_partition_context) * mi_width);
-  memcpy(xd->left_partition_context + (mi_row & MAX_MIB_MASK), ctx->sl,
-         sizeof(xd->left_partition_context[0]) * mi_height);
-#endif
   xd->above_txfm_context = ctx->p_ta;
   xd->left_txfm_context = ctx->p_tl;
   memcpy(xd->above_txfm_context, ctx->ta,
@@ -816,11 +713,7 @@ void av1_save_context(const MACROBLOCK *x, RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
   int mi_height = mi_size_high[bsize];
 
   // buffer the above/left context information of the block in search.
-#if CONFIG_SDP
   for (p = (xd->tree_type == CHROMA_PART); p < num_planes; ++p) {
-#else
-  for (p = 0; p < num_planes; ++p) {
-#endif
     int tx_col = mi_col;
     int tx_row = mi_row & MAX_MIB_MASK;
     memcpy(
@@ -830,20 +723,12 @@ void av1_save_context(const MACROBLOCK *x, RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
     memcpy(ctx->l + mi_height * p,
            xd->left_entropy_context[p] + (tx_row >> xd->plane[p].subsampling_y),
            (sizeof(ENTROPY_CONTEXT) * mi_height) >> xd->plane[p].subsampling_y);
-#if CONFIG_SDP
     memcpy(ctx->sa + mi_width * p, xd->above_partition_context[p] + mi_col,
            sizeof(*xd->above_partition_context[p]) * mi_width);
     memcpy(ctx->sl + mi_height * p,
            xd->left_partition_context[p] + (mi_row & MAX_MIB_MASK),
            sizeof(xd->left_partition_context[p][0]) * mi_height);
-#endif
   }
-#if !CONFIG_SDP
-  memcpy(ctx->sa, xd->above_partition_context + mi_col,
-         sizeof(*xd->above_partition_context) * mi_width);
-  memcpy(ctx->sl, xd->left_partition_context + (mi_row & MAX_MIB_MASK),
-         sizeof(xd->left_partition_context[0]) * mi_height);
-#endif
   memcpy(ctx->ta, xd->above_txfm_context,
          sizeof(*xd->above_txfm_context) * mi_width);
   memcpy(ctx->tl, xd->left_txfm_context,
@@ -865,14 +750,9 @@ static void set_partial_sb_partition(const AV1_COMMON *const cm,
       const int grid_index = get_mi_grid_idx(&cm->mi_params, r, c);
       const int mi_index = get_alloc_mi_idx(&cm->mi_params, r, c);
       mib[grid_index] = mi + mi_index;
-#if CONFIG_SDP
       mib[grid_index]->sb_type[PLANE_TYPE_Y] =
           mib[grid_index]->sb_type[PLANE_TYPE_UV] = find_partition_size(
               bsize, mi_rows_remaining - r, mi_cols_remaining - c, &bh, &bw);
-#else
-      mib[grid_index]->sb_type = find_partition_size(
-          bsize, mi_rows_remaining - r, mi_cols_remaining - c, &bh, &bw);
-#endif
     }
   }
 }
@@ -908,12 +788,8 @@ void av1_set_fixed_partitioning(AV1_COMP *cpi, const TileInfo *const tile,
         const int grid_index = get_mi_grid_idx(mi_params, block_row, block_col);
         const int mi_index = get_alloc_mi_idx(mi_params, block_row, block_col);
         mib[grid_index] = mi_upper_left + mi_index;
-#if CONFIG_SDP
         mib[grid_index]->sb_type[PLANE_TYPE_Y] = bsize;
         mib[grid_index]->sb_type[PLANE_TYPE_UV] = bsize;
-#else
-        mib[grid_index]->sb_type = bsize;
-#endif
       }
     }
   } else {
@@ -922,13 +798,8 @@ void av1_set_fixed_partitioning(AV1_COMP *cpi, const TileInfo *const tile,
                              mi_cols_remaining, bsize, mib);
   }
 }
-#if CONFIG_SDP
 int av1_is_leaf_split_partition(AV1_COMMON *cm, MACROBLOCKD *const xd,
-                                int mi_row, int mi_col,
-#else
-int av1_is_leaf_split_partition(AV1_COMMON *cm, int mi_row, int mi_col,
-#endif
-                                BLOCK_SIZE bsize) {
+                                int mi_row, int mi_col, BLOCK_SIZE bsize) {
   const int bs = mi_size_wide[bsize];
   const int hbs = bs / 2;
   assert(bsize >= BLOCK_8X8);
@@ -940,13 +811,8 @@ int av1_is_leaf_split_partition(AV1_COMMON *cm, int mi_row, int mi_col,
     if ((mi_row + y_idx >= cm->mi_params.mi_rows) ||
         (mi_col + x_idx >= cm->mi_params.mi_cols))
       return 0;
-#if CONFIG_SDP
     if (get_partition(cm, xd->tree_type == CHROMA_PART, mi_row + y_idx,
-                      mi_col + x_idx, subsize) !=
-#else
-    if (get_partition(cm, mi_row + y_idx, mi_col + x_idx, subsize) !=
-#endif
-            PARTITION_NONE &&
+                      mi_col + x_idx, subsize) != PARTITION_NONE &&
         subsize != BLOCK_8X8)
       return 0;
   }
@@ -1435,7 +1301,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVG_CDF_STRIDE(ctx_left->uv_mode_cdf[0], ctx_tr->uv_mode_cdf[0],
                  UV_INTRA_MODES - 1, CDF_SIZE(UV_INTRA_MODES));
   AVERAGE_CDF(ctx_left->uv_mode_cdf[1], ctx_tr->uv_mode_cdf[1], UV_INTRA_MODES);
-#if CONFIG_SDP
   for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
        plane_index++) {
     for (int i = 0; i < PARTITION_CONTEXTS; i++) {
@@ -1451,19 +1316,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
       }
     }
   }
-#else
-  for (int i = 0; i < PARTITION_CONTEXTS; i++) {
-    if (i < 4) {
-      AVG_CDF_STRIDE(ctx_left->partition_cdf[i], ctx_tr->partition_cdf[i], 4,
-                     CDF_SIZE(10));
-    } else if (i < 16) {
-      AVERAGE_CDF(ctx_left->partition_cdf[i], ctx_tr->partition_cdf[i], 10);
-    } else {
-      AVG_CDF_STRIDE(ctx_left->partition_cdf[i], ctx_tr->partition_cdf[i], 8,
-                     CDF_SIZE(10));
-    }
-  }
-#endif
+
   AVERAGE_CDF(ctx_left->switchable_interp_cdf, ctx_tr->switchable_interp_cdf,
               SWITCHABLE_FILTERS);
 #if !CONFIG_AIMC
@@ -1654,11 +1507,7 @@ void av1_set_cost_upd_freq(AV1_COMP *cpi, ThreadData *td,
       if (mi_col != tile_info->mi_col_start) break;
       AOM_FALLTHROUGH_INTENDED;
     case COST_UPD_SB:  // SB level
-#if CONFIG_SDP
       av1_fill_mode_rates(cm, xd, &x->mode_costs, xd->tile_ctx);
-#else
-      av1_fill_mode_rates(cm, &x->mode_costs, xd->tile_ctx);
-#endif
       break;
     default: assert(0);
   }

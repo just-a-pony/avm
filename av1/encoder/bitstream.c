@@ -82,11 +82,7 @@ static AOM_INLINE void write_intra_y_mode_kf(FRAME_CONTEXT *frame_ctx,
                                              const MB_MODE_INFO *left_mi,
                                              PREDICTION_MODE mode,
                                              aom_writer *w) {
-#if CONFIG_SDP
   assert(!is_intrabc_block(mi, SHARED_PART));
-#else
-  assert(!is_intrabc_block(mi));
-#endif
   (void)mi;
   aom_write_symbol(w, mode, get_y_mode_cdf(frame_ctx, above_mi, left_mi),
                    INTRA_MODES);
@@ -204,18 +200,11 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
 static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
                                TX_SIZE max_tx_size, int blk_row, int blk_col,
                                aom_writer *w) {
-#if CONFIG_SDP
   int plane_type = (xd->tree_type == CHROMA_PART);
   const int max_blocks_high = max_block_high(xd, mbmi->sb_type[plane_type], 0);
   const int max_blocks_wide = max_block_wide(xd, mbmi->sb_type[plane_type], 0);
   const int bsize = mbmi->sb_type[plane_type];
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int bsize = mbmi->sb_type;
-  const int max_blocks_high = max_block_high(xd, mbmi->sb_type, 0);
-  const int max_blocks_wide = max_block_wide(xd, mbmi->sb_type, 0);
-  const int is_inter = is_inter_block(mbmi);
-#endif  // CONFIG_SDP
   const int txb_size_index =
       is_inter ? av1_get_txb_size_index(bsize, blk_row, blk_col) : 0;
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
@@ -281,14 +270,9 @@ static AOM_INLINE void write_tx_size_vartx(MACROBLOCKD *xd,
                                            int blk_row, int blk_col,
                                            aom_writer *w) {
   FRAME_CONTEXT *const ec_ctx = xd->tile_ctx;
-#if CONFIG_SDP
   int plane_type = (xd->tree_type == CHROMA_PART);
   const int max_blocks_high = max_block_high(xd, mbmi->sb_type[plane_type], 0);
   const int max_blocks_wide = max_block_wide(xd, mbmi->sb_type[plane_type], 0);
-#else
-  const int max_blocks_high = max_block_high(xd, mbmi->sb_type, 0);
-  const int max_blocks_wide = max_block_wide(xd, mbmi->sb_type, 0);
-#endif
 
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
 
@@ -297,19 +281,11 @@ static AOM_INLINE void write_tx_size_vartx(MACROBLOCKD *xd,
                           xd->left_txfm_context + blk_row, tx_size, tx_size);
     return;
   }
-#if CONFIG_SDP
   const int ctx = txfm_partition_context(xd->above_txfm_context + blk_col,
                                          xd->left_txfm_context + blk_row,
                                          mbmi->sb_type[plane_type], tx_size);
   const int txb_size_index =
       av1_get_txb_size_index(mbmi->sb_type[plane_type], blk_row, blk_col);
-#else
-  const int ctx = txfm_partition_context(xd->above_txfm_context + blk_col,
-                                         xd->left_txfm_context + blk_row,
-                                         mbmi->sb_type, tx_size);
-  const int txb_size_index =
-      av1_get_txb_size_index(mbmi->sb_type, blk_row, blk_col);
-#endif
   const int write_txfm_partition =
       tx_size == mbmi->inter_tx_size[txb_size_index];
   if (write_txfm_partition) {
@@ -344,11 +320,7 @@ static AOM_INLINE void write_tx_size_vartx(MACROBLOCKD *xd,
 static AOM_INLINE void write_selected_tx_size(const MACROBLOCKD *xd,
                                               aom_writer *w) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   if (block_signals_txsize(bsize)) {
     const TX_SIZE tx_size = mbmi->tx_size;
@@ -358,11 +330,7 @@ static AOM_INLINE void write_selected_tx_size(const MACROBLOCKD *xd,
     const int32_t tx_size_cat = bsize_to_tx_size_cat(bsize);
 
     assert(depth >= 0 && depth <= max_depths);
-#if CONFIG_SDP
     assert(!is_inter_block(mbmi, xd->tree_type));
-#else
-    assert(!is_inter_block(mbmi));
-#endif
     assert(IMPLIES(is_rect_tx(tx_size), is_rect_tx_allowed(xd, mbmi)));
     aom_write_symbol(w, depth, ec_ctx->tx_size_cdf[tx_size_cat][tx_size_ctx],
                      max_depths + 1);
@@ -375,11 +343,7 @@ static int write_skip(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_SKIP)) {
     return 1;
   } else {
-#if CONFIG_SDP
     const int skip_txfm = mi->skip_txfm[xd->tree_type == CHROMA_PART];
-#else
-    const int skip_txfm = mi->skip_txfm;
-#endif
     const int ctx = av1_get_skip_txfm_context(xd);
     FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
     aom_write_symbol(w, skip_txfm, ec_ctx->skip_txfm_cdfs[ctx], 2);
@@ -395,11 +359,7 @@ static int write_skip_mode(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     return 0;
   }
   const int skip_mode = mi->skip_mode;
-#if CONFIG_SDP
   if (!is_comp_ref_allowed(mi->sb_type[xd->tree_type == CHROMA_PART])) {
-#else
-  if (!is_comp_ref_allowed(mi->sb_type)) {
-#endif
     assert(!skip_mode);
     return 0;
   }
@@ -451,25 +411,14 @@ static AOM_INLINE void write_motion_mode(const AV1_COMMON *cm, MACROBLOCKD *xd,
   switch (last_motion_mode_allowed) {
     case SIMPLE_TRANSLATION: break;
     case OBMC_CAUSAL:
-#if CONFIG_SDP
       aom_write_symbol(w, mbmi->motion_mode == OBMC_CAUSAL,
                        xd->tile_ctx->obmc_cdf[mbmi->sb_type[PLANE_TYPE_Y]], 2);
-#else
-      aom_write_symbol(w, mbmi->motion_mode == OBMC_CAUSAL,
-                       xd->tile_ctx->obmc_cdf[mbmi->sb_type], 2);
-#endif
       break;
     default:
-#if CONFIG_SDP
       aom_write_symbol(
           w, mbmi->motion_mode,
           xd->tile_ctx->motion_mode_cdf[mbmi->sb_type[PLANE_TYPE_Y]],
           MOTION_MODES);
-#else
-      aom_write_symbol(w, mbmi->motion_mode,
-                       xd->tile_ctx->motion_mode_cdf[mbmi->sb_type],
-                       MOTION_MODES);
-#endif
   }
 }
 
@@ -549,19 +498,11 @@ static AOM_INLINE void pack_txb_tokens(
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
 
   const struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_SDP
   const TX_SIZE plane_tx_size =
       plane ? av1_get_max_uv_txsize(mbmi->sb_type[plane > 0], pd->subsampling_x,
                                     pd->subsampling_y)
             : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
                                                          blk_col)];
-#else
-  const TX_SIZE plane_tx_size =
-      plane ? av1_get_max_uv_txsize(mbmi->sb_type, pd->subsampling_x,
-                                    pd->subsampling_y)
-            : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
-                                                         blk_col)];
-#endif
 
   if (tx_size == plane_tx_size || plane) {
 #if CONFIG_FORWARDSKIP
@@ -709,7 +650,6 @@ static AOM_INLINE void write_segment_id(AV1_COMP *cpi,
     // Still need to transmit tx size for intra blocks even if skip_txfm is
     // true. Changing segment_id may make the tx size become invalid, e.g
     // changing from lossless to lossy.
-#if CONFIG_SDP
     assert(is_inter_block(mbmi, xd->tree_type) ||
            !cpi->enc_seg.has_lossless_segment);
     set_spatial_segment_id(&cm->mi_params, cm->cur_frame->seg_map,
@@ -718,13 +658,6 @@ static AOM_INLINE void write_segment_id(AV1_COMP *cpi,
     set_spatial_segment_id(&cm->mi_params, cpi->enc_seg.map,
                            mbmi->sb_type[xd->tree_type == CHROMA_PART], mi_row,
                            mi_col, pred);
-#else
-    assert(is_inter_block(mbmi) || !cpi->enc_seg.has_lossless_segment);
-    set_spatial_segment_id(&cm->mi_params, cm->cur_frame->seg_map,
-                           mbmi->sb_type, mi_row, mi_col, pred);
-    set_spatial_segment_id(&cm->mi_params, cpi->enc_seg.map, mbmi->sb_type,
-                           mi_row, mi_col, pred);
-#endif
     /* mbmi is read only but we need to update segment_id */
     ((MB_MODE_INFO *)mbmi)->segment_id = pred;
     return;
@@ -734,14 +667,9 @@ static AOM_INLINE void write_segment_id(AV1_COMP *cpi,
       av1_neg_interleave(mbmi->segment_id, pred, seg->last_active_segid + 1);
   aom_cdf_prob *pred_cdf = segp->spatial_pred_seg_cdf[cdf_num];
   aom_write_symbol(w, coded_id, pred_cdf, MAX_SEGMENTS);
-#if CONFIG_SDP
   set_spatial_segment_id(&cm->mi_params, cm->cur_frame->seg_map,
                          mbmi->sb_type[xd->tree_type == CHROMA_PART], mi_row,
                          mi_col, mbmi->segment_id);
-#else
-  set_spatial_segment_id(&cm->mi_params, cm->cur_frame->seg_map, mbmi->sb_type,
-                         mi_row, mi_col, mbmi->segment_id);
-#endif
 }
 
 #define WRITE_REF_BIT(bname, pname) \
@@ -768,11 +696,7 @@ static AOM_INLINE void write_ref_frames(const AV1_COMMON *cm,
     // does the feature use compound prediction or not
     // (if not specified at the frame/segment level)
     if (cm->current_frame.reference_mode == REFERENCE_MODE_SELECT) {
-#if CONFIG_SDP
       if (is_comp_ref_allowed(mbmi->sb_type[PLANE_TYPE_Y]))
-#else
-      if (is_comp_ref_allowed(mbmi->sb_type))
-#endif
         aom_write_symbol(w, is_compound, av1_get_reference_mode_cdf(xd), 2);
     } else {
       assert((!is_compound) ==
@@ -859,19 +783,10 @@ static AOM_INLINE void write_ref_frames(const AV1_COMMON *cm,
 static AOM_INLINE void write_filter_intra_mode_info(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi,
     aom_writer *w) {
-#if CONFIG_SDP
   if (av1_filter_intra_allowed(cm, mbmi) && xd->tree_type != CHROMA_PART) {
-#else
-  if (av1_filter_intra_allowed(cm, mbmi)) {
-#endif
-#if CONFIG_SDP
     aom_write_symbol(
         w, mbmi->filter_intra_mode_info.use_filter_intra,
         xd->tile_ctx->filter_intra_cdfs[mbmi->sb_type[PLANE_TYPE_Y]], 2);
-#else
-    aom_write_symbol(w, mbmi->filter_intra_mode_info.use_filter_intra,
-                     xd->tile_ctx->filter_intra_cdfs[mbmi->sb_type], 2);
-#endif
     if (mbmi->filter_intra_mode_info.use_filter_intra) {
       const FILTER_INTRA_MODE mode =
           mbmi->filter_intra_mode_info.filter_intra_mode;
@@ -1051,19 +966,11 @@ static AOM_INLINE void write_palette_mode_info(const AV1_COMMON *cm,
                                                const MB_MODE_INFO *const mbmi,
                                                aom_writer *w) {
   const int num_planes = av1_num_planes(cm);
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   assert(av1_allow_palette(cm->features.allow_screen_content_tools, bsize));
   const PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
   const int bsize_ctx = av1_get_palette_bsize_ctx(bsize);
-#if CONFIG_SDP
   if (mbmi->mode == DC_PRED && xd->tree_type != CHROMA_PART) {
-#else
-  if (mbmi->mode == DC_PRED) {
-#endif
     const int n = pmi->palette_size[0];
     const int palette_y_mode_ctx = av1_get_palette_mode_ctx(xd);
     aom_write_symbol(
@@ -1077,13 +984,8 @@ static AOM_INLINE void write_palette_mode_info(const AV1_COMMON *cm,
     }
   }
 
-  const int uv_dc_pred =
-#if CONFIG_SDP
-      num_planes > 1 && xd->tree_type != LUMA_PART &&
-      mbmi->uv_mode == UV_DC_PRED && xd->is_chroma_ref;
-#else
-      num_planes > 1 && mbmi->uv_mode == UV_DC_PRED && xd->is_chroma_ref;
-#endif
+  const int uv_dc_pred = num_planes > 1 && xd->tree_type != LUMA_PART &&
+                         mbmi->uv_mode == UV_DC_PRED && xd->is_chroma_ref;
   if (uv_dc_pred) {
     const int n = pmi->palette_size[1];
     const int palette_uv_mode_ctx = (pmi->palette_size[0] > 0);
@@ -1102,19 +1004,11 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
                        TX_TYPE tx_type, TX_SIZE tx_size, aom_writer *w) {
   MB_MODE_INFO *mbmi = xd->mi[0];
   const FeatureFlags *const features = &cm->features;
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
   if (get_ext_tx_types(tx_size, is_inter, features->reduced_tx_set_used) > 1 &&
       ((!cm->seg.enabled && cm->quant_params.base_qindex > 0) ||
        (cm->seg.enabled && xd->qindex[mbmi->segment_id] > 0)) &&
-#if CONFIG_SDP
       !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
-#else
-      !mbmi->skip_txfm &&
-#endif
       !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP)) {
     FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
     const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];
@@ -1180,19 +1074,11 @@ void av1_write_sec_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
                            aom_writer *w) {
   MB_MODE_INFO *mbmi = xd->mi[0];
   const FeatureFlags *const features = &cm->features;
-#if CONFIG_SDP
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif
   if (get_ext_tx_types(tx_size, is_inter, features->reduced_tx_set_used) > 1 &&
       ((!cm->seg.enabled && cm->quant_params.base_qindex > 0) ||
        (cm->seg.enabled && xd->qindex[mbmi->segment_id] > 0)) &&
-#if CONFIG_SDP
       !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
-#else
-      !mbmi->skip_txfm &&
-#endif
       !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP)) {
     FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
     const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];
@@ -1381,14 +1267,9 @@ static AOM_INLINE void write_inter_segment_id(
         write_segment_id(cpi, mbmi, w, seg, segp, 0);
       }
       if (pred_flag) {
-#if CONFIG_SDP
         set_spatial_segment_id(&cm->mi_params, cm->cur_frame->seg_map,
                                mbmi->sb_type[PLANE_TYPE_Y], mi_row, mi_col,
                                mbmi->segment_id);
-#else
-        set_spatial_segment_id(&cm->mi_params, cm->cur_frame->seg_map,
-                               mbmi->sb_type, mi_row, mi_col, mbmi->segment_id);
-#endif
       }
     } else {
       write_segment_id(cpi, mbmi, w, seg, segp, 0);
@@ -1407,11 +1288,7 @@ static AOM_INLINE void write_delta_q_params(AV1_COMP *cpi, int skip,
     MACROBLOCK *const x = &cpi->td.mb;
     MACROBLOCKD *const xd = &x->e_mbd;
     const MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
     const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-    const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
     const int super_block_upper_left =
         ((xd->mi_row & (cm->seq_params.mib_size - 1)) == 0) &&
         ((xd->mi_col & (cm->seq_params.mib_size - 1)) == 0);
@@ -1505,19 +1382,13 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
   const MB_MODE_INFO *const above_mi = xd->above_mbmi;
   const MB_MODE_INFO *const left_mi = xd->left_mbmi;
 #endif  // CONFIG_FORWARDSKIP
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
 #if !CONFIG_AIMC
   const int use_angle_delta = av1_use_angle_delta(bsize);
 #endif  // !CONFIG_AIMC
 
   // Y mode.
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART) {
-#endif
 #if CONFIG_AIMC
     write_intra_luma_mode(xd, w);
 #if CONFIG_FORWARDSKIP
@@ -1528,33 +1399,28 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
     }
 #endif  // CONFIG_FORWARDSKIP
 #else
-  if (is_keyframe) {
+    if (is_keyframe) {
 #if !CONFIG_FORWARDSKIP
-    const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-    const MB_MODE_INFO *const left_mi = xd->left_mbmi;
+      const MB_MODE_INFO *const above_mi = xd->above_mbmi;
+      const MB_MODE_INFO *const left_mi = xd->left_mbmi;
 #endif  // CONFIG_FORWARDSKIP
-    write_intra_y_mode_kf(ec_ctx, mbmi, above_mi, left_mi, mode, w);
-  } else {
-    write_intra_y_mode_nonkf(ec_ctx, bsize, mode, w);
-  }
+      write_intra_y_mode_kf(ec_ctx, mbmi, above_mi, left_mi, mode, w);
+    } else {
+      write_intra_y_mode_nonkf(ec_ctx, bsize, mode, w);
+    }
 
 #if CONFIG_FORWARDSKIP
-  if (allow_fsc_intra(cm, xd, bsize, mbmi) && xd->tree_type != CHROMA_PART) {
-    aom_cdf_prob *fsc_cdf =
-        get_fsc_mode_cdf(ec_ctx, above_mi, left_mi, bsize, is_keyframe);
-    write_fsc_mode(mbmi->fsc_mode[xd->tree_type == CHROMA_PART], w, fsc_cdf);
-  }
+    if (allow_fsc_intra(cm, xd, bsize, mbmi) && xd->tree_type != CHROMA_PART) {
+      aom_cdf_prob *fsc_cdf =
+          get_fsc_mode_cdf(ec_ctx, above_mi, left_mi, bsize, is_keyframe);
+      write_fsc_mode(mbmi->fsc_mode[xd->tree_type == CHROMA_PART], w, fsc_cdf);
+    }
 #endif  // CONFIG_FORWARDSKIP
-  // Y angle delta.
-  if (use_angle_delta && av1_is_directional_mode(mode)) {
-#if CONFIG_SDP
-    write_angle_delta(w, mbmi->angle_delta[PLANE_TYPE_Y],
-                      ec_ctx->angle_delta_cdf[PLANE_TYPE_Y][mode - V_PRED]);
-#else
-    write_angle_delta(w, mbmi->angle_delta[PLANE_TYPE_Y],
-                      ec_ctx->angle_delta_cdf[mode - V_PRED]);
-#endif  // CONFIG_SDP
-  }
+    // Y angle delta.
+    if (use_angle_delta && av1_is_directional_mode(mode)) {
+      write_angle_delta(w, mbmi->angle_delta[PLANE_TYPE_Y],
+                        ec_ctx->angle_delta_cdf[PLANE_TYPE_Y][mode - V_PRED]);
+    }
 #endif  // CONFIG_AIMC
 #if CONFIG_MRLS
     // Encoding reference line index
@@ -1562,24 +1428,17 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
       write_mrl_index(ec_ctx, mbmi->mrl_index, w);
     }
 #endif
-#if CONFIG_SDP
   }
-#endif
 
   // UV mode and UV angle delta.
-#if CONFIG_SDP
   if (!cm->seq_params.monochrome && xd->is_chroma_ref &&
       xd->tree_type != LUMA_PART) {
-#else
-  if (!cm->seq_params.monochrome && xd->is_chroma_ref) {
-#endif
     const UV_PREDICTION_MODE uv_mode = mbmi->uv_mode;
 #if CONFIG_AIMC
     write_intra_uv_mode(xd, is_cfl_allowed(xd), w);
 #else
     write_intra_uv_mode(ec_ctx, uv_mode, mode, is_cfl_allowed(xd), w);
     if (use_angle_delta && av1_is_directional_mode(get_uv_mode(uv_mode))) {
-#if CONFIG_SDP
       if (cm->seq_params.enable_sdp) {
         write_angle_delta(
             w, mbmi->angle_delta[PLANE_TYPE_UV],
@@ -1589,10 +1448,6 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
             w, mbmi->angle_delta[PLANE_TYPE_UV],
             ec_ctx->angle_delta_cdf[PLANE_TYPE_Y][uv_mode - V_PRED]);
       }
-#else
-      write_angle_delta(w, mbmi->angle_delta[PLANE_TYPE_UV],
-                        ec_ctx->angle_delta_cdf[uv_mode - V_PRED]);
-#endif
     }
 #endif  // CONFIG_AIMC
     if (uv_mode == UV_CFL_PRED)
@@ -1663,39 +1518,22 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   const MB_MODE_INFO_EXT_FRAME *const mbmi_ext_frame = x->mbmi_ext_frame;
   const PREDICTION_MODE mode = mbmi->mode;
   const int segment_id = mbmi->segment_id;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const int allow_hp = cm->features.allow_high_precision_mv;
-#if CONFIG_SDP
 #if CONFIG_IBC_SR_EXT
   const int is_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   const int is_inter = is_inter_block(mbmi, xd->tree_type) && !is_intrabc;
 #else
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
 #endif  // CONFIG_IBC_SR_EXT
-#else
-#if CONFIG_IBC_SR_EXT
-  const int is_intrabc = is_intrabc_block(mbmi);
-  const int is_inter = is_inter_block(mbmi) && !is_intrabc;
-#else
-  const int is_inter = is_inter_block(mbmi);
-#endif  // CONFIG_IBC_SR_EXT
-#endif
   const int is_compound = has_second_ref(mbmi);
   int ref;
 
   write_inter_segment_id(cpi, w, seg, segp, 0, 1);
 
   write_skip_mode(cm, xd, segment_id, mbmi, w);
-#if CONFIG_SDP
   assert(
       IMPLIES(mbmi->skip_mode, mbmi->skip_txfm[xd->tree_type == CHROMA_PART]));
-#else
-  assert(IMPLIES(mbmi->skip_mode, mbmi->skip_txfm));
-#endif
   const int skip =
       mbmi->skip_mode ? 1 : write_skip(cm, xd, segment_id, mbmi, w);
 
@@ -1720,11 +1558,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   if (mbmi->skip_mode) return;
 
 #if CONFIG_IBC_SR_EXT
-#if CONFIG_SDP
   if (!is_inter && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
-#else
-  if (!is_inter && av1_allow_intrabc(cm)) {
-#endif  // CONFIG_SDP
     write_intrabc_info(xd, mbmi_ext_frame, w);
     if (is_intrabc_block(mbmi, xd->tree_type)) return;
   }
@@ -1901,19 +1735,12 @@ static AOM_INLINE void write_intrabc_info(
     MACROBLOCKD *xd, const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
     aom_writer *w) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
-#else
-  int use_intrabc = is_intrabc_block(mbmi);
-#endif
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
   if (use_intrabc) {
     assert(mbmi->mode == DC_PRED);
-#if !CONFIG_SDP
-    assert(mbmi->uv_mode == UV_DC_PRED);
-#endif
     assert(mbmi->motion_mode == SIMPLE_TRANSLATION);
     int_mv dv_ref = mbmi_ext_frame->ref_mv_stack[0].this_mv;
     av1_encode_dv(w, &mbmi->mv[0].as_mv, &dv_ref.as_mv, &ec_ctx->ndvc);
@@ -1937,19 +1764,14 @@ static AOM_INLINE void write_mb_modes_kf(
   if (!seg->segid_preskip && seg->update_map)
     write_segment_id(cpi, mbmi, w, seg, segp, skip);
 
-#if CONFIG_SDP
-  if (xd->tree_type != CHROMA_PART)
-#endif
-    write_cdef(cm, xd, w, skip);
+  if (xd->tree_type != CHROMA_PART) write_cdef(cm, xd, w, skip);
 
 #if CONFIG_CCSO
   if (cm->seq_params.enable_ccso
-#if CONFIG_SDP
 #if CONFIG_CCSO_EXT
       && xd->tree_type != CHROMA_PART
 #else
       && xd->tree_type != LUMA_PART
-#endif
 #endif
   )
     write_ccso(cm, xd, w);
@@ -1957,17 +1779,9 @@ static AOM_INLINE void write_mb_modes_kf(
 
   write_delta_q_params(cpi, skip, w);
 
-#if CONFIG_SDP
   if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
-#else
-  if (av1_allow_intrabc(cm)) {
-#endif
     write_intrabc_info(xd, mbmi_ext_frame, w);
-#if CONFIG_SDP
     if (is_intrabc_block(mbmi, xd->tree_type)) return;
-#else
-    if (is_intrabc_block(mbmi)) return;
-#endif
   }
 
 #if CONFIG_AIMC && !CONFIG_FORWARDSKIP
@@ -1981,12 +1795,8 @@ static AOM_INLINE void write_mb_modes_kf(
 static AOM_INLINE void dump_mode_info(MB_MODE_INFO *mi) {
   printf("\nmi->mi_row == %d\n", mi->mi_row);
   printf("&& mi->mi_col == %d\n", mi->mi_col);
-#if CONFIG_SDP
   printf("&& mi->sb_type[0] == %d\n", mi->sb_type[0]);
   printf("&& mi->sb_type[1] == %d\n", mi->sb_type[1]);
-#else
-  printf("&& mi->sb_type == %d\n", mi->sb_type);
-#endif
   printf("&& mi->tx_size == %d\n", mi->tx_size);
   printf("&& mi->mode == %d\n", mi->mode);
 }
@@ -2028,11 +1838,7 @@ static AOM_INLINE void enc_dump_logs(
       mbmi_ext_info->frame_base + get_mi_ext_idx(mi_row, mi_col,
                                                  cm->mi_params.mi_alloc_bsize,
                                                  mbmi_ext_info->stride);
-#if CONFIG_SDP
   if (is_inter_block(mbmi, SHARED_PART)) {
-#else
-  if (is_inter_block(mbmi)) {
-#endif
 #define FRAME_TO_CHECK 11
     if (cm->current_frame.frame_number == FRAME_TO_CHECK &&
         cm->show_frame == 1) {
@@ -2107,11 +1913,7 @@ static AOM_INLINE void write_inter_txb_coeff(
     const int plane) {
   MACROBLOCKD *const xd = &x->e_mbd;
   const struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   assert(bsize < BLOCK_SIZES_ALL);
   const int ss_x = pd->subsampling_x;
   const int ss_y = pd->subsampling_y;
@@ -2147,18 +1949,9 @@ static AOM_INLINE void write_tokens_b(AV1_COMP *cpi, aom_writer *w,
   MACROBLOCK *const x = &cpi->td.mb;
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
-#if CONFIG_SDP
   assert(!mbmi->skip_txfm[xd->tree_type == CHROMA_PART]);
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#else
-  assert(!mbmi->skip_txfm);
-  const int is_inter = is_inter_block(mbmi);
-#endif
 
   if (!is_inter) {
     av1_write_intra_coeffs_mb(cm, x, w, bsize);
@@ -2183,13 +1976,9 @@ static AOM_INLINE void write_tokens_b(AV1_COMP *cpi, aom_writer *w,
     const int num_planes = av1_num_planes(cm);
     for (int row = 0; row < num_4x4_h; row += mu_blocks_high) {
       for (int col = 0; col < num_4x4_w; col += mu_blocks_wide) {
-#if CONFIG_SDP
         const int plane_start = (xd->tree_type == CHROMA_PART);
         const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
         for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-        for (int plane = 0; plane < num_planes; ++plane) {
-#endif
           if (plane && !xd->is_chroma_ref) break;
           write_inter_txb_coeff(cm, x, mbmi, w, tok, tok_end, &token_stats, row,
                                 col, &block[plane], plane);
@@ -2198,11 +1987,7 @@ static AOM_INLINE void write_tokens_b(AV1_COMP *cpi, aom_writer *w,
     }
 #if CONFIG_RD_DEBUG
     for (int plane = 0; plane < num_planes; ++plane) {
-#if CONFIG_SDP
       if (mbmi->sb_type[xd->tree_type == CHROMA_PART] >= BLOCK_8X8 &&
-#else
-      if (mbmi->sb_type >= BLOCK_8X8 &&
-#endif
           rd_token_stats_mismatch(&mbmi->rd_stats, &token_stats, plane)) {
         dump_mode_info(mbmi);
         assert(0);
@@ -2228,18 +2013,10 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
   xd->tx_type_map = mi_params->tx_type_map + grid_idx;
   xd->tx_type_map_stride = mi_params->mi_stride;
 
-#if CONFIG_SDP
   MB_MODE_INFO *mbmi = xd->mi[0];
-#else
-  const MB_MODE_INFO *mbmi = xd->mi[0];
-#endif
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
   if (xd->tree_type == SHARED_PART)
     assert(mbmi->sb_type[PLANE_TYPE_Y] == mbmi->sb_type[PLANE_TYPE_UV]);
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   assert(bsize <= cm->seq_params.sb_size ||
          (bsize >= BLOCK_SIZES && bsize < BLOCK_SIZES_ALL));
 
@@ -2254,54 +2031,30 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
 
   write_mbmi_b(cpi, w);
 
-#if CONFIG_SDP
   const int plane_start = (xd->tree_type == CHROMA_PART);
   const int plane_end =
       (xd->tree_type == LUMA_PART ? 1 : AOMMIN(2, av1_num_planes(cm)));
   for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-  for (int plane = 0; plane < AOMMIN(2, av1_num_planes(cm)); ++plane) {
-#endif
     const uint8_t palette_size_plane =
         mbmi->palette_mode_info.palette_size[plane];
     assert(!mbmi->skip_mode || !palette_size_plane);
     if (palette_size_plane > 0) {
-#if CONFIG_SDP
       assert(mbmi->use_intrabc[plane] == 0);
-#else
-      assert(mbmi->use_intrabc == 0);
-#endif
-#if CONFIG_SDP
       assert(av1_allow_palette(cm->features.allow_screen_content_tools,
                                mbmi->sb_type[plane]));
       assert(!plane || xd->is_chroma_ref);
       int rows, cols;
       av1_get_block_dimensions(mbmi->sb_type[plane], plane, xd, NULL, NULL,
                                &rows, &cols);
-#else
-      assert(av1_allow_palette(cm->features.allow_screen_content_tools,
-                               mbmi->sb_type));
-      assert(!plane || xd->is_chroma_ref);
-      int rows, cols;
-      av1_get_block_dimensions(mbmi->sb_type, plane, xd, NULL, NULL, &rows,
-                               &cols);
-#endif
       assert(*tok < tok_end);
       pack_map_tokens(w, tok, palette_size_plane, rows * cols);
     }
   }
 
-#if CONFIG_SDP
   const int is_inter_tx = is_inter_block(mbmi, xd->tree_type);
   const int skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
-#else
-  const int is_inter_tx = is_inter_block(mbmi);
-  const int skip_txfm = mbmi->skip_txfm;
-#endif
   const int segment_id = mbmi->segment_id;
-#if CONFIG_SDP
   if (xd->tree_type != CHROMA_PART) {
-#endif
     if (cm->features.tx_mode == TX_MODE_SELECT && block_signals_txsize(bsize) &&
         !(is_inter_tx && skip_txfm) && !xd->lossless[segment_id]) {
       const TX_SIZE max_tx_size = get_vartx_max_txsize(xd, bsize, 0);
@@ -2315,7 +2068,7 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
 #if CONFIG_NEW_TX_PARTITION
             write_tx_partition(xd, mbmi, max_tx_size, idy, idx, w);
 #else
-          write_tx_size_vartx(xd, mbmi, max_tx_size, 0, idy, idx, w);
+            write_tx_size_vartx(xd, mbmi, max_tx_size, 0, idy, idx, w);
 #endif  // CONFIG_NEW_TX_PARTITION
           }
         }
@@ -2323,7 +2076,7 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
 #if CONFIG_NEW_TX_PARTITION
         write_tx_partition(xd, mbmi, max_tx_size, 0, 0, w);
 #else
-      write_selected_tx_size(xd, w);
+        write_selected_tx_size(xd, w);
 #endif
         set_txfm_ctxs(mbmi->tx_size, xd->width, xd->height, 0, xd);
       }
@@ -2331,15 +2084,9 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
       set_txfm_ctxs(mbmi->tx_size, xd->width, xd->height,
                     skip_txfm && is_inter_tx, xd);
     }
-#if CONFIG_SDP
   }
-#endif
 
-#if CONFIG_SDP
   if (!mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
-#else
-  if (!mbmi->skip_txfm) {
-#endif
     write_tokens_b(cpi, w, tok, tok_end);
   }
 #if CONFIG_IBC_SR_EXT
@@ -2355,10 +2102,8 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
 
   if (!is_partition_point) return;
 
-#if CONFIG_SDP
   const int plane = xd->tree_type == CHROMA_PART;
   if (bsize == BLOCK_8X8 && plane > 0) return;
-#endif
 
   const int has_rows = (mi_row + hbs) < cm->mi_params.mi_rows;
   const int has_cols = (mi_col + hbs) < cm->mi_params.mi_cols;
@@ -2370,7 +2115,6 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
     return;
   }
 
-#if CONFIG_SDP
   int parent_block_width = block_size_wide[bsize];
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   if (xd->tree_type == CHROMA_PART && parent_block_width >= SHARED_PART_SIZE) {
@@ -2381,36 +2125,22 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
       return;
     }
   }
-#endif
 
   if (has_rows && has_cols) {
-#if CONFIG_SDP
     aom_write_symbol(w, p, ec_ctx->partition_cdf[plane][ctx],
                      partition_cdf_length(bsize));
-#else
-    aom_write_symbol(w, p, ec_ctx->partition_cdf[ctx],
-                     partition_cdf_length(bsize));
-#endif
   } else if (!has_rows && has_cols) {
     assert(p == PARTITION_SPLIT || p == PARTITION_HORZ);
     assert(bsize > BLOCK_8X8);
     aom_cdf_prob cdf[2];
-#if CONFIG_SDP
     partition_gather_vert_alike(cdf, ec_ctx->partition_cdf[plane][ctx], bsize);
-#else
-    partition_gather_vert_alike(cdf, ec_ctx->partition_cdf[ctx], bsize);
-#endif
     aom_write_cdf(w, p == PARTITION_SPLIT, cdf, 2);
   } else {
     assert(has_rows && !has_cols);
     assert(p == PARTITION_SPLIT || p == PARTITION_VERT);
     assert(bsize > BLOCK_8X8);
     aom_cdf_prob cdf[2];
-#if CONFIG_SDP
     partition_gather_horz_alike(cdf, ec_ctx->partition_cdf[plane][ctx], bsize);
-#else
-    partition_gather_horz_alike(cdf, ec_ctx->partition_cdf[ctx], bsize);
-#endif
     aom_write_cdf(w, p == PARTITION_SPLIT, cdf, 2);
   }
 }
@@ -2426,24 +2156,16 @@ static AOM_INLINE void write_modes_sb(
   const int hbs = mi_size_wide[bsize] / 2;
   const int quarter_step = mi_size_wide[bsize] / 4;
   int i;
-#if CONFIG_SDP
   const PARTITION_TYPE partition =
       get_partition(cm, xd->tree_type == CHROMA_PART, mi_row, mi_col, bsize);
-#else
-  const PARTITION_TYPE partition = get_partition(cm, mi_row, mi_col, bsize);
-#endif
   const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
 
   if (mi_row >= mi_params->mi_rows || mi_col >= mi_params->mi_cols) return;
 
   const int num_planes = av1_num_planes(cm);
-#if CONFIG_SDP
   const int plane_start = (xd->tree_type == CHROMA_PART);
   const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
   for (int plane = plane_start; plane < plane_end; ++plane) {
-#else
-  for (int plane = 0; plane < num_planes; ++plane) {
-#endif
     int rcol0, rcol1, rrow0, rrow1;
     if (av1_loop_restoration_corners_in_sb(cm, plane, mi_row, mi_col, bsize,
                                            &rcol0, &rcol1, &rrow0, &rrow1)) {
@@ -2564,24 +2286,20 @@ static AOM_INLINE void write_modes(AV1_COMP *const cpi,
       av1_reset_is_mi_coded_map(xd, cm->seq_params.mib_size);
 #endif  // CONFIG_IBC_SR_EXT
       cpi->td.mb.cb_coef_buff = av1_get_cb_coeff_buffer(cpi, mi_row, mi_col);
-#if CONFIG_SDP
       const int total_loop_num =
           (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
            cm->seq_params.enable_sdp)
               ? 2
               : 1;
       xd->tree_type = (total_loop_num == 1 ? SHARED_PART : LUMA_PART);
-#endif
       write_modes_sb(cpi, tile, w, &tok, tok_end, mi_row, mi_col,
                      cm->seq_params.sb_size);
-#if CONFIG_SDP
       if (total_loop_num == 2) {
         xd->tree_type = CHROMA_PART;
         write_modes_sb(cpi, tile, w, &tok, tok_end, mi_row, mi_col,
                        cm->seq_params.sb_size);
         xd->tree_type = SHARED_PART;
       }
-#endif
     }
     assert(tok == tok_end);
   }
@@ -3581,9 +3299,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_REF_MV_BANK
   aom_wb_write_bit(wb, seq_params->enable_refmvbank);
 #endif  // CONFIG_REF_MV_BANK
-#if CONFIG_SDP
   aom_wb_write_bit(wb, seq_params->enable_sdp);
-#endif
 #if CONFIG_IST
   aom_wb_write_bit(wb, seq_params->enable_ist);
 #endif

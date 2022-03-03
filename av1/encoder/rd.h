@@ -358,13 +358,8 @@ int av1_get_intra_cost_penalty(int qindex, int qdelta,
                                int base_y_dc_delta_q,
 #endif  // CONFIG_EXTQUANT
                                aom_bit_depth_t bit_depth);
-#if CONFIG_SDP
 void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
-                         ModeCosts *mode_costs,
-#else
-void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
-#endif
-                         FRAME_CONTEXT *fc);
+                         ModeCosts *mode_costs, FRAME_CONTEXT *fc);
 
 void av1_fill_lr_rates(ModeCosts *mode_costs, FRAME_CONTEXT *fc);
 

@@ -112,11 +112,7 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
 
 static AOM_INLINE int tx_size_cost(const MACROBLOCK *const x, BLOCK_SIZE bsize,
                                    TX_SIZE tx_size) {
-#if CONFIG_SDP
   assert(bsize == x->e_mbd.mi[0]->sb_type[PLANE_TYPE_Y]);
-#else
-  assert(bsize == x->e_mbd.mi[0]->sb_type);
-#endif
   if (x->txfm_search_params.tx_mode_search_type != TX_MODE_SELECT ||
       !block_signals_txsize(bsize))
     return 0;

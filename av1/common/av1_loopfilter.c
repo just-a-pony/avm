@@ -206,39 +206,24 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
 }
 
 static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
-#if CONFIG_SDP
                                   const AV1_COMMON *const cm,
-#endif
                                   const MB_MODE_INFO *const mbmi,
                                   const EDGE_DIR edge_dir, const int mi_row,
                                   const int mi_col, const int plane,
                                   const struct macroblockd_plane *plane_ptr) {
   assert(mbmi != NULL);
   if (xd && xd->lossless[mbmi->segment_id]) return TX_4X4;
-#if CONFIG_SDP
   const int plane_type =
       (frame_is_intra_only(cm) && plane > 0 && cm->seq_params.enable_sdp);
-#endif
   TX_SIZE tx_size = (plane == AOM_PLANE_Y)
                         ? mbmi->tx_size
-#if CONFIG_SDP
                         : av1_get_max_uv_txsize(mbmi->sb_type[plane_type],
                                                 plane_ptr->subsampling_x,
                                                 plane_ptr->subsampling_y);
-#else
-                        : av1_get_max_uv_txsize(mbmi->sb_type,
-                                                plane_ptr->subsampling_x,
-                                                plane_ptr->subsampling_y);
-#endif
   assert(tx_size < TX_SIZES_ALL);
-#if CONFIG_SDP
   if ((plane == AOM_PLANE_Y) && is_inter_block(mbmi, SHARED_PART) &&
       !mbmi->skip_txfm[SHARED_PART]) {
     const BLOCK_SIZE sb_type = mbmi->sb_type[plane_type];
-#else
-  if ((plane == AOM_PLANE_Y) && is_inter_block(mbmi) && !mbmi->skip_txfm) {
-    const BLOCK_SIZE sb_type = mbmi->sb_type;
-#endif
     const int blk_row = mi_row & (mi_size_high[sb_type] - 1);
     const int blk_col = mi_col & (mi_size_wide[sb_type] - 1);
     const TX_SIZE mb_tx_size =
@@ -275,10 +260,8 @@ static TX_SIZE set_lpf_parameters(
   // reset to initial values
   params->filter_length = 0;
 
-#if CONFIG_SDP
   const int plane_type =
       (frame_is_intra_only(cm) && plane > 0 && cm->seq_params.enable_sdp);
-#endif
 
   // no deblocking is required
   const uint32_t width = plane_ptr->dst.width;
@@ -304,14 +287,8 @@ static TX_SIZE set_lpf_parameters(
   // it not set up.
   if (mbmi == NULL) return TX_INVALID;
 
-  const TX_SIZE ts =
-#if CONFIG_SDP
-      get_transform_size(xd, cm, mi[0], edge_dir, mi_row, mi_col, plane,
-                         plane_ptr);
-#else
-      get_transform_size(xd, mi[0], edge_dir, mi_row, mi_col, plane, plane_ptr);
-#endif
-
+  const TX_SIZE ts = get_transform_size(xd, cm, mi[0], edge_dir, mi_row, mi_col,
+                                        plane, plane_ptr);
   {
     const uint32_t coord = (VERT_EDGE == edge_dir) ? (x) : (y);
     const uint32_t transform_masks =
@@ -324,12 +301,8 @@ static TX_SIZE set_lpf_parameters(
     {
       const uint32_t curr_level =
           av1_get_filter_level(cm, &cm->lf_info, edge_dir, plane, mbmi);
-#if CONFIG_SDP
       const int curr_skipped =
           mbmi->skip_txfm[plane_type] && is_inter_block(mbmi, xd->tree_type);
-#else
-      const int curr_skipped = mbmi->skip_txfm && is_inter_block(mbmi);
-#endif
       uint32_t level = curr_level;
       if (coord) {
         {
@@ -340,31 +313,15 @@ static TX_SIZE set_lpf_parameters(
           const int pv_col =
               (VERT_EDGE == edge_dir) ? (mi_col - (1 << scale_horz)) : (mi_col);
           const TX_SIZE pv_ts = get_transform_size(
-#if CONFIG_SDP
               xd, cm, mi_prev, edge_dir, pv_row, pv_col, plane, plane_ptr);
-#else
-              xd, mi_prev, edge_dir, pv_row, pv_col, plane, plane_ptr);
-#endif
-
           const uint32_t pv_lvl =
               av1_get_filter_level(cm, &cm->lf_info, edge_dir, plane, mi_prev);
 
-          const int pv_skip_txfm =
-#if CONFIG_SDP
-              mi_prev->skip_txfm[plane_type] &&
-              is_inter_block(mi_prev, xd->tree_type);
-#else
-              mi_prev->skip_txfm && is_inter_block(mi_prev);
-#endif
-#if CONFIG_SDP
+          const int pv_skip_txfm = mi_prev->skip_txfm[plane_type] &&
+                                   is_inter_block(mi_prev, xd->tree_type);
           const BLOCK_SIZE bsize = get_plane_block_size(
               mbmi->sb_type[plane > 0], plane_ptr->subsampling_x,
               plane_ptr->subsampling_y);
-#else
-          const BLOCK_SIZE bsize =
-              get_plane_block_size(mbmi->sb_type, plane_ptr->subsampling_x,
-                                   plane_ptr->subsampling_y);
-#endif
           assert(bsize < BLOCK_SIZES_ALL);
           const int prediction_masks = edge_dir == VERT_EDGE
                                            ? block_size_wide[bsize] - 1

@@ -20,34 +20,22 @@
 #if CONFIG_AIMC
 PREDICTION_MODE av1_get_joint_mode(const MB_MODE_INFO *mi) {
   if (!mi) return DC_PRED;
-#if CONFIG_SDP
   if (is_inter_block(mi, SHARED_PART) || is_intrabc_block(mi, SHARED_PART))
     return DC_PRED;
-#else
-  if (is_inter_block(mi) || is_intrabc_block(mi)) return DC_PRED;
-#endif  // CONFIG_SDP
   return mi->joint_y_mode_delta_angle;
 }
 #else
 PREDICTION_MODE av1_left_block_mode(const MB_MODE_INFO *left_mi) {
   if (!left_mi) return DC_PRED;
-#if CONFIG_SDP
   assert(!is_inter_block(left_mi, SHARED_PART) ||
          is_intrabc_block(left_mi, SHARED_PART));
-#else
-  assert(!is_inter_block(left_mi) || is_intrabc_block(left_mi));
-#endif
   return left_mi->mode;
 }
 
 PREDICTION_MODE av1_above_block_mode(const MB_MODE_INFO *above_mi) {
   if (!above_mi) return DC_PRED;
-#if CONFIG_SDP
   assert(!is_inter_block(above_mi, SHARED_PART) ||
          is_intrabc_block(above_mi, SHARED_PART));
-#else
-  assert(!is_inter_block(above_mi) || is_intrabc_block(above_mi));
-#endif
   return above_mi->mode;
 }
 #endif  // CONFIG_AIMC

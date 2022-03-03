@@ -318,11 +318,7 @@ typedef struct MB_MODE_INFO {
   /**@{*/
   /*! \brief The block size of the current coding block */
   // Common for both INTER and INTRA blocks
-#if CONFIG_SDP
-  BLOCK_SIZE sb_type[2];
-#else
-  BLOCK_SIZE sb_type;
-#endif
+  BLOCK_SIZE sb_type[PARTITION_STRUCTURE_NUM];
   /*! \brief The partition type of the current coding block. */
   PARTITION_TYPE partition;
   /*! \brief The prediction mode used */
@@ -406,11 +402,7 @@ typedef struct MB_MODE_INFO {
    ****************************************************************************/
   /**@{*/
   /*! \brief Whether to skip transforming and sending. */
-#if CONFIG_SDP
-  int8_t skip_txfm[2];
-#else
-  int8_t skip_txfm;
-#endif
+  int8_t skip_txfm[PARTITION_STRUCTURE_NUM];
   /*! \brief Transform size when fixed size txfm is used (e.g. intra modes). */
   TX_SIZE tx_size;
   /*! \brief Transform size when recursive txfm tree is on. */
@@ -444,11 +436,7 @@ typedef struct MB_MODE_INFO {
   /*! \brief Inter skip mode */
   uint8_t skip_mode : 1;
   /*! \brief Whether intrabc is used. */
-#if CONFIG_SDP
-  uint8_t use_intrabc[2];
-#else
-  uint8_t use_intrabc : 1;
-#endif
+  uint8_t use_intrabc[PARTITION_STRUCTURE_NUM];
   /*! \brief Indicates if masked compound is used(1) or not (0). */
   uint8_t comp_group_idx : 1;
   /*! \brief Whether to use interintra wedge */
@@ -483,15 +471,9 @@ typedef struct MB_MODE_INFO {
 
 /*!\cond */
 
-#if CONFIG_SDP
 static INLINE int is_intrabc_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return mbmi->use_intrabc[tree_type == CHROMA_PART];
 }
-#else
-static INLINE int is_intrabc_block(const MB_MODE_INFO *mbmi) {
-  return mbmi->use_intrabc;
-}
-#endif
 
 static INLINE PREDICTION_MODE get_uv_mode(UV_PREDICTION_MODE mode) {
   assert(mode < UV_INTRA_MODES);
@@ -516,15 +498,9 @@ static INLINE PREDICTION_MODE get_uv_mode(UV_PREDICTION_MODE mode) {
   return uv2y[mode];
 }
 
-#if CONFIG_SDP
 static INLINE int is_inter_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return is_intrabc_block(mbmi, tree_type) || mbmi->ref_frame[0] > INTRA_FRAME;
 }
-#else
-static INLINE int is_inter_block(const MB_MODE_INFO *mbmi) {
-  return is_intrabc_block(mbmi) || mbmi->ref_frame[0] > INTRA_FRAME;
-}
-#endif
 
 static INLINE int has_second_ref(const MB_MODE_INFO *mbmi) {
   return mbmi->ref_frame[1] > INTRA_FRAME;
@@ -578,11 +554,7 @@ PREDICTION_MODE av1_above_block_mode(const MB_MODE_INFO *above_mi);
 static INLINE int is_global_mv_block(const MB_MODE_INFO *const mbmi,
                                      TransformationType type) {
   const PREDICTION_MODE mode = mbmi->mode;
-#if CONFIG_SDP
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bsize = mbmi->sb_type;
-#endif
   const int block_size_allowed =
       AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >= 8;
   return (mode == GLOBALMV || mode == GLOBAL_GLOBALMV) && type > TRANSLATION &&
@@ -904,13 +876,11 @@ typedef struct macroblockd {
   int mb_to_bottom_edge; /*!< Distance from bottom edge */
   /**@}*/
 
-#if CONFIG_SDP
   /*!
    * tree_type specifies whether luma and chroma component in current coded
    * block shares the same tree or not.
    */
   TREE_TYPE tree_type;
-#endif
 
   /*!
    * Scale factors for reference frames of the current block.
@@ -941,7 +911,6 @@ typedef struct macroblockd {
    */
   ENTROPY_CONTEXT left_entropy_context[MAX_MB_PLANE][MAX_MIB_SIZE];
 
-#if CONFIG_SDP
   /*!
    * Partition contexts for the above blocks.
    * above_partition_context[p][i] corresponds to above partition context for
@@ -956,22 +925,6 @@ typedef struct macroblockd {
    * Note: These contain actual data, NOT pointers.
    */
   PARTITION_CONTEXT left_partition_context[MAX_MB_PLANE][MAX_MIB_SIZE];
-#else
-  /*!
-   * Partition contexts for the above blocks.
-   * above_partition_context[i] corresponds to above partition context for ith
-   * mi column of this *frame*, wrt current 'mi_row'.
-   * This is a pointer into 'cm->above_contexts.partition'.
-   */
-  PARTITION_CONTEXT *above_partition_context;
-  /*!
-   * Partition contexts for the left blocks.
-   * left_partition_context[i] corresponds to left partition context for ith
-   * mi row of this *superblock*, wrt current 'mi_col'.
-   * Note: These contain actual data, NOT pointers.
-   */
-  PARTITION_CONTEXT left_partition_context[MAX_MIB_SIZE];
-#endif
   /*!
    * Transform contexts for the above blocks.
    * above_txfm_context[i] corresponds to above transform context for ith mi col
@@ -1409,13 +1362,9 @@ static INLINE TX_TYPE get_default_tx_type(PLANE_TYPE plane_type,
                                           TX_SIZE tx_size,
                                           int is_screen_content_type) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
-#if CONFIG_SDP
-  if (is_inter_block(mbmi, xd->tree_type) ||
-#else
-  if (is_inter_block(mbmi) ||
-#endif
-      plane_type != PLANE_TYPE_Y || xd->lossless[mbmi->segment_id] ||
-      tx_size >= TX_32X32 || is_screen_content_type)
+  if (is_inter_block(mbmi, xd->tree_type) || plane_type != PLANE_TYPE_Y ||
+      xd->lossless[mbmi->segment_id] || tx_size >= TX_32X32 ||
+      is_screen_content_type)
     return DCT_DCT;
 
   return intra_mode_to_tx_type(mbmi, plane_type);
@@ -1587,11 +1536,7 @@ static INLINE int block_signals_sec_tx_type(const MACROBLOCKD *xd,
   } else {
     intra_dir = mbmi->mode;
   }
-#if CONFIG_SDP
   const BLOCK_SIZE bs = mbmi->sb_type[PLANE_TYPE_Y];
-#else
-  const BLOCK_SIZE bs = mbmi->sb_type;
-#endif
   const TX_TYPE primary_tx_type = get_primary_tx_type(tx_type);
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
@@ -1645,11 +1590,7 @@ static INLINE TX_TYPE av1_get_tx_type(const MACROBLOCKD *xd,
   if (plane_type == PLANE_TYPE_Y) {
     tx_type = xd->tx_type_map[blk_row * xd->tx_type_map_stride + blk_col];
   } else {
-#if CONFIG_SDP
     if (is_inter_block(mbmi, xd->tree_type)) {
-#else
-    if (is_inter_block(mbmi)) {
-#endif  // CONFIG_SDP
       // scale back to y plane's coordinate
       const struct macroblockd_plane *const pd = &xd->plane[plane_type];
       blk_row <<= pd->subsampling_y;
@@ -1664,25 +1605,14 @@ static INLINE TX_TYPE av1_get_tx_type(const MACROBLOCKD *xd,
       // plane, so the tx_type should not be shared
       tx_type = intra_mode_to_tx_type(mbmi, PLANE_TYPE_UV);
     }
-    const TxSetType tx_set_type =
-#if CONFIG_SDP
-        av1_get_ext_tx_set_type(tx_size, is_inter_block(mbmi, xd->tree_type),
-                                reduced_tx_set);
-#else
-        av1_get_ext_tx_set_type(tx_size, is_inter_block(mbmi), reduced_tx_set);
-#endif  // CONFIG_SDP
+    const TxSetType tx_set_type = av1_get_ext_tx_set_type(
+        tx_size, is_inter_block(mbmi, xd->tree_type), reduced_tx_set);
     if (!av1_ext_tx_used[tx_set_type][tx_type]) tx_type = DCT_DCT;
   }
 #if CONFIG_IST
-#if CONFIG_SDP
   assert(av1_ext_tx_used[av1_get_ext_tx_set_type(
       tx_size, is_inter_block(mbmi, xd->tree_type), reduced_tx_set)]
                         [get_primary_tx_type(tx_type)]);
-#else
-  assert(av1_ext_tx_used[av1_get_ext_tx_set_type(tx_size, is_inter_block(mbmi),
-                                                 reduced_tx_set)]
-                        [get_primary_tx_type(tx_type)]);
-#endif  // CONFIG_SDP
   if (txsize_sqr_up_map[tx_size] > TX_32X32) {
     // secondary transforms are enabled for txsize_sqr_up_map[tx_size] >
     // TX_32X32 while tx_type is by default DCT_DCT.
@@ -1690,13 +1620,8 @@ static INLINE TX_TYPE av1_get_tx_type(const MACROBLOCKD *xd,
   }
 #else
   assert(tx_type < TX_TYPES);
-#if CONFIG_SDP
   assert(av1_ext_tx_used[av1_get_ext_tx_set_type(
       tx_size, is_inter_block(mbmi, xd->tree_type), reduced_tx_set)][tx_type]);
-#else
-  assert(av1_ext_tx_used[av1_get_ext_tx_set_type(tx_size, is_inter_block(mbmi),
-                                                 reduced_tx_set)][tx_type]);
-#endif  // CONFIG_SDP
 #endif  // CONFIG_IST
   return tx_type;
 }
@@ -1775,13 +1700,8 @@ static INLINE TX_SIZE av1_get_tx_size(int plane, const MACROBLOCKD *xd) {
   if (xd->lossless[mbmi->segment_id]) return TX_4X4;
   if (plane == 0) return mbmi->tx_size;
   const MACROBLOCKD_PLANE *pd = &xd->plane[plane];
-#if CONFIG_SDP
   return av1_get_max_uv_txsize(mbmi->sb_type[PLANE_TYPE_UV], pd->subsampling_x,
                                pd->subsampling_y);
-#else
-  return av1_get_max_uv_txsize(mbmi->sb_type, pd->subsampling_x,
-                               pd->subsampling_y);
-#endif
 }
 
 void av1_reset_entropy_context(MACROBLOCKD *xd, BLOCK_SIZE bsize,
@@ -1820,15 +1740,9 @@ static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
 }
 
 static INLINE int is_interintra_allowed(const MB_MODE_INFO *mbmi) {
-#if CONFIG_SDP
   return is_interintra_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
          is_interintra_allowed_mode(mbmi->mode) &&
          is_interintra_allowed_ref(mbmi->ref_frame);
-#else
-  return is_interintra_allowed_bsize(mbmi->sb_type) &&
-         is_interintra_allowed_mode(mbmi->mode) &&
-         is_interintra_allowed_ref(mbmi->ref_frame);
-#endif
 }
 
 static INLINE int is_interintra_allowed_bsize_group(int group) {
@@ -1880,11 +1794,7 @@ motion_mode_allowed(const WarpedMotionParams *gm_params, const MACROBLOCKD *xd,
     const TransformationType gm_type = gm_params[mbmi->ref_frame[0]].wmtype;
     if (is_global_mv_block(mbmi, gm_type)) return SIMPLE_TRANSLATION;
   }
-#if CONFIG_SDP
   if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
-#else
-  if (is_motion_variation_allowed_bsize(mbmi->sb_type) &&
-#endif
       is_inter_mode(mbmi->mode) && mbmi->ref_frame[1] != INTRA_FRAME &&
       is_motion_variation_allowed_compound(mbmi)) {
     if (!check_num_overlappable_neighbors(mbmi)) return SIMPLE_TRANSLATION;
@@ -1902,7 +1812,7 @@ motion_mode_allowed(const WarpedMotionParams *gm_params, const MACROBLOCKD *xd,
     return SIMPLE_TRANSLATION;
   }
 }
-#if CONFIG_SDP
+
 static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
                                            int tree_type) {
 #if CONFIG_IBC_SR_EXT
@@ -1912,15 +1822,6 @@ static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
   return (is_inter_block(mbmi, tree_type));
 #endif  // CONFIG_IBC_SR_EXT
 }
-#else
-static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi) {
-#if CONFIG_IBC_SR_EXT
-  return (is_inter_block(mbmi) && !is_intrabc_block(mbmi));
-#else
-  return (is_inter_block(mbmi));
-#endif  // CONFIG_IBC_SR_EXT
-}
-#endif
 
 static INLINE int av1_allow_palette(int allow_screen_content_tools,
                                     BLOCK_SIZE sb_type) {
@@ -2001,12 +1902,8 @@ static INLINE int is_nontrans_global_motion(const MACROBLOCKD *xd,
 
   // First check if all modes are GLOBALMV
   if (mbmi->mode != GLOBALMV && mbmi->mode != GLOBAL_GLOBALMV) return 0;
-#if CONFIG_SDP
   if (AOMMIN(mi_size_wide[mbmi->sb_type[PLANE_TYPE_Y]],
              mi_size_high[mbmi->sb_type[PLANE_TYPE_Y]]) < 2)
-#else
-  if (AOMMIN(mi_size_wide[mbmi->sb_type], mi_size_high[mbmi->sb_type]) < 2)
-#endif
     return 0;
 
   // Now check if all global motion is non translational

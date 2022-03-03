@@ -94,26 +94,15 @@ static const int av1_ext_tx_set_idx_to_type[2][AOMMAX(EXT_TX_SETS_INTRA,
       EXT_TX_SET_DCT_IDTX,
   },
 };
-#if CONFIG_SDP
 void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
-                         ModeCosts *mode_costs,
-#else
-void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
-#endif
-                         FRAME_CONTEXT *fc) {
+                         ModeCosts *mode_costs, FRAME_CONTEXT *fc) {
   int i, j;
-#if CONFIG_SDP
   for (int plane_index = (xd->tree_type == CHROMA_PART);
        plane_index < PARTITION_STRUCTURE_NUM; plane_index++) {
     for (i = 0; i < PARTITION_CONTEXTS; ++i)
       av1_cost_tokens_from_cdf(mode_costs->partition_cost[plane_index][i],
                                fc->partition_cdf[plane_index][i], NULL);
   }
-#else
-  for (i = 0; i < PARTITION_CONTEXTS; ++i)
-    av1_cost_tokens_from_cdf(mode_costs->partition_cost[i],
-                             fc->partition_cdf[i], NULL);
-#endif
 
   if (cm->current_frame.skip_mode_info.skip_mode_flag) {
     for (i = 0; i < SKIP_MODE_CONTEXTS; ++i) {
@@ -291,7 +280,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
     }
   }
 #if !CONFIG_AIMC
-#if CONFIG_SDP
   for (i = 0; i < PARTITION_STRUCTURE_NUM; ++i) {
     for (j = 0; j < DIRECTIONAL_MODES; ++j) {
       av1_cost_tokens_from_cdf(mode_costs->angle_delta_cost[i][j],
@@ -299,12 +287,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
     }
   }
 
-#else
-  for (i = 0; i < DIRECTIONAL_MODES; ++i) {
-    av1_cost_tokens_from_cdf(mode_costs->angle_delta_cost[i],
-                             fc->angle_delta_cdf[i], NULL);
-  }
-#endif  // CONFIG_SDP
 #endif  // !CONFIG_AIMC
   av1_cost_tokens_from_cdf(mode_costs->intrabc_cost, fc->intrabc_cdf, NULL);
 
@@ -1375,19 +1357,11 @@ void av1_setup_pred_block(const MACROBLOCKD *xd,
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
   for (int i = 0; i < num_planes; ++i) {
-#if CONFIG_SDP
     setup_pred_plane(dst + i, xd->mi[0]->sb_type[i > 0 ? 1 : 0], dst[i].buf,
                      i ? src->uv_crop_width : src->y_crop_width,
                      i ? src->uv_crop_height : src->y_crop_height,
                      dst[i].stride, mi_row, mi_col, i ? scale_uv : scale,
                      xd->plane[i].subsampling_x, xd->plane[i].subsampling_y);
-#else
-    setup_pred_plane(dst + i, xd->mi[0]->sb_type, dst[i].buf,
-                     i ? src->uv_crop_width : src->y_crop_width,
-                     i ? src->uv_crop_height : src->y_crop_height,
-                     dst[i].stride, mi_row, mi_col, i ? scale_uv : scale,
-                     xd->plane[i].subsampling_x, xd->plane[i].subsampling_y);
-#endif
   }
 }
 

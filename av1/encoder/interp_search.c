@@ -304,11 +304,7 @@ static INLINE void calc_interp_skip_pred_flag(MACROBLOCK *const x,
   MB_MODE_INFO *const mbmi = xd->mi[0];
   const int num_planes = av1_num_planes(cm);
   const int is_compound = has_second_ref(mbmi);
-#if CONFIG_SDP
   assert(is_intrabc_block(mbmi, xd->tree_type) == 0);
-#else
-  assert(is_intrabc_block(mbmi) == 0);
-#endif
   for (int ref = 0; ref < 1 + is_compound; ++ref) {
     const struct scale_factors *const sf =
         get_ref_scale_factors_const(cm, mbmi->ref_frame[ref]);
