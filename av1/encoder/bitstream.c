@@ -170,6 +170,15 @@ static AOM_INLINE void write_drl_idx(
 }
 #endif  // CONFIG_NEW_INTER_MODES
 
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+static AOM_INLINE void write_adaptive_mvd_flag(MACROBLOCKD *xd, aom_writer *w,
+                                               const MB_MODE_INFO *const mbmi) {
+  if (!is_joint_mvd_coding_mode(mbmi->mode)) return;
+  aom_write_symbol(w, mbmi->adaptive_mvd_flag, xd->tile_ctx->adaptive_mvd_cdf,
+                   2);
+}
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+
 static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
                                                  PREDICTION_MODE mode,
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -815,7 +824,7 @@ static AOM_INLINE void write_mb_interp_filter(AV1_COMMON *const cm,
 #if CONFIG_OPTFLOW_REFINEMENT
     // Sharp filter is always used whenever optical flow refinement is applied.
     int mb_interp_filter =
-        (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
+        (mbmi->mode >= NEAR_NEARMV_OPTFLOW || use_opfl_refine_all(cm, mbmi))
             ? MULTITAP_SHARP
             : cm->features.interp_filter;
 #else
@@ -1593,22 +1602,31 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
                                   mode_ctx);
       else if (is_inter_singleref_mode(mode))
         write_inter_mode(w, mode, ec_ctx, mode_ctx);
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+      if (cm->seq_params.enable_adaptive_mvd)
+        write_adaptive_mvd_flag(xd, w, mbmi);
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+#if IMPROVED_AMVD
+      int max_drl_bits = cm->features.max_drl_bits;
+      if (mbmi->mode == AMVDNEWMV) max_drl_bits = AOMMIN(max_drl_bits, 1);
+#endif  // IMPROVED_AMVD
 
       if (have_drl_index(mode))
         write_drl_idx(
 #if CONFIG_NEW_INTER_MODES
-            cm->features.max_drl_bits, mbmi_ext_frame->mode_context,
+#if IMPROVED_AMVD
+            max_drl_bits,
+#else
+            cm->features.max_drl_bits,
+#endif  // IMPROVED_AMVD
+            mbmi_ext_frame->mode_context,
 #endif  // CONFIG_NEW_INTER_MODES
             ec_ctx, mbmi, mbmi_ext_frame, w);
       else
         assert(mbmi->ref_mv_idx == 0);
     }
 
-    if (mode == NEWMV ||
-#if CONFIG_OPTFLOW_REFINEMENT
-        mode == NEW_NEWMV_OPTFLOW ||
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-        mode == NEW_NEWMV) {
+    if (have_newmv_in_each_reference(mode)) {
       for (ref = 0; ref < 1 + is_compound; ++ref) {
         nmv_context *nmvc = &ec_ctx->nmvc;
         const int_mv ref_mv = get_ref_mv(x, ref);
@@ -1621,11 +1639,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
                || mode == NEAR_NEWMV_OPTFLOW
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_JOINT_MVD
-               || (mode == JOINT_NEWMV && jmvd_base_ref_list == 1)
+               || (is_joint_mvd_coding_mode(mode) && jmvd_base_ref_list == 1)
 #endif  // CONFIG_JOINT_MVD
-#if CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
-               || (mode == JOINT_NEWMV_OPTFLOW && jmvd_base_ref_list == 1)
-#endif  // CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
     ) {
       nmv_context *nmvc = &ec_ctx->nmvc;
       const int_mv ref_mv = get_ref_mv(x, 1);
@@ -1635,11 +1650,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
                || mode == NEW_NEARMV_OPTFLOW
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_JOINT_MVD
-               || (mode == JOINT_NEWMV && jmvd_base_ref_list == 0)
+               || (is_joint_mvd_coding_mode(mode) && jmvd_base_ref_list == 0)
 #endif  // CONFIG_JOINT_MVD
-#if CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
-               || (mode == JOINT_NEWMV_OPTFLOW && jmvd_base_ref_list == 0)
-#endif  // CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
     ) {
       nmv_context *nmvc = &ec_ctx->nmvc;
       const int_mv ref_mv = get_ref_mv(x, 0);
@@ -1680,14 +1692,18 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
     if (mbmi->ref_frame[1] != INTRA_FRAME) write_motion_mode(cm, xd, mbmi, w);
 
-      // First write idx to indicate current compound inter prediction mode
-      // group Group A (0): dist_wtd_comp, compound_average Group B (1):
-      // interintra, compound_diffwtd, wedge
+    // First write idx to indicate current compound inter prediction mode
+    // group Group A (0): dist_wtd_comp, compound_average Group B (1):
+    // interintra, compound_diffwtd, wedge
+
+    if (has_second_ref(mbmi)
 #if CONFIG_OPTFLOW_REFINEMENT
-    if (has_second_ref(mbmi) && mbmi->mode < NEAR_NEARMV_OPTFLOW) {
-#else
-    if (has_second_ref(mbmi)) {
+        && mbmi->mode < NEAR_NEARMV_OPTFLOW
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+        && !is_joint_amvd_coding_mode(mbmi->adaptive_mvd_flag)
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+    ) {
       const int masked_compound_used = is_any_masked_compound_used(bsize) &&
                                        cm->seq_params.enable_masked_compound;
 

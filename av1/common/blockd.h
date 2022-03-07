@@ -98,6 +98,9 @@ static INLINE PREDICTION_MODE compound_ref0_mode(PREDICTION_MODE mode) {
     NEARMV,     // NEARMV
     GLOBALMV,   // GLOBALMV
     NEWMV,      // NEWMV
+#if IMPROVED_AMVD
+    NEWMV,  // AMVDNEWMV
+#endif      // IMPROVED_AMVD
 #if !CONFIG_NEW_INTER_MODES
     NEARESTMV,  // NEAREST_NEARESTMV
 #endif          // !CONFIG_NEW_INTER_MODES
@@ -149,6 +152,9 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
     MB_MODE_COUNT,  // NEARMV
     MB_MODE_COUNT,  // GLOBALMV
     MB_MODE_COUNT,  // NEWMV
+#if IMPROVED_AMVD
+    MB_MODE_COUNT,  // AMVDNEWMV
+#endif              // IMPROVED_AMVD
 #if !CONFIG_NEW_INTER_MODES
     NEARESTMV,  // NEAREST_NEARESTMV
 #endif          // !CONFIG_NEW_INTER_MODES
@@ -179,6 +185,17 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
   return lut[mode];
 }
 
+#if CONFIG_JOINT_MVD
+// return whether current mode is joint MVD coding mode
+static INLINE int is_joint_mvd_coding_mode(PREDICTION_MODE mode) {
+  return mode == JOINT_NEWMV
+#if CONFIG_OPTFLOW_REFINEMENT
+         || mode == JOINT_NEWMV_OPTFLOW
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+      ;
+}
+#endif  // CONFIG_JOINT_MVD
+
 static INLINE int have_nearmv_in_inter_mode(PREDICTION_MODE mode) {
   return (mode == NEARMV || mode == NEAR_NEARMV || mode == NEAR_NEWMV ||
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -193,27 +210,42 @@ static INLINE int have_nearmv_newmv_in_inter_mode(PREDICTION_MODE mode) {
 #if CONFIG_OPTFLOW_REFINEMENT
          mode == NEAR_NEWMV_OPTFLOW || mode == NEW_NEARMV_OPTFLOW ||
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
-         mode == JOINT_NEWMV_OPTFLOW ||
-#endif  // CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_JOINT_MVD
-         mode == JOINT_NEWMV ||
+         is_joint_mvd_coding_mode(mode) ||
 #endif  // CONFIG_JOINT_MVD
          mode == NEW_NEARMV;
 }
 
+static INLINE int have_newmv_in_each_reference(PREDICTION_MODE mode) {
+  return mode == NEWMV ||
+#if IMPROVED_AMVD
+         mode == AMVDNEWMV ||
+#endif  // IMPROVED_AMVD
+#if CONFIG_OPTFLOW_REFINEMENT
+         mode == NEW_NEWMV_OPTFLOW ||
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+         mode == NEW_NEWMV;
+}
+
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+// return whether current mode is joint AMVD coding mode
+static INLINE int is_joint_amvd_coding_mode(int adaptive_mvd_flag) {
+  return adaptive_mvd_flag;
+}
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+
 #if CONFIG_NEW_INTER_MODES
 static INLINE int have_newmv_in_inter_mode(PREDICTION_MODE mode) {
   return (mode == NEWMV || mode == NEW_NEWMV || mode == NEAR_NEWMV ||
+#if IMPROVED_AMVD
+          mode == AMVDNEWMV ||
+#endif  // IMPROVED_AMVD
 #if CONFIG_JOINT_MVD
-          mode == JOINT_NEWMV ||
+          is_joint_mvd_coding_mode(mode) ||
 #endif  // CONFIG_JOINT_MVD
 #if CONFIG_OPTFLOW_REFINEMENT
           mode == NEAR_NEWMV_OPTFLOW || mode == NEW_NEARMV_OPTFLOW ||
           mode == NEW_NEWMV_OPTFLOW ||
-#if CONFIG_JOINT_MVD
-          mode == JOINT_NEWMV_OPTFLOW ||
-#endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
           mode == NEW_NEARMV);
 }
@@ -362,6 +394,10 @@ typedef struct MB_MODE_INFO {
   int8_t interintra_wedge_index;
   /*! \brief Struct that stores the data used in interinter compound mode. */
   INTERINTER_COMPOUND_DATA interinter_comp;
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+  /*! \brief The adaptive MVD resolution flag for JOINT_NEWMV mode. */
+  int adaptive_mvd_flag;
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
   /**@}*/
 
   /*****************************************************************************

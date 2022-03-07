@@ -71,7 +71,12 @@ static AOM_INLINE int keep_one_comp_stat(MV_STATS *mv_stats, int comp_val,
   const int int_part = offset >> 3;         // int mv data
   const int frac_part = (offset >> 1) & 3;  // fractional mv data
   const int high_part = offset & 1;         // high precision mv data
+#if CONFIG_ADAPTIVE_MVD && IMPROVED_AMVD
+  const int use_hp =
+      (cpi->common.features.allow_high_precision_mv && !is_adaptive_mvd);
+#else
   const int use_hp = cpi->common.features.allow_high_precision_mv;
+#endif  // CONFIG_ADAPTIVE_MVD && IMPROVED_AMVD
   int r_idx = 0;
 
   const MACROBLOCK *const x = &cpi->td.mb;
@@ -169,7 +174,7 @@ static AOM_INLINE void keep_one_mv_stat(MV_STATS *mv_stats, const MV *ref_mv,
 #if CONFIG_ADAPTIVE_MVD
   const AV1_COMMON *cm = &cpi->common;
   MB_MODE_INFO *mbmi = xd->mi[0];
-  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi->mode);
+  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
   aom_cdf_prob *joint_cdf =
       is_adaptive_mvd ? nmvc->amvd_joints_cdf : nmvc->joints_cdf;
 #else
@@ -256,6 +261,9 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
   const int is_compound = has_second_ref(mbmi);
 
   if (mode == NEWMV ||
+#if IMPROVED_AMVD
+      mode == AMVDNEWMV ||
+#endif  // IMPROVED_AMVD
 #if CONFIG_OPTFLOW_REFINEMENT
       mode == NEW_NEWMV_OPTFLOW ||
 #endif  // CONFIG_OPTFLOW_REFINEMENT

@@ -179,7 +179,7 @@ static INLINE int64_t interpolation_filter_rd(
   mbmi->interp_fltr = filter_idx;
 #if CONFIG_OPTFLOW_REFINEMENT
   const int tmp_rs =
-      (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
+      (mbmi->mode >= NEAR_NEARMV_OPTFLOW || use_opfl_refine_all(cm, mbmi))
           ? 0
           : get_switchable_rate(x, mbmi->interp_fltr, switchable_ctx);
 #else
@@ -426,7 +426,7 @@ int64_t av1_interpolation_filter_search(
   switchable_ctx[1] = av1_get_pred_context_switchable_interp(xd, 1);
 #if CONFIG_OPTFLOW_REFINEMENT
   *switchable_rate =
-      (mbmi->mode > NEW_NEWMV || use_opfl_refine_all(cm, mbmi))
+      (mbmi->mode >= NEAR_NEARMV_OPTFLOW || use_opfl_refine_all(cm, mbmi))
           ? 0
           : get_switchable_rate(x, mbmi->interp_fltr, switchable_ctx);
 #else

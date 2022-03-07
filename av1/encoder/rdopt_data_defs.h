@@ -50,6 +50,11 @@ static const THR_MODES single_inter_to_mode_idx[SINGLE_INTER_MODE_NUM]
         // NEWMV,
         { THR_INVALID, THR_NEWMV, THR_NEWL2, THR_NEWL3,
         THR_NEWG, THR_NEWB, THR_NEWA2, THR_NEWA, },
+#if IMPROVED_AMVD
+        // AMVDNEWMV,
+        { THR_INVALID, THR_AMVDNEWMV, THR_AMVDNEWL2, THR_AMVDNEWL3,
+        THR_AMVDNEWG, THR_AMVDNEWB, THR_AMVDNEWA2, THR_AMVDNEWA, },
+#endif // IMPROVED_AMVD
 };
 /* clang-format on */
 

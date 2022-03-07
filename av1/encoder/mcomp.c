@@ -101,7 +101,7 @@ void av1_make_default_fullpel_ms_params(
   const AV1_COMMON *cm = &cpi->common;
   const MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
-  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi->mode);
+  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
 #endif  // CONFIG_ADAPTIVE_MVD
 
   // High level params
@@ -161,7 +161,7 @@ void av1_make_default_subpel_ms_params(SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
 #if CONFIG_ADAPTIVE_MVD
   const MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
-  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi->mode);
+  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
 #endif  // CONFIG_ADAPTIVE_MVD
   // High level params
   ms_params->allow_hp = cm->features.allow_high_precision_mv;
@@ -3187,7 +3187,11 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 int adaptive_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                         SUBPEL_MOTION_SEARCH_PARAMS *ms_params, MV start_mv,
                         MV *bestmv, int *distortion, unsigned int *sse1) {
+#if IMPROVED_AMVD
+  const int allow_hp = 0;
+#else
   const int allow_hp = ms_params->allow_hp;
+#endif  // IMPROVED_AMVD
   const int forced_stop = ms_params->forced_stop;
   // const int iters_per_step = ms_params->iters_per_step;
   const MV_COST_PARAMS *mv_cost_params = &ms_params->mv_cost_params;
@@ -3234,6 +3238,7 @@ int adaptive_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       check_better(xd, cm, &candidate_mv[0], bestmv, mv_limits, var_params,
                    mv_cost_params, &besterr, sse1, distortion, &dummy);
     }
+
     // fast encoder method to early terminate the MV search
     // after searching [-2,+2] MV samples, if the best MV is still within
     // [-1/2,1/2], stop the MV search
@@ -3264,6 +3269,125 @@ int adaptive_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   return besterr;
 }
 #endif  // CONFIG_ADAPTIVE_MVD
+
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+int av1_joint_amvd_motion_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
+                                 SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
+                                 MV *start_mv, MV *bestmv, int *distortion,
+                                 unsigned int *sse1, int ref_idx, MV *other_mv,
+                                 MV *best_other_mv, uint8_t *second_pred,
+                                 InterPredParams *inter_pred_params) {
+  const int allow_hp_mvd = 0;
+  const int allow_hp = ms_params->allow_hp;
+  const int forced_stop = ms_params->forced_stop;
+  // const int iters_per_step = ms_params->iters_per_step;
+  const MV_COST_PARAMS *mv_cost_params = &ms_params->mv_cost_params;
+  const SUBPEL_SEARCH_VAR_PARAMS *var_params = &ms_params->var_params;
+  const SUBPEL_SEARCH_TYPE subpel_search_type =
+      ms_params->var_params.subpel_search_type;
+  const SubpelMvLimits *mv_limits = &ms_params->mv_limits;
+
+  MB_MODE_INFO *const mbmi = xd->mi[0];
+  // perform prediction for second MV
+  const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
+
+  lower_mv_precision(other_mv, allow_hp,
+                     cm->features.cur_frame_force_integer_mv);
+
+  // How many steps to take. A round of 0 means fullpel search only, 1 means
+  // half-pel, and so on.
+  int round = AOMMIN(FULL_PEL - forced_stop, 3 - !allow_hp_mvd);
+  if (cm->features.cur_frame_force_integer_mv) round = 0;
+  int hstep = 8 >> round;  // Step size, initialized to 4/8=1/2 pel
+
+  unsigned int besterr = INT_MAX;
+
+  *bestmv = *start_mv;
+  *best_other_mv = *other_mv;
+
+  if (subpel_search_type != USE_2_TAPS_ORIG) {
+    besterr = upsampled_setup_center_error(xd, cm, bestmv, var_params,
+                                           mv_cost_params, sse1, distortion);
+  } else {
+    besterr = setup_center_error(xd, bestmv, var_params, mv_cost_params, sse1,
+                                 distortion);
+  }
+
+  MV iter_center_mv = *start_mv;
+  const int cand_pos[4][2] = {
+    { 0, -1 },  // left
+    { 0, +1 },  // right
+    { -1, 0 },  // above
+    { +1, 0 }   // down
+  };
+
+  const int same_side = is_ref_frame_same_side(cm, mbmi);
+
+  const int cur_ref_dist =
+      cm->ref_frame_relative_dist[mbmi->ref_frame[ref_idx]];
+  int other_ref_dist =
+      cm->ref_frame_relative_dist[mbmi->ref_frame[1 - ref_idx]];
+
+  other_ref_dist = same_side ? other_ref_dist : -other_ref_dist;
+
+  for (int iter = hstep; iter <= 256;) {
+    int dummy = 0;
+    MV candidate_mv[2];
+    // loop left, right, above, bottom directions
+    for (int i = 0; i < 4; ++i) {
+      const MV cur_mvd = { cand_pos[i][0] * iter, cand_pos[i][1] * iter };
+      MV other_mvd = { 0, 0 };
+      candidate_mv[0].row = iter_center_mv.row + cur_mvd.row;
+      candidate_mv[0].col = iter_center_mv.col + cur_mvd.col;
+
+      get_mv_projection(&other_mvd, cur_mvd, other_ref_dist, cur_ref_dist);
+      lower_mv_precision(&other_mvd, allow_hp_mvd,
+                         cm->features.cur_frame_force_integer_mv);
+      candidate_mv[1].row = (int)(other_mv->row + other_mvd.row);
+      candidate_mv[1].col = (int)(other_mv->col + other_mvd.col);
+      if (av1_is_subpelmv_in_range(mv_limits, candidate_mv[1]) == 0) continue;
+      av1_enc_build_one_inter_predictor(second_pred, block_size_wide[bsize],
+                                        &candidate_mv[1], inter_pred_params);
+      check_better(xd, cm, &candidate_mv[0], bestmv, mv_limits, var_params,
+                   mv_cost_params, &besterr, sse1, distortion, &dummy);
+
+      // best mv on the other reference list
+      if (bestmv->row == candidate_mv[0].row &&
+          bestmv->col == candidate_mv[0].col) {
+        best_other_mv->row = candidate_mv[1].row;
+        best_other_mv->col = candidate_mv[1].col;
+      }
+    }
+    // fast encoder method to early terminate the MV search
+    // after searching [-2,+2] MV samples, if the best MV is still within
+    // [-1/2,1/2], stop the MV search
+    if (iter >= 16) {
+      if (abs(bestmv->row - start_mv->row) <= iter / 4 &&
+          abs(bestmv->col - start_mv->col) <= iter / 4)
+        break;
+    }
+
+    // allow integer and fractional MVD in (0,1]
+    if (iter < 8) iter += hstep;
+    // only allow integer MVD in (1,2]
+    else if (iter < 16)
+      iter += 8;
+    // only allow 4 integer MVD in (2,4]
+    else if (iter < 32)
+      iter += 16;
+    // only allow 8 sample integer MVD in (4,8]
+    else if (iter < 64)
+      iter += 32;
+    // only allow 16 sample integer MVD in (8,16]
+    else if (iter < 128)
+      iter += 64;
+    // only allow 32 sample integer MVD in (16,32]
+    else
+      iter += 128;
+  }
+  return besterr;
+}
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
 
 int av1_find_best_sub_pixel_tree_pruned_evenmore(
     MACROBLOCKD *xd, const AV1_COMMON *const cm,

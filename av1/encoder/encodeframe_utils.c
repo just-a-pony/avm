@@ -1210,6 +1210,9 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->inter_compound_mode_cdf,
               ctx_tr->inter_compound_mode_cdf, INTER_COMPOUND_MODES);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if IMPROVED_AMVD
+  AVERAGE_CDF(ctx_left->adaptive_mvd_cdf, ctx_tr->adaptive_mvd_cdf, 2);
+#endif  // IMPROVED_AMVD
   AVERAGE_CDF(ctx_left->compound_type_cdf, ctx_tr->compound_type_cdf,
               MASKED_COMPOUND_TYPES);
   AVERAGE_CDF(ctx_left->wedge_idx_cdf, ctx_tr->wedge_idx_cdf, 16);

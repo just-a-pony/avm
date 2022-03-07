@@ -122,11 +122,8 @@ static INLINE int av1_check_newmv_joint_nonzero(const AV1_COMMON *cm,
              || this_mode == NEW_NEARMV_OPTFLOW
 #endif
 #if CONFIG_JOINT_MVD
-             || this_mode == JOINT_NEWMV
+             || is_joint_mvd_coding_mode(this_mode)
 #endif  // CONFIG_JOINT_MVD
-#if CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
-             || this_mode == JOINT_NEWMV_OPTFLOW
-#endif  // CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
   ) {
 #else
   } else if (this_mode == NEW_NEARESTMV || this_mode == NEW_NEARMV) {
@@ -135,7 +132,11 @@ static INLINE int av1_check_newmv_joint_nonzero(const AV1_COMMON *cm,
     if (mbmi->mv[0].as_int == ref_mv_0.as_int) {
       return 0;
     }
-  } else if (this_mode == NEWMV) {
+  } else if (this_mode == NEWMV
+#if IMPROVED_AMVD
+             || this_mode == AMVDNEWMV
+#endif  // IMPROVED_AMVD
+  ) {
     const int_mv ref_mv_0 = av1_get_ref_mv(x, 0);
     if (mbmi->mv[0].as_int == ref_mv_0.as_int) {
       return 0;
