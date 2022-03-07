@@ -4674,9 +4674,7 @@ static AOM_INLINE void init_intra_mode_search_state(
     IntraModeSearchState *intra_search_state) {
   intra_search_state->skip_intra_modes = 0;
   intra_search_state->best_intra_mode = DC_PRED;
-#if CONFIG_MRLS
   intra_search_state->best_mrl_index = 0;
-#endif
 #if CONFIG_FORWARDSKIP
   intra_search_state->best_fsc = 0;
 #endif  // CONFIG_FORWARDSKIP
@@ -6123,7 +6121,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
        fsc_mode < (allow_fsc_intra(cm, xd, bsize, mbmi) ? FSC_MODES : 1);
        fsc_mode++) {
 #endif  // CONFIG_FORWARDSKIP
-#if CONFIG_MRLS
     uint8_t enable_mrls_flag = cm->seq_params.enable_mrls
 #if CONFIG_FORWARDSKIP
                                && !fsc_mode
@@ -6135,7 +6132,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = fsc_mode;
 #endif  // CONFIG_FORWARDSKIP
       mbmi->mrl_index = mrl_index;
-#endif
       for (int mode_idx = INTRA_MODE_START; mode_idx < LUMA_MODE_COUNT;
            ++mode_idx) {
         if (sf->intra_sf.skip_intra_in_interframe &&
@@ -6146,7 +6142,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         mbmi->joint_y_mode_delta_angle = mbmi->y_intra_mode_list[mode_idx];
         set_y_mode_and_delta_angle(mbmi->joint_y_mode_delta_angle, mbmi);
 #else
-    set_y_mode_and_delta_angle(mode_idx, mbmi);
+      set_y_mode_and_delta_angle(mode_idx, mbmi);
 #endif  // CONFIG_AIMC
         THR_MODES mode_enum = 0;
         for (i = 0; i < INTRA_MODE_END; i++) {
@@ -6169,21 +6165,17 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
             mbmi->angle_delta[PLANE_TYPE_Y] != 0)
           continue;
 #endif  // !CONFIG_AIMC
-#if CONFIG_MRLS
         if (mbmi->mrl_index > 0 && av1_is_directional_mode(mbmi->mode) == 0) {
           continue;
         }
-#endif
 #if CONFIG_FORWARDSKIP
         if (!allow_fsc_intra(cm, xd, bsize, mbmi) &&
             mbmi->fsc_mode[PLANE_TYPE_Y] > 0) {
           continue;
         }
-#if CONFIG_MRLS
         if (mbmi->mrl_index > 0 && mbmi->fsc_mode[PLANE_TYPE_Y]) {
           continue;
         }
-#endif  // CONFIG_MRLS
 #if !CONFIG_AIMC
         if (mbmi->angle_delta[PLANE_TYPE_Y] && mbmi->fsc_mode[PLANE_TYPE_Y]) {
           continue;
@@ -6201,7 +6193,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #if CONFIG_IBC_SR_EXT
         init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm, xd);
 #else
-    init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm);
+      init_mbmi(mbmi, this_mode, av1_mode_defs[mode_enum].ref_frame, cm);
 #endif  // CONFIG_IBC_SR_EXT
         txfm_info->skip_txfm = 0;
 
@@ -6224,9 +6216,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
                               x, txfm_search_done);
         }
       }
-#if CONFIG_MRLS
     }
-#endif
 #if CONFIG_FORWARDSKIP
   }
 #endif  // CONFIG_FORWARDSKIP

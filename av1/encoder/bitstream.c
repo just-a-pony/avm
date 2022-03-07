@@ -1119,12 +1119,10 @@ static AOM_INLINE void write_intra_y_mode_nonkf(FRAME_CONTEXT *frame_ctx,
                    INTRA_MODES);
 }
 #endif  // !CONFIG_AIMC
-#if CONFIG_MRLS
 static AOM_INLINE void write_mrl_index(FRAME_CONTEXT *ec_ctx, uint8_t mrl_index,
                                        aom_writer *w) {
   aom_write_symbol(w, mrl_index, ec_ctx->mrl_index_cdf, MRL_LINE_NUMBER);
 }
-#endif
 
 #if CONFIG_FORWARDSKIP
 static AOM_INLINE void write_fsc_mode(uint8_t fsc_mode, aom_writer *w,
@@ -1431,12 +1429,10 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
                         ec_ctx->angle_delta_cdf[PLANE_TYPE_Y][mode - V_PRED]);
     }
 #endif  // CONFIG_AIMC
-#if CONFIG_MRLS
     // Encoding reference line index
     if (cm->seq_params.enable_mrls && av1_is_directional_mode(mode)) {
       write_mrl_index(ec_ctx, mbmi->mrl_index, w);
     }
-#endif
   }
 
   // UV mode and UV angle delta.
@@ -3319,9 +3315,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_IST
   aom_wb_write_bit(wb, seq_params->enable_ist);
 #endif
-#if CONFIG_MRLS
   aom_wb_write_bit(wb, seq_params->enable_mrls);
-#endif
 #if CONFIG_FORWARDSKIP
   aom_wb_write_bit(wb, seq_params->enable_fsc);
 #endif  // CONFIG_FORWARDSKIP

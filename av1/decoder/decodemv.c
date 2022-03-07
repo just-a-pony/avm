@@ -198,13 +198,11 @@ static int read_delta_lflevel(const AV1_COMMON *const cm, aom_reader *r,
   return reduced_delta_lflevel;
 }
 
-#if CONFIG_MRLS
 static uint8_t read_mrl_index(FRAME_CONTEXT *ec_ctx, aom_reader *r) {
   const uint8_t mrl_index =
       aom_read_symbol(r, ec_ctx->mrl_index_cdf, MRL_LINE_NUMBER, ACCT_STR);
   return mrl_index;
 }
-#endif
 
 #if CONFIG_FORWARDSKIP
 static uint8_t read_fsc_mode(aom_reader *r, aom_cdf_prob *fsc_cdf) {
@@ -1122,12 +1120,10 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
             : 0;
 #endif  // CONFIG_AIMC
 
-#if CONFIG_MRLS
     mbmi->mrl_index =
         (cm->seq_params.enable_mrls && av1_is_directional_mode(mbmi->mode))
             ? read_mrl_index(ec_ctx, r)
             : 0;
-#endif  // CONFIG_MRLS
   }
 
   if (xd->tree_type != LUMA_PART) {
@@ -1493,14 +1489,12 @@ static void read_intra_block_mode_info(AV1_COMMON *const cm,
           : 0;
 #endif  // CONFIG_AIMC
 
-#if CONFIG_MRLS
   if (xd->tree_type != CHROMA_PART)
     // Parsing reference line index
     mbmi->mrl_index =
         (cm->seq_params.enable_mrls && av1_is_directional_mode(mbmi->mode))
             ? read_mrl_index(ec_ctx, r)
             : 0;
-#endif  // CONFIG_MRLS
 
   if (!cm->seq_params.monochrome && xd->is_chroma_ref) {
 #if CONFIG_AIMC

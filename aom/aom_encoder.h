@@ -263,12 +263,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_sdp;
-#if CONFIG_MRLS
   /*!\brief enable Multiple reference line selection
    *
    */
   unsigned int enable_mrls;
-#endif  // CONFIG_MRLS
 #if CONFIG_FORWARDSKIP
   /*!\brief enable Forward skip coding
    *

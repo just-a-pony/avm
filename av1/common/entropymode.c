@@ -75,11 +75,9 @@ static const aom_cdf_prob
     };
 #endif
 
-#if CONFIG_MRLS
 static const aom_cdf_prob default_mrl_index_cdf[CDF_SIZE(MRL_LINE_NUMBER)] = {
   AOM_CDF4(24756, 29049, 31092)
 };
-#endif
 
 #if CONFIG_FORWARDSKIP
 static const aom_cdf_prob
@@ -1639,9 +1637,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->y_mode_cdf, default_if_y_mode_cdf);
 #endif  // CONFIG_AIMC
   av1_copy(fc->uv_mode_cdf, default_uv_mode_cdf);
-#if CONFIG_MRLS
   av1_copy(fc->mrl_index_cdf, default_mrl_index_cdf);
-#endif
 #if CONFIG_FORWARDSKIP
   av1_copy(fc->fsc_mode_cdf, default_fsc_mode_cdf);
 #endif  // CONFIG_FORWARDSKIP

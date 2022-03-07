@@ -540,14 +540,12 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
     }
 #endif  // CONFIG_FORWARDSKIP
 #endif  // CONFIG_AIMC
-#if CONFIG_MRLS
     if (cm->seq_params.enable_mrls && av1_is_directional_mode(mbmi->mode)) {
 #if CONFIG_ENTROPY_STATS
       ++counts->mrl_index[mbmi->mrl_index];
 #endif
       update_cdf(fc->mrl_index_cdf, mbmi->mrl_index, MRL_LINE_NUMBER);
     }
-#endif
     if (av1_filter_intra_allowed(cm, mbmi)) {
       const int use_filter_intra_mode =
           mbmi->filter_intra_mode_info.use_filter_intra;
@@ -1288,9 +1286,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #if CONFIG_FORWARDSKIP
   AVERAGE_CDF(ctx_left->fsc_mode_cdf, ctx_tr->fsc_mode_cdf, FSC_MODES);
 #endif  // CONFIG_FORWARDSKIP
-#if CONFIG_MRLS
   AVERAGE_CDF(ctx_left->mrl_index_cdf, ctx_tr->mrl_index_cdf, MRL_LINE_NUMBER);
-#endif
 #if CONFIG_AIMC
   AVERAGE_CDF(ctx_left->y_mode_set_cdf, ctx_tr->y_mode_set_cdf,
               INTRA_MODE_SETS);

@@ -116,9 +116,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                              fc->skip_txfm_cdfs[i], NULL);
   }
 
-#if CONFIG_MRLS
   av1_cost_tokens_from_cdf(mode_costs->mrl_index_cost, fc->mrl_index_cdf, NULL);
-#endif
 
 #if CONFIG_FORWARDSKIP
   for (i = 0; i < FSC_MODE_CONTEXTS; ++i) {

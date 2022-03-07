@@ -112,10 +112,8 @@ struct av1_extracfg {
   int enable_ab_partitions;    // enable AB partitions for sequence
   int enable_1to4_partitions;  // enable 1:4 and 4:1 partitions for sequence
   int disable_ml_transform_speed_features;  // disable all ml transform speedups
-  int enable_sdp;  // enable semi-decoupled partitioning
-#if CONFIG_MRLS
+  int enable_sdp;   // enable semi-decoupled partitioning
   int enable_mrls;  // enable multiple reference line selection
-#endif              // CONFIG_MRLS
 #if CONFIG_FORWARDSKIP
   int enable_fsc;  // enable forward skip coding
 #endif             // CONFIG_FORWARDSKIP
@@ -405,9 +403,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,                            // enable 1:4 and 4:1 partitions
   0,                            // disable ml based transform speed features
   1,                            // enable semi-decoupled partitioning
-#if CONFIG_MRLS
-  1,    // enable multiple reference line selection
-#endif  // CONFIG_MRLS
+  1,                            // enable multiple reference line selection
 #if CONFIG_FORWARDSKIP
   1,    // enable forward skip coding
 #endif  // CONFIG_FORWARDSKIP
@@ -871,9 +867,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->disable_ml_transform_speed_features =
       extra_cfg->disable_ml_transform_speed_features;
   cfg->enable_sdp = extra_cfg->enable_sdp;
-#if CONFIG_MRLS
   cfg->enable_mrls = extra_cfg->enable_mrls;
-#endif
 #if CONFIG_FORWARDSKIP
   cfg->enable_fsc = extra_cfg->enable_fsc;
 #endif  // CONFIG_FORWARDSKIP
@@ -953,9 +947,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->disable_ml_partition_speed_features =
       cfg->disable_ml_partition_speed_features;
   extra_cfg->enable_sdp = cfg->enable_sdp;
-#if CONFIG_MRLS
   extra_cfg->enable_mrls = cfg->enable_mrls;
-#endif
 #if CONFIG_FORWARDSKIP
   extra_cfg->enable_fsc = cfg->enable_fsc;
 #endif  // CONFIG_FORWARDSKIP
@@ -1440,9 +1432,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   intra_mode_cfg->enable_smooth_intra = extra_cfg->enable_smooth_intra;
   intra_mode_cfg->enable_paeth_intra = extra_cfg->enable_paeth_intra;
   intra_mode_cfg->enable_cfl_intra = extra_cfg->enable_cfl_intra;
-#if CONFIG_MRLS
   intra_mode_cfg->enable_mrls = extra_cfg->enable_mrls;
-#endif
 #if CONFIG_FORWARDSKIP
   intra_mode_cfg->enable_fsc = extra_cfg->enable_fsc;
 #endif  // CONFIG_FORWARDSKIP
@@ -3531,11 +3521,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_sdp, argv,
                               err_string)) {
     extra_cfg.enable_sdp = arg_parse_int_helper(&arg, err_string);
-#if CONFIG_MRLS
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_mrls, argv,
                               err_string)) {
     extra_cfg.enable_mrls = arg_parse_int_helper(&arg, err_string);
-#endif
 #if CONFIG_FORWARDSKIP
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_fsc, argv,
                               err_string)) {
@@ -3970,10 +3958,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
     0,                           // use_fixed_qp_offsets
     { -1, -1, -1, -1, -1, -1 },  // fixed_qp_offsets
     {
-        0, 128, 128, 4, 1, 1, 1, 0, 0, 1,
-#if CONFIG_MRLS
-        1,
-#endif
+        0, 128, 128, 4, 1, 1, 1, 0, 0, 1, 1,
 #if CONFIG_FORWARDSKIP
         1,
 #endif  // CONFIG_FORWARDSKIP

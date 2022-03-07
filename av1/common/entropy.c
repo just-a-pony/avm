@@ -199,9 +199,7 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->seg.tree_cdf, MAX_SEGMENTS);
   RESET_CDF_COUNTER(fc->seg.pred_cdf, 2);
   RESET_CDF_COUNTER(fc->seg.spatial_pred_seg_cdf, MAX_SEGMENTS);
-#if CONFIG_MRLS
   RESET_CDF_COUNTER(fc->mrl_index_cdf, MRL_LINE_NUMBER);
-#endif
 #if CONFIG_FORWARDSKIP
   RESET_CDF_COUNTER(fc->fsc_mode_cdf, FSC_MODES);
 #endif  // CONFIG_FORWARDSKIP

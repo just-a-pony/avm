@@ -190,9 +190,7 @@ typedef struct frame_contexts {
   aom_cdf_prob uv_mode_cdf[CFL_ALLOWED_TYPES][INTRA_MODES]
                           [CDF_SIZE(UV_INTRA_MODES)];
 #endif  // !CONFIG_AIMC
-#if CONFIG_MRLS
   aom_cdf_prob mrl_index_cdf[CDF_SIZE(MRL_LINE_NUMBER)];
-#endif
 #if CONFIG_FORWARDSKIP
   aom_cdf_prob fsc_mode_cdf[FSC_MODE_CONTEXTS][FSC_BSIZE_CONTEXTS]
                            [CDF_SIZE(FSC_MODES)];

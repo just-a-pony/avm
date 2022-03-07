@@ -263,13 +263,11 @@ typedef struct {
    * enabled.
    */
   bool enable_angle_delta;
-#if CONFIG_MRLS
   /*!
    * Flag to indicate if multiple reference line selection for intra prediction
    * should be enabled.
    */
   bool enable_mrls;
-#endif
 #if CONFIG_FORWARDSKIP
   /*!
    * Flag to indicate if forward skip coding is enabled
@@ -1169,9 +1167,7 @@ typedef struct FRAME_COUNTS {
 #if CONFIG_FORWARDSKIP
   unsigned int fsc_mode[FSC_MODE_CONTEXTS][FSC_BSIZE_CONTEXTS][FSC_MODES];
 #endif  // CONFIG_FORWARDSKIP
-#if CONFIG_MRLS
   unsigned int mrl_index[MRL_LINE_NUMBER];
-#endif
   unsigned int cfl_sign[CFL_JOINT_SIGNS];
   unsigned int cfl_alpha[CFL_ALPHA_CONTEXTS][CFL_ALPHABET_SIZE];
   unsigned int palette_y_mode[PALATTE_BSIZE_CTXS][PALETTE_Y_MODE_CONTEXTS][2];

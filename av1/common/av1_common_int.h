@@ -309,10 +309,8 @@ typedef struct SequenceHeader {
   uint8_t force_integer_mv;            // 0 - Don't force. MV can use subpel
                                        // 1 - force to integer
                                        // 2 - adaptive
-  uint8_t enable_sdp;  // enables/disables semi-decoupled partitioning
-#if CONFIG_MRLS
+  uint8_t enable_sdp;   // enables/disables semi-decoupled partitioning
   uint8_t enable_mrls;  // enables/disables multiple reference line selection
-#endif
 #if CONFIG_FORWARDSKIP
   uint8_t enable_fsc;                // enables/disables forward skip coding
 #endif                               // CONFIG_FORWARDSKIP

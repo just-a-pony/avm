@@ -354,12 +354,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_sdp = ARG_DEF(NULL, "enable-sdp", 1,
                         "Enable semi decoupled partitioning for key frame"
                         "(0: false, 1: true (default))"),
-#if CONFIG_MRLS
   .enable_mrls =
       ARG_DEF(NULL, "enable-mrls", 1,
               "Enable multiple reference line selection for intra prediction"
               "(0: false, 1: true (default))"),
-#endif
 #if CONFIG_FORWARDSKIP
   .enable_fsc = ARG_DEF(NULL, "enable-fsc", 1,
                         "Enable forward skip coding"

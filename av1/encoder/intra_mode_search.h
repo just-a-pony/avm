@@ -50,12 +50,10 @@ typedef struct IntraModeSearchState {
    */
   PREDICTION_MODE best_intra_mode;
 
-#if CONFIG_MRLS
   /*!
    * \brief The best mrl index found so far
    */
   int best_mrl_index;
-#endif
 
 #if CONFIG_FORWARDSKIP
   /*!

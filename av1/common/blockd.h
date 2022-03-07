@@ -415,10 +415,8 @@ typedef struct MB_MODE_INFO {
   uint8_t cfl_alpha_idx;
   /*! \brief Stores the size and colors of palette mode */
   PALETTE_MODE_INFO palette_mode_info;
-#if CONFIG_MRLS
   /*! \brief Reference line index for multiple reference line selection. */
   uint8_t mrl_index;
-#endif
 #if CONFIG_AIMC
   /*! \brief mode index of y mode and y delta angle after re-ordering. */
   uint8_t y_mode_idx;

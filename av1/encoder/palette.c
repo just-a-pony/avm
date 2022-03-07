@@ -414,9 +414,7 @@ void av1_rd_pick_palette_intra_sby(
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
 
-#if CONFIG_MRLS
   mbmi->mrl_index = 0;
-#endif
 
 #if CONFIG_FORWARDSKIP
   mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = 0;

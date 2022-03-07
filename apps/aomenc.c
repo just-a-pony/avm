@@ -422,9 +422,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.disable_ml_transform_speed_features,
   &g_av1_codec_arg_defs.disable_ml_partition_speed_features,
   &g_av1_codec_arg_defs.enable_sdp,
-#if CONFIG_MRLS
   &g_av1_codec_arg_defs.enable_mrls,
-#endif
 #if CONFIG_FORWARDSKIP
   &g_av1_codec_arg_defs.enable_fsc,
 #endif  // CONFIG_FORWARDSKIP
@@ -591,9 +589,7 @@ static void init_config(cfg_options_t *config) {
   config->disable_ml_transform_speed_features = 0;
   config->disable_ml_partition_speed_features = 0;
   config->enable_sdp = 1;
-#if CONFIG_MRLS
   config->enable_mrls = 1;
-#endif
 #if CONFIG_FORWARDSKIP
   config->enable_fsc = 1;
 #endif  // CONFIG_FORWARDSKIP
@@ -1432,9 +1428,7 @@ static void show_stream_config(struct stream_state *stream,
   fprintf(stdout,
           "                               : "
           "EdgeFilter (%d), PaethPredictor (%d)"
-#if CONFIG_MRLS
           ", MRLS(%d)"
-#endif  // CONFIG_MRLS
 #if CONFIG_FORWARDSKIP
           ", FSC(%d)"
 #endif  // CONFIG_FORWARDSKIP
@@ -1445,11 +1439,8 @@ static void show_stream_config(struct stream_state *stream,
           ", IBP(%d)"
 #endif  // CONFIG_IBP_DC || CONFIG_IBP_DIR
           "\n",
-          encoder_cfg->enable_intra_edge_filter, encoder_cfg->enable_paeth_intra
-#if CONFIG_MRLS
-          ,
-          encoder_cfg->enable_mrls
-#endif  //  CONFIG_MRLS
+          encoder_cfg->enable_intra_edge_filter,
+          encoder_cfg->enable_paeth_intra, encoder_cfg->enable_mrls
 #if CONFIG_FORWARDSKIP
           ,
           encoder_cfg->enable_fsc

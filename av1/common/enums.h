@@ -96,9 +96,7 @@ extern "C" {
 #define PARTITION_STRUCTURE_NUM 2
 
 // Multiple reference line selection for intra prediction
-#if CONFIG_MRLS
 #define MRL_LINE_NUMBER 4
-#endif
 #if CONFIG_AIMC
 #define FIRST_MODE_COUNT 13
 #define SECOND_MODE_COUNT 16

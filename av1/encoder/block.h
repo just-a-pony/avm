@@ -634,10 +634,8 @@ typedef struct {
   int angle_delta_cost[PARTITION_STRUCTURE_NUM][DIRECTIONAL_MODES]
                       [2 * MAX_ANGLE_DELTA + 1];
 
-#if CONFIG_MRLS
   //! mrl_index_cost
   int mrl_index_cost[MRL_LINE_NUMBER];
-#endif
 #if CONFIG_FORWARDSKIP
   //! Cost of signaling the forward skip coding mode
   int fsc_cost[FSC_MODE_CONTEXTS][FSC_BSIZE_CONTEXTS][FSC_MODES];

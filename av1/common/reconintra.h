@@ -139,10 +139,7 @@ static INLINE int av1_filter_intra_allowed_bsize(const AV1_COMMON *const cm,
 
 static INLINE int av1_filter_intra_allowed(const AV1_COMMON *const cm,
                                            const MB_MODE_INFO *mbmi) {
-  return mbmi->mode == DC_PRED &&
-#if CONFIG_MRLS
-         mbmi->mrl_index == 0 &&
-#endif
+  return mbmi->mode == DC_PRED && mbmi->mrl_index == 0 &&
          mbmi->palette_mode_info.palette_size[0] == 0 &&
          av1_filter_intra_allowed_bsize(cm, mbmi->sb_type[PLANE_TYPE_Y]);
 }
