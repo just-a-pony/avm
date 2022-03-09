@@ -504,6 +504,15 @@ typedef struct MB_MODE_INFO {
 } MB_MODE_INFO;
 
 /*!\cond */
+// Get the start plane for semi-decoupled partitioning
+static INLINE int get_partition_plane_start(int tree_type) {
+  return tree_type == CHROMA_PART;
+}
+
+// Get the end plane for semi-decoupled partitioning
+static INLINE int get_partition_plane_end(int tree_type, int num_planes) {
+  return (tree_type == LUMA_PART) ? 1 : num_planes;
+}
 
 static INLINE int is_intrabc_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return mbmi->use_intrabc[tree_type == CHROMA_PART];

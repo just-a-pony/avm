@@ -266,10 +266,9 @@ void av1_decoder_remove(AV1Decoder *pbi) {
 void av1_visit_palette(AV1Decoder *const pbi, MACROBLOCKD *const xd,
                        aom_reader *r, palette_visitor_fn_t visit) {
   if (!is_inter_block(xd->mi[0], xd->tree_type)) {
-    const int plane_start = (xd->tree_type == CHROMA_PART);
-    const int plane_end =
-        (xd->tree_type == LUMA_PART ? 1
-                                    : AOMMIN(2, av1_num_planes(&pbi->common)));
+    const int plane_start = get_partition_plane_start(xd->tree_type);
+    const int plane_end = get_partition_plane_end(
+        xd->tree_type, AOMMIN(2, av1_num_planes(&pbi->common)));
     for (int plane = plane_start; plane < plane_end; ++plane) {
       if (plane == 0 || xd->is_chroma_ref) {
         if (xd->mi[0]->palette_mode_info.palette_size[plane])

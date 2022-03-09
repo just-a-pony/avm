@@ -1985,11 +1985,11 @@ static AOM_INLINE void write_tokens_b(AV1_COMP *cpi, aom_writer *w,
     mu_blocks_wide = AOMMIN(num_4x4_w, mu_blocks_wide);
     mu_blocks_high = AOMMIN(num_4x4_h, mu_blocks_high);
 
-    const int num_planes = av1_num_planes(cm);
     for (int row = 0; row < num_4x4_h; row += mu_blocks_high) {
       for (int col = 0; col < num_4x4_w; col += mu_blocks_wide) {
-        const int plane_start = (xd->tree_type == CHROMA_PART);
-        const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
+        const int plane_start = get_partition_plane_start(xd->tree_type);
+        const int plane_end =
+            get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
         for (int plane = plane_start; plane < plane_end; ++plane) {
           if (plane && !xd->is_chroma_ref) break;
           write_inter_txb_coeff(cm, x, mbmi, w, tok, tok_end, &token_stats, row,
@@ -2043,9 +2043,9 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
 
   write_mbmi_b(cpi, w);
 
-  const int plane_start = (xd->tree_type == CHROMA_PART);
+  const int plane_start = get_partition_plane_start(xd->tree_type);
   const int plane_end =
-      (xd->tree_type == LUMA_PART ? 1 : AOMMIN(2, av1_num_planes(cm)));
+      get_partition_plane_end(xd->tree_type, AOMMIN(2, av1_num_planes(cm)));
   for (int plane = plane_start; plane < plane_end; ++plane) {
     const uint8_t palette_size_plane =
         mbmi->palette_mode_info.palette_size[plane];
@@ -2174,9 +2174,9 @@ static AOM_INLINE void write_modes_sb(
 
   if (mi_row >= mi_params->mi_rows || mi_col >= mi_params->mi_cols) return;
 
-  const int num_planes = av1_num_planes(cm);
-  const int plane_start = (xd->tree_type == CHROMA_PART);
-  const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end =
+      get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
   for (int plane = plane_start; plane < plane_end; ++plane) {
     int rcol0, rcol1, rrow0, rrow1;
     if (av1_loop_restoration_corners_in_sb(cm, plane, mi_row, mi_col, bsize,

@@ -207,7 +207,8 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
 
 void av1_tokenize_sb_vartx(const AV1_COMP *cpi, ThreadData *td,
                            RUN_TYPE dry_run, BLOCK_SIZE bsize, int *rate,
-                           uint8_t allow_update_cdf) {
+                           uint8_t allow_update_cdf, int plane_start,
+                           int plane_end) {
   assert(bsize < BLOCK_SIZES_ALL);
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &td->mb;
@@ -224,8 +225,6 @@ void av1_tokenize_sb_vartx(const AV1_COMP *cpi, ThreadData *td,
     av1_reset_entropy_context(xd, bsize, num_planes);
     return;
   }
-  const int plane_start = (xd->tree_type == CHROMA_PART);
-  const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
   for (int plane = plane_start; plane < plane_end; ++plane) {
     if (plane && !xd->is_chroma_ref) break;
     const struct macroblockd_plane *const pd = &xd->plane[plane];

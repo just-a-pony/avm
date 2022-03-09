@@ -761,7 +761,6 @@ void av1_write_intra_coeffs_mb(const AV1_COMMON *const cm, MACROBLOCK *x,
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
 #endif  // CONFIG_FORWARDSKIP
-  const int num_planes = av1_num_planes(cm);
   int block[MAX_MB_PLANE] = { 0 };
   int row, col;
   assert(bsize == get_plane_block_size(bsize, xd->plane[0].subsampling_x,
@@ -776,8 +775,9 @@ void av1_write_intra_coeffs_mb(const AV1_COMMON *const cm, MACROBLOCK *x,
 
   for (row = 0; row < max_blocks_high; row += mu_blocks_high) {
     for (col = 0; col < max_blocks_wide; col += mu_blocks_wide) {
-      const int plane_start = (xd->tree_type == CHROMA_PART);
-      const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
+      const int plane_start = get_partition_plane_start(xd->tree_type);
+      const int plane_end =
+          get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
       for (int plane = plane_start; plane < plane_end; ++plane) {
         if (plane && !xd->is_chroma_ref) break;
         const TX_SIZE tx_size = av1_get_tx_size(plane, xd);
@@ -2613,8 +2613,8 @@ void av1_update_intra_mb_txb_context(const AV1_COMP *cpi, ThreadData *td,
     av1_reset_entropy_context(xd, bsize, num_planes);
     return;
   }
-  const int plane_start = (xd->tree_type == CHROMA_PART);
-  const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end = get_partition_plane_end(xd->tree_type, num_planes);
   for (int plane = plane_start; plane < plane_end; ++plane) {
     if (plane && !xd->is_chroma_ref) break;
     const struct macroblockd_plane *const pd = &xd->plane[plane];

@@ -325,7 +325,8 @@ static void tx_partition_set_contexts(const AV1_COMMON *const cm,
 
 static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
                               ThreadData *td, TokenExtra **t, RUN_TYPE dry_run,
-                              BLOCK_SIZE bsize, int *rate) {
+                              BLOCK_SIZE bsize, int plane_start, int plane_end,
+                              int *rate) {
   const AV1_COMMON *const cm = &cpi->common;
   const int num_planes = av1_num_planes(cm);
   MACROBLOCK *const x = &td->mb;
@@ -352,8 +353,6 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       xd->cfl.store_y = store_cfl_required(cm, xd);
     }
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-    const int plane_start = (xd->tree_type == CHROMA_PART);
-    const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
     for (int plane = plane_start; plane < plane_end; ++plane) {
       av1_encode_intra_block_plane(cpi, x, bsize, plane, dry_run,
                                    cpi->optimize_seg_arr[mbmi->segment_id]);
@@ -424,9 +423,9 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
     (void)num_planes;
 #endif
 
-    av1_encode_sb(cpi, x, bsize, dry_run);
+    av1_encode_sb(cpi, x, bsize, dry_run, plane_start, plane_end);
     av1_tokenize_sb_vartx(cpi, td, dry_run, bsize, rate,
-                          tile_data->allow_update_cdf);
+                          tile_data->allow_update_cdf, plane_start, plane_end);
   }
 
   if (!dry_run) {
@@ -1344,6 +1343,9 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
  * Reconstructs an individual coding block by applying the chosen modes stored
  * in ctx, also updates mode counts and entropy models.
  *
+ * This function works on planes determined by get_partition_plane_start() and
+ * get_partition_plane_end() based on xd->tree_type.
+ *
  * \param[in]    cpi       Top-level encoder structure
  * \param[in]    tile_data Pointer to struct holding adaptive
  *                         data/contexts/models for the tile during encoding
@@ -1372,6 +1374,7 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   TileInfo *const tile = &tile_data->tile_info;
   MACROBLOCK *const x = &td->mb;
   MACROBLOCKD *xd = &x->e_mbd;
+  const AV1_COMMON *const cm = &cpi->common;
 
   av1_set_offsets_without_segment_id(cpi, tile, x, mi_row, mi_col, bsize);
   const int origin_mult = x->rdmult;
@@ -1381,6 +1384,9 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   av1_update_state(cpi, td, ctx, mi_row, mi_col, bsize, dry_run);
 
   int plane_type = (xd->tree_type == CHROMA_PART);
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end =
+      get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
 
   if (!dry_run) {
     x->mbmi_ext_frame->cb_offset[plane_type] = x->cb_offset[plane_type];
@@ -1388,10 +1394,10 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
            (1 << num_pels_log2_lookup[cpi->common.seq_params.sb_size]));
   }
 
-  encode_superblock(cpi, tile_data, td, tp, dry_run, bsize, rate);
+  encode_superblock(cpi, tile_data, td, tp, dry_run, bsize, plane_start,
+                    plane_end, rate);
 
   if (!dry_run) {
-    const AV1_COMMON *const cm = &cpi->common;
     x->cb_offset[plane_type] += block_size_wide[bsize] * block_size_high[bsize];
     if (bsize == cpi->common.seq_params.sb_size &&
         mbmi->skip_txfm[xd->tree_type == CHROMA_PART] == 1 &&
@@ -1506,6 +1512,9 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
  * \ingroup partition_search
  * Reconstructs a sub-partition of the superblock by applying the chosen modes
  * and partition trees stored in pc_tree.
+ *
+ * This function works on planes determined by get_partition_plane_start() and
+ * get_partition_plane_end() based on xd->tree_type.
  *
  * \param[in]    cpi       Top-level encoder structure
  * \param[in]    td        Pointer to thread data
@@ -1725,6 +1734,8 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
   RD_SEARCH_MACROBLOCK_CONTEXT x_ctx;
   RD_STATS last_part_rdc, invalid_rdc;
   int plane_type = (xd->tree_type == CHROMA_PART);
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end = get_partition_plane_end(xd->tree_type, num_planes);
 
   if (pc_tree->none == NULL) {
     pc_tree->none = av1_alloc_pmc(cm, bsize, &td->shared_coeff_buf);
@@ -1779,7 +1790,7 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
         av1_init_rd_stats(&tmp_rdc);
         av1_update_state(cpi, td, ctx_h, mi_row, mi_col, subsize, 1);
         encode_superblock(cpi, tile_data, td, tp, DRY_RUN_NORMAL, subsize,
-                          NULL);
+                          plane_start, plane_end, NULL);
         pick_sb_modes(cpi, tile_data, x, mi_row + hbs, mi_col, &tmp_rdc,
                       PARTITION_HORZ, subsize, pc_tree->horizontal[1],
                       invalid_rdc);
@@ -1806,7 +1817,7 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
         av1_init_rd_stats(&tmp_rdc);
         av1_update_state(cpi, td, ctx_v, mi_row, mi_col, subsize, 1);
         encode_superblock(cpi, tile_data, td, tp, DRY_RUN_NORMAL, subsize,
-                          NULL);
+                          plane_start, plane_end, NULL);
         pick_sb_modes(cpi, tile_data, x, mi_row, mi_col + hbs, &tmp_rdc,
                       PARTITION_VERT, subsize,
                       pc_tree->vertical[bsize > BLOCK_8X8], invalid_rdc);
@@ -1928,9 +1939,16 @@ static int rd_try_subblock(AV1_COMP *const cpi, ThreadData *td,
     return 0;
   }
 
+  MACROBLOCKD *xd = &x->e_mbd;
+  const AV1_COMMON *const cm = &cpi->common;
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end =
+      get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
+
   if (!is_last) {
     av1_update_state(cpi, td, this_ctx, mi_row, mi_col, subsize, 1);
-    encode_superblock(cpi, tile_data, td, tp, DRY_RUN_NORMAL, subsize, NULL);
+    encode_superblock(cpi, tile_data, td, tp, DRY_RUN_NORMAL, subsize,
+                      plane_start, plane_end, NULL);
   }
 
   x->rdmult = orig_mult;
@@ -2203,6 +2221,11 @@ static void rectangular_partition_search(
   const int rect_partition_type[NUM_RECT_PARTS] = { PARTITION_HORZ,
                                                     PARTITION_VERT };
 
+  MACROBLOCKD *xd = &x->e_mbd;
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end =
+      get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
+
   // mi_pos_rect[NUM_RECT_PARTS][SUB_PARTITIONS_RECT][0]: mi_row postion of
   //                                           HORZ and VERT partition types.
   // mi_pos_rect[NUM_RECT_PARTS][SUB_PARTITIONS_RECT][1]: mi_col postion of
@@ -2283,7 +2306,7 @@ static void rectangular_partition_search(
       av1_update_state(cpi, td, cur_ctx[i][sub_part_idx][0], blk_params.mi_row,
                        blk_params.mi_col, blk_params.subsize, DRY_RUN_NORMAL);
       encode_superblock(cpi, tile_data, td, tp, DRY_RUN_NORMAL,
-                        blk_params.subsize, NULL);
+                        blk_params.subsize, plane_start, plane_end, NULL);
 
       // Second sub-partition evaluation in HORZ / VERT partition type.
       sub_part_idx = 1;
@@ -3063,6 +3086,9 @@ static void split_partition_search(
 * rate-distortion cost, and returns a bool value to indicate whether a valid
 * partition pattern is found. The partition can recursively go down to the
 * smallest block size.
+*
+* This function works on planes determined by get_partition_plane_start() and
+* get_partition_plane_end() based on xd->tree_type.
 *
 * \param[in]    cpi                Top-level encoder structure
 * \param[in]    td                 Pointer to thread data

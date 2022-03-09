@@ -991,11 +991,11 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
   AV1_COMMON *const cm = &pbi->common;
   DecoderCodingBlock *const dcb = &td->dcb;
   MACROBLOCKD *const xd = &dcb->xd;
-  const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *mbmi = xd->mi[0];
   xd->mi[0]->partition = partition;
-  const int plane_start = (xd->tree_type == CHROMA_PART);
-  const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end =
+      get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
   if (!is_inter_block(mbmi, xd->tree_type)) {
     int row, col;
     assert(bsize == get_plane_block_size(bsize, xd->plane[0].subsampling_x,
@@ -1625,9 +1625,9 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
                                                      parse_decode_block };
 
   if (parse_decode_flag & 1) {
-    const int num_planes = av1_num_planes(cm);
-    const int plane_start = (xd->tree_type == CHROMA_PART);
-    const int plane_end = (xd->tree_type == LUMA_PART) ? 1 : num_planes;
+    const int plane_start = get_partition_plane_start(xd->tree_type);
+    const int plane_end =
+        get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
     for (int plane = plane_start; plane < plane_end; ++plane) {
       int rcol0, rcol1, rrow0, rrow1;
       if (av1_loop_restoration_corners_in_sb(cm, plane, mi_row, mi_col, bsize,
