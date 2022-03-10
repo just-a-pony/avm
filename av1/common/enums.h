@@ -43,6 +43,8 @@ extern "C" {
 #endif
 #if CONFIG_ADAPTIVE_MVD
 #define IMPROVED_AMVD 1
+#else
+#define IMPROVED_AMVD 0
 #endif  // CONFIG_ADAPTIVE_MVD
 
 // Max superblock size
