@@ -1208,7 +1208,7 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
 #else
                      const int *mode_costs,
 #endif  // CONFIG_AIMC
-                     uint8_t *directional_mode_skip_mask, int64_t *best_rd,
+                     uint8_t *dir_skip_mask, int64_t *best_rd,
                      int64_t *best_model_rd, PICK_MODE_CONTEXT *ctx,
                      MB_MODE_INFO *best_mbmi) {
   (void)ctx;
@@ -1288,10 +1288,10 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
       }
 #endif  // CONFIG_AIMC
 #if CONFIG_AIMC
-      if (is_directional_mode && directional_mode_skip_mask[mbmi->mode] &&
+      if (is_directional_mode && dir_skip_mask[mbmi->mode] &&
           mode_idx >= FIRST_MODE_COUNT)
 #else
-      if (is_directional_mode && directional_mode_skip_mask[mbmi->mode])
+      if (is_directional_mode && dir_skip_mask[mbmi->mode])
 #endif  // CONFIG_AIMC
         continue;
 

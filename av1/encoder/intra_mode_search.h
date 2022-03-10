@@ -190,6 +190,7 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
  * \param[in]    skippable          Whether we can skip txfm process.
  * \param[in]    bsize              Current partition block size.
  * \param[in]    mode_costs         Costs associated with different intra modes.
+ * \param[in]    dir_skip_mask      Whether a directional mode is pruned.
  * \param[in]    best_rd            Best RD seen for this block so far.
  * \param[in]    best_model_rd      Best model RD seen for this block so far.
  * \param[in]    ctx                Structure to hold the number of 4x4 blks to
@@ -205,7 +206,7 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
 #else
                      const int *mode_costs,
 #endif  // CONFIG_AIMC
-                     uint8_t *directional_mode_skip_mask, int64_t *best_rd,
+                     uint8_t *dir_skip_mask, int64_t *best_rd,
                      int64_t *best_model_rd, PICK_MODE_CONTEXT *ctx,
                      MB_MODE_INFO *best_mbmi);
 #endif  // CONFIG_FORWARDSKIP

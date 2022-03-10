@@ -195,8 +195,11 @@ typedef struct {
   //! Cost for encoding an increment to the coefficient
   int lps_cost[LEVEL_CONTEXTS][COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1];
 #if CONFIG_FORWARDSKIP
+  //! Cost for encoding the base level of a coefficient for IDTX blocks
   int idtx_base_cost[IDTX_SIG_COEF_CONTEXTS][8];
+  //! Cost for encoding the sign of a coefficient for IDTX blocks
   int idtx_sign_cost[IDTX_SIGN_CONTEXTS][2];
+  //! Cost for encoding an increment to the coefficient for IDTX blocks
   int lps_cost_skip[IDTX_LEVEL_CONTEXTS]
                    [COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1];
 #endif  // CONFIG_FORWARDSKIP
