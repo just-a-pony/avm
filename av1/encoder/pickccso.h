@@ -27,8 +27,8 @@ static INLINE double clamp_dbl(double value, double low, double high) {
 }
 
 void ccso_search(AV1_COMMON *cm, MACROBLOCKD *xd, int rdmult,
-                 const uint16_t *ext_rec_y, uint16_t *rec_uv[2],
-                 uint16_t *org_uv[2]);
+                 const uint16_t *ext_rec_y, uint16_t *rec_uv[3],
+                 uint16_t *org_uv[3]);
 #if CONFIG_CCSO_EXT
 void ccso_pre_compute_class_err(MACROBLOCKD *xd, const int plane,
                                 const uint16_t *src_y, const uint16_t *ref,
