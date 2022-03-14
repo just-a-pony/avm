@@ -1014,9 +1014,8 @@ struct AV1_COMP;
  * \param[in]    cpi     Top - level encoder instance structure
  * \param[in]    speed   Speed setting passed in from the command  line
  *
- * \return No return value but configures the various speed trade off flags
- *         based on the passed in speed setting. (Higher speed gives lower
- *         quality)
+ * No return value but configures the various speed trade off flags based
+ * on the passed in speed setting. (Higher speed gives lower quality).
  */
 void av1_set_speed_features_framesize_independent(struct AV1_COMP *cpi,
                                                   int speed);
@@ -1028,9 +1027,9 @@ void av1_set_speed_features_framesize_independent(struct AV1_COMP *cpi,
  * \param[in]    cpi     Top - level encoder instance structure
  * \param[in]    speed   Speed setting passed in from the command  line
  *
- * \return No return value but configures the various speed trade off flags
- *         based on the passed in speed setting and frame size. (Higher speed
- *         corresponds to lower quality)
+ * No return value but configures the various speed trade off flags based
+ * on the passed in speed setting and frame size. (Higher speed corresponds
+ * to lower quality).
  */
 void av1_set_speed_features_framesize_dependent(struct AV1_COMP *cpi,
                                                 int speed);
@@ -1041,9 +1040,9 @@ void av1_set_speed_features_framesize_dependent(struct AV1_COMP *cpi,
  * \param[in]    cpi     Top - level encoder instance structure
  * \param[in]    speed   Speed setting passed in from the command  line
  *
- * \return No return value but configures the various speed trade off flags
- *         based on the passed in speed setting and current frame's Q index.
- *         (Higher speed corresponds to lower quality)
+ * No return value but configures the various speed trade off flags based
+ * on the passed in speed setting and current frame's Q index.
+ * (Higher speed corresponds to lower quality).
  */
 void av1_set_speed_features_qindex_dependent(struct AV1_COMP *cpi, int speed);
 

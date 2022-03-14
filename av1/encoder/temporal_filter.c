@@ -76,8 +76,7 @@ static void tf_determine_block_partition(const MV block_mv, const int block_mse,
  * \param[out]  subblock_mses   Pointer to the search errors (MSE) for 4
  *                              sub-blocks
  *
- * \return Nothing will be returned. Results are saved in subblock_mvs and
- *         subblock_mses
+ * Nothing returned. Results are saved in subblock_mvs and subblock_mses.
  */
 static void tf_motion_search(AV1_COMP *cpi,
                              const YV12_BUFFER_CONFIG *frame_to_filter,
@@ -306,7 +305,7 @@ static INLINE int is_frame_high_bitdepth(const YV12_BUFFER_CONFIG *frame) {
  *                             order)
  * \param[out]  pred           Pointer to the predictor to be built
  *
- * \return Nothing returned, But the contents of `pred` will be modified
+ * Nothing returned, But the contents of `pred` will be modified.
  */
 static void tf_build_predictor(const YV12_BUFFER_CONFIG *ref_frame,
                                const MACROBLOCKD *mbd,
@@ -495,8 +494,8 @@ static INLINE void compute_square_diff(const uint8_t *ref, const int ref_offset,
  * \param[out]  count           Pointer to the pixel-wise counter for
  *                              filtering
  *
- * \return Nothing returned, But the contents of `accum`, `pred` and 'count'
- *         will be modified
+ * Nothing returned, But the contents of `accum`, `pred` and 'count'
+ * will be modified.
  */
 void av1_apply_temporal_filter_c(
     const YV12_BUFFER_CONFIG *frame_to_filter, const MACROBLOCKD *mbd,
@@ -655,8 +654,8 @@ void av1_highbd_apply_temporal_filter_c(
  * \param[in]   count          Pointer to the pre-computed count
  * \param[out]  result_buffer  Pointer to result buffer
  *
- * \return Nothing returned, but the content to which `result_buffer` pointer
- *         will be modified
+ * Nothing returned, but the content to which `result_buffer` pointer
+ * will be modified.
  */
 static void tf_normalize_filtered_frame(
     const MACROBLOCKD *mbd, const BLOCK_SIZE block_size, const int mb_row,
@@ -935,11 +934,11 @@ static FRAME_DIFF tf_do_filtering(AV1_COMP *cpi, YV12_BUFFER_CONFIG **frames,
  *                              frame, estimated with each plane (in Y, U, V
  *                              order).
  *
- * \return Nothing will be returned. But the frame buffer `frames`, number of
- *         frames in the buffer `num_frames_for_filtering`, and the index of
- *         the to-filter frame in the buffer `filter_frame_idx` will be updated
- *         in this function. Estimated noise levels for YUV planes will be
- *         saved in `noise_levels`.
+ * Nothing will be returned. But the frame buffer `frames`, number of
+ * frames in the buffer `num_frames_for_filtering`, and the index of
+ * the to-filter frame in the buffer `filter_frame_idx` will be updated
+ * in this function. Estimated noise levels for YUV planes will be
+ * saved in `noise_levels`.
  */
 static void tf_setup_filtering_buffer(const AV1_COMP *cpi,
                                       const int filter_frame_lookahead_idx,

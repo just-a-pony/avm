@@ -511,8 +511,8 @@ static double get_rate_correction_factor(const AV1_COMP *cpi, int width,
  * \param[in]   width                 Frame width
  * \param[in]   height                Frame height
  *
- * \return None but updates the rate correction factor for the
- *         current frame type in cpi->rc.
+ * No return value but updates the rate correction factor for the
+ * current frame type in cpi->rc.
  */
 static void set_rate_correction_factor(AV1_COMP *cpi, double factor, int width,
                                        int height) {

@@ -1208,8 +1208,8 @@ void set_last_prev_low_err(int *cur_start_ptr, int *cur_last_ptr, int *cut_pos,
  * \param[in]    max_intervals       Maximum number of intervals to decide
  * \param[in]    curr_frame_type     Frame type of the current frame in subgop
  *
- * \return Nothing is returned. Instead, cpi->rc.gf_intervals is
- * changed to store the decided GF group lengths.
+ * Nothing is returned. Instead, cpi->rc.gf_intervals is changed to store
+ * the decided GF group lengths.
  */
 static void calculate_gf_length(AV1_COMP *cpi, int max_gop_length,
                                 int max_intervals, FRAME_TYPE curr_frame_type) {
@@ -1440,7 +1440,7 @@ static int is_last_subgop(AV1_COMP *cpi) {
  * \param[in]    cpi               Top-level encoder structure
  * \param[in]    curr_frame_type   Frame type of the current frame in subgop
  *
- * \return Nothing is returned. Instead, cpi->gf_group is changed.
+ * Nothing is returned. Instead, cpi->gf_group is changed.
  */
 static void define_gf_group_pass0(AV1_COMP *cpi, FRAME_TYPE curr_frame_type) {
   RATE_CONTROL *const rc = &cpi->rc;
@@ -1606,7 +1606,7 @@ static void init_gf_stats(GF_GROUP_STATS *gf_stats) {
  * \param[in]    frame_params    Structure with frame parameters
  * \param[in]    max_gop_length  Maximum length of the GF group
  *
- * \return Nothing is returned. Instead, cpi->gf_group is changed.
+ * Nothing is returned. Instead, cpi->gf_group is changed.
  */
 static void define_gf_group(AV1_COMP *cpi, FIRSTPASS_STATS *this_frame,
                             EncodeFrameParams *frame_params,
@@ -2397,8 +2397,6 @@ static double get_kf_boost_score(AV1_COMP *cpi, double kf_raw_err,
  *
  * \param[in]    cpi              Top-level encoder structure
  * \param[in]    this_frame       Pointer to first pass stats
- *
- * \return Nothing is returned.
  */
 static void find_next_key_frame(AV1_COMP *cpi, FIRSTPASS_STATS *this_frame) {
   RATE_CONTROL *const rc = &cpi->rc;

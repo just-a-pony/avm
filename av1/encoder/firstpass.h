@@ -323,7 +323,7 @@ void av1_accumulate_stats(FIRSTPASS_STATS *section,
  * \param[in]    cpi            Top-level encoder structure
  * \param[in]    ts_duration    Duration of the frame / collection of frames
  *
- * \return Nothing is returned. Instead, the "TWO_PASS" structure inside "cpi"
+ * Nothing is returned. Instead, the "TWO_PASS" structure inside "cpi"
  * is modified to store information computed in this function.
  */
 void av1_first_pass(struct AV1_COMP *cpi, const int64_t ts_duration);

@@ -55,7 +55,7 @@ struct RD_STATS;
                                 during the mode picking process.
  * \param[in]    best_rd Best   RD seen for this block so far.
  *
- * \return Nothing is returned. Instead, the MB_MODE_INFO struct inside x
+ * Nothing is returned. Instead, the MB_MODE_INFO struct inside x
  * is modified to store information about the best mode computed
  * in this function. The rd_cost struct is also updated with the RD stats
  * corresponding to the best mode found.
@@ -86,7 +86,7 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
                                 during the mode picking process
  * \param[in]    best_rd_so_far Best RD seen for this block so far
  *
- * \return Nothing is returned. Instead, the MB_MODE_INFO struct inside x
+ * Nothing is returned. Instead, the MB_MODE_INFO struct inside x
  * is modified to store information about the best mode computed
  * in this function. The rd_cost struct is also updated with the RD stats
  * corresponding to the best mode found.

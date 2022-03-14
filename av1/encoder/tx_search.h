@@ -171,8 +171,8 @@ int64_t av1_uniform_txfm_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
  * \param[in]    rd_stats       Pointer to struct to keep track of the RD stats
  * \param[in]    bsize          Current macroblock size
  * \param[in]    ref_best_rd    Best RD cost seen for this block so far
- * \return       Nothing is returned. The selected transform size and type will
-                 be saved in the MB_MODE_INFO structure
+ * Nothing is returned. The selected transform size and type will be saved
+ * in the MB_MODE_INFO structure.
  */
 void av1_pick_recursive_tx_size_type_yrd(const AV1_COMP *cpi, MACROBLOCK *x,
                                          RD_STATS *rd_stats, BLOCK_SIZE bsize,
@@ -193,8 +193,8 @@ void av1_pick_recursive_tx_size_type_yrd(const AV1_COMP *cpi, MACROBLOCK *x,
  * \param[in]    rd_stats       Pointer to struct to keep track of the RD stats
  * \param[in]    bs             Current macroblock size
  * \param[in]    ref_best_rd    Best RD cost seen for this block so far
- * \return       Nothing is returned. The selected transform size and type will
-                 be saved in the MB_MODE_INFO structure
+ * Nothing is returned. The selected transform size and type will be saved
+ * in the MB_MODE_INFO structure.
  */
 void av1_pick_uniform_tx_size_type_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
                                        RD_STATS *rd_stats, BLOCK_SIZE bs,
@@ -240,7 +240,7 @@ int av1_txfm_uvrd(const AV1_COMP *const cpi, MACROBLOCK *x, RD_STATS *rd_stats,
  * \param[in]    skip_trellis   Binary flag indicating if trellis optimization
                                 should be skipped
  *
- * \return       Nothing is returned. The RD results will be saved in rd_stats.
+ * Nothing is returned. The RD results will be saved in rd_stats.
  */
 void av1_txfm_rd_in_plane(MACROBLOCK *x, const AV1_COMP *cpi,
                           RD_STATS *rd_stats, int64_t ref_best_rd,

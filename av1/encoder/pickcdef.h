@@ -32,7 +32,7 @@ extern "C" {
  * \param[in]      pick_method  The method used to select params
  * \param[in]      rdmult       rd multiplier to use in making param choices
  *
- * \return Nothing is returned. Instead, optimal CDEF parameters are stored
+ * Nothing is returned. Instead, optimal CDEF parameters are stored
  * in the \c cdef_info structure of type \ref CdefInfo inside \c cm:
  * \arg \c cdef_bits: Bits of strength parameters
  * \arg \c nb_cdef_strengths: Number of strength parameters

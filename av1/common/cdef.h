@@ -51,8 +51,7 @@ int av1_cdef_compute_sb_list(const CommonModeInfoParams *const mi_params,
  * \param[in, out]  cm          Pointer to top level common structure
  * \param[in]       xd          Pointer to common current coding block structure
  *
- * \return Nothing is returned. Instead, the filtered frame is output in
- * \c frame.
+ * Nothing is returned. Instead, the filtered frame is output in \c frame.
  */
 void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd);
 

@@ -187,7 +187,7 @@ int av1_cyclic_refresh_rc_bits_per_mb(const struct AV1_COMP *cpi, int i,
  * \param[in]   dist      Projected block dist from pickmode
  * \param[in]  skip       Skip flag set from picmode
  *
- * \return Update the \c mbmi->segment_id, the \c cpi->cyclic_refresh and
+ * Updates the \c mbmi->segment_id, the \c cpi->cyclic_refresh and
  * the \c cm->cpi->enc_seg.map.
  */
 void av1_cyclic_refresh_update_segment(const struct AV1_COMP *cpi,
@@ -206,7 +206,7 @@ void av1_cyclic_refresh_update_segment(const struct AV1_COMP *cpi,
  *
  * \param[in]   cpi       Top level encoder structure
  *
- * \return Updates the \c cpi->cyclic_refresh with the new stats.
+ * Updates the \c cpi->cyclic_refresh with the new stats.
  */
 void av1_cyclic_refresh_postencode(struct AV1_COMP *const cpi);
 
@@ -218,7 +218,7 @@ void av1_cyclic_refresh_postencode(struct AV1_COMP *const cpi);
  *
  * \param[in]   cpi       Top level encoder structure
  *
- * \return Returns the interval in \c cpi->rc.baseline_gf_interval.
+ * Populates the interval in \c cpi->rc.baseline_gf_interval.
  */
 void av1_cyclic_refresh_set_golden_update(struct AV1_COMP *const cpi);
 
@@ -235,7 +235,7 @@ void av1_cyclic_refresh_set_golden_update(struct AV1_COMP *const cpi);
  *
  * \param[in]       cpi          Top level encoder structure
  *
- * \return Updates the \c cpi->cyclic_refresh with the settings.
+ * Updates the \c cpi->cyclic_refresh with the settings.
  */
 void av1_cyclic_refresh_update_parameters(struct AV1_COMP *const cpi);
 
@@ -249,7 +249,7 @@ void av1_cyclic_refresh_update_parameters(struct AV1_COMP *const cpi);
  *
  * \param[in]       cpi          Top level encoder structure
  *
- * \return Updates the \c cpi->cyclic_refresh with the cyclic refresh
+ * Updates the \c cpi->cyclic_refresh with the cyclic refresh
  * parameters and the \c cm->seg with the segmentation data.
  */
 void av1_cyclic_refresh_setup(struct AV1_COMP *const cpi);
