@@ -165,8 +165,6 @@ enum {
 
 #define MAX_VBR_CORPUS_COMPLEXITY 10000
 
-/*!\cond */
-
 typedef enum {
   COST_UPD_SB,
   COST_UPD_SBROW,

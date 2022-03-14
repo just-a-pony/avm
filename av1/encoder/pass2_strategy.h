@@ -20,7 +20,6 @@ extern "C" {
 struct AV1_COMP;
 struct EncodeFrameParams;
 
-/*!\endcond */
 /*!
  * \brief accumulated stats and features in a gf group
  */
@@ -63,7 +62,7 @@ typedef struct {
   double frame_tr_coded_error;
   /*!\endcond */
 } GF_FRAME_STATS;
-/*!cond */
+/*!\cond */
 
 void av1_init_single_pass_lap(AV1_COMP *cpi);
 
