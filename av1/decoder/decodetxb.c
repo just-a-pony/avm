@@ -54,11 +54,7 @@ static INLINE int rec_eob_pos(const int eob_token, const int extra) {
   return eob;
 }
 
-#if CONFIG_EXTQUANT
 static INLINE int get_dqv(const int32_t *dequant, int coeff_idx,
-#else
-static INLINE int get_dqv(const int16_t *dequant, int coeff_idx,
-#endif
                           const qm_val_t *iqmatrix) {
   int dqv = dequant[!!coeff_idx];
   if (iqmatrix != NULL)
@@ -270,15 +266,10 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
       tran_low_t dq_coeff;
       // Bitmasking to clamp dq_coeff to valid range:
       // The valid range for 8/10/12 bit video is at most 17/19/21 bits
-#if CONFIG_EXTQUANT
       const int64_t dq_coeff_hp =
           (int64_t)level * get_dqv(dequant, scan[c], iqmatrix) & 0xffffff;
       dq_coeff =
           (tran_low_t)(ROUND_POWER_OF_TWO_64(dq_coeff_hp, QUANT_TABLE_BITS));
-#else
-      dq_coeff = (tran_low_t)(
-          (int64_t)level * get_dqv(dequant, scan[c], iqmatrix) & 0xffffff);
-#endif  // CONFIG_EXTQUANT
       dq_coeff = dq_coeff >> shift;
       if (sign) {
         dq_coeff = -dq_coeff;
@@ -310,11 +301,7 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   const PLANE_TYPE plane_type = get_plane_type(plane);
   MB_MODE_INFO *const mbmi = xd->mi[0];
   struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_EXTQUANT
   const int32_t *const dequant = pd->seg_dequant_QTX[mbmi->segment_id];
-#else
-  const int16_t *const dequant = pd->seg_dequant_QTX[mbmi->segment_id];
-#endif
   tran_low_t *const tcoeffs = dcb->dqcoeff_block[plane] + dcb->cb_offset[plane];
   const int shift = av1_get_tx_scale(tx_size);
   const int bwl = get_txb_bwl(tx_size);
@@ -585,15 +572,10 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       tran_low_t dq_coeff;
       // Bitmasking to clamp dq_coeff to valid range:
       //   The valid range for 8/10/12 bit video is at most 17/19/21 bit
-#if CONFIG_EXTQUANT
       const int64_t dq_coeff_hp =
           (int64_t)level * get_dqv(dequant, scan[c], iqmatrix) & 0xffffff;
       dq_coeff =
           (tran_low_t)(ROUND_POWER_OF_TWO_64(dq_coeff_hp, QUANT_TABLE_BITS));
-#else
-      dq_coeff = (tran_low_t)(
-          (int64_t)level * get_dqv(dequant, scan[c], iqmatrix) & 0xffffff);
-#endif  // CONFIG_EXTQUANT
       dq_coeff = dq_coeff >> shift;
       if (sign) {
         dq_coeff = -dq_coeff;

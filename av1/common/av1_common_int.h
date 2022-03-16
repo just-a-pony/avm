@@ -63,11 +63,9 @@ extern "C" {
 #define FRAME_ID_LENGTH 15
 #define DELTA_FRAME_ID_LENGTH 14
 
-#if CONFIG_EXTQUANT
 #define DELTA_DCQUANT_BITS 5
 #define DELTA_DCQUANT_MAX (1 << (DELTA_DCQUANT_BITS - 2))
 #define DELTA_DCQUANT_MIN (DELTA_DCQUANT_MAX - (1 << DELTA_DCQUANT_BITS) + 1)
-#endif  // CONFIG_EXTQUANT
 
 #define DEBUG_EXTQUANT 0
 
@@ -368,10 +366,8 @@ typedef struct SequenceHeader {
   int subsampling_y;  // Chroma subsampling for y
   aom_chroma_sample_position_t chroma_sample_position;
   uint8_t separate_uv_delta_q;
-#if CONFIG_EXTQUANT
   int8_t base_y_dc_delta_q;
   int8_t base_uv_dc_delta_q;
-#endif  // CONFIG_EXTQUANT
   uint8_t film_grain_params_present;
 
   // Operating point info.
@@ -734,15 +730,9 @@ struct CommonQuantParams {
    * shift/scale as TX.
    */
   /**@{*/
-#if CONFIG_EXTQUANT
   int32_t y_dequant_QTX[MAX_SEGMENTS][2]; /*!< Dequant for Y plane */
   int32_t u_dequant_QTX[MAX_SEGMENTS][2]; /*!< Dequant for U plane */
   int32_t v_dequant_QTX[MAX_SEGMENTS][2]; /*!< Dequant for V plane */
-#else
-  int16_t y_dequant_QTX[MAX_SEGMENTS][2]; /*!< Dequant for Y plane */
-  int16_t u_dequant_QTX[MAX_SEGMENTS][2]; /*!< Dequant for U plane */
-  int16_t v_dequant_QTX[MAX_SEGMENTS][2]; /*!< Dequant for V plane */
-#endif
   /**@}*/
 
   /**

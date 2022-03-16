@@ -107,9 +107,7 @@ class EndToEndTest
     SetMode(encoding_mode_);
     cfg_.g_lag_in_frames = 5;
     cfg_.rc_end_usage = AOM_VBR;
-#if CONFIG_EXTQUANT
     cfg_.rc_max_quantizer = 224;
-#endif  // CONFIG_EXTQUANT
   }
 
   virtual void BeginPassHook(unsigned int) {

@@ -588,17 +588,13 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 
   RANGE_CHECK(cfg, g_bit_depth, AOM_BITS_8, AOM_BITS_12);
   RANGE_CHECK(cfg, g_input_bit_depth, AOM_BITS_8, AOM_BITS_12);
-#if CONFIG_EXTQUANT
+
   const int min_quantizer =
       (-(int)(cfg->g_bit_depth - AOM_BITS_8) * MAXQ_OFFSET);
   RANGE_CHECK(cfg, rc_max_quantizer, min_quantizer, 255);
   RANGE_CHECK(cfg, rc_min_quantizer, min_quantizer, 255);
   RANGE_CHECK(extra_cfg, qp, min_quantizer, 255);
-#else
-  RANGE_CHECK(cfg, rc_max_quantizer, 0, 255);
-  RANGE_CHECK(cfg, rc_min_quantizer, 0, 255);
-  RANGE_CHECK(extra_cfg, qp, 0, 255);
-#endif  // CONFIG_EXTQUANT
+
   RANGE_CHECK_HI(cfg, rc_min_quantizer, cfg->rc_max_quantizer);
   RANGE_CHECK_BOOL(extra_cfg, lossless);
   RANGE_CHECK_HI(extra_cfg, aq_mode, AQ_MODE_COUNT - 1);
@@ -1024,13 +1020,10 @@ static double get_modeled_qp_offset(int qp, int level, int bit_depth) {
   if (q_based_qp_offsets) {
     // At higher end of QP the slope of quant step-size grows exponentially,
     // captured by qp_threshold.
-#if CONFIG_EXTQUANT
+
     const int max_q = (bit_depth == AOM_BITS_8)    ? MAXQ_8_BITS
                       : (bit_depth == AOM_BITS_10) ? MAXQ_10_BITS
                                                    : MAXQ;
-#else
-    const int max_q = MAXQ;
-#endif  // CONFIG_EXTQUANT
 
     const int qp_threshold = (max_q * 7) / 10;
     if (qp < qp_threshold) {
@@ -1168,18 +1161,12 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   rc_cfg->mode = cfg->rc_end_usage;
   rc_cfg->min_cr = extra_cfg->min_cr;
 
-#if CONFIG_EXTQUANT
   const int offset_qp = (cfg->g_bit_depth - AOM_BITS_8) * MAXQ_OFFSET;
   rc_cfg->best_allowed_q =
       extra_cfg->lossless ? 0 : cfg->rc_min_quantizer + offset_qp;
   rc_cfg->worst_allowed_q =
       extra_cfg->lossless ? 0 : cfg->rc_max_quantizer + offset_qp;
   rc_cfg->qp = extra_cfg->qp + offset_qp;
-#else
-  rc_cfg->best_allowed_q = extra_cfg->lossless ? 0 : cfg->rc_min_quantizer;
-  rc_cfg->worst_allowed_q = extra_cfg->lossless ? 0 : cfg->rc_max_quantizer;
-  rc_cfg->qp = extra_cfg->qp;
-#endif
 
   rc_cfg->under_shoot_pct = cfg->rc_undershoot_pct;
   rc_cfg->over_shoot_pct = cfg->rc_overshoot_pct;
@@ -1478,7 +1465,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
         (uint8_t)cfg->rc_superres_kf_denominator;
     superres_cfg->superres_qthresh = cfg->rc_superres_qthresh;
     superres_cfg->superres_kf_qthresh = cfg->rc_superres_kf_qthresh;
-#if CONFIG_EXTQUANT
+
     int offset_superres_qthresh;
     int offset_superres_kf_qthresh;
     switch (cfg->g_bit_depth) {
@@ -1505,7 +1492,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     }
     superres_cfg->superres_qthresh += offset_superres_qthresh;
     superres_cfg->superres_kf_qthresh += offset_superres_kf_qthresh;
-#endif
+
     if (superres_cfg->superres_mode == AOM_SUPERRES_FIXED &&
         superres_cfg->superres_scale_denominator == SCALE_NUMERATOR &&
         superres_cfg->superres_kf_scale_denominator == SCALE_NUMERATOR) {

@@ -492,7 +492,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
       }
     }
   }
-#if CONFIG_EXTQUANT
+
   const int is_360p_or_larger =
       AOMMIN(seq->max_frame_width, seq->max_frame_height) >= 360;
   const int is_720p_or_larger =
@@ -507,7 +507,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
     seq->base_y_dc_delta_q = -4;
     seq->base_uv_dc_delta_q = -3;
   }
-#endif  // CONFIG_EXTQUANT
+
 #if CONFIG_REF_MV_BANK
   seq->enable_refmvbank = tool_cfg->enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
@@ -2379,11 +2379,8 @@ static int encode_without_recode(AV1_COMP *cpi) {
   av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
                     q_cfg->enable_chroma_deltaq);
   av1_set_speed_features_qindex_dependent(cpi, cpi->oxcf.speed);
-#if !CONFIG_EXTQUANT
-  if (q_cfg->deltaq_mode != NO_DELTA_Q || q_cfg->enable_chroma_deltaq)
-#endif
-    av1_init_quantizer(&cm->seq_params, &cpi->enc_quant_dequant_params,
-                       &cm->quant_params);
+  av1_init_quantizer(&cm->seq_params, &cpi->enc_quant_dequant_params,
+                     &cm->quant_params);
   av1_setup_frame(cpi);
 
   if (q_cfg->aq_mode == CYCLIC_REFRESH_AQ) {
@@ -2548,12 +2545,8 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
     av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
                       q_cfg->enable_chroma_deltaq);
     av1_set_speed_features_qindex_dependent(cpi, oxcf->speed);
-
-#if !CONFIG_EXTQUANT
-    if (q_cfg->deltaq_mode != NO_DELTA_Q || q_cfg->enable_chroma_deltaq)
-#endif
-      av1_init_quantizer(&cm->seq_params, &cpi->enc_quant_dequant_params,
-                         &cm->quant_params);
+    av1_init_quantizer(&cm->seq_params, &cpi->enc_quant_dequant_params,
+                       &cm->quant_params);
 
     // printf("Frame %d/%d: q = %d, frame_type = %d superres_denom = %d\n",
     //        cm->current_frame.frame_number, cm->show_frame, q,
