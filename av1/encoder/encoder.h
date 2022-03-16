@@ -725,11 +725,9 @@ typedef struct {
   // TODO(krapaka): extend the derivation of factors also based on operating
   // configuration such as random access and low-delay.
   int use_fixed_qp_offsets;
-#if CONFIG_QBASED_QP_OFFSET
   // It true, the offset factor depends on the QP value
   // else fixed value is used.
   int q_based_qp_offsets;
-#endif  // CONFIG_QBASED_QP_OFFSET
   // Indicates the minimum flatness of the quantization matrix.
   int qm_minlevel;
   // Indicates the maximum flatness of the quantization matrix.

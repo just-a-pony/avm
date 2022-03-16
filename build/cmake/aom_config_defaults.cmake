@@ -159,8 +159,6 @@ set_aom_config_var(CONFIG_TMVP_IMPROVEMENT 1 "Enable TMVP improvement")
 set_aom_config_var(CONFIG_REF_MV_BANK 1 "AV2 ref mv bank experiment flag")
 set_aom_config_var(
   CONFIG_CCSO 1 "AV2 experiment flag to enable cross component sample offset.")
-set_aom_config_var(CONFIG_QBASED_QP_OFFSET 1
-                   "AV2 experiment flag to adjust q_offset based on QP.")
 set_aom_config_var(CONFIG_OPTFLOW_REFINEMENT 1
                    "AV2 experiment flag for optical flow MV refinement")
 set_aom_config_var(
