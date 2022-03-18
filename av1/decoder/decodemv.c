@@ -566,8 +566,12 @@ static int read_skip_mode(AV1_COMMON *cm, const MACROBLOCKD *xd, int segment_id,
   if (!is_comp_ref_allowed(xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART]))
     return 0;
 
+#if CONFIG_NEW_REF_SIGNALING
+  if (segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
+#else
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_REF_FRAME) ||
       segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
+#endif  // CONFIG_NEW_REF_SIGNALING
     // These features imply single-reference mode, while skip mode implies
     // compound reference. Hence, the two are mutually exclusive.
     // In other words, skip_mode is implicitly 0 here.
@@ -985,15 +989,16 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     mbmi->motion_mode = SIMPLE_TRANSLATION;
 
     int16_t inter_mode_ctx[MODE_CTX_REF_FRAMES];
-    int_mv ref_mvs[INTRA_FRAME + 1][MAX_MV_REF_CANDIDATES];
+    int_mv nearestmv, nearmv;
 
+    // TODO(kslu): Rework av1_find_mv_refs to avoid having this big array
+    // ref_mvs
+    int_mv ref_mvs[INTRA_FRAME + 1][MAX_MV_REF_CANDIDATES];
     av1_find_mv_refs(cm, xd, mbmi, INTRA_FRAME, dcb->ref_mv_count,
                      xd->ref_mv_stack, xd->weight, ref_mvs, /*global_mvs=*/NULL,
                      inter_mode_ctx);
-
-    int_mv nearestmv, nearmv;
-
     av1_find_best_ref_mvs(0, ref_mvs[INTRA_FRAME], &nearestmv, &nearmv, 0);
+
     int_mv dv_ref = nearestmv.as_int == 0 ? nearmv : nearestmv;
     if (dv_ref.as_int == 0)
       av1_find_ref_dv(&dv_ref, &xd->tile, cm->seq_params.mib_size, xd->mi_row);
@@ -1360,7 +1365,7 @@ static REFERENCE_MODE read_block_reference_mode(AV1_COMMON *cm,
   if (!is_comp_ref_allowed(xd->mi[0]->sb_type[PLANE_TYPE_Y]))
     return SINGLE_REFERENCE;
   if (cm->current_frame.reference_mode == REFERENCE_MODE_SELECT) {
-    const int ctx = av1_get_reference_mode_context(xd);
+    const int ctx = av1_get_reference_mode_context(cm, xd);
     const REFERENCE_MODE mode = (REFERENCE_MODE)aom_read_symbol(
         r, xd->tile_ctx->comp_inter_cdf[ctx], 2, ACCT_STR);
     return mode;  // SINGLE_REFERENCE or COMPOUND_REFERENCE
@@ -1370,6 +1375,47 @@ static REFERENCE_MODE read_block_reference_mode(AV1_COMMON *cm,
   }
 }
 
+#if CONFIG_NEW_REF_SIGNALING
+static AOM_INLINE void read_single_ref(
+    MACROBLOCKD *const xd, MV_REFERENCE_FRAME ref_frame[2],
+    const RefFramesInfo *const ref_frames_info, aom_reader *r) {
+  const int n_refs = ref_frames_info->num_total_refs;
+  for (int i = 0; i < n_refs - 1; i++) {
+    const int bit = aom_read_symbol(
+        r, av1_get_pred_cdf_single_ref(xd, i, n_refs), 2, ACCT_STR);
+    if (bit) {
+      ref_frame[0] = i;
+      return;
+    }
+  }
+  ref_frame[0] = n_refs - 1;
+}
+
+static AOM_INLINE void read_compound_ref(
+    const MACROBLOCKD *xd, MV_REFERENCE_FRAME ref_frame[2],
+    const RefFramesInfo *const ref_frames_info, aom_reader *r) {
+  const int n_refs = ref_frames_info->num_total_refs;
+  assert(n_refs >= 2);
+  int n_bits = 0;
+  for (int i = 0; i < n_refs + n_bits - 2 && n_bits < 2; i++) {
+    // bit_type: -1 for ref0, 0 for opposite sided ref1, 1 for same sided ref1
+    const int bit_type = n_bits == 0 ? -1
+                                     : av1_get_compound_ref_bit_type(
+                                           ref_frames_info, ref_frame[0], i);
+    const int bit = (n_bits == 0 && i >= RANKED_REF0_TO_PRUNE - 1)
+                        ? 1
+                        : aom_read_symbol(r,
+                                          av1_get_pred_cdf_compound_ref(
+                                              xd, i, n_bits, bit_type, n_refs),
+                                          2, ACCT_STR);
+    if (bit) {
+      ref_frame[n_bits++] = i;
+    }
+  }
+  if (n_bits < 2) ref_frame[1] = n_refs - 1;
+  if (n_bits < 1) ref_frame[0] = n_refs - 2;
+}
+#else
 #define READ_REF_BIT(pname) \
   aom_read_symbol(r, av1_get_pred_cdf_##pname(xd), 2, ACCT_STR)
 
@@ -1381,14 +1427,20 @@ static COMP_REFERENCE_TYPE read_comp_reference_type(const MACROBLOCKD *xd,
           r, xd->tile_ctx->comp_ref_type_cdf[ctx], 2, ACCT_STR);
   return comp_ref_type;  // UNIDIR_COMP_REFERENCE or BIDIR_COMP_REFERENCE
 }
+#endif  // CONFIG_NEW_REF_SIGNALING
 
 static void set_ref_frames_for_skip_mode(AV1_COMMON *const cm,
                                          MV_REFERENCE_FRAME ref_frame[2]) {
+#if CONFIG_NEW_REF_SIGNALING
+  ref_frame[0] = cm->current_frame.skip_mode_info.ref_frame_idx_0;
+  ref_frame[1] = cm->current_frame.skip_mode_info.ref_frame_idx_1;
+#else
   ref_frame[0] = LAST_FRAME + cm->current_frame.skip_mode_info.ref_frame_idx_0;
   ref_frame[1] = LAST_FRAME + cm->current_frame.skip_mode_info.ref_frame_idx_1;
+#endif  // CONFIG_NEW_REF_SIGNALING
 }
 
-// Read the referncence frame
+// Read the reference frame
 static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                             aom_reader *r, int segment_id,
                             MV_REFERENCE_FRAME ref_frame[2]) {
@@ -1397,6 +1449,12 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
     return;
   }
 
+#if CONFIG_NEW_REF_SIGNALING
+  if (segfeature_active(&cm->seg, segment_id, SEG_LVL_SKIP) ||
+      segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
+    ref_frame[0] = get_closest_pastcur_ref_index(cm);
+    ref_frame[1] = NONE_FRAME;
+#else
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_REF_FRAME)) {
     ref_frame[0] = (MV_REFERENCE_FRAME)get_segdata(&cm->seg, segment_id,
                                                    SEG_LVL_REF_FRAME);
@@ -1405,10 +1463,14 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
              segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
     ref_frame[0] = LAST_FRAME;
     ref_frame[1] = NONE_FRAME;
+#endif  // CONFIG_NEW_REF_SIGNALING
   } else {
     const REFERENCE_MODE mode = read_block_reference_mode(cm, xd, r);
 
     if (mode == COMPOUND_REFERENCE) {
+#if CONFIG_NEW_REF_SIGNALING
+      read_compound_ref(xd, ref_frame, &cm->ref_frames_info, r);
+#else
       const COMP_REFERENCE_TYPE comp_ref_type = read_comp_reference_type(xd, r);
 
       if (comp_ref_type == UNIDIR_COMP_REFERENCE) {
@@ -1457,7 +1519,11 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
       } else {
         ref_frame[idx] = ALTREF_FRAME;
       }
+#endif  // CONFIG_NEW_REF_SIGNALING
     } else if (mode == SINGLE_REFERENCE) {
+#if CONFIG_NEW_REF_SIGNALING
+      read_single_ref(xd, ref_frame, &cm->ref_frames_info, r);
+#else
       const int bit0 = READ_REF_BIT(single_ref_p1);
       if (bit0) {
         const int bit1 = READ_REF_BIT(single_ref_p2);
@@ -1478,6 +1544,7 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
         }
       }
 
+#endif  // CONFIG_NEW_REF_SIGNALING
       ref_frame[1] = NONE_FRAME;
     } else {
       assert(0 && "Invalid prediction mode.");
@@ -1826,11 +1893,13 @@ static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                                const int skip_txfm
 #endif  // CONFIG_CONTEXT_DERIVATION
 ) {
+#if !CONFIG_NEW_REF_SIGNALING
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_REF_FRAME)) {
     const int frame = get_segdata(&cm->seg, segment_id, SEG_LVL_REF_FRAME);
     if (frame < LAST_FRAME) return 0;
     return frame != INTRA_FRAME;
   }
+#endif  // !CONFIG_NEW_REF_SIGNALING
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
     return 1;
   }

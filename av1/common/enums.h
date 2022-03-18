@@ -426,6 +426,7 @@ enum {
 #define INTRA_TX_SET2 5
 #endif  // CONFIG_FORWARDSKIP
 
+#if !CONFIG_NEW_REF_SIGNALING
 enum {
   AOM_LAST_FLAG = 1 << 0,
   AOM_LAST2_FLAG = 1 << 1,
@@ -436,6 +437,7 @@ enum {
   AOM_ALT_FLAG = 1 << 6,
   AOM_REFFRAME_ALL = (1 << 7) - 1
 } UENUM1BYTE(AOM_REFFRAME);
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
 enum {
   UNIDIR_COMP_REFERENCE,
@@ -594,8 +596,9 @@ enum {
   INTER_MODE_START = NEARESTMV,
 #endif  // CONFIG_NEW_INTER_MODES
   INTER_MODE_END = MB_MODE_COUNT,
-  INTRA_MODES = PAETH_PRED + 1,  // PAETH_PRED has to be the last intra mode.
-  INTRA_INVALID = MB_MODE_COUNT  // For uv_mode in inter blocks
+  INTRA_MODES = PAETH_PRED + 1,   // PAETH_PRED has to be the last intra mode.
+  INTRA_INVALID = MB_MODE_COUNT,  // For uv_mode in inter blocks
+  MODE_INVALID = 255
 } UENUM1BYTE(PREDICTION_MODE);
 
 // TODO(ltrudeau) Do we really want to pack this?
@@ -771,6 +774,25 @@ enum {
 #endif  // CONFIG_NEW_TX_PARTITION
 typedef uint8_t TXFM_CONTEXT;
 
+#if CONFIG_NEW_REF_SIGNALING
+#define INTER_REFS_PER_FRAME 7
+#define REF_FRAMES (INTER_REFS_PER_FRAME + 1)
+// NOTE: A limited number of unidirectional reference pairs can be signalled for
+//       compound prediction. The use of skip mode, on the other hand, makes it
+//       possible to have a reference pair not listed for explicit signaling.
+#define MODE_CTX_REF_FRAMES \
+  (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 1) / 2 + 1)
+// With k=INTER_REFS_PER_FRAMES, indices 0 to k-1 represent rank 1 to rank k
+// references. The next k(k-1)/2 indices are left for compound reference types
+// (there are k choose 2 compound combinations). Then, index for intra frame is
+// defined as k+k(k-1)/2.
+#define INTRA_FRAME (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 1) / 2)
+// Used for indexing into arrays that contain reference data for
+// inter and intra.
+#define INTRA_FRAME_INDEX INTER_REFS_PER_FRAME
+#define NONE_FRAME INVALID_IDX
+#define AOM_REFFRAME_ALL ((1 << INTER_REFS_PER_FRAME) - 1)
+#else
 // An enum for single reference types (and some derived values).
 enum {
   NONE_FRAME = -1,
@@ -801,6 +823,12 @@ enum {
   SINGLE_REFS = FWD_REFS + BWD_REFS,
 };
 
+// NOTE: A limited number of unidirectional reference pairs can be signalled for
+//       compound prediction. The use of skip mode, on the other hand, makes it
+//       possible to have a reference pair not listed for explicit signaling.
+#define MODE_CTX_REF_FRAMES (REF_FRAMES + TOTAL_COMP_REFS)
+#endif  // CONFIG_NEW_REF_SIGNALING
+
 #define REF_FRAMES_LOG2 3
 
 // REF_FRAMES for the cm->ref_frame_map array, 1 scratch frame for the new
@@ -811,6 +839,7 @@ enum {
 #define FWD_RF_OFFSET(ref) (ref - LAST_FRAME)
 #define BWD_RF_OFFSET(ref) (ref - BWDREF_FRAME)
 
+#if !CONFIG_NEW_REF_SIGNALING
 enum {
   LAST_LAST2_FRAMES,      // { LAST_FRAME, LAST2_FRAME }
   LAST_LAST3_FRAMES,      // { LAST_FRAME, LAST3_FRAME }
@@ -826,15 +855,11 @@ enum {
   //       that are explicitly signaled.
   UNIDIR_COMP_REFS = BWDREF_ALTREF_FRAMES + 1,
 } UENUM1BYTE(UNIDIR_COMP_REF);
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
 #define TOTAL_COMP_REFS (FWD_REFS * BWD_REFS + TOTAL_UNIDIR_COMP_REFS)
 
 #define COMP_REFS (FWD_REFS * BWD_REFS + UNIDIR_COMP_REFS)
-
-// NOTE: A limited number of unidirectional reference pairs can be signalled for
-//       compound prediction. The use of skip mode, on the other hand, makes it
-//       possible to have a reference pair not listed for explicit signaling.
-#define MODE_CTX_REF_FRAMES (REF_FRAMES + TOTAL_COMP_REFS)
 
 // Note: It includes single and compound references. So, it can take values from
 // NONE_FRAME to (MODE_CTX_REF_FRAMES - 1). Hence, it is not defined as an enum.

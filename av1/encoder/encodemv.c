@@ -379,7 +379,7 @@ int_mv av1_get_ref_mv_from_stack(int ref_idx,
   const CANDIDATE_MV *curr_ref_mv_stack =
       mbmi_ext->ref_mv_stack[ref_frame_type];
 
-  if (ref_frame[1] > INTRA_FRAME) {
+  if (is_inter_ref_frame(ref_frame[1])) {
     assert(ref_idx == 0 || ref_idx == 1);
     return ref_idx ? curr_ref_mv_stack[ref_mv_idx].comp_mv
                    : curr_ref_mv_stack[ref_mv_idx].this_mv;

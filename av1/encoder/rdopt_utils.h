@@ -17,7 +17,9 @@
 #include "av1/encoder/block.h"
 #include "av1/common/cfl.h"
 #include "av1/common/pred_common.h"
+#if !CONFIG_NEW_REF_SIGNALING
 #include "av1/encoder/rdopt_data_defs.h"
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +38,7 @@ typedef struct {
   MV_REFERENCE_FRAME ref_frame[2];
 } MODE_DEFINITION;
 
+#if !CONFIG_NEW_REF_SIGNALING
 // This array defines the mapping from the enums in THR_MODES to the actual
 // prediction modes and refrence frames
 #if CONFIG_NEW_INTER_MODES
@@ -579,6 +582,32 @@ static const MODE_DEFINITION av1_mode_defs[MAX_MODES] = {
 };
 #endif  // CONFIG_NEW_INTER_MODES
 
+static AOM_INLINE THR_MODES
+get_prediction_mode_idx(PREDICTION_MODE this_mode, MV_REFERENCE_FRAME ref_frame,
+                        MV_REFERENCE_FRAME second_ref_frame) {
+  if (this_mode < INTRA_MODE_END) {
+    assert(ref_frame == INTRA_FRAME);
+    assert(second_ref_frame == NONE_FRAME);
+    return intra_to_mode_idx[this_mode - INTRA_MODE_START];
+  }
+  if (this_mode >= SINGLE_INTER_MODE_START &&
+      this_mode < SINGLE_INTER_MODE_END) {
+    assert(is_inter_ref_frame(ref_frame) && (ref_frame <= ALTREF_FRAME));
+    return single_inter_to_mode_idx[this_mode - SINGLE_INTER_MODE_START]
+                                   [ref_frame];
+  }
+  if (this_mode >= COMP_INTER_MODE_START && this_mode < COMP_INTER_MODE_END) {
+    assert(is_inter_ref_frame(ref_frame) && (ref_frame <= ALTREF_FRAME));
+    assert(is_inter_ref_frame(second_ref_frame) &&
+           (second_ref_frame <= ALTREF_FRAME));
+    return comp_inter_to_mode_idx[this_mode - COMP_INTER_MODE_START][ref_frame]
+                                 [second_ref_frame];
+  }
+  assert(0);
+  return THR_INVALID;
+}
+#endif  // !CONFIG_NEW_REF_SIGNALING
+
 static AOM_INLINE void restore_dst_buf(MACROBLOCKD *xd, const BUFFER_SET dst,
                                        const int num_planes) {
   for (int i = 0; i < num_planes; i++) {
@@ -599,31 +628,6 @@ static AOM_INLINE int64_t get_rd_thresh_from_best_rd(int64_t ref_best_rd,
                     : INT64_MAX;
   }
   return rd_thresh;
-}
-
-static AOM_INLINE THR_MODES
-get_prediction_mode_idx(PREDICTION_MODE this_mode, MV_REFERENCE_FRAME ref_frame,
-                        MV_REFERENCE_FRAME second_ref_frame) {
-  if (this_mode < INTRA_MODE_END) {
-    assert(ref_frame == INTRA_FRAME);
-    assert(second_ref_frame == NONE_FRAME);
-    return intra_to_mode_idx[this_mode - INTRA_MODE_START];
-  }
-  if (this_mode >= SINGLE_INTER_MODE_START &&
-      this_mode < SINGLE_INTER_MODE_END) {
-    assert((ref_frame > INTRA_FRAME) && (ref_frame <= ALTREF_FRAME));
-    return single_inter_to_mode_idx[this_mode - SINGLE_INTER_MODE_START]
-                                   [ref_frame];
-  }
-  if (this_mode >= COMP_INTER_MODE_START && this_mode < COMP_INTER_MODE_END) {
-    assert((ref_frame > INTRA_FRAME) && (ref_frame <= ALTREF_FRAME));
-    assert((second_ref_frame > INTRA_FRAME) &&
-           (second_ref_frame <= ALTREF_FRAME));
-    return comp_inter_to_mode_idx[this_mode - COMP_INTER_MODE_START][ref_frame]
-                                 [second_ref_frame];
-  }
-  assert(0);
-  return THR_INVALID;
 }
 
 static AOM_INLINE int inter_mode_data_block_idx(BLOCK_SIZE bsize) {
@@ -949,8 +953,9 @@ static AOM_INLINE void init_sbuv_mode(MB_MODE_INFO *const mbmi) {
 static INLINE void store_winner_mode_stats(
     const AV1_COMMON *const cm, MACROBLOCK *x, const MB_MODE_INFO *mbmi,
     RD_STATS *rd_cost, RD_STATS *rd_cost_y, RD_STATS *rd_cost_uv,
-    THR_MODES mode_index, uint8_t *color_map, BLOCK_SIZE bsize, int64_t this_rd,
-    int multi_winner_mode_type, int txfm_search_done) {
+    const MV_REFERENCE_FRAME *refs, PREDICTION_MODE mode, uint8_t *color_map,
+    BLOCK_SIZE bsize, int64_t this_rd, int multi_winner_mode_type,
+    int txfm_search_done) {
   WinnerModeStats *winner_mode_stats = x->winner_mode_stats;
   int mode_idx = 0;
   int is_palette_mode = mbmi->palette_mode_info.palette_size[PLANE_TYPE_Y] > 0;
@@ -989,13 +994,15 @@ static INLINE void store_winner_mode_stats(
   // Add a mode stat for winner mode processing
   winner_mode_stats[mode_idx].mbmi = *mbmi;
   winner_mode_stats[mode_idx].rd = this_rd;
-  winner_mode_stats[mode_idx].mode_index = mode_index;
+  winner_mode_stats[mode_idx].mode = mode;
+  winner_mode_stats[mode_idx].refs[0] = refs[0];
+  winner_mode_stats[mode_idx].refs[1] = refs[1];
 
   // Update rd stats required for inter frame
   if (!frame_is_intra_only(cm) && rd_cost && rd_cost_y && rd_cost_uv) {
     const MACROBLOCKD *xd = &x->e_mbd;
     const int skip_ctx = av1_get_skip_txfm_context(xd);
-    const int is_intra_mode = av1_mode_defs[mode_index].mode < INTRA_MODE_END;
+    const int is_intra_mode = mode < INTRA_MODE_END;
     const int skip_txfm =
         mbmi->skip_txfm[xd->tree_type == CHROMA_PART] && !is_intra_mode;
 

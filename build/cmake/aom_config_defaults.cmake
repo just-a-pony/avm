@@ -157,6 +157,8 @@ set_aom_config_var(CONFIG_NEW_INTER_MODES 1 NUMBER
 set_aom_config_var(CONFIG_SMVP_IMPROVEMENT 1 "Enable SMVP improvement")
 set_aom_config_var(CONFIG_TMVP_IMPROVEMENT 1 "Enable TMVP improvement")
 set_aom_config_var(CONFIG_REF_MV_BANK 1 "AV2 ref mv bank experiment flag")
+set_aom_config_var(CONFIG_NEW_REF_SIGNALING 1
+                   "AV2 experiment flag for the new reference syntax")
 set_aom_config_var(
   CONFIG_CCSO 1 "AV2 experiment flag to enable cross component sample offset.")
 set_aom_config_var(CONFIG_OPTFLOW_REFINEMENT 1

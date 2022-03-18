@@ -415,6 +415,10 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
       seq->order_hint_info.enable_order_hint
           ? DEFAULT_EXPLICIT_ORDER_HINT_BITS - 1
           : -1;
+#if CONFIG_NEW_REF_SIGNALING
+  seq->explicit_ref_frame_map = oxcf->ref_frm_cfg.explicit_ref_frame_map;
+  seq->max_reference_frames = oxcf->ref_frm_cfg.max_reference_frames;
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   seq->max_frame_width = frm_dim_cfg->forced_max_frame_width
                              ? frm_dim_cfg->forced_max_frame_width
@@ -607,7 +611,7 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
   // change includes all joint functionality
   av1_change_config(cpi, oxcf);
 
-  cpi->ref_frame_flags = 0;
+  cm->ref_frame_flags = 0;
 
   // Reset resize pending flags
   resize_pending_params->width = 0;
@@ -648,7 +652,9 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   MACROBLOCK *const x = &cpi->td.mb;
   AV1LevelParams *const level_params = &cpi->level_params;
   InitialDimensions *const initial_dimensions = &cpi->initial_dimensions;
+#if !CONFIG_NEW_REF_SIGNALING
   RefreshFrameFlagsInfo *const refresh_frame_flags = &cpi->refresh_frame;
+#endif  // !CONFIG_NEW_REF_SIGNALING
   const FrameDimensionCfg *const frm_dim_cfg = &cpi->oxcf.frm_dim_cfg;
   const DecoderModelCfg *const dec_model_cfg = &oxcf->dec_model_cfg;
   const ColorCfg *const color_cfg = &oxcf->color_cfg;
@@ -740,8 +746,10 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
 
   rc->baseline_gf_interval = (MIN_GF_INTERVAL + MAX_GF_INTERVAL) / 2;
 
+#if !CONFIG_NEW_REF_SIGNALING
   refresh_frame_flags->golden_frame = false;
   refresh_frame_flags->bwd_ref_frame = false;
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   cm->features.refresh_frame_context =
       (oxcf->tool_cfg.frame_parallel_decoding_mode)
@@ -844,6 +852,9 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
 
   cpi->ext_flags.refresh_frame.update_pending = 0;
   cpi->ext_flags.refresh_frame_context_pending = 0;
+#if CONFIG_NEW_REF_SIGNALING
+  cpi->ext_flags.refresh_frame.all_ref_frames = 1;
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   highbd_set_var_fns(cpi);
 
@@ -1004,7 +1015,9 @@ AV1_COMP *av1_create_compressor(AV1EncoderConfig *oxcf, BufferPool *const pool,
   cpi->last_show_frame_buf = NULL;
   realloc_segmentation_maps(cpi);
 
+#if !CONFIG_NEW_REF_SIGNALING
   cpi->refresh_frame.alt_ref_frame = false;
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   cpi->b_calculate_psnr = CONFIG_INTERNAL_STATS;
 #if CONFIG_INTERNAL_STATS
@@ -2037,7 +2050,11 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   if (!is_stat_generation_stage(cpi)) alloc_util_frame_buffers(cpi);
   init_motion_estimation(cpi);
 
+#if CONFIG_NEW_REF_SIGNALING
+  for (ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ++ref_frame) {
+#else
   for (ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
+#endif  // CONFIG_NEW_REF_SIGNALING
     RefCntBuffer *const buf = get_ref_frame_buf(cm, ref_frame);
     if (buf != NULL) {
       struct scale_factors *sf = get_ref_scale_factors(cm, ref_frame);
@@ -2051,7 +2068,11 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   av1_setup_scale_factors_for_frame(&cm->sf_identity, cm->width, cm->height,
                                     cm->width, cm->height);
 
+#if CONFIG_NEW_REF_SIGNALING
+  set_ref_ptrs(cm, xd, 0, 0);
+#else
   set_ref_ptrs(cm, xd, LAST_FRAME, LAST_FRAME);
+#endif  // CONFIG_NEW_REF_SIGNALING
 }
 
 /*!\brief Select and apply cdef filters and switchable restoration filters
@@ -2356,18 +2377,37 @@ static int encode_without_recode(AV1_COMP *cpi) {
   }
 
   {
-    if (cpi->ref_frame_flags & av1_ref_frame_flag_list[GOLDEN_FRAME]) {
+#if CONFIG_NEW_REF_SIGNALING
+    const MV_REFERENCE_FRAME golden_frame = get_best_past_ref_index(cm);
+    const MV_REFERENCE_FRAME altref_frame = get_furthest_future_ref_index(cm);
+    if (golden_frame != NONE_FRAME &&
+        cm->ref_frame_flags & (1 << golden_frame)) {
+      const YV12_BUFFER_CONFIG *const ref =
+          get_ref_frame_yv12_buf(cm, golden_frame);
+      if (ref->y_crop_width != cm->width || ref->y_crop_height != cm->height)
+        cm->ref_frame_flags ^= (1 << golden_frame);
+    }
+    if (altref_frame != NONE_FRAME &&
+        cm->ref_frame_flags & (1 << altref_frame)) {
+      const YV12_BUFFER_CONFIG *const ref =
+          get_ref_frame_yv12_buf(cm, altref_frame);
+      if (ref->y_crop_width != cm->width || ref->y_crop_height != cm->height)
+        cm->ref_frame_flags ^= (1 << altref_frame);
+    }
+#else
+    if (cm->ref_frame_flags & av1_ref_frame_flag_list[GOLDEN_FRAME]) {
       const YV12_BUFFER_CONFIG *const ref =
           get_ref_frame_yv12_buf(cm, GOLDEN_FRAME);
       if (ref->y_crop_width != cm->width || ref->y_crop_height != cm->height)
-        cpi->ref_frame_flags ^= AOM_GOLD_FLAG;
+        cm->ref_frame_flags ^= AOM_GOLD_FLAG;
     }
-    if (cpi->ref_frame_flags & av1_ref_frame_flag_list[ALTREF_FRAME]) {
+    if (cm->ref_frame_flags & av1_ref_frame_flag_list[ALTREF_FRAME]) {
       const YV12_BUFFER_CONFIG *const ref =
           get_ref_frame_yv12_buf(cm, ALTREF_FRAME);
       if (ref->y_crop_width != cm->width || ref->y_crop_height != cm->height)
-        cpi->ref_frame_flags ^= AOM_ALT_FLAG;
+        cm->ref_frame_flags ^= AOM_ALT_FLAG;
     }
+#endif  // CONFIG_NEW_REF_SIGNALING
   }
 
   // For SVC the inter-layer/spatial prediction is not done for newmv
@@ -3137,10 +3177,10 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
 
   aom_clear_system_state();
 
-#if CONFIG_INTERNAL_STATS
+#if CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
   memset(cpi->mode_chosen_counts, 0,
          MAX_MODES * sizeof(*cpi->mode_chosen_counts));
-#endif
+#endif  // CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
 
   if (seq_params->frame_id_numbers_present_flag) {
     /* Non-normative definition of current_frame_id ("frame counter" with
@@ -3321,7 +3361,7 @@ int av1_encode(AV1_COMP *const cpi, uint8_t *const dest,
   cm->features.primary_ref_frame = frame_params->primary_ref_frame;
   cm->current_frame.frame_type = frame_params->frame_type;
   cm->show_frame = frame_params->show_frame;
-  cpi->ref_frame_flags = frame_params->ref_frame_flags;
+  cm->ref_frame_flags = frame_params->ref_frame_flags;
   cpi->speed = frame_params->speed;
   cm->show_existing_frame = frame_params->show_existing_frame;
   cpi->existing_fb_idx_to_show = frame_params->existing_fb_idx_to_show;
@@ -3329,8 +3369,10 @@ int av1_encode(AV1_COMP *const cpi, uint8_t *const dest,
   memcpy(cm->remapped_ref_idx, frame_params->remapped_ref_idx,
          REF_FRAMES * sizeof(*cm->remapped_ref_idx));
 
+#if !CONFIG_NEW_REF_SIGNALING
   memcpy(&cpi->refresh_frame, &frame_params->refresh_frame,
          sizeof(cpi->refresh_frame));
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   if (current_frame->frame_type == KEY_FRAME && !cpi->no_show_fwd_kf) {
     current_frame->key_frame_number += current_frame->frame_number;
@@ -3782,6 +3824,8 @@ void av1_apply_encoding_flags(AV1_COMP *cpi, aom_enc_frame_flags_t flags) {
   ExtRefreshFrameFlagsInfo *const ext_refresh_frame_flags =
       &ext_flags->refresh_frame;
   ext_flags->ref_frame_flags = AOM_REFFRAME_ALL;
+
+#if !CONFIG_NEW_REF_SIGNALING
   if (flags &
       (AOM_EFLAG_NO_REF_LAST | AOM_EFLAG_NO_REF_LAST2 | AOM_EFLAG_NO_REF_LAST3 |
        AOM_EFLAG_NO_REF_GF | AOM_EFLAG_NO_REF_ARF | AOM_EFLAG_NO_REF_BWD |
@@ -3805,7 +3849,17 @@ void av1_apply_encoding_flags(AV1_COMP *cpi, aom_enc_frame_flags_t flags) {
 
     av1_use_as_reference(&ext_flags->ref_frame_flags, ref);
   }
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
+#if CONFIG_NEW_REF_SIGNALING
+  if (flags & AOM_EFLAG_NO_UPD_ALL) {
+    ext_refresh_frame_flags->all_ref_frames = 0;
+    ext_refresh_frame_flags->update_pending = 1;
+  } else {
+    ext_refresh_frame_flags->all_ref_frames = 1;
+    ext_refresh_frame_flags->update_pending = 0;
+  }
+#else
   if (flags &
       (AOM_EFLAG_NO_UPD_LAST | AOM_EFLAG_NO_UPD_GF | AOM_EFLAG_NO_UPD_ARF)) {
     int upd = AOM_REFFRAME_ALL;
@@ -3830,6 +3884,7 @@ void av1_apply_encoding_flags(AV1_COMP *cpi, aom_enc_frame_flags_t flags) {
   } else {
     ext_refresh_frame_flags->update_pending = 0;
   }
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   ext_flags->use_ref_frame_mvs = cpi->oxcf.tool_cfg.enable_ref_frame_mvs &
                                  ((flags & AOM_EFLAG_NO_REF_FRAME_MVS) == 0);

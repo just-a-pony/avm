@@ -79,8 +79,9 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
 
     // Collect mode stats for multiwinner mode processing
     const int txfm_search_done = 1;
+    const MV_REFERENCE_FRAME refs[2] = { -1, -1 };
     store_winner_mode_stats(
-        &cpi->common, x, mbmi, NULL, NULL, NULL, 0, NULL, bsize, this_rd,
+        &cpi->common, x, mbmi, NULL, NULL, NULL, refs, 0, NULL, bsize, this_rd,
         cpi->sf.winner_mode_sf.multi_winner_mode_type, txfm_search_done);
     if (this_rd < *best_rd) {
       *best_rd = this_rd;
@@ -1327,9 +1328,11 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
       this_rd = RDCOST(x->rdmult, this_rate, tokenonly_rd_stats.dist);
       // Collect mode stats for multiwinner mode processing
       const int txfm_search_done = 1;
-      store_winner_mode_stats(
-          &cpi->common, x, mbmi, NULL, NULL, NULL, 0, NULL, bsize, this_rd,
-          cpi->sf.winner_mode_sf.multi_winner_mode_type, txfm_search_done);
+      const MV_REFERENCE_FRAME refs[2] = { -1, -1 };
+      store_winner_mode_stats(&cpi->common, x, mbmi, NULL, NULL, NULL, refs, 0,
+                              NULL, bsize, this_rd,
+                              cpi->sf.winner_mode_sf.multi_winner_mode_type,
+                              txfm_search_done);
       if (this_rd < *best_rd) {
         *best_rd = this_rd;
         best_tx_size = mbmi->tx_size;
@@ -1536,9 +1539,11 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
       this_rd = RDCOST(x->rdmult, this_rate, this_distortion);
       // Collect mode stats for multiwinner mode processing
       const int txfm_search_done = 1;
-      store_winner_mode_stats(
-          &cpi->common, x, mbmi, NULL, NULL, NULL, 0, NULL, bsize, this_rd,
-          cpi->sf.winner_mode_sf.multi_winner_mode_type, txfm_search_done);
+      const MV_REFERENCE_FRAME refs[2] = { -1, -1 };
+      store_winner_mode_stats(&cpi->common, x, mbmi, NULL, NULL, NULL, refs, 0,
+                              NULL, bsize, this_rd,
+                              cpi->sf.winner_mode_sf.multi_winner_mode_type,
+                              txfm_search_done);
       if (this_rd < best_rd) {
         best_mbmi = *mbmi;
         best_rd = this_rd;

@@ -19,6 +19,7 @@
 #include "aom_ports/mem.h"
 #include "aom_scale/yv12config.h"
 
+#include "av1/common/alloccommon.h"
 #include "av1/common/common_data.h"
 #include "av1/common/quant_common.h"
 #include "av1/common/entropy.h"
@@ -541,14 +542,25 @@ static INLINE PREDICTION_MODE get_uv_mode(UV_PREDICTION_MODE mode) {
   return uv2y[mode];
 }
 
+static INLINE int is_inter_ref_frame(MV_REFERENCE_FRAME ref_frame) {
+#if CONFIG_NEW_REF_SIGNALING
+  return ref_frame != INTRA_FRAME && ref_frame != INTRA_FRAME_INDEX &&
+         ref_frame != NONE_FRAME;
+#else
+  return ref_frame > INTRA_FRAME;
+#endif  // CONFIG_NEW_REF_SIGNALING
+}
+
 static INLINE int is_inter_block(const MB_MODE_INFO *mbmi, int tree_type) {
-  return is_intrabc_block(mbmi, tree_type) || mbmi->ref_frame[0] > INTRA_FRAME;
+  return is_intrabc_block(mbmi, tree_type) ||
+         is_inter_ref_frame(mbmi->ref_frame[0]);
 }
 
 static INLINE int has_second_ref(const MB_MODE_INFO *mbmi) {
-  return mbmi->ref_frame[1] > INTRA_FRAME;
+  return is_inter_ref_frame(mbmi->ref_frame[1]);
 }
 
+#if !CONFIG_NEW_REF_SIGNALING
 static INLINE int has_uni_comp_refs(const MB_MODE_INFO *mbmi) {
   return has_second_ref(mbmi) && (!((mbmi->ref_frame[0] >= BWDREF_FRAME) ^
                                     (mbmi->ref_frame[1] >= BWDREF_FRAME)));
@@ -585,6 +597,7 @@ static INLINE MV_REFERENCE_FRAME comp_ref1(int ref_idx) {
   assert(NELEMENTS(lut) == TOTAL_UNIDIR_COMP_REFS);
   return lut[ref_idx];
 }
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
 #if CONFIG_AIMC
 PREDICTION_MODE av1_get_joint_mode(const MB_MODE_INFO *mi);
@@ -1035,7 +1048,11 @@ typedef struct macroblockd {
    * Counts of each reference frame in the above and left neighboring blocks.
    * NOTE: Take into account both single and comp references.
    */
+#if CONFIG_NEW_REF_SIGNALING
+  uint8_t neighbors_ref_counts[INTER_REFS_PER_FRAME];
+#else
   uint8_t neighbors_ref_counts[REF_FRAMES];
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   /*!
    * Current CDFs of all the symbols for the current tile.
@@ -1762,7 +1779,7 @@ void av1_set_entropy_contexts(const MACROBLOCKD *xd,
 
 #define MAX_INTERINTRA_SB_SQUARE 32 * 32
 static INLINE int is_interintra_mode(const MB_MODE_INFO *mbmi) {
-  return (mbmi->ref_frame[0] > INTRA_FRAME &&
+  return (is_inter_ref_frame(mbmi->ref_frame[0]) &&
           mbmi->ref_frame[1] == INTRA_FRAME);
 }
 
@@ -1775,7 +1792,7 @@ static INLINE int is_interintra_allowed_mode(const PREDICTION_MODE mode) {
 }
 
 static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
-  return (rf[0] > INTRA_FRAME) && (rf[1] <= INTRA_FRAME);
+  return is_inter_ref_frame(rf[0]) && !is_inter_ref_frame(rf[1]);
 }
 
 static INLINE int is_interintra_allowed(const MB_MODE_INFO *mbmi) {
@@ -1796,7 +1813,7 @@ static INLINE int is_interintra_allowed_bsize_group(int group) {
 }
 
 static INLINE int is_interintra_pred(const MB_MODE_INFO *mbmi) {
-  return mbmi->ref_frame[0] > INTRA_FRAME &&
+  return is_inter_ref_frame(mbmi->ref_frame[0]) &&
          mbmi->ref_frame[1] == INTRA_FRAME && is_interintra_allowed(mbmi);
 }
 

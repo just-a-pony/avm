@@ -101,6 +101,14 @@ extern aom_codec_iface_t *aom_codec_av1_cx(void);
  */
 #define AOM_EFLAG_NO_REF_ARF2 (1 << 22)
 
+#if CONFIG_NEW_REF_SIGNALING
+/*!\brief Don't update reference frames
+ *
+ * When this flag is set, the encoder will not update all the ref frames with
+ * the contents of the current frame.
+ */
+#define AOM_EFLAG_NO_UPD_ALL (1 << 23)
+#else
 /*!\brief Don't update the last frame
  *
  * When this flag is set, the encoder will not update the last frame with
@@ -121,6 +129,8 @@ extern aom_codec_iface_t *aom_codec_av1_cx(void);
  * the contents of the current frame.
  */
 #define AOM_EFLAG_NO_UPD_ARF (1 << 25)
+#endif  // CONFIG_NEW_REF_SIGNALING
+
 /*!\brief Disable entropy update
  *
  * When this flag is set, the encoder will not update its internal entropy

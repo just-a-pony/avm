@@ -556,6 +556,7 @@ int main(int argc, const char **argv) {
       "default_comp_inter_cdf[COMP_INTER_CONTEXTS][CDF_SIZE(2)]");
 
   /* ext_comp_refs experiment */
+#if !CONFIG_NEW_REF_SIGNALING
   cts_each_dim[0] = COMP_REF_TYPE_CONTEXTS;
   cts_each_dim[1] = 2;
   optimize_cdf_table(
@@ -570,8 +571,18 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob\n"
                      "default_uni_comp_ref_cdf[UNI_COMP_REF_CONTEXTS][UNIDIR_"
                      "COMP_REFS - 1][CDF_SIZE(2)]");
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   /* Reference frame (single ref) */
+#if CONFIG_NEW_REF_SIGNALING
+  cts_each_dim[0] = REF_CONTEXTS;
+  cts_each_dim[1] = INTER_REFS_PER_FRAME - 1;
+  cts_each_dim[2] = 2;
+  optimize_cdf_table(&fc.single_ref[0][0][0], probsfile, 3, cts_each_dim,
+                     "static const aom_cdf_prob\n"
+                     "default_single_ref_cdf[REF_CONTEXTS][INTER_REFS_PER_"
+                     "FRAME - 1][CDF_SIZE(2)]");
+#else
   cts_each_dim[0] = REF_CONTEXTS;
   cts_each_dim[1] = SINGLE_REFS - 1;
   cts_each_dim[2] = 2;
@@ -579,8 +590,26 @@ int main(int argc, const char **argv) {
       &fc.single_ref[0][0][0], probsfile, 3, cts_each_dim,
       "static const aom_cdf_prob\n"
       "default_single_ref_cdf[REF_CONTEXTS][SINGLE_REFS - 1][CDF_SIZE(2)]");
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   /* ext_refs experiment */
+#if CONFIG_NEW_REF_SIGNALING
+  cts_each_dim[0] = REF_CONTEXTS;
+  cts_each_dim[1] = INTER_REFS_PER_FRAME - 2;
+  cts_each_dim[2] = 2;
+  optimize_cdf_table(&fc.comp_ref0[0][0][0], probsfile, 3, cts_each_dim,
+                     "static const aom_cdf_prob\n"
+                     "default_comp_ref0_cdf[REF_CONTEXTS]"
+                     "[INTER_REFS_PER_FRAME - 2][CDF_SIZE(2)]");
+  cts_each_dim[0] = REF_CONTEXTS;
+  cts_each_dim[1] = COMPREF_BIT_TYPES;
+  cts_each_dim[2] = INTER_REFS_PER_FRAME - 2;
+  cts_each_dim[3] = 2;
+  optimize_cdf_table(&fc.comp_ref1[0][0][0][0], probsfile, 4, cts_each_dim,
+                     "static const aom_cdf_prob\n"
+                     "default_comp_ref1_cdf[REF_CONTEXTS][COMPREF_BIT_TYPES]"
+                     "[INTER_REFS_PER_FRAME - 2][CDF_SIZE(2)]");
+#else
   cts_each_dim[0] = REF_CONTEXTS;
   cts_each_dim[1] = FWD_REFS - 1;
   cts_each_dim[2] = 2;
@@ -596,6 +625,7 @@ int main(int argc, const char **argv) {
       &fc.comp_bwdref[0][0][0], probsfile, 3, cts_each_dim,
       "static const aom_cdf_prob\n"
       "default_comp_bwdref_cdf[REF_CONTEXTS][BWD_REFS - 1][CDF_SIZE(2)]");
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   /* palette */
   cts_each_dim[0] = PALATTE_BSIZE_CTXS;

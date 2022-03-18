@@ -91,7 +91,9 @@ typedef struct {
   //! The color map needed to reconstruct palette mode.
   uint8_t color_index_map[MAX_SB_SQUARE];
   //! The current winner mode.
-  THR_MODES mode_index;
+  REFERENCE_MODE mode;
+  //! Reference frame(s) for winner mode.
+  int refs[2];
 } WinnerModeStats;
 
 /*! \brief Each source plane of the current macroblock
@@ -225,7 +227,11 @@ typedef struct {
   //! Number of ref mvs in the drl.
   uint8_t ref_mv_count[MODE_CTX_REF_FRAMES];
   //! Global mvs
+#if CONFIG_NEW_REF_SIGNALING
+  int_mv global_mvs[INTER_REFS_PER_FRAME];
+#else
   int_mv global_mvs[REF_FRAMES];
+#endif  // CONFIG_NEW_REF_SIGNALING
   //! Context used to encode the current mode.
   int16_t mode_context[MODE_CTX_REF_FRAMES];
 } MB_MODE_INFO_EXT;
@@ -245,7 +251,11 @@ typedef struct {
   uint8_t ref_mv_count;
   // TODO(Ravi/Remya): Reduce the buffer size of global_mvs
   //! \copydoc MB_MODE_INFO_EXT::global_mvs
+#if CONFIG_NEW_REF_SIGNALING
+  int_mv global_mvs[INTER_REFS_PER_FRAME];
+#else
   int_mv global_mvs[REF_FRAMES];
+#endif  // CONFIG_NEW_REF_SIGNALING
   //! \copydoc MB_MODE_INFO_EXT::mode_context
   int16_t mode_context;
   //! Offset of current coding block's coeff buffer relative to the sb.
@@ -704,10 +714,17 @@ typedef struct {
    * \name Inter Costs: Ref Frame Types
    ****************************************************************************/
   /**@{*/
+#if CONFIG_NEW_REF_SIGNALING
+  //! single_ref_cost
+  int single_ref_cost[REF_CONTEXTS][INTER_REFS_PER_FRAME - 1][2];
+  //! comp_ref0_cost
+  int comp_ref0_cost[REF_CONTEXTS][INTER_REFS_PER_FRAME - 2][2];
+  //! comp_ref1_cost
+  int comp_ref1_cost[REF_CONTEXTS][COMPREF_BIT_TYPES][INTER_REFS_PER_FRAME - 2]
+                    [2];
+#else
   //! single_ref_cost
   int single_ref_cost[REF_CONTEXTS][SINGLE_REFS - 1][2];
-  //! comp_inter_cost
-  int comp_inter_cost[COMP_INTER_CONTEXTS][2];
   //! comp_ref_type_cost
   int comp_ref_type_cost[COMP_REF_TYPE_CONTEXTS]
                         [CDF_SIZE(COMP_REFERENCE_TYPES)];
@@ -724,6 +741,9 @@ typedef struct {
    * Includes ALTREF_FRAME, ALTREF2_FRAME, and BWDREF_FRAME.
    */
   int comp_bwdref_cost[REF_CONTEXTS][BWD_REFS - 1][2];
+#endif  // CONFIG_NEW_REF_SIGNALING
+  //! comp_inter_cost
+  int comp_inter_cost[COMP_INTER_CONTEXTS][2];
   /**@}*/
 
   /*****************************************************************************
@@ -1125,7 +1145,11 @@ typedef struct macroblock {
    * current mode. If the current best rd is already <= threshold, then we skip
    * the current mode.
    */
+#if CONFIG_NEW_REF_SIGNALING
+  int thresh_freq_fact[BLOCK_SIZES_ALL][MB_MODE_COUNT];
+#else
   int thresh_freq_fact[BLOCK_SIZES_ALL][MAX_MODES];
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   /*! \brief Tracks the winner modes in the current coding block.
    *

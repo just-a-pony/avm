@@ -141,22 +141,25 @@ struct av1_extracfg {
   int enable_flip_idtx;          // enable flip and identity transform types
   int max_reference_frames;      // maximum number of references per frame
   int enable_reduced_reference_set;  // enable reduced set of references
-  int enable_ref_frame_mvs;          // sequence level
-  int allow_ref_frame_mvs;           // frame level
-  int enable_masked_comp;            // enable masked compound for sequence
-  int enable_onesided_comp;          // enable one sided compound for sequence
-  int enable_interintra_comp;        // enable interintra compound for sequence
-  int enable_smooth_interintra;      // enable smooth interintra mode usage
-  int enable_diff_wtd_comp;          // enable diff-wtd compound usage
-  int enable_interinter_wedge;       // enable interinter-wedge compound usage
-  int enable_interintra_wedge;       // enable interintra-wedge compound usage
-  int enable_global_motion;          // enable global motion usage for sequence
-  int enable_warped_motion;          // sequence level
-  int allow_warped_motion;           // frame level
-  int enable_filter_intra;           // enable filter intra for sequence
-  int enable_smooth_intra;           // enable smooth intra modes for sequence
-  int enable_paeth_intra;            // enable Paeth intra mode for sequence
-  int enable_cfl_intra;              // enable CFL uv intra mode for sequence
+#if CONFIG_NEW_REF_SIGNALING
+  int explicit_ref_frame_map;    // explicitly signal reference frame mapping
+#endif                           // CONFIG_NEW_REF_SIGNALING
+  int enable_ref_frame_mvs;      // sequence level
+  int allow_ref_frame_mvs;       // frame level
+  int enable_masked_comp;        // enable masked compound for sequence
+  int enable_onesided_comp;      // enable one sided compound for sequence
+  int enable_interintra_comp;    // enable interintra compound for sequence
+  int enable_smooth_interintra;  // enable smooth interintra mode usage
+  int enable_diff_wtd_comp;      // enable diff-wtd compound usage
+  int enable_interinter_wedge;   // enable interinter-wedge compound usage
+  int enable_interintra_wedge;   // enable interintra-wedge compound usage
+  int enable_global_motion;      // enable global motion usage for sequence
+  int enable_warped_motion;      // sequence level
+  int allow_warped_motion;       // frame level
+  int enable_filter_intra;       // enable filter intra for sequence
+  int enable_smooth_intra;       // enable smooth intra modes for sequence
+  int enable_paeth_intra;        // enable Paeth intra mode for sequence
+  int enable_cfl_intra;          // enable CFL uv intra mode for sequence
   int enable_superres;
   int enable_overlay;  // enable overlay for filtered arf frames
   int enable_palette;
@@ -430,8 +433,11 @@ static struct av1_extracfg default_extra_cfg = {
   1,    // enable 64-pt transform usage
   1,    // enable flip and identity transform
 
-  7,                       // max_reference_frames
-  0,                       // enable_reduced_reference_set
+  7,  // max_reference_frames
+  0,  // enable_reduced_reference_set
+#if CONFIG_NEW_REF_SIGNALING
+  0,                       // explicit_ref_frame_map
+#endif                     // CONFIG_NEW_REF_SIGNALING
   1,                       // enable_ref_frame_mvs sequence level
   1,                       // allow ref_frame_mvs frame level
   1,                       // enable masked compound at sequence level
@@ -749,6 +755,9 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 
   RANGE_CHECK(extra_cfg, max_reference_frames, 3, 7);
   RANGE_CHECK(extra_cfg, enable_reduced_reference_set, 0, 1);
+#if CONFIG_NEW_REF_SIGNALING
+  RANGE_CHECK(extra_cfg, explicit_ref_frame_map, 0, 1);
+#endif  // CONFIG_NEW_REF_SIGNALING
   RANGE_CHECK_HI(extra_cfg, chroma_subsampling_x, 1);
   RANGE_CHECK_HI(extra_cfg, chroma_subsampling_y, 1);
 
@@ -904,6 +913,9 @@ static void update_encoder_config(cfg_options_t *cfg,
       (extra_cfg->allow_ref_frame_mvs || extra_cfg->enable_ref_frame_mvs);
   cfg->enable_onesided_comp = extra_cfg->enable_onesided_comp;
   cfg->enable_reduced_reference_set = extra_cfg->enable_reduced_reference_set;
+#if CONFIG_NEW_REF_SIGNALING
+  cfg->explicit_ref_frame_map = extra_cfg->explicit_ref_frame_map;
+#endif  // CONFIG_NEW_REF_SIGNALING
   cfg->reduced_tx_type_set = extra_cfg->reduced_tx_type_set;
 #if CONFIG_NEW_INTER_MODES
   cfg->max_drl_refmvs = extra_cfg->max_drl_refmvs;
@@ -983,6 +995,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_ref_frame_mvs = cfg->enable_ref_frame_mvs;
   extra_cfg->enable_onesided_comp = cfg->enable_onesided_comp;
   extra_cfg->enable_reduced_reference_set = cfg->enable_reduced_reference_set;
+#if CONFIG_NEW_REF_SIGNALING
+  extra_cfg->explicit_ref_frame_map = cfg->explicit_ref_frame_map;
+#endif  // CONFIG_NEW_REF_SIGNALING
   extra_cfg->reduced_tx_type_set = cfg->reduced_tx_type_set;
 #if CONFIG_NEW_INTER_MODES
   extra_cfg->max_drl_refmvs = cfg->max_drl_refmvs;
@@ -1373,6 +1388,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   oxcf->ref_frm_cfg.enable_reduced_reference_set =
       extra_cfg->enable_reduced_reference_set;
   oxcf->ref_frm_cfg.enable_onesided_comp = extra_cfg->enable_onesided_comp;
+#if CONFIG_NEW_REF_SIGNALING
+  oxcf->ref_frm_cfg.explicit_ref_frame_map = extra_cfg->explicit_ref_frame_map;
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   oxcf->row_mt = extra_cfg->row_mt;
 
@@ -2609,8 +2627,13 @@ static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
   if (!cm->show_existing_frame) {
     // Get reference frame information
     int ref_poc[INTER_REFS_PER_FRAME];
+#if CONFIG_NEW_REF_SIGNALING
+    for (int ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ++ref_frame) {
+      const int ref_idx = ref_frame;
+#else
     for (int ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
       const int ref_idx = ref_frame - LAST_FRAME;
+#endif  // CONFIG_NEW_REF_SIGNALING
       const RefCntBuffer *const buf = get_ref_frame_buf(cm, ref_frame);
       ref_poc[ref_idx] = buf ? (int)buf->absolute_poc : -1;
       ref_poc[ref_idx] = (ref_poc[ref_idx] == (int)cm->cur_frame->absolute_poc)
@@ -3549,6 +3572,12 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               argv, err_string)) {
     extra_cfg.enable_reduced_reference_set =
         arg_parse_int_helper(&arg, err_string);
+#if CONFIG_NEW_REF_SIGNALING
+  } else if (arg_match_helper(&arg,
+                              &g_av1_codec_arg_defs.explicit_ref_frame_map,
+                              argv, err_string)) {
+    extra_cfg.explicit_ref_frame_map = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_NEW_REF_SIGNALING
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ref_frame_mvs,
                               argv, err_string)) {
     extra_cfg.enable_ref_frame_mvs = arg_parse_int_helper(&arg, err_string);
@@ -3957,7 +3986,11 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_OPTFLOW_REFINEMENT
         1,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-        1, 1,   1,   1, 1, 1, 3, 1, 1, 0,
+        1, 1,   1,   1, 1, 1, 3, 1, 1,
+#if CONFIG_NEW_REF_SIGNALING
+        0,
+#endif  // CONFIG_NEW_REF_SIGNALING
+        0,
 #if CONFIG_NEW_INTER_MODES
         0,
 #endif  // CONFIG_NEW_INTER_MODES

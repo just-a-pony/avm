@@ -36,7 +36,7 @@ static AOM_INLINE int_mv get_ref_mv_for_mv_stats(
   const int8_t ref_frame_type = av1_ref_frame_type(ref_frames);
   const CANDIDATE_MV *curr_ref_mv_stack = mbmi_ext_frame->ref_mv_stack;
 
-  if (ref_frames[1] > INTRA_FRAME) {
+  if (is_inter_ref_frame(ref_frames[1])) {
     assert(ref_idx == 0 || ref_idx == 1);
     return ref_idx ? curr_ref_mv_stack[ref_mv_idx].comp_mv
                    : curr_ref_mv_stack[ref_mv_idx].this_mv;

@@ -91,8 +91,11 @@ struct loopfilter {
   uint8_t mode_ref_delta_enabled;
   uint8_t mode_ref_delta_update;
 
-  // 0 = Intra, Last, Last2+Last3,
-  // GF, BRF, ARF2, ARF
+#if CONFIG_NEW_REF_SIGNALING
+  // The order is based on the ranked references.
+#else
+  // 0 = Intra, Last, Last2+Last3, GF, BRF, ARF2, ARF
+#endif  // CONFIG_NEW_REF_SIGNALING
   int8_t ref_deltas[REF_FRAMES];
 
   // 0 = ZERO_MV, MV

@@ -34,8 +34,13 @@ typedef struct MESH_PATTERN {
 
 enum {
   GM_FULL_SEARCH,
+#if CONFIG_NEW_REF_SIGNALING
+  GM_REDUCED_REF_SEARCH_SKIP_LEV2,
+  GM_REDUCED_REF_SEARCH_SKIP_LEV3,
+#else
   GM_REDUCED_REF_SEARCH_SKIP_L2_L3,
   GM_REDUCED_REF_SEARCH_SKIP_L2_L3_ARF2,
+#endif  // CONFIG_NEW_REF_SIGNALING
   GM_DISABLE_SEARCH
 } UENUM1BYTE(GM_SEARCH_TYPE);
 
@@ -93,6 +98,7 @@ enum {
 };
 #endif  // CONFIG_NEW_INTER_MODES
 
+#if !CONFIG_NEW_REF_SIGNALING
 enum {
   DISABLE_ALL_INTER_SPLIT = (1 << THR_COMP_GA) | (1 << THR_COMP_LA) |
                             (1 << THR_ALTR) | (1 << THR_GOLD) | (1 << THR_LAST),
@@ -104,6 +110,7 @@ enum {
   LAST_AND_INTRA_SPLIT_ONLY = (1 << THR_COMP_GA) | (1 << THR_COMP_LA) |
                               (1 << THR_ALTR) | (1 << THR_GOLD)
 };
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
 enum {
   TXFM_CODING_SF = 1,
@@ -600,6 +607,7 @@ typedef struct INTER_MODE_SPEED_FEATURES {
   // 2 implies prune horiz, vert and extended partition
   int prune_ref_frame_for_rect_partitions;
 
+  // Prune reference frames for ALTREF
   int alt_ref_search_fp;
 
   // flag to skip NEWMV mode in drl if the motion search result is the same

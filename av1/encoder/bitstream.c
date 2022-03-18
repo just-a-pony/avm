@@ -372,8 +372,12 @@ static int write_skip_mode(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     assert(!skip_mode);
     return 0;
   }
+#if CONFIG_NEW_REF_SIGNALING
+  if (segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
+#else
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_REF_FRAME) ||
       segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
+#endif  // CONFIG_NEW_REF_SIGNALING
     // These features imply single-reference mode, while skip mode implies
     // compound reference. Hence, the two are mutually exclusive.
     // In other words, skip_mode is implicitly 0 here.
@@ -393,7 +397,9 @@ static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
                                       const int skip_txfm
 #endif  // CONFIG_CONTEXT_DERIVATION
 ) {
+#if !CONFIG_NEW_REF_SIGNALING
   if (!segfeature_active(&cm->seg, segment_id, SEG_LVL_REF_FRAME)) {
+#endif  // !CONFIG_NEW_REF_SIGNALING
     if (segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
       assert(is_inter);
       return;
@@ -403,9 +409,11 @@ static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
 #if CONFIG_CONTEXT_DERIVATION
     aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[skip_txfm][ctx], 2);
 #else
-    aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[ctx], 2);
+  aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[ctx], 2);
 #endif  // CONFIG_CONTEXT_DERIVATION
+#if !CONFIG_NEW_REF_SIGNALING
   }
+#endif  // !CONFIG_NEW_REF_SIGNALING
 }
 
 static AOM_INLINE void write_motion_mode(const AV1_COMMON *cm, MACROBLOCKD *xd,
@@ -701,8 +709,53 @@ static AOM_INLINE void write_segment_id(AV1_COMP *cpi,
                          mi_col, mbmi->segment_id);
 }
 
+#if CONFIG_NEW_REF_SIGNALING
+static AOM_INLINE void write_single_ref(
+    const MACROBLOCKD *xd, const RefFramesInfo *const ref_frames_info,
+    aom_writer *w) {
+  const MB_MODE_INFO *const mbmi = xd->mi[0];
+  MV_REFERENCE_FRAME ref = mbmi->ref_frame[0];
+  const int n_refs = ref_frames_info->num_total_refs;
+  assert(ref < n_refs);
+  for (int i = 0; i < n_refs - 1; i++) {
+    const int bit = ref == i;
+    aom_write_symbol(w, bit, av1_get_pred_cdf_single_ref(xd, i, n_refs), 2);
+    if (bit) return;
+  }
+  assert(ref == (n_refs - 1));
+}
+
+static AOM_INLINE void write_compound_ref(
+    const MACROBLOCKD *xd, const RefFramesInfo *const ref_frames_info,
+    aom_writer *w) {
+  const MB_MODE_INFO *const mbmi = xd->mi[0];
+  MV_REFERENCE_FRAME ref0 = mbmi->ref_frame[0];
+  MV_REFERENCE_FRAME ref1 = mbmi->ref_frame[1];
+  const int n_refs = ref_frames_info->num_total_refs;
+  assert(n_refs >= 2);
+  assert(ref0 < ref1);
+  int n_bits = 0;
+  for (int i = 0; i < n_refs + n_bits - 2 && n_bits < 2; i++) {
+    const int bit = ref0 == i || ref1 == i;
+    // bit_type: -1 for ref0, 0 for opposite sided ref1, 1 for same sided ref1
+    const int bit_type =
+        n_bits == 0 ? -1
+                    : av1_get_compound_ref_bit_type(ref_frames_info, ref0, i);
+    // Implicitly signal a 1 when ref0 = RANK_REF0_TO_PRUNE - 1
+    if (n_bits > 0 || i < RANKED_REF0_TO_PRUNE - 1) {
+      aom_write_symbol(
+          w, bit,
+          av1_get_pred_cdf_compound_ref(xd, i, n_bits, bit_type, n_refs), 2);
+    }
+    n_bits += bit;
+  }
+  assert(IMPLIES(n_bits < 2, AOMMAX(ref0, ref1) == n_refs - 1));
+  assert(IMPLIES(n_bits < 1, AOMMIN(ref0, ref1) == n_refs - 2));
+}
+#else
 #define WRITE_REF_BIT(bname, pname) \
   aom_write_symbol(w, bname, av1_get_pred_cdf_##pname(xd), 2)
+#endif  // CONFIG_NEW_REF_SIGNALING
 
 // This function encodes the reference frame
 static AOM_INLINE void write_ref_frames(const AV1_COMMON *cm,
@@ -713,26 +766,35 @@ static AOM_INLINE void write_ref_frames(const AV1_COMMON *cm,
 
   // If segment level coding of this signal is disabled...
   // or the segment allows multiple reference frame options
+#if CONFIG_NEW_REF_SIGNALING
+  if (segfeature_active(&cm->seg, segment_id, SEG_LVL_SKIP) ||
+      segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
+    assert(mbmi->ref_frame[0] == get_closest_pastcur_ref_index(cm));
+#else
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_REF_FRAME)) {
     assert(!is_compound);
     assert(mbmi->ref_frame[0] ==
            get_segdata(&cm->seg, segment_id, SEG_LVL_REF_FRAME));
   } else if (segfeature_active(&cm->seg, segment_id, SEG_LVL_SKIP) ||
              segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
-    assert(!is_compound);
     assert(mbmi->ref_frame[0] == LAST_FRAME);
+#endif  // CONFIG_NEW_REF_SIGNALING
+    assert(!is_compound);
   } else {
     // does the feature use compound prediction or not
     // (if not specified at the frame/segment level)
     if (cm->current_frame.reference_mode == REFERENCE_MODE_SELECT) {
       if (is_comp_ref_allowed(mbmi->sb_type[PLANE_TYPE_Y]))
-        aom_write_symbol(w, is_compound, av1_get_reference_mode_cdf(xd), 2);
+        aom_write_symbol(w, is_compound, av1_get_reference_mode_cdf(cm, xd), 2);
     } else {
       assert((!is_compound) ==
              (cm->current_frame.reference_mode == SINGLE_REFERENCE));
     }
 
     if (is_compound) {
+#if CONFIG_NEW_REF_SIGNALING
+      write_compound_ref(xd, &cm->ref_frames_info, w);
+#else
       const COMP_REFERENCE_TYPE comp_ref_type = has_uni_comp_refs(mbmi)
                                                     ? UNIDIR_COMP_REFERENCE
                                                     : BIDIR_COMP_REFERENCE;
@@ -779,8 +841,12 @@ static AOM_INLINE void write_ref_frames(const AV1_COMMON *cm,
       if (!bit_bwd) {
         WRITE_REF_BIT(mbmi->ref_frame[1] == ALTREF2_FRAME, comp_bwdref_p1);
       }
+#endif  // CONFIG_NEW_REF_SIGNALING
 
     } else {
+#if CONFIG_NEW_REF_SIGNALING
+      write_single_ref(xd, &cm->ref_frames_info, w);
+#else
       const int bit0 = (mbmi->ref_frame[0] <= ALTREF_FRAME &&
                         mbmi->ref_frame[0] >= BWDREF_FRAME);
       WRITE_REF_BIT(bit0, single_ref_p1);
@@ -805,6 +871,7 @@ static AOM_INLINE void write_ref_frames(const AV1_COMMON *cm,
           WRITE_REF_BIT(bit4, single_ref_p5);
         }
       }
+#endif  // CONFIG_NEW_REF_SIGNALING
     }
   }
 }
@@ -1490,7 +1557,7 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
 
 static INLINE int16_t mode_context_analyzer(
     const int16_t mode_context, const MV_REFERENCE_FRAME *const rf) {
-  if (rf[1] <= INTRA_FRAME) return mode_context;
+  if (!is_inter_ref_frame(rf[1])) return mode_context;
 
   const int16_t newmv_ctx = mode_context & NEWMV_CTX_MASK;
   const int16_t refmv_ctx = (mode_context >> REFMV_OFFSET) & REFMV_CTX_MASK;
@@ -1506,7 +1573,7 @@ static INLINE int_mv get_ref_mv_from_stack(
   const int8_t ref_frame_type = av1_ref_frame_type(ref_frame);
   const CANDIDATE_MV *curr_ref_mv_stack = mbmi_ext_frame->ref_mv_stack;
 
-  if (ref_frame[1] > INTRA_FRAME) {
+  if (is_inter_ref_frame(ref_frame[1])) {
     assert(ref_idx == 0 || ref_idx == 1);
     return ref_idx ? curr_ref_mv_stack[ref_mv_idx].comp_mv
                    : curr_ref_mv_stack[ref_mv_idx].this_mv;
@@ -2989,7 +3056,11 @@ static AOM_INLINE void write_frame_size_with_refs(
   int found = 0;
 
   MV_REFERENCE_FRAME ref_frame;
+#if CONFIG_NEW_REF_SIGNALING
+  for (ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ++ref_frame) {
+#else
   for (ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
+#endif  // CONFIG_NEW_REF_SIGNALING
     const YV12_BUFFER_CONFIG *cfg = get_ref_frame_yv12_buf(cm, ref_frame);
 
     if (cfg != NULL) {
@@ -3163,8 +3234,13 @@ static AOM_INLINE void write_film_grain_params(
 
   if (!pars->update_parameters) {
     int ref_frame, ref_idx;
+#if CONFIG_NEW_REF_SIGNALING
+    for (ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ref_frame++) {
+      ref_idx = get_ref_frame_map_idx(cm, ref_frame);
+#else
     for (ref_frame = LAST_FRAME; ref_frame < REF_FRAMES; ref_frame++) {
       ref_idx = get_ref_frame_map_idx(cm, ref_frame);
+#endif  // CONFIG_NEW_REF_SIGNALING
       assert(ref_idx != INVALID_IDX);
       const RefCntBuffer *const buf = cm->ref_frame_map[ref_idx];
       if (buf->film_grain_params_present &&
@@ -3330,6 +3406,15 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_REF_MV_BANK
   aom_wb_write_bit(wb, seq_params->enable_refmvbank);
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_NEW_REF_SIGNALING
+  aom_wb_write_bit(wb, seq_params->explicit_ref_frame_map);
+  // A bit is sent here to indicate if the max number of references is 7. If
+  // this bit is 0, then two more bits are sent to indicate the exact number
+  // of references allowed (range: 3 to 6).
+  aom_wb_write_bit(wb, seq_params->max_reference_frames < 7);
+  if (seq_params->max_reference_frames < 7)
+    aom_wb_write_literal(wb, seq_params->max_reference_frames - 3, 2);
+#endif  // CONFIG_NEW_REF_SIGNALING
   aom_wb_write_bit(wb, seq_params->enable_sdp);
 #if CONFIG_IST
   aom_wb_write_bit(wb, seq_params->enable_ist);
@@ -3413,7 +3498,11 @@ static AOM_INLINE void write_global_motion(AV1_COMP *cpi,
                                            struct aom_write_bit_buffer *wb) {
   AV1_COMMON *const cm = &cpi->common;
   int frame;
+#if CONFIG_NEW_REF_SIGNALING
+  for (frame = 0; frame < cm->ref_frames_info.num_total_refs; ++frame) {
+#else
   for (frame = LAST_FRAME; frame <= ALTREF_FRAME; ++frame) {
+#endif  // CONFIG_NEW_REF_SIGNALING
     const WarpedMotionParams *ref_params =
         cm->prev_frame ? &cm->prev_frame->global_motion[frame]
                        : &default_warp_params;
@@ -3444,6 +3533,7 @@ static AOM_INLINE void write_global_motion(AV1_COMP *cpi,
   }
 }
 
+#if !CONFIG_NEW_REF_SIGNALING
 static int check_frame_refs_short_signaling(AV1_COMMON *const cm) {
   // Check whether all references are distinct frames.
   const RefCntBuffer *seen_bufs[FRAME_BUFFERS] = { NULL };
@@ -3511,6 +3601,7 @@ static int check_frame_refs_short_signaling(AV1_COMMON *const cm) {
 
   return frame_refs_short_signaling;
 }
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
 // New function based on HLS R18
 static AOM_INLINE void write_uncompressed_header_obu(
@@ -3523,7 +3614,9 @@ static AOM_INLINE void write_uncompressed_header_obu(
   CurrentFrame *const current_frame = &cm->current_frame;
   FeatureFlags *const features = &cm->features;
 
+#if !CONFIG_NEW_REF_SIGNALING
   current_frame->frame_refs_short_signaling = 0;
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   if (seq_params->still_picture) {
     assert(cm->show_existing_frame == 0);
@@ -3704,6 +3797,7 @@ static AOM_INLINE void write_uncompressed_header_obu(
           seq_params->order_hint_info.enable_order_hint;
 #endif  // FRAME_REFS_SHORT_SIGNALING
 
+#if !CONFIG_NEW_REF_SIGNALING
       if (current_frame->frame_refs_short_signaling) {
         // NOTE(zoeliu@google.com):
         //   An example solution for encoder-side implementation on frame refs
@@ -3723,12 +3817,26 @@ static AOM_INLINE void write_uncompressed_header_obu(
         const int gld_ref = get_ref_frame_map_idx(cm, GOLDEN_FRAME);
         aom_wb_write_literal(wb, gld_ref, REF_FRAMES_LOG2);
       }
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
+#if CONFIG_NEW_REF_SIGNALING
+      for (ref_frame = 0; ref_frame < cm->ref_frames_info.num_total_refs;
+           ++ref_frame) {
+        assert(get_ref_frame_map_idx(cm, ref_frame) != INVALID_IDX);
+        // By default, no need to signal ref mapping indices in NRS because
+        // decoder can derive them unless order_hint is not available. Explicit
+        // signaling is enabled only when explicit_ref_frame_map is on.
+        if (seq_params->explicit_ref_frame_map ||
+            !seq_params->order_hint_info.enable_order_hint)
+          aom_wb_write_literal(wb, get_ref_frame_map_idx(cm, ref_frame),
+                               REF_FRAMES_LOG2);
+#else
       for (ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
         assert(get_ref_frame_map_idx(cm, ref_frame) != INVALID_IDX);
         if (!current_frame->frame_refs_short_signaling)
           aom_wb_write_literal(wb, get_ref_frame_map_idx(cm, ref_frame),
                                REF_FRAMES_LOG2);
+#endif  // CONFIG_NEW_REF_SIGNALING
         if (seq_params->frame_id_numbers_present_flag) {
           int i = get_ref_frame_map_idx(cm, ref_frame);
           int frame_id_len = seq_params->frame_id_length;

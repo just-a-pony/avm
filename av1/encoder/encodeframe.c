@@ -174,7 +174,12 @@ static unsigned int get_sby_perpixel_diff_variance(const AV1_COMP *const cpi,
   unsigned int sse, var;
   uint8_t *last_y;
   const YV12_BUFFER_CONFIG *last =
+#if CONFIG_NEW_REF_SIGNALING
+      get_ref_frame_yv12_buf(&cpi->common,
+                             get_closest_pastcur_ref_index(&cpi->common));
+#else
       get_ref_frame_yv12_buf(&cpi->common, LAST_FRAME);
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   assert(last != NULL);
   last_y =
@@ -379,10 +384,17 @@ static void init_ref_frame_space(AV1_COMP *cpi, ThreadData *td, int mi_row,
           best_rf_idx = idx;
         }
       }
+#if CONFIG_NEW_REF_SIGNALING
+      // tpl_pred_error is the pred_error reduction of best_ref w.r.t.
+      // rank 0 frame.
+      tpl_pred_error[best_rf_idx] =
+          this_stats->pred_error[best_rf_idx] - this_stats->pred_error[0];
+#else
       // tpl_pred_error is the pred_error reduction of best_ref w.r.t.
       // LAST_FRAME.
       tpl_pred_error[best_rf_idx] = this_stats->pred_error[best_rf_idx] -
                                     this_stats->pred_error[LAST_FRAME - 1];
+#endif  // CONFIG_NEW_REF_SIGNALING
 
       for (int rf_idx = 1; rf_idx < INTER_REFS_PER_FRAME; ++rf_idx)
         inter_cost[rf_idx] += tpl_pred_error[rf_idx];
@@ -401,12 +413,21 @@ static void init_ref_frame_space(AV1_COMP *cpi, ThreadData *td, int mi_row,
     }
   }
 
+#if CONFIG_NEW_REF_SIGNALING
+  x->tpl_keep_ref_frame[INTRA_FRAME_INDEX] = 1;
+  x->tpl_keep_ref_frame[0] = 1;
+#else
   x->tpl_keep_ref_frame[INTRA_FRAME] = 1;
   x->tpl_keep_ref_frame[LAST_FRAME] = 1;
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   int cutoff_ref = 0;
   for (int idx = 0; idx < INTER_REFS_PER_FRAME - 1; ++idx) {
+#if CONFIG_NEW_REF_SIGNALING
+    x->tpl_keep_ref_frame[rank_index[idx]] = 1;
+#else
     x->tpl_keep_ref_frame[rank_index[idx] + LAST_FRAME] = 1;
+#endif  // CONFIG_NEW_REF_SIGNALING
     if (idx > 2) {
       if (!cutoff_ref) {
         // If the predictive coding gains are smaller than the previous more
@@ -418,7 +439,11 @@ static void init_ref_frame_space(AV1_COMP *cpi, ThreadData *td, int mi_row,
           cutoff_ref = 1;
       }
 
+#if CONFIG_NEW_REF_SIGNALING
+      if (cutoff_ref) x->tpl_keep_ref_frame[rank_index[idx]] = 0;
+#else
       if (cutoff_ref) x->tpl_keep_ref_frame[rank_index[idx] + LAST_FRAME] = 0;
+#endif  // CONFIG_NEW_REF_SIGNALING
     }
   }
 }
@@ -936,6 +961,15 @@ static AOM_INLINE void set_rel_frame_dist(
   int min_past_dist = INT32_MAX, min_future_dist = INT32_MAX;
   ref_frame_dist_info->nearest_past_ref = NONE_FRAME;
   ref_frame_dist_info->nearest_future_ref = NONE_FRAME;
+#if CONFIG_NEW_REF_SIGNALING
+  for (ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ++ref_frame) {
+    ref_frame_dist_info->ref_relative_dist[ref_frame] = 0;
+    if (ref_frame_flags & (1 << ref_frame)) {
+      int dist = av1_encoder_get_relative_dist(
+          cm->cur_frame->ref_display_order_hint[ref_frame],
+          cm->current_frame.display_order_hint);
+      ref_frame_dist_info->ref_relative_dist[ref_frame] = dist;
+#else
   for (ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
     ref_frame_dist_info->ref_relative_dist[ref_frame - LAST_FRAME] = 0;
     if (ref_frame_flags & av1_ref_frame_flag_list[ref_frame]) {
@@ -943,6 +977,7 @@ static AOM_INLINE void set_rel_frame_dist(
           cm->cur_frame->ref_display_order_hint[ref_frame - LAST_FRAME],
           cm->current_frame.display_order_hint);
       ref_frame_dist_info->ref_relative_dist[ref_frame - LAST_FRAME] = dist;
+#endif  // CONFIG_NEW_REF_SIGNALING
       // Get the nearest ref_frame in the past
       if (abs(dist) < min_past_dist && dist < 0) {
         ref_frame_dist_info->nearest_past_ref = ref_frame;
@@ -960,6 +995,11 @@ static AOM_INLINE void set_rel_frame_dist(
 static INLINE int refs_are_one_sided(const AV1_COMMON *cm) {
   assert(!frame_is_intra_only(cm));
 
+#if CONFIG_NEW_REF_SIGNALING
+  return (cm->ref_frames_info.num_past_refs == 0 &&
+          cm->ref_frames_info.num_cur_refs == 0) ||
+         cm->ref_frames_info.num_future_refs == 0;
+#else
   int one_sided_refs = 1;
   const int cur_display_order_hint = cm->current_frame.display_order_hint;
   for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ++ref) {
@@ -972,6 +1012,7 @@ static INLINE int refs_are_one_sided(const AV1_COMMON *cm) {
     }
   }
   return one_sided_refs;
+#endif  // CONFIG_NEW_REF_SIGNALING
 }
 
 static INLINE void get_skip_mode_ref_offsets(const AV1_COMMON *cm,
@@ -980,10 +1021,17 @@ static INLINE void get_skip_mode_ref_offsets(const AV1_COMMON *cm,
   ref_order_hint[0] = ref_order_hint[1] = 0;
   if (!skip_mode_info->skip_mode_allowed) return;
 
+#if CONFIG_NEW_REF_SIGNALING
+  const RefCntBuffer *const buf_0 =
+      get_ref_frame_buf(cm, skip_mode_info->ref_frame_idx_0);
+  const RefCntBuffer *const buf_1 =
+      get_ref_frame_buf(cm, skip_mode_info->ref_frame_idx_1);
+#else
   const RefCntBuffer *const buf_0 =
       get_ref_frame_buf(cm, LAST_FRAME + skip_mode_info->ref_frame_idx_0);
   const RefCntBuffer *const buf_1 =
       get_ref_frame_buf(cm, LAST_FRAME + skip_mode_info->ref_frame_idx_1);
+#endif  // CONFIG_NEW_REF_SIGNALING
   assert(buf_0 != NULL && buf_1 != NULL);
 
   ref_order_hint[0] = buf_0->order_hint;
@@ -1010,6 +1058,13 @@ static int check_skip_mode_enabled(AV1_COMP *const cpi) {
   // High Latency: Turn off skip mode if all refs are fwd.
   if (cpi->all_one_sided_refs && cpi->oxcf.gf_cfg.lag_in_frames > 0) return 0;
 
+#if CONFIG_NEW_REF_SIGNALING
+  const int ref_frame[2] = { cm->current_frame.skip_mode_info.ref_frame_idx_0,
+                             cm->current_frame.skip_mode_info.ref_frame_idx_1 };
+  if (!(cpi->common.ref_frame_flags & (1 << ref_frame[0])) ||
+      !(cpi->common.ref_frame_flags & (1 << ref_frame[1])))
+    return 0;
+#else
   static const int flag_list[REF_FRAMES] = { 0,
                                              AOM_LAST_FLAG,
                                              AOM_LAST2_FLAG,
@@ -1022,9 +1077,10 @@ static int check_skip_mode_enabled(AV1_COMP *const cpi) {
     cm->current_frame.skip_mode_info.ref_frame_idx_0 + LAST_FRAME,
     cm->current_frame.skip_mode_info.ref_frame_idx_1 + LAST_FRAME
   };
-  if (!(cpi->ref_frame_flags & flag_list[ref_frame[0]]) ||
-      !(cpi->ref_frame_flags & flag_list[ref_frame[1]]))
+  if (!(cm->ref_frame_flags & flag_list[ref_frame[0]]) ||
+      !(cm->ref_frame_flags & flag_list[ref_frame[1]]))
     return 0;
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   return 1;
 }
@@ -1037,6 +1093,7 @@ static AOM_INLINE void set_default_interp_skip_flags(
                         : INTERP_SKIP_LUMA_SKIP_CHROMA;
 }
 
+#if !CONFIG_NEW_REF_SIGNALING
 static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
   if ((!cpi->oxcf.ref_frm_cfg.enable_onesided_comp ||
        cpi->sf.inter_sf.disable_onesided_comp) &&
@@ -1059,8 +1116,8 @@ static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
     for (int ref_idx = REF_FRAMES; ref_idx < MODE_CTX_REF_FRAMES; ++ref_idx) {
       MV_REFERENCE_FRAME rf[2];
       av1_set_ref_frame(rf, ref_idx);
-      if (!(cpi->ref_frame_flags & av1_ref_frame_flag_list[rf[0]]) ||
-          !(cpi->ref_frame_flags & av1_ref_frame_flag_list[rf[1]])) {
+      if (!(cm->ref_frame_flags & av1_ref_frame_flag_list[rf[0]]) ||
+          !(cm->ref_frame_flags & av1_ref_frame_flag_list[rf[1]])) {
         continue;
       }
 
@@ -1081,7 +1138,7 @@ static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
 
       if (cpi->sf.inter_sf.selective_ref_frame >= 4 &&
           (rf[0] == ALTREF2_FRAME || rf[1] == ALTREF2_FRAME) &&
-          (cpi->ref_frame_flags & av1_ref_frame_flag_list[BWDREF_FRAME])) {
+          (cm->ref_frame_flags & av1_ref_frame_flag_list[BWDREF_FRAME])) {
         // Check if both ALTREF2_FRAME and BWDREF_FRAME are future references.
         if (arf2_dist > 0 && bwd_dist > 0 && bwd_dist <= arf2_dist) {
           // Drop ALTREF2_FRAME as a reference if BWDREF_FRAME is a closer
@@ -1092,6 +1149,7 @@ static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
     }
   }
 }
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
 /*!\brief Encoder setup(only for the current frame), encoding, and recontruction
  * for a single frame
@@ -1284,8 +1342,10 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
       frame_is_intra_only(cm) ? 0 : refs_are_one_sided(cm);
 
   cpi->prune_ref_frame_mask = 0;
+#if !CONFIG_NEW_REF_SIGNALING
   // Figure out which ref frames can be skipped at frame level.
   setup_prune_ref_frame_mask(cpi);
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   x->txfm_search_info.txb_split_count = 0;
 #if CONFIG_SPEED_STATS
@@ -1440,9 +1500,8 @@ void av1_encode_frame(AV1_COMP *cpi) {
   }
 
   av1_setup_frame_buf_refs(cm);
-  enforce_max_ref_frames(cpi, &cpi->ref_frame_flags);
-  set_rel_frame_dist(&cpi->common, &cpi->ref_frame_dist_info,
-                     cpi->ref_frame_flags);
+  enforce_max_ref_frames(cpi, &cm->ref_frame_flags);
+  set_rel_frame_dist(cm, &cpi->ref_frame_dist_info, cm->ref_frame_flags);
   av1_setup_frame_sign_bias(cm);
 
 #if CONFIG_MISMATCH_DEBUG

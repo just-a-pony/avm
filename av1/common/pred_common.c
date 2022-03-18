@@ -16,6 +16,426 @@
 #include "av1/common/reconintra.h"
 #include "av1/common/seg_common.h"
 
+#if CONFIG_NEW_REF_SIGNALING
+// Comparison function to sort reference frames in ascending score order
+static int compare_score_data_asc(const void *a, const void *b) {
+  if (((RefScoreData *)a)->score == ((RefScoreData *)b)->score) {
+    return 0;
+  } else if (((const RefScoreData *)a)->score >
+             ((const RefScoreData *)b)->score) {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
+static void bubble_sort_ref_scores(RefScoreData *scores, int n_ranked) {
+  for (int i = n_ranked - 1; i > 0; --i) {
+    for (int j = 0; j < i; j++) {
+      if (compare_score_data_asc(&scores[j], &scores[j + 1]) > 0) {
+        RefScoreData score_temp = scores[j];
+        scores[j] = scores[j + 1];
+        scores[j + 1] = score_temp;
+      }
+    }
+  }
+}
+
+// Checks to see if a particular reference frame is already in the reference
+// frame map
+static int is_in_ref_score(RefScoreData *map, int disp_order, int score,
+                           int n_frames) {
+  for (int i = 0; i < n_frames; i++) {
+    if (disp_order == map[i].disp_order && score == map[i].score) return 1;
+  }
+  return 0;
+}
+
+// Only 7 out of 8 reference buffers will be used as reference frames. This
+// function applies heuristics to determine which one to be left out.
+static int get_unmapped_ref(RefScoreData *scores, int n_bufs) {
+  if (n_bufs < INTER_REFS_PER_FRAME) return INVALID_IDX;
+
+  int min_q = INT_MAX;
+  int max_q = INT_MIN;
+  for (int i = n_bufs - 1; i >= 0; i--) {
+    min_q = AOMMIN(min_q, scores[i].base_qindex);
+    max_q = AOMMAX(max_q, scores[i].base_qindex);
+  }
+  const int q_thresh = (max_q + min_q + 1) / 2;
+
+  int unmapped_past_idx = INVALID_IDX;
+  int unmapped_future_idx = INVALID_IDX;
+  int max_past_score = 0;
+  int max_future_score = 0;
+  int n_past = 0;
+  int n_future = 0;
+  for (int i = 0; i < n_bufs; i++) {
+    if (scores[i].base_qindex >= q_thresh) {
+      int dist = scores[i].distance;
+      if (dist > 0) {
+        if (dist > max_past_score) {
+          max_past_score = dist;
+          unmapped_past_idx = i;
+        }
+        n_past++;
+      } else if (dist < 0) {
+        if (-dist > max_future_score) {
+          max_future_score = -dist;
+          unmapped_future_idx = i;
+        }
+        n_future++;
+      }
+    }
+  }
+  if (n_past > n_future) return unmapped_past_idx;
+  if (n_past < n_future) return unmapped_future_idx;
+  if (n_past == n_future && n_past > 0)
+    return max_past_score >= max_future_score ? unmapped_past_idx
+                                              : unmapped_future_idx;
+
+  return INVALID_IDX;
+}
+
+// Obtain the lists of past/cur/future reference frames and their sizes.
+void av1_get_past_future_cur_ref_lists(AV1_COMMON *cm, RefScoreData *scores) {
+  int n_future = 0;
+  int n_past = 0;
+  int n_cur = 0;
+  for (int i = 0; i < cm->ref_frames_info.num_total_refs; i++) {
+    if (scores[i].distance < 0) {
+      cm->ref_frames_info.future_refs[n_future] = i;
+      n_future++;
+    } else if (scores[i].distance > 0) {
+      cm->ref_frames_info.past_refs[n_past] = i;
+      n_past++;
+    } else {
+      cm->ref_frames_info.cur_refs[n_cur] = i;
+      n_cur++;
+    }
+  }
+  cm->ref_frames_info.num_past_refs = n_past;
+  cm->ref_frames_info.num_future_refs = n_future;
+  cm->ref_frames_info.num_cur_refs = n_cur;
+}
+
+#define DIST_WEIGHT_BITS 6
+#define DECAY_DIST_CAP 6
+
+static const int temp_dist_score_lookup[7] = {
+  0, 64, 96, 112, 120, 124, 126,
+};
+
+// Determine reference mapping by ranking the reference frames based on a
+// score function.
+void av1_get_ref_frames(AV1_COMMON *cm, int cur_frame_disp,
+                        RefFrameMapPair *ref_frame_map_pairs) {
+  RefScoreData scores[REF_FRAMES];
+  memset(scores, 0, REF_FRAMES * sizeof(*scores));
+  for (int i = 0; i < REF_FRAMES; i++) {
+    scores[i].score = INT_MAX;
+    cm->remapped_ref_idx[i] = INVALID_IDX;
+  }
+  int n_ranked = 0;
+
+  // Give more weight to base_qindex if all references are from the past
+  int max_disp = 0;
+  for (int i = 0; i < REF_FRAMES; i++) {
+    RefFrameMapPair cur_ref = ref_frame_map_pairs[i];
+    if (cur_ref.disp_order == -1) continue;
+    max_disp = AOMMAX(max_disp, cur_ref.disp_order);
+  }
+
+  // Compute a score for each reference buffer
+  for (int i = 0; i < REF_FRAMES; i++) {
+    // Get reference frame buffer
+    RefFrameMapPair cur_ref = ref_frame_map_pairs[i];
+    if (cur_ref.disp_order == -1) continue;
+    const int ref_disp = cur_ref.disp_order;
+    // In error resilient mode, ref mapping must be independent of the
+    // base_qindex to ensure decoding independency
+    const int ref_base_qindex =
+        cm->features.error_resilient_mode ? 0 : cur_ref.base_qindex;
+    const int disp_diff = cur_frame_disp - ref_disp;
+    int tdist = abs(disp_diff);
+    const int score =
+        max_disp > cur_frame_disp
+            ? ((tdist << DIST_WEIGHT_BITS) + ref_base_qindex)
+            : temp_dist_score_lookup[AOMMIN(tdist, DECAY_DIST_CAP)] +
+                  AOMMAX(tdist - DECAY_DIST_CAP, 0) + ref_base_qindex;
+    if (is_in_ref_score(scores, ref_disp, score, n_ranked)) continue;
+
+    scores[n_ranked].index = i;
+    scores[n_ranked].score = score;
+    scores[n_ranked].distance = disp_diff;
+    scores[n_ranked].disp_order = ref_disp;
+    scores[n_ranked].base_qindex = ref_base_qindex;
+    n_ranked++;
+  }
+  if (n_ranked > INTER_REFS_PER_FRAME) {
+    const int unmapped_idx = get_unmapped_ref(scores, n_ranked);
+    if (unmapped_idx != INVALID_IDX) scores[unmapped_idx].score = INT_MAX;
+  }
+
+  // Sort the references according to their score
+  bubble_sort_ref_scores(scores, n_ranked);
+
+  cm->ref_frames_info.num_total_refs =
+      AOMMIN(n_ranked, cm->seq_params.max_reference_frames);
+  for (int i = 0; i < cm->ref_frames_info.num_total_refs; i++) {
+    cm->remapped_ref_idx[i] = scores[i].index;
+    cm->ref_frames_info.ref_frame_distance[i] = scores[i].distance;
+  }
+
+  // Fill in RefFramesInfo struct according to computed mapping
+  av1_get_past_future_cur_ref_lists(cm, scores);
+
+  if (n_ranked > INTER_REFS_PER_FRAME)
+    cm->remapped_ref_idx[n_ranked - 1] = scores[n_ranked - 1].index;
+
+  // Fill any slots that are empty (should only happen for the first 7 frames)
+  for (int i = 0; i < REF_FRAMES; i++) {
+    if (cm->remapped_ref_idx[i] == INVALID_IDX) cm->remapped_ref_idx[i] = 0;
+  }
+}
+#else
+/*!\cond */
+// Struct to keep track of relevant reference frame data
+typedef struct {
+  int map_idx;
+  int disp_order;
+  int pyr_level;
+  int used;
+} RefBufMapData;
+/*!\endcond */
+
+// Comparison function to sort reference frames in ascending display order
+static int compare_map_idx_pair_asc(const void *a, const void *b) {
+  if (((RefBufMapData *)a)->disp_order == ((RefBufMapData *)b)->disp_order) {
+    return 0;
+  } else if (((const RefBufMapData *)a)->disp_order >
+             ((const RefBufMapData *)b)->disp_order) {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
+// Checks to see if a particular reference frame is already in the reference
+// frame map
+static int is_in_ref_map(RefBufMapData *map, int disp_order, int n_frames) {
+  for (int i = 0; i < n_frames; i++) {
+    if (disp_order == map[i].disp_order) return 1;
+  }
+  return 0;
+}
+
+// Add a reference buffer index to a named reference slot
+static void add_ref_to_slot(RefBufMapData *ref, int *const remapped_ref_idx,
+                            int frame) {
+  remapped_ref_idx[frame - LAST_FRAME] = ref->map_idx;
+  ref->used = 1;
+}
+
+// Threshold dictating when we are allowed to start considering
+// leaving lowest level frames unmapped
+#define LOW_LEVEL_FRAMES_TR 5
+
+// Find which reference buffer should be left out of the named mapping.
+// This is because there are 8 reference buffers and only 7 named slots.
+static void set_unmapped_ref(RefBufMapData *buffer_map, int n_bufs,
+                             int n_min_level_refs, int min_level,
+                             int cur_frame_disp) {
+  int max_dist = 0;
+  int unmapped_idx = -1;
+  if (n_bufs <= ALTREF_FRAME) return;
+  for (int i = 0; i < n_bufs; i++) {
+    if (buffer_map[i].used) continue;
+    if (buffer_map[i].pyr_level != min_level ||
+        n_min_level_refs >= LOW_LEVEL_FRAMES_TR) {
+      int dist = abs(cur_frame_disp - buffer_map[i].disp_order);
+      if (dist > max_dist) {
+        max_dist = dist;
+        unmapped_idx = i;
+      }
+    }
+  }
+  assert(unmapped_idx >= 0 && "Unmapped reference not found");
+  buffer_map[unmapped_idx].used = 1;
+}
+
+void av1_get_ref_frames(AV1_COMMON *const cm, int cur_frame_disp,
+                        RefFrameMapPair *ref_frame_map_pairs) {
+  int *const remapped_ref_idx = cm->remapped_ref_idx;
+
+  int buf_map_idx = 0;
+
+  // Initialize reference frame mappings
+  for (int i = 0; i < REF_FRAMES; ++i) remapped_ref_idx[i] = INVALID_IDX;
+
+  RefBufMapData buffer_map[REF_FRAMES];
+  int n_bufs = 0;
+  memset(buffer_map, 0, REF_FRAMES * sizeof(buffer_map[0]));
+  int min_level = INT_MAX;
+  int max_level = 0;
+
+  // Go through current reference buffers and store display order, pyr level,
+  // and map index.
+  for (int map_idx = 0; map_idx < REF_FRAMES; map_idx++) {
+    // Get reference frame buffer
+    RefFrameMapPair ref_pair = ref_frame_map_pairs[map_idx];
+    if (ref_pair.disp_order == -1) continue;
+    const int frame_order = ref_pair.disp_order;
+    // Avoid duplicates
+    if (is_in_ref_map(buffer_map, frame_order, n_bufs)) continue;
+    const int reference_frame_level = ref_pair.pyr_level;
+
+    // Keep track of the lowest and highest levels that currently exist
+    if (reference_frame_level < min_level) min_level = reference_frame_level;
+    if (reference_frame_level > max_level) max_level = reference_frame_level;
+
+    buffer_map[n_bufs].map_idx = map_idx;
+    buffer_map[n_bufs].disp_order = frame_order;
+    buffer_map[n_bufs].pyr_level = reference_frame_level;
+    buffer_map[n_bufs].used = 0;
+    n_bufs++;
+  }
+
+  // Sort frames in ascending display order
+  qsort(buffer_map, n_bufs, sizeof(buffer_map[0]), compare_map_idx_pair_asc);
+
+  int n_min_level_refs = 0;
+  int n_past_high_level = 0;
+  int closest_past_ref = -1;
+  int golden_idx = -1;
+  int altref_idx = -1;
+
+  // Find the GOLDEN_FRAME and BWDREF_FRAME.
+  // Also collect various stats about the reference frames for the remaining
+  // mappings
+  for (int i = n_bufs - 1; i >= 0; i--) {
+    if (buffer_map[i].pyr_level == min_level) {
+      // Keep track of the number of lowest level frames
+      n_min_level_refs++;
+      if (buffer_map[i].disp_order < cur_frame_disp && golden_idx == -1 &&
+          remapped_ref_idx[GOLDEN_FRAME - LAST_FRAME] == INVALID_IDX) {
+        // Save index for GOLDEN
+        golden_idx = i;
+      } else if (buffer_map[i].disp_order > cur_frame_disp &&
+                 altref_idx == -1 &&
+                 remapped_ref_idx[ALTREF_FRAME - LAST_FRAME] == INVALID_IDX) {
+        // Save index for ALTREF
+        altref_idx = i;
+      }
+    } else if (buffer_map[i].disp_order == cur_frame_disp) {
+      // Map the BWDREF_FRAME if this is the show_existing_frame
+      add_ref_to_slot(&buffer_map[i], remapped_ref_idx, BWDREF_FRAME);
+    }
+
+    // Keep track of the number of past frames that are not at the lowest level
+    if (buffer_map[i].disp_order < cur_frame_disp &&
+        buffer_map[i].pyr_level != min_level)
+      n_past_high_level++;
+
+    // Keep track of where the frames change from being past frames to future
+    // frames
+    if (buffer_map[i].disp_order < cur_frame_disp && closest_past_ref < 0)
+      closest_past_ref = i;
+  }
+
+  // Do not map GOLDEN and ALTREF based on their pyramid level if all reference
+  // frames have the same level
+  if (n_min_level_refs <= n_bufs) {
+    // Map the GOLDEN_FRAME
+    if (golden_idx > -1)
+      add_ref_to_slot(&buffer_map[golden_idx], remapped_ref_idx, GOLDEN_FRAME);
+    // Map the ALTREF_FRAME
+    if (altref_idx > -1)
+      add_ref_to_slot(&buffer_map[altref_idx], remapped_ref_idx, ALTREF_FRAME);
+  }
+
+  // Find the buffer to be excluded from the mapping
+  set_unmapped_ref(buffer_map, n_bufs, n_min_level_refs, min_level,
+                   cur_frame_disp);
+
+  // Place past frames in LAST_FRAME, LAST2_FRAME, and LAST3_FRAME
+  for (int frame = LAST_FRAME; frame < GOLDEN_FRAME; frame++) {
+    // Continue if the current ref slot is already full
+    if (remapped_ref_idx[frame - LAST_FRAME] != INVALID_IDX) continue;
+    // Find the next unmapped reference buffer
+    // in decreasing ouptut oreder relative to current picture
+    int next_buf_max = 0;
+    int next_disp_order = INT_MIN;
+    for (buf_map_idx = n_bufs - 1; buf_map_idx >= 0; buf_map_idx--) {
+      if (!buffer_map[buf_map_idx].used &&
+          buffer_map[buf_map_idx].disp_order < cur_frame_disp &&
+          buffer_map[buf_map_idx].disp_order > next_disp_order) {
+        next_disp_order = buffer_map[buf_map_idx].disp_order;
+        next_buf_max = buf_map_idx;
+      }
+    }
+    buf_map_idx = next_buf_max;
+    if (buf_map_idx < 0) break;
+    if (buffer_map[buf_map_idx].used) break;
+    add_ref_to_slot(&buffer_map[buf_map_idx], remapped_ref_idx, frame);
+  }
+
+  // Place future frames (if there are any) in BWDREF_FRAME and ALTREF2_FRAME
+  for (int frame = BWDREF_FRAME; frame < REF_FRAMES; frame++) {
+    // Continue if the current ref slot is already full
+    if (remapped_ref_idx[frame - LAST_FRAME] != INVALID_IDX) continue;
+    // Find the next unmapped reference buffer
+    // in increasing ouptut oreder relative to current picture
+    int next_buf_max = 0;
+    int next_disp_order = INT_MAX;
+    for (buf_map_idx = n_bufs - 1; buf_map_idx >= 0; buf_map_idx--) {
+      if (!buffer_map[buf_map_idx].used &&
+          buffer_map[buf_map_idx].disp_order > cur_frame_disp &&
+          buffer_map[buf_map_idx].disp_order < next_disp_order) {
+        next_disp_order = buffer_map[buf_map_idx].disp_order;
+        next_buf_max = buf_map_idx;
+      }
+    }
+    buf_map_idx = next_buf_max;
+    if (buf_map_idx < 0) break;
+    if (buffer_map[buf_map_idx].used) break;
+    add_ref_to_slot(&buffer_map[buf_map_idx], remapped_ref_idx, frame);
+  }
+
+  // Place remaining past frames
+  buf_map_idx = closest_past_ref;
+  for (int frame = LAST_FRAME; frame < REF_FRAMES; frame++) {
+    // Continue if the current ref slot is already full
+    if (remapped_ref_idx[frame - LAST_FRAME] != INVALID_IDX) continue;
+    // Find the next unmapped reference buffer
+    for (; buf_map_idx >= 0; buf_map_idx--) {
+      if (!buffer_map[buf_map_idx].used) break;
+    }
+    if (buf_map_idx < 0) break;
+    if (buffer_map[buf_map_idx].used) break;
+    add_ref_to_slot(&buffer_map[buf_map_idx], remapped_ref_idx, frame);
+  }
+
+  // Place remaining future frames
+  buf_map_idx = n_bufs - 1;
+  for (int frame = ALTREF_FRAME; frame >= LAST_FRAME; frame--) {
+    // Continue if the current ref slot is already full
+    if (remapped_ref_idx[frame - LAST_FRAME] != INVALID_IDX) continue;
+    // Find the next unmapped reference buffer
+    for (; buf_map_idx > closest_past_ref; buf_map_idx--) {
+      if (!buffer_map[buf_map_idx].used) break;
+    }
+    if (buf_map_idx < 0) break;
+    if (buffer_map[buf_map_idx].used) break;
+    add_ref_to_slot(&buffer_map[buf_map_idx], remapped_ref_idx, frame);
+  }
+
+  // Fill any slots that are empty (should only happen for the first 7 frames)
+  for (int i = 0; i < REF_FRAMES; ++i)
+    if (remapped_ref_idx[i] == INVALID_IDX) remapped_ref_idx[i] = 0;
+}
+#endif  // CONFIG_NEW_REF_SIGNALING
+
 // Returns a context number for the given MB prediction signal
 static InterpFilter get_ref_filter_type(const MB_MODE_INFO *ref_mbmi,
                                         const MACROBLOCKD *xd, int dir,
@@ -33,7 +453,7 @@ static InterpFilter get_ref_filter_type(const MB_MODE_INFO *ref_mbmi,
 int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const int ctx_offset =
-      (mbmi->ref_frame[1] > INTRA_FRAME) * INTER_FILTER_COMP_OFFSET;
+      is_inter_ref_frame(mbmi->ref_frame[1]) * INTER_FILTER_COMP_OFFSET;
   assert(dir == 0 || dir == 1);
   const MV_REFERENCE_FRAME ref_frame = mbmi->ref_frame[0];
   // Note:
@@ -151,11 +571,18 @@ int av1_get_intra_inter_context(const MACROBLOCKD *xd) {
   }
 }
 
+#if CONFIG_NEW_REF_SIGNALING
+#define IS_BACKWARD_REF_FRAME(ref_frame) \
+  (get_dir_rank(cm, ref_frame, NULL) == 1)
+#else
 #define CHECK_BACKWARD_REFS(ref_frame) \
   (((ref_frame) >= BWDREF_FRAME) && ((ref_frame) <= ALTREF_FRAME))
 #define IS_BACKWARD_REF_FRAME(ref_frame) CHECK_BACKWARD_REFS(ref_frame)
+#endif  // CONFIG_NEW_REF_SIGNALING
 
-int av1_get_reference_mode_context(const MACROBLOCKD *xd) {
+int av1_get_reference_mode_context(const AV1_COMMON *cm,
+                                   const MACROBLOCKD *xd) {
+  (void)cm;
   int ctx;
   const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
   const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
@@ -197,6 +624,29 @@ int av1_get_reference_mode_context(const MACROBLOCKD *xd) {
   return ctx;
 }
 
+#if CONFIG_NEW_REF_SIGNALING
+// The context for reference frame is defined by comparing A) the count of
+// rank n references and B) the count of rank > n references in the neighboring
+// blocks. Context will be 0 if A<B, 1 if A=B, and 2 if A>B.
+int av1_get_ref_pred_context(const MACROBLOCKD *xd, MV_REFERENCE_FRAME ref,
+                             int num_total_refs) {
+  assert((ref + 1) < num_total_refs);
+  const uint8_t *const ref_counts = &xd->neighbors_ref_counts[0];
+  const int this_ref_count = ref_counts[ref];
+  int next_refs_count = 0;
+
+  for (int i = ref + 1; i < num_total_refs; i++) {
+    next_refs_count += ref_counts[i];
+  }
+
+  const int pred_context = (this_ref_count == next_refs_count)
+                               ? 1
+                               : ((this_ref_count < next_refs_count) ? 0 : 2);
+
+  assert(pred_context >= 0 && pred_context < REF_CONTEXTS);
+  return pred_context;
+}
+#else
 int av1_get_comp_reference_type_context(const MACROBLOCKD *xd) {
   int pred_context;
   const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
@@ -511,3 +961,4 @@ int av1_get_pred_context_single_ref_p5(const MACROBLOCKD *xd) {
 int av1_get_pred_context_single_ref_p6(const MACROBLOCKD *xd) {
   return get_pred_context_brf_or_arf2(xd);
 }
+#endif  // CONFIG_NEW_REF_SIGNALING

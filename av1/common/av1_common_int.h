@@ -91,6 +91,20 @@ extern "C" {
 #define TXCOEFF_TIMER 0
 #define TXCOEFF_COST_TIMER 0
 
+#if CONFIG_NEW_REF_SIGNALING
+// Some arrays (e.g. x->pred_sse and yv12_mb) are defined such that their
+// indices 0-7 correspond to inter ref0, ref1,... ref6, and intra ref. This
+// macros maps the ref_frame indices to corresponding array indices, where
+// intra ref_frame index, INTRA_FRAME (28) is mapped to INTRA_FRAME_INDEX (7).
+#define COMPACT_INDEX0_NRS(r) (((r) == INTRA_FRAME) ? INTRA_FRAME_INDEX : (r))
+
+// This macro is similar to the previous one, but also maps INVALID_IDX
+// (ref_frame[1] for the single reference case) to 7, which typically
+// corresponds to an unused slot allocated for convenience.
+#define COMPACT_INDEX1_NRS(r) \
+  (!is_inter_ref_frame((r)) ? INTRA_FRAME_INDEX : (r))
+#endif  // CONFIG_NEW_REF_SIGNALING
+
 /*!\cond */
 
 enum {
@@ -112,7 +126,6 @@ enum {
   REFRESH_FRAME_CONTEXT_BACKWARD,
 } UENUM1BYTE(REFRESH_FRAME_CONTEXT_MODE);
 
-#define MFMV_STACK_SIZE 3
 typedef struct {
   int_mv mfmv0;
   uint8_t ref_frame_offset;
@@ -139,7 +152,13 @@ typedef struct RefCntBuffer {
   int ref_count;
 
   unsigned int order_hint;
+#if CONFIG_NEW_REF_SIGNALING
+  int ref_order_hints[INTER_REFS_PER_FRAME];
+  int ref_display_order_hint[INTER_REFS_PER_FRAME];
+#else
   unsigned int ref_order_hints[INTER_REFS_PER_FRAME];
+  unsigned int ref_display_order_hint[INTER_REFS_PER_FRAME];
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   // These variables are used only in encoder and compare the absolute
   // display order hint to compute the relative distance and overcome
@@ -147,7 +166,6 @@ typedef struct RefCntBuffer {
   // distance when a very old frame is used as a reference.
   unsigned int display_order_hint;
   unsigned int absolute_poc;
-  unsigned int ref_display_order_hint[INTER_REFS_PER_FRAME];
   // Frame's level within the hierarchical structure
   unsigned int pyramid_level;
 
@@ -160,7 +178,11 @@ typedef struct RefCntBuffer {
   // the sizes that can be derived from the buf structure)
   int width;
   int height;
+#if CONFIG_NEW_REF_SIGNALING
+  WarpedMotionParams global_motion[INTER_REFS_PER_FRAME];
+#else
   WarpedMotionParams global_motion[REF_FRAMES];
+#endif                 // CONFIG_NEW_REF_SIGNALING
   int showable_frame;  // frame can be used as show existing frame in future
   uint8_t film_grain_params_present;
   aom_film_grain_t film_grain_params;
@@ -179,6 +201,9 @@ typedef struct RefCntBuffer {
   int8_t mode_deltas[MAX_MODE_LF_DELTAS];
 
   FRAME_CONTEXT frame_context;
+#if CONFIG_NEW_REF_SIGNALING
+  int base_qindex;
+#endif  // CONFIG_NEW_REF_SIGNALING
 } RefCntBuffer;
 
 typedef struct BufferPool {
@@ -296,6 +321,10 @@ typedef struct SequenceHeader {
   BLOCK_SIZE sb_size;  // Size of the superblock used for this frame
   int mib_size;        // Size of the superblock in units of MI blocks
   int mib_size_log2;   // Log 2 of above.
+#if CONFIG_NEW_REF_SIGNALING
+  int explicit_ref_frame_map;  // Explicitly signal the reference frame mapping
+  int max_reference_frames;    // Number of reference frames allowed
+#endif
 
   OrderHintInfo order_hint_info;
 
@@ -407,7 +436,9 @@ typedef struct {
   unsigned int frame_number;
   SkipModeInfo skip_mode_info;
   int refresh_frame_flags;  // Which ref frames are overwritten by this frame
+#if !CONFIG_NEW_REF_SIGNALING
   int frame_refs_short_signaling;
+#endif  // !CONFIG_NEW_REF_SIGNALING
 } CurrentFrame;
 
 /*!\endcond */
@@ -843,6 +874,52 @@ struct total_sym_stats {
 };
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
 
+#if CONFIG_NEW_REF_SIGNALING
+/*!
+ * \brief Structure to contain information about the reference frame mapping
+ * scheme.
+ */
+typedef struct {
+  /*!
+   * Distance of ref frame from current frame. Negative value indicates
+   * reference in the future, and positive value indicates reference in
+   * the past from the current frame
+   */
+  int ref_frame_distance[INTER_REFS_PER_FRAME];
+  /*!
+   * Total number of reference buffers available to the current frame.
+   */
+  int num_total_refs;
+  /*!
+   * Contains the indices of the frames in ref_frame_map that are future
+   * references.
+   */
+  int future_refs[INTER_REFS_PER_FRAME];
+  /*!
+   * Number of future references.
+   */
+  int num_future_refs;
+  /*!
+   * Contains the indices of the frames in ref_frame_map that are past
+   * references.
+   */
+  int past_refs[INTER_REFS_PER_FRAME];
+  /*!
+   * Number of past references.
+   */
+  int num_past_refs;
+  /*!
+   * Contains the indices of the frames in ref_frame_map with same order hint
+   * as current frame. -1 if unset.
+   */
+  int cur_refs[INTER_REFS_PER_FRAME];
+  /*!
+   * Number of references with the same order hint.
+   */
+  int num_cur_refs;
+} RefFramesInfo;
+#endif  // CONFIG_NEW_REF_SIGNALING
+
 /*!
  * \brief Top level common structure used by both encoder and decoder.
  */
@@ -853,6 +930,11 @@ typedef struct AV1Common {
    */
   struct total_sym_stats sym_stats;
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
+  /*!
+   * Bitmask indicating which reference buffers may be referenced by this frame.
+   */
+  int ref_frame_flags;
+
   /*!
    * Information about the current frame that is being coded.
    */
@@ -940,6 +1022,35 @@ typedef struct AV1Common {
    */
   RefCntBuffer *cur_frame;
 
+#if CONFIG_NEW_REF_SIGNALING
+  /*!
+   * An alternative to remapped_ref_idx (above) which contains a mapping to
+   * ref_frame_map[] according to a "usefulness" score. It also contains all
+   * other relevant data to aid the reference mapping and signaling.
+   */
+  RefFramesInfo ref_frames_info;
+  /*!
+   * For encoder, we have a two-level mapping from reference frame type to the
+   * corresponding buffer in the buffer pool:
+   * * 'remapped_ref_idx[i - 1]' maps reference type 'i' (range: 0 ...
+   * INTER_REFS_PER_FRAME - 1) to a remapped index 'j' in the same range.
+   * * Later, 'cm->ref_frame_map[j]' maps the remapped index 'j' to a pointer to
+   * the reference counted buffer structure RefCntBuffer, taken from the buffer
+   * pool cm->buffer_pool->frame_bufs.
+   *
+   *      0,               ...,            INTER_REFS_PER_FRAME - 1
+   *      |                                           |
+   *      v                                           v
+   * remapped_ref_idx[0],  ...,     remapped_ref_idx[INTER_REFS_PER_FRAME- 1]
+   *      |                                           |
+   *      v                                           v
+   * ref_frame_map[],      ...,                ref_frame_map[]
+   *
+   * Note: INTRA_FRAME always refers to the current frame, so there's no need to
+   * have a remapped index for the same.
+   */
+  int remapped_ref_idx[REF_FRAMES];
+#else
   /*!
    * For encoder, we have a two-level mapping from reference frame type to the
    * corresponding buffer in the buffer pool:
@@ -961,6 +1072,7 @@ typedef struct AV1Common {
    * have a remapped index for the same.
    */
   int remapped_ref_idx[REF_FRAMES];
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   /*!
    * Scale of the current frame with respect to itself.
@@ -1083,7 +1195,11 @@ typedef struct AV1Common {
   /*!
    * Global motion parameters for each reference frame.
    */
+#if CONFIG_NEW_REF_SIGNALING
+  WarpedMotionParams global_motion[INTER_REFS_PER_FRAME];
+#else
   WarpedMotionParams global_motion[REF_FRAMES];
+#endif  // CONFIG_NEW_REF_SIGNALING
 
   /*!
    * Elements part of the sequence header, that are applicable for all the
@@ -1144,13 +1260,21 @@ typedef struct AV1Common {
    * ref_frame_sign_bias[k] is 1 if relative distance between reference 'k' and
    * current frame is positive; and 0 otherwise.
    */
+#if CONFIG_NEW_REF_SIGNALING
+  int ref_frame_sign_bias[INTER_REFS_PER_FRAME];
+#else
   int ref_frame_sign_bias[REF_FRAMES];
+#endif  // CONFIG_NEW_REF_SIGNALING
   /*!
    * ref_frame_side[k] is 1 if relative distance between reference 'k' and
    * current frame is positive, -1 if relative distance is 0; and 0 otherwise.
    * TODO(jingning): This can be combined with sign_bias later.
    */
+#if CONFIG_NEW_REF_SIGNALING
+  int8_t ref_frame_side[INTER_REFS_PER_FRAME];
+#else
   int8_t ref_frame_side[REF_FRAMES];
+#endif  // CONFIG_NEW_REF_SIGNALING
 #if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   /*!
    * relative distance between reference 'k' and current frame.
@@ -1307,8 +1431,16 @@ static INLINE int frame_is_sframe(const AV1_COMMON *cm) {
   return cm->current_frame.frame_type == S_FRAME;
 }
 
-// These functions take a reference frame label between LAST_FRAME and
-// EXTREF_FRAME inclusive.  Note that this is different to the indexing
+#if CONFIG_NEW_REF_SIGNALING
+static INLINE int get_ref_frame_map_idx(const AV1_COMMON *const cm,
+                                        const int ref_frame) {
+  return (ref_frame >= 0 && ref_frame < REF_FRAMES)
+             ? cm->remapped_ref_idx[ref_frame]
+             : INVALID_IDX;
+}
+#else
+// This function takes a reference frame label between LAST_FRAME and
+// EXTREF_FRAME inclusive. Note that this is different to the indexing
 // previously used by the frame_refs[] array.
 static INLINE int get_ref_frame_map_idx(const AV1_COMMON *const cm,
                                         const MV_REFERENCE_FRAME ref_frame) {
@@ -1316,6 +1448,7 @@ static INLINE int get_ref_frame_map_idx(const AV1_COMMON *const cm,
              ? cm->remapped_ref_idx[ref_frame - LAST_FRAME]
              : INVALID_IDX;
 }
+#endif  // CONFIG_NEW_REF_SIGNALING
 
 static INLINE RefCntBuffer *get_ref_frame_buf(
     const AV1_COMMON *const cm, const MV_REFERENCE_FRAME ref_frame) {
@@ -1341,7 +1474,11 @@ static INLINE RefCntBuffer *get_primary_ref_frame_buf(
     const AV1_COMMON *const cm) {
   const int primary_ref_frame = cm->features.primary_ref_frame;
   if (primary_ref_frame == PRIMARY_REF_NONE) return NULL;
+#if CONFIG_NEW_REF_SIGNALING
+  const int map_idx = get_ref_frame_map_idx(cm, primary_ref_frame);
+#else
   const int map_idx = get_ref_frame_map_idx(cm, primary_ref_frame + 1);
+#endif  // CONFIG_NEW_REF_SIGNALING
   return (map_idx != INVALID_IDX) ? cm->ref_frame_map[map_idx] : NULL;
 }
 
