@@ -187,6 +187,14 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
     }
   }
 
+#if CONFIG_NEW_COLOR_MAP_CODING
+  for (i = 0; i < PALETTE_ROW_FLAG_CONTEXTS; ++i) {
+    av1_cost_tokens_from_cdf(mode_costs->palette_y_row_flag_cost[i],
+                             fc->identity_row_cdf_y[i], NULL);
+    av1_cost_tokens_from_cdf(mode_costs->palette_uv_row_flag_cost[i],
+                             fc->identity_row_cdf_uv[i], NULL);
+  }
+#endif
   int sign_cost[CFL_JOINT_SIGNS];
   av1_cost_tokens_from_cdf(sign_cost, fc->cfl_sign_cdf, NULL);
   for (int joint_sign = 0; joint_sign < CFL_JOINT_SIGNS; joint_sign++) {

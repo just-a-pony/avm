@@ -186,6 +186,10 @@ set_aom_config_var(CONFIG_CCSO_EXT 1
                    "AV2 experiment flag to enable extended CCSO.")
 set_aom_config_var(CONFIG_ADAPTIVE_MVD 1 "Enable adaptive MVD resolution")
 set_aom_config_var(CONFIG_JOINT_MVD 1 "Enable joint MVD coding")
+set_aom_config_var(CONFIG_INDEP_PALETTE_PARSING 1
+                   "AV2 experiment flag for palette parsing independency.")
+set_aom_config_var(CONFIG_NEW_COLOR_MAP_CODING 1
+                   "AV2 experiment flag to enable improved palette coding.")
 #
 # Variables in this section control optional features of the build system.
 #

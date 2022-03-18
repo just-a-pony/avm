@@ -483,6 +483,25 @@ static AOM_INLINE void write_delta_lflevel(const AV1_COMMON *cm,
   }
 }
 
+#if CONFIG_NEW_COLOR_MAP_CODING
+static AOM_INLINE void pack_map_tokens(aom_writer *w, const TokenExtra **tp,
+                                       int n, int cols, int rows) {
+  const TokenExtra *p = *tp;
+  for (int y = 0; y < rows; y++) {
+    int identity_row_flag = p->identity_row_flag;
+    aom_write_symbol(w, identity_row_flag, p->identity_row_cdf, 2);
+    for (int x = 0; x < cols; x++) {
+      if (y == 0 && x == 0) {
+        write_uniform(w, n, p->token);
+      } else if (!identity_row_flag || x == 0) {
+        aom_write_symbol(w, p->token, p->color_map_cdf, n);
+      }
+      if (!identity_row_flag || x == 0) p++;
+    }
+  }
+  *tp = p;
+}
+#else
 static AOM_INLINE void pack_map_tokens(aom_writer *w, const TokenExtra **tp,
                                        int n, int num) {
   const TokenExtra *p = *tp;
@@ -495,6 +514,7 @@ static AOM_INLINE void pack_map_tokens(aom_writer *w, const TokenExtra **tp,
   }
   *tp = p;
 }
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
 
 static AOM_INLINE void pack_txb_tokens(
     aom_writer *w, AV1_COMMON *cm, MACROBLOCK *const x, const TokenExtra **tp,
@@ -2059,7 +2079,11 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
       av1_get_block_dimensions(mbmi->sb_type[plane], plane, xd, NULL, NULL,
                                &rows, &cols);
       assert(*tok < tok_end);
+#if CONFIG_NEW_COLOR_MAP_CODING
+      pack_map_tokens(w, tok, palette_size_plane, cols, rows);
+#else
       pack_map_tokens(w, tok, palette_size_plane, rows * cols);
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
     }
   }
 

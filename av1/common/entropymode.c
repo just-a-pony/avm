@@ -1078,6 +1078,134 @@ static const aom_cdf_prob
       { AOM_CDF2(32461) }, { AOM_CDF2(21488) }
     };
 
+#if CONFIG_NEW_COLOR_MAP_CODING
+static const aom_cdf_prob
+    default_identity_row_cdf_y[PALETTE_ROW_FLAG_CONTEXTS][CDF_SIZE(2)] = {
+      { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) }
+    };
+static const aom_cdf_prob
+    default_identity_row_cdf_uv[PALETTE_ROW_FLAG_CONTEXTS][CDF_SIZE(2)] = {
+      { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) }
+    };
+static const aom_cdf_prob default_palette_y_color_index_cdf
+    [PALETTE_SIZES][PALETTE_COLOR_INDEX_CONTEXTS][CDF_SIZE(PALETTE_COLORS)] = {
+      {
+          { AOM_CDF2(28710) },
+          { AOM_CDF2(16384) },
+          { AOM_CDF2(10553) },
+          { AOM_CDF2(27036) },
+          { AOM_CDF2(31603) },
+          { AOM_CDF2(28710) },
+      },
+      {
+          { AOM_CDF3(27877, 30490) },
+          { AOM_CDF3(11532, 25697) },
+          { AOM_CDF3(6544, 30234) },
+          { AOM_CDF3(23018, 28072) },
+          { AOM_CDF3(31915, 32385) },
+          { AOM_CDF3(27877, 30490) },
+      },
+      {
+          { AOM_CDF4(25572, 28046, 30045) },
+          { AOM_CDF4(9478, 21590, 27256) },
+          { AOM_CDF4(7248, 26837, 29824) },
+          { AOM_CDF4(19167, 24486, 28349) },
+          { AOM_CDF4(31400, 31825, 32250) },
+          { AOM_CDF4(25572, 28046, 30045) },
+      },
+      {
+          { AOM_CDF5(24779, 26955, 28576, 30282) },
+          { AOM_CDF5(8669, 20364, 24073, 28093) },
+          { AOM_CDF5(4255, 27565, 29377, 31067) },
+          { AOM_CDF5(19864, 23674, 26716, 29530) },
+          { AOM_CDF5(31646, 31893, 32147, 32426) },
+          { AOM_CDF5(24779, 26955, 28576, 30282) },
+      },
+      {
+          { AOM_CDF6(23132, 25407, 26970, 28435, 30073) },
+          { AOM_CDF6(7443, 17242, 20717, 24762, 27982) },
+          { AOM_CDF6(6300, 24862, 26944, 28784, 30671) },
+          { AOM_CDF6(18916, 22895, 25267, 27435, 29652) },
+          { AOM_CDF6(31270, 31550, 31808, 32059, 32353) },
+          { AOM_CDF6(23132, 25407, 26970, 28435, 30073) },
+      },
+      {
+          { AOM_CDF7(23105, 25199, 26464, 27684, 28931, 30318) },
+          { AOM_CDF7(6950, 15447, 18952, 22681, 25567, 28563) },
+          { AOM_CDF7(7560, 23474, 25490, 27203, 28921, 30708) },
+          { AOM_CDF7(18544, 22373, 24457, 26195, 28119, 30045) },
+          { AOM_CDF7(31198, 31451, 31670, 31882, 32123, 32391) },
+          { AOM_CDF7(23105, 25199, 26464, 27684, 28931, 30318) },
+      },
+      {
+          { AOM_CDF8(21689, 23883, 25163, 26352, 27506, 28827, 30195) },
+          { AOM_CDF8(6892, 15385, 17840, 21606, 24287, 26753, 29204) },
+          { AOM_CDF8(5651, 23182, 25042, 26518, 27982, 29392, 30900) },
+          { AOM_CDF8(19349, 22578, 24418, 25994, 27524, 29031, 30448) },
+          { AOM_CDF8(31028, 31270, 31504, 31705, 31927, 32153, 32392) },
+          { AOM_CDF8(21689, 23883, 25163, 26352, 27506, 28827, 30195) },
+      },
+    };
+static const aom_cdf_prob default_palette_uv_color_index_cdf
+    [PALETTE_SIZES][PALETTE_COLOR_INDEX_CONTEXTS][CDF_SIZE(PALETTE_COLORS)] = {
+      {
+          { AOM_CDF2(29089) },
+          { AOM_CDF2(16384) },
+          { AOM_CDF2(8713) },
+          { AOM_CDF2(29257) },
+          { AOM_CDF2(31610) },
+          { AOM_CDF2(29089) },
+      },
+      {
+          { AOM_CDF3(25257, 29145) },
+          { AOM_CDF3(12287, 27293) },
+          { AOM_CDF3(7033, 27960) },
+          { AOM_CDF3(20145, 25405) },
+          { AOM_CDF3(30608, 31639) },
+          { AOM_CDF3(25257, 29145) },
+      },
+      {
+          { AOM_CDF4(24210, 27175, 29903) },
+          { AOM_CDF4(9888, 22386, 27214) },
+          { AOM_CDF4(5901, 26053, 29293) },
+          { AOM_CDF4(18318, 22152, 28333) },
+          { AOM_CDF4(30459, 31136, 31926) },
+          { AOM_CDF4(24210, 27175, 29903) },
+      },
+      {
+          { AOM_CDF5(22980, 25479, 27781, 29986) },
+          { AOM_CDF5(8413, 21408, 24859, 28874) },
+          { AOM_CDF5(2257, 29449, 30594, 31598) },
+          { AOM_CDF5(19189, 21202, 25915, 28620) },
+          { AOM_CDF5(31844, 32044, 32281, 32518) },
+          { AOM_CDF5(22980, 25479, 27781, 29986) },
+      },
+      {
+          { AOM_CDF6(22217, 24567, 26637, 28683, 30548) },
+          { AOM_CDF6(7307, 16406, 19636, 24632, 28424) },
+          { AOM_CDF6(4441, 25064, 26879, 28942, 30919) },
+          { AOM_CDF6(17210, 20528, 23319, 26750, 29582) },
+          { AOM_CDF6(30674, 30953, 31396, 31735, 32207) },
+          { AOM_CDF6(22217, 24567, 26637, 28683, 30548) },
+      },
+      {
+          { AOM_CDF7(21239, 23168, 25044, 26962, 28705, 30506) },
+          { AOM_CDF7(6545, 15012, 18004, 21817, 25503, 28701) },
+          { AOM_CDF7(3448, 26295, 27437, 28704, 30126, 31442) },
+          { AOM_CDF7(15889, 18323, 21704, 24698, 26976, 29690) },
+          { AOM_CDF7(30988, 31204, 31479, 31734, 31983, 32325) },
+          { AOM_CDF7(21239, 23168, 25044, 26962, 28705, 30506) },
+      },
+      {
+          { AOM_CDF8(21442, 23288, 24758, 26246, 27649, 28980, 30563) },
+          { AOM_CDF8(5863, 14933, 17552, 20668, 23683, 26411, 29273) },
+          { AOM_CDF8(3415, 25810, 26877, 27990, 29223, 30394, 31618) },
+          { AOM_CDF8(17965, 20084, 22232, 23974, 26274, 28402, 30390) },
+          { AOM_CDF8(31190, 31329, 31516, 31679, 31825, 32026, 32322) },
+          { AOM_CDF8(21442, 23288, 24758, 26246, 27649, 28980, 30563) },
+      },
+    };
+#else
 static const aom_cdf_prob default_palette_y_color_index_cdf
     [PALETTE_SIZES][PALETTE_COLOR_INDEX_CONTEXTS][CDF_SIZE(PALETTE_COLORS)] = {
       {
@@ -1183,6 +1311,7 @@ static const aom_cdf_prob default_palette_uv_color_index_cdf
           { AOM_CDF8(31190, 31329, 31516, 31679, 31825, 32026, 32322) },
       },
     };
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
 
 #if CONFIG_NEW_TX_PARTITION
 static const aom_cdf_prob default_inter_4way_txfm_partition_cdf
@@ -1364,9 +1493,15 @@ static const int palette_color_index_context_lookup[MAX_COLOR_CONTEXT_HASH +
                                                            4,  3,  2, 1 };
 
 #define NUM_PALETTE_NEIGHBORS 3  // left, top-left and top.
+
 int av1_get_palette_color_index_context(const uint8_t *color_map, int stride,
                                         int r, int c, int palette_size,
-                                        uint8_t *color_order, int *color_idx) {
+                                        uint8_t *color_order, int *color_idx
+#if CONFIG_NEW_COLOR_MAP_CODING
+                                        ,
+                                        int row_flag, int prev_row_flag
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
+) {
   assert(palette_size <= PALETTE_MAX_SIZE);
   assert(r > 0 || c > 0);
 
@@ -1424,6 +1559,13 @@ int av1_get_palette_color_index_context(const uint8_t *color_map, int stride,
   if (color_idx != NULL)
     *color_idx = inverse_color_order[color_map[r * stride + c]];
 
+#if CONFIG_NEW_COLOR_MAP_CODING
+  // Special context value for the first (and only) index of an identity row and
+  // when the previous row is also an identity row.
+  if (c == 0 && row_flag && prev_row_flag)
+    return PALETTE_COLOR_INDEX_CONTEXTS - 1;
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
+
   // Get hash value of context.
   int color_index_ctx_hash = 0;
   static const int hash_multipliers[NUM_PALETTE_NEIGHBORS] = { 1, 2, 2 };
@@ -1442,7 +1584,12 @@ int av1_get_palette_color_index_context(const uint8_t *color_map, int stride,
 }
 
 int av1_fast_palette_color_index_context(const uint8_t *color_map, int stride,
-                                         int r, int c, int *color_idx) {
+                                         int r, int c, int *color_idx
+#if CONFIG_NEW_COLOR_MAP_CODING
+                                         ,
+                                         int row_flag, int prev_row_flag
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
+) {
   assert(r > 0 || c > 0);
 
   // This goes in the order of left, top, and top-left. This has the advantage
@@ -1531,6 +1678,13 @@ int av1_fast_palette_color_index_context(const uint8_t *color_map, int stride,
     }
   }
 
+#if CONFIG_NEW_COLOR_MAP_CODING
+  // Special context value for the first (and only) index of an identity row and
+  // when the previous row is also an identity row.
+  if (c == 0 && row_flag && prev_row_flag)
+    return PALETTE_COLOR_INDEX_CONTEXTS - 1;
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
+
   // Get hash value of context.
   int color_index_ctx_hash = 0;
   static const int hash_multipliers[NUM_PALETTE_NEIGHBORS] = { 1, 2, 2 };
@@ -1555,6 +1709,10 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   (void)seq_params;
   av1_copy(fc->palette_y_size_cdf, default_palette_y_size_cdf);
   av1_copy(fc->palette_uv_size_cdf, default_palette_uv_size_cdf);
+#if CONFIG_NEW_COLOR_MAP_CODING
+  av1_copy(fc->identity_row_cdf_y, default_identity_row_cdf_y);
+  av1_copy(fc->identity_row_cdf_uv, default_identity_row_cdf_uv);
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
   av1_copy(fc->palette_y_color_index_cdf, default_palette_y_color_index_cdf);
   av1_copy(fc->palette_uv_color_index_cdf, default_palette_uv_color_index_cdf);
 #if !CONFIG_AIMC

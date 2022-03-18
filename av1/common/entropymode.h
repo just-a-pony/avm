@@ -35,10 +35,19 @@ extern "C" {
 #define INTER_COMPOUND_OFFSET(mode) (uint8_t)((mode)-NEAREST_NEARESTMV)
 #endif  // CONFIG_NEW_INTER_MODES
 // Number of possible contexts for a color index.
+#if CONFIG_NEW_COLOR_MAP_CODING
+// As can be seen from av1_get_palette_color_index_context(), the possible
+// contexts are (2,0,0), (2,2,1), (3,2,0), (4,1,0), (5,0,0) pluss one
+// extra case for the first element of an identity row. These are mapped to
+// a value from 0 to 5 using 'palette_color_index_context_lookup' table.
+#define PALETTE_COLOR_INDEX_CONTEXTS 6
+#define PALETTE_ROW_FLAG_CONTEXTS 3
+#else
 // As can be seen from av1_get_palette_color_index_context(), the possible
 // contexts are (2,0,0), (2,2,1), (3,2,0), (4,1,0), (5,0,0). These are mapped to
 // a value from 0 to 4 using 'palette_color_index_context_lookup' table.
 #define PALETTE_COLOR_INDEX_CONTEXTS 5
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
 
 // Palette Y mode context for a block is determined by number of neighboring
 // blocks (top and/or left) using a palette for Y plane. So, possible Y mode'
@@ -140,6 +149,10 @@ typedef struct frame_contexts {
   aom_cdf_prob obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
   aom_cdf_prob palette_y_size_cdf[PALATTE_BSIZE_CTXS][CDF_SIZE(PALETTE_SIZES)];
   aom_cdf_prob palette_uv_size_cdf[PALATTE_BSIZE_CTXS][CDF_SIZE(PALETTE_SIZES)];
+#if CONFIG_NEW_COLOR_MAP_CODING
+  aom_cdf_prob identity_row_cdf_y[PALETTE_ROW_FLAG_CONTEXTS][CDF_SIZE(2)];
+  aom_cdf_prob identity_row_cdf_uv[PALETTE_ROW_FLAG_CONTEXTS][CDF_SIZE(2)];
+#endif  // CONFIG_NEW_COLOR_MAP_CODING
   aom_cdf_prob palette_y_color_index_cdf[PALETTE_SIZES]
                                         [PALETTE_COLOR_INDEX_CONTEXTS]
                                         [CDF_SIZE(PALETTE_COLORS)];
@@ -365,13 +378,21 @@ static INLINE int opfl_get_comp_idx(int mode) {
 // The 'color_map' is a 2D array with the given 'stride'.
 int av1_get_palette_color_index_context(const uint8_t *color_map, int stride,
                                         int r, int c, int palette_size,
-                                        uint8_t *color_order, int *color_idx);
-
+                                        uint8_t *color_order, int *color_idx
+#if CONFIG_NEW_COLOR_MAP_CODING
+                                        ,
+                                        int row_flag, int prev_row_flag
+#endif
+);
 // A faster version of av1_get_palette_color_index_context used by the encoder
 // exploiting the fact that the encoder does not need to maintain a color order.
 int av1_fast_palette_color_index_context(const uint8_t *color_map, int stride,
-                                         int r, int c, int *color_idx);
-
+                                         int r, int c, int *color_idx
+#if CONFIG_NEW_COLOR_MAP_CODING
+                                         ,
+                                         int row_flag, int prev_row_flag
+#endif
+);
 #ifdef __cplusplus
 }  // extern "C"
 #endif
