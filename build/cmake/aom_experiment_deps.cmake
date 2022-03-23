@@ -62,7 +62,7 @@ macro(fix_experiment_configs)
 
   # CONFIG_CCSO_EXT is dependent on CONFIG_CCSO. If CONFIG_CCSO is off,
   # CONFIG_CCSO_EXT needs to be turned off.
-  if(NOT CONFIG_CCSO_EXT AND CONFIG_CCSO)
+  if(NOT CONFIG_CCSO AND CONFIG_CCSO_EXT)
     change_config_and_warn(CONFIG_CCSO_EXT 0 !CONFIG_CCSO)
   endif()
 
