@@ -192,6 +192,10 @@ set_aom_config_var(CONFIG_INDEP_PALETTE_PARSING 1
                    "AV2 experiment flag for palette parsing independency.")
 set_aom_config_var(CONFIG_NEW_COLOR_MAP_CODING 1
                    "AV2 experiment flag to enable improved palette coding.")
+set_aom_config_var(CONFIG_SKIP_MODE_SSE_BUG_FIX 1
+                   "AV2 experiment flag to fix the SSE calc bug for skip mode.")
+set_aom_config_var(CONFIG_SKIP_MODE_ENHANCEMENT 1
+                   "AV2 experiment flag to enable skip mode enhancement: C019.")
 #
 # Variables in this section control optional features of the build system.
 #

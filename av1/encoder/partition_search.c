@@ -883,8 +883,11 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif
     update_cdf(fc->skip_mode_cdfs[skip_mode_ctx], mbmi->skip_mode, 2);
   }
-
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  if (!seg_ref_active) {
+#else
   if (!mbmi->skip_mode && !seg_ref_active) {
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
     const int skip_ctx = av1_get_skip_txfm_context(xd);
 #if CONFIG_ENTROPY_STATS
     td->counts
@@ -952,6 +955,16 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
     ++td->counts->intrabc[is_intrabc_block(mbmi, xd->tree_type)];
 #endif  // CONFIG_ENTROPY_STATS
   }
+
+#if CONFIG_NEW_INTER_MODES && CONFIG_SKIP_MODE_ENHANCEMENT
+  if (mbmi->skip_mode && have_drl_index(mbmi->mode)) {
+    FRAME_COUNTS *const counts = td->counts;
+    const int16_t mode_ctx_pristine =
+        av1_mode_context_pristine(mbmi_ext->mode_context, mbmi->ref_frame);
+    update_drl_index_stats(cm->features.max_drl_bits, mode_ctx_pristine, fc,
+                           counts, mbmi, mbmi_ext);
+  }
+#endif  // CONFIG_NEW_INTER_MODES && CONFIG_SKIP_MODE_ENHANCEMENT
 
   if (frame_is_intra_only(cm) || mbmi->skip_mode) return;
 

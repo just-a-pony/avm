@@ -316,7 +316,15 @@ static INLINE int av1_get_skip_txfm_context(const MACROBLOCKD *xd) {
       above_mi ? above_mi->skip_txfm[xd->tree_type == CHROMA_PART] : 0;
   const int left_skip_txfm =
       left_mi ? left_mi->skip_txfm[xd->tree_type == CHROMA_PART] : 0;
+
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  int ctx_idx = above_skip_txfm + left_skip_txfm;
+  if (xd->mi[0]->skip_mode) ctx_idx += SKIP_CONTEXTS >> 1;
+
+  return ctx_idx;
+#else
   return above_skip_txfm + left_skip_txfm;
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 }
 
 int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir);

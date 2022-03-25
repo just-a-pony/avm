@@ -586,6 +586,13 @@ static INLINE void set_default_interp_filters(
     const AV1_COMMON *cm,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
     InterpFilter frame_interp_filter) {
+
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  if (mbmi->skip_mode) {
+    mbmi->interp_fltr = MULTITAP_SHARP;
+    return;
+  }
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 #if CONFIG_OPTFLOW_REFINEMENT
   mbmi->interp_fltr =
       (mbmi->mode >= NEAR_NEARMV_OPTFLOW || use_opfl_refine_all(cm, mbmi))

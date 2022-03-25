@@ -2190,7 +2190,6 @@ static int64_t motion_mode_rd(
         }
         continue;
       }
-
       const int64_t curr_rd = RDCOST(x->rdmult, rd_stats->rate, rd_stats->dist);
       if (curr_rd < ref_best_rd) {
         ref_best_rd = curr_rd;
@@ -2258,6 +2257,7 @@ static int64_t motion_mode_rd(
   return 0;
 }
 
+#if !CONFIG_SKIP_MODE_ENHANCEMENT
 static int64_t skip_mode_rd(RD_STATS *rd_stats, const AV1_COMP *const cpi,
                             MACROBLOCK *const x, BLOCK_SIZE bsize,
                             const BUFFER_SET *const orig_dst) {
@@ -2281,6 +2281,11 @@ static int64_t skip_mode_rd(RD_STATS *rd_stats, const AV1_COMP *const cpi,
 
     av1_subtract_plane(x, plane_bsize, plane);
     int64_t sse = aom_sum_squares_2d_i16(p->src_diff, bw, bw, bh) << 4;
+
+#if CONFIG_SKIP_MODE_SSE_BUG_FIX
+    sse >>= (cpi->frame_info.bit_depth - 8) << 1;
+#endif
+
     total_sse += sse;
   }
   const int skip_mode_ctx = av1_get_skip_mode_context(xd);
@@ -2291,6 +2296,7 @@ static int64_t skip_mode_rd(RD_STATS *rd_stats, const AV1_COMP *const cpi,
   restore_dst_buf(xd, *orig_dst, num_planes);
   return 0;
 }
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
 
 #if CONFIG_NEW_INTER_MODES
 // Check NEARMV and GLOBALMV ref mvs for duplicate and skip the relevant mode
@@ -4155,6 +4161,292 @@ static AOM_INLINE void calc_target_weighted_pred(
     const uint8_t *above, int above_stride, const uint8_t *left,
     int left_stride);
 
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+/*!\brief Search for the best skip mode
+ *
+ * \ingroup av1_rd_pick_inter_mode_sb
+ *
+ * This function performs a rate distortion search to find the best skip mode
+ * and compare the existing best mode
+ *
+ * Nothing is returned. The best mode is saved within the funtion
+ */
+static AOM_INLINE void rd_pick_motion_copy_mode(
+    InterModeSearchState *search_state, const AV1_COMP *cpi, MACROBLOCK *x,
+    BLOCK_SIZE bsize, struct buf_2d yv12_mb[REF_FRAMES][MAX_MB_PLANE],
+    PICK_MODE_CONTEXT *ctx, RD_STATS *best_rd_cost) {
+  const AV1_COMMON *const cm = &cpi->common;
+  const SkipModeInfo *const skip_mode_info = &cm->current_frame.skip_mode_info;
+  const int num_planes = av1_num_planes(cm);
+  MACROBLOCKD *const xd = &x->e_mbd;
+  MB_MODE_INFO *const mbmi = xd->mi[0];
+  TxfmSearchInfo *txfm_info = &x->txfm_search_info;
+  const TxfmSearchParams *txfm_params = &x->txfm_search_params;
+
+  if (skip_mode_info->ref_frame_idx_0 == INVALID_IDX ||
+      skip_mode_info->ref_frame_idx_1 == INVALID_IDX) {
+    return;
+  }
+
+#if CONFIG_NEW_REF_SIGNALING
+  const MV_REFERENCE_FRAME ref_frame = skip_mode_info->ref_frame_idx_0;
+  const MV_REFERENCE_FRAME second_ref_frame = skip_mode_info->ref_frame_idx_1;
+#else
+  const MV_REFERENCE_FRAME ref_frame =
+      LAST_FRAME + skip_mode_info->ref_frame_idx_0;
+  const MV_REFERENCE_FRAME second_ref_frame =
+      LAST_FRAME + skip_mode_info->ref_frame_idx_1;
+#endif
+
+#if CONFIG_NEW_INTER_MODES
+#if CONFIG_OPTFLOW_REFINEMENT
+  const PREDICTION_MODE this_mode =
+      cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV;
+#else
+  const PREDICTION_MODE this_mode = NEAR_NEARMV;
+#endif
+#else
+  const PREDICTION_MODE this_mode = NEAREST_NEARESTMV;
+#endif  // CONFIG_NEW_INTER_MODES
+
+#if !CONFIG_NEW_REF_SIGNALING
+  const THR_MODES mode_index =
+      get_prediction_mode_idx(this_mode, ref_frame, second_ref_frame);
+
+  if (mode_index == THR_INVALID) {
+    return;
+  }
+#endif
+
+  if ((!cpi->oxcf.ref_frm_cfg.enable_onesided_comp ||
+       cpi->sf.inter_sf.disable_onesided_comp) &&
+      cpi->all_one_sided_refs) {
+    return;
+  }
+
+  mbmi->mode = this_mode;
+#if CONFIG_NEW_INTER_MODES
+  mbmi->ref_mv_idx = 0;
+#endif  // CONFIG_NEW_INTER_MODES
+  mbmi->uv_mode = UV_DC_PRED;
+  mbmi->ref_frame[0] = ref_frame;
+  mbmi->ref_frame[1] = second_ref_frame;
+#if CONFIG_IBC_SR_EXT
+  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
+#endif  // CONFIG_IBC_SR_EXT
+  const uint8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
+  if (x->mbmi_ext->ref_mv_count[ref_frame_type] == UINT8_MAX) {
+    if (x->mbmi_ext->ref_mv_count[ref_frame] == UINT8_MAX ||
+        x->mbmi_ext->ref_mv_count[second_ref_frame] == UINT8_MAX) {
+      return;
+    }
+    MB_MODE_INFO_EXT *mbmi_ext = x->mbmi_ext;
+    av1_find_mv_refs(cm, xd, mbmi, ref_frame_type, mbmi_ext->ref_mv_count,
+                     xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs,
+                     mbmi_ext->mode_context);
+    // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
+    // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
+    av1_copy_usable_ref_mv_stack_and_weight(xd, mbmi_ext, ref_frame_type);
+  }
+
+#if CONFIG_NEW_INTER_MODES
+#if CONFIG_OPTFLOW_REFINEMENT
+  assert(this_mode ==
+         (cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV));
+  assert(mbmi->mode ==
+         (cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV));
+#else
+  assert(this_mode == NEAR_NEARMV);
+  assert(mbmi->mode == NEAR_NEARMV);
+#endif
+  assert(mbmi->ref_mv_idx == 0);
+#else
+  assert(this_mode == NEAREST_NEARESTMV);
+#endif  // CONFIG_NEW_INTER_MODES
+  if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
+    assert(av1_check_newmv_joint_nonzero(cm, x));
+    return;
+  }
+
+#if CONFIG_FORWARDSKIP
+  mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = 0;
+#endif
+
+  mbmi->filter_intra_mode_info.use_filter_intra = 0;
+  mbmi->interintra_mode = (INTERINTRA_MODE)(II_DC_PRED - 1);
+  mbmi->comp_group_idx = 0;
+  mbmi->interinter_comp.type = COMPOUND_AVERAGE;
+  mbmi->motion_mode = SIMPLE_TRANSLATION;
+  mbmi->ref_mv_idx = 0;
+  mbmi->skip_mode = mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
+
+  set_default_interp_filters(mbmi,
+#if CONFIG_OPTFLOW_REFINEMENT
+                             cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                             cm->features.interp_filter);
+
+  set_ref_ptrs(cm, xd, mbmi->ref_frame[0], mbmi->ref_frame[1]);
+  for (int i = 0; i < num_planes; i++) {
+    xd->plane[i].pre[0] = yv12_mb[mbmi->ref_frame[0]][i];
+    xd->plane[i].pre[1] = yv12_mb[mbmi->ref_frame[1]][i];
+  }
+
+  BUFFER_SET orig_dst;
+  for (int i = 0; i < num_planes; i++) {
+    orig_dst.plane[i] = xd->plane[i].dst.buf;
+    orig_dst.stride[i] = xd->plane[i].dst.stride;
+  }
+
+  const int mi_row = xd->mi_row;
+  const int mi_col = xd->mi_col;
+
+  // Compare the use of skip_mode with the best intra/inter mode obtained.
+  const ModeCosts *mode_costs = &x->mode_costs;
+  const int skip_mode_ctx = av1_get_skip_mode_context(xd);
+  if (best_rd_cost->dist < INT64_MAX && best_rd_cost->rate < INT32_MAX) {
+    // Account for non-skip mode rate in total rd stats
+    best_rd_cost->rate += mode_costs->skip_mode_cost[skip_mode_ctx][0];
+    av1_rd_cost_update(x->rdmult, best_rd_cost);
+    search_state->best_rd = best_rd_cost->rdcost;
+  }
+  // loop of ref_mv_idx
+  const int ref_set = get_drl_refmv_count(
+#if CONFIG_NEW_INTER_MODES
+      cm->features.max_drl_bits,
+#endif  // CONFIG_NEW_INTER_MODES
+      x, mbmi->ref_frame, this_mode);
+
+  for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ref_mv_idx++) {
+    mbmi->ref_mv_idx = ref_mv_idx;
+
+    if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
+      assert(av1_check_newmv_joint_nonzero(cm, x));
+      continue;
+    }
+    av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, &orig_dst, bsize, 0,
+                                  av1_num_planes(cm) - 1);
+
+    RD_STATS skip_mode_rd_stats, skip_mode_rd_stats_y, skip_mode_rd_stats_uv;
+    av1_invalid_rd_stats(&skip_mode_rd_stats);
+    av1_invalid_rd_stats(&skip_mode_rd_stats_y);
+    av1_invalid_rd_stats(&skip_mode_rd_stats_uv);
+
+    skip_mode_rd_stats.rate = mode_costs->skip_mode_cost[skip_mode_ctx][1];
+
+    // add ref_mv_idx rate
+    MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
+    const int drl_cost =
+        get_drl_cost(cpi->common.features.max_drl_bits, mbmi, mbmi_ext, x);
+    skip_mode_rd_stats.rate += drl_cost;
+
+    // Do transform search
+    if (av1_txfm_search(cpi, x, bsize, &skip_mode_rd_stats,
+                        &skip_mode_rd_stats_y, &skip_mode_rd_stats_uv,
+                        skip_mode_rd_stats.rate, search_state->best_rd)) {
+      skip_mode_rd_stats.rdcost =
+          RDCOST(x->rdmult, skip_mode_rd_stats.rate, skip_mode_rd_stats.dist);
+    } else {
+      av1_invalid_rd_stats(&skip_mode_rd_stats);
+      av1_invalid_rd_stats(&skip_mode_rd_stats_y);
+      av1_invalid_rd_stats(&skip_mode_rd_stats_uv);
+    }
+
+    if (skip_mode_rd_stats.rdcost < search_state->best_rd &&
+        (!xd->lossless[mbmi->segment_id] || skip_mode_rd_stats.dist == 0)) {
+#if !CONFIG_NEW_REF_SIGNALING
+      assert(mode_index != THR_INVALID);
+#endif  // !CONFIG_NEW_REF_SIGNALING
+      assert(mbmi->skip_txfm[xd->tree_type == CHROMA_PART] ==
+             skip_mode_rd_stats.skip_txfm);
+      search_state->best_mbmode.skip_mode = 1;
+      search_state->best_mbmode = *mbmi;
+      search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART] =
+          mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
+
+#if CONFIG_FORWARDSKIP
+      search_state->best_mbmode.fsc_mode[xd->tree_type == CHROMA_PART] = 0;
+#endif
+
+#if CONFIG_NEW_INTER_MODES
+#if CONFIG_OPTFLOW_REFINEMENT
+      search_state->best_mbmode.mode =
+          (cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV);
+#else
+      search_state->best_mbmode.mode = NEAR_NEARMV;
+#endif
+#else
+      search_state->best_mbmode.mode = NEAREST_NEARESTMV;
+#endif  // CONFIG_NEW_INTER_MODES
+      search_state->best_mbmode.ref_frame[0] = mbmi->ref_frame[0];
+      search_state->best_mbmode.ref_frame[1] = mbmi->ref_frame[1];
+      search_state->best_mbmode.mv[0].as_int = mbmi->mv[0].as_int;
+      search_state->best_mbmode.mv[1].as_int = mbmi->mv[1].as_int;
+      search_state->best_mbmode.ref_mv_idx = mbmi->ref_mv_idx;
+
+      // Set up tx_size related variables for skip-specific loop filtering.
+      if (search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART]) {
+        search_state->best_mbmode.tx_size =
+            block_signals_txsize(bsize)
+                ? tx_size_from_tx_mode(bsize, txfm_params->tx_mode_search_type)
+                : max_txsize_rect_lookup[bsize];
+        memset(search_state->best_mbmode.inter_tx_size,
+               search_state->best_mbmode.tx_size,
+               sizeof(search_state->best_mbmode.inter_tx_size));
+        set_txfm_ctxs(
+            search_state->best_mbmode.tx_size, xd->width, xd->height,
+            search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART] &&
+                is_inter_block(mbmi, xd->tree_type),
+            xd);
+
+        x->txfm_search_info.skip_txfm = 1;
+        search_state->best_mode_skippable = 1;
+        search_state->best_skip2 = 1;
+
+        restore_dst_buf(xd, orig_dst, num_planes);
+      } else {
+        x->txfm_search_info.skip_txfm = 0;
+        memcpy(ctx->blk_skip, txfm_info->blk_skip,
+               sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+        av1_copy_array(ctx->tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
+        search_state->best_mode_skippable = 0;
+        search_state->best_skip2 = 0;
+        search_state->best_rate_y =
+            skip_mode_rd_stats_y.rate +
+            x->mode_costs.skip_txfm_cost[av1_get_skip_txfm_context(xd)][0];
+        search_state->best_rate_uv = skip_mode_rd_stats_uv.rate;
+      }
+
+      // Set up color-related variables for skip mode.
+      search_state->best_mbmode.uv_mode = UV_DC_PRED;
+      search_state->best_mbmode.palette_mode_info.palette_size[0] = 0;
+      search_state->best_mbmode.palette_mode_info.palette_size[1] = 0;
+
+      search_state->best_mbmode.comp_group_idx = 0;
+      search_state->best_mbmode.interinter_comp.type = COMPOUND_AVERAGE;
+      search_state->best_mbmode.motion_mode = SIMPLE_TRANSLATION;
+
+      search_state->best_mbmode.interintra_mode =
+          (INTERINTRA_MODE)(II_DC_PRED - 1);
+      search_state->best_mbmode.filter_intra_mode_info.use_filter_intra = 0;
+
+      set_default_interp_filters(&search_state->best_mbmode,
+#if CONFIG_OPTFLOW_REFINEMENT
+                                 cm,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                                 cm->features.interp_filter);
+
+      // Update rd_cost
+      best_rd_cost->rate = skip_mode_rd_stats.rate;
+      best_rd_cost->dist = best_rd_cost->sse = skip_mode_rd_stats.dist;
+      best_rd_cost->rdcost = skip_mode_rd_stats.rdcost;
+
+      search_state->best_rd = best_rd_cost->rdcost;
+    }
+  }
+  assert(av1_check_newmv_joint_nonzero(cm, x));
+}
+#else  // CONFIG_SKIP_MODE_ENHANCEMENT
 static AOM_INLINE void rd_pick_skip_mode(
     RD_STATS *rd_cost, InterModeSearchState *search_state,
     const AV1_COMP *const cpi, MACROBLOCK *const x, BLOCK_SIZE bsize,
@@ -4349,6 +4641,8 @@ static AOM_INLINE void rd_pick_skip_mode(
   }
   assert(av1_check_newmv_joint_nonzero(cm, x));
 }
+
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
 // Get winner mode stats of given mode index
 static AOM_INLINE MB_MODE_INFO *get_winner_mode_stats(
@@ -6755,12 +7049,22 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   if (cm->current_frame.skip_mode_info.skip_mode_flag &&
       is_comp_ref_allowed(bsize)) {
 #if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+    rd_pick_motion_copy_mode(&search_state, cpi, x, bsize, yv12_mb, ctx,
+                             rd_cost);
+#else
     rd_pick_skip_mode(rd_cost, &search_state, cpi, x, bsize, yv12_mb);
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 #else
     const struct segmentation *const seg = &cm->seg;
     unsigned char segment_id = mbmi->segment_id;
     if (!segfeature_active(seg, segment_id, SEG_LVL_REF_FRAME)) {
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+      rd_pick_motion_copy_mode(&search_state, cpi, x, bsize, yv12_mb, ctx,
+                               rd_cost);
+#else
       rd_pick_skip_mode(rd_cost, &search_state, cpi, x, bsize, yv12_mb);
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
     }
 #endif  // CONFIG_NEW_REF_SIGNALING
   }

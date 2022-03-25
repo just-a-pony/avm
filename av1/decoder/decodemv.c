@@ -284,7 +284,9 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   MACROBLOCKD *const xd = &dcb->xd;
   uint8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
   mbmi->ref_mv_idx = 0;
+#if !CONFIG_SKIP_MODE_ENHANCEMENT
   assert(!mbmi->skip_mode);
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
   for (int idx = 0; idx < max_drl_bits; ++idx) {
     aom_cdf_prob *drl_cdf =
         av1_get_drl_cdf(ec_ctx, xd->weight[ref_frame_type], mode_ctx, idx);
@@ -1122,6 +1124,10 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
 
   if (seg->segid_preskip)
     mbmi->segment_id = read_intra_segment_id(cm, xd, bsize, r, 0);
+
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  mbmi->skip_mode = 0;
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
   mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
       read_skip_txfm(cm, xd, mbmi->segment_id, r);
@@ -1984,11 +1990,25 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   if (mbmi->skip_mode) {
     assert(is_compound);
 #if CONFIG_NEW_INTER_MODES
+#if CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
+    mbmi->mode =
+        (cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV);
+#else
     mbmi->mode = NEAR_NEARMV;
-    mbmi->ref_mv_idx = 0;
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
 #else
     mbmi->mode = NEAREST_NEARESTMV;
 #endif  // !CONFIG_NEW_INTER_MODES
+
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+    read_drl_idx(
+#if CONFIG_NEW_INTER_MODES
+        cm->features.max_drl_bits,
+        av1_mode_context_pristine(inter_mode_ctx, mbmi->ref_frame),
+#endif  // CONFIG_NEW_INTER_MODES
+        ec_ctx, dcb, mbmi, r);
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+
   } else {
     if (segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP) ||
         segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_GLOBALMV)) {
@@ -2101,8 +2121,16 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   }
 #if CONFIG_NEW_INTER_MODES
   if (mbmi->skip_mode) {
+#if CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
+    assert(mbmi->mode ==
+           (cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV));
+#else
     assert(mbmi->mode == NEAR_NEARMV);
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
+
+#if !CONFIG_SKIP_MODE_ENHANCEMENT
     assert(mbmi->ref_mv_idx == 0);
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
   }
 #else
   if (mbmi->skip_mode) assert(mbmi->mode == NEAREST_NEARESTMV);
@@ -2259,9 +2287,11 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 
   mbmi->skip_mode = read_skip_mode(cm, xd, mbmi->segment_id, r);
 
+#if !CONFIG_SKIP_MODE_ENHANCEMENT
   if (mbmi->skip_mode)
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
   else
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
         read_skip_txfm(cm, xd, mbmi->segment_id, r);
 

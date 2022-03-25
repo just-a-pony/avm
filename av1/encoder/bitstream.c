@@ -119,7 +119,9 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
                           FRAME_CONTEXT *ec_ctx, const MB_MODE_INFO *mbmi,
                           const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
                           aom_writer *w) {
+#if !CONFIG_SKIP_MODE_ENHANCEMENT
   assert(!mbmi->skip_mode);
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
   // Write the DRL index as a sequence of bits encoding a decision tree:
   // 0 -> 0   10 -> 1   110 -> 2    111 -> 3
   // Also use the number of reference MVs for a frame type to reduce the
@@ -1624,11 +1626,15 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   write_inter_segment_id(cpi, w, seg, segp, 0, 1);
 
   write_skip_mode(cm, xd, segment_id, mbmi, w);
+
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  const int skip = write_skip(cm, xd, segment_id, mbmi, w);
+#else
   assert(
       IMPLIES(mbmi->skip_mode, mbmi->skip_txfm[xd->tree_type == CHROMA_PART]));
   const int skip =
       mbmi->skip_mode ? 1 : write_skip(cm, xd, segment_id, mbmi, w);
-
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
   write_inter_segment_id(cpi, w, seg, segp, skip, 0);
 
   write_cdef(cm, xd, w, skip);
@@ -1647,7 +1653,20 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif  // CONFIG_CONTEXT_DERIVATION
     );
 
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  if (mbmi->skip_mode) {
+    av1_collect_neighbors_ref_counts(xd);
+    write_drl_idx(
+#if CONFIG_NEW_INTER_MODES
+        cm->features.max_drl_bits, mbmi_ext_frame->mode_context,
+#endif  // CONFIG_NEW_INTER_MODES
+        ec_ctx, mbmi, mbmi_ext_frame, w);
+
+    return;
+  }
+#else
   if (mbmi->skip_mode) return;
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
 #if CONFIG_IBC_SR_EXT
   if (!is_inter && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
