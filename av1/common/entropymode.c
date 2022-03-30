@@ -1449,11 +1449,11 @@ static const aom_cdf_prob default_skip_txfm_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(3576) }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 };
-
-static const aom_cdf_prob default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(
 #if CONFIG_SKIP_MODE_ENHANCEMENT
+static const aom_cdf_prob default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(
     2)] = { { AOM_CDF2(26621) }, { AOM_CDF2(15708) }, { AOM_CDF2(4127) } };
 #else
+static const aom_cdf_prob default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(
     2)] = { { AOM_CDF2(32621) }, { AOM_CDF2(20708) }, { AOM_CDF2(8127) } };
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
