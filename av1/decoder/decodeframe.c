@@ -4961,22 +4961,17 @@ static INLINE int get_disp_order_hint(AV1_COMMON *const cm) {
       max_disp_order_hint = buf->display_order_hint;
   }
 
-  // If the order_hint is above the threshold distance of 32 frames from the
-  // found reference frame, we assume it was modified using:
-  // order_hint = display_order_hint % display_order_hint_factor. Here, the
-  // actual display_order_hint is recovered.
-  const int order_hint = current_frame->order_hint;
-  int cur_disp_order_hint = order_hint;
-  // Check if the display order of the max reference is greater than the
-  // threshold of 32 frames apart from the current frame.
-  if (abs(max_disp_order_hint - order_hint) > 32) {
-    assert(order_hint < max_disp_order_hint);
-    const int display_order_hint_factor =
-        (1 << (cm->seq_params.order_hint_info.order_hint_bits_minus_1 + 1));
-    const int upper_order_factor =
-        order_hint +
-        (display_order_hint_factor - (order_hint % display_order_hint_factor));
-    cur_disp_order_hint += upper_order_factor;
+  // If the order_hint is above the threshold distance of 35 frames (largest
+  // possible lag_in_frames) from the found reference frame, we assume it was
+  // modified using:
+  //     order_hint = display_order_hint % display_order_hint_factor
+  // Here, the actual display_order_hint is recovered.
+  int cur_disp_order_hint = current_frame->order_hint;
+  while (abs(max_disp_order_hint - cur_disp_order_hint) > 35) {
+    assert(cur_disp_order_hint < max_disp_order_hint);
+    int display_order_hint_factor =
+        1 << (cm->seq_params.order_hint_info.order_hint_bits_minus_1 + 1);
+    cur_disp_order_hint += display_order_hint_factor;
   }
   return cur_disp_order_hint;
 #else
