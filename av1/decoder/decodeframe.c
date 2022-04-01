@@ -4968,7 +4968,7 @@ static INLINE int get_disp_order_hint(AV1_COMMON *const cm) {
   // Here, the actual display_order_hint is recovered.
   int cur_disp_order_hint = current_frame->order_hint;
   while (abs(max_disp_order_hint - cur_disp_order_hint) > 35) {
-    assert(cur_disp_order_hint < max_disp_order_hint);
+    if (cur_disp_order_hint > max_disp_order_hint) return cur_disp_order_hint;
     int display_order_hint_factor =
         1 << (cm->seq_params.order_hint_info.order_hint_bits_minus_1 + 1);
     cur_disp_order_hint += display_order_hint_factor;
@@ -5326,9 +5326,25 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           // use a different approach.
           cm->ref_frame_map[ref_idx] = buf;
           buf->order_hint = order_hint;
+#if CONFIG_NEW_REF_SIGNALING
+          // TODO(kslu) This is a workaround for error resilient mode. Make
+          // it more consistent with get_disp_order_hint().
+          buf->display_order_hint = order_hint;
+#endif  // CONFIG_NEW_REF_SIGNALING
         }
       }
     }
+#if CONFIG_NEW_REF_SIGNALING
+    if (features->error_resilient_mode) {
+      // Read all ref frame base_qindex
+      for (int ref_idx = 0; ref_idx < REF_FRAMES; ref_idx++) {
+        RefCntBuffer *buf = cm->ref_frame_map[ref_idx];
+        buf->base_qindex = aom_rb_read_literal(
+            rb, cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_BITS_UNEXT
+                                                       : QINDEX_BITS);
+      }
+    }
+#endif  // CONFIG_NEW_REF_SIGNALING
   }
 
   if (current_frame->frame_type == KEY_FRAME) {
@@ -5404,13 +5420,20 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif  // CONFIG_NEW_REF_SIGNALING
 
 #if CONFIG_NEW_REF_SIGNALING
+      // Reference rankings have been implicitly derived in av1_get_ref_frames.
+      // However, reference indices can be overwritten if they have been
+      // signaled, which happens in error resilient mode or when order hint
+      // is unavailable.
+      const int explicit_ref_frame_map =
+          cm->features.error_resilient_mode || frame_is_sframe(cm) ||
+          seq_params->explicit_ref_frame_map ||
+          !seq_params->order_hint_info.enable_order_hint;
+      if (explicit_ref_frame_map)
+        cm->ref_frames_info.num_total_refs =
+            aom_rb_read_literal(rb, REF_FRAMES_LOG2);
       for (int i = 0; i < cm->ref_frames_info.num_total_refs; ++i) {
         int ref = 0;
-        // Reference rankings have been implicitly derived in
-        // av1_get_ref_frames. However, if explicti_ref_frame_map is on, ref
-        // idx will be overwritten by what is signaled here.
-        if (!seq_params->explicit_ref_frame_map &&
-            seq_params->order_hint_info.enable_order_hint) {
+        if (!explicit_ref_frame_map) {
           ref = cm->remapped_ref_idx[i];
           if (cm->ref_frame_map[ref] == NULL)
             aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
@@ -5462,7 +5485,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_NEW_REF_SIGNALING
       // With explicit_ref_frame_map, cm->remapped_ref_idx has been
       // overwritten. The reference lists also needs to be reset.
-      if (seq_params->explicit_ref_frame_map) {
+      if (explicit_ref_frame_map) {
         RefScoreData scores[REF_FRAMES];
         for (int i = 0; i < REF_FRAMES; i++) scores[i].score = INT_MAX;
         for (int i = 0; i < cm->ref_frames_info.num_total_refs; i++) {

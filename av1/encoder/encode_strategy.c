@@ -651,21 +651,25 @@ static int allow_show_existing(const AV1_COMP *const cpi,
   return !(is_error_resilient || is_s_frame) || is_key_frame;
 }
 
-#if !CONFIG_NEW_REF_SIGNALING
 // Update frame_flags to tell the encoder's caller what sort of frame was
 // encoded.
 static void update_frame_flags(
     const AV1_COMMON *const cm,
+#if !CONFIG_NEW_REF_SIGNALING
     const RefreshFrameFlagsInfo *const refresh_frame_flags,
+#endif  // !CONFIG_NEW_REF_SIGNALING
     unsigned int *frame_flags) {
   if (encode_show_existing_frame(cm)) {
+#if !CONFIG_NEW_REF_SIGNALING
     *frame_flags &= ~FRAMEFLAGS_GOLDEN;
     *frame_flags &= ~FRAMEFLAGS_BWDREF;
     *frame_flags &= ~FRAMEFLAGS_ALTREF;
+#endif  // !CONFIG_NEW_REF_SIGNALING
     *frame_flags &= ~FRAMEFLAGS_KEY;
     return;
   }
 
+#if !CONFIG_NEW_REF_SIGNALING
   if (refresh_frame_flags->golden_frame) {
     *frame_flags |= FRAMEFLAGS_GOLDEN;
   } else {
@@ -683,6 +687,7 @@ static void update_frame_flags(
   } else {
     *frame_flags &= ~FRAMEFLAGS_BWDREF;
   }
+#endif  // !CONFIG_NEW_REF_SIGNALING
 
   if (cm->current_frame.frame_type == KEY_FRAME) {
     *frame_flags |= FRAMEFLAGS_KEY;
@@ -690,7 +695,6 @@ static void update_frame_flags(
     *frame_flags &= ~FRAMEFLAGS_KEY;
   }
 }
-#endif  // !CONFIG_NEW_REF_SIGNALING
 
 #define DUMP_REF_FRAME_IMAGES 0
 
@@ -1284,6 +1288,8 @@ int av1_encode_strategy(AV1_COMP *const cpi, size_t *const size,
     }
 
 #if CONFIG_NEW_REF_SIGNALING
+    cm->current_frame.frame_type = frame_params.frame_type;
+    cm->features.error_resilient_mode = frame_params.error_resilient_mode;
     if (cm->seq_params.explicit_ref_frame_map)
       av1_get_ref_frames_enc(cm, cur_frame_disp, ref_frame_map_pairs);
     else
@@ -1366,13 +1372,15 @@ int av1_encode_strategy(AV1_COMP *const cpi, size_t *const size,
     return AOM_CODEC_ERROR;
   }
 
-#if !CONFIG_NEW_REF_SIGNALING
   if (!is_stat_generation_stage(cpi)) {
     // First pass doesn't modify reference buffer assignment or produce frame
     // flags
-    update_frame_flags(&cpi->common, &cpi->refresh_frame, frame_flags);
-  }
+    update_frame_flags(&cpi->common,
+#if !CONFIG_NEW_REF_SIGNALING
+                       &cpi->refresh_frame,
 #endif  // !CONFIG_NEW_REF_SIGNALING
+                       frame_flags);
+  }
 
   if (!is_stat_generation_stage(cpi)) {
 #if TXCOEFF_COST_TIMER

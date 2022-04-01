@@ -98,10 +98,12 @@ enum {
 
 enum {
   FRAMEFLAGS_KEY = 1 << 0,
+#if !CONFIG_NEW_REF_SIGNALING
   FRAMEFLAGS_GOLDEN = 1 << 1,
   FRAMEFLAGS_BWDREF = 1 << 2,
   // TODO(zoeliu): To determine whether a frame flag is needed for ALTREF2_FRAME
   FRAMEFLAGS_ALTREF = 1 << 3,
+#endif  // !CONFIG_NEW_REF_SIGNALING
   FRAMEFLAGS_INTRAONLY = 1 << 4,
   FRAMEFLAGS_SWITCH = 1 << 5,
   FRAMEFLAGS_ERROR_RESILIENT = 1 << 6,

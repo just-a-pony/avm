@@ -3775,6 +3775,18 @@ static AOM_INLINE void write_uncompressed_header_obu(
             seq_params->order_hint_info.order_hint_bits_minus_1 + 1);
       }
     }
+#if CONFIG_NEW_REF_SIGNALING
+    // Write all ref frame base_qindex if error_resilient_mode == 1. This is
+    // required by reference mapping.
+    if (features->error_resilient_mode) {
+      for (int ref_idx = 0; ref_idx < REF_FRAMES; ref_idx++) {
+        aom_wb_write_literal(wb, cm->ref_frame_map[ref_idx]->base_qindex,
+                             cm->seq_params.bit_depth == AOM_BITS_8
+                                 ? QINDEX_BITS_UNEXT
+                                 : QINDEX_BITS);
+      }
+    }
+#endif  // CONFIG_NEW_REF_SIGNALING
   }
 
   if (current_frame->frame_type == KEY_FRAME) {
@@ -3839,14 +3851,21 @@ static AOM_INLINE void write_uncompressed_header_obu(
 #endif  // !CONFIG_NEW_REF_SIGNALING
 
 #if CONFIG_NEW_REF_SIGNALING
+      // By default, no need to signal ref mapping indices in NRS because
+      // decoder can derive them unless order_hint is not available. Explicit
+      // signaling happens only when enabled by the command line flag or in
+      // error resilient mode
+      const int explicit_ref_frame_map =
+          cm->features.error_resilient_mode || frame_is_sframe(cm) ||
+          seq_params->explicit_ref_frame_map ||
+          !seq_params->order_hint_info.enable_order_hint;
+      if (explicit_ref_frame_map)
+        aom_wb_write_literal(wb, cm->ref_frames_info.num_total_refs,
+                             REF_FRAMES_LOG2);
       for (ref_frame = 0; ref_frame < cm->ref_frames_info.num_total_refs;
            ++ref_frame) {
         assert(get_ref_frame_map_idx(cm, ref_frame) != INVALID_IDX);
-        // By default, no need to signal ref mapping indices in NRS because
-        // decoder can derive them unless order_hint is not available. Explicit
-        // signaling is enabled only when explicit_ref_frame_map is on.
-        if (seq_params->explicit_ref_frame_map ||
-            !seq_params->order_hint_info.enable_order_hint)
+        if (explicit_ref_frame_map)
           aom_wb_write_literal(wb, get_ref_frame_map_idx(cm, ref_frame),
                                REF_FRAMES_LOG2);
 #else
