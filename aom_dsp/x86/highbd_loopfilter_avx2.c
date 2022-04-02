@@ -17,7 +17,7 @@
 #include "aom_dsp/x86/common_avx2.h"
 #include "aom_dsp/x86/lpf_common_sse2.h"
 #include "aom/aom_integer.h"
-
+#if !CONFIG_NEW_DF
 void aom_highbd_lpf_horizontal_14_dual_avx2(
     uint16_t *s, int p, const uint8_t *blimit0, const uint8_t *limit0,
     const uint8_t *thresh0, const uint8_t *blimit1, const uint8_t *limit1,
@@ -65,3 +65,4 @@ void aom_highbd_lpf_vertical_8_dual_avx2(
   aom_highbd_lpf_vertical_8_dual_sse2(s, p, blimit0, limit0, thresh0, blimit1,
                                       limit1, thresh1, bd);
 }
+#endif  // !CONFIG_NEW_DF

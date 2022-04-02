@@ -1959,11 +1959,16 @@ void av1_set_default_mode_deltas(int8_t *mode_deltas) {
 }
 
 static void set_default_lf_deltas(struct loopfilter *lf) {
+#if !CONFIG_NEW_DF  // was DF_REF_DELTAS
   lf->mode_ref_delta_enabled = 1;
   lf->mode_ref_delta_update = 1;
 
   av1_set_default_ref_deltas(lf->ref_deltas);
   av1_set_default_mode_deltas(lf->mode_deltas);
+#else
+  lf->mode_ref_delta_enabled = 0;
+  lf->mode_ref_delta_update = 0;
+#endif
 }
 
 void av1_setup_frame_contexts(AV1_COMMON *cm) {

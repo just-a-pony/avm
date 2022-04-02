@@ -18,6 +18,8 @@
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
 
 #include "config/aom_config.h"
+
+#if !CONFIG_NEW_DF
 #include "config/aom_dsp_rtcd.h"
 
 #include "test/acm_random.h"
@@ -631,3 +633,4 @@ INSTANTIATE_TEST_SUITE_P(AVX2, Loop8Test9Param_hbd,
                          ::testing::ValuesIn(kHbdLoop8Test9Avx2));
 #endif
 }  // namespace
+#endif  // !CONFIG_NEW_DF

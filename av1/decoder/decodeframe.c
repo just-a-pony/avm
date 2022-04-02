@@ -2046,7 +2046,163 @@ static AOM_INLINE void loop_restoration_read_sb_coeffs(
     }
   }
 }
+#if CONFIG_NEW_DF
+static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
+                                        struct aom_read_bit_buffer *rb) {
+  const int num_planes = av1_num_planes(cm);
+  struct loopfilter *lf = &cm->lf;
 
+  if (is_global_intrabc_allowed(cm) || cm->features.coded_lossless) {
+    // write default deltas to frame buffer
+    av1_set_default_ref_deltas(cm->cur_frame->ref_deltas);
+    av1_set_default_mode_deltas(cm->cur_frame->mode_deltas);
+    return;
+  }
+  assert(!cm->features.coded_lossless);
+
+  if (cm->prev_frame) {
+    // write deltas to frame buffer
+    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, REF_FRAMES);
+    memcpy(lf->mode_deltas, cm->prev_frame->mode_deltas, MAX_MODE_LF_DELTAS);
+  } else {
+    av1_set_default_ref_deltas(lf->ref_deltas);
+    av1_set_default_mode_deltas(lf->mode_deltas);
+  }
+
+  lf->filter_level[0] = aom_rb_read_bit(rb);
+#if DF_DUAL
+  lf->filter_level[1] = aom_rb_read_bit(rb);
+#else
+  lf->filter_level[1] = lf->filter_level[0];
+#endif  // DF_DUAL
+  if (num_planes > 1) {
+    if (lf->filter_level[0] || lf->filter_level[1]) {
+      lf->filter_level_u = aom_rb_read_bit(rb);
+      lf->filter_level_v = aom_rb_read_bit(rb);
+    } else {
+      lf->filter_level_u = lf->filter_level_v = 0;
+    }
+  }
+  //  lf->sharpness_level = 0;
+
+#if DF_DUAL
+  if (lf->filter_level[0]) {
+    int luma_delta_q = aom_rb_read_bit(rb);
+    if (luma_delta_q) {
+      lf->delta_q_luma[0] =
+          aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_q_luma[0] = 0;
+    }
+#if DF_TWO_PARAM
+    int luma_delta_side = aom_rb_read_bit(rb);
+    if (luma_delta_side) {
+      lf->delta_side_luma[0] =
+          aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_side_luma[0] = 0;
+    }
+#else
+    lf->delta_side_luma[0] = lf->delta_q_luma[0];
+#endif  // DF_TWO_PARAM
+  } else {
+    lf->delta_q_luma[0] = 0;
+    lf->delta_side_luma[0] = 0;
+  }
+  if (lf->filter_level[1]) {
+    int luma_delta_q = aom_rb_read_bit(rb);
+    if (luma_delta_q) {
+      lf->delta_q_luma[1] =
+          aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_q_luma[1] = lf->delta_q_luma[0];
+    }
+#if DF_TWO_PARAM
+    int luma_delta_side = aom_rb_read_bit(rb);
+    if (luma_delta_side) {
+      lf->delta_side_luma[1] =
+          aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_side_luma[1] = lf->delta_side_luma[0];
+    }
+#else
+    lf->delta_side_luma[1] = lf->delta_q_luma[1];
+#endif  // DF_TWO_PARAM
+  } else {
+    lf->delta_q_luma[1] = 0;
+    lf->delta_side_luma[1] = 0;
+  }
+#else
+  if (lf->filter_level[0] || lf->filter_level[1]) {
+    int luma_delta_q = aom_rb_read_bit(rb);
+    if (luma_delta_q) {
+      lf->delta_q_luma = aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_q_luma = 0;
+    }
+#if DF_TWO_PARAM
+    int luma_delta_side = aom_rb_read_bit(rb);
+    if (luma_delta_side) {
+      lf->delta_side_luma =
+          aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_side_luma = 0;
+    }
+#else
+    lf->delta_side_luma = lf->delta_q_luma;
+#endif  // DF_TWO_PARAM
+  } else {
+    lf->delta_q_luma = 0;
+    lf->delta_side_luma = 0;
+  }
+#endif  // DF_DUAL
+
+  if (lf->filter_level_u) {
+    int u_delta_q = aom_rb_read_bit(rb);
+    if (u_delta_q) {
+      lf->delta_q_u = aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_q_u = 0;
+    }
+#if DF_TWO_PARAM
+    int u_delta_side = aom_rb_read_bit(rb);
+    if (u_delta_side) {
+      lf->delta_side_u = aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_side_u = 0;
+    }
+#else
+    lf->delta_side_u = lf->delta_q_u;
+#endif  // DF_TWO_PARAM
+  } else {
+    lf->delta_q_u = 0;
+    lf->delta_side_u = 0;
+  }
+  if (lf->filter_level_v) {
+    int v_delta_q = aom_rb_read_bit(rb);
+    if (v_delta_q) {
+      lf->delta_q_v = aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_q_v = 0;
+    }
+#if DF_TWO_PARAM
+    int v_delta_side = aom_rb_read_bit(rb);
+    if (v_delta_side) {
+      lf->delta_side_v = aom_rb_read_literal(rb, DF_PAR_BITS) - DF_PAR_OFFSET;
+    } else {
+      lf->delta_side_v = 0;
+    }
+#else
+    lf->delta_side_v = lf->delta_q_v;
+#endif  // DF_TWO_PARAM
+  } else {
+    lf->delta_q_v = 0;
+    lf->delta_side_v = 0;
+  }
+  lf->mode_ref_delta_update = 0;
+  lf->mode_ref_delta_enabled = 0;
+}
+#else
 static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
                                         struct aom_read_bit_buffer *rb) {
   const int num_planes = av1_num_planes(cm);
@@ -2099,6 +2255,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
   memcpy(cm->cur_frame->ref_deltas, lf->ref_deltas, REF_FRAMES);
   memcpy(cm->cur_frame->mode_deltas, lf->mode_deltas, MAX_MODE_LF_DELTAS);
 }
+#endif  // CONFIG_NEW_DF
 
 static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {

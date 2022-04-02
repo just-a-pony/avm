@@ -23,6 +23,13 @@
 extern "C" {
 #endif
 
+#if CONFIG_NEW_DF
+#define DF_RESTRICT_ORIP 1
+#define ORIP_BLOCK_SIZE 32
+#else
+#define DF_RESTRICT_ORIP 0
+#endif
+
 #if CONFIG_AIMC
 /*! \brief set the luma intra mode and delta angles for a given mode index.
  * \param[in]    mode_idx           mode index in intra mode decision
@@ -145,6 +152,49 @@ static INLINE int av1_filter_intra_allowed(const AV1_COMMON *const cm,
 }
 
 #if CONFIG_ORIP
+#if DF_RESTRICT_ORIP
+static INLINE int av1_allow_orip_smooth_dc(PREDICTION_MODE mode, int plane,
+                                           TX_SIZE tx_size) {
+#if CONFIG_ORIP_DC_DISABLED
+#if CONFIG_ORIP_NONDC_DISABLED
+  return 0;
+#else
+  const int bw = tx_size_wide[tx_size];
+  const int bh = tx_size_high[tx_size];
+
+  int orip_allowed = 1;
+  if (bw >= ORIP_BLOCK_SIZE || bh >= ORIP_BLOCK_SIZE) orip_allowed = 0;
+
+  if (plane == AOM_PLANE_Y) return ((mode == SMOOTH_PRED) && orip_allowed);
+  return ((mode == UV_SMOOTH_PRED) && orip_allowed);
+#endif
+#else
+  const int bw = tx_size_wide[tx_size];
+  const int bh = tx_size_high[tx_size];
+
+  int orip_allowed = 1;
+  if (bw >= ORIP_BLOCK_SIZE || bh >= ORIP_BLOCK_SIZE) orip_allowed = 0;
+#if CONFIG_ORIP_NONDC_DISABLED
+  if (plane == AOM_PLANE_Y) return ((mode == DC_PRED) && orip_allowed);
+  return 0;
+#else
+  if (plane == AOM_PLANE_Y)
+    return ((mode == SMOOTH_PRED || mode == DC_PRED) && orip_allowed);
+  return ((mode == UV_SMOOTH_PRED) && orip_allowed);
+#endif
+#endif
+}
+static INLINE int av1_allow_orip_dir(int p_angle, TX_SIZE tx_size) {
+  const int bw = tx_size_wide[tx_size];
+  const int bh = tx_size_high[tx_size];
+
+  int orip_allowed = 1;
+  if (p_angle == 90 && bw >= ORIP_BLOCK_SIZE) orip_allowed = 0;
+  if (p_angle == 180 && bh >= ORIP_BLOCK_SIZE) orip_allowed = 0;
+
+  return ((p_angle == 90 || p_angle == 180) && orip_allowed);
+}
+#else
 static INLINE int av1_allow_orip_smooth_dc(PREDICTION_MODE mode, int plane) {
 #if CONFIG_ORIP_DC_DISABLED
 #if CONFIG_ORIP_NONDC_DISABLED
@@ -166,6 +216,7 @@ static INLINE int av1_allow_orip_smooth_dc(PREDICTION_MODE mode, int plane) {
 static INLINE int av1_allow_orip_dir(int p_angle) {
   return (p_angle == 90 || p_angle == 180);
 }
+#endif
 #endif
 
 extern const int8_t av1_filter_intra_taps[FILTER_INTRA_MODES][8][8];

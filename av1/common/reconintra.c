@@ -1736,7 +1736,11 @@ static void build_intra_predictors_high(
 #if !CONFIG_ORIP_NONDC_DISABLED
     // Apply sub-block based filter for horizontal/vertical intra mode
     if (apply_sub_block_based_refinement_filter &&
+#if DF_RESTRICT_ORIP
+        av1_allow_orip_dir(p_angle, tx_size)) {
+#else
         av1_allow_orip_dir(p_angle)) {
+#endif
       av1_apply_orip_4x4subblock_hbd(dst, dst_stride, tx_size, above_row,
                                      left_col, mode, xd->bd);
     }
@@ -1744,7 +1748,6 @@ static void build_intra_predictors_high(
 #endif
     return;
   }
-
   // predict
   if (mode == DC_PRED) {
     dc_pred_high[n_left_px > 0][n_top_px > 0][tx_size](
@@ -1763,7 +1766,11 @@ static void build_intra_predictors_high(
 #if CONFIG_ORIP
   // Apply sub-block based filter for DC/smooth intra mode
   apply_sub_block_based_refinement_filter &=
+#if DF_RESTRICT_ORIP
+      av1_allow_orip_smooth_dc(mode, plane, tx_size);
+#else
       av1_allow_orip_smooth_dc(mode, plane);
+#endif
   if (apply_sub_block_based_refinement_filter) {
     av1_apply_orip_4x4subblock_hbd(dst, dst_stride, tx_size, above_row,
                                    left_col, mode, xd->bd);
@@ -2069,7 +2076,11 @@ static void build_intra_predictors(
 #if !CONFIG_ORIP_NONDC_DISABLED
     // Apply sub-block based filter for horizontal/vertical intra mode
     if (apply_sub_block_based_refinement_filter &&
+#if DF_RESTRICT_ORIP
+        av1_allow_orip_dir(p_angle, tx_size)) {
+#else
         av1_allow_orip_dir(p_angle)) {
+#endif
       av1_apply_orip_4x4subblock(dst, dst_stride, tx_size, above_row, left_col,
                                  mode);
     }
@@ -2095,7 +2106,11 @@ static void build_intra_predictors(
 
 #if CONFIG_ORIP
   apply_sub_block_based_refinement_filter &=
+#if DF_RESTRICT_ORIP
+      av1_allow_orip_smooth_dc(mode, plane, tx_size);
+#else
       av1_allow_orip_smooth_dc(mode, plane);
+#endif
   if (apply_sub_block_based_refinement_filter) {
     av1_apply_orip_4x4subblock(dst, dst_stride, tx_size, above_row, left_col,
                                mode);

@@ -15,7 +15,7 @@
 #include "config/aom_dsp_rtcd.h"
 
 #include "aom_dsp/x86/lpf_common_sse2.h"
-
+#if !CONFIG_NEW_DF
 static AOM_FORCE_INLINE void pixel_clamp(const __m128i *min, const __m128i *max,
                                          __m128i *pixel) {
   *pixel = _mm_min_epi16(*pixel, *max);
@@ -1697,3 +1697,4 @@ void aom_highbd_lpf_vertical_14_dual_sse2(
   _mm_storeu_si128((__m128i *)(s + 6 * pitch), d6_out);
   _mm_storeu_si128((__m128i *)(s + 7 * pitch), d7_out);
 }
+#endif  // !CONFIG_NEW_DF

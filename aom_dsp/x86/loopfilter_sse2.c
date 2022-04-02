@@ -19,6 +19,7 @@
 #include "aom_ports/emmintrin_compat.h"
 #include "aom_dsp/x86/lpf_common_sse2.h"
 
+#if !CONFIG_NEW_DF
 static INLINE __m128i abs_diff(__m128i a, __m128i b) {
   return _mm_or_si128(_mm_subs_epu8(a, b), _mm_subs_epu8(b, a));
 }
@@ -2099,3 +2100,4 @@ void aom_lpf_vertical_14_dual_sse2(
   _mm_storeu_si128((__m128i *)(s - 8 + 6 * p), q2);
   _mm_storeu_si128((__m128i *)(s - 8 + 7 * p), q3);
 }
+#endif  // !CONFIG_NEW_DF

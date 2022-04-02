@@ -196,6 +196,8 @@ set_aom_config_var(CONFIG_SKIP_MODE_SSE_BUG_FIX 1
                    "AV2 experiment flag to fix the SSE calc bug for skip mode.")
 set_aom_config_var(CONFIG_SKIP_MODE_ENHANCEMENT 1
                    "AV2 experiment flag to enable skip mode enhancement: C019.")
+set_aom_config_var(CONFIG_NEW_DF 1
+                   "AV2 experiment flag on new deblocking filter.")
 #
 # Variables in this section control optional features of the build system.
 #
