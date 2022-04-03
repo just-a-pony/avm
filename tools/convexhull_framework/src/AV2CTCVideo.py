@@ -14,7 +14,7 @@ __author__ = "maggie.sun@intel.com, ryanlei@fb.com"
 Python file for definition of AV2 CTC testing clips/sets
 """
 
-CTC_VERSION = '2.1'
+CTC_VERSION = '3.0'
 
 CTC_TEST_SET = {
     "AI": ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "G1", "G2", "E"],
@@ -83,7 +83,7 @@ Y4M_CLIPs = {
                    "SolLevanteDragons_sdr_1920x1080_24_10bit.y4m",
                    "SolLevanteFace_sdr_1920x1080_24_10bit.y4m",
                    "WITCHER3_1920x1080_60_8bit_420.y4m"]
-                   if CTC_VERSION == "2.1" else
+                   if CTC_VERSION == "3.0" else
                   ["CosmosTreeTrunk_sdr_2048x858_25_8bit.y4m",
                    "DOTA2_1920x1080_60_8bit_420.y4m",
                    "EuroTruckSimulator2_1920x1080p60.y4m",

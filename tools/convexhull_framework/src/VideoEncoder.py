@@ -39,7 +39,7 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
            % (preset, framenum, clip.fmt, clip.fps_num, clip.fps_denom,
               clip.bit_depth, clip.bit_depth, clip.width, clip.height)
 
-    if CTC_VERSION == '2.0' or CTC_VERSION == '2.1':
+    if CTC_VERSION == '2.0' or CTC_VERSION == '3.0':
         args += " --qp=%d" % QP
     else:
         args += " --use-16bit-internal --cq-level=%d" % QP
