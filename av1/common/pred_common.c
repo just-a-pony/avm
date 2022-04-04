@@ -103,12 +103,15 @@ void av1_get_past_future_cur_ref_lists(AV1_COMMON *cm, RefScoreData *scores) {
   int n_past = 0;
   int n_cur = 0;
   for (int i = 0; i < cm->ref_frames_info.num_total_refs; i++) {
-    if (scores[i].distance < 0) {
-      cm->ref_frames_info.future_refs[n_future] = i;
-      n_future++;
-    } else if (scores[i].distance > 0) {
+    // If order hint is disabled, the scores and past/future information are
+    // not available to the decoder. Assume all references are from the past.
+    if (!cm->seq_params.order_hint_info.enable_order_hint ||
+        scores[i].distance > 0) {
       cm->ref_frames_info.past_refs[n_past] = i;
       n_past++;
+    } else if (scores[i].distance < 0) {
+      cm->ref_frames_info.future_refs[n_future] = i;
+      n_future++;
     } else {
       cm->ref_frames_info.cur_refs[n_cur] = i;
       n_cur++;
@@ -183,7 +186,11 @@ void av1_get_ref_frames(AV1_COMMON *cm, int cur_frame_disp,
       AOMMIN(n_ranked, cm->seq_params.max_reference_frames);
   for (int i = 0; i < cm->ref_frames_info.num_total_refs; i++) {
     cm->remapped_ref_idx[i] = scores[i].index;
-    cm->ref_frames_info.ref_frame_distance[i] = scores[i].distance;
+    // The distance is not available to the decoder when order_hint is disabled.
+    // In that case, set all distances to 1.
+    cm->ref_frames_info.ref_frame_distance[i] =
+        cm->seq_params.order_hint_info.enable_order_hint ? scores[i].distance
+                                                         : 1;
   }
 
   // Fill in RefFramesInfo struct according to computed mapping

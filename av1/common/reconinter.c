@@ -1788,7 +1788,7 @@ static void build_inter_predictors_8x8_and_bigger(
         mi->mode != GLOBAL_GLOBALMV &&
         mi->interinter_comp.type == COMPOUND_AVERAGE)) &&
       is_compound && is_opfl_refine_allowed(cm, mi);
-  assert(IMPLIES(mi->mode >= NEAR_NEARMV_OPTFLOW,
+  assert(IMPLIES(use_optflow_refinement,
                  cm->features.opfl_refine_type == REFINE_SWITCHABLE));
   assert(IMPLIES(use_optflow_refinement, !build_for_obmc));
 

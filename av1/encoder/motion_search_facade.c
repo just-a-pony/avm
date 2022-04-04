@@ -920,11 +920,7 @@ int_mv av1_simple_motion_search(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
   MB_MODE_INFO *mbmi = xd->mi[0];
   mbmi->sb_type[PLANE_TYPE_Y] = bsize;
   mbmi->ref_frame[0] = ref;
-#if CONFIG_NEW_REF_SIGNALING
-  mbmi->ref_frame[1] = INVALID_IDX;
-#else
   mbmi->ref_frame[1] = NONE_FRAME;
-#endif  // CONFIG_NEW_REF_SIGNALING
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   mbmi->interp_fltr = EIGHTTAP_REGULAR;
 
