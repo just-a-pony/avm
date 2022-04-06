@@ -5649,8 +5649,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           scores[i].score = i;
           int ref = cm->remapped_ref_idx[i];
           scores[i].distance = seq_params->order_hint_info.enable_order_hint
-                                   ? (current_frame->display_order_hint -
-                                      ref_frame_map_pairs[ref].disp_order)
+                                   ? ((int)current_frame->display_order_hint -
+                                      (int)ref_frame_map_pairs[ref].disp_order)
                                    : 1;
         }
         av1_get_past_future_cur_ref_lists(cm, scores);

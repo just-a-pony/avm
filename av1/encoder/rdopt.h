@@ -199,11 +199,13 @@ static INLINE int prune_ref_by_selective_ref_frame(
   const int n_refs = cm->ref_frames_info.num_total_refs;
 
   const int closest_past_idx = get_closest_past_ref_index(cm);
-  const int closest_past_dist =
-      cm->ref_frames_info.ref_frame_distance[closest_past_idx];
-  if (cm->ref_frames_info.num_past_refs == n_refs && closest_past_dist > 4 &&
-      (ref_frame[0] >= MAX_REFS_ARF || ref_frame[1] >= MAX_REFS_ARF))
-    return 1;
+  if (closest_past_idx != NONE_FRAME) {
+    const int closest_past_dist =
+        cm->ref_frames_info.ref_frame_distance[closest_past_idx];
+    if (cm->ref_frames_info.num_past_refs == n_refs && closest_past_dist > 4 &&
+        (ref_frame[0] >= MAX_REFS_ARF || ref_frame[1] >= MAX_REFS_ARF))
+      return 1;
+  }
 
   if (x != NULL) {
     if (sf->inter_sf.selective_ref_frame >= 2 ||

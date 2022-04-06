@@ -1586,15 +1586,20 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
   const RefCntBuffer *ref_buf[INTER_REFS_PER_FRAME];
 
 #if CONFIG_NEW_REF_SIGNALING
-  for (int i = 0; i < INTER_REFS_PER_FRAME; i++) ref_buf[i] = NULL;
+  for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+    ref_buf[i] = NULL;
+    cm->ref_frame_side[i] = 0;
+    cm->ref_frame_relative_dist[i] = 0;
+  }
   for (int index = 0; index < cm->ref_frames_info.num_past_refs; index++) {
     const int ref_frame = cm->ref_frames_info.past_refs[index];
     cm->ref_frame_side[ref_frame] = 0;
     const RefCntBuffer *const buf = get_ref_frame_buf(cm, ref_frame);
     ref_buf[ref_frame] = buf;
 #if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
-    cm->ref_frame_relative_dist[ref_frame] =
-        abs(cm->ref_frames_info.ref_frame_distance[ref_frame]);
+    const int relative_dist = get_relative_dist(
+        order_hint_info, buf->order_hint, cm->cur_frame->order_hint);
+    cm->ref_frame_relative_dist[ref_frame] = abs(relative_dist);
 #endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   }
   for (int index = 0; index < cm->ref_frames_info.num_future_refs; index++) {
@@ -1603,8 +1608,9 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
     const RefCntBuffer *const buf = get_ref_frame_buf(cm, ref_frame);
     ref_buf[ref_frame] = buf;
 #if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
-    cm->ref_frame_relative_dist[ref_frame] =
-        abs(cm->ref_frames_info.ref_frame_distance[ref_frame]);
+    const int relative_dist = get_relative_dist(
+        order_hint_info, buf->order_hint, cm->cur_frame->order_hint);
+    cm->ref_frame_relative_dist[ref_frame] = abs(relative_dist);
 #endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   }
   for (int index = 0; index < cm->ref_frames_info.num_cur_refs; index++) {
@@ -1613,8 +1619,9 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
     const RefCntBuffer *const buf = get_ref_frame_buf(cm, ref_frame);
     ref_buf[ref_frame] = buf;
 #if CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
-    cm->ref_frame_relative_dist[ref_frame] =
-        abs(cm->ref_frames_info.ref_frame_distance[ref_frame]);
+    const int relative_dist = get_relative_dist(
+        order_hint_info, buf->order_hint, cm->cur_frame->order_hint);
+    cm->ref_frame_relative_dist[ref_frame] = abs(relative_dist);
 #endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   }
 #else
