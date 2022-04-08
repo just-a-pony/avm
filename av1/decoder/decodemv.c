@@ -1745,7 +1745,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
   const int same_side = is_ref_frame_same_side(cm, mbmi);
   const int jmvd_base_ref_list = get_joint_mvd_base_ref_list(cm, mbmi);
   // check whether joint mvd is applied or not
-  if (has_second_ref(mbmi)) {
+  if (is_joint_mvd_coding_mode(mbmi->mode)) {
     first_ref_dist =
         cm->ref_frame_relative_dist[mbmi->ref_frame[jmvd_base_ref_list]];
     sec_ref_dist =
