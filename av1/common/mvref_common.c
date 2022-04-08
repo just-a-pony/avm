@@ -757,6 +757,20 @@ static AOM_INLINE bool check_rmb_cand(
 }
 #endif  // CONFIG_REF_MV_BANK
 
+#if CONFIG_BVP_IMPROVEMENT
+// Add a BV candidate to ref MV stack without duplicate check
+static AOM_INLINE bool add_to_ref_bv_list(CANDIDATE_MV cand_mv,
+                                          CANDIDATE_MV *ref_mv_stack,
+                                          uint16_t *ref_mv_weight,
+                                          uint8_t *refmv_count) {
+  ref_mv_stack[*refmv_count] = cand_mv;
+  ref_mv_weight[*refmv_count] = REF_CAT_LEVEL;
+  ++*refmv_count;
+
+  return true;
+}
+#endif  // CONFIG_BVP_IMPROVEMENT
+
 static AOM_INLINE void setup_ref_mv_list(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, MV_REFERENCE_FRAME ref_frame,
     uint8_t *const refmv_count,
@@ -1154,7 +1168,11 @@ static AOM_INLINE void setup_ref_mv_list(
 #if CONFIG_NEW_INTER_MODES
     // If there is extra space in the stack, copy the GLOBALMV vector into it.
     // This also guarantees the existence of at least one vector to search.
-    if (*refmv_count < MAX_REF_MV_STACK_SIZE) {
+    if (*refmv_count < MAX_REF_MV_STACK_SIZE
+#if CONFIG_BVP_IMPROVEMENT
+        && !xd->mi[0]->use_intrabc[xd->tree_type == CHROMA_PART]
+#endif  // CONFIG_BVP_IMPROVEMENT
+    ) {
       int stack_idx;
       for (stack_idx = 0; stack_idx < *refmv_count; ++stack_idx) {
         const int_mv stack_mv = ref_mv_stack[stack_idx].this_mv;
@@ -1179,7 +1197,11 @@ static AOM_INLINE void setup_ref_mv_list(
       AOMMIN(USABLE_REF_MV_STACK_SIZE, MAX_REF_MV_STACK_SIZE);
 #endif  // CONFIG_NEW_INTER_MODES
   // If open slots are available, fetch reference MVs from the ref mv banks.
-  if (*refmv_count < ref_mv_limit && ref_frame != INTRA_FRAME) {
+  if (*refmv_count < ref_mv_limit
+#if !CONFIG_BVP_IMPROVEMENT
+      && ref_frame != INTRA_FRAME
+#endif  // CONFIG_BVP_IMPROVEMENT
+  ) {
     const REF_MV_BANK *ref_mv_bank = xd->ref_mv_bank_pt;
     const CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[ref_frame];
     const int count = ref_mv_bank->rmb_count[ref_frame];
@@ -1208,6 +1230,33 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // !CONFIG_NEW_INTER_MODES
   }
 #endif  // CONFIG_REF_MV_BANK
+
+#if CONFIG_BVP_IMPROVEMENT
+  // If there are open slots in reference BV candidate list
+  // fetch reference BVs from the default BVPs
+  if (xd->mi[0]->use_intrabc[xd->tree_type == CHROMA_PART]) {
+    const int w = xd->width;
+    const int h = xd->height;
+
+    const int default_ref_bv_list[MAX_REF_BV_STACK_SIZE][2] = {
+      { 0, -128 },
+      { -128 - INTRABC_DELAY_PIXELS, 0 },
+      { 0, -h },
+      { -w, 0 },
+    };
+
+    for (int i = 0; i < MAX_REF_BV_STACK_SIZE; ++i) {
+      if (*refmv_count >= MAX_REF_BV_STACK_SIZE) break;
+      CANDIDATE_MV tmp_mv;
+      tmp_mv.this_mv.as_mv.col =
+          (int16_t)GET_MV_SUBPEL(default_ref_bv_list[i][0]);
+      tmp_mv.this_mv.as_mv.row =
+          (int16_t)GET_MV_SUBPEL(default_ref_bv_list[i][1]);
+      tmp_mv.comp_mv.as_int = 0;
+      add_to_ref_bv_list(tmp_mv, ref_mv_stack, ref_mv_weight, refmv_count);
+    }
+  }
+#endif  // CONFIG_BVP_IMPROVEMENT
 }
 
 void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,

@@ -710,6 +710,21 @@ int main(int argc, const char **argv) {
       &fc.intrabc[0], probsfile, 1, cts_each_dim,
       "static const aom_cdf_prob default_intrabc_cdf[CDF_SIZE(2)]");
 
+#if CONFIG_BVP_IMPROVEMENT
+  /* intrabc mode flag*/
+  cts_each_dim[0] = 2;
+  optimize_cdf_table(&fc.intrabc_mode[0], probsfile, 1, cts_each_dim,
+                     "static const aom_cdf_prob "
+                     "default_intrabc_mode_cdf[CDF_SIZE(2)]");
+
+  /* intrabc drl index*/
+  cts_each_dim[0] = MAX_REF_BV_STACK_SIZE - 1;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(&fc.intrabc_drl_idx[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob default_intrabc_drl_idx_cdf"
+                     "[MAX_REF_BV_STACK_SIZE - 1][CDF_SIZE(2)]");
+#endif
+
   /* filter_intra experiment */
   cts_each_dim[0] = FILTER_INTRA_MODES;
   optimize_cdf_table(

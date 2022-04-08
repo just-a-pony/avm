@@ -476,6 +476,15 @@ typedef struct MB_MODE_INFO {
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
   /*! \brief Whether intrabc is used. */
   uint8_t use_intrabc[PARTITION_STRUCTURE_NUM];
+#if CONFIG_BVP_IMPROVEMENT
+  /*! \brief Intrabc BV prediction mode. */
+  uint8_t intrabc_mode;
+  /*! \brief Index of ref_bv. */
+  uint8_t intrabc_drl_idx;
+  /*! \brief Which ref_bv to use. */
+  int_mv ref_bv;
+#endif  // CONFIG_BVP_IMPROVEMENT
+
   /*! \brief Indicates if masked compound is used(1) or not (0). */
   uint8_t comp_group_idx : 1;
   /*! \brief Whether to use interintra wedge */

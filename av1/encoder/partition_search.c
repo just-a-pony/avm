@@ -490,12 +490,12 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
         ++x->txfm_search_info.txb_split_count;
     }
 #if CONFIG_REF_MV_BANK
-#if CONFIG_IBC_SR_EXT
+#if CONFIG_IBC_SR_EXT && !CONFIG_BVP_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank && is_inter &&
         !is_intrabc_block(mbmi, xd->tree_type))
 #else
     if (cm->seq_params.enable_refmvbank && is_inter)
-#endif  // CONFIG_IBC_SR_EXT
+#endif  // CONFIG_IBC_SR_EXT && !CONFIG_BVP_IMPROVEMENT
       av1_update_ref_mv_bank(cm, xd, mbmi);
 #endif  // CONFIG_REF_MV_BANK
   }
@@ -860,6 +860,27 @@ static void update_drl_index_stats(int max_drl_bits, const int16_t mode_ctx,
 }
 #endif  // CONFIG_NEW_INTER_MODES
 
+#if CONFIG_BVP_IMPROVEMENT
+static void update_intrabc_drl_idx_stats(int max_ref_bv_num, FRAME_CONTEXT *fc,
+                                         FRAME_COUNTS *counts,
+                                         const MB_MODE_INFO *mbmi) {
+#if !CONFIG_ENTROPY_STATS
+  (void)counts;
+#endif  // !CONFIG_ENTROPY_STATS
+  assert(mbmi->intrabc_drl_idx < max_ref_bv_num);
+  int bit_cnt = 0;
+  for (int idx = 0; idx < max_ref_bv_num - 1; ++idx) {
+#if CONFIG_ENTROPY_STATS
+    counts->intrabc_drl_idx[bit_cnt][mbmi->intrabc_drl_idx != idx]++;
+#endif  // CONFIG_ENTROPY_STATS
+    update_cdf(fc->intrabc_drl_idx_cdf[bit_cnt], mbmi->intrabc_drl_idx != idx,
+               2);
+    if (mbmi->intrabc_drl_idx == idx) break;
+    ++bit_cnt;
+  }
+}
+#endif  // CONFIG_BVP_IMPROVEMENT
+
 static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   MACROBLOCK *x = &td->mb;
   MACROBLOCKD *const xd = &x->e_mbd;
@@ -951,6 +972,15 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   }
   if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
     update_cdf(fc->intrabc_cdf, is_intrabc_block(mbmi, xd->tree_type), 2);
+#if CONFIG_BVP_IMPROVEMENT
+    if (is_intrabc_block(mbmi, xd->tree_type)) {
+      update_cdf(fc->intrabc_mode_cdf, mbmi->intrabc_mode, 2);
+#if CONFIG_ENTROPY_STATS
+      ++td->counts->intrabc_mode[mbmi->intrabc_mode];
+#endif  // CONFIG_ENTROPY_STATS
+      update_intrabc_drl_idx_stats(MAX_REF_BV_STACK_SIZE, fc, td->counts, mbmi);
+    }
+#endif  // CONFIG_BVP_IMPROVEMENT
 #if CONFIG_ENTROPY_STATS
     ++td->counts->intrabc[is_intrabc_block(mbmi, xd->tree_type)];
 #endif  // CONFIG_ENTROPY_STATS

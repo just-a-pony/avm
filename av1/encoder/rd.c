@@ -290,6 +290,14 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
 
 #endif  // !CONFIG_AIMC
   av1_cost_tokens_from_cdf(mode_costs->intrabc_cost, fc->intrabc_cdf, NULL);
+#if CONFIG_BVP_IMPROVEMENT
+  av1_cost_tokens_from_cdf(mode_costs->intrabc_mode_cost, fc->intrabc_mode_cdf,
+                           NULL);
+  for (i = 0; i < MAX_REF_BV_STACK_SIZE - 1; ++i) {
+    av1_cost_tokens_from_cdf(mode_costs->intrabc_drl_idx_cost[i],
+                             fc->intrabc_drl_idx_cdf[i], NULL);
+  }
+#endif  // CONFIG_BVP_IMPROVEMENT
 
 #if CONFIG_IST
   for (i = 0; i < TX_SIZES; ++i) {

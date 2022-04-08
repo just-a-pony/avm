@@ -184,6 +184,7 @@ set_aom_config_var(
   CONFIG_IST_FIX_B098 1
   "AV2 experiment flag to enable IST SIMD fix and further encoder updates.")
 set_aom_config_var(CONFIG_IBC_SR_EXT 1 "Enables IntraBC search range extension")
+set_aom_config_var(CONFIG_BVP_IMPROVEMENT 1 "Enables BVP improvements")
 set_aom_config_var(CONFIG_CCSO_EXT 1
                    "AV2 experiment flag to enable extended CCSO.")
 set_aom_config_var(CONFIG_ADAPTIVE_MVD 1 "Enable adaptive MVD resolution")

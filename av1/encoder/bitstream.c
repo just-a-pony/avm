@@ -1849,6 +1849,26 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   }
 }
 
+#if CONFIG_BVP_IMPROVEMENT
+static void write_intrabc_drl_idx(int max_ref_bv_num, FRAME_CONTEXT *ec_ctx,
+                                  const MB_MODE_INFO *mbmi,
+                                  const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
+                                  aom_writer *w) {
+  assert(!mbmi->skip_mode);
+  assert(mbmi->intrabc_drl_idx < mbmi_ext_frame->ref_mv_count);
+  assert(mbmi->intrabc_drl_idx < max_ref_bv_num);
+  (void)mbmi_ext_frame;
+
+  int bit_cnt = 0;
+  for (int idx = 0; idx < max_ref_bv_num - 1; ++idx) {
+    aom_write_symbol(w, mbmi->intrabc_drl_idx != idx,
+                     ec_ctx->intrabc_drl_idx_cdf[bit_cnt], 2);
+    if (mbmi->intrabc_drl_idx == idx) break;
+    ++bit_cnt;
+  }
+}
+#endif  // CONFIG_BVP_IMPROVEMENT
+
 static AOM_INLINE void write_intrabc_info(
     MACROBLOCKD *xd, const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
     aom_writer *w) {
@@ -1861,7 +1881,17 @@ static AOM_INLINE void write_intrabc_info(
     assert(mbmi->mode == DC_PRED);
     assert(mbmi->motion_mode == SIMPLE_TRANSLATION);
     int_mv dv_ref = mbmi_ext_frame->ref_mv_stack[0].this_mv;
+
+#if CONFIG_BVP_IMPROVEMENT
+    aom_write_symbol(w, mbmi->intrabc_mode, ec_ctx->intrabc_mode_cdf, 2);
+    write_intrabc_drl_idx(MAX_REF_BV_STACK_SIZE, ec_ctx, mbmi, mbmi_ext_frame,
+                          w);
+
+    if (!mbmi->intrabc_mode)
+      av1_encode_dv(w, &mbmi->mv[0].as_mv, &dv_ref.as_mv, &ec_ctx->ndvc);
+#else
     av1_encode_dv(w, &mbmi->mv[0].as_mv, &dv_ref.as_mv, &ec_ctx->ndvc);
+#endif  // CONFIG_BVP_IMPROVEMENT
   }
 }
 
@@ -3917,6 +3947,11 @@ static AOM_INLINE void write_uncompressed_header_obu(
       if (features->allow_global_intrabc) {
         aom_wb_write_bit(wb, features->allow_local_intrabc);
       }
+#if CONFIG_BVP_IMPROVEMENT
+      aom_wb_write_primitive_quniform(
+          wb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1,
+          features->max_drl_bits - MIN_MAX_DRL_BITS);
+#endif  // CONFIG_BVP_IMPROVEMENT
     }
 #endif  // CONFIG_IBC_SR_EXT
   } else {
@@ -3931,6 +3966,11 @@ static AOM_INLINE void write_uncompressed_header_obu(
         if (features->allow_global_intrabc) {
           aom_wb_write_bit(wb, features->allow_local_intrabc);
         }
+#if CONFIG_BVP_IMPROVEMENT
+        aom_wb_write_primitive_quniform(
+            wb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1,
+            features->max_drl_bits - MIN_MAX_DRL_BITS);
+#endif  // CONFIG_BVP_IMPROVEMENT
       }
 #endif  // CONFIG_IBC_SR_EXT
     } else if (current_frame->frame_type == INTER_FRAME ||

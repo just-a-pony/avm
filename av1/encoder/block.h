@@ -664,6 +664,12 @@ typedef struct {
   /**@{*/
   //! intrabc_cost
   int intrabc_cost[2];
+#if CONFIG_BVP_IMPROVEMENT
+  //! intrabc_mode_cost
+  int intrabc_mode_cost[2];
+  //! intrabc_drl_idx_cost
+  int intrabc_drl_idx_cost[MAX_REF_BV_STACK_SIZE - 1][2];
+#endif  // CONFIG_BVP_IMPROVEMENT
 
   //! palette_y_size_cost
   int palette_y_size_cost[PALATTE_BSIZE_CTXS][PALETTE_SIZES];

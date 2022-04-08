@@ -1264,7 +1264,10 @@ typedef struct FRAME_COUNTS {
   unsigned int comp_bwdref[REF_CONTEXTS][BWD_REFS - 1][2];
 #endif  // CONFIG_NEW_REF_SIGNALING
   unsigned int intrabc[2];
-
+#if CONFIG_BVP_IMPROVEMENT
+  unsigned int intrabc_mode[2];
+  unsigned int intrabc_drl_idx[MAX_REF_BV_STACK_SIZE - 1][2];
+#endif
 #if CONFIG_NEW_TX_PARTITION
   unsigned int intra_4way_txfm_partition[2][TX_SIZE_CONTEXTS][4];
   unsigned int intra_2way_txfm_partition[2];
