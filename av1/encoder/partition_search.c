@@ -1873,8 +1873,10 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
       break;
     case PARTITION_HORZ:
       for (int i = 0; i < SUB_PARTITIONS_RECT; ++i) {
-        pc_tree->horizontal[i] =
-            av1_alloc_pmc(cm, subsize, &td->shared_coeff_buf);
+        if (pc_tree->horizontal[i] == NULL) {
+          pc_tree->horizontal[i] =
+              av1_alloc_pmc(cm, subsize, &td->shared_coeff_buf);
+        }
       }
       pick_sb_modes(cpi, tile_data, x, mi_row, mi_col, &last_part_rdc,
                     PARTITION_HORZ, subsize, pc_tree->horizontal[0],
@@ -1901,8 +1903,10 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
       break;
     case PARTITION_VERT:
       for (int i = 0; i < SUB_PARTITIONS_RECT; ++i) {
-        pc_tree->vertical[i] =
-            av1_alloc_pmc(cm, subsize, &td->shared_coeff_buf);
+        if (pc_tree->vertical[i] == NULL) {
+          pc_tree->vertical[i] =
+              av1_alloc_pmc(cm, subsize, &td->shared_coeff_buf);
+        }
       }
       pick_sb_modes(cpi, tile_data, x, mi_row, mi_col, &last_part_rdc,
                     PARTITION_VERT, subsize, pc_tree->vertical[0], invalid_rdc);
@@ -2597,8 +2601,9 @@ static void ab_partitions_search(
     blk_params.subsize = get_partition_subsize(bsize, part_type);
     for (int i = 0; i < SUB_PARTITIONS_AB; i++) {
       // Set AB partition context.
-      cur_part_ctxs[ab_part_type][i] =
-          av1_alloc_pmc(cm, ab_subsize[ab_part_type][i], &td->shared_coeff_buf);
+      if (cur_part_ctxs[ab_part_type][i] == NULL)
+        cur_part_ctxs[ab_part_type][i] = av1_alloc_pmc(
+            cm, ab_subsize[ab_part_type][i], &td->shared_coeff_buf);
       // Set mode as not ready.
       cur_part_ctxs[ab_part_type][i]->rd_mode_is_ready = 0;
     }
@@ -2648,8 +2653,10 @@ static void set_4_part_ctx_and_rdcost(
       part_search_state->partition_cost[partition_type];
   part_search_state->sum_rdc.rdcost =
       RDCOST(x->rdmult, part_search_state->sum_rdc.rate, 0);
-  for (PART4_TYPES i = 0; i < SUB_PARTITIONS_PART4; ++i)
-    cur_part_ctx[i] = av1_alloc_pmc(cm, subsize, &td->shared_coeff_buf);
+  for (PART4_TYPES i = 0; i < SUB_PARTITIONS_PART4; ++i) {
+    if (cur_part_ctx[i] == NULL)
+      cur_part_ctx[i] = av1_alloc_pmc(cm, subsize, &td->shared_coeff_buf);
+  }
 }
 
 // Partition search of HORZ4 / VERT4 partition types.
