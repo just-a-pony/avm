@@ -58,6 +58,9 @@
 #include "av1/common/seg_common.h"
 #include "av1/common/thread_common.h"
 #include "av1/common/tile_common.h"
+#if CONFIG_TIP
+#include "av1/common/tip.h"
+#endif  // CONFIG_TIP
 #include "av1/common/warped_motion.h"
 #include "av1/common/obmc.h"
 #include "av1/decoder/decodeframe.h"
@@ -414,36 +417,6 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                        num_planes);
 }
 
-static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
-                                         DecoderCodingBlock *dcb, int mi_row,
-                                         int mi_col, aom_reader *r,
-                                         PARTITION_TYPE partition,
-                                         BLOCK_SIZE bsize) {
-  AV1_COMMON *const cm = &pbi->common;
-  const SequenceHeader *const seq_params = &cm->seq_params;
-  const int bw = mi_size_wide[bsize];
-  const int bh = mi_size_high[bsize];
-  const int x_mis = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
-  const int y_mis = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
-  MACROBLOCKD *const xd = &dcb->xd;
-
-#if CONFIG_ACCOUNTING
-  aom_accounting_set_context(&pbi->accounting, mi_col, mi_row);
-#endif
-  set_offsets(cm, xd, bsize, mi_row, mi_col, bw, bh, x_mis, y_mis);
-  xd->mi[0]->partition = partition;
-  av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
-  if (bsize >= BLOCK_8X8 &&
-      (seq_params->subsampling_x || seq_params->subsampling_y)) {
-    const BLOCK_SIZE uv_subsize =
-        ss_size_lookup[bsize][seq_params->subsampling_x]
-                      [seq_params->subsampling_y];
-    if (uv_subsize == BLOCK_INVALID)
-      aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
-                         "Invalid block size.");
-  }
-}
-
 typedef struct PadBlock {
   int x0;
   int x1;
@@ -536,7 +509,7 @@ static INLINE int update_extend_mc_border_params(
 
   // Do border extension if there is motion or
   // width/height is not a multiple of 8 pixels.
-#if CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
   // Extension is needed in optical flow refinement to obtain MV offsets
   (void)scaled_mv;
   if (!is_intrabc && !do_warp) {
@@ -545,7 +518,7 @@ static INLINE int update_extend_mc_border_params(
   if ((!is_intrabc) && (!do_warp) &&
       (is_scaled || scaled_mv.col || scaled_mv.row || (frame_width & 0x7) ||
        (frame_height & 0x7))) {
-#endif  // CONFIG_OPTFLOW_REFINEMENT
+#endif  // CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
     if (subpel_x_mv || (sf->x_step_q4 != SUBPEL_SHIFTS)) {
       block->x0 -= AOM_INTERP_EXTEND - 1;
       block->x1 += AOM_INTERP_EXTEND;
@@ -744,6 +717,221 @@ static void dec_calc_subpel_params_and_extend(
       scaled_mv, block, subpel_x_mv, subpel_y_mv,
       inter_pred_params->mode == WARP_PRED, inter_pred_params->is_intrabc,
       inter_pred_params->use_hbd_buf, mc_buf[ref], pre, src_stride);
+}
+
+#if CONFIG_TIP
+static AOM_INLINE void tip_dec_calc_subpel_params(
+    const MV *const src_mv, InterPredParams *const inter_pred_params, int mi_x,
+    int mi_y, uint8_t **pre, SubpelParams *subpel_params, int *src_stride,
+    PadBlock *block, MV32 *scaled_mv, int *subpel_x_mv, int *subpel_y_mv) {
+  const struct scale_factors *sf = inter_pred_params->scale_factors;
+  struct buf_2d *pre_buf = &inter_pred_params->ref_frame_buf;
+  const int bw = inter_pred_params->block_width;
+  const int bh = inter_pred_params->block_height;
+  const int is_scaled = av1_is_scaled(sf);
+  if (is_scaled) {
+    const int ssx = inter_pred_params->subsampling_x;
+    const int ssy = inter_pred_params->subsampling_y;
+    int orig_pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
+    orig_pos_y += src_mv->row * (1 << (1 - ssy));
+    int orig_pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
+    orig_pos_x += src_mv->col * (1 << (1 - ssx));
+    int pos_y = sf->scale_value_y(orig_pos_y, sf);
+    int pos_x = sf->scale_value_x(orig_pos_x, sf);
+    pos_x += SCALE_EXTRA_OFF;
+    pos_y += SCALE_EXTRA_OFF;
+
+    const int top = -AOM_LEFT_TOP_MARGIN_SCALED(ssy);
+    const int left = -AOM_LEFT_TOP_MARGIN_SCALED(ssx);
+    const int bottom = (pre_buf->height + AOM_INTERP_EXTEND)
+                       << SCALE_SUBPEL_BITS;
+    const int right = (pre_buf->width + AOM_INTERP_EXTEND) << SCALE_SUBPEL_BITS;
+    pos_y = clamp(pos_y, top, bottom);
+    pos_x = clamp(pos_x, left, right);
+
+    subpel_params->subpel_x = pos_x & SCALE_SUBPEL_MASK;
+    subpel_params->subpel_y = pos_y & SCALE_SUBPEL_MASK;
+    subpel_params->xs = sf->x_step_q4;
+    subpel_params->ys = sf->y_step_q4;
+
+    // Get reference block top left coordinate.
+    block->x0 = pos_x >> SCALE_SUBPEL_BITS;
+    block->y0 = pos_y >> SCALE_SUBPEL_BITS;
+
+    // Get reference block bottom right coordinate.
+    block->x1 =
+        ((pos_x + (bw - 1) * subpel_params->xs) >> SCALE_SUBPEL_BITS) + 1;
+    block->y1 =
+        ((pos_y + (bh - 1) * subpel_params->ys) >> SCALE_SUBPEL_BITS) + 1;
+
+    MV temp_mv;
+    temp_mv = tip_clamp_mv_to_umv_border_sb(inter_pred_params, src_mv, bw, bh,
+                                            inter_pred_params->subsampling_x,
+                                            inter_pred_params->subsampling_y);
+    *scaled_mv = av1_scale_mv(&temp_mv, mi_x, mi_y, sf);
+    scaled_mv->row += SCALE_EXTRA_OFF;
+    scaled_mv->col += SCALE_EXTRA_OFF;
+
+    *subpel_x_mv = scaled_mv->col & SCALE_SUBPEL_MASK;
+    *subpel_y_mv = scaled_mv->row & SCALE_SUBPEL_MASK;
+  } else {
+    // Get block position in current frame.
+    int pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
+    int pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
+
+    const MV mv_q4 = tip_clamp_mv_to_umv_border_sb(
+        inter_pred_params, src_mv, bw, bh, inter_pred_params->subsampling_x,
+        inter_pred_params->subsampling_y);
+    subpel_params->xs = subpel_params->ys = SCALE_SUBPEL_SHIFTS;
+    subpel_params->subpel_x = (mv_q4.col & SUBPEL_MASK) << SCALE_EXTRA_BITS;
+    subpel_params->subpel_y = (mv_q4.row & SUBPEL_MASK) << SCALE_EXTRA_BITS;
+
+    // Get reference block top left coordinate.
+    pos_x += mv_q4.col;
+    pos_y += mv_q4.row;
+    pos_x = (pos_x >> SUBPEL_BITS);
+    pos_y = (pos_y >> SUBPEL_BITS);
+    block->x0 = pos_x;
+    block->y0 = pos_y;
+
+    // Get reference block bottom right coordinate.
+    block->x1 = pos_x + bw;
+    block->y1 = pos_y + bh;
+
+    scaled_mv->row = mv_q4.row;
+    scaled_mv->col = mv_q4.col;
+    *subpel_x_mv = scaled_mv->col & SUBPEL_MASK;
+    *subpel_y_mv = scaled_mv->row & SUBPEL_MASK;
+  }
+  *pre = pre_buf->buf0 + block->y0 * pre_buf->stride + block->x0;
+  *src_stride = pre_buf->stride;
+}
+
+static void tip_dec_calc_subpel_params_and_extend(
+    const MV *const src_mv, InterPredParams *const inter_pred_params,
+    MACROBLOCKD *const xd, int mi_x, int mi_y, int ref,
+#if CONFIG_OPTFLOW_REFINEMENT
+    int use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+    uint8_t **mc_buf, uint8_t **pre, SubpelParams *subpel_params,
+    int *src_stride) {
+  (void)xd;
+#if CONFIG_OPTFLOW_REFINEMENT
+  (void)use_optflow_refinement;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+  PadBlock block;
+  MV32 scaled_mv;
+  int subpel_x_mv, subpel_y_mv;
+  tip_dec_calc_subpel_params(src_mv, inter_pred_params, mi_x, mi_y, pre,
+                             subpel_params, src_stride, &block, &scaled_mv,
+                             &subpel_x_mv, &subpel_y_mv);
+  extend_mc_border(
+      inter_pred_params->scale_factors, &inter_pred_params->ref_frame_buf,
+      scaled_mv, block, subpel_x_mv, subpel_y_mv,
+      inter_pred_params->mode == WARP_PRED, inter_pred_params->is_intrabc,
+      inter_pred_params->use_hbd_buf, mc_buf[ref], pre, src_stride);
+}
+
+static void av1_dec_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd,
+                                    uint8_t **mc_buf,
+                                    CONV_BUF_TYPE *tmp_conv_dst) {
+  av1_setup_tip_motion_field(cm, 0);
+
+  av1_setup_tip_frame(cm, xd, mc_buf, tmp_conv_dst,
+                      tip_dec_calc_subpel_params_and_extend);
+}
+
+static void av1_dec_tip_on_the_fly(AV1_COMMON *cm, MACROBLOCKD *xd,
+                                   uint8_t **mc_buf, CONV_BUF_TYPE *conv_dst) {
+  const MV *mv = &xd->mi[0]->mv[0].as_mv;
+  const int mvs_rows =
+      ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
+  const int mvs_cols =
+      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+
+  const int mi_row = xd->mi_row;
+  const int mi_col = xd->mi_col;
+  const int x_mis = xd->width;
+  const int y_mis = xd->height;
+
+  const int bw = (x_mis << MI_SIZE_LOG2);
+  const int bh = (y_mis << MI_SIZE_LOG2);
+  int pixel_row = (mi_row << MI_SIZE_LOG2);
+  int pixel_col = (mi_col << MI_SIZE_LOG2);
+
+  FULLPEL_MV start_mv = get_fullmv_from_mv(mv);
+
+  pixel_row += start_mv.row;
+  pixel_col += start_mv.col;
+  pixel_row = AOMMAX(0, pixel_row);
+  pixel_col = AOMMAX(0, pixel_col);
+  int end_pixel_row = pixel_row + bh;
+  int end_pixel_col = pixel_col + bw;
+
+  int tpl_start_row = pixel_row >> TMVP_MI_SZ_LOG2;
+  int tpl_end_row = (end_pixel_row + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
+  int tpl_start_col = pixel_col >> TMVP_MI_SZ_LOG2;
+  int tpl_end_col = (end_pixel_col + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
+
+  const int extra_order = 1;
+  if (mv->row != 0) {
+    tpl_start_row = AOMMAX(0, tpl_start_row - extra_order);
+    tpl_end_row = AOMMIN(mvs_rows, tpl_end_row + extra_order);
+  }
+
+  if (mv->col != 0) {
+    tpl_start_col = AOMMAX(0, tpl_start_col - extra_order);
+    tpl_end_col = AOMMIN(mvs_cols, tpl_end_col + extra_order);
+  }
+
+  tpl_start_row = (tpl_start_row >> 1) << 1;
+  tpl_start_col = (tpl_start_col >> 1) << 1;
+  tpl_end_row = ((tpl_end_row + 1) >> 1) << 1;
+  tpl_end_col = ((tpl_end_col + 1) >> 1) << 1;
+  tpl_end_row = AOMMIN(mvs_rows, tpl_end_row);
+  tpl_end_col = AOMMIN(mvs_cols, tpl_end_col);
+
+  av1_setup_tip_on_the_fly(cm, xd, tpl_start_row, tpl_start_col, tpl_end_row,
+                           tpl_end_col, mvs_cols, mc_buf, conv_dst,
+                           tip_dec_calc_subpel_params_and_extend);
+}
+#endif  // CONFIG_TIP
+
+static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
+                                         DecoderCodingBlock *dcb, int mi_row,
+                                         int mi_col, aom_reader *r,
+                                         PARTITION_TYPE partition,
+                                         BLOCK_SIZE bsize) {
+  AV1_COMMON *const cm = &pbi->common;
+  const SequenceHeader *const seq_params = &cm->seq_params;
+  const int bw = mi_size_wide[bsize];
+  const int bh = mi_size_high[bsize];
+  const int x_mis = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
+  const int y_mis = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
+  MACROBLOCKD *const xd = &dcb->xd;
+
+#if CONFIG_ACCOUNTING
+  aom_accounting_set_context(&pbi->accounting, mi_col, mi_row);
+#endif
+  set_offsets(cm, xd, bsize, mi_row, mi_col, bw, bh, x_mis, y_mis);
+  xd->mi[0]->partition = partition;
+  av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
+  if (bsize >= BLOCK_8X8 &&
+      (seq_params->subsampling_x || seq_params->subsampling_y)) {
+    const BLOCK_SIZE uv_subsize =
+        ss_size_lookup[bsize][seq_params->subsampling_x]
+                      [seq_params->subsampling_y];
+    if (uv_subsize == BLOCK_INVALID)
+      aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
+                         "Invalid block size.");
+  }
+
+#if CONFIG_TIP
+  if (cm->features.tip_frame_mode == TIP_FRAME_AS_REF &&
+      is_tip_ref_frame(xd->mi[0]->ref_frame[0])) {
+    av1_dec_tip_on_the_fly(cm, xd, pbi->td.mc_buf, pbi->td.tmp_conv_dst);
+  }
+#endif  // CONFIG_TIP
 }
 
 static void dec_build_inter_predictors(const AV1_COMMON *cm,
@@ -2062,7 +2250,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
 
   if (cm->prev_frame) {
     // write deltas to frame buffer
-    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, REF_FRAMES);
+    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, SINGLE_REF_FRAMES);
     memcpy(lf->mode_deltas, cm->prev_frame->mode_deltas, MAX_MODE_LF_DELTAS);
   } else {
     av1_set_default_ref_deltas(lf->ref_deltas);
@@ -2217,7 +2405,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
   assert(!cm->features.coded_lossless);
   if (cm->prev_frame) {
     // write deltas to frame buffer
-    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, REF_FRAMES);
+    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, SINGLE_REF_FRAMES);
     memcpy(lf->mode_deltas, cm->prev_frame->mode_deltas, MAX_MODE_LF_DELTAS);
   } else {
     av1_set_default_ref_deltas(lf->ref_deltas);
@@ -2241,7 +2429,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
   if (lf->mode_ref_delta_enabled) {
     lf->mode_ref_delta_update = aom_rb_read_bit(rb);
     if (lf->mode_ref_delta_update) {
-      for (int i = 0; i < REF_FRAMES; i++)
+      for (int i = 0; i < SINGLE_REF_FRAMES; i++)
         if (aom_rb_read_bit(rb))
           lf->ref_deltas[i] = aom_rb_read_inv_signed_literal(rb, 6);
 
@@ -2252,7 +2440,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
   }
 
   // write deltas to frame buffer
-  memcpy(cm->cur_frame->ref_deltas, lf->ref_deltas, REF_FRAMES);
+  memcpy(cm->cur_frame->ref_deltas, lf->ref_deltas, SINGLE_REF_FRAMES);
   memcpy(cm->cur_frame->mode_deltas, lf->mode_deltas, MAX_MODE_LF_DELTAS);
 }
 #endif  // CONFIG_NEW_DF
@@ -2511,6 +2699,32 @@ static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
   cm->cur_frame->buf.render_width = cm->render_width;
   cm->cur_frame->buf.render_height = cm->render_height;
 }
+
+#if CONFIG_TIP
+static AOM_INLINE void setup_tip_frame_size(AV1_COMMON *cm) {
+  const SequenceHeader *const seq_params = &cm->seq_params;
+  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+  if (aom_realloc_frame_buffer(
+          tip_frame_buf, cm->width, cm->height, seq_params->subsampling_x,
+          seq_params->subsampling_y, seq_params->use_highbitdepth,
+          AOM_DEC_BORDER_IN_PIXELS, cm->features.byte_alignment, NULL, NULL,
+          NULL)) {
+    aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
+                       "Failed to allocate frame buffer");
+  }
+
+  tip_frame_buf->bit_depth = (unsigned int)seq_params->bit_depth;
+  tip_frame_buf->color_primaries = seq_params->color_primaries;
+  tip_frame_buf->transfer_characteristics =
+      seq_params->transfer_characteristics;
+  tip_frame_buf->matrix_coefficients = seq_params->matrix_coefficients;
+  tip_frame_buf->monochrome = seq_params->monochrome;
+  tip_frame_buf->chroma_sample_position = seq_params->chroma_sample_position;
+  tip_frame_buf->color_range = seq_params->color_range;
+  tip_frame_buf->render_width = cm->render_width;
+  tip_frame_buf->render_height = cm->render_height;
+}
+#endif  // CONFIG_TIP
 
 static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
                                         int frame_size_override_flag,
@@ -4879,6 +5093,14 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
   seq_params->enable_ist = aom_rb_read_bit(rb);
 #endif
   seq_params->enable_mrls = aom_rb_read_bit(rb);
+#if CONFIG_TIP
+  seq_params->enable_tip = aom_rb_read_literal(rb, 2);
+  if (seq_params->enable_tip) {
+    seq_params->enable_tip_hole_fill = aom_rb_read_bit(rb);
+  } else {
+    seq_params->enable_tip_hole_fill = 0;
+  }
+#endif  // CONFIG_TIP
 #if CONFIG_FORWARDSKIP
   seq_params->enable_fsc = aom_rb_read_bit(rb);
 #endif  // CONFIG_FORWARDSKIP
@@ -5056,7 +5278,6 @@ static AOM_INLINE void show_existing_frame_reset(AV1Decoder *const pbi,
   assert(cm->show_existing_frame);
 
   cm->current_frame.frame_type = KEY_FRAME;
-
   cm->current_frame.refresh_frame_flags = (1 << REF_FRAMES) - 1;
 
   for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
@@ -5508,6 +5729,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     cm->current_frame.pyramid_level = 1;
     setup_frame_size(cm, frame_size_override_flag, rb);
 
+#if CONFIG_TIP
+    setup_tip_frame_size(cm);
+#endif  // CONFIG_TIP
+
     if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
       features->allow_intrabc = aom_rb_read_bit(rb);
 #if CONFIG_IBC_SR_EXT
@@ -5523,11 +5748,17 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif  // CONFIG_BVP_IMPROVEMENT
     }
 #endif  // CONFIG_IBC_SR_EXT
+
     features->allow_ref_frame_mvs = 0;
+#if CONFIG_TIP
+    features->tip_frame_mode = TIP_FRAME_DISABLED;
+#endif  // CONFIG_TIP
     cm->prev_frame = NULL;
   } else {
     features->allow_ref_frame_mvs = 0;
-
+#if CONFIG_TIP
+    features->tip_frame_mode = TIP_FRAME_DISABLED;
+#endif  // CONFIG_TIP
     if (current_frame->frame_type == INTRA_ONLY_FRAME) {
       cm->cur_frame->film_grain_params_present =
           seq_params->film_grain_params_present;
@@ -5720,6 +5951,24 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       else
         features->allow_ref_frame_mvs = 0;
 
+#if CONFIG_TIP
+      if (cm->seq_params.enable_tip) {
+        features->tip_frame_mode = aom_rb_read_literal(rb, 2);
+        if (features->tip_frame_mode >= TIP_FRAME_MODES) {
+          aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                             "Invalid TIP mode.");
+        }
+
+        if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {
+          features->allow_tip_hole_fill = aom_rb_read_bit(rb);
+        } else {
+          features->allow_tip_hole_fill = false;
+        }
+      } else {
+        features->tip_frame_mode = TIP_FRAME_DISABLED;
+      }
+#endif  // CONFIG_TIP
+
 #if CONFIG_NEW_REF_SIGNALING
       for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
         const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, i);
@@ -5737,6 +5986,20 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
                              "Reference frame has invalid dimensions");
       }
+
+#if CONFIG_TIP
+      const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, TIP_FRAME);
+      if (ref_buf) {
+        struct scale_factors *const ref_scale_factors =
+            get_ref_scale_factors(cm, TIP_FRAME);
+        av1_setup_scale_factors_for_frame(
+            ref_scale_factors, ref_buf->buf.y_crop_width,
+            ref_buf->buf.y_crop_height, cm->width, cm->height);
+        if ((!av1_is_valid_scale(ref_scale_factors)))
+          aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                             "Reference frame has invalid dimensions");
+      }
+#endif  // CONFIG_TIP
     }
   }
 
@@ -5770,13 +6033,31 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   cm->cur_frame->buf.render_width = cm->render_width;
   cm->cur_frame->buf.render_height = cm->render_height;
 
+#if CONFIG_TIP
+  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+  tip_frame_buf->bit_depth = seq_params->bit_depth;
+  tip_frame_buf->color_primaries = seq_params->color_primaries;
+  tip_frame_buf->transfer_characteristics =
+      seq_params->transfer_characteristics;
+  tip_frame_buf->matrix_coefficients = seq_params->matrix_coefficients;
+  tip_frame_buf->monochrome = seq_params->monochrome;
+  tip_frame_buf->chroma_sample_position = seq_params->chroma_sample_position;
+  tip_frame_buf->color_range = seq_params->color_range;
+  tip_frame_buf->render_width = cm->render_width;
+  tip_frame_buf->render_height = cm->render_height;
+#endif  // CONFIG_TIP
+
   if (pbi->need_resync) {
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                        "Keyframe / intra-only frame required to reset decoder"
                        " state");
   }
 
-  if (is_global_intrabc_allowed(cm)) {
+  if (is_global_intrabc_allowed(cm)
+#if CONFIG_TIP
+      || features->tip_frame_mode == TIP_FRAME_AS_OUTPUT
+#endif  // CONFIG_TIP
+  ) {
     // Set parameters corresponding to no filtering.
     struct loopfilter *lf = &cm->lf;
     lf->filter_level[0] = 0;
@@ -5789,6 +6070,23 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
   }
+
+#if CONFIG_TIP
+  if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
+#if CONFIG_NEW_REF_SIGNALING
+    cm->cur_frame->base_qindex = aom_rb_read_literal(
+        rb, cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_BITS_UNEXT
+                                                   : QINDEX_BITS);
+#endif  // CONFIG_NEW_REF_SIGNALING
+    av1_setup_past_independence(cm);
+    if (!cm->tiles.large_scale) {
+      cm->cur_frame->frame_context = *cm->fc;
+    }
+    // TIP frame will be output for displaying
+    // No futher processing needed
+    return 0;
+  }
+#endif  // CONFIG_TIP
 
   read_tile_info(pbi, rb);
   if (!av1_is_min_tile_width_satisfied(cm)) {
@@ -5905,6 +6203,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                        "Frame wrongly requests reference frame MVs");
   }
 
+#if CONFIG_TIP
+  if (features->tip_frame_mode && !cm->seq_params.enable_tip) {
+    aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                       "Frame wrongly requests TIP mode");
+  }
+#endif  // CONFIG_TIP
+
   if (!frame_is_intra_only(cm)) read_global_motion(cm, rb);
 
   cm->cur_frame->film_grain_params_present =
@@ -5951,6 +6256,45 @@ static AOM_INLINE void superres_post_decode(AV1Decoder *pbi) {
 
   av1_superres_upscale(cm, pool);
 }
+
+#if CONFIG_TIP
+static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
+  AV1_COMMON *const cm = &pbi->common;
+  const int num_planes = av1_num_planes(cm);
+  MACROBLOCKD *const xd = &pbi->dcb.xd;
+
+  if (cm->features.allow_ref_frame_mvs && cm->has_bwd_ref) {
+    if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
+      av1_dec_setup_tip_frame(cm, xd, pbi->td.mc_buf, pbi->td.tmp_conv_dst);
+    } else if (cm->features.tip_frame_mode == TIP_FRAME_AS_REF) {
+      av1_setup_tip_motion_field(cm, 0);
+      const int mvs_rows =
+          ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
+      const int mvs_cols =
+          ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+      av1_zero_array(cm->tip_ref.available_flag, mvs_rows * mvs_cols);
+    }
+  }
+
+  if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
+    av1_copy_tip_frame_tmvp_mvs(cm);
+    aom_yv12_copy_frame(&cm->tip_ref.tip_frame->buf, &cm->cur_frame->buf,
+                        num_planes);
+#if CONFIG_NEW_REF_SIGNALING
+    for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
+#else
+      for (int i = LAST_FRAME; i <= ALTREF_FRAME; ++i) {
+#endif  // CONFIG_NEW_REF_SIGNALING
+      cm->global_motion[i] = default_warp_params;
+      cm->cur_frame->global_motion[i] = default_warp_params;
+    }
+    av1_setup_past_independence(cm);
+    if (!cm->tiles.large_scale) {
+      cm->cur_frame->frame_context = *cm->fc;
+    }
+  }
+}
+#endif  // CONFIG_TIP
 
 uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
                                             struct aom_read_bit_buffer *rb,
@@ -6019,6 +6363,14 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
   else
     av1_setup_ref_frame_sides(cm);
 #endif  // CONFIG_SMVP_IMPROVEMENT
+
+#if CONFIG_TIP
+  process_tip_mode(pbi);
+  if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
+    *p_data_end = data + uncomp_hdr_size;
+    return uncomp_hdr_size;
+  }
+#endif  // CONFIG_TIP
 
   av1_setup_block_planes(xd, cm->seq_params.subsampling_x,
                          cm->seq_params.subsampling_y, num_planes);

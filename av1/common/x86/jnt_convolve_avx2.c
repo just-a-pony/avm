@@ -387,7 +387,7 @@ void av1_dist_wtd_convolve_y_avx2(const uint8_t *src, int src_stride,
             const __m128i res_0 = _mm256_castsi256_si128(res_8);
             const __m128i res_1 = _mm256_extracti128_si256(res_8, 1);
 
-#if CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
             _mm_storeu_si128((__m128i *)(&dst0[i * dst_stride0 + j]), res_0);
             _mm_storeu_si128(
                 (__m128i *)((&dst0[i * dst_stride0 + j + dst_stride0])), res_1);
@@ -395,8 +395,7 @@ void av1_dist_wtd_convolve_y_avx2(const uint8_t *src, int src_stride,
             _mm_store_si128((__m128i *)(&dst0[i * dst_stride0 + j]), res_0);
             _mm_store_si128(
                 (__m128i *)((&dst0[i * dst_stride0 + j + dst_stride0])), res_1);
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-
+#endif  // CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
           } else {
             const __m128i res_lo_0 = _mm256_castsi256_si128(res_lo_unsigned);
             const __m128i res_lo_1 =
@@ -587,7 +586,7 @@ void av1_dist_wtd_convolve_y_avx2(const uint8_t *src, int src_stride,
             const __m128i res_0 = _mm256_castsi256_si128(res_8);
             const __m128i res_1 = _mm256_extracti128_si256(res_8, 1);
 
-#if CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
             _mm_storeu_si128((__m128i *)(&dst0[i * dst_stride0 + j]), res_0);
             _mm_storeu_si128(
                 (__m128i *)((&dst0[i * dst_stride0 + j + dst_stride0])), res_1);
@@ -595,8 +594,7 @@ void av1_dist_wtd_convolve_y_avx2(const uint8_t *src, int src_stride,
             _mm_store_si128((__m128i *)(&dst0[i * dst_stride0 + j]), res_0);
             _mm_store_si128(
                 (__m128i *)((&dst0[i * dst_stride0 + j + dst_stride0])), res_1);
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-
+#endif  // CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
           } else {
             const __m128i res_lo_0 = _mm256_castsi256_si128(res_lo_unsigned);
             const __m128i res_lo_1 =
@@ -906,8 +904,13 @@ void av1_dist_wtd_convolve_2d_copy_avx2(const uint8_t *src, int src_stride,
           const __m256i res_8 = _mm256_packus_epi16(round_result, round_result);
           const __m256i res_0 = _mm256_permute4x64_epi64(res_8, 0xD8);
 
+#if CONFIG_TIP
+          _mm_storeu_si128((__m128i *)(&dst0[i * dst_stride0 + j]),
+                           _mm256_castsi256_si128(res_0));
+#else
           _mm_store_si128((__m128i *)(&dst0[i * dst_stride0 + j]),
                           _mm256_castsi256_si128(res_0));
+#endif  // CONFIG_TIP
         } else {
           _mm256_store_si256((__m256i *)(&dst[i * dst_stride + j]),
                              res_unsigned);

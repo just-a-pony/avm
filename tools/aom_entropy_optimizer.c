@@ -697,6 +697,15 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob "
                      "default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(2)]");
 
+#if CONFIG_TIP
+  /* TIP ref flag */
+  cts_each_dim[0] = TIP_CONTEXTS;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(&fc.tip_ref[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob\n"
+                     "default_tip_cdf[TIP_CONTEXTS][CDF_SIZE(2)]");
+#endif  // CONFIG_TIP
+
   /* joint compound group index */
   cts_each_dim[0] = COMP_GROUP_IDX_CONTEXTS;
   cts_each_dim[1] = 2;

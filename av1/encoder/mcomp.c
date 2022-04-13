@@ -97,10 +97,12 @@ void av1_make_default_fullpel_ms_params(
     int fine_search_interval) {
   const MV_SPEED_FEATURES *mv_sf = &cpi->sf.mv_sf;
 
-#if CONFIG_ADAPTIVE_MVD
+#if CONFIG_ADAPTIVE_MVD || CONFIG_TIP
   const AV1_COMMON *cm = &cpi->common;
   const MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
+#endif  // CONFIG_ADAPTIVE_MVD || CONFIG_TIP
+#if CONFIG_ADAPTIVE_MVD
   const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
 #endif  // CONFIG_ADAPTIVE_MVD
 
@@ -142,8 +144,15 @@ void av1_make_default_fullpel_ms_params(
   ms_params->fast_obmc_search = mv_sf->obmc_full_pixel_search_level;
 
   ms_params->mv_limits = x->mv_limits;
-  av1_set_mv_search_range(&ms_params->mv_limits, ref_mv);
-
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) {
+    av1_set_tip_mv_search_range(&ms_params->mv_limits);
+  } else {
+#endif  // CONFIG_TIP
+    av1_set_mv_search_range(&ms_params->mv_limits, ref_mv);
+#if CONFIG_TIP
+  }
+#endif  // CONFIG_TIP
   // Mvcost params
 
   init_mv_cost_params(&ms_params->mv_cost_params, &x->mv_costs,
@@ -158,9 +167,11 @@ void av1_make_default_subpel_ms_params(SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
                                        const MACROBLOCK *x, BLOCK_SIZE bsize,
                                        const MV *ref_mv, const int *cost_list) {
   const AV1_COMMON *cm = &cpi->common;
-#if CONFIG_ADAPTIVE_MVD
+#if CONFIG_ADAPTIVE_MVD || CONFIG_TIP
   const MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
+#endif  // CONFIG_ADAPTIVE_MVD  || CONFIG_TIP
+#if CONFIG_ADAPTIVE_MVD
   const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
 #endif  // CONFIG_ADAPTIVE_MVD
   // High level params
@@ -169,7 +180,16 @@ void av1_make_default_subpel_ms_params(SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
   ms_params->iters_per_step = cpi->sf.mv_sf.subpel_iters_per_step;
   ms_params->cost_list = cond_cost_list_const(cpi, cost_list);
 
-  av1_set_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits, ref_mv);
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) {
+    av1_set_tip_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits);
+  } else {
+#endif  // CONFIG_TIP
+    av1_set_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits,
+                                   ref_mv);
+#if CONFIG_TIP
+  }
+#endif  // CONFIG_TIP
 
   // Mvcost params
   init_mv_cost_params(&ms_params->mv_cost_params, &x->mv_costs,
@@ -218,6 +238,23 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv) {
   if (mv_limits->row_min < row_min) mv_limits->row_min = row_min;
   if (mv_limits->row_max > row_max) mv_limits->row_max = row_max;
 }
+
+#if CONFIG_TIP
+void av1_set_tip_mv_search_range(FullMvLimits *mv_limits) {
+  const int tmvp_mv = (TIP_MV_SEARCH_RANGE << TMVP_MI_SZ_LOG2);
+  const int col_min = -tmvp_mv;
+  const int row_min = -tmvp_mv;
+  const int col_max = tmvp_mv;
+  const int row_max = tmvp_mv;
+
+  // Get intersection of UMV window and valid MV window to reduce # of checks
+  // in diamond search.
+  if (mv_limits->col_min < col_min) mv_limits->col_min = col_min;
+  if (mv_limits->col_max > col_max) mv_limits->col_max = col_max;
+  if (mv_limits->row_min < row_min) mv_limits->row_min = row_min;
+  if (mv_limits->row_max > row_max) mv_limits->row_max = row_max;
+}
+#endif  // CONFIG_TIP
 
 int av1_init_search_range(int size) {
   int sr = 0;
@@ -2426,7 +2463,15 @@ unsigned int av1_int_pro_motion_estimation(const AV1_COMP *cpi, MACROBLOCK *x,
   convert_fullmv_to_mv(best_int_mv);
 
   SubpelMvLimits subpel_mv_limits;
-  av1_set_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits, ref_mv);
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mi->ref_frame[0])) {
+    av1_set_tip_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits);
+  } else {
+#endif  // CONFIG_TIP
+    av1_set_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits, ref_mv);
+#if CONFIG_TIP
+  }
+#endif  // CONFIG_TIP
   clamp_mv(&best_int_mv->as_mv, &subpel_mv_limits);
 
   if (scaled_ref_frame) {

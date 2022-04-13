@@ -564,6 +564,12 @@ static INLINE int is_inter_ref_frame(MV_REFERENCE_FRAME ref_frame) {
 #endif  // CONFIG_NEW_REF_SIGNALING
 }
 
+#if CONFIG_TIP
+static INLINE int is_tip_ref_frame(MV_REFERENCE_FRAME ref_frame) {
+  return ref_frame == TIP_FRAME;
+}
+#endif  // CONFIG_TIP
+
 static INLINE int is_inter_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return is_intrabc_block(mbmi, tree_type) ||
          is_inter_ref_frame(mbmi->ref_frame[0]);
@@ -1796,6 +1802,13 @@ static INLINE int is_interintra_mode(const MB_MODE_INFO *mbmi) {
           mbmi->ref_frame[1] == INTRA_FRAME);
 }
 
+#if CONFIG_TIP
+static INLINE int is_tip_allowed_bsize(BLOCK_SIZE bsize) {
+  assert(bsize < BLOCK_SIZES_ALL);
+  return AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >= 8;
+}
+#endif  // CONFIG_TIP
+
 static INLINE int is_interintra_allowed_bsize(const BLOCK_SIZE bsize) {
   return (bsize >= BLOCK_8X8) && (bsize <= BLOCK_32X32);
 }
@@ -1805,6 +1818,9 @@ static INLINE int is_interintra_allowed_mode(const PREDICTION_MODE mode) {
 }
 
 static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
+#if CONFIG_TIP
+  if (is_tip_ref_frame(rf[0])) return 0;
+#endif  // CONFIG_TIP
   return is_inter_ref_frame(rf[0]) && !is_inter_ref_frame(rf[1]);
 }
 
@@ -1859,10 +1875,15 @@ static INLINE int check_num_overlappable_neighbors(const MB_MODE_INFO *mbmi) {
 static INLINE MOTION_MODE
 motion_mode_allowed(const WarpedMotionParams *gm_params, const MACROBLOCKD *xd,
                     const MB_MODE_INFO *mbmi, int allow_warped_motion) {
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) return SIMPLE_TRANSLATION;
+#endif  // CONFIG_TIP
+
   if (xd->cur_frame_force_integer_mv == 0) {
     const TransformationType gm_type = gm_params[mbmi->ref_frame[0]].wmtype;
     if (is_global_mv_block(mbmi, gm_type)) return SIMPLE_TRANSLATION;
   }
+
   if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
       is_inter_mode(mbmi->mode) && mbmi->ref_frame[1] != INTRA_FRAME &&
       is_motion_variation_allowed_compound(mbmi)) {

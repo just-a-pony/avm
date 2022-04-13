@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 3-Clause Clear License
@@ -18,6 +18,9 @@
 
 #include "config/aom_config.h"
 #include "config/aom_dsp_rtcd.h"
+#if CONFIG_TIP
+#include "config/aom_scale_rtcd.h"
+#endif  // CONFIG_TIP
 #include "config/av1_rtcd.h"
 
 #include "aom_dsp/aom_dsp_common.h"
@@ -43,6 +46,9 @@
 #include "av1/common/reconinter.h"
 #include "av1/common/seg_common.h"
 #include "av1/common/tile_common.h"
+#if CONFIG_TIP
+#include "av1/common/tip.h"
+#endif  // CONFIG_TIP
 #include "av1/common/warped_motion.h"
 
 #include "av1/encoder/aq_complexity.h"
@@ -1073,6 +1079,7 @@ static int check_skip_mode_enabled(AV1_COMP *const cpi) {
                                              AOM_BWD_FLAG,
                                              AOM_ALT2_FLAG,
                                              AOM_ALT_FLAG };
+
   const int ref_frame[2] = {
     cm->current_frame.skip_mode_info.ref_frame_idx_0 + LAST_FRAME,
     cm->current_frame.skip_mode_info.ref_frame_idx_1 + LAST_FRAME
@@ -1099,7 +1106,12 @@ static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
        cpi->sf.inter_sf.disable_onesided_comp) &&
       cpi->all_one_sided_refs) {
     // Disable all compound references
+#if CONFIG_TIP
+    cpi->prune_ref_frame_mask =
+        (1 << (MODE_CTX_REF_FRAMES - 1)) - (1 << REF_FRAMES);
+#else
     cpi->prune_ref_frame_mask = (1 << MODE_CTX_REF_FRAMES) - (1 << REF_FRAMES);
+#endif  // CONFIG_TIP
   } else if (cpi->sf.inter_sf.selective_ref_frame >= 2) {
     AV1_COMMON *const cm = &cpi->common;
     const int cur_frame_display_order_hint =
@@ -1113,7 +1125,12 @@ static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
         ref_display_order_hint[BWDREF_FRAME - LAST_FRAME],
         cur_frame_display_order_hint);
 
+#if CONFIG_TIP
+    for (int ref_idx = REF_FRAMES; ref_idx < MODE_CTX_REF_FRAMES - 1;
+         ++ref_idx) {
+#else
     for (int ref_idx = REF_FRAMES; ref_idx < MODE_CTX_REF_FRAMES; ++ref_idx) {
+#endif  // CONFIG_TIP
       MV_REFERENCE_FRAME rf[2];
       av1_set_ref_frame(rf, ref_idx);
       if (!(cm->ref_frame_flags & av1_ref_frame_flag_list[rf[0]]) ||
@@ -1150,6 +1167,82 @@ static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
   }
 }
 #endif  // !CONFIG_NEW_REF_SIGNALING
+
+#if CONFIG_TIP
+static AOM_INLINE void tip_enc_calc_subpel_params(
+    const MV *const src_mv, InterPredParams *const inter_pred_params,
+    MACROBLOCKD *xd, int mi_x, int mi_y, int ref,
+#if CONFIG_OPTFLOW_REFINEMENT
+    int use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+    uint8_t **mc_buf, uint8_t **pre, SubpelParams *subpel_params,
+    int *src_stride) {
+  // These are part of the function signature to use this function through a
+  // function pointer. See typedef of 'CalcSubpelParamsFunc'.
+  (void)xd;
+  (void)mi_x;
+  (void)mi_y;
+  (void)ref;
+  (void)mc_buf;
+#if CONFIG_OPTFLOW_REFINEMENT
+  (void)use_optflow_refinement;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+
+  const struct scale_factors *sf = inter_pred_params->scale_factors;
+
+  struct buf_2d *pre_buf = &inter_pred_params->ref_frame_buf;
+  const int ssx = inter_pred_params->subsampling_x;
+  const int ssy = inter_pred_params->subsampling_y;
+  int orig_pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
+  orig_pos_y += src_mv->row * (1 << (1 - ssy));
+  int orig_pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
+  orig_pos_x += src_mv->col * (1 << (1 - ssx));
+  int pos_y = sf->scale_value_y(orig_pos_y, sf);
+  int pos_x = sf->scale_value_x(orig_pos_x, sf);
+  pos_x += SCALE_EXTRA_OFF;
+  pos_y += SCALE_EXTRA_OFF;
+
+  const int top = -AOM_LEFT_TOP_MARGIN_SCALED(ssy);
+  const int left = -AOM_LEFT_TOP_MARGIN_SCALED(ssx);
+  const int bottom = (pre_buf->height + AOM_INTERP_EXTEND) << SCALE_SUBPEL_BITS;
+  const int right = (pre_buf->width + AOM_INTERP_EXTEND) << SCALE_SUBPEL_BITS;
+  pos_y = clamp(pos_y, top, bottom);
+  pos_x = clamp(pos_x, left, right);
+
+  subpel_params->subpel_x = pos_x & SCALE_SUBPEL_MASK;
+  subpel_params->subpel_y = pos_y & SCALE_SUBPEL_MASK;
+  subpel_params->xs = sf->x_step_q4;
+  subpel_params->ys = sf->y_step_q4;
+  *pre = pre_buf->buf0 + (pos_y >> SCALE_SUBPEL_BITS) * pre_buf->stride +
+         (pos_x >> SCALE_SUBPEL_BITS);
+  *src_stride = pre_buf->stride;
+}
+
+static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
+  ThreadData *const td = &cpi->td;
+  AV1_COMMON *const cm = &cpi->common;
+  if (cm->seq_params.enable_tip) {
+    if (cm->features.allow_ref_frame_mvs &&
+        cm->seq_params.order_hint_info.enable_order_hint && cm->has_bwd_ref) {
+#if CONFIG_COLLECT_COMPONENT_TIMING
+      start_timing(cpi, av1_enc_setup_tip_frame_time);
+#endif
+      av1_setup_tip_motion_field(cm, 1);
+      if (cm->features.tip_frame_mode) {
+        av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
+                            tip_enc_calc_subpel_params);
+      }
+#if CONFIG_COLLECT_COMPONENT_TIMING
+      end_timing(cpi, av1_enc_setup_tip_frame_time);
+#endif
+    } else {
+      cm->features.tip_frame_mode = TIP_FRAME_DISABLED;
+    }
+  } else {
+    cm->features.tip_frame_mode = TIP_FRAME_DISABLED;
+  }
+}
+#endif  // CONFIG_TIP
 
 /*!\brief Encoder setup(only for the current frame), encoding, and recontruction
  * for a single frame
@@ -1332,10 +1425,10 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
     av1_set_default_ref_deltas(cm->lf.ref_deltas);
     av1_set_default_mode_deltas(cm->lf.mode_deltas);
   } else if (cm->prev_frame) {
-    memcpy(cm->lf.ref_deltas, cm->prev_frame->ref_deltas, REF_FRAMES);
+    memcpy(cm->lf.ref_deltas, cm->prev_frame->ref_deltas, SINGLE_REF_FRAMES);
     memcpy(cm->lf.mode_deltas, cm->prev_frame->mode_deltas, MAX_MODE_LF_DELTAS);
   }
-  memcpy(cm->cur_frame->ref_deltas, cm->lf.ref_deltas, REF_FRAMES);
+  memcpy(cm->cur_frame->ref_deltas, cm->lf.ref_deltas, SINGLE_REF_FRAMES);
   memcpy(cm->cur_frame->mode_deltas, cm->lf.mode_deltas, MAX_MODE_LF_DELTAS);
 
   cpi->all_one_sided_refs =
@@ -1371,6 +1464,10 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
 #if CONFIG_COLLECT_COMPONENT_TIMING
   end_timing(cpi, av1_setup_motion_field_time);
 #endif
+
+#if CONFIG_TIP
+  av1_enc_setup_tip_frame(cpi);
+#endif  // CONFIG_TIP
 
   cm->current_frame.skip_mode_info.skip_mode_flag =
       check_skip_mode_enabled(cpi);

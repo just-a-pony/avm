@@ -901,6 +901,24 @@ static AOM_INLINE void restore_all_coding_context(AV1_COMP *cpi) {
   if (!frame_is_intra_only(&cpi->common)) release_scaled_references(cpi);
 }
 
+#if CONFIG_TIP
+static void setup_tip_frame_size(AV1_COMP *cpi) {
+  AV1_COMMON *const cm = &cpi->common;
+  RefCntBuffer *tip_frame = cm->tip_ref.tip_frame;
+  // Reset the frame pointers to the current frame size.
+  if (aom_realloc_frame_buffer(
+          &tip_frame->buf, cm->width, cm->height, cm->seq_params.subsampling_x,
+          cm->seq_params.subsampling_y, cm->seq_params.use_highbitdepth,
+          cpi->oxcf.border_in_pixels, cm->features.byte_alignment, NULL, NULL,
+          NULL)) {
+    aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
+                       "Failed to allocate frame buffer");
+  }
+
+  tip_frame->frame_type = INTER_FRAME;
+}
+#endif  // CONFIG_TIP
+
 // Refresh reference frame buffers according to refresh_frame_flags.
 static AOM_INLINE void refresh_reference_frames(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
@@ -918,6 +936,12 @@ static AOM_INLINE void refresh_reference_frames(AV1_COMP *cpi) {
       assign_frame_buffer_p(&cm->ref_frame_map[ref_frame], cm->cur_frame);
     }
   }
+
+#if CONFIG_TIP
+  if (cm->current_frame.frame_type == KEY_FRAME) {
+    setup_tip_frame_size(cpi);
+  }
+#endif  // CONFIG_TIP
 }
 
 static AOM_INLINE void update_subgop_stats(

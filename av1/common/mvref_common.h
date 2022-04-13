@@ -37,6 +37,47 @@ typedef struct position {
   int col;
 } POSITION;
 
+#if CONFIG_TIP
+#define MAX_OFFSET_WIDTH 64
+#define MAX_OFFSET_HEIGHT 0
+#define MAX_OFFSET_HEIGHT_LOG2 (MAX_OFFSET_HEIGHT >> TMVP_MI_SZ_LOG2)
+#define MAX_OFFSET_WIDTH_LOG2 (MAX_OFFSET_WIDTH >> TMVP_MI_SZ_LOG2)
+static AOM_INLINE int get_block_position(AV1_COMMON *cm, int *mi_r, int *mi_c,
+                                         int blk_row, int blk_col, MV mv,
+                                         int sign_bias) {
+  const int base_blk_row = (blk_row >> TMVP_MI_SZ_LOG2) << TMVP_MI_SZ_LOG2;
+  const int base_blk_col = (blk_col >> TMVP_MI_SZ_LOG2) << TMVP_MI_SZ_LOG2;
+
+  // The motion vector in units of 1/8-pel
+  const int shift = (3 + TMVP_MI_SZ_LOG2);
+  const int row_offset =
+      (mv.row >= 0) ? (mv.row >> shift) : -((-mv.row) >> shift);
+
+  const int col_offset =
+      (mv.col >= 0) ? (mv.col >> shift) : -((-mv.col) >> shift);
+
+  const int row =
+      (sign_bias == 1) ? blk_row - row_offset : blk_row + row_offset;
+  const int col =
+      (sign_bias == 1) ? blk_col - col_offset : blk_col + col_offset;
+
+  if (row < 0 || row >= (cm->mi_params.mi_rows >> TMVP_SHIFT_BITS) || col < 0 ||
+      col >= (cm->mi_params.mi_cols >> TMVP_SHIFT_BITS))
+    return 0;
+
+  if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
+      row >= base_blk_row + TMVP_MI_SIZE + MAX_OFFSET_HEIGHT_LOG2 ||
+      col < base_blk_col - MAX_OFFSET_WIDTH_LOG2 ||
+      col >= base_blk_col + TMVP_MI_SIZE + MAX_OFFSET_WIDTH_LOG2)
+    return 0;
+
+  *mi_r = row;
+  *mi_c = col;
+
+  return 1;
+}
+#endif  // CONFIG_TIP
+
 // clamp_mv_ref
 #define MV_BORDER (16 << 3)  // Allow 16 pels in 1/8th pel units
 
@@ -158,7 +199,11 @@ static INLINE int8_t av1_ref_frame_type(const MV_REFERENCE_FRAME *const rf) {
 
 static INLINE void av1_set_ref_frame(MV_REFERENCE_FRAME *rf,
                                      MV_REFERENCE_FRAME ref_frame_type) {
-  if (ref_frame_type == INTRA_FRAME || ref_frame_type < INTER_REFS_PER_FRAME) {
+  if (ref_frame_type == INTRA_FRAME ||
+#if CONFIG_TIP
+      is_tip_ref_frame(ref_frame_type) ||
+#endif  // CONFIG_TIP
+      ref_frame_type < INTER_REFS_PER_FRAME) {
     rf[0] = ref_frame_type;
     rf[1] = NONE_FRAME;
   } else {
@@ -223,6 +268,13 @@ static MV_REFERENCE_FRAME ref_frame_map[TOTAL_COMP_REFS][2] = {
 
 static INLINE void av1_set_ref_frame(MV_REFERENCE_FRAME *rf,
                                      MV_REFERENCE_FRAME ref_frame_type) {
+#if CONFIG_TIP
+  if (is_tip_ref_frame(ref_frame_type)) {
+    rf[0] = ref_frame_type;
+    rf[1] = NONE_FRAME;
+    return;
+  }
+#endif  // CONFIG_TIP
   if (ref_frame_type >= REF_FRAMES) {
     rf[0] = ref_frame_map[ref_frame_type - REF_FRAMES][0];
     rf[1] = ref_frame_map[ref_frame_type - REF_FRAMES][1];
@@ -337,7 +389,11 @@ static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   const int left_in_image = xd->left_available;
 
   // Above neighbor
-  if (above_in_image && is_inter_block(above_mbmi, xd->tree_type)) {
+  if (above_in_image &&
+#if CONFIG_TIP
+      !is_tip_ref_frame(above_mbmi->ref_frame[0]) &&
+#endif  // CONFIG_TIP
+      is_inter_block(above_mbmi, xd->tree_type)) {
     ref_counts[above_mbmi->ref_frame[0]]++;
     if (has_second_ref(above_mbmi)) {
       ref_counts[above_mbmi->ref_frame[1]]++;
@@ -345,7 +401,11 @@ static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   }
 
   // Left neighbor
-  if (left_in_image && is_inter_block(left_mbmi, xd->tree_type)) {
+  if (left_in_image &&
+#if CONFIG_TIP
+      !is_tip_ref_frame(left_mbmi->ref_frame[0]) &&
+#endif  // CONFIG_TIP
+      is_inter_block(left_mbmi, xd->tree_type)) {
     ref_counts[left_mbmi->ref_frame[0]]++;
     if (has_second_ref(left_mbmi)) {
       ref_counts[left_mbmi->ref_frame[1]]++;

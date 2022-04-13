@@ -146,6 +146,15 @@ static INLINE int get_best_past_ref_index(const AV1_COMMON *const cm) {
 static INLINE int get_dir_rank(const AV1_COMMON *const cm, int refrank,
                                int *dir_refrank) {
   if (!is_inter_ref_frame(refrank)) return -1;
+#if CONFIG_TIP
+  if (is_tip_ref_frame(refrank)) {
+    if (dir_refrank) {
+      dir_refrank[0] = -1;
+      dir_refrank[1] = -1;
+    }
+    return 1;
+  }
+#endif  // CONFIG_TIP
   assert(refrank < cm->ref_frames_info.num_total_refs);
   if (dir_refrank) {
     dir_refrank[0] = -1;
@@ -172,6 +181,27 @@ static INLINE int get_dir_rank(const AV1_COMMON *const cm, int refrank,
 void av1_get_ref_frames(AV1_COMMON *const cm, int cur_frame_disp,
                         RefFrameMapPair *ref_frame_map_pairs);
 #endif  // CONFIG_NEW_REF_SIGNALING
+
+#if CONFIG_TIP
+static INLINE int get_tip_ctx(const MACROBLOCKD *xd) {
+  int ctx;
+  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
+  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
+  const int has_above = xd->up_available;
+  const int has_left = xd->left_available;
+
+  if (has_above && has_left) {
+    ctx = is_tip_ref_frame(above_mbmi->ref_frame[0]) +
+          is_tip_ref_frame(left_mbmi->ref_frame[0]);
+  } else if (has_above || has_left) {
+    const MB_MODE_INFO *edge_mbmi = has_above ? above_mbmi : left_mbmi;
+    ctx = is_tip_ref_frame(edge_mbmi->ref_frame[0]) * 2;
+  } else {
+    ctx = 0;
+  }
+  return ctx;
+}
+#endif  // CONFIG_TIP
 
 static INLINE int get_segment_id(const CommonModeInfoParams *const mi_params,
                                  const uint8_t *segment_ids, BLOCK_SIZE bsize,

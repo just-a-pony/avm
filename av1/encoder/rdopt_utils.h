@@ -368,6 +368,14 @@ static const MODE_DEFINITION av1_mode_defs[MAX_MODES] = {
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
+#if CONFIG_TIP
+  { NEARMV, { TIP_FRAME, NONE_FRAME } },
+  { NEWMV, { TIP_FRAME, NONE_FRAME } },
+#if IMPROVED_AMVD
+  { AMVDNEWMV, { TIP_FRAME, NONE_FRAME } },
+#endif  // IMPROVED_AMVD
+#endif  // CONFIG_TIP
+
   // intra modes
   { DC_PRED, { INTRA_FRAME, NONE_FRAME } },
   { PAETH_PRED, { INTRA_FRAME, NONE_FRAME } },
@@ -565,6 +573,15 @@ static const MODE_DEFINITION av1_mode_defs[MAX_MODES] = {
   { NEW_NEWMV, { BWDREF_FRAME, ALTREF_FRAME } },
   { GLOBAL_GLOBALMV, { BWDREF_FRAME, ALTREF_FRAME } },
 
+#if CONFIG_TIP
+  { NEARESTMV, { TIP_FRAME, NONE_FRAME } },
+  { NEWMV, { TIP_FRAME, NONE_FRAME } },
+  { NEARMV, { TIP_FRAME, NONE_FRAME } },
+#if IMPROVED_AMVD
+  { AMVDNEWMV, { TIP_FRAME, NONE_FRAME } },
+#endif  // IMPROVED_AMVD
+#endif  // CONFIG_TIP
+
   // intra modes
   { DC_PRED, { INTRA_FRAME, NONE_FRAME } },
   { PAETH_PRED, { INTRA_FRAME, NONE_FRAME } },
@@ -592,7 +609,12 @@ get_prediction_mode_idx(PREDICTION_MODE this_mode, MV_REFERENCE_FRAME ref_frame,
   }
   if (this_mode >= SINGLE_INTER_MODE_START &&
       this_mode < SINGLE_INTER_MODE_END) {
+#if CONFIG_TIP
+    assert(is_inter_ref_frame(ref_frame) &&
+           (ref_frame == TIP_FRAME || ref_frame <= ALTREF_FRAME));
+#else
     assert(is_inter_ref_frame(ref_frame) && (ref_frame <= ALTREF_FRAME));
+#endif  // CONFIG_TIP
     return single_inter_to_mode_idx[this_mode - SINGLE_INTER_MODE_START]
                                    [ref_frame];
   }

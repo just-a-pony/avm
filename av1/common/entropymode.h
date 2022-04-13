@@ -153,6 +153,9 @@ typedef struct frame_contexts {
                                   [CDF_SIZE(INTERINTRA_MODES)];
   aom_cdf_prob motion_mode_cdf[BLOCK_SIZES_ALL][CDF_SIZE(MOTION_MODES)];
   aom_cdf_prob obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
+#if CONFIG_TIP
+  aom_cdf_prob tip_cdf[TIP_CONTEXTS][CDF_SIZE(2)];
+#endif  // CONFIG_TIP
   aom_cdf_prob palette_y_size_cdf[PALATTE_BSIZE_CTXS][CDF_SIZE(PALETTE_SIZES)];
   aom_cdf_prob palette_uv_size_cdf[PALATTE_BSIZE_CTXS][CDF_SIZE(PALETTE_SIZES)];
 #if CONFIG_NEW_COLOR_MAP_CODING

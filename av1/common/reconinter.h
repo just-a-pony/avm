@@ -130,6 +130,16 @@ typedef struct InterPredParams {
   INTERINTER_COMPOUND_DATA mask_comp;
   BLOCK_SIZE sb_type;
   int is_intrabc;
+#if CONFIG_TIP
+  /**
+   * \name Distance of this block from frame edges in 1/8th pixel units.
+   */
+  /**@{*/
+  int dist_to_left_edge;   /*!< Distance from left edge */
+  int dist_to_right_edge;  /*!< Distance from right edge */
+  int dist_to_top_edge;    /*!< Distance from top edge */
+  int dist_to_bottom_edge; /*!< Distance from bottom edge */
+#endif                     // CONFIG_TIP
 } InterPredParams;
 
 #if CONFIG_OPTFLOW_REFINEMENT

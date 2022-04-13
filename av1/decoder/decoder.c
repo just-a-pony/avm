@@ -115,6 +115,24 @@ static void dec_free_mi(CommonModeInfoParams *mi_params) {
   mi_params->tx_type_map = NULL;
 }
 
+#if CONFIG_TIP
+static INLINE void dec_init_tip_ref_frame(AV1_COMMON *const cm) {
+  TIP *tip_ref = &cm->tip_ref;
+  tip_ref->tip_frame = aom_calloc(1, sizeof(*tip_ref->tip_frame));
+}
+
+static INLINE void dec_free_tip_ref_frame(AV1_COMMON *const cm) {
+  aom_free(cm->tip_ref.available_flag);
+  cm->tip_ref.available_flag = NULL;
+  aom_free(cm->tip_ref.mf_need_clamp);
+  cm->tip_ref.mf_need_clamp = NULL;
+
+  aom_free_frame_buffer(&cm->tip_ref.tip_frame->buf);
+  aom_free(cm->tip_ref.tip_frame);
+  cm->tip_ref.tip_frame = NULL;
+}
+#endif  // CONFIG_TIP
+
 AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   AV1Decoder *volatile const pbi = aom_memalign(32, sizeof(*pbi));
   if (!pbi) return NULL;
@@ -167,6 +185,10 @@ AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   pbi->acct_enabled = 1;
   aom_accounting_init(&pbi->accounting);
 #endif
+
+#if CONFIG_TIP
+  dec_init_tip_ref_frame(cm);
+#endif  // CONFIG_TIP
 
   cm->error.setjmp = 0;
 
@@ -247,6 +269,10 @@ void av1_decoder_remove(AV1Decoder *pbi) {
     av1_loop_restoration_dealloc(&pbi->lr_row_sync, pbi->num_workers);
     av1_dealloc_dec_jobs(&pbi->tile_mt_info);
   }
+
+#if CONFIG_TIP
+  dec_free_tip_ref_frame(&pbi->common);
+#endif  // CONFIG_TIP
 
   av1_dec_free_cb_buf(pbi);
 #if CONFIG_ACCOUNTING

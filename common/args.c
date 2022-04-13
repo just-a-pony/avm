@@ -85,6 +85,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(disable_ml_transform_speed_features);
     GET_PARAMS(enable_sdp);
     GET_PARAMS(enable_mrls);
+#if CONFIG_TIP
+    GET_PARAMS(enable_tip);
+#endif  // CONFIG_TIP
 #if CONFIG_FORWARDSKIP
     GET_PARAMS(enable_fsc);
 #endif  // CONFIG_FORWARDSKIP

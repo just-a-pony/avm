@@ -342,6 +342,12 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
       }
     }
 
+#if CONFIG_TIP
+    for (i = 0; i < TIP_CONTEXTS; ++i) {
+      av1_cost_tokens_from_cdf(mode_costs->tip_cost[i], fc->tip_cdf[i], NULL);
+    }
+#endif  // CONFIG_TIP
+
     for (i = 0; i < COMP_REF_TYPE_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->comp_ref_type_cost[i],
                                fc->comp_ref_type_cdf[i], NULL);
@@ -1311,14 +1317,14 @@ void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint8_t *ref_y_buffer,
   }
 
   // Note the index of the mv that worked best in the reference list.
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
   const int ref_frame_idx = COMPACT_INDEX0_NRS(ref_frame);
   x->max_mv_context[ref_frame_idx] = max_mv;
   x->pred_mv_sad[ref_frame_idx] = best_sad;
 #else
   x->max_mv_context[ref_frame] = max_mv;
   x->pred_mv_sad[ref_frame] = best_sad;
-#endif  // CONFIG_NEW_REF_SIGNALING
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
 }
 
 void av1_setup_pred_block(const MACROBLOCKD *xd,
@@ -1346,6 +1352,12 @@ void av1_setup_pred_block(const MACROBLOCKD *xd,
 
 YV12_BUFFER_CONFIG *av1_get_scaled_ref_frame(const AV1_COMP *cpi,
                                              MV_REFERENCE_FRAME ref_frame) {
+#if CONFIG_TIP
+  if (is_tip_ref_frame(ref_frame)) {
+    return NULL;
+  }
+#endif  // CONFIG_TIP
+
 #if CONFIG_NEW_REF_SIGNALING
   assert(ref_frame < cpi->common.ref_frames_info.num_total_refs);
   RefCntBuffer *const scaled_buf = cpi->scaled_ref_buf[ref_frame];
@@ -1427,6 +1439,17 @@ void av1_set_rd_speed_thresholds(AV1_COMP *cpi) {
   rd->thresh_mult[THR_NEWA] = 1000;
   rd->thresh_mult[THR_NEWG] = 1000;
 #endif  // !CONFIG_NEW_INTER_MODES
+
+#if CONFIG_TIP
+#if !CONFIG_NEW_INTER_MODES
+  rd->thresh_mult[THR_NEAREST_TIP] = 0;
+#endif  // !CONFIG_NEW_INTER_MODES
+  rd->thresh_mult[THR_NEW_TIP] = 0;
+  rd->thresh_mult[THR_NEAR_TIP] = 0;
+#if IMPROVED_AMVD
+  rd->thresh_mult[THR_AMVDNEW_TIP] = 0;
+#endif  // IMPROVED_AMVD
+#endif  // CONFIG_TIP
 
 #if CONFIG_NEW_INTER_MODES
   rd->thresh_mult[THR_NEARMV] = 0;

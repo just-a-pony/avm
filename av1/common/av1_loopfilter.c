@@ -150,25 +150,25 @@ uint16_t av1_get_filter_q(const loop_filter_info_n *lfi_n, const int dir_idx,
   const int segment_id = mbmi->segment_id;
 
 // TODO(Andrey): non-CTC conditions
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
   return lfi_n->q_thr[plane][segment_id][dir_idx][COMPACT_INDEX0_NRS(
       mbmi->ref_frame[0])][mode_lf_lut[mbmi->mode]];
 #else
   return lfi_n->q_thr[plane][segment_id][dir_idx][mbmi->ref_frame[0]]
                      [mode_lf_lut[mbmi->mode]];
-#endif
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
 }
 uint16_t av1_get_filter_side(const loop_filter_info_n *lfi_n, const int dir_idx,
                              int plane, const MB_MODE_INFO *mbmi) {
   const int segment_id = mbmi->segment_id;
 // TODO(Andrey): non-CTC conditions
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
   return lfi_n->side_thr[plane][segment_id][dir_idx][COMPACT_INDEX0_NRS(
       mbmi->ref_frame[0])][mode_lf_lut[mbmi->mode]];
 #else
   return lfi_n->side_thr[plane][segment_id][dir_idx][mbmi->ref_frame[0]]
                         [mode_lf_lut[mbmi->mode]];
-#endif  // CONFIG_NEW_REF_SIGNALING
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
 }
 
 #else
@@ -201,7 +201,7 @@ uint8_t av1_get_filter_level(const AV1_COMMON *cm,
 
     if (cm->lf.mode_ref_delta_enabled) {
       const int scale = 1 << (lvl_seg >> 5);
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
       lvl_seg +=
           cm->lf.ref_deltas[COMPACT_INDEX0_NRS(mbmi->ref_frame[0])] * scale;
       if (is_inter_ref_frame(mbmi->ref_frame[0]))
@@ -210,18 +210,18 @@ uint8_t av1_get_filter_level(const AV1_COMMON *cm,
       lvl_seg += cm->lf.ref_deltas[mbmi->ref_frame[0]] * scale;
       if (is_inter_ref_frame(mbmi->ref_frame[0]))
         lvl_seg += cm->lf.mode_deltas[mode_lf_lut[mbmi->mode]] * scale;
-#endif  // CONFIG_NEW_REF_SIGNALING
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
       lvl_seg = clamp(lvl_seg, 0, MAX_LOOP_FILTER);
     }
     return lvl_seg;
   } else {
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
     return lfi_n->lvl[plane][segment_id][dir_idx][COMPACT_INDEX0_NRS(
         mbmi->ref_frame[0])][mode_lf_lut[mbmi->mode]];
 #else
     return lfi_n->lvl[plane][segment_id][dir_idx][mbmi->ref_frame[0]]
                      [mode_lf_lut[mbmi->mode]];
-#endif  // CONFIG_NEW_REF_SIGNALING
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
   }
 }
 #endif  // CONFIG_NEW_DF
@@ -389,13 +389,19 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
               lfi->side_thr[plane][seg_id][dir][ref][mode] = side_thr_seg;
             }
           }
+#if CONFIG_TIP
+          for (mode = 0; mode < MAX_MODE_LF_DELTAS; ++mode) {
+            lfi->q_thr[plane][seg_id][dir][TIP_FRAME_INDEX][mode] = q_thr_seg;
+            lfi->side_thr[plane][seg_id][dir][TIP_FRAME_INDEX][mode] =
+                side_thr_seg;
+          }
+#endif  // CONFIG_TIP
 #else
           memset(lfi->lvl[plane][seg_id][dir], lvl_seg,
                  sizeof(lfi->lvl[plane][seg_id][dir]));
 #endif  // CONFIG_NEW_DF
         } else {
 #if CONFIG_NEW_DF
-
           // we could get rid of this if we assume that deltas are set to
           // zero when not in use; encoder always uses deltas
           const int scale = 4;
@@ -434,6 +440,20 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
                                       cm->seq_params.bit_depth);
             }
           }
+
+#if CONFIG_TIP
+          const int scale_ref_deltas = lf->ref_deltas[TIP_FRAME_INDEX] * scale;
+          for (mode = 0; mode < MAX_MODE_LF_DELTAS; ++mode) {
+            lfi->q_thr[plane][seg_id][dir][TIP_FRAME_INDEX][mode] =
+                df_quant_from_qindex(q_ind_seg + scale_ref_deltas +
+                                         lf->mode_deltas[mode] * scale,
+                                     cm->seq_params.bit_depth);
+            lfi->side_thr[plane][seg_id][dir][TIP_FRAME_INDEX][mode] =
+                df_side_from_qindex(side_ind_seg + scale_ref_deltas +
+                                        lf->mode_deltas[mode] * scale,
+                                    cm->seq_params.bit_depth);
+          }
+#endif  // CONFIG_TIP
 #else
           int ref, mode;
           const int scale = 1 << (lvl_seg >> 5);
@@ -456,6 +476,15 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
                   clamp(inter_lvl, 0, MAX_LOOP_FILTER);
             }
           }
+#if CONFIG_TIP
+          for (mode = 0; mode < MAX_MODE_LF_DELTAS; ++mode) {
+            const int inter_lvl = lvl_seg +
+                                  lf->ref_deltas[TIP_FRAME_INDEX] * scale +
+                                  lf->mode_deltas[mode] * scale;
+            lfi->lvl[plane][seg_id][dir][TIP_FRAME_INDEX][mode] =
+                clamp(inter_lvl, 0, MAX_LOOP_FILTER);
+          }
+#endif  // CONFIG_TIP
 #endif  // CONFIG_NEW_DF
         }
       }
@@ -536,6 +565,15 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
                   clamp(inter_lvl, 0, MAX_LOOP_FILTER);
             }
           }
+#if CONFIG_TIP
+          for (mode = 0; mode < MAX_MODE_LF_DELTAS; ++mode) {
+            const int inter_lvl = lvl_seg +
+                                  lf->ref_deltas[TIP_FRAME_INDEX] * scale +
+                                  lf->mode_deltas[mode] * scale;
+            lfi->lvl[plane][seg_id][dir][TIP_FRAME_INDEX][mode] =
+                clamp(inter_lvl, 0, MAX_LOOP_FILTER);
+          }
+#endif  // CONFIG_TIP
         }
       }
     }

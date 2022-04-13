@@ -1023,7 +1023,22 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
     if (inter_block) {
       const MV_REFERENCE_FRAME ref0 = mbmi->ref_frame[0];
       const MV_REFERENCE_FRAME ref1 = mbmi->ref_frame[1];
-      if (current_frame->reference_mode == REFERENCE_MODE_SELECT) {
+
+#if CONFIG_TIP
+      if (cm->features.tip_frame_mode && is_tip_allowed_bsize(bsize)) {
+        const int tip_ctx = get_tip_ctx(xd);
+        update_cdf(fc->tip_cdf[tip_ctx], is_tip_ref_frame(ref0), 2);
+#if CONFIG_ENTROPY_STATS
+        ++counts->tip_ref[tip_ctx][is_tip_ref_frame(ref0)];
+#endif
+      }
+#endif  // CONFIG_TIP
+
+      if (current_frame->reference_mode == REFERENCE_MODE_SELECT
+#if CONFIG_TIP
+          && !is_tip_ref_frame(ref0)
+#endif  // CONFIG_TIP
+      ) {
         if (is_comp_ref_allowed(bsize)) {
 #if CONFIG_ENTROPY_STATS
           counts->comp_inter[av1_get_reference_mode_context(cm, xd)]
@@ -1131,7 +1146,11 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           }
         }
 #endif  // CONFIG_NEW_REF_SIGNALING
+#if CONFIG_TIP
+      } else if (!is_tip_ref_frame(ref0)) {
+#else
       } else {
+#endif  // CONFIG_TIP
 #if CONFIG_NEW_REF_SIGNALING
         const int n_refs = cm->ref_frames_info.num_total_refs;
         const MV_REFERENCE_FRAME ref0_nrs = mbmi->ref_frame[0];

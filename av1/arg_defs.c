@@ -358,6 +358,14 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "enable-mrls", 1,
               "Enable multiple reference line selection for intra prediction"
               "(0: false, 1: true (default))"),
+#if CONFIG_TIP
+  .enable_tip =
+      ARG_DEF(NULL, "enable-tip", 1,
+              "Enable temporal interpolated prediction (TIP)"
+              "(0: disable TIP, "
+              " 1: TIP frame is used as reference or direct output (default), "
+              " 2: TIP frame is only used as reference)"),
+#endif  // CONFIG_TIP
 #if CONFIG_FORWARDSKIP
   .enable_fsc = ARG_DEF(NULL, "enable-fsc", 1,
                         "Enable forward skip coding"

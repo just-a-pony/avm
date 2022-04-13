@@ -199,6 +199,8 @@ set_aom_config_var(CONFIG_SKIP_MODE_ENHANCEMENT 1
                    "AV2 experiment flag to enable skip mode enhancement: C019.")
 set_aom_config_var(CONFIG_NEW_DF 1
                    "AV2 experiment flag on new deblocking filter.")
+set_aom_config_var(CONFIG_TIP 1 "Enable temporal interpolated prediction (TIP)")
+
 #
 # Variables in this section control optional features of the build system.
 #

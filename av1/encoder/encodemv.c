@@ -386,9 +386,21 @@ int_mv av1_get_ref_mv_from_stack(int ref_idx,
   }
 
   assert(ref_idx == 0);
+#if CONFIG_TIP
+  if (ref_mv_idx < mbmi_ext->ref_mv_count[ref_frame_type]) {
+    return curr_ref_mv_stack[ref_mv_idx].this_mv;
+  } else if (is_tip_ref_frame(ref_frame_type)) {
+    int_mv zero_mv;
+    zero_mv.as_int = 0;
+    return zero_mv;
+  } else {
+    return mbmi_ext->global_mvs[ref_frame_type];
+  }
+#else
   return ref_mv_idx < mbmi_ext->ref_mv_count[ref_frame_type]
              ? curr_ref_mv_stack[ref_mv_idx].this_mv
              : mbmi_ext->global_mvs[ref_frame_type];
+#endif  // CONFIG_TIP
 }
 
 int_mv av1_get_ref_mv(const MACROBLOCK *x, int ref_idx) {

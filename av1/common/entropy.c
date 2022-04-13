@@ -157,6 +157,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->interintra_mode_cdf, INTERINTRA_MODES);
   RESET_CDF_COUNTER(fc->motion_mode_cdf, MOTION_MODES);
   RESET_CDF_COUNTER(fc->obmc_cdf, 2);
+#if CONFIG_TIP
+  RESET_CDF_COUNTER(fc->tip_cdf, 2);
+#endif  // CONFIG_TIP
   RESET_CDF_COUNTER(fc->palette_y_size_cdf, PALETTE_SIZES);
   RESET_CDF_COUNTER(fc->palette_uv_size_cdf, PALETTE_SIZES);
 #if CONFIG_NEW_COLOR_MAP_CODING

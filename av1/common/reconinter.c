@@ -105,6 +105,10 @@ void av1_init_warp_params(InterPredParams *inter_pred_params,
   if (inter_pred_params->block_height < 8 || inter_pred_params->block_width < 8)
     return;
 
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mi->ref_frame[ref])) return;
+#endif  // CONFIG_TIP
+
   if (xd->cur_frame_force_integer_mv) return;
 
   if (av1_allow_warp(mi, warp_types, &xd->global_motion[mi->ref_frame[ref]], 0,
@@ -1767,8 +1771,15 @@ static void build_inter_predictors_8x8_and_bigger(
 
   int is_global[2] = { 0, 0 };
   for (int ref = 0; ref < 1 + is_compound; ++ref) {
-    const WarpedMotionParams *const wm = &xd->global_motion[mi->ref_frame[ref]];
-    is_global[ref] = is_global_mv_block(mi, wm->wmtype);
+#if CONFIG_TIP
+    if (!is_tip_ref_frame(mi->ref_frame[ref])) {
+#endif  // CONFIG_TIP
+      const WarpedMotionParams *const wm =
+          &xd->global_motion[mi->ref_frame[ref]];
+      is_global[ref] = is_global_mv_block(mi, wm->wmtype);
+#if CONFIG_TIP
+    }
+#endif  // CONFIG_TIP
   }
   const BLOCK_SIZE bsize = mi->sb_type[PLANE_TYPE_Y];
   const int ss_x = pd->subsampling_x;

@@ -782,14 +782,23 @@ enum {
 #endif  // CONFIG_NEW_TX_PARTITION
 typedef uint8_t TXFM_CONTEXT;
 
+#if CONFIG_TIP
+#define TIP_CONTEXTS 3
+#endif  // CONFIG_TIP
+
 #if CONFIG_NEW_REF_SIGNALING
 #define INTER_REFS_PER_FRAME 7
 #define REF_FRAMES (INTER_REFS_PER_FRAME + 1)
 // NOTE: A limited number of unidirectional reference pairs can be signalled for
 //       compound prediction. The use of skip mode, on the other hand, makes it
 //       possible to have a reference pair not listed for explicit signaling.
+#if CONFIG_TIP
+#define MODE_CTX_REF_FRAMES \
+  (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 1) / 2 + 2)
+#else
 #define MODE_CTX_REF_FRAMES \
   (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 1) / 2 + 1)
+#endif  // CONFIG_TIP
 // With k=INTER_REFS_PER_FRAMES, indices 0 to k-1 represent rank 1 to rank k
 // references. The next k(k-1)/2 indices are left for compound reference types
 // (there are k choose 2 compound combinations). Then, index for intra frame is
@@ -834,7 +843,11 @@ enum {
 // NOTE: A limited number of unidirectional reference pairs can be signalled for
 //       compound prediction. The use of skip mode, on the other hand, makes it
 //       possible to have a reference pair not listed for explicit signaling.
+#if CONFIG_TIP
+#define MODE_CTX_REF_FRAMES (REF_FRAMES + TOTAL_COMP_REFS + 1)
+#else
 #define MODE_CTX_REF_FRAMES (REF_FRAMES + TOTAL_COMP_REFS)
+#endif  // CONFIG_TIP
 #endif  // CONFIG_NEW_REF_SIGNALING
 
 #define REF_FRAMES_LOG2 3
@@ -868,6 +881,18 @@ enum {
 #define TOTAL_COMP_REFS (FWD_REFS * BWD_REFS + TOTAL_UNIDIR_COMP_REFS)
 
 #define COMP_REFS (FWD_REFS * BWD_REFS + UNIDIR_COMP_REFS)
+
+#if CONFIG_TIP
+#define TIP_FRAME (MODE_CTX_REF_FRAMES - 1)
+#define TIP_FRAME_INDEX (INTER_REFS_PER_FRAME + 1)
+#define EXTREF_FRAMES (REF_FRAMES + 1)
+#endif  // CONFIG_TIP
+
+#if CONFIG_TIP
+#define SINGLE_REF_FRAMES EXTREF_FRAMES
+#else
+#define SINGLE_REF_FRAMES REF_FRAMES
+#endif  // CONFIG_TIP
 
 // Note: It includes single and compound references. So, it can take values from
 // NONE_FRAME to (MODE_CTX_REF_FRAMES - 1). Hence, it is not defined as an enum.

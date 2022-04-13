@@ -83,7 +83,7 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
     // Take the weighted average of the step_params based on the last frame's
     // max mv magnitude and that based on the best ref mvs of the current
     // block for the given reference.
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
     const int ref_frame_idx = COMPACT_INDEX0_NRS(ref);
     step_param = (av1_init_search_range(x->max_mv_context[ref_frame_idx]) +
                   mv_search_params->mv_step_param) /
@@ -92,7 +92,7 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
     step_param = (av1_init_search_range(x->max_mv_context[ref]) +
                   mv_search_params->mv_step_param) /
                  2;
-#endif  // CONFIG_NEW_REF_SIGNALING
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
   } else {
     step_param = mv_search_params->mv_step_param;
   }
@@ -112,6 +112,9 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
   int total_weight = 0;
 
   if (!cpi->sf.mv_sf.full_pixel_search_level &&
+#if CONFIG_TIP
+      !is_tip_ref_frame(ref) &&
+#endif  // CONFIG_TIP
       mbmi->motion_mode == SIMPLE_TRANSLATION) {
     SuperBlockEnc *sb_enc = &x->sb_enc;
     if (sb_enc->tpl_data_count) {
@@ -288,11 +291,11 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
     int_mv fractional_ms_list[3];
     av1_set_fractional_mv(fractional_ms_list);
     int dis; /* TODO: use dis in distortion calculation later. */
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
     const int ref_pred = COMPACT_INDEX0_NRS(ref);
 #else
     const int ref_pred = ref;
-#endif  // CONFIG_NEW_REF_SIGNALING
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
 
     SUBPEL_MOTION_SEARCH_PARAMS ms_params;
     av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize, &ref_mv,
@@ -984,11 +987,11 @@ int_mv av1_simple_motion_search(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
 
     cpi->mv_search_params.find_fractional_mv_step(
         xd, cm, &ms_params, subpel_start_mv, &best_mv.as_mv, &not_used,
-#if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
         &x->pred_sse[COMPACT_INDEX0_NRS(ref)],
 #else
         &x->pred_sse[ref],
-#endif  // CONFIG_NEW_REF_SIGNALING
+#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
         NULL);
   } else {
     // Manually convert from units of pixel to 1/8-pixels if we are not doing
