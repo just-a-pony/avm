@@ -869,11 +869,6 @@ int av1_interinter_compound_motion_search(const AV1_COMP *const cpi,
   const INTERINTER_COMPOUND_DATA *compound_data = &mbmi->interinter_comp;
 
 #if CONFIG_OPTFLOW_REFINEMENT
-  const int mixed_new = have_nearmv_newmv_in_inter_mode(this_mode);
-#else
-  const int mixed_new = this_mode == NEAR_NEWMV || this_mode == NEW_NEARMV;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_OPTFLOW_REFINEMENT
   if (this_mode == NEW_NEWMV || this_mode == NEW_NEWMV_OPTFLOW) {
 #else
   if (this_mode == NEW_NEWMV) {
@@ -882,7 +877,7 @@ int av1_interinter_compound_motion_search(const AV1_COMP *const cpi,
                                     tmp_mv, &tmp_rate_mv, 2);
     mbmi->mv[0].as_int = tmp_mv[0].as_int;
     mbmi->mv[1].as_int = tmp_mv[1].as_int;
-  } else if (mixed_new) {
+  } else if (have_nearmv_newmv_in_inter_mode(this_mode)) {
 #if CONFIG_JOINT_MVD
     const AV1_COMMON *const cm = &cpi->common;
     const int jmvd_base_ref_list = get_joint_mvd_base_ref_list(cm, mbmi);
