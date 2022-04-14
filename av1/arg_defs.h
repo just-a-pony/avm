@@ -252,9 +252,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t vbr_corpus_complexity_lap;
   arg_def_t subgop_config_str;
   arg_def_t subgop_config_path;
-#if CONFIG_NEW_INTER_MODES
   arg_def_t max_drl_refmvs;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   arg_def_t enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK

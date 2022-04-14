@@ -699,21 +699,10 @@ typedef struct {
   /**@{*/
   //! skip_mode_cost
   int skip_mode_cost[SKIP_MODE_CONTEXTS][2];
-#if CONFIG_NEW_INTER_MODES
   //! inter single mode cost
   int inter_single_mode_cost[INTER_SINGLE_MODE_CONTEXTS][INTER_SINGLE_MODES];
   //! drl_mode_cost
   int drl_mode_cost[3][DRL_MODE_CONTEXTS][2];
-#else
-  //! newmv_mode_cost
-  int newmv_mode_cost[NEWMV_MODE_CONTEXTS][2];
-  //! zeromv_mode_cost
-  int zeromv_mode_cost[GLOBALMV_MODE_CONTEXTS][2];
-  //! refmv_mode_cost
-  int refmv_mode_cost[REFMV_MODE_CONTEXTS][2];
-  //! drl_mode_cost0
-  int drl_mode_cost0[DRL_MODE_CONTEXTS][2];
-#endif  // CONFIG_NEW_INTER_MODES
   /**@}*/
 
   /*****************************************************************************
@@ -934,7 +923,6 @@ typedef struct {
 } CoeffCosts;
 
 /*!\cond */
-// 4: NEAREST, NEW, NEAR, GLOBAL
 #define SINGLE_REF_MODES ((REF_FRAMES - 1) * 4)
 /*!\endcond */
 struct inter_modes_info;

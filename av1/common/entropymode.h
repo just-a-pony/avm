@@ -27,13 +27,8 @@ extern "C" {
 
 #define TX_SIZE_CONTEXTS 3
 
-#if CONFIG_NEW_INTER_MODES
 #define INTER_OFFSET(mode) ((mode)-NEARMV)
 #define INTER_COMPOUND_OFFSET(mode) (uint8_t)((mode)-NEAR_NEARMV)
-#else
-#define INTER_OFFSET(mode) ((mode)-NEARESTMV)
-#define INTER_COMPOUND_OFFSET(mode) (uint8_t)((mode)-NEAREST_NEARESTMV)
-#endif  // CONFIG_NEW_INTER_MODES
 // Number of possible contexts for a color index.
 #if CONFIG_NEW_COLOR_MAP_CODING
 // As can be seen from av1_get_palette_color_index_context(), the possible
@@ -122,16 +117,9 @@ typedef struct frame_contexts {
   aom_cdf_prob coeff_br_cdf[TX_SIZES][PLANE_TYPES][LEVEL_CONTEXTS]
                            [CDF_SIZE(BR_CDF_SIZE)];
 
-#if CONFIG_NEW_INTER_MODES
   aom_cdf_prob inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS]
                                     [CDF_SIZE(INTER_SINGLE_MODES)];
   aom_cdf_prob drl_cdf[3][DRL_MODE_CONTEXTS][CDF_SIZE(2)];
-#else
-  aom_cdf_prob newmv_cdf[NEWMV_MODE_CONTEXTS][CDF_SIZE(2)];
-  aom_cdf_prob zeromv_cdf[GLOBALMV_MODE_CONTEXTS][CDF_SIZE(2)];
-  aom_cdf_prob drl_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)];
-  aom_cdf_prob refmv_cdf[REFMV_MODE_CONTEXTS][CDF_SIZE(2)];
-#endif  // CONFIG_NEW_INTER_MODES
 
 #if CONFIG_OPTFLOW_REFINEMENT
   aom_cdf_prob use_optflow_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(2)];
@@ -333,7 +321,6 @@ static INLINE int av1_ceil_log2(int n) {
   return i;
 }
 
-#if CONFIG_NEW_INTER_MODES
 static INLINE int16_t inter_single_mode_ctx(int16_t mode_ctx) {
   // refmv_ctx values 2 and 4 are mapped to binary 1 while the rest map to 0.
   // This is intended to capture the case of ref_match_count >= 2 in
@@ -364,7 +351,6 @@ static INLINE int16_t av1_drl_ctx(int16_t mode_ctx) {
   assert(ctx < DRL_MODE_CONTEXTS);
   return ctx;
 }
-#endif  // CONFIG_NEW_INTER_MODES
 
 #if CONFIG_OPTFLOW_REFINEMENT
 static const int comp_idx_to_opfl_mode[INTER_COMPOUND_REF_TYPES] = {

@@ -152,8 +152,6 @@ set_aom_config_var(CONFIG_ORIP_NONDC_DISABLED 0
                    "AV2 experiment flag to disable ORIP for non-DC modes.")
 set_aom_config_var(CONFIG_IST 1 NUMBER
                    "AV2 experiment flag to enable intra secondary transform.")
-set_aom_config_var(CONFIG_NEW_INTER_MODES 1 NUMBER
-                   "AV2 inter mode consolidation experiment flag")
 set_aom_config_var(CONFIG_SMVP_IMPROVEMENT 1 "Enable SMVP improvement")
 set_aom_config_var(CONFIG_TMVP_IMPROVEMENT 1 "Enable TMVP improvement")
 set_aom_config_var(CONFIG_REF_MV_BANK 1 "AV2 ref mv bank experiment flag")

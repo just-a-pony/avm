@@ -441,12 +441,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int reduced_tx_type_set;
-#if CONFIG_NEW_INTER_MODES
   /*!\brief Max number of reference mvs in dynamic reference list
    *
    */
   unsigned int max_drl_refmvs;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   /*!\brief enable reference MV Bank
    *

@@ -104,7 +104,6 @@ static const int mode_threshold_mul_factor[QINDEX_RANGE] = {
 };
 
 #if !CONFIG_NEW_REF_SIGNALING
-#if CONFIG_NEW_INTER_MODES
 static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_NEARMV,
   THR_NEARL2,
@@ -452,209 +451,6 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_D113_PRED,
   THR_D45_PRED,
 };
-#else
-static const THR_MODES av1_default_mode_order[MAX_MODES] = {
-  THR_NEARESTMV,
-  THR_NEARESTL2,
-  THR_NEARESTL3,
-  THR_NEARESTB,
-  THR_NEARESTA2,
-  THR_NEARESTA,
-  THR_NEARESTG,
-
-  THR_NEWMV,
-  THR_NEWL2,
-  THR_NEWL3,
-  THR_NEWB,
-  THR_NEWA2,
-  THR_NEWA,
-  THR_NEWG,
-
-  THR_NEARMV,
-  THR_NEARL2,
-  THR_NEARL3,
-  THR_NEARB,
-  THR_NEARA2,
-  THR_NEARA,
-  THR_NEARG,
-
-  THR_GLOBALMV,
-  THR_GLOBALL2,
-  THR_GLOBALL3,
-  THR_GLOBALB,
-  THR_GLOBALA2,
-  THR_GLOBALA,
-  THR_GLOBALG,
-
-  THR_COMP_NEAREST_NEARESTLA,
-  THR_COMP_NEAREST_NEARESTL2A,
-  THR_COMP_NEAREST_NEARESTL3A,
-  THR_COMP_NEAREST_NEARESTGA,
-  THR_COMP_NEAREST_NEARESTLB,
-  THR_COMP_NEAREST_NEARESTL2B,
-  THR_COMP_NEAREST_NEARESTL3B,
-  THR_COMP_NEAREST_NEARESTGB,
-  THR_COMP_NEAREST_NEARESTLA2,
-  THR_COMP_NEAREST_NEARESTL2A2,
-  THR_COMP_NEAREST_NEARESTL3A2,
-  THR_COMP_NEAREST_NEARESTGA2,
-  THR_COMP_NEAREST_NEARESTLL2,
-  THR_COMP_NEAREST_NEARESTLL3,
-  THR_COMP_NEAREST_NEARESTLG,
-  THR_COMP_NEAREST_NEARESTBA,
-
-  THR_COMP_NEAR_NEARLA,
-  THR_COMP_NEW_NEARESTLA,
-  THR_COMP_NEAREST_NEWLA,
-  THR_COMP_NEW_NEARLA,
-  THR_COMP_NEAR_NEWLA,
-  THR_COMP_NEW_NEWLA,
-  THR_COMP_GLOBAL_GLOBALLA,
-
-  THR_COMP_NEAR_NEARL2A,
-  THR_COMP_NEW_NEARESTL2A,
-  THR_COMP_NEAREST_NEWL2A,
-  THR_COMP_NEW_NEARL2A,
-  THR_COMP_NEAR_NEWL2A,
-  THR_COMP_NEW_NEWL2A,
-  THR_COMP_GLOBAL_GLOBALL2A,
-
-  THR_COMP_NEAR_NEARL3A,
-  THR_COMP_NEW_NEARESTL3A,
-  THR_COMP_NEAREST_NEWL3A,
-  THR_COMP_NEW_NEARL3A,
-  THR_COMP_NEAR_NEWL3A,
-  THR_COMP_NEW_NEWL3A,
-  THR_COMP_GLOBAL_GLOBALL3A,
-
-  THR_COMP_NEAR_NEARGA,
-  THR_COMP_NEW_NEARESTGA,
-  THR_COMP_NEAREST_NEWGA,
-  THR_COMP_NEW_NEARGA,
-  THR_COMP_NEAR_NEWGA,
-  THR_COMP_NEW_NEWGA,
-  THR_COMP_GLOBAL_GLOBALGA,
-
-  THR_COMP_NEAR_NEARLB,
-  THR_COMP_NEW_NEARESTLB,
-  THR_COMP_NEAREST_NEWLB,
-  THR_COMP_NEW_NEARLB,
-  THR_COMP_NEAR_NEWLB,
-  THR_COMP_NEW_NEWLB,
-  THR_COMP_GLOBAL_GLOBALLB,
-
-  THR_COMP_NEAR_NEARL2B,
-  THR_COMP_NEW_NEARESTL2B,
-  THR_COMP_NEAREST_NEWL2B,
-  THR_COMP_NEW_NEARL2B,
-  THR_COMP_NEAR_NEWL2B,
-  THR_COMP_NEW_NEWL2B,
-  THR_COMP_GLOBAL_GLOBALL2B,
-
-  THR_COMP_NEAR_NEARL3B,
-  THR_COMP_NEW_NEARESTL3B,
-  THR_COMP_NEAREST_NEWL3B,
-  THR_COMP_NEW_NEARL3B,
-  THR_COMP_NEAR_NEWL3B,
-  THR_COMP_NEW_NEWL3B,
-  THR_COMP_GLOBAL_GLOBALL3B,
-
-  THR_COMP_NEAR_NEARGB,
-  THR_COMP_NEW_NEARESTGB,
-  THR_COMP_NEAREST_NEWGB,
-  THR_COMP_NEW_NEARGB,
-  THR_COMP_NEAR_NEWGB,
-  THR_COMP_NEW_NEWGB,
-  THR_COMP_GLOBAL_GLOBALGB,
-
-  THR_COMP_NEAR_NEARLA2,
-  THR_COMP_NEW_NEARESTLA2,
-  THR_COMP_NEAREST_NEWLA2,
-  THR_COMP_NEW_NEARLA2,
-  THR_COMP_NEAR_NEWLA2,
-  THR_COMP_NEW_NEWLA2,
-  THR_COMP_GLOBAL_GLOBALLA2,
-
-  THR_COMP_NEAR_NEARL2A2,
-  THR_COMP_NEW_NEARESTL2A2,
-  THR_COMP_NEAREST_NEWL2A2,
-  THR_COMP_NEW_NEARL2A2,
-  THR_COMP_NEAR_NEWL2A2,
-  THR_COMP_NEW_NEWL2A2,
-  THR_COMP_GLOBAL_GLOBALL2A2,
-
-  THR_COMP_NEAR_NEARL3A2,
-  THR_COMP_NEW_NEARESTL3A2,
-  THR_COMP_NEAREST_NEWL3A2,
-  THR_COMP_NEW_NEARL3A2,
-  THR_COMP_NEAR_NEWL3A2,
-  THR_COMP_NEW_NEWL3A2,
-  THR_COMP_GLOBAL_GLOBALL3A2,
-
-  THR_COMP_NEAR_NEARGA2,
-  THR_COMP_NEW_NEARESTGA2,
-  THR_COMP_NEAREST_NEWGA2,
-  THR_COMP_NEW_NEARGA2,
-  THR_COMP_NEAR_NEWGA2,
-  THR_COMP_NEW_NEWGA2,
-  THR_COMP_GLOBAL_GLOBALGA2,
-
-  THR_COMP_NEAR_NEARLL2,
-  THR_COMP_NEW_NEARESTLL2,
-  THR_COMP_NEAREST_NEWLL2,
-  THR_COMP_NEW_NEARLL2,
-  THR_COMP_NEAR_NEWLL2,
-  THR_COMP_NEW_NEWLL2,
-  THR_COMP_GLOBAL_GLOBALLL2,
-
-  THR_COMP_NEAR_NEARLL3,
-  THR_COMP_NEW_NEARESTLL3,
-  THR_COMP_NEAREST_NEWLL3,
-  THR_COMP_NEW_NEARLL3,
-  THR_COMP_NEAR_NEWLL3,
-  THR_COMP_NEW_NEWLL3,
-  THR_COMP_GLOBAL_GLOBALLL3,
-
-  THR_COMP_NEAR_NEARLG,
-  THR_COMP_NEW_NEARESTLG,
-  THR_COMP_NEAREST_NEWLG,
-  THR_COMP_NEW_NEARLG,
-  THR_COMP_NEAR_NEWLG,
-  THR_COMP_NEW_NEWLG,
-  THR_COMP_GLOBAL_GLOBALLG,
-
-  THR_COMP_NEAR_NEARBA,
-  THR_COMP_NEW_NEARESTBA,
-  THR_COMP_NEAREST_NEWBA,
-  THR_COMP_NEW_NEARBA,
-  THR_COMP_NEAR_NEWBA,
-  THR_COMP_NEW_NEWBA,
-  THR_COMP_GLOBAL_GLOBALBA,
-
-#if CONFIG_TIP
-  THR_NEAREST_TIP,
-  THR_NEW_TIP,
-  THR_NEAR_TIP,
-#if IMPROVED_AMVD
-  THR_AMVDNEW_TIP,
-#endif  // IMPROVED_AMVD
-#endif  // CONFIG_TIP
-
-  THR_DC,
-  THR_PAETH,
-  THR_SMOOTH,
-  THR_SMOOTH_V,
-  THR_SMOOTH_H,
-  THR_H_PRED,
-  THR_V_PRED,
-  THR_D135_PRED,
-  THR_D203_PRED,
-  THR_D157_PRED,
-  THR_D67_PRED,
-  THR_D113_PRED,
-  THR_D45_PRED,
-};
-#endif  // CONFIG_NEW_INTER_MODES
 #endif  // !CONFIG_NEW_REF_SIGNALING
 
 /*!\cond */
@@ -1076,31 +872,9 @@ static int cost_mv_ref(const ModeCosts *const mode_costs, PREDICTION_MODE mode,
 
   assert(is_inter_mode(mode));
 
-#if CONFIG_NEW_INTER_MODES
   const int16_t ismode_ctx = inter_single_mode_ctx(mode_context);
   return mode_costs
       ->inter_single_mode_cost[ismode_ctx][mode - SINGLE_INTER_MODE_START];
-#else
-  int mode_cost = 0;
-  int16_t mode_ctx = mode_context & NEWMV_CTX_MASK;
-  if (mode == NEWMV) {
-    mode_cost = mode_costs->newmv_mode_cost[mode_ctx][0];
-    return mode_cost;
-  } else {
-    mode_cost = mode_costs->newmv_mode_cost[mode_ctx][1];
-    mode_ctx = (mode_context >> GLOBALMV_OFFSET) & GLOBALMV_CTX_MASK;
-
-    if (mode == GLOBALMV) {
-      mode_cost += mode_costs->zeromv_mode_cost[mode_ctx][0];
-      return mode_cost;
-    } else {
-      mode_cost += mode_costs->zeromv_mode_cost[mode_ctx][1];
-      mode_ctx = (mode_context >> REFMV_OFFSET) & REFMV_CTX_MASK;
-      mode_cost += mode_costs->refmv_mode_cost[mode_ctx][mode != NEARESTMV];
-      return mode_cost;
-    }
-  }
-#endif  // CONFIG_NEW_INTER_MODES
 }
 
 static INLINE PREDICTION_MODE get_single_mode(PREDICTION_MODE this_mode,
@@ -1462,7 +1236,6 @@ static INLINE void clamp_mv2(MV *mv, const MACROBLOCKD *xd) {
 
 /* If the current mode shares the same mv with other modes with higher cost,
  * skip this mode. */
-#if CONFIG_NEW_INTER_MODES
 static int skip_repeated_mv(const AV1_COMMON *const cm,
                             const MACROBLOCK *const x,
                             PREDICTION_MODE this_mode,
@@ -1534,76 +1307,6 @@ static int skip_repeated_mv(const AV1_COMMON *const cm,
   }
   return 0;
 }
-#else
-static int skip_repeated_mv(const AV1_COMMON *const cm,
-                            const MACROBLOCK *const x,
-                            PREDICTION_MODE this_mode,
-                            const MV_REFERENCE_FRAME ref_frames[2],
-                            InterModeSearchState *search_state) {
-#if CONFIG_TIP
-  if (is_tip_ref_frame(ref_frames[0])) return 0;
-#endif  // CONFIG_TIP
-  const int is_comp_pred = is_inter_ref_frame(ref_frames[1]);
-  const uint8_t ref_frame_type = av1_ref_frame_type(ref_frames);
-  const MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
-  const int ref_mv_count = mbmi_ext->ref_mv_count[ref_frame_type];
-  PREDICTION_MODE compare_mode = MB_MODE_COUNT;
-  if (!is_comp_pred) {
-    if (this_mode == NEARMV) {
-      if (ref_mv_count == 0) {
-        // NEARMV has the same motion vector as NEARESTMV
-        compare_mode = NEARESTMV;
-      }
-      if (ref_mv_count == 1 &&
-          cm->global_motion[ref_frames[0]].wmtype <= TRANSLATION) {
-        // NEARMV has the same motion vector as GLOBALMV
-        compare_mode = GLOBALMV;
-      }
-    }
-    if (this_mode == GLOBALMV) {
-      if (ref_mv_count == 0 &&
-          cm->global_motion[ref_frames[0]].wmtype <= TRANSLATION) {
-        // GLOBALMV has the same motion vector as NEARESTMV
-        compare_mode = NEARESTMV;
-      }
-      if (ref_mv_count == 1) {
-        // GLOBALMV has the same motion vector as NEARMV
-        compare_mode = NEARMV;
-      }
-    }
-
-    if (compare_mode != MB_MODE_COUNT) {
-      // Use modelled_rd to check whether compare mode was searched
-#if CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
-      const MV_REFERENCE_FRAME ref_frame0 = COMPACT_INDEX0_NRS(ref_frames[0]);
-      if (search_state->modelled_rd[compare_mode][0][ref_frame0] != INT64_MAX) {
-#else
-      if (search_state->modelled_rd[compare_mode][0][ref_frames[0]] !=
-          INT64_MAX) {
-#endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
-        const int16_t mode_ctx =
-            av1_mode_context_analyzer(mbmi_ext->mode_context, ref_frames);
-        const int compare_cost =
-            cost_mv_ref(&x->mode_costs, compare_mode, mode_ctx);
-        const int this_cost = cost_mv_ref(&x->mode_costs, this_mode, mode_ctx);
-
-        // Only skip if the mode cost is larger than compare mode cost
-        if (this_cost > compare_cost) {
-#if CONFIG_NEW_REF_SIGNALING
-          search_state->modelled_rd[this_mode][0][ref_frame0] =
-              search_state->modelled_rd[compare_mode][0][ref_frame0];
-#else
-          search_state->modelled_rd[this_mode][0][ref_frames[0]] =
-              search_state->modelled_rd[compare_mode][0][ref_frames[0]];
-#endif  // CONFIG_NEW_REF_SIGNALING
-          return 1;
-        }
-      }
-    }
-  }
-  return 0;
-}
-#endif  // CONFIG_NEW_INTER_MODES
 
 static INLINE int clamp_and_check_mv(int_mv *out_mv, int_mv in_mv,
                                      const AV1_COMMON *cm,
@@ -1682,15 +1385,11 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
               x->mv_costs.mv_cost_stack, MV_COST_WEIGHT);
         }
       }
-#if CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
     } else if (this_mode == NEAR_NEWMV || this_mode == NEAR_NEWMV_OPTFLOW) {
 #else
     } else if (this_mode == NEAR_NEWMV) {
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#else
-    } else if (this_mode == NEAREST_NEWMV || this_mode == NEAR_NEWMV) {
-#endif  // CONFIG_NEW_INTER_MODES
       if (valid_mv1) {
         cur_mv[1].as_int = args->single_newmv[ref_mv_idx][refs[1]].as_int;
         clamp_mv_in_range(x, &cur_mv[1], 1);
@@ -1754,15 +1453,11 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
           cpi, x, bsize, cur_mv, NULL, 0, rate_mv, jmvd_base_ref_list);
 #endif  // CONFIG_JOINT_MVD
     } else {
-#if CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
       assert(this_mode == NEW_NEARMV || this_mode == NEW_NEARMV_OPTFLOW);
 #else
       assert(this_mode == NEW_NEARMV);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#else
-      assert(this_mode == NEW_NEARESTMV || this_mode == NEW_NEARMV);
-#endif  // CONFIG_NEW_INTER_MODES
       if (valid_mv0) {
         cur_mv[0].as_int = args->single_newmv[ref_mv_idx][refs[0]].as_int;
         clamp_mv_in_range(x, &cur_mv[0], 0);
@@ -2341,7 +2036,6 @@ static int64_t skip_mode_rd(RD_STATS *rd_stats, const AV1_COMP *const cpi,
 }
 #endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
 
-#if CONFIG_NEW_INTER_MODES
 // Check NEARMV and GLOBALMV ref mvs for duplicate and skip the relevant mode
 static INLINE int check_repeat_ref_mv(const MB_MODE_INFO_EXT *mbmi_ext,
                                       int ref_idx,
@@ -2383,46 +2077,6 @@ static INLINE int check_repeat_ref_mv(const MB_MODE_INFO_EXT *mbmi_ext,
   }
   return 0;
 }
-#else
-// Check NEARESTMV, NEARMV, GLOBALMV ref mvs for duplicate and skip the relevant
-// mode
-static INLINE int check_repeat_ref_mv(const MB_MODE_INFO_EXT *mbmi_ext,
-                                      int ref_idx,
-                                      const MV_REFERENCE_FRAME *ref_frame,
-                                      PREDICTION_MODE single_mode) {
-  const uint8_t ref_frame_type = av1_ref_frame_type(ref_frame);
-  const int ref_mv_count = mbmi_ext->ref_mv_count[ref_frame_type];
-  assert(single_mode != NEWMV);
-  if (single_mode == NEARESTMV) {
-    return 0;
-  } else if (single_mode == NEARMV) {
-    // when ref_mv_count = 0, NEARESTMV and NEARMV are same as GLOBALMV
-    // when ref_mv_count = 1, NEARMV is same as GLOBALMV
-    if (ref_mv_count < 2) return 1;
-  } else if (single_mode == GLOBALMV) {
-    // when ref_mv_count == 0, GLOBALMV is same as NEARESTMV
-    if (ref_mv_count == 0) return 1;
-    // when ref_mv_count == 1, NEARMV is same as GLOBALMV
-    else if (ref_mv_count == 1)
-      return 0;
-
-    int stack_size = AOMMIN(USABLE_REF_MV_STACK_SIZE, ref_mv_count);
-    // Check GLOBALMV is matching with any mv in ref_mv_stack
-    for (int ref_mv_idx = 0; ref_mv_idx < stack_size; ref_mv_idx++) {
-      int_mv this_mv;
-
-      if (ref_idx == 0)
-        this_mv = mbmi_ext->ref_mv_stack[ref_frame_type][ref_mv_idx].this_mv;
-      else
-        this_mv = mbmi_ext->ref_mv_stack[ref_frame_type][ref_mv_idx].comp_mv;
-
-      if (this_mv.as_int == mbmi_ext->global_mvs[ref_frame[ref_idx]].as_int)
-        return 1;
-    }
-  }
-  return 0;
-}
-#endif  // CONFIG_NEW_INTER_MODES
 
 static INLINE int get_this_mv(int_mv *this_mv, PREDICTION_MODE this_mode,
                               int ref_idx, int ref_mv_idx,
@@ -2439,13 +2093,8 @@ static INLINE int get_this_mv(int_mv *this_mv, PREDICTION_MODE this_mode,
       return 0;
     *this_mv = mbmi_ext->global_mvs[ref_frame[ref_idx]];
   } else {
-#if CONFIG_NEW_INTER_MODES
     assert(single_mode == NEARMV);
     const int ref_mv_offset = ref_mv_idx;
-#else
-    assert(single_mode == NEARMV || single_mode == NEARESTMV);
-    const int ref_mv_offset = single_mode == NEARESTMV ? 0 : ref_mv_idx + 1;
-#endif  // CONFIG_NEW_INTER_MODES
     const uint8_t ref_frame_type = av1_ref_frame_type(ref_frame);
     if (ref_mv_offset < mbmi_ext->ref_mv_count[ref_frame_type]) {
       assert(ref_mv_offset >= 0);
@@ -2504,13 +2153,10 @@ static INLINE int build_cur_mv(int_mv *cur_mv, PREDICTION_MODE this_mode,
   return ret;
 }
 
-#if CONFIG_NEW_INTER_MODES
-// See write_drl_idx for a description of how this works.
-// With CONFIG_NEW_INTER_MODES, this computes the bit cost
-// of writing the full 4-value DRL index instead of the
-// 3-value index that was used for NEARMV before.  This will
-// also guarantee a DRL cost of zero if the mode does not need
+// Computes the bit cost of writing the DRL index with max_drl_bits possible
+// values. It will also guarantee a DRL cost of zero if the mode does not need
 // a DRL index.
+// Also see related function write_drl_idx() for more info.
 static INLINE int get_drl_cost(int max_drl_bits, const MB_MODE_INFO *mbmi,
                                const MB_MODE_INFO_EXT *mbmi_ext,
                                const MACROBLOCK *x) {
@@ -2544,36 +2190,6 @@ static INLINE int get_drl_cost(int max_drl_bits, const MB_MODE_INFO *mbmi,
   }
   return cost;
 }
-#else
-static INLINE int get_drl_cost(const MB_MODE_INFO *mbmi,
-                               const MB_MODE_INFO_EXT *mbmi_ext,
-                               const int (*const drl_mode_cost0)[2],
-                               int8_t ref_frame_type) {
-  int cost = 0;
-  if (mbmi->mode == NEWMV || mbmi->mode == NEW_NEWMV) {
-    for (int idx = 0; idx < MAX_DRL_BITS; ++idx) {
-      if (mbmi_ext->ref_mv_count[ref_frame_type] > idx + 1) {
-        uint8_t drl_ctx = av1_drl_ctx(mbmi_ext->weight[ref_frame_type], idx);
-        cost += drl_mode_cost0[drl_ctx][mbmi->ref_mv_idx != idx];
-        if (mbmi->ref_mv_idx == idx) return cost;
-      }
-    }
-    return cost;
-  }
-
-  if (have_nearmv_in_inter_mode(mbmi->mode)) {
-    for (int idx = 1; idx < MAX_DRL_BITS + 1; ++idx) {
-      if (mbmi_ext->ref_mv_count[ref_frame_type] > idx + 1) {
-        uint8_t drl_ctx = av1_drl_ctx(mbmi_ext->weight[ref_frame_type], idx);
-        cost += drl_mode_cost0[drl_ctx][mbmi->ref_mv_idx != (idx - 1)];
-        if (mbmi->ref_mv_idx == (idx - 1)) return cost;
-      }
-    }
-    return cost;
-  }
-  return cost;
-}
-#endif  // CONFIG_NEW_INTER_MODES
 
 static INLINE int is_single_newmv_valid(const HandleInterModeArgs *const args,
                                         const MB_MODE_INFO *const mbmi,
@@ -2589,15 +2205,10 @@ static INLINE int is_single_newmv_valid(const HandleInterModeArgs *const args,
   return 1;
 }
 
-#if CONFIG_NEW_INTER_MODES
 static int get_drl_refmv_count(int max_drl_bits, const MACROBLOCK *const x,
-#else
-static int get_drl_refmv_count(const MACROBLOCK *const x,
-#endif  // CONFIG_NEW_INTER_MODES
                                const MV_REFERENCE_FRAME *ref_frame,
                                PREDICTION_MODE mode) {
   MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
-#if CONFIG_NEW_INTER_MODES
   int has_drl = have_drl_index(mode);
   if (!has_drl) {
     assert(mode == GLOBALMV || mode == GLOBAL_GLOBALMV);
@@ -2609,18 +2220,6 @@ static int get_drl_refmv_count(const MACROBLOCK *const x,
   if (mode == AMVDNEWMV) ref_mv_count = AOMMIN(ref_mv_count, 2);
 #endif  // IMPROVED_AMVD
   return AOMMIN(max_drl_bits + 1, ref_mv_count);
-#else
-  const int8_t ref_frame_type = av1_ref_frame_type(ref_frame);
-  const int has_nearmv = have_nearmv_in_inter_mode(mode) ? 1 : 0;
-  const int ref_mv_count = mbmi_ext->ref_mv_count[ref_frame_type];
-  const int only_newmv = (mode == NEWMV || mode == NEW_NEWMV);
-  const int has_drl =
-      (has_nearmv && ref_mv_count > 2) || (only_newmv && ref_mv_count > 1);
-  const int ref_set =
-      has_drl ? AOMMIN(MAX_REF_MV_SEARCH, ref_mv_count - has_nearmv) : 1;
-
-  return ref_set;
-#endif  // CONFIG_NEW_INTER_MODES
 }
 
 // Whether this reference motion vector can be skipped, based on initial
@@ -2656,13 +2255,7 @@ static bool ref_mv_idx_early_breakout(
         mbmi->ref_frame[1] == LAST2_FRAME ||
         mbmi->ref_frame[1] == LAST3_FRAME) {
 #endif  // CONFIG_NEW_REF_SIGNALING
-#if CONFIG_NEW_INTER_MODES
-      const int has_nearmv = 0;
-#else
-      const int has_nearmv = have_nearmv_in_inter_mode(mbmi->mode) ? 1 : 0;
-#endif  // CONFIG_NEW_INTER_MODES
-      if (mbmi_ext->weight[ref_frame_type][ref_mv_idx + has_nearmv] <
-          REF_CAT_LEVEL) {
+      if (mbmi_ext->weight[ref_frame_type][ref_mv_idx] < REF_CAT_LEVEL) {
         return true;
       }
     }
@@ -2678,13 +2271,7 @@ static bool ref_mv_idx_early_breakout(
       if (mbmi->ref_frame[0] != ref_frame_dist_info->nearest_past_ref &&
           mbmi->ref_frame[0] != ref_frame_dist_info->nearest_future_ref) {
 #endif  // CONFIG_NEW_REF_SIGNALING
-#if CONFIG_NEW_INTER_MODES
-        const int has_nearmv = 0;
-#else
-        const int has_nearmv = have_nearmv_in_inter_mode(mbmi->mode) ? 1 : 0;
-#endif  // CONFIG_NEW_INTER_MODES
-        if (mbmi_ext->weight[ref_frame_type][ref_mv_idx + has_nearmv] <
-            REF_CAT_LEVEL) {
+        if (mbmi_ext->weight[ref_frame_type][ref_mv_idx] < REF_CAT_LEVEL) {
           return true;
         }
       }
@@ -2696,24 +2283,12 @@ static bool ref_mv_idx_early_breakout(
     return true;
   }
   size_t est_rd_rate = args->ref_frame_cost + args->single_comp_cost;
-#if CONFIG_NEW_INTER_MODES
   const int drl_cost =
       get_drl_cost(cpi->common.features.max_drl_bits, mbmi, mbmi_ext, x);
-#else
-  const int drl_cost = get_drl_cost(
-      mbmi, mbmi_ext, x->mode_costs.drl_mode_cost0, ref_frame_type);
-#endif  // CONFIG_NEW_INTER_MODES
   est_rd_rate += drl_cost;
-#if CONFIG_NEW_INTER_MODES
   if (RDCOST(x->rdmult, est_rd_rate, 0) > ref_best_rd) {
     return true;
   }
-#else
-  if (RDCOST(x->rdmult, est_rd_rate, 0) > ref_best_rd &&
-      mbmi->mode != NEARESTMV && mbmi->mode != NEAREST_NEARESTMV) {
-    return true;
-  }
-#endif  // CONFIG_NEW_INTER_MODES
   return false;
 }
 
@@ -2749,13 +2324,8 @@ static int64_t simple_translation_pred_rd(
   mbmi->ref_mv_idx = ref_mv_idx;
 
   rd_stats->rate += args->ref_frame_cost + args->single_comp_cost;
-#if CONFIG_NEW_INTER_MODES
   const int drl_cost =
       get_drl_cost(cpi->common.features.max_drl_bits, mbmi, mbmi_ext, x);
-#else
-  const int drl_cost = get_drl_cost(mbmi, mbmi_ext, mode_costs->drl_mode_cost0,
-                                    av1_ref_frame_type(mbmi->ref_frame));
-#endif  // CONFIG_NEW_INTER_MODES
   rd_stats->rate += drl_cost;
   mode_info[ref_mv_idx].drl_cost = drl_cost;
 
@@ -2863,12 +2433,8 @@ static int ref_mv_idx_to_search(AV1_COMP *const cpi, MACROBLOCK *x,
   }
 
   // Calculate the RD cost for the motion vectors using simple translation.
-#if CONFIG_NEW_INTER_MODES
   int64_t idx_rdcost[MAX_REF_MV_SEARCH];
   for (int i = 0; i < MAX_REF_MV_SEARCH; i++) idx_rdcost[i] = INT64_MAX;
-#else
-  int64_t idx_rdcost[] = { INT64_MAX, INT64_MAX, INT64_MAX };
-#endif  // CONFIG_NEW_INTER_MODES
   for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ++ref_mv_idx) {
     // If this index is bad, ignore it.
     if (!mask_check_bit(good_indices, ref_mv_idx)) {
@@ -2879,11 +2445,8 @@ static int ref_mv_idx_to_search(AV1_COMP *const cpi, MACROBLOCK *x,
   }
   // Find the index with the best RD cost.
   int best_idx = 0;
-#if CONFIG_NEW_INTER_MODES
-  // Without NEW_INTER_MODES, we always search the 0th MV and then motion
-  // vectors within a percentage of the best of the remaining. For the
-  // NEW_INTER_MODES case, find the 2nd best motion vector and search
-  // motion vectors within a percentage of it.
+  // Find the 2nd best motion vector and search motion vectors within a
+  // percentage of it.
   int best2_idx = 1;
   assert(MAX_REF_MV_SEARCH >= 2);
   if (idx_rdcost[0] > idx_rdcost[1]) {
@@ -2900,19 +2463,8 @@ static int ref_mv_idx_to_search(AV1_COMP *const cpi, MACROBLOCK *x,
   }
   // The rest of the code uses best_idx as the reference.
   best_idx = best2_idx;
-#else
-  for (int i = 1; i < MAX_REF_MV_SEARCH; ++i) {
-    if (idx_rdcost[i] < idx_rdcost[best_idx]) {
-      best_idx = i;
-    }
-  }
-#endif  // CONFIG_NEW_INTER_MODES
   // Only include indices that are good and within a % of the best.
-#if CONFIG_NEW_INTER_MODES
   const double dth = has_second_ref(mbmi) ? 1.02 : 1.001;
-#else
-  const double dth = has_second_ref(mbmi) ? 1.05 : 1.001;
-#endif
   // If the simple translation cost is not within this multiple of the
   // best RD, skip it. Note that the cutoff is derived experimentally.
   const double ref_dth = 5;
@@ -3117,11 +2669,7 @@ static AOM_INLINE int prune_modes_based_on_tpl_stats(
 
   const int is_globalmv =
       (this_mode == GLOBALMV) || (this_mode == GLOBAL_GLOBALMV);
-#if CONFIG_NEW_INTER_MODES
   const int prune_index = is_globalmv ? features->max_drl_bits + 1 : ref_mv_idx;
-#else
-  const int prune_index = is_globalmv ? MAX_REF_MV_SEARCH : ref_mv_idx;
-#endif  // CONFIG_NEW_INTER_MODES
 
   // Thresholds used for pruning:
   // Lower value indicates aggressive pruning and higher value indicates
@@ -3129,13 +2677,7 @@ static AOM_INLINE int prune_modes_based_on_tpl_stats(
   // 'prune_index' 0, 1, 2 corresponds to ref_mv indices 0, 1 and 2. prune_index
   // 3 corresponds to GLOBALMV/GLOBAL_GLOBALMV
   static const int tpl_inter_mode_prune_mul_factor[2][MAX_REF_MV_SEARCH + 1] = {
-#if CONFIG_NEW_INTER_MODES
-    { 3, 3, 3, 2, 2, 2, 2, 2 },
-    { 3, 2, 2, 2, 2, 2, 2, 2 }
-#else
-    { 3, 3, 3, 2 },
-    { 3, 2, 2, 2 }
-#endif  // CONFIG_NEW_INTER_MODES
+    { 3, 3, 3, 2, 2, 2, 2, 2 }, { 3, 2, 2, 2, 2, 2, 2, 2 }
   };
 
   const int is_comp_pred = is_inter_ref_frame(refs[1]);
@@ -3407,11 +2949,7 @@ static int prune_ref_mv_idx_search(const FeatureFlags *const features,
     }
   }
 
-#if CONFIG_NEW_INTER_MODES
   if (ref_mv_idx < features->max_drl_bits) {
-#else
-  if (ref_mv_idx < MAX_REF_MV_SEARCH - 1) {
-#endif  // CONFIG_NEW_INTER_MODES
     for (i = 0; i < is_comp_pred + 1; ++i)
       save_mv[ref_mv_idx][i].as_int = mbmi->mv[i].as_int;
   }
@@ -3555,11 +3093,8 @@ static int64_t handle_inter_mode(
   // First, perform a simple translation search for each of the indices. If
   // an index performs well, it will be fully searched in the main loop
   // of this function.
-  const int ref_set = get_drl_refmv_count(
-#if CONFIG_NEW_INTER_MODES
-      cm->features.max_drl_bits,
-#endif  // CONFIG_NEW_INTER_MODES
-      x, mbmi->ref_frame, this_mode);
+  const int ref_set = get_drl_refmv_count(cm->features.max_drl_bits, x,
+                                          mbmi->ref_frame, this_mode);
   // Save MV results from first 2 ref_mv_idx.
   int_mv save_mv[MAX_REF_MV_SEARCH - 1][2];
   int best_ref_mv_idx = -1;
@@ -3626,14 +3161,8 @@ static int64_t handle_inter_mode(
 
       // Compute cost for signalling this DRL index
       rd_stats->rate = base_rate;
-#if CONFIG_NEW_INTER_MODES
       const int drl_cost =
           get_drl_cost(cm->features.max_drl_bits, mbmi, mbmi_ext, x);
-#else
-    const int drl_cost =
-        get_drl_cost(mbmi, mbmi_ext, mode_costs->drl_mode_cost0,
-                     av1_ref_frame_type(mbmi->ref_frame));
-#endif  // CONFIG_NEW_INTER_MODES
       rd_stats->rate += drl_cost;
       mode_info[ref_mv_idx].drl_cost = drl_cost;
 
@@ -3686,7 +3215,6 @@ static int64_t handle_inter_mode(
         mbmi->mv[i].as_int = cur_mv[i].as_int;
       }
 
-#if CONFIG_NEW_INTER_MODES
       const int like_nearest = (mbmi->mode == NEARMV ||
 #if CONFIG_OPTFLOW_REFINEMENT
                                 mbmi->mode == NEAR_NEARMV_OPTFLOW ||
@@ -3696,12 +3224,6 @@ static int64_t handle_inter_mode(
       if (RDCOST(x->rdmult, rd_stats->rate, 0) > ref_best_rd && !like_nearest) {
         continue;
       }
-#else
-    if (RDCOST(x->rdmult, rd_stats->rate, 0) > ref_best_rd &&
-        mbmi->mode != NEARESTMV && mbmi->mode != NEAREST_NEARESTMV) {
-      continue;
-    }
-#endif  // CONFIG_NEW_INTER_MODES
 
       // Skip the rest of the search if prune_ref_mv_idx_search speed feature
       // is enabled, and the current MV is similar to a previous one.
@@ -4024,25 +3546,9 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
   av1_copy_usable_ref_mv_stack_and_weight(xd, mbmi_ext, ref_frame);
 
-#if CONFIG_NEW_INTER_MODES
   int_mv dv_ref = av1_find_best_ref_mv_from_stack(
       /*allow_hp=*/0, mbmi_ext, ref_frame, /*is_integer=*/0);
   dv_ref.as_int = dv_ref.as_int == INVALID_MV ? 0 : dv_ref.as_int;
-#else
-  int_mv nearestmv, nearmv;
-  av1_find_best_ref_mvs_from_stack(
-      /*allow_hp=*/0, mbmi_ext, ref_frame, &nearestmv, &nearmv,
-      /*is_integer=*/0);
-
-  if (nearestmv.as_int == INVALID_MV) {
-    nearestmv.as_int = 0;
-  }
-  if (nearmv.as_int == INVALID_MV) {
-    nearmv.as_int = 0;
-  }
-
-  int_mv dv_ref = nearestmv.as_int == 0 ? nearmv : nearestmv;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_BVP_IMPROVEMENT
   if (mbmi_ext->ref_mv_count[INTRA_FRAME] == 0) {
     dv_ref.as_int = 0;
@@ -4499,16 +4005,12 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
       LAST_FRAME + skip_mode_info->ref_frame_idx_1;
 #endif
 
-#if CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
   const PREDICTION_MODE this_mode =
       cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV;
 #else
   const PREDICTION_MODE this_mode = NEAR_NEARMV;
-#endif
-#else
-  const PREDICTION_MODE this_mode = NEAREST_NEARESTMV;
-#endif  // CONFIG_NEW_INTER_MODES
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 #if !CONFIG_NEW_REF_SIGNALING
   const THR_MODES mode_index =
@@ -4526,9 +4028,7 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
   }
 
   mbmi->mode = this_mode;
-#if CONFIG_NEW_INTER_MODES
   mbmi->ref_mv_idx = 0;
-#endif  // CONFIG_NEW_INTER_MODES
   mbmi->uv_mode = UV_DC_PRED;
   mbmi->ref_frame[0] = ref_frame;
   mbmi->ref_frame[1] = second_ref_frame;
@@ -4550,7 +4050,6 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
     av1_copy_usable_ref_mv_stack_and_weight(xd, mbmi_ext, ref_frame_type);
   }
 
-#if CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
   assert(this_mode ==
          (cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV));
@@ -4561,9 +4060,6 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
   assert(mbmi->mode == NEAR_NEARMV);
 #endif
   assert(mbmi->ref_mv_idx == 0);
-#else
-  assert(this_mode == NEAREST_NEARESTMV);
-#endif  // CONFIG_NEW_INTER_MODES
   if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
     assert(av1_check_newmv_joint_nonzero(cm, x));
     return;
@@ -4612,11 +4108,8 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
     search_state->best_rd = best_rd_cost->rdcost;
   }
   // loop of ref_mv_idx
-  const int ref_set = get_drl_refmv_count(
-#if CONFIG_NEW_INTER_MODES
-      cm->features.max_drl_bits,
-#endif  // CONFIG_NEW_INTER_MODES
-      x, mbmi->ref_frame, this_mode);
+  const int ref_set = get_drl_refmv_count(cm->features.max_drl_bits, x,
+                                          mbmi->ref_frame, this_mode);
 
   for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ref_mv_idx++) {
     mbmi->ref_mv_idx = ref_mv_idx;
@@ -4669,16 +4162,12 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
       search_state->best_mbmode.fsc_mode[xd->tree_type == CHROMA_PART] = 0;
 #endif
 
-#if CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
       search_state->best_mbmode.mode =
           (cm->features.opfl_refine_type ? NEAR_NEARMV_OPTFLOW : NEAR_NEARMV);
 #else
       search_state->best_mbmode.mode = NEAR_NEARMV;
-#endif
-#else
-      search_state->best_mbmode.mode = NEAREST_NEARESTMV;
-#endif  // CONFIG_NEW_INTER_MODES
+#endif  // CONFIG_OPTFLOW_REFINEMENT
       search_state->best_mbmode.ref_frame[0] = mbmi->ref_frame[0];
       search_state->best_mbmode.ref_frame[1] = mbmi->ref_frame[1];
       search_state->best_mbmode.mv[0].as_int = mbmi->mv[0].as_int;
@@ -4777,11 +4266,7 @@ static AOM_INLINE void rd_pick_skip_mode(
       LAST_FRAME + skip_mode_info->ref_frame_idx_1;
 #endif  // CONFIG_NEW_REF_SIGNALING
 
-#if CONFIG_NEW_INTER_MODES
   const PREDICTION_MODE this_mode = NEAR_NEARMV;
-#else
-  const PREDICTION_MODE this_mode = NEAREST_NEARESTMV;
-#endif  // CONFIG_NEW_INTER_MODES
 #if !CONFIG_NEW_REF_SIGNALING
   const THR_MODES mode_index =
       get_prediction_mode_idx(this_mode, ref_frame, second_ref_frame);
@@ -4798,9 +4283,7 @@ static AOM_INLINE void rd_pick_skip_mode(
   }
 
   mbmi->mode = this_mode;
-#if CONFIG_NEW_INTER_MODES
   mbmi->ref_mv_idx = 0;
-#endif  // CONFIG_NEW_INTER_MODES
   mbmi->uv_mode = UV_DC_PRED;
   mbmi->ref_frame[0] = ref_frame;
   mbmi->ref_frame[1] = second_ref_frame;
@@ -4822,13 +4305,9 @@ static AOM_INLINE void rd_pick_skip_mode(
     av1_copy_usable_ref_mv_stack_and_weight(xd, mbmi_ext, ref_frame_type);
   }
 
-#if CONFIG_NEW_INTER_MODES
   assert(this_mode == NEAR_NEARMV);
   assert(mbmi->mode == NEAR_NEARMV);
   assert(mbmi->ref_mv_idx == 0);
-#else
-  assert(this_mode == NEAREST_NEARESTMV);
-#endif  // CONFIG_NEW_INTER_MODES
   if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
     assert(av1_check_newmv_joint_nonzero(cm, x));
     return;
@@ -4885,11 +4364,7 @@ static AOM_INLINE void rd_pick_skip_mode(
     search_state->best_mbmode = *mbmi;
     search_state->best_mbmode.skip_mode =
         search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-#if CONFIG_NEW_INTER_MODES
     search_state->best_mbmode.mode = NEAR_NEARMV;
-#else
-    search_state->best_mbmode.mode = NEAREST_NEARESTMV;
-#endif  // CONFIG_NEW_INTER_MODES
     search_state->best_mbmode.ref_frame[0] = mbmi->ref_frame[0];
     search_state->best_mbmode.ref_frame[1] = mbmi->ref_frame[1];
     search_state->best_mbmode.mv[0].as_int = mbmi->mv[0].as_int;
@@ -5269,7 +4744,7 @@ static AOM_INLINE void init_mode_skip_mask(mode_skip_mask_t *mask,
     } else {
       // Skip fixed mv modes for poor references
       if ((x->pred_mv_sad[ref_frame] >> 2) > min_pred_mv_sad) {
-        mask->pred_modes[ref_frame] |= INTER_NEAREST_NEAR_ZERO;
+        mask->pred_modes[ref_frame] |= INTER_NEAR_GLOBAL;
       }
     }
 #if !CONFIG_NEW_REF_SIGNALING
@@ -5294,19 +4769,13 @@ static AOM_INLINE void init_mode_skip_mask(mode_skip_mask_t *mask,
         (cpi->oxcf.algo_cfg.arnr_max_frames == 0)) {
       disable_inter_references_except_altref(mask->ref_combo);
 
-      mask->pred_modes[ALTREF_FRAME] = ~INTER_NEAREST_NEAR_ZERO;
+      mask->pred_modes[ALTREF_FRAME] = ~INTER_NEAR_GLOBAL;
       const MV_REFERENCE_FRAME tmp_ref_frames[2] = { ALTREF_FRAME, NONE_FRAME };
       int_mv near_mv, global_mv;
       get_this_mv(&near_mv, NEARMV, 0, 0, 0, tmp_ref_frames, x->mbmi_ext);
       get_this_mv(&global_mv, GLOBALMV, 0, 0, 0, tmp_ref_frames, x->mbmi_ext);
       if (near_mv.as_int != global_mv.as_int)
         mask->pred_modes[ALTREF_FRAME] |= (1 << NEARMV);
-#if !CONFIG_NEW_INTER_MODES
-      int_mv nearest_mv;
-      get_this_mv(&nearest_mv, NEARESTMV, 0, 0, 0, tmp_ref_frames, x->mbmi_ext);
-      if (nearest_mv.as_int != global_mv.as_int)
-        mask->pred_modes[ALTREF_FRAME] |= (1 << NEARESTMV);
-#endif  // !CONFIG_NEW_INTER_MODES
     }
   }
 #endif  // !CONFIG_NEW_REF_SIGNALING
@@ -5652,9 +5121,6 @@ static AOM_INLINE void init_inter_mode_search_state(
     search_state->mode_threshold[i] =
         ((int64_t)rd_threshes[i] * x->thresh_freq_fact[bsize][i]) >>
         RD_THRESH_FAC_FRAC_BITS;
-#if !CONFIG_NEW_INTER_MODES
-  search_state->mode_threshold[NEARESTMV] = 0;
-#endif  // !CONFIG_NEW_INTER_MODES
 #else
   for (int i = 0; i <= LAST_NEW_MV_INDEX; ++i)
     search_state->mode_threshold[i] = 0;
@@ -5929,11 +5395,8 @@ static AOM_INLINE void collect_single_states(const AV1_COMMON *const cm,
   const int dir = ref_frame <= GOLDEN_FRAME ? 0 : 1;
 #endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
   const int mode_offset = INTER_OFFSET(this_mode);
-  const int ref_set = get_drl_refmv_count(
-#if CONFIG_NEW_INTER_MODES
-      features->max_drl_bits,
-#endif  // CONFIG_NEW_INTER_MODES
-      x, mbmi->ref_frame, this_mode);
+  const int ref_set = get_drl_refmv_count(features->max_drl_bits, x,
+                                          mbmi->ref_frame, this_mode);
 
   // Simple rd
   int64_t simple_rd = search_state->simple_rd[this_mode][0][ref_frame];
@@ -5986,10 +5449,10 @@ static AOM_INLINE void analyze_single_states(
 #endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
     const int prune_factor = prune_level >= 2 ? 6 : 5;
 
-    // Use the best rd of GLOBALMV or NEWMV to prune the unlikely
-    // reference frames for all the modes (NEARESTMV and NEARMV may not
-    // have same motion vectors). Always keep the best of each mode
-    // because it might form the best possible combination with other mode.
+    // Use the best rd of GLOBALMV or NEWMV to prune the unlikely reference
+    // frames for all the modes (NEARMV may not have same motion vectors).
+    // Always keep the best of each mode because it might form the best possible
+    // combination with other mode.
     state = search_state->single_state[dir];
     best_rd = AOMMIN(state[INTER_OFFSET(NEWMV)][0].rd,
                      state[INTER_OFFSET(GLOBALMV)][0].rd);
@@ -6134,21 +5597,12 @@ static int compound_skip_by_single_states(
     }
   }
 
-  const int ref_set = get_drl_refmv_count(
-#if CONFIG_NEW_INTER_MODES
-      cpi->common.features.max_drl_bits,
-#endif  // CONFIG_NEW_INTER_MODES
-      x, refs, this_mode);
+  const int ref_set = get_drl_refmv_count(cpi->common.features.max_drl_bits, x,
+                                          refs, this_mode);
   for (i = 0; i < 2; ++i) {
-#if CONFIG_NEW_INTER_MODES
     if (!ref_searched[i] || (mode[i] != NEARMV)) {
       continue;
     }
-#else
-    if (!ref_searched[i] || (mode[i] != NEARESTMV && mode[i] != NEARMV)) {
-      continue;
-    }
-#endif  // CONFIG_NEW_INTER_MODES
     const MV_REFERENCE_FRAME single_refs[2] = { refs[i], NONE_FRAME };
     for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ref_mv_idx++) {
       int_mv single_mv;
@@ -6204,9 +5658,6 @@ static INLINE int compound_skip_using_neighbor_refs(
   if (this_mode == NEAR_NEARMV || this_mode == NEW_NEWMV ||
       this_mode == GLOBAL_GLOBALMV)
     return 0;
-#if !CONFIG_NEW_INTER_MODES
-  if (this_mode == NEAREST_NEARESTMV) return 0;
-#endif
 
   int is_ref_match[2] = { 0 };  // 0 - match for forward refs
                                 // 1 - match for backward refs
@@ -6251,10 +5702,6 @@ static INLINE int skip_compound_using_best_single_mode_ref(
   if (this_mode == NEAR_NEARMV || this_mode == NEW_NEWMV ||
       this_mode == GLOBAL_GLOBALMV)
     return 0;
-#if !CONFIG_NEW_INTER_MODES
-  if (this_mode == NEAREST_NEARESTMV) return 0;
-  assert(this_mode >= NEAREST_NEWMV && this_mode <= NEW_NEARMV);
-#endif  // !CONFIG_NEW_INTER_MODES
 
   const PREDICTION_MODE comp_mode_ref0 = compound_ref0_mode(this_mode);
   // Get ref frame direction corresponding to NEWMV
@@ -6779,37 +6226,18 @@ static void handle_winner_cand(
 #if CONFIG_NEW_REF_SIGNALING
 static INLINE int is_tip_mode(PREDICTION_MODE mode) {
 #if IMPROVED_AMVD
-#if CONFIG_NEW_INTER_MODES
   return (mode == NEARMV || mode == NEWMV || mode == AMVDNEWMV);
 #else
-  return (mode == NEARESTMV || mode == NEARMV || mode == NEWMV ||
-          mode == AMVDNEWMV);
-#endif  // CONFIG_NEW_INTER_MODES
-#else
-#if CONFIG_NEW_INTER_MODES
   return (mode == NEARMV || mode == NEWMV);
-#else
-  return (mode == NEARESTMV || mode == NEARMV || mode == NEWMV);
-#endif  // CONFIG_NEW_INTER_MODES
 #endif  // IMPROVED_AMVD
 }
 #else
 static INLINE int is_tip_mode(THR_MODES mode) {
 #if IMPROVED_AMVD
-#if CONFIG_NEW_INTER_MODES
   return (mode == THR_NEAR_TIP || mode == THR_NEW_TIP ||
           mode == THR_AMVDNEW_TIP);
 #else
-  return (mode == THR_NEAREST_TIP || mode == THR_NEW_TIP ||
-          mode == THR_NEAR_TIP || mode == THR_AMVDNEW_TIP);
-#endif  // CONFIG_NEW_INTER_MODES
-#else
-#if CONFIG_NEW_INTER_MODES
   return (mode == THR_NEAR_TIP || mode == THR_NEW_TIP);
-#else
-  return (mode == THR_NEAREST_TIP || mode == THR_NEW_TIP ||
-          mode == THR_NEAR_TIP);
-#endif  // CONFIG_NEW_INTER_MODES
 #endif  // IMPROVED_AMVD
 }
 #endif  // CONFIG_NEW_REF_SIGNALING
@@ -7181,8 +6609,9 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         const int compmode_cost =
             (is_comp_ref_allowed(mbmi->sb_type[PLANE_TYPE_Y])
 #if CONFIG_TIP
-             && !is_tip_ref_frame(ref_frame))
+             && !is_tip_ref_frame(ref_frame)
 #endif  // CONFIG_TIP
+                 )
                 ? comp_inter_cost[comp_pred]
                 : 0;
         const int real_compmode_cost =

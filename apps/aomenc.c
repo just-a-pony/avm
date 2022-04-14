@@ -441,9 +441,7 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_NEW_REF_SIGNALING
   &g_av1_codec_arg_defs.explicit_ref_frame_map,
 #endif  // CONFIG_NEW_REF_SIGNALING
-#if CONFIG_NEW_INTER_MODES
   &g_av1_codec_arg_defs.max_drl_refmvs,
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   &g_av1_codec_arg_defs.enable_refmvbank,
 #endif  // CONFIG_REF_MV_BANK
@@ -1404,19 +1402,12 @@ static void show_stream_config(struct stream_state *stream,
   fprintf(stdout, "Reduced transform set          : %d\n",
           encoder_cfg->reduced_tx_type_set);
 
-#if CONFIG_NEW_INTER_MODES || CONFIG_REF_MV_BANK
   fprintf(stdout, "Tool setting (Ref MVs)         :");
-#if CONFIG_NEW_INTER_MODES
   fprintf(stdout, " max-drl-refmvs (%d)", encoder_cfg->max_drl_refmvs);
-#endif  // CONFIG_NEW_INTER_MODES
-#if CONFIG_NEW_INTER_MODES && CONFIG_REF_MV_BANK
-  fprintf(stdout, " ,");
-#endif  // CONFIG_NEW_INTER_MODES && CONFIG_REF_MV_BANK
 #if CONFIG_REF_MV_BANK
-  fprintf(stdout, " Refmv Bank (%d)", encoder_cfg->enable_refmvbank);
+  fprintf(stdout, " , Refmv Bank (%d)", encoder_cfg->enable_refmvbank);
 #endif  // CONFIG_REF_MV_BANK
   fprintf(stdout, "\n");
-#endif  // CONFIG_NEW_INTER_MODES || CONFIG_REF_MV_BANK
 
   fprintf(
       stdout, "Tool setting (Partition)       : T-Type (%d), 4:1/1:4 (%d)\n",

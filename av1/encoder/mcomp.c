@@ -98,12 +98,12 @@ void av1_make_default_fullpel_ms_params(
   const MV_SPEED_FEATURES *mv_sf = &cpi->sf.mv_sf;
 
 #if CONFIG_ADAPTIVE_MVD || CONFIG_TIP
-  const AV1_COMMON *cm = &cpi->common;
   const MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
 #endif  // CONFIG_ADAPTIVE_MVD || CONFIG_TIP
 #if CONFIG_ADAPTIVE_MVD
-  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
+  const int is_adaptive_mvd =
+      enable_adaptive_mvd_resolution(&cpi->common, mbmi);
 #endif  // CONFIG_ADAPTIVE_MVD
 
   // High level params

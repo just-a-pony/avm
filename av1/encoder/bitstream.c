@@ -91,30 +91,12 @@ static AOM_INLINE void write_intra_y_mode_kf(FRAME_CONTEXT *frame_ctx,
 static AOM_INLINE void write_inter_mode(aom_writer *w, PREDICTION_MODE mode,
                                         FRAME_CONTEXT *ec_ctx,
                                         const int16_t mode_ctx) {
-#if CONFIG_NEW_INTER_MODES
   const int16_t ismode_ctx = inter_single_mode_ctx(mode_ctx);
   aom_write_symbol(w, mode - SINGLE_INTER_MODE_START,
                    ec_ctx->inter_single_mode_cdf[ismode_ctx],
                    INTER_SINGLE_MODES);
-#else
-  const int16_t newmv_ctx = mode_ctx & NEWMV_CTX_MASK;
-
-  aom_write_symbol(w, mode != NEWMV, ec_ctx->newmv_cdf[newmv_ctx], 2);
-
-  if (mode != NEWMV) {
-    const int16_t zeromv_ctx =
-        (mode_ctx >> GLOBALMV_OFFSET) & GLOBALMV_CTX_MASK;
-    aom_write_symbol(w, mode != GLOBALMV, ec_ctx->zeromv_cdf[zeromv_ctx], 2);
-
-    if (mode != GLOBALMV) {
-      int16_t refmv_ctx = (mode_ctx >> REFMV_OFFSET) & REFMV_CTX_MASK;
-      aom_write_symbol(w, mode != NEARESTMV, ec_ctx->refmv_cdf[refmv_ctx], 2);
-    }
-  }
-#endif  // !CONFIG_NEW_INTER_MODES
 }
 
-#if CONFIG_NEW_INTER_MODES
 static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
                           FRAME_CONTEXT *ec_ctx, const MB_MODE_INFO *mbmi,
                           const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
@@ -135,42 +117,6 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
     if (mbmi->ref_mv_idx == idx) break;
   }
 }
-#else
-static AOM_INLINE void write_drl_idx(
-    FRAME_CONTEXT *ec_ctx, const MB_MODE_INFO *mbmi,
-    const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame, aom_writer *w) {
-  assert(mbmi->ref_mv_idx < MAX_DRL_BITS + 1);
-
-  const int new_mv = mbmi->mode == NEWMV || mbmi->mode == NEW_NEWMV;
-  if (new_mv) {
-    int idx;
-    for (idx = 0; idx < MAX_DRL_BITS; ++idx) {
-      if (mbmi_ext_frame->ref_mv_count > idx + 1) {
-        uint8_t drl_ctx = av1_drl_ctx(mbmi_ext_frame->weight, idx);
-
-        aom_write_symbol(w, mbmi->ref_mv_idx != idx, ec_ctx->drl_cdf[drl_ctx],
-                         2);
-        if (mbmi->ref_mv_idx == idx) return;
-      }
-    }
-    return;
-  }
-
-  if (have_nearmv_in_inter_mode(mbmi->mode)) {
-    int idx;
-    // TODO(jingning): Temporary solution to compensate the NEARESTMV offset.
-    for (idx = 1; idx < MAX_DRL_BITS + 1; ++idx) {
-      if (mbmi_ext_frame->ref_mv_count > idx + 1) {
-        uint8_t drl_ctx = av1_drl_ctx(mbmi_ext_frame->weight, idx);
-        aom_write_symbol(w, mbmi->ref_mv_idx != (idx - 1),
-                         ec_ctx->drl_cdf[drl_ctx], 2);
-        if (mbmi->ref_mv_idx == (idx - 1)) return;
-      }
-    }
-    return;
-  }
-}
-#endif  // CONFIG_NEW_INTER_MODES
 
 #if IMPROVED_AMVD && CONFIG_JOINT_MVD
 static AOM_INLINE void write_adaptive_mvd_flag(MACROBLOCKD *xd, aom_writer *w,
@@ -1602,13 +1548,9 @@ static INLINE int_mv get_ref_mv_from_stack(
 static INLINE int_mv get_ref_mv(const MACROBLOCK *x, int ref_idx) {
   const MACROBLOCKD *xd = &x->e_mbd;
   const MB_MODE_INFO *mbmi = xd->mi[0];
-  int ref_mv_idx = mbmi->ref_mv_idx;
-  if (have_nearmv_newmv_in_inter_mode(mbmi->mode)) {
-    assert(has_second_ref(mbmi));
-#if !CONFIG_NEW_INTER_MODES
-    ref_mv_idx += 1;
-#endif  // !CONFIG_NEW_INTER_MODES
-  }
+  const int ref_mv_idx = mbmi->ref_mv_idx;
+  assert(IMPLIES(have_nearmv_newmv_in_inter_mode(mbmi->mode),
+                 has_second_ref(mbmi)));
   return get_ref_mv_from_stack(ref_idx, mbmi->ref_frame, ref_mv_idx,
                                x->mbmi_ext_frame);
 }
@@ -1668,12 +1610,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   if (mbmi->skip_mode) {
     av1_collect_neighbors_ref_counts(xd);
-    write_drl_idx(
-#if CONFIG_NEW_INTER_MODES
-        cm->features.max_drl_bits, mbmi_ext_frame->mode_context,
-#endif  // CONFIG_NEW_INTER_MODES
-        ec_ctx, mbmi, mbmi_ext_frame, w);
-
+    write_drl_idx(cm->features.max_drl_bits, mbmi_ext_frame->mode_context,
+                  ec_ctx, mbmi, mbmi_ext_frame, w);
     return;
   }
 #else
@@ -1737,15 +1675,12 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
       if (have_drl_index(mode))
         write_drl_idx(
-#if CONFIG_NEW_INTER_MODES
 #if IMPROVED_AMVD
             max_drl_bits,
 #else
             cm->features.max_drl_bits,
 #endif  // IMPROVED_AMVD
-            mbmi_ext_frame->mode_context,
-#endif  // CONFIG_NEW_INTER_MODES
-            ec_ctx, mbmi, mbmi_ext_frame, w);
+            mbmi_ext_frame->mode_context, ec_ctx, mbmi, mbmi_ext_frame, w);
       else
         assert(mbmi->ref_mv_idx == 0);
     }
@@ -1757,7 +1692,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
         av1_encode_mv(cpi, w, &mbmi->mv[ref].as_mv, &ref_mv.as_mv, nmvc,
                       allow_hp);
       }
-#if CONFIG_NEW_INTER_MODES
     } else if (mode == NEAR_NEWMV
 #if CONFIG_OPTFLOW_REFINEMENT
                || mode == NEAR_NEWMV_OPTFLOW
@@ -1781,17 +1715,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
       const int_mv ref_mv = get_ref_mv(x, 0);
       av1_encode_mv(cpi, w, &mbmi->mv[0].as_mv, &ref_mv.as_mv, nmvc, allow_hp);
     }
-#else
-    } else if (mode == NEAREST_NEWMV || mode == NEAR_NEWMV) {
-      nmv_context *nmvc = &ec_ctx->nmvc;
-      const int_mv ref_mv = get_ref_mv(x, 1);
-      av1_encode_mv(cpi, w, &mbmi->mv[1].as_mv, &ref_mv.as_mv, nmvc, allow_hp);
-    } else if (mode == NEW_NEARESTMV || mode == NEW_NEARMV) {
-      nmv_context *nmvc = &ec_ctx->nmvc;
-      const int_mv ref_mv = get_ref_mv(x, 0);
-      av1_encode_mv(cpi, w, &mbmi->mv[0].as_mv, &ref_mv.as_mv, nmvc, allow_hp);
-    }
-#endif  // CONFIG_NEW_INTER_MODES
 
     if (cpi->common.current_frame.reference_mode != COMPOUND_REFERENCE &&
         cpi->common.seq_params.enable_interintra_compound &&
@@ -4090,11 +4013,9 @@ static AOM_INLINE void write_uncompressed_header_obu(
         aom_wb_write_bit(wb, features->allow_intrabc);
 #endif  // CONFIG_IBC_SR_EXT
 
-#if CONFIG_NEW_INTER_MODES
       aom_wb_write_primitive_quniform(
           wb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1,
           features->max_drl_bits - MIN_MAX_DRL_BITS);
-#endif  // CONFIG_NEW_INTER_MODES
       if (!features->cur_frame_force_integer_mv) {
         aom_wb_write_bit(wb, features->allow_high_precision_mv);
       }

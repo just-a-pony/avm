@@ -994,9 +994,7 @@ static AOM_INLINE void process_single_ref_mv_candidate(
         // doesn't matter as long as it is properly initialized.
         ref_mv_weight[stack_idx] = 2;
         ++(*refmv_count);
-#if CONFIG_NEW_INTER_MODES
         if (*refmv_count >= MAX_MV_REF_CANDIDATES) return;
-#endif  // CONFIG_NEW_INTER_MODES
       }
     }
   }
@@ -1340,14 +1338,8 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif
 
 #if CONFIG_SMVP_IMPROVEMENT
-#if CONFIG_NEW_INTER_MODES
   const int max_ref_mv_count =
       AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
-#else
-  const int max_ref_mv_count =
-      AOMMIN(USABLE_REF_MV_STACK_SIZE, MAX_REF_MV_STACK_SIZE);
-#endif  // CONFIG_NEW_INTER_MODES
-
   if (*refmv_count < max_ref_mv_count && derived_mv_count > 0) {
     fill_mvp_from_derived_smvp(rf, ref_mv_stack, ref_mv_weight, refmv_count,
                                derived_mv_stack, derived_mv_count,
@@ -1466,7 +1458,6 @@ static AOM_INLINE void setup_ref_mv_list(
         mv_ref_list[idx].as_int = ref_mv_stack[idx].this_mv.as_int;
       }
     }
-#if CONFIG_NEW_INTER_MODES
     // If there is extra space in the stack, copy the GLOBALMV vector into it.
     // This also guarantees the existence of at least one vector to search.
     if (*refmv_count < MAX_REF_MV_STACK_SIZE
@@ -1486,17 +1477,11 @@ static AOM_INLINE void setup_ref_mv_list(
         (*refmv_count)++;
       }
     }
-#endif  // CONFIG_NEW_INTER_MODES
   }
 #if CONFIG_REF_MV_BANK
   if (!cm->seq_params.enable_refmvbank) return;
-#if CONFIG_NEW_INTER_MODES
   const int ref_mv_limit =
       AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
-#else
-  const int ref_mv_limit =
-      AOMMIN(USABLE_REF_MV_STACK_SIZE, MAX_REF_MV_STACK_SIZE);
-#endif  // CONFIG_NEW_INTER_MODES
   // If open slots are available, fetch reference MVs from the ref mv banks.
   if (*refmv_count < ref_mv_limit
 #if !CONFIG_BVP_IMPROVEMENT
@@ -1519,16 +1504,6 @@ static AOM_INLINE void setup_ref_mv_list(
                      xd->mi_row, xd->mi_col, block_width, block_height,
                      cm->width, cm->height);
     }
-#if !CONFIG_NEW_INTER_MODES
-    if (mv_ref_list != NULL) {
-      for (int idx = *refmv_count; idx < MAX_MV_REF_CANDIDATES; ++idx)
-        mv_ref_list[idx].as_int = gm_mv_candidates[0].as_int;
-      for (int idx = 0; idx < AOMMIN(MAX_MV_REF_CANDIDATES, *refmv_count);
-           ++idx) {
-        mv_ref_list[idx].as_int = ref_mv_stack[idx].this_mv.as_int;
-      }
-    }
-#endif  // !CONFIG_NEW_INTER_MODES
   }
 #endif  // CONFIG_REF_MV_BANK
 

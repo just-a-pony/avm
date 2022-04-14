@@ -75,28 +75,14 @@ enum {
       (1 << DC_PRED) | (1 << PAETH_PRED) | (1 << V_PRED) | (1 << H_PRED)
 };
 
-#if CONFIG_NEW_INTER_MODES
 enum {
   INTER_ALL = (1 << NEARMV) | (1 << GLOBALMV) | (1 << NEWMV) |
               (1 << NEAR_NEARMV) | (1 << NEW_NEWMV) | (1 << NEAR_NEWMV) |
               (1 << NEW_NEARMV) | (1 << GLOBAL_GLOBALMV),
-  INTER_NEAREST_NEAR_ZERO = (1 << NEARMV) | (1 << GLOBALMV) |
-                            (1 << GLOBAL_GLOBALMV) | (1 << NEW_NEARMV) |
-                            (1 << NEAR_NEWMV) | (1 << NEAR_NEARMV),
+  INTER_NEAR_GLOBAL = (1 << NEARMV) | (1 << GLOBALMV) | (1 << GLOBAL_GLOBALMV) |
+                      (1 << NEW_NEARMV) | (1 << NEAR_NEWMV) |
+                      (1 << NEAR_NEARMV),
 };
-#else
-enum {
-  INTER_ALL = (1 << NEARESTMV) | (1 << NEARMV) | (1 << GLOBALMV) |
-              (1 << NEWMV) | (1 << NEAREST_NEARESTMV) | (1 << NEAR_NEARMV) |
-              (1 << NEW_NEWMV) | (1 << NEAREST_NEWMV) | (1 << NEAR_NEWMV) |
-              (1 << NEW_NEARMV) | (1 << NEW_NEARESTMV) | (1 << GLOBAL_GLOBALMV),
-  INTER_NEAREST_NEAR_ZERO = (1 << NEARESTMV) | (1 << NEARMV) | (1 << GLOBALMV) |
-                            (1 << NEAREST_NEARESTMV) | (1 << GLOBAL_GLOBALMV) |
-                            (1 << NEAREST_NEWMV) | (1 << NEW_NEARESTMV) |
-                            (1 << NEW_NEARMV) | (1 << NEAR_NEWMV) |
-                            (1 << NEAR_NEARMV),
-};
-#endif  // CONFIG_NEW_INTER_MODES
 
 #if !CONFIG_NEW_REF_SIGNALING
 enum {
@@ -621,8 +607,8 @@ typedef struct INTER_MODE_SPEED_FEATURES {
   //     for the other ref_mv.
   int skip_repeated_full_newmv;
 
-  // This speed feature checks duplicate ref MVs among NEARESTMV, NEARMV,
-  // GLOBALMV and skips NEARMV or GLOBALMV (in order) if a duplicate is found
+  // This speed feature checks duplicate ref MVs among NEARMV and GLOBALMV and
+  // skips GLOBALMV if a duplicate is found
   // TODO(any): Instead of skipping repeated ref mv, use the recalculated
   // rd-cost based on mode rate and skip the mode evaluation
   int skip_repeated_ref_mv;
@@ -630,8 +616,7 @@ typedef struct INTER_MODE_SPEED_FEATURES {
   // Flag used to control the ref_best_rd based gating for chroma
   int perform_best_rd_based_gating_for_chroma;
 
-  // Reuse the inter_intra_mode search result from NEARESTMV mode to other
-  // single ref modes
+  // Reuse the inter_intra_mode search result for other single ref modes
   int reuse_inter_intra_mode;
 
   // prune wedge and compound segment approximate rd evaluation based on

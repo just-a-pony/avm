@@ -852,9 +852,7 @@ typedef struct {
   bool enable_global_motion;
   // Indicates if palette should be enabled.
   bool enable_palette;
-#if CONFIG_NEW_INTER_MODES
   unsigned int max_drl_refmvs;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   // Indicates if ref MV Bank should be enabled.
   bool enable_refmvbank;
@@ -1223,16 +1221,9 @@ typedef struct FRAME_COUNTS {
                                [SIG_COEF_CONTEXTS][NUM_BASE_LEVELS + 2];
   unsigned int coeff_base_eob_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
                                    [SIG_COEF_CONTEXTS_EOB][NUM_BASE_LEVELS + 1];
-#if CONFIG_NEW_INTER_MODES
   unsigned int inter_single_mode[INTER_SINGLE_MODE_CONTEXTS]
                                 [INTER_SINGLE_MODES];
   unsigned int drl_mode[3][DRL_MODE_CONTEXTS][2];
-#else
-  unsigned int newmv_mode[NEWMV_MODE_CONTEXTS][2];
-  unsigned int zeromv_mode[GLOBALMV_MODE_CONTEXTS][2];
-  unsigned int refmv_mode[REFMV_MODE_CONTEXTS][2];
-  unsigned int drl_mode[DRL_MODE_CONTEXTS][2];
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
   unsigned int use_optflow[INTER_COMPOUND_MODE_CONTEXTS][2];
   unsigned int inter_compound_mode[INTER_COMPOUND_MODE_CONTEXTS]

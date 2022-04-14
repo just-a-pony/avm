@@ -686,7 +686,6 @@ static const aom_cdf_prob
       { AOM_CDF3(31022, 32009) }, { AOM_CDF3(2963, 32093) },
       { AOM_CDF3(601, 943) },     { AOM_CDF3(14969, 21398) }
     };
-#if CONFIG_NEW_INTER_MODES
 #if IMPROVED_AMVD
 static const aom_cdf_prob
     default_inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS][CDF_SIZE(
@@ -820,35 +819,6 @@ static const aom_cdf_prob
                                      { AOM_CDF5(21368, 24274, 26890, 27364) }
                                    };
 #endif  // CONFIG_JOINT_MVD
-#else
-static const aom_cdf_prob default_newmv_cdf[NEWMV_MODE_CONTEXTS][CDF_SIZE(
-    2)] = { { AOM_CDF2(24035) }, { AOM_CDF2(16630) }, { AOM_CDF2(15339) },
-            { AOM_CDF2(8386) },  { AOM_CDF2(12222) }, { AOM_CDF2(4676) } };
-
-static const aom_cdf_prob default_zeromv_cdf[GLOBALMV_MODE_CONTEXTS][CDF_SIZE(
-    2)] = { { AOM_CDF2(2175) }, { AOM_CDF2(1054) } };
-
-static const aom_cdf_prob default_refmv_cdf[REFMV_MODE_CONTEXTS][CDF_SIZE(
-    2)] = { { AOM_CDF2(23974) }, { AOM_CDF2(24188) }, { AOM_CDF2(17848) },
-            { AOM_CDF2(28622) }, { AOM_CDF2(24312) }, { AOM_CDF2(19923) } };
-
-static const aom_cdf_prob default_drl_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
-  { AOM_CDF2(13104) }, { AOM_CDF2(24560) }, { AOM_CDF2(18945) }
-};
-
-static const aom_cdf_prob
-    default_inter_compound_mode_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(
-        INTER_COMPOUND_MODES)] = {
-      { AOM_CDF8(7760, 13823, 15808, 17641, 19156, 20666, 26891) },
-      { AOM_CDF8(10730, 19452, 21145, 22749, 24039, 25131, 28724) },
-      { AOM_CDF8(10664, 20221, 21588, 22906, 24295, 25387, 28436) },
-      { AOM_CDF8(13298, 16984, 20471, 24182, 25067, 25736, 26422) },
-      { AOM_CDF8(18904, 23325, 25242, 27432, 27898, 28258, 30758) },
-      { AOM_CDF8(10725, 17454, 20124, 22820, 24195, 25168, 26046) },
-      { AOM_CDF8(17125, 24273, 25814, 27492, 28214, 28704, 30592) },
-      { AOM_CDF8(13046, 23214, 24505, 25942, 27435, 28442, 29330) }
-    };
-#endif  // CONFIG_NEW_INTER_MODES
 
 static const aom_cdf_prob default_interintra_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(
     2)] = { { AOM_CDF2(16384) },
@@ -1848,7 +1818,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->txfm_partition_cdf, default_txfm_partition_cdf);
 #endif  // CONFIG_NEW_TX_PARTITION
   av1_copy(fc->comp_group_idx_cdf, default_comp_group_idx_cdfs);
-#if CONFIG_NEW_INTER_MODES
   av1_copy(fc->inter_single_mode_cdf, default_inter_single_mode_cdf);
 #if CONFIG_REF_MV_BANK
   if (seq_params->enable_refmvbank) {
@@ -1865,12 +1834,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->drl_cdf[1], default_drl1_cdf);
   av1_copy(fc->drl_cdf[2], default_drl2_cdf);
 #endif  // CONFIG_REF_MV_BANK
-#else
-  av1_copy(fc->newmv_cdf, default_newmv_cdf);
-  av1_copy(fc->zeromv_cdf, default_zeromv_cdf);
-  av1_copy(fc->refmv_cdf, default_refmv_cdf);
-  av1_copy(fc->drl_cdf, default_drl_cdf);
-#endif  // CONFIG_NEW_INTER_MODES
   av1_copy(fc->motion_mode_cdf, default_motion_mode_cdf);
   av1_copy(fc->obmc_cdf, default_obmc_cdf);
 #if CONFIG_OPTFLOW_REFINEMENT

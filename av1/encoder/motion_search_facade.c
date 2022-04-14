@@ -868,15 +868,11 @@ int av1_interinter_compound_motion_search(const AV1_COMP *const cpi,
   mbmi->interinter_comp.seg_mask = xd->seg_mask;
   const INTERINTER_COMPOUND_DATA *compound_data = &mbmi->interinter_comp;
 
-#if CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
   const int mixed_new = have_nearmv_newmv_in_inter_mode(this_mode);
 #else
   const int mixed_new = this_mode == NEAR_NEWMV || this_mode == NEW_NEARMV;
-#endif
-#else
-  const int mixed_new = this_mode >= NEAREST_NEWMV && this_mode <= NEW_NEARMV;
-#endif  // CONFIG_NEW_INTER_MODES
+#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_OPTFLOW_REFINEMENT
   if (this_mode == NEW_NEWMV || this_mode == NEW_NEWMV_OPTFLOW) {
 #else
@@ -887,15 +883,14 @@ int av1_interinter_compound_motion_search(const AV1_COMP *const cpi,
     mbmi->mv[0].as_int = tmp_mv[0].as_int;
     mbmi->mv[1].as_int = tmp_mv[1].as_int;
   } else if (mixed_new) {
-    // which = 1 if this_mode == NEAREST_NEWMV || this_mode == NEAR_NEWMV
-    // which = 0 if this_mode == NEW_NEARESTMV || this_mode == NEW_NEARMV
 #if CONFIG_JOINT_MVD
     const AV1_COMMON *const cm = &cpi->common;
     const int jmvd_base_ref_list = get_joint_mvd_base_ref_list(cm, mbmi);
-    int which = (NEWMV == compound_ref1_mode(this_mode) ||
-                 (is_joint_mvd_coding_mode(this_mode) && jmvd_base_ref_list));
+    const int which =
+        (NEWMV == compound_ref1_mode(this_mode) ||
+         (is_joint_mvd_coding_mode(this_mode) && jmvd_base_ref_list));
 #else
-    int which = (NEWMV == compound_ref1_mode(this_mode));
+    const int which = (NEWMV == compound_ref1_mode(this_mode));
 #endif  // CONFIG_JOINT_MVD
     do_masked_motion_search_indexed(cpi, x, cur_mv, compound_data, bsize,
                                     tmp_mv, &tmp_rate_mv, which);

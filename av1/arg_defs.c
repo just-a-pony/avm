@@ -695,12 +695,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       "If this option is not specified (default), the configurations "
       "are chosen by the encoder using a default algorithm."),
 
-#if CONFIG_NEW_INTER_MODES
   .max_drl_refmvs =
       ARG_DEF(NULL, "max-drl-refmvs", 1,
               "maximum number of drl reference MVs per reference. "
               "(0 (auto), 2-8 (fixed)) default is 0 (auto)."),
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   .enable_refmvbank = ARG_DEF(NULL, "enable-refmvbank", 1,
                               "Enable reference MV bank (0: false "

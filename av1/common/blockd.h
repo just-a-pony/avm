@@ -93,27 +93,17 @@ static INLINE PREDICTION_MODE compound_ref0_mode(PREDICTION_MODE mode) {
     SMOOTH_V_PRED,  // SMOOTH_V_PRED
     SMOOTH_H_PRED,  // SMOOTH_H_PRED
     PAETH_PRED,     // PAETH_PRED
-#if !CONFIG_NEW_INTER_MODES
-    NEARESTMV,  // NEARESTMV
-#endif          // !CONFIG_NEW_INTER_MODES
-    NEARMV,     // NEARMV
-    GLOBALMV,   // GLOBALMV
-    NEWMV,      // NEWMV
+    NEARMV,         // NEARMV
+    GLOBALMV,       // GLOBALMV
+    NEWMV,          // NEWMV
 #if IMPROVED_AMVD
-    NEWMV,  // AMVDNEWMV
-#endif      // IMPROVED_AMVD
-#if !CONFIG_NEW_INTER_MODES
-    NEARESTMV,  // NEAREST_NEARESTMV
-#endif          // !CONFIG_NEW_INTER_MODES
-    NEARMV,     // NEAR_NEARMV
-#if !CONFIG_NEW_INTER_MODES
-    NEARESTMV,  // NEAREST_NEWMV
-    NEWMV,      // NEW_NEARESTMV
-#endif          // !CONFIG_NEW_INTER_MODES
-    NEARMV,     // NEAR_NEWMV
-    NEWMV,      // NEW_NEARMV
-    GLOBALMV,   // GLOBAL_GLOBALMV
-    NEWMV,      // NEW_NEWMV
+    NEWMV,     // AMVDNEWMV
+#endif         // IMPROVED_AMVD
+    NEARMV,    // NEAR_NEARMV
+    NEARMV,    // NEAR_NEWMV
+    NEWMV,     // NEW_NEARMV
+    GLOBALMV,  // GLOBAL_GLOBALMV
+    NEWMV,     // NEW_NEWMV
 #if CONFIG_JOINT_MVD
     NEWMV,  // JOINT_NEWMV
 #endif      // CONFIG_JOINT_MVD
@@ -147,27 +137,17 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
     MB_MODE_COUNT,  // SMOOTH_V_PRED
     MB_MODE_COUNT,  // SMOOTH_H_PRED
     MB_MODE_COUNT,  // PAETH_PRED
-#if !CONFIG_NEW_INTER_MODES
-    MB_MODE_COUNT,  // NEARESTMV
-#endif              // !CONFIG_NEW_INTER_MODES
     MB_MODE_COUNT,  // NEARMV
     MB_MODE_COUNT,  // GLOBALMV
     MB_MODE_COUNT,  // NEWMV
 #if IMPROVED_AMVD
     MB_MODE_COUNT,  // AMVDNEWMV
 #endif              // IMPROVED_AMVD
-#if !CONFIG_NEW_INTER_MODES
-    NEARESTMV,  // NEAREST_NEARESTMV
-#endif          // !CONFIG_NEW_INTER_MODES
-    NEARMV,     // NEAR_NEARMV
-#if !CONFIG_NEW_INTER_MODES
-    NEWMV,      // NEAREST_NEWMV
-    NEARESTMV,  // NEW_NEARESTMV
-#endif          // !CONFIG_NEW_INTER_MODES
-    NEWMV,      // NEAR_NEWMV
-    NEARMV,     // NEW_NEARMV
-    GLOBALMV,   // GLOBAL_GLOBALMV
-    NEWMV,      // NEW_NEWMV
+    NEARMV,         // NEAR_NEARMV
+    NEWMV,          // NEAR_NEWMV
+    NEARMV,         // NEW_NEARMV
+    GLOBALMV,       // GLOBAL_GLOBALMV
+    NEWMV,          // NEW_NEWMV
 #if CONFIG_JOINT_MVD
     NEARMV,  // JOINT_NEWMV
 #endif       // CONFIG_JOINT_MVD
@@ -235,7 +215,6 @@ static INLINE int is_joint_amvd_coding_mode(int adaptive_mvd_flag) {
 }
 #endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
 
-#if CONFIG_NEW_INTER_MODES
 static INLINE int have_newmv_in_inter_mode(PREDICTION_MODE mode) {
   return (mode == NEWMV || mode == NEW_NEWMV || mode == NEAR_NEWMV ||
 #if IMPROVED_AMVD
@@ -253,15 +232,6 @@ static INLINE int have_newmv_in_inter_mode(PREDICTION_MODE mode) {
 static INLINE int have_drl_index(PREDICTION_MODE mode) {
   return have_nearmv_in_inter_mode(mode) || have_newmv_in_inter_mode(mode);
 }
-#else
-static INLINE int have_newmv_in_inter_mode(PREDICTION_MODE mode) {
-  return (mode == NEWMV || mode == NEW_NEWMV || mode == NEAREST_NEWMV ||
-          mode == NEW_NEARESTMV || mode == NEAR_NEWMV || mode == NEW_NEARMV);
-}
-static INLINE int have_drl_index(PREDICTION_MODE mode) {
-  return have_nearmv_in_inter_mode(mode) || mode == NEWMV || mode == NEW_NEWMV;
-}
-#endif  // CONFIG_NEW_INTER_MODES
 
 static INLINE int is_masked_compound_type(COMPOUND_TYPE type) {
   return (type == COMPOUND_WEDGE || type == COMPOUND_DIFFWTD);
@@ -463,11 +433,7 @@ typedef struct MB_MODE_INFO {
   /*! \brief Only valid when temporal update if off. */
   uint8_t seg_id_predicted : 1;
   /*! \brief Which ref_mv to use */
-#if CONFIG_NEW_INTER_MODES
   uint8_t ref_mv_idx : 3;
-#else
-  uint8_t ref_mv_idx : 2;
-#endif  // CONFIG_NEW_INTER_MODES
   /*! \brief Inter skip mode */
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   uint8_t skip_mode : 2;

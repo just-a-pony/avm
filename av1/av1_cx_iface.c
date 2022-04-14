@@ -200,9 +200,7 @@ struct av1_extracfg {
   unsigned int ext_tile_debug;
   unsigned int sb_multipass_unit_test;
   unsigned int enable_subgop_stats;
-#if CONFIG_NEW_INTER_MODES
   unsigned int max_drl_refmvs;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   int enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
@@ -500,9 +498,7 @@ static struct av1_extracfg default_extra_cfg = {
   0,            // ext_tile_debug
   0,            // sb_multipass_unit_test
   0,            // enable_subgop_stats
-#if CONFIG_NEW_INTER_MODES
-  0,    // max_drl_refmvs
-#endif  // CONFIG_NEW_INTER_MODES
+  0,            // max_drl_refmvs
 #if CONFIG_REF_MV_BANK
   1,    // enable_refmvbank
 #endif  // CONFIG_REF_MV_BANK
@@ -926,9 +922,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->explicit_ref_frame_map = extra_cfg->explicit_ref_frame_map;
 #endif  // CONFIG_NEW_REF_SIGNALING
   cfg->reduced_tx_type_set = extra_cfg->reduced_tx_type_set;
-#if CONFIG_NEW_INTER_MODES
   cfg->max_drl_refmvs = extra_cfg->max_drl_refmvs;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
@@ -1011,9 +1005,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->explicit_ref_frame_map = cfg->explicit_ref_frame_map;
 #endif  // CONFIG_NEW_REF_SIGNALING
   extra_cfg->reduced_tx_type_set = cfg->reduced_tx_type_set;
-#if CONFIG_NEW_INTER_MODES
   extra_cfg->max_drl_refmvs = cfg->max_drl_refmvs;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   extra_cfg->enable_refmvbank = cfg->enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
@@ -1241,9 +1233,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
       cfg->g_error_resilient | extra_cfg->error_resilient_mode;
   tool_cfg->frame_parallel_decoding_mode =
       extra_cfg->frame_parallel_decoding_mode;
-#if CONFIG_NEW_INTER_MODES
   tool_cfg->max_drl_refmvs = extra_cfg->max_drl_refmvs;
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   tool_cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
@@ -3740,11 +3730,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               &g_av1_codec_arg_defs.input_chroma_subsampling_y,
                               argv, err_string)) {
     extra_cfg.chroma_subsampling_y = arg_parse_uint_helper(&arg, err_string);
-#if CONFIG_NEW_INTER_MODES
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.max_drl_refmvs, argv,
                               err_string)) {
     extra_cfg.max_drl_refmvs = arg_parse_uint_helper(&arg, err_string);
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_refmvbank,
                               argv, err_string)) {
@@ -4022,10 +4010,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_NEW_REF_SIGNALING
         0,
 #endif  // CONFIG_NEW_REF_SIGNALING
-        0,
-#if CONFIG_NEW_INTER_MODES
-        0,
-#endif  // CONFIG_NEW_INTER_MODES
+        0, 0,
 #if CONFIG_REF_MV_BANK
         1,
 #endif  // CONFIG_REF_MV_BANK

@@ -408,7 +408,7 @@ int main(int argc, const char **argv) {
                      "default_switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS]"
                      "[CDF_SIZE(SWITCHABLE_FILTERS)]");
 
-#if CONFIG_NEW_INTER_MODES
+  /* Motion vector referencing */
   cts_each_dim[0] = INTER_SINGLE_MODE_CONTEXTS;
   cts_each_dim[1] = INTER_SINGLE_MODES;
   optimize_cdf_table(&fc.inter_single_mode[0][0], probsfile, 2, cts_each_dim,
@@ -428,32 +428,6 @@ int main(int argc, const char **argv) {
   optimize_cdf_table(&fc.drl_mode[2][0][0], probsfile, 2, cts_each_dim,
                      "static const aom_cdf_prob "
                      "default_drl2_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)]");
-#else
-  /* Motion vector referencing */
-  cts_each_dim[0] = NEWMV_MODE_CONTEXTS;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.newmv_mode[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob "
-                     "default_newmv_cdf[NEWMV_MODE_CONTEXTS][CDF_SIZE(2)]");
-
-  cts_each_dim[0] = GLOBALMV_MODE_CONTEXTS;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.zeromv_mode[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob "
-                     "default_zeromv_cdf[GLOBALMV_MODE_CONTEXTS][CDF_SIZE(2)]");
-
-  cts_each_dim[0] = REFMV_MODE_CONTEXTS;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.refmv_mode[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob "
-                     "default_refmv_cdf[REFMV_MODE_CONTEXTS][CDF_SIZE(2)]");
-
-  cts_each_dim[0] = DRL_MODE_CONTEXTS;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.drl_mode[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob "
-                     "default_drl_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)]");
-#endif  // CONFIG_NEW_INTER_MODES
 
 #if CONFIG_OPTFLOW_REFINEMENT
   /* Optical flow MV refinement */

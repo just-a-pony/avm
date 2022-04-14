@@ -130,17 +130,10 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->coeff_br_cdf_idtx, BR_CDF_SIZE);
 #endif  // CONFIG_FORWARDSKIP
   RESET_CDF_COUNTER(fc->coeff_br_cdf, BR_CDF_SIZE);
-#if CONFIG_NEW_INTER_MODES
   RESET_CDF_COUNTER(fc->inter_single_mode_cdf, INTER_SINGLE_MODES);
   RESET_CDF_COUNTER(fc->drl_cdf[0], 2);
   RESET_CDF_COUNTER(fc->drl_cdf[1], 2);
   RESET_CDF_COUNTER(fc->drl_cdf[2], 2);
-#else
-  RESET_CDF_COUNTER(fc->newmv_cdf, 2);
-  RESET_CDF_COUNTER(fc->zeromv_cdf, 2);
-  RESET_CDF_COUNTER(fc->drl_cdf, 2);
-  RESET_CDF_COUNTER(fc->refmv_cdf, 2);
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_OPTFLOW_REFINEMENT
   RESET_CDF_COUNTER(fc->use_optflow_cdf, 2);
   RESET_CDF_COUNTER(fc->inter_compound_mode_cdf, INTER_COMPOUND_REF_TYPES);

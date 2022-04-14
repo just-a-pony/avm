@@ -406,18 +406,13 @@ int_mv av1_get_ref_mv_from_stack(int ref_idx,
 int_mv av1_get_ref_mv(const MACROBLOCK *x, int ref_idx) {
   const MACROBLOCKD *xd = &x->e_mbd;
   const MB_MODE_INFO *mbmi = xd->mi[0];
-  int ref_mv_idx = mbmi->ref_mv_idx;
   if (have_nearmv_newmv_in_inter_mode(mbmi->mode)) {
     assert(has_second_ref(mbmi));
-#if !CONFIG_NEW_INTER_MODES
-    ref_mv_idx += 1;
-#endif  // !CONFIG_NEW_INTER_MODES
   }
-  return av1_get_ref_mv_from_stack(ref_idx, mbmi->ref_frame, ref_mv_idx,
+  return av1_get_ref_mv_from_stack(ref_idx, mbmi->ref_frame, mbmi->ref_mv_idx,
                                    x->mbmi_ext);
 }
 
-#if CONFIG_NEW_INTER_MODES
 /**
  * Get the best reference MV (for use with intrabc) from the refmv stack.
  * This function will search all available references and return the first one
@@ -460,17 +455,3 @@ int_mv av1_find_first_ref_mv_from_stack(int allow_hp,
   lower_mv_precision(&mv.as_mv, allow_hp, is_integer);
   return mv;
 }
-#else
-void av1_find_best_ref_mvs_from_stack(int allow_hp,
-                                      const MB_MODE_INFO_EXT *mbmi_ext,
-                                      MV_REFERENCE_FRAME ref_frame,
-                                      int_mv *nearest_mv, int_mv *near_mv,
-                                      int is_integer) {
-  const int ref_idx = 0;
-  MV_REFERENCE_FRAME ref_frames[2] = { ref_frame, NONE_FRAME };
-  *nearest_mv = av1_get_ref_mv_from_stack(ref_idx, ref_frames, 0, mbmi_ext);
-  lower_mv_precision(&nearest_mv->as_mv, allow_hp, is_integer);
-  *near_mv = av1_get_ref_mv_from_stack(ref_idx, ref_frames, 1, mbmi_ext);
-  lower_mv_precision(&near_mv->as_mv, allow_hp, is_integer);
-}
-#endif  // CONFIG_NEW_INTER_MODES

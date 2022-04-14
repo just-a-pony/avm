@@ -142,9 +142,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_ref_frame_mvs);
     GET_PARAMS(enable_reduced_reference_set);
     GET_PARAMS(reduced_tx_type_set);
-#if CONFIG_NEW_INTER_MODES
     GET_PARAMS(max_drl_refmvs);
-#endif  // CONFIG_NEW_INTER_MODES
 #if CONFIG_REF_MV_BANK
     GET_PARAMS(enable_refmvbank);
 #endif  // CONFIG_REF_MV_BANK
