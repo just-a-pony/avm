@@ -837,11 +837,13 @@ static TX_SIZE set_lpf_parameters(
             } else if (TX_16X16 == min_ts) {
               params->filter_length = 14;
               // No wide filtering for chroma plane
-#if !DF_CHROMA_WIDE
               if (plane != 0) {
+#if DF_CHROMA_WIDE
+                params->filter_length = 10;
+#else
                 params->filter_length = 6;
+#endif  // DF_CHROMA_WIDE
               }
-#endif  // !DF_CHROMA_WIDE
             } else {
 #if DF_REDUCED_SB_EDGE
               if (horz_superblock_edge || vert_tile_edge) {
