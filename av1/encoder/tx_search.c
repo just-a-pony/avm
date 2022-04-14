@@ -2764,8 +2764,6 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #endif
   }
 
-  assert(best_rd != INT64_MAX);
-
   best_rd_stats->skip_txfm = best_eob == 0;
   if (plane == 0) update_txk_array(xd, blk_row, blk_col, tx_size, best_tx_type);
   x->plane[plane].txb_entropy_ctx[block] = best_txb_ctx;
@@ -3573,6 +3571,8 @@ static AOM_INLINE void block_rd_txfm(int plane, int block, int blk_row,
     args->incomplete_exit = 1;
     return;
   }
+#else
+  assert(this_rd_stats.dist != INT64_MAX);
 #endif  // CONFIG_FORWARDSKIP
 
   if (plane == AOM_PLANE_Y && xd->cfl.store_y && xd->tree_type == SHARED_PART) {
