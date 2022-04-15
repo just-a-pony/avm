@@ -237,7 +237,7 @@ void av1_init_motion_compensation_square(search_site_config *cfg, int stride);
 // Mv beyond the range do not produce new/different prediction block.
 static INLINE void av1_set_mv_search_method(
     FULLPEL_MOTION_SEARCH_PARAMS *ms_params,
-    const search_site_config search_sites[NUM_SEARCH_METHODS],
+    const search_site_config search_sites[NUM_DISTINCT_SEARCH_METHODS],
     SEARCH_METHODS search_method) {
   // Array to inform which all search methods are having
   // same candidates and different in number of search steps.
