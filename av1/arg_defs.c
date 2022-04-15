@@ -376,6 +376,12 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                          "Enable Offset Based refinement of intra prediction"
                          "(0: false, 1: true (default))"),
 #endif
+#if CONFIG_NEW_TX_PARTITION
+  .enable_tx_split_4way =
+      ARG_DEF(NULL, "enable-tx-split-4way", 1,
+              "Enable 4-way tx split in the new transform partition tool"
+              "(0: false, 1:true (default))"),
+#endif
 #if CONFIG_IST
   .enable_ist = ARG_DEF(NULL, "enable-ist", 1,
                         "Enable intra secondary transform"

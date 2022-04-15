@@ -331,6 +331,12 @@ typedef struct {
    */
   bool enable_ist;
 #endif
+#if CONFIG_NEW_TX_PARTITION
+  /*!
+   * Flag to indicate if 4-way transform split should be enabled.
+   */
+  bool enable_tx_split_4way;
+#endif
 } TxfmSizeTypeCfg;
 
 /*!

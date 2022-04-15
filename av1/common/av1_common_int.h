@@ -413,6 +413,10 @@ typedef struct SequenceHeader {
 #if CONFIG_ORIP
   uint8_t enable_orip;  // To turn on/off sub-block based ORIP
 #endif
+#if CONFIG_NEW_TX_PARTITION
+  uint8_t enable_tx_split_4way;  // To turn on/off VERT4 and HORZ4 mode
+                                 // in the NEW_TX_PARTITION tool
+#endif
 #if CONFIG_IST
   uint8_t enable_ist;  // enables/disables intra secondary transform
 #endif

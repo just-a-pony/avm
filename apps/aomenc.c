@@ -432,6 +432,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_ORIP
   &g_av1_codec_arg_defs.enable_orip,
 #endif
+#if CONFIG_NEW_TX_PARTITION
+  &g_av1_codec_arg_defs.enable_tx_split_4way,
+#endif
 #if CONFIG_IST
   &g_av1_codec_arg_defs.enable_ist,
 #endif
@@ -602,6 +605,9 @@ static void init_config(cfg_options_t *config) {
 #endif  // CONFIG_FORWARDSKIP
 #if CONFIG_ORIP
   config->enable_orip = 1;
+#endif
+#if CONFIG_NEW_TX_PARTITION
+  config->enable_tx_split_4way = 1;
 #endif
 #if CONFIG_IST
   config->enable_ist = 1;
@@ -1419,6 +1425,10 @@ static void show_stream_config(struct stream_state *stream,
 #if CONFIG_IST
   fprintf(stdout, "                               : IST (%d)\n",
           encoder_cfg->enable_ist);
+#endif
+#if CONFIG_NEW_TX_PARTITION
+  fprintf(stdout, "                               : NTP_4way_tx_split (%d)\n",
+          encoder_cfg->enable_tx_split_4way);
 #endif
   fprintf(stdout,
           "Tool setting (Intra)           : SmoothIntra (%d), CfL (%d), "
