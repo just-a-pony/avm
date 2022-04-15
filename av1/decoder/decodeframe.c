@@ -1148,7 +1148,9 @@ static AOM_INLINE void predict_inter_block(AV1_COMMON *const cm,
   }
 
 #if CONFIG_MISMATCH_DEBUG
-  for (int plane = 0; plane < num_planes; ++plane) {
+  const int plane_start = get_partition_plane_start(xd->tree_type);
+  const int plane_end = get_partition_plane_end(xd->tree_type, num_planes);
+  for (int plane = plane_start; plane < plane_end; ++plane) {
     const struct macroblockd_plane *pd = &xd->plane[plane];
     int pixel_c, pixel_r;
     mi_to_pixel_loc(&pixel_c, &pixel_r, mi_col, mi_row, 0, 0, pd->subsampling_x,

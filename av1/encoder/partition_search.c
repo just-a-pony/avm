@@ -405,7 +405,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
 
 #if CONFIG_MISMATCH_DEBUG
     if (dry_run == OUTPUT_ENABLED) {
-      for (int plane = 0; plane < num_planes; ++plane) {
+      for (int plane = plane_start; plane < plane_end; ++plane) {
         const struct macroblockd_plane *pd = &xd->plane[plane];
         int pixel_c, pixel_r;
         mi_to_pixel_loc(&pixel_c, &pixel_r, mi_col, mi_row, 0, 0,
