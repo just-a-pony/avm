@@ -238,6 +238,9 @@ Test Data Check:
         debug)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Debug"
           ;;
+        release)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Release"
+          ;;
         *)
           echo -n "Unknown configuration: '$AOM_BUILD_CONFIG'"
           exit 1
@@ -402,6 +405,19 @@ Build Documentation:
     expire_in: 1 week
     paths:
       - aom_docs_build/docs/
+
+Build (x86_64-clang):
+  extends: .build-common
+  parallel:
+    matrix:
+      - AOM_BUILD_CONFIG:
+          - debug
+          - release
+  variables:
+    CMAKE_FLAGS: >-
+      -DENABLE_CCACHE=1
+      -DCMAKE_C_COMPILER=clang
+      -DCMAKE_CXX_COMPILER=clang++
 
 Example Build (x86_64-gcc):
   stage: build
