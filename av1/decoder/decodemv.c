@@ -963,7 +963,6 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     mbmi->motion_mode = SIMPLE_TRANSLATION;
 
     int16_t inter_mode_ctx[MODE_CTX_REF_FRAMES];
-    int_mv nearestmv, nearmv;
 
     // TODO(kslu): Rework av1_find_mv_refs to avoid having this big array
     // ref_mvs
@@ -977,15 +976,17 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     av1_find_mv_refs(cm, xd, mbmi, INTRA_FRAME, dcb->ref_mv_count,
                      xd->ref_mv_stack, xd->weight, ref_mvs, /*global_mvs=*/NULL,
                      inter_mode_ctx);
-    av1_find_best_ref_mvs(0, ref_mvs[INTRA_FRAME], &nearestmv, &nearmv, 0);
-
-    int_mv dv_ref = nearestmv.as_int == 0 ? nearmv : nearestmv;
 
 #if CONFIG_BVP_IMPROVEMENT
     mbmi->intrabc_mode =
         aom_read_symbol(r, ec_ctx->intrabc_mode_cdf, 2, ACCT_STR);
     read_intrabc_drl_idx(MAX_REF_BV_STACK_SIZE, ec_ctx, mbmi, r);
-    dv_ref = xd->ref_mv_stack[INTRA_FRAME][mbmi->intrabc_drl_idx].this_mv;
+    int_mv dv_ref =
+        xd->ref_mv_stack[INTRA_FRAME][mbmi->intrabc_drl_idx].this_mv;
+#else
+    int_mv nearestmv, nearmv;
+    av1_find_best_ref_mvs(0, ref_mvs[INTRA_FRAME], &nearestmv, &nearmv, 0);
+    int_mv dv_ref = nearestmv.as_int == 0 ? nearmv : nearestmv;
 #endif  // CONFIG_BVP_IMPROVEMENT
     if (dv_ref.as_int == 0)
       av1_find_ref_dv(&dv_ref, &xd->tile, cm->seq_params.mib_size, xd->mi_row);
@@ -1925,7 +1926,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   FeatureFlags *const features = &cm->features;
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
   const int allow_hp = features->allow_high_precision_mv;
-  int_mv nearestmv[2], nearmv[2];
+  int_mv nearmv[2];
   int_mv ref_mvs[MODE_CTX_REF_FRAMES][MAX_MV_REF_CANDIDATES] = { { { 0 } } };
   int16_t inter_mode_ctx[MODE_CTX_REF_FRAMES];
   int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
@@ -2009,20 +2010,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
                        mbmi->mode, mbmi->ref_frame[0], mbmi->ref_frame[1]);
   }
 
-  if (!is_compound && mbmi->mode != GLOBALMV) {
-    av1_find_best_ref_mvs(allow_hp, ref_mvs[mbmi->ref_frame[0]], &nearestmv[0],
-                          &nearmv[0], features->cur_frame_force_integer_mv);
-  }
-
   if (is_compound && mbmi->mode != GLOBAL_GLOBALMV) {
-    nearestmv[0] = xd->ref_mv_stack[ref_frame][0].this_mv;
-    nearestmv[1] = xd->ref_mv_stack[ref_frame][0].comp_mv;
     nearmv[0] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].this_mv;
     nearmv[1] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].comp_mv;
-    lower_mv_precision(&nearestmv[0].as_mv, allow_hp,
-                       features->cur_frame_force_integer_mv);
-    lower_mv_precision(&nearestmv[1].as_mv, allow_hp,
-                       features->cur_frame_force_integer_mv);
     lower_mv_precision(&nearmv[0].as_mv, allow_hp,
                        features->cur_frame_force_integer_mv);
     lower_mv_precision(&nearmv[1].as_mv, allow_hp,
@@ -2031,7 +2021,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
     nearmv[0] = xd->ref_mv_stack[mbmi->ref_frame[0]][mbmi->ref_mv_idx].this_mv;
   }
 
-  int_mv ref_mv[2] = { nearestmv[0], nearestmv[1] };
+  int_mv ref_mv[2];
 
   if (is_compound) {
     int ref_mv_idx = mbmi->ref_mv_idx;
@@ -2051,8 +2041,10 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
         || mbmi->mode == AMVDNEWMV
 #endif  // IMPROVED_AMVD
     ) {
-      if (dcb->ref_mv_count[ref_frame] > 1)
-        ref_mv[0] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].this_mv;
+      ref_mv[0] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].this_mv;
+      if (dcb->ref_mv_count[ref_frame] == 1)
+        lower_mv_precision(&ref_mv[0].as_mv, allow_hp,
+                           features->cur_frame_force_integer_mv);
     }
   }
   if (mbmi->skip_mode) {

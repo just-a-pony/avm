@@ -1440,11 +1440,7 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
       const int jmvd_base_ref_list = get_joint_mvd_base_ref_list(cm, mbmi);
       const int valid_mv_base = (!jmvd_base_ref_list && valid_mv0) ||
                                 (jmvd_base_ref_list && valid_mv1);
-      if (valid_mv_base
-#if IMPROVED_AMVD
-          && !is_joint_amvd_coding_mode(mbmi->adaptive_mvd_flag)
-#endif  // IMPROVED_AMVD
-      ) {
+      if (valid_mv_base) {
         cur_mv[jmvd_base_ref_list].as_int =
             args->single_newmv[ref_mv_idx][refs[jmvd_base_ref_list]].as_int;
         clamp_mv_in_range(x, &cur_mv[jmvd_base_ref_list], jmvd_base_ref_list);

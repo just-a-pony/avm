@@ -675,8 +675,9 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 #if IMPROVED_AMVD
     if (mbmi->adaptive_mvd_flag == 1)
       bestsme = av1_joint_amvd_motion_search(
-          cm, xd, &ms_params, this_mv, &best_mv.as_mv, &dis, &sse, ref_idx,
-          other_mv, &best_other_mv.as_mv, second_pred, &inter_pred_params);
+          cm, xd, &ms_params, &ref_mv.as_mv, &best_mv.as_mv, &dis, &sse,
+          ref_idx, other_mv, &best_other_mv.as_mv, second_pred,
+          &inter_pred_params);
     else
 #endif  // IMPROVED_AMVD
       bestsme = joint_mvd_search(cm, xd, &ms_params, ref_mv.as_mv, this_mv,
