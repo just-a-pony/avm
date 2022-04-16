@@ -2324,24 +2324,24 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
 
   if (frame_is_intra_only(cm)) {
     read_intra_frame_mode_info(cm, dcb, r);
-#if CONFIG_BVP_IMPROVEMENT
+#if CONFIG_BVP_IMPROVEMENT && CONFIG_REF_MV_BANK
     if (cm->seq_params.enable_refmvbank) {
       MB_MODE_INFO *const mbmi = xd->mi[0];
       if (is_intrabc_block(mbmi, xd->tree_type))
         av1_update_ref_mv_bank(cm, xd, mbmi);
     }
-#endif  // CONFIG_BVP_IMPROVEMENT
+#endif  // CONFIG_BVP_IMPROVEMENT && CONFIG_REF_MV_BANK
     if (cm->seq_params.order_hint_info.enable_ref_frame_mvs)
       intra_copy_frame_mvs(cm, xd->mi_row, xd->mi_col, x_mis, y_mis);
   } else {
     read_inter_frame_mode_info(pbi, dcb, r);
-#if CONFIG_BVP_IMPROVEMENT
+#if CONFIG_BVP_IMPROVEMENT && CONFIG_REF_MV_BANK
     if (cm->seq_params.enable_refmvbank) {
       MB_MODE_INFO *const mbmi = xd->mi[0];
       if (is_inter_block(mbmi, xd->tree_type))
         av1_update_ref_mv_bank(cm, xd, mbmi);
     }
-#endif  // CONFIG_BVP_IMPROVEMENT
+#endif  // CONFIG_BVP_IMPROVEMENT && CONFIG_REF_MV_BANK
     if (cm->seq_params.order_hint_info.enable_ref_frame_mvs)
       av1_copy_frame_mvs(cm, mi, xd->mi_row, xd->mi_col, x_mis, y_mis);
   }
