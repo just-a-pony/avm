@@ -1947,7 +1947,6 @@ int main(int argc, const char **argv_) {
   struct AvxEncoderConfig global;
   struct stream_state *streams = NULL;
   char **argv, **argi;
-  uint64_t cx_time = 0;
   int stream_cnt = 0;
   int res = 0;
   int profile_updated = 0;
@@ -2299,8 +2298,6 @@ int main(int argc, const char **argv_) {
       } else {
         frame_to_encode = &raw;
       }
-      struct aom_usec_timer timer;
-      aom_usec_timer_start(&timer);
       if (do_16bit_internal) {
         assert(frame_to_encode->fmt & AOM_IMG_FMT_HIGHBITDEPTH);
         FOREACH_STREAM(stream, streams) {
@@ -2317,8 +2314,6 @@ int main(int argc, const char **argv_) {
                        seen_frames);
         }
       }
-      aom_usec_timer_mark(&timer);
-      cx_time += aom_usec_timer_elapsed(&timer);
 
       FOREACH_STREAM(stream, streams) { update_quantizer_histogram(stream); }
 
