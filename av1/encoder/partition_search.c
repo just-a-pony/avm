@@ -970,6 +970,16 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   }
   if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
     update_cdf(fc->intrabc_cdf, is_intrabc_block(mbmi, xd->tree_type), 2);
+#if CONFIG_BVCOST_UPDATE
+    if (is_intrabc_block(mbmi, xd->tree_type)) {
+      const int_mv ref_mv = mbmi_ext->ref_mv_stack[INTRA_FRAME][0].this_mv;
+      av1_update_mv_stats(&mbmi->mv[0].as_mv, &ref_mv.as_mv, &fc->ndvc,
+#if CONFIG_ADAPTIVE_MVD
+                          0,
+#endif  // CONFIG_ADAPTIVE_MVD
+                          MV_SUBPEL_NONE);
+    }
+#endif  // CONFIG_BVCOST_UPDATE
 #if CONFIG_BVP_IMPROVEMENT
     if (is_intrabc_block(mbmi, xd->tree_type)) {
       update_cdf(fc->intrabc_mode_cdf, mbmi->intrabc_mode, 2);

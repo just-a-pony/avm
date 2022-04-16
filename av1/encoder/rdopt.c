@@ -3582,6 +3582,16 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   av1_make_default_fullpel_ms_params(&fullms_params, cpi, x, bsize,
                                      &dv_ref.as_mv, lookahead_search_sites,
                                      /*fine_search_interval=*/0);
+#if CONFIG_BVCOST_UPDATE
+  // The costs for block vector are stored in cpi->dv_costs. Assign the costs to
+  // mv_cost_params for motion search.
+  fullms_params.mv_cost_params.mvjcost = cpi->dv_costs.joint_mv;
+  fullms_params.mv_cost_params.mvcost[0] =
+      (int *)&cpi->dv_costs.mv_component[0][MV_MAX];
+  fullms_params.mv_cost_params.mvcost[1] =
+      (int *)&cpi->dv_costs.mv_component[1][MV_MAX];
+#endif  // CONFIG_BVCOST_UPDATE
+
   fullms_params.is_intra_mode = 1;
 #if CONFIG_IBC_SR_EXT
   fullms_params.xd = xd;

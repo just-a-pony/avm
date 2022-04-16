@@ -809,6 +809,18 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
 #endif  // CONFIG_FORWARDSKIP
 }
 
+#if CONFIG_BVCOST_UPDATE
+void av1_fill_dv_costs(const FRAME_CONTEXT *fc, IntraBCMVCosts *dv_costs) {
+  int *dvcost[2] = { &dv_costs->mv_component[0][MV_MAX],
+                     &dv_costs->mv_component[1][MV_MAX] };
+  av1_build_nmv_cost_table(dv_costs->joint_mv,
+#if CONFIG_ADAPTIVE_MVD
+                           dv_costs->amvd_joint_mv, dvcost,
+#endif  // CONFIG_ADAPTIVE_MVD
+                           dvcost, &fc->ndvc, MV_SUBPEL_NONE);
+}
+#endif  // CONFIG_BVCOST_UPDATE
+
 void av1_fill_mv_costs(const FRAME_CONTEXT *fc, int integer_mv, int usehp,
                        MvCosts *mv_costs) {
   mv_costs->nmv_cost[0] = &mv_costs->nmv_cost_alloc[0][MV_MAX];
@@ -868,8 +880,12 @@ void av1_initialize_rd_consts(AV1_COMP *cpi) {
     av1_fill_mv_costs(cm->fc, cm->features.cur_frame_force_integer_mv,
                       cm->features.allow_high_precision_mv, mv_costs);
 
-  if (frame_is_intra_only(cm) && cm->features.allow_screen_content_tools &&
+  if (cm->features.allow_screen_content_tools &&
+#if !CONFIG_BVCOST_UPDATE
+      frame_is_intra_only(cm) &&
+#endif  // !CONFIG_BVCOST_UPDATE
       !is_stat_generation_stage(cpi)) {
+
     IntraBCMVCosts *const dv_costs = &cpi->dv_costs;
     int *dvcost[2] = { &dv_costs->mv_component[0][MV_MAX],
                        &dv_costs->mv_component[1][MV_MAX] };
