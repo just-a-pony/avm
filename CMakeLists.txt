@@ -25,6 +25,11 @@ endif()
 
 project(AVM C CXX)
 
+# GENERATED source property global visibility.
+if(POLICY CMP0118)
+  cmake_policy(SET CMP0118 NEW)
+endif()
+
 if(NOT EMSCRIPTEN)
   if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE
