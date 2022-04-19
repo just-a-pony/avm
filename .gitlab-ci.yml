@@ -192,6 +192,7 @@ Test Data Check:
           - inspection-accounting
           - nasm
           - no-examples
+          - debug
   script:
     - |
       case $AOM_BUILD_CONFIG in
@@ -233,6 +234,9 @@ Test Data Check:
           ;;
         no-examples)
           CMAKE_FLAGS="$CMAKE_FLAGS -DENABLE_EXAMPLES=0"
+          ;;
+        debug)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Debug"
           ;;
         *)
           echo -n "Unknown configuration: '$AOM_BUILD_CONFIG'"
