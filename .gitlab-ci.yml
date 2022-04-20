@@ -194,6 +194,7 @@ Test Data Check:
           - no-examples
           - debug
   script:
+    - export PATH="/usr/lib/llvm-12/bin:${PATH}"
     - |
       case $AOM_BUILD_CONFIG in
         internal-stats)
@@ -461,7 +462,7 @@ Linux Sanitizers (x86_64-clang):
           # CFI Sanitizer commented for now, as lto build does not work
           #- cfi
   script:
-    - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-12/bin:${PATH}"
     - |
       SANITIZER_BLACKLIST_FLAG="-fsanitize-blacklist=${PWD}/${SANITIZER_IGNORES_FILE}"
 
@@ -525,7 +526,7 @@ Example Test (x86_64):
      :fast_unwind_on_fatal=1\
      :allocator_may_return_null=1"
   before_script:
-    - export PATH="/usr/lib/llvm-6.0/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-12/bin:${PATH}"
     - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
   script:
     - |
@@ -546,7 +547,9 @@ Example Test (x86_64):
           export TSAN_OPTIONS
           ;;
         undefined|integer)
-          SANITIZER_OPTIONS="${SANITIZER_OPTIONS}:print_stacktrace=1:suppressions=.gitlab/UBSan.supp"
+          SANITIZER_OPTIONS="${SANITIZER_OPTIONS}:print_stacktrace=1"
+          SANITIZER_OPTIONS="${SANITIZER_OPTIONS}:report_error_type=1"
+          SANITIZER_OPTIONS="${SANITIZER_OPTIONS}:suppressions=.gitlab/UBSan.supp"
           export UBSAN_OPTIONS="${SANITIZER_OPTIONS}"
           ;;
       esac
@@ -831,7 +834,7 @@ Static Analyzer:
           - shallow
           - deep
   script:
-    - export PATH="/usr/lib/llvm-10/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-12/bin:${PATH}"
     - mkdir output-${ANALYZER_MODE}
     - |
       scan_build() {
