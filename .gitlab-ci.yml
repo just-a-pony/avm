@@ -10,7 +10,7 @@ stages:
   - test
   - report
 
-image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004:20220314183519
+image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2004:20220421194734
 
 default:
   tags:
@@ -27,12 +27,14 @@ workflow:
 Style Check:
   stage: check
   interruptible: true
-  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3:20210901124702
   variables:
     DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
   script:
     - 'echo "Diff ref is: $DIFF_REF"'
     - git fetch --unshallow
+    - export PATH="/usr/lib/llvm-12/bin:${PATH}"
+    - clang --version
+    - cmake-format --version
     - |
       # Run clang-format check.
       for f in $(git diff --diff-filter=ACMR --name-only $DIFF_REF '*.[hc]pp' '*.cc' '*.[ch]' \
@@ -53,7 +55,6 @@ Style Check:
 .commit-checks-common:
   stage: check
   interruptible: true
-  image: registry.gitlab.com/aomediacodec/aom-testing/alpine3:20210901124702
   script:
     - 'echo "Diff ref is: $DIFF_REF"'
     - git fetch --unshallow
@@ -776,7 +777,6 @@ Previous Enc Run (Low-delay):
 Enc compare:
   stage: report
   interruptible: true
-  image: registry.gitlab.com/epirat/images/alpine:20210415142607
   script:
     - git fetch --unshallow
     - |

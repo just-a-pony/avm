@@ -1504,9 +1504,10 @@ static INLINE void get_qc_dqc_low(tran_low_t abs_qc, int sign, int dqv,
   *qc_low = (-sign ^ abs_qc_low) + sign;
   assert((sign ? -abs_qc_low : abs_qc_low) == *qc_low);
 
-  tran_low_t abs_dqc_low = (tran_low_t)(
-      ROUND_POWER_OF_TWO_64((tran_high_t)abs_qc_low * dqv, QUANT_TABLE_BITS) >>
-      shift);
+  tran_low_t abs_dqc_low =
+      (tran_low_t)(ROUND_POWER_OF_TWO_64((tran_high_t)abs_qc_low * dqv,
+                                         QUANT_TABLE_BITS) >>
+                   shift);
 
   *dqc_low = (-sign ^ abs_dqc_low) + sign;
   assert((sign ? -abs_dqc_low : abs_dqc_low) == *dqc_low);

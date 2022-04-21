@@ -635,10 +635,10 @@ static AOM_INLINE void tpl_model_update_b(TplParams *const tpl_data, int mi_row,
   int block;
 
   int64_t cur_dep_dist = tpl_stats_ptr->recrf_dist - tpl_stats_ptr->srcrf_dist;
-  int64_t mc_dep_dist = (int64_t)(
-      tpl_stats_ptr->mc_dep_dist *
-      ((double)(tpl_stats_ptr->recrf_dist - tpl_stats_ptr->srcrf_dist) /
-       tpl_stats_ptr->recrf_dist));
+  int64_t mc_dep_dist = (int64_t)(tpl_stats_ptr->mc_dep_dist *
+                                  ((double)(tpl_stats_ptr->recrf_dist -
+                                            tpl_stats_ptr->srcrf_dist) /
+                                   tpl_stats_ptr->recrf_dist));
   int64_t delta_rate = tpl_stats_ptr->recrf_rate - tpl_stats_ptr->srcrf_rate;
   int64_t mc_dep_rate =
       delta_rate_cost(tpl_stats_ptr->mc_dep_rate, tpl_stats_ptr->recrf_dist,
