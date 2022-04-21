@@ -286,6 +286,8 @@ Previous Build (x86_64-linux-gcc):
   variables:
     DIFF_REF: $CI_MERGE_REQUEST_DIFF_BASE_SHA
     INSTALLROOT_FOLDER: installroot_old
+    # Allow build warnings.
+    EXTRA_CMAKE_FLAGS: -DENABLE_WERROR=0
   before_script:
     - git fetch --unshallow
     - git checkout "$DIFF_REF"
