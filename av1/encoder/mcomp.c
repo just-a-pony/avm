@@ -26,6 +26,9 @@
 #include "av1/common/filter.h"
 #include "av1/common/mvref_common.h"
 #include "av1/common/reconinter.h"
+#if CONFIG_TIP
+#include "av1/common/tip.h"
+#endif  // CONFIG_TIP
 
 #include "av1/encoder/encoder.h"
 #include "av1/encoder/encodemv.h"
@@ -146,7 +149,8 @@ void av1_make_default_fullpel_ms_params(
   ms_params->mv_limits = x->mv_limits;
 #if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) {
-    av1_set_tip_mv_search_range(&ms_params->mv_limits);
+    av1_set_tip_mv_range(&ms_params->mv_limits, &x->e_mbd, bsize,
+                         &cpi->common.mi_params);
   } else {
 #endif  // CONFIG_TIP
     av1_set_mv_search_range(&ms_params->mv_limits, ref_mv);
@@ -182,7 +186,8 @@ void av1_make_default_subpel_ms_params(SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
 
 #if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) {
-    av1_set_tip_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits);
+    av1_set_tip_subpel_mv_range(&ms_params->mv_limits, &x->e_mbd, bsize,
+                                &cm->mi_params);
   } else {
 #endif  // CONFIG_TIP
     av1_set_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits,
@@ -238,23 +243,6 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv) {
   if (mv_limits->row_min < row_min) mv_limits->row_min = row_min;
   if (mv_limits->row_max > row_max) mv_limits->row_max = row_max;
 }
-
-#if CONFIG_TIP
-void av1_set_tip_mv_search_range(FullMvLimits *mv_limits) {
-  const int tmvp_mv = (TIP_MV_SEARCH_RANGE << TMVP_MI_SZ_LOG2);
-  const int col_min = -tmvp_mv;
-  const int row_min = -tmvp_mv;
-  const int col_max = tmvp_mv;
-  const int row_max = tmvp_mv;
-
-  // Get intersection of UMV window and valid MV window to reduce # of checks
-  // in diamond search.
-  if (mv_limits->col_min < col_min) mv_limits->col_min = col_min;
-  if (mv_limits->col_max > col_max) mv_limits->col_max = col_max;
-  if (mv_limits->row_min < row_min) mv_limits->row_min = row_min;
-  if (mv_limits->row_max > row_max) mv_limits->row_max = row_max;
-}
-#endif  // CONFIG_TIP
 
 int av1_init_search_range(int size) {
   int sr = 0;
@@ -2465,7 +2453,8 @@ unsigned int av1_int_pro_motion_estimation(const AV1_COMP *cpi, MACROBLOCK *x,
   SubpelMvLimits subpel_mv_limits;
 #if CONFIG_TIP
   if (is_tip_ref_frame(mi->ref_frame[0])) {
-    av1_set_tip_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits);
+    av1_set_tip_subpel_mv_range(&subpel_mv_limits, &x->e_mbd, bsize,
+                                &cpi->common.mi_params);
   } else {
 #endif  // CONFIG_TIP
     av1_set_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits, ref_mv);

@@ -22,6 +22,9 @@
 #include "av1/common/reconinter.h"
 #include "av1/common/reconintra.h"
 #include "av1/common/seg_common.h"
+#if CONFIG_TIP
+#include "av1/common/tip.h"
+#endif  // CONFIG_TIP
 #include "av1/common/warped_motion.h"
 
 #include "av1/decoder/decodeframe.h"
@@ -1727,7 +1730,15 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
       break;
     }
     case NEARMV: {
+#if CONFIG_TIP
+      int_mv this_mv = near_mv[0];
+      if (is_tip_ref_frame(ref_frame[0])) {
+        tip_clamp_and_check_mv(&this_mv, this_mv, bsize, cm, xd);
+      }
+      mv[0].as_int = this_mv.as_int;
+#else
       mv[0].as_int = near_mv[0].as_int;
+#endif  // CONFIG_TIP
       break;
     }
     case GLOBALMV: {

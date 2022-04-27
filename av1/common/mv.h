@@ -348,6 +348,12 @@ static INLINE void clamp_fullmv(FULLPEL_MV *mv, const FullMvLimits *mv_limits) {
   mv->row = clamp(mv->row, mv_limits->row_min, mv_limits->row_max);
 }
 
+static INLINE int av1_is_subpelmv_in_range(const SubpelMvLimits *mv_limits,
+                                           MV mv) {
+  return (mv.col >= mv_limits->col_min) && (mv.col <= mv_limits->col_max) &&
+         (mv.row >= mv_limits->row_min) && (mv.row <= mv_limits->row_max);
+}
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

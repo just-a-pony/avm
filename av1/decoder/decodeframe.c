@@ -890,6 +890,8 @@ static void av1_dec_tip_on_the_fly(AV1_COMMON *cm, MACROBLOCKD *xd,
   tpl_end_col = ((tpl_end_col + 1) >> 1) << 1;
   tpl_end_row = AOMMIN(mvs_rows, tpl_end_row);
   tpl_end_col = AOMMIN(mvs_cols, tpl_end_col);
+  assert(tpl_start_row != tpl_end_row);
+  assert(tpl_start_col != tpl_end_col);
 
   av1_setup_tip_on_the_fly(cm, xd, tpl_start_row, tpl_start_col, tpl_end_row,
                            tpl_end_col, mvs_cols, mc_buf, conv_dst,
