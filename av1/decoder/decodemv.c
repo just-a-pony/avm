@@ -1690,8 +1690,8 @@ static INLINE int is_mv_valid(const MV *mv) {
 static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
                             PREDICTION_MODE mode,
                             MV_REFERENCE_FRAME ref_frame[2], int_mv mv[2],
-                            int_mv ref_mv[2], int_mv near_mv[2],
-                            int is_compound, int allow_hp, aom_reader *r) {
+                            int_mv ref_mv[2], int is_compound, int allow_hp,
+                            aom_reader *r) {
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   MB_MODE_INFO *mbmi = xd->mi[0];
   BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
@@ -1731,7 +1731,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     }
     case NEARMV: {
 #if CONFIG_TIP
-      int_mv this_mv = near_mv[0];
+      int_mv this_mv = ref_mv[0];
       if (is_tip_ref_frame(ref_frame[0])) {
         tip_clamp_and_check_mv(&this_mv, this_mv, bsize, cm, xd);
       }
@@ -1771,8 +1771,8 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
     {
       assert(is_compound);
-      mv[0].as_int = near_mv[0].as_int;
-      mv[1].as_int = near_mv[1].as_int;
+      mv[0].as_int = ref_mv[0].as_int;
+      mv[1].as_int = ref_mv[1].as_int;
       break;
     }
     case NEAR_NEWMV:
@@ -1781,7 +1781,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
     {
       nmv_context *const nmvc = &ec_ctx->nmvc;
-      mv[0].as_int = near_mv[0].as_int;
+      mv[0].as_int = ref_mv[0].as_int;
       read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv,
 #if CONFIG_ADAPTIVE_MVD
               is_adaptive_mvd,
@@ -1797,7 +1797,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     {
       nmv_context *const nmvc = &ec_ctx->nmvc;
       assert(is_compound);
-      mv[1].as_int = near_mv[1].as_int;
+      mv[1].as_int = ref_mv[1].as_int;
       read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv,
 #if CONFIG_ADAPTIVE_MVD
               is_adaptive_mvd,
@@ -1826,8 +1826,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     case JOINT_NEWMV: {
       nmv_context *const nmvc = &ec_ctx->nmvc;
       assert(is_compound);
-      mv[1 - jmvd_base_ref_list].as_int =
-          near_mv[1 - jmvd_base_ref_list].as_int;
+      mv[1 - jmvd_base_ref_list].as_int = ref_mv[1 - jmvd_base_ref_list].as_int;
       read_mv(r, &mv[jmvd_base_ref_list].as_mv,
               &ref_mv[jmvd_base_ref_list].as_mv,
 #if CONFIG_ADAPTIVE_MVD
@@ -1850,9 +1849,9 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #endif  // IMPROVED_AMVD
                          features->cur_frame_force_integer_mv);
       mv[1 - jmvd_base_ref_list].as_mv.row =
-          (int)(near_mv[1 - jmvd_base_ref_list].as_mv.row + other_mvd.row);
+          (int)(ref_mv[1 - jmvd_base_ref_list].as_mv.row + other_mvd.row);
       mv[1 - jmvd_base_ref_list].as_mv.col =
-          (int)(near_mv[1 - jmvd_base_ref_list].as_mv.col + other_mvd.col);
+          (int)(ref_mv[1 - jmvd_base_ref_list].as_mv.col + other_mvd.col);
       break;
     }
 #endif  // CONFIG_JOINT_MVD
@@ -1937,7 +1936,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   FeatureFlags *const features = &cm->features;
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
   const int allow_hp = features->allow_high_precision_mv;
-  int_mv nearmv[2];
+  int_mv ref_mv[2];
   int_mv ref_mvs[MODE_CTX_REF_FRAMES][MAX_MV_REF_CANDIDATES] = { { { 0 } } };
   int16_t inter_mode_ctx[MODE_CTX_REF_FRAMES];
   int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
@@ -2020,44 +2019,11 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
                        "Prediction mode %d invalid with ref frame %d %d",
                        mbmi->mode, mbmi->ref_frame[0], mbmi->ref_frame[1]);
   }
-
+  ref_mv[0] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].this_mv;
   if (is_compound && mbmi->mode != GLOBAL_GLOBALMV) {
-    nearmv[0] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].this_mv;
-    nearmv[1] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].comp_mv;
-    lower_mv_precision(&nearmv[0].as_mv, allow_hp,
-                       features->cur_frame_force_integer_mv);
-    lower_mv_precision(&nearmv[1].as_mv, allow_hp,
-                       features->cur_frame_force_integer_mv);
-  } else if (mbmi->mode == NEARMV) {
-    nearmv[0] = xd->ref_mv_stack[mbmi->ref_frame[0]][mbmi->ref_mv_idx].this_mv;
+    ref_mv[1] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].comp_mv;
   }
 
-  int_mv ref_mv[2];
-
-  if (is_compound) {
-    int ref_mv_idx = mbmi->ref_mv_idx;
-    // TODO(jingning, yunqing): Do we need a lower_mv_precision() call here?
-    if (compound_ref0_mode(mbmi->mode) == NEWMV)
-      ref_mv[0] = xd->ref_mv_stack[ref_frame][ref_mv_idx].this_mv;
-#if CONFIG_JOINT_MVD
-    if (compound_ref1_mode(mbmi->mode) == NEWMV ||
-        is_joint_mvd_coding_mode(mbmi->mode))
-#else
-    if (compound_ref1_mode(mbmi->mode) == NEWMV)
-#endif  // CONFIG_JOINT_MVD
-      ref_mv[1] = xd->ref_mv_stack[ref_frame][ref_mv_idx].comp_mv;
-  } else {
-    if (mbmi->mode == NEWMV
-#if IMPROVED_AMVD
-        || mbmi->mode == AMVDNEWMV
-#endif  // IMPROVED_AMVD
-    ) {
-      ref_mv[0] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].this_mv;
-      if (dcb->ref_mv_count[ref_frame] == 1)
-        lower_mv_precision(&ref_mv[0].as_mv, allow_hp,
-                           features->cur_frame_force_integer_mv);
-    }
-  }
   if (mbmi->skip_mode) {
 #if CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
     assert(mbmi->mode ==
@@ -2072,7 +2038,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   }
 
   const int mv_corrupted_flag =
-      !assign_mv(cm, xd, mbmi->mode, mbmi->ref_frame, mbmi->mv, ref_mv, nearmv,
+      !assign_mv(cm, xd, mbmi->mode, mbmi->ref_frame, mbmi->mv, ref_mv,
                  is_compound, allow_hp, r);
   aom_merge_corrupted_flag(&dcb->corrupted, mv_corrupted_flag);
 
