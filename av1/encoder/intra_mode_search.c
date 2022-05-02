@@ -1220,6 +1220,10 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
   uint8_t best_fsc_mode = 0;
   PREDICTION_MODE best_intra_mode = best_mbmi->mode;
   TX_SIZE best_tx_size = best_mbmi->tx_size;
+#if CONFIG_NEW_TX_PARTITION
+  TX_PARTITION_TYPE best_partition_type[INTER_TX_SIZE_BUF_LEN];
+  av1_copy(best_partition_type, best_mbmi->partition_type);
+#endif  // CONFIG_NEW_TX_PARTITION
   uint8_t best_filt = mbmi->filter_intra_mode_info.use_filter_intra;
   uint8_t best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   int8_t best_angle_delta = best_mbmi->angle_delta[PLANE_TYPE_Y];
@@ -1336,6 +1340,9 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
       if (this_rd < *best_rd) {
         *best_rd = this_rd;
         best_tx_size = mbmi->tx_size;
+#if CONFIG_NEW_TX_PARTITION
+        av1_copy(best_partition_type, mbmi->partition_type);
+#endif  // CONFIG_NEW_TX_PARTITION
         best_intra_mode = mbmi->mode;
 #if CONFIG_AIMC
         best_y_mode_idx = mbmi->y_mode_idx;
@@ -1363,6 +1370,9 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
     mbmi->joint_y_mode_delta_angle = best_joint_ymode;
 #endif  // CONFIG_AIMC
     mbmi->tx_size = best_tx_size;
+#if CONFIG_NEW_TX_PARTITION
+    av1_copy(mbmi->partition_type, best_partition_type);
+#endif  // CONFIG_NEW_TX_PARTITION
     mbmi->mrl_index = best_mrl;
     mbmi->filter_intra_mode_info.use_filter_intra = best_filt;
     mbmi->angle_delta[PLANE_TYPE_Y] = best_angle_delta;

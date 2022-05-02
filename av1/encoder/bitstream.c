@@ -472,6 +472,37 @@ static AOM_INLINE void pack_map_tokens(aom_writer *w, const TokenExtra **tp,
 }
 #endif  // CONFIG_NEW_COLOR_MAP_CODING
 
+static AOM_INLINE void av1_write_coeffs_txb_facade(
+    aom_writer *w, AV1_COMMON *cm, MACROBLOCK *const x, MACROBLOCKD *xd,
+    MB_MODE_INFO *mbmi, int plane, int block, int blk_row, int blk_col,
+    TX_SIZE tx_size) {
+#if CONFIG_FORWARDSKIP
+  // code significance and TXB
+  const int code_rest =
+      av1_write_sig_txtype(cm, x, w, blk_row, blk_col, plane, block, tx_size);
+  const TX_TYPE tx_type =
+      av1_get_tx_type(xd, get_plane_type(plane), blk_row, blk_col, tx_size,
+                      cm->features.reduced_tx_set_used);
+  const int is_inter = is_inter_block(mbmi, xd->tree_type);
+  if (code_rest) {
+    if ((mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
+#if CONFIG_IST
+         get_primary_tx_type(tx_type) == IDTX && plane == PLANE_TYPE_Y) ||
+#else
+         tx_type == IDTX && plane == PLANE_TYPE_Y) ||
+#endif  // CONFIG_IST
+        use_inter_fsc(cm, plane, tx_type, is_inter)) {
+      av1_write_coeffs_txb_skip(cm, x, w, blk_row, blk_col, plane, block,
+                                tx_size);
+    } else {
+      av1_write_coeffs_txb(cm, x, w, blk_row, blk_col, plane, block, tx_size);
+    }
+  }
+#else
+  av1_write_coeffs_txb(cm, x, w, blk_row, blk_col, plane, block, tx_size);
+#endif  // CONFIG_FORWARDSKIP
+}
+
 static AOM_INLINE void pack_txb_tokens(
     aom_writer *w, AV1_COMMON *cm, MACROBLOCK *const x, const TokenExtra **tp,
     const TokenExtra *const tok_end, MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
@@ -490,31 +521,8 @@ static AOM_INLINE void pack_txb_tokens(
                                                          blk_col)];
 
   if (tx_size == plane_tx_size || plane) {
-#if CONFIG_FORWARDSKIP
-    // code significance and TXB
-    const int code_rest =
-        av1_write_sig_txtype(cm, x, w, blk_row, blk_col, plane, block, tx_size);
-    const TX_TYPE tx_type =
-        av1_get_tx_type(xd, get_plane_type(plane), blk_row, blk_col, tx_size,
-                        cm->features.reduced_tx_set_used);
-    const int is_inter = is_inter_block(mbmi, xd->tree_type);
-    if (code_rest) {
-      if ((mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
-#if CONFIG_IST
-           get_primary_tx_type(tx_type) == IDTX && plane == PLANE_TYPE_Y) ||
-#else
-           tx_type == IDTX && plane == PLANE_TYPE_Y) ||
-#endif  // CONFIG_IST
-          use_inter_fsc(cm, plane, tx_type, is_inter)) {
-        av1_write_coeffs_txb_skip(cm, x, w, blk_row, blk_col, plane, block,
-                                  tx_size);
-      } else {
-        av1_write_coeffs_txb(cm, x, w, blk_row, blk_col, plane, block, tx_size);
-      }
-    }
-#else
-    av1_write_coeffs_txb(cm, x, w, blk_row, blk_col, plane, block, tx_size);
-#endif  // CONFIG_FORWARDSKIP
+    av1_write_coeffs_txb_facade(w, cm, x, xd, mbmi, plane, block, blk_row,
+                                blk_col, tx_size);
 #if CONFIG_RD_DEBUG
     TOKEN_STATS tmp_token_stats;
     init_token_stats(&tmp_token_stats);
@@ -541,7 +549,8 @@ static AOM_INLINE void pack_txb_tokens(
         const int offsetr = blk_row + r;
         const int offsetc = blk_col + c;
         if (offsetr >= max_blocks_high || offsetc >= max_blocks_wide) continue;
-        av1_write_coeffs_txb(cm, x, w, offsetr, offsetc, plane, block, sub_tx);
+        av1_write_coeffs_txb_facade(w, cm, x, xd, mbmi, plane, block, offsetr,
+                                    offsetc, sub_tx);
 #if CONFIG_RD_DEBUG
         TOKEN_STATS tmp_token_stats;
         init_token_stats(&tmp_token_stats);
