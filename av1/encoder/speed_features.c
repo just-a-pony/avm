@@ -346,7 +346,7 @@ static void set_good_speed_features_framesize_independent(
   sf->tx_sf.tx_type_search.skip_stx_search = 0;
 #endif
 
-  if (cpi->twopass.fr_content_type == FC_GRAPHICS_ANIMATION ||
+  if (cpi->twopass.fr_content_type == FC_HIGHMOTION ||
       cpi->is_screen_content_type) {
     sf->mv_sf.exhaustive_searches_thresh = (1 << 20);
   } else {

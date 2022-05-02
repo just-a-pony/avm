@@ -1011,16 +1011,6 @@ static void tf_setup_filtering_buffer(const AV1_COMP *cpi,
   }
   num_frames = AOMMIN(num_frames + adjust_num, lookahead_depth_to_kf + 1);
 
-  int gfu_boost;
-  if (cpi->oxcf.rc_cfg.mode == AOM_Q && cpi->oxcf.q_cfg.use_fixed_qp_offsets) {
-    const int b_frames = cpi->gf_group.arf_src_offset[cpi->gf_group.index] + 1;
-    const int f_frames = (cpi->rc.frames_to_key - b_frames >= b_frames)
-                             ? b_frames
-                             : AOMMAX(0, cpi->rc.frames_to_key - b_frames);
-    gfu_boost = (b_frames + f_frames) * 50;
-  } else {
-    gfu_boost = cpi->rc.gfu_boost;
-  }
   if (filter_frame_lookahead_idx == -1 ||
       filter_frame_lookahead_idx == 0) {  // Key frame.
     num_before = 0;
@@ -1029,7 +1019,7 @@ static void tf_setup_filtering_buffer(const AV1_COMP *cpi,
     num_before = AOMMIN(num_frames - 1, max_before);
     num_after = 0;
   } else {
-    num_frames = AOMMIN(num_frames, gfu_boost / 150);
+    num_frames = AOMMIN(num_frames, cpi->rc.gfu_boost / 150);
     num_frames += !(num_frames & 1);  // Make the number odd.
     // Only use 2 neighbours for the second ARF.
     if (is_second_arf) num_frames = AOMMIN(num_frames, 3);
