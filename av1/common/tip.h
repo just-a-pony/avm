@@ -18,7 +18,6 @@ extern "C" {
 #endif
 
 #include "av1/common/av1_common_int.h"
-#include "av1/common/mv.h"
 #include "av1/common/mvref_common.h"
 #include "av1/common/reconinter.h"
 
@@ -140,68 +139,6 @@ static AOM_INLINE MV tip_clamp_mv_to_umv_border_sb(
   clamp_mv(&clamped_mv, &mv_limits);
 
   return clamped_mv;
-}
-
-// Set TIP mv fullpel range constraint
-static INLINE void av1_set_tip_mv_range(
-    FullMvLimits *mv_limits, const MACROBLOCKD *const xd, BLOCK_SIZE bsize,
-    const CommonModeInfoParams *const mi_params) {
-  const int mi_row = xd->mi_row;
-  const int mi_col = xd->mi_col;
-  const int mi_width = mi_size_wide[bsize];
-  const int mi_height = mi_size_high[bsize];
-  const int mi_rows = mi_params->mi_rows;
-  const int mi_cols = mi_params->mi_cols;
-  const int tmvp_mv = (TIP_MV_SEARCH_RANGE << TMVP_MI_SZ_LOG2);
-
-  int col_min = -tmvp_mv;
-  int row_min = -tmvp_mv;
-  int col_max = tmvp_mv;
-  int row_max = tmvp_mv;
-
-  mv_limits->col_min = AOMMAX(col_min, -(mi_col * MI_SIZE));
-  mv_limits->col_max = AOMMIN(col_max, (mi_cols - mi_col - mi_width) * MI_SIZE);
-  mv_limits->row_min = AOMMAX(row_min, -(mi_row * MI_SIZE));
-  mv_limits->row_max =
-      AOMMIN(row_max, (mi_rows - mi_row - mi_height) * MI_SIZE);
-}
-
-// Set TIP mv subpel range constraint
-static INLINE void av1_set_tip_subpel_mv_range(
-    SubpelMvLimits *subpel_limits, const MACROBLOCKD *const xd,
-    BLOCK_SIZE bsize, const CommonModeInfoParams *const mi_params) {
-  const int mi_row = xd->mi_row;
-  const int mi_col = xd->mi_col;
-  const int mi_width = mi_size_wide[bsize];
-  const int mi_height = mi_size_high[bsize];
-  const int mi_rows = mi_params->mi_rows;
-  const int mi_cols = mi_params->mi_cols;
-  const int tmvp_mv = GET_MV_SUBPEL(TIP_MV_SEARCH_RANGE << TMVP_MI_SZ_LOG2);
-
-  const int col_min = -tmvp_mv;
-  const int row_min = -tmvp_mv;
-  const int col_max = tmvp_mv;
-  const int row_max = tmvp_mv;
-
-  subpel_limits->col_min = AOMMAX(col_min, GET_MV_SUBPEL(-(mi_col * MI_SIZE)));
-  subpel_limits->col_max =
-      AOMMIN(col_max, GET_MV_SUBPEL((mi_cols - mi_col - mi_width) * MI_SIZE));
-  subpel_limits->row_min = AOMMAX(row_min, GET_MV_SUBPEL(-(mi_row * MI_SIZE)));
-  subpel_limits->row_max =
-      AOMMIN(row_max, GET_MV_SUBPEL((mi_rows - mi_row - mi_height) * MI_SIZE));
-}
-
-// Clamp refmv for TIP nearmv mode
-static INLINE int tip_clamp_and_check_mv(int_mv *out_mv, int_mv in_mv,
-                                         BLOCK_SIZE bsize, const AV1_COMMON *cm,
-                                         const MACROBLOCKD *const xd) {
-  *out_mv = in_mv;
-  lower_mv_precision(&out_mv->as_mv, cm->features.allow_high_precision_mv,
-                     cm->features.cur_frame_force_integer_mv);
-  SubpelMvLimits subpel_mv_limits;
-  av1_set_tip_subpel_mv_range(&subpel_mv_limits, xd, bsize, &cm->mi_params);
-  clamp_mv(&out_mv->as_mv, &subpel_mv_limits);
-  return av1_is_subpelmv_in_range(&subpel_mv_limits, out_mv->as_mv);
 }
 
 #ifdef __cplusplus

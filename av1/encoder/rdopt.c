@@ -40,9 +40,6 @@
 #include "av1/common/reconintra.h"
 #include "av1/common/scan.h"
 #include "av1/common/seg_common.h"
-#if CONFIG_TIP
-#include "av1/common/tip.h"
-#endif  // CONFIG_TIP
 #include "av1/common/txb_common.h"
 #include "av1/common/warped_motion.h"
 
@@ -2125,9 +2122,6 @@ static INLINE int get_this_mv(int_mv *this_mv, PREDICTION_MODE this_mode,
 // This function update the non-new mv for the current prediction mode
 static INLINE int build_cur_mv(int_mv *cur_mv, PREDICTION_MODE this_mode,
                                const AV1_COMMON *cm, const MACROBLOCK *x,
-#if CONFIG_TIP
-                               BLOCK_SIZE bsize,
-#endif  // CONFIG_TIP
                                int skip_repeated_ref_mv) {
   const MACROBLOCKD *xd = &x->e_mbd;
   const MB_MODE_INFO *mbmi = xd->mi[0];
@@ -2149,16 +2143,7 @@ static INLINE int build_cur_mv(int_mv *cur_mv, PREDICTION_MODE this_mode,
                    : x->mbmi_ext->ref_mv_stack[ref_frame_type][mbmi->ref_mv_idx]
                          .comp_mv;
     } else {
-#if CONFIG_TIP
-      if (is_tip_ref_frame(mbmi->ref_frame[0])) {
-        ret &=
-            tip_clamp_and_check_mv(cur_mv + i, this_mv, bsize, cm, &x->e_mbd);
-      } else {
-#endif  // CONFIG_TIP
-        ret &= clamp_and_check_mv(cur_mv + i, this_mv, cm, x);
-#if CONFIG_TIP
-      }
-#endif  // CONFIG_TIP
+      ret &= clamp_and_check_mv(cur_mv + i, this_mv, cm, x);
     }
   }
   return ret;
@@ -2341,11 +2326,7 @@ static int64_t simple_translation_pred_rd(
   mode_info[ref_mv_idx].drl_cost = drl_cost;
 
   int_mv cur_mv[2];
-  if (!build_cur_mv(cur_mv, mbmi->mode, cm, x,
-#if CONFIG_TIP
-                    bsize,
-#endif  // CONFIG_TIP
-                    0)) {
+  if (!build_cur_mv(cur_mv, mbmi->mode, cm, x, 0)) {
     return INT64_MAX;
   }
   assert(have_nearmv_in_inter_mode(mbmi->mode));
@@ -3195,11 +3176,7 @@ static int64_t handle_inter_mode(
       int skip_repeated_ref_mv =
           is_comp_pred ? 0 : cpi->sf.inter_sf.skip_repeated_ref_mv;
       // Generate the current mv according to the prediction mode
-      if (!build_cur_mv(cur_mv, this_mode, cm, x,
-#if CONFIG_TIP
-                        bsize,
-#endif  // CONFIG_TIP
-                        skip_repeated_ref_mv)) {
+      if (!build_cur_mv(cur_mv, this_mode, cm, x, skip_repeated_ref_mv)) {
         continue;
       }
 
@@ -4089,11 +4066,7 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
   assert(mbmi->mode == NEAR_NEARMV);
 #endif
   assert(mbmi->ref_mv_idx == 0);
-  if (!build_cur_mv(mbmi->mv, this_mode, cm, x,
-#if CONFIG_TIP
-                    bsize,
-#endif  // CONFIG_TIP
-                    0)) {
+  if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
     assert(av1_check_newmv_joint_nonzero(cm, x));
     return;
   }
@@ -4147,11 +4120,7 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
   for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ref_mv_idx++) {
     mbmi->ref_mv_idx = ref_mv_idx;
 
-    if (!build_cur_mv(mbmi->mv, this_mode, cm, x,
-#if CONFIG_TIP
-                      bsize,
-#endif  // CONFIG_TIP
-                      0)) {
+    if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
       assert(av1_check_newmv_joint_nonzero(cm, x));
       continue;
     }
@@ -4345,11 +4314,7 @@ static AOM_INLINE void rd_pick_skip_mode(
   assert(this_mode == NEAR_NEARMV);
   assert(mbmi->mode == NEAR_NEARMV);
   assert(mbmi->ref_mv_idx == 0);
-  if (!build_cur_mv(mbmi->mv, this_mode, cm, x,
-#if CONFIG_TIP
-                    bsize,
-#endif  // CONFIG_TIP
-                    0)) {
+  if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
     assert(av1_check_newmv_joint_nonzero(cm, x));
     return;
   }

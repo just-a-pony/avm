@@ -848,50 +848,73 @@ static void av1_dec_tip_on_the_fly(AV1_COMMON *cm, MACROBLOCKD *xd,
       ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
   const int mvs_cols =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+  const int extra_pixel = 1 << TMVP_MI_SZ_LOG2;
 
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
   const int x_mis = xd->width;
   const int y_mis = xd->height;
 
+  // define the block start and end pixel locations
+  FULLPEL_MV start_mv = get_fullmv_from_mv(mv);
   const int bw = (x_mis << MI_SIZE_LOG2);
   const int bh = (y_mis << MI_SIZE_LOG2);
-  int pixel_row = (mi_row << MI_SIZE_LOG2);
-  int pixel_col = (mi_col << MI_SIZE_LOG2);
+  int start_pixel_row = (mi_row << MI_SIZE_LOG2) + start_mv.row;
+  int start_pixel_col = (mi_col << MI_SIZE_LOG2) + start_mv.col;
+  int end_pixel_row = start_pixel_row + bh;
+  int end_pixel_col = start_pixel_col + bw;
 
-  FULLPEL_MV start_mv = get_fullmv_from_mv(mv);
-
-  pixel_row += start_mv.row;
-  pixel_col += start_mv.col;
-  pixel_row = AOMMAX(0, pixel_row);
-  pixel_col = AOMMAX(0, pixel_col);
-  int end_pixel_row = pixel_row + bh;
-  int end_pixel_col = pixel_col + bw;
-
-  int tpl_start_row = pixel_row >> TMVP_MI_SZ_LOG2;
-  int tpl_end_row = (end_pixel_row + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
-  int tpl_start_col = pixel_col >> TMVP_MI_SZ_LOG2;
-  int tpl_end_col = (end_pixel_col + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
-
-  const int extra_order = 1;
+  // extend for handling interpolation
   if (mv->row != 0) {
-    tpl_start_row = AOMMAX(0, tpl_start_row - extra_order);
-    tpl_end_row = AOMMIN(mvs_rows, tpl_end_row + extra_order);
+    start_pixel_row -= extra_pixel;
+    end_pixel_row += extra_pixel;
   }
 
   if (mv->col != 0) {
-    tpl_start_col = AOMMAX(0, tpl_start_col - extra_order);
-    tpl_end_col = AOMMIN(mvs_cols, tpl_end_col + extra_order);
+    start_pixel_col -= extra_pixel;
+    end_pixel_col += extra_pixel;
   }
 
+  // clamp block start and end locations to make sure the block is in the frame
+  start_pixel_row = AOMMAX(0, start_pixel_row);
+  start_pixel_col = AOMMAX(0, start_pixel_col);
+  end_pixel_row = AOMMAX(0, end_pixel_row);
+  end_pixel_col = AOMMAX(0, end_pixel_col);
+  start_pixel_row = AOMMIN(cm->mi_params.mi_rows * MI_SIZE, start_pixel_row);
+  start_pixel_col = AOMMIN(cm->mi_params.mi_cols * MI_SIZE, start_pixel_col);
+  end_pixel_row = AOMMIN(cm->mi_params.mi_rows * MI_SIZE, end_pixel_row);
+  end_pixel_col = AOMMIN(cm->mi_params.mi_cols * MI_SIZE, end_pixel_col);
+
+  // convert the pixel block location to MV field grid location
+  int tpl_start_row = start_pixel_row >> TMVP_MI_SZ_LOG2;
+  int tpl_end_row = (end_pixel_row + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
+  int tpl_start_col = start_pixel_col >> TMVP_MI_SZ_LOG2;
+  int tpl_end_col = (end_pixel_col + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
+
+  // handling the boundary case when start and end locations are the same
+  if (tpl_start_row == tpl_end_row) {
+    if (tpl_start_row > 0) {
+      tpl_start_row -= 1;
+    } else {
+      tpl_end_row += 1;
+    }
+  }
+
+  if (tpl_start_col == tpl_end_col) {
+    if (tpl_start_col > 0) {
+      tpl_start_col -= 1;
+    } else {
+      tpl_end_col += 1;
+    }
+  }
+
+  // handle SIMD alignment for the chroma case
   tpl_start_row = (tpl_start_row >> 1) << 1;
   tpl_start_col = (tpl_start_col >> 1) << 1;
   tpl_end_row = ((tpl_end_row + 1) >> 1) << 1;
   tpl_end_col = ((tpl_end_col + 1) >> 1) << 1;
   tpl_end_row = AOMMIN(mvs_rows, tpl_end_row);
   tpl_end_col = AOMMIN(mvs_cols, tpl_end_col);
-  assert(tpl_start_row != tpl_end_row);
-  assert(tpl_start_col != tpl_end_col);
 
   av1_setup_tip_on_the_fly(cm, xd, tpl_start_row, tpl_start_col, tpl_end_row,
                            tpl_end_col, mvs_cols, mc_buf, conv_dst,
