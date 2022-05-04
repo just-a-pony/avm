@@ -49,7 +49,7 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
   const int txb_size_index =
       is_inter ? av1_get_txb_size_index(bsize, blk_row, blk_col) : 0;
   const int is_rect = is_rect_tx(max_tx_size);
-  const TX_PARTITION_TYPE partition = mbmi->partition_type[txb_size_index];
+  const TX_PARTITION_TYPE partition = mbmi->tx_partition_type[txb_size_index];
   const int allow_horz = allow_tx_horz_split(max_tx_size);
   const int allow_vert = allow_tx_vert_split(max_tx_size);
   const int allow_horz4 = allow_tx_horz4_split(max_tx_size);
@@ -149,14 +149,14 @@ static void update_txfm_count(MACROBLOCK *x, MACROBLOCKD *xd,
 #if CONFIG_NEW_TX_PARTITION
   (void)depth;
   TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
-  get_tx_partition_sizes(mbmi->partition_type[txb_size_index], tx_size,
+  get_tx_partition_sizes(mbmi->tx_partition_type[txb_size_index], tx_size,
                          sub_txs);
   // TODO(sarahparker) This assumes all of the tx sizes in the partition scheme
   // are the same size. This will need to be adjusted to deal with the case
   // where they can be different.
   TX_SIZE this_size = sub_txs[0];
   assert(mbmi->inter_tx_size[txb_size_index] == this_size);
-  if (mbmi->partition_type[txb_size_index] != TX_PARTITION_NONE)
+  if (mbmi->tx_partition_type[txb_size_index] != TX_PARTITION_NONE)
     ++x->txfm_search_info.txb_split_count;
 
   update_partition_cdfs_and_counts(xd, blk_col, blk_row, tx_size,
@@ -263,7 +263,7 @@ static void set_txfm_context(MACROBLOCKD *xd, TX_SIZE tx_size, int blk_row,
 #if CONFIG_NEW_TX_PARTITION
     TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
     const int index = av1_get_txb_size_index(bsize, blk_row, blk_col);
-    get_tx_partition_sizes(mbmi->partition_type[index], tx_size, sub_txs);
+    get_tx_partition_sizes(mbmi->tx_partition_type[index], tx_size, sub_txs);
     int cur_partition = 0;
     int bsw = 0, bsh = 0;
     for (int r = 0; r < tx_size_high_unit[tx_size]; r += bsh) {

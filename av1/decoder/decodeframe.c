@@ -331,7 +331,7 @@ static AOM_INLINE void decode_reconstruct_tx(
 #if CONFIG_NEW_TX_PARTITION
     TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
     const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
-    get_tx_partition_sizes(mbmi->partition_type[index], tx_size, sub_txs);
+    get_tx_partition_sizes(mbmi->tx_partition_type[index], tx_size, sub_txs);
     int cur_partition = 0;
     int bsw = 0, bsh = 0;
     for (int row = 0; row < tx_size_high_unit[tx_size]; row += bsh) {
@@ -1424,7 +1424,7 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
   mbmi->tx_size = sub_txs[0];
   const int index =
       is_inter ? av1_get_txb_size_index(bsize, blk_row, blk_col) : 0;
-  mbmi->partition_type[index] = partition;
+  mbmi->tx_partition_type[index] = partition;
   if (is_inter) {
     const TX_SIZE txs = sub_tx_size_map[max_txsize_rect_lookup[bsize]];
     const int tx_w_log2 = tx_size_wide_log2[txs] - MI_SIZE_LOG2;

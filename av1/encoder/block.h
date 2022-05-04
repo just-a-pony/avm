@@ -271,7 +271,7 @@ typedef struct {
   TX_SIZE inter_tx_size[INTER_TX_SIZE_BUF_LEN];
 #if CONFIG_NEW_TX_PARTITION
   //! Txfm partitions used if the current mode is inter mode.
-  TX_PARTITION_TYPE partition_type[INTER_TX_SIZE_BUF_LEN];
+  TX_PARTITION_TYPE tx_partition_type[INTER_TX_SIZE_BUF_LEN];
 #endif  // CONFIG_NEW_TX_PARTITION
   //! Map showing which txfm block skips the txfm process.
   uint8_t blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];

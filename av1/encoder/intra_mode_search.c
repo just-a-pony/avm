@@ -87,7 +87,7 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
       *best_rd = this_rd;
       best_tx_size = mbmi->tx_size;
 #if CONFIG_NEW_TX_PARTITION
-      best_tx_partition = mbmi->partition_type[0];
+      best_tx_partition = mbmi->tx_partition_type[0];
 #endif  // CONFIG_NEW_TX_PARTITION
       filter_intra_mode_info = mbmi->filter_intra_mode_info;
       av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
@@ -105,7 +105,7 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
     mbmi->mode = DC_PRED;
     mbmi->tx_size = best_tx_size;
 #if CONFIG_NEW_TX_PARTITION
-    mbmi->partition_type[0] = best_tx_partition;
+    mbmi->tx_partition_type[0] = best_tx_partition;
 #endif  // CONFIG_NEW_TX_PARTITION
     mbmi->filter_intra_mode_info = filter_intra_mode_info;
     av1_copy_array(ctx->tx_type_map, best_tx_type_map, ctx->num_4x4_blk);
@@ -920,7 +920,7 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
          sizeof(best_blk_skip[0]) * ctx->num_4x4_blk);
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
 #if CONFIG_NEW_TX_PARTITION
-  TX_SIZE best_tx_partition = mbmi->partition_type[0];
+  TX_SIZE best_tx_partition = mbmi->tx_partition_type[0];
 #endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
   mbmi->filter_intra_mode_info.use_filter_intra = 1;
@@ -941,7 +941,7 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
     if (this_rd_tmp < best_rd_so_far) {
       best_tx_size = mbmi->tx_size;
 #if CONFIG_NEW_TX_PARTITION
-      best_tx_partition = mbmi->partition_type[0];
+      best_tx_partition = mbmi->tx_partition_type[0];
 #endif  // CONFIG_NEW_TX_PARTITION
       av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
       memcpy(best_blk_skip, x->txfm_search_info.blk_skip,
@@ -955,7 +955,7 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
 
   mbmi->tx_size = best_tx_size;
 #if CONFIG_NEW_TX_PARTITION
-  mbmi->partition_type[0] = best_tx_partition;
+  mbmi->tx_partition_type[0] = best_tx_partition;
 #endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(xd->tx_type_map, best_tx_type_map, ctx->num_4x4_blk);
   memcpy(x->txfm_search_info.blk_skip, best_blk_skip,
@@ -1221,8 +1221,8 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
   PREDICTION_MODE best_intra_mode = best_mbmi->mode;
   TX_SIZE best_tx_size = best_mbmi->tx_size;
 #if CONFIG_NEW_TX_PARTITION
-  TX_PARTITION_TYPE best_partition_type[INTER_TX_SIZE_BUF_LEN];
-  av1_copy(best_partition_type, best_mbmi->partition_type);
+  TX_PARTITION_TYPE best_tx_partition_type[INTER_TX_SIZE_BUF_LEN];
+  av1_copy(best_tx_partition_type, best_mbmi->tx_partition_type);
 #endif  // CONFIG_NEW_TX_PARTITION
   uint8_t best_filt = mbmi->filter_intra_mode_info.use_filter_intra;
   uint8_t best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
@@ -1341,7 +1341,7 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
         *best_rd = this_rd;
         best_tx_size = mbmi->tx_size;
 #if CONFIG_NEW_TX_PARTITION
-        av1_copy(best_partition_type, mbmi->partition_type);
+        av1_copy(best_tx_partition_type, mbmi->tx_partition_type);
 #endif  // CONFIG_NEW_TX_PARTITION
         best_intra_mode = mbmi->mode;
 #if CONFIG_AIMC
@@ -1371,7 +1371,7 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
 #endif  // CONFIG_AIMC
     mbmi->tx_size = best_tx_size;
 #if CONFIG_NEW_TX_PARTITION
-    av1_copy(mbmi->partition_type, best_partition_type);
+    av1_copy(mbmi->tx_partition_type, best_tx_partition_type);
 #endif  // CONFIG_NEW_TX_PARTITION
     mbmi->mrl_index = best_mrl;
     mbmi->filter_intra_mode_info.use_filter_intra = best_filt;

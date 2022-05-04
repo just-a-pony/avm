@@ -374,7 +374,7 @@ static AOM_INLINE void fetch_tx_rd_info(int n4,
          sizeof(tx_rd_info->blk_skip[0]) * n4);
   av1_copy(mbmi->inter_tx_size, tx_rd_info->inter_tx_size);
 #if CONFIG_NEW_TX_PARTITION
-  av1_copy(mbmi->partition_type, tx_rd_info->partition_type);
+  av1_copy(mbmi->tx_partition_type, tx_rd_info->tx_partition_type);
 #endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(xd->tx_type_map, tx_rd_info->tx_type_map, n4);
   *rd_stats = tx_rd_info->rd_stats;
@@ -523,7 +523,8 @@ static AOM_INLINE void set_skip_txfm(MACROBLOCK *x, RD_STATS *rd_stats,
   memset(xd->tx_type_map, DCT_DCT, sizeof(xd->tx_type_map[0]) * n4);
   memset(mbmi->inter_tx_size, tx_size, sizeof(mbmi->inter_tx_size));
 #if CONFIG_NEW_TX_PARTITION
-  memset(mbmi->partition_type, TX_PARTITION_NONE, sizeof(mbmi->partition_type));
+  memset(mbmi->tx_partition_type, TX_PARTITION_NONE,
+         sizeof(mbmi->tx_partition_type));
 #endif  // CONFIG_NEW_TX_PARTITION
   mbmi->tx_size = tx_size;
   for (int i = 0; i < n4; ++i)
@@ -585,7 +586,7 @@ static AOM_INLINE void save_tx_rd_info(int n4, uint32_t hash,
          sizeof(tx_rd_info->blk_skip[0]) * n4);
   av1_copy(tx_rd_info->inter_tx_size, mbmi->inter_tx_size);
 #if CONFIG_NEW_TX_PARTITION
-  av1_copy(tx_rd_info->partition_type, mbmi->partition_type);
+  av1_copy(tx_rd_info->tx_partition_type, mbmi->tx_partition_type);
 #endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(tx_rd_info->tx_type_map, xd->tx_type_map, n4);
   tx_rd_info->rd_stats = *rd_stats;
@@ -3029,7 +3030,7 @@ static void select_tx_partition_type(
   TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
 
   int64_t best_rd = INT64_MAX;
-  TX_PARTITION_TYPE best_partition = -1;
+  TX_PARTITION_TYPE best_tx_partition = -1;
   uint8_t best_partition_entropy_ctxs[MAX_TX_PARTITIONS] = { 0 };
   uint8_t best_partition_tx_types[MAX_TX_PARTITIONS] = { 0 };
   uint8_t full_blk_skip[MAX_TX_PARTITIONS] = { 0 };
@@ -3058,9 +3059,9 @@ static void select_tx_partition_type(
       }
     }
     if (cpi->sf.tx_sf.tx_type_search.prune_inter_4way_split) {
-      if (type == TX_PARTITION_VERT4 && best_partition != TX_PARTITION_VERT)
+      if (type == TX_PARTITION_VERT4 && best_tx_partition != TX_PARTITION_VERT)
         continue;
-      if (type == TX_PARTITION_HORZ4 && best_partition != TX_PARTITION_HORZ)
+      if (type == TX_PARTITION_HORZ4 && best_tx_partition != TX_PARTITION_HORZ)
         continue;
     }
 
@@ -3144,7 +3145,7 @@ static void select_tx_partition_type(
     // Update the best partition so far
     if (tmp_rd <= best_rd) {
       best_rd = tmp_rd;
-      best_partition = type;
+      best_tx_partition = type;
       memcpy(best_partition_entropy_ctxs, partition_entropy_ctxs,
              sizeof(*partition_entropy_ctxs) * MAX_TX_PARTITIONS);
       memcpy(best_partition_tx_types, partition_tx_types,
@@ -3159,8 +3160,8 @@ static void select_tx_partition_type(
 
   // Finalize tx size selection once best partition is found
   int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
-  mbmi->partition_type[index] = best_partition;
-  get_tx_partition_sizes(best_partition, max_tx_size, sub_txs);
+  mbmi->tx_partition_type[index] = best_tx_partition;
+  get_tx_partition_sizes(best_tx_partition, max_tx_size, sub_txs);
   int cur_partition = 0;
   int bsw = 0, bsh = 0;
   for (int r = 0; r < tx_size_high_unit[max_tx_size]; r += bsh) {
@@ -3381,7 +3382,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
   TX_TYPE best_txk_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_SIZE best_tx_size = max_tx_size;
-  TX_PARTITION_TYPE best_partition_type = TX_PARTITION_NONE;
+  TX_PARTITION_TYPE best_tx_partition_type = TX_PARTITION_NONE;
   int64_t best_rd = INT64_MAX;
   x->rd_model = FULL_TXFM_RD;
   int64_t cur_rd = INT64_MAX;
@@ -3390,13 +3391,13 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
     if (!use_tx_partition(type, max_tx_size)) continue;
     if (cpi->sf.tx_sf.tx_type_search.prune_intra_4way_split) {
       if (type == TX_PARTITION_VERT4 &&
-          best_partition_type != TX_PARTITION_VERT)
+          best_tx_partition_type != TX_PARTITION_VERT)
         continue;
       if (type == TX_PARTITION_HORZ4 &&
-          best_partition_type != TX_PARTITION_HORZ)
+          best_tx_partition_type != TX_PARTITION_HORZ)
         continue;
     }
-    mbmi->partition_type[0] = type;
+    mbmi->tx_partition_type[0] = type;
     TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
     get_tx_partition_sizes(type, max_tx_size, sub_txs);
     TX_SIZE cur_tx_size = sub_txs[0];
@@ -3419,7 +3420,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
       av1_copy_array(best_blk_skip, txfm_info->blk_skip, num_blks);
       av1_copy_array(best_txk_type_map, xd->tx_type_map, num_blks);
       best_tx_size = cur_tx_size;
-      best_partition_type = type;
+      best_tx_partition_type = type;
       best_rd = cur_rd;
       *rd_stats = this_rd_stats;
     }
@@ -3428,7 +3429,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
 
   if (rd_stats->rate != INT_MAX) {
     mbmi->tx_size = best_tx_size;
-    mbmi->partition_type[0] = best_partition_type;
+    mbmi->tx_partition_type[0] = best_tx_partition_type;
     av1_copy_array(xd->tx_type_map, best_txk_type_map, num_blks);
     av1_copy_array(txfm_info->blk_skip, best_blk_skip, num_blks);
   }

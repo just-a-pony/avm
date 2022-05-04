@@ -346,7 +346,7 @@ typedef struct MB_MODE_INFO {
   MV_REFERENCE_FRAME ref_frame[2];
 #if CONFIG_NEW_TX_PARTITION
   /*! \brief Transform partition type. */
-  TX_PARTITION_TYPE partition_type[INTER_TX_SIZE_BUF_LEN];
+  TX_PARTITION_TYPE tx_partition_type[INTER_TX_SIZE_BUF_LEN];
 #endif  // CONFIG_NEW_TX_PARTITION
   /*! \brief Filter used in subpel interpolation. */
   int interp_fltr;

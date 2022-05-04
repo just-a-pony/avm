@@ -653,7 +653,7 @@ static void encode_block_inter(int plane, int block, int blk_row, int blk_col,
 #if CONFIG_NEW_TX_PARTITION
     TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
     const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
-    get_tx_partition_sizes(mbmi->partition_type[index], tx_size, sub_txs);
+    get_tx_partition_sizes(mbmi->tx_partition_type[index], tx_size, sub_txs);
     int cur_partition = 0;
     int bsw = 0, bsh = 0;
     for (int r = 0; r < tx_size_high_unit[tx_size]; r += bsh) {

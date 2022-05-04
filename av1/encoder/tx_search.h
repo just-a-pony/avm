@@ -123,7 +123,7 @@ static AOM_INLINE int tx_size_cost(const MACROBLOCK *const x, BLOCK_SIZE bsize,
   MB_MODE_INFO *const mbmi = xd->mi[0];
   const TX_SIZE max_tx_size = max_txsize_rect_lookup[bsize];
   const int is_rect = is_rect_tx(max_tx_size);
-  return intra_tx_partition_cost(x, is_rect, mbmi->partition_type[0],
+  return intra_tx_partition_cost(x, is_rect, mbmi->tx_partition_type[0],
                                  max_tx_size);
 #else
   const int32_t tx_size_cat = bsize_to_tx_size_cat(bsize);

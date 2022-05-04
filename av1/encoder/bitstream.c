@@ -167,7 +167,7 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   if (is_inter || (!is_inter && block_signals_txsize(bsize))) {
-    const TX_PARTITION_TYPE partition = mbmi->partition_type[txb_size_index];
+    const TX_PARTITION_TYPE partition = mbmi->tx_partition_type[txb_size_index];
     const int is_rect = is_rect_tx(max_tx_size);
     const int allow_horz = allow_tx_horz_split(max_tx_size);
     const int allow_vert = allow_tx_vert_split(max_tx_size);
@@ -537,7 +537,7 @@ static AOM_INLINE void pack_txb_tokens(
     (void)bit_depth;
     TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
     const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
-    get_tx_partition_sizes(mbmi->partition_type[index], tx_size, sub_txs);
+    get_tx_partition_sizes(mbmi->tx_partition_type[index], tx_size, sub_txs);
     int cur_partition = 0;
     int bsw = 0, bsh = 0;
     for (int r = 0; r < tx_size_high_unit[tx_size]; r += bsh) {
