@@ -2594,7 +2594,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #if CONFIG_FORWARDSKIP
       uint8_t fsc_mode_in = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
                              plane == PLANE_TYPE_Y) ||
-                            use_inter_fsc(cm, plane, best_tx_type, is_inter);
+                            use_inter_fsc(cm, plane, tx_type, is_inter);
       if (fsc_mode_in) quant_param.use_optimize_b = false;
       av1_quant(x, plane, block, &txfm_param, &quant_param);
       if (fsc_mode_in) {
