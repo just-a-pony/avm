@@ -1276,8 +1276,7 @@ void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint8_t *ref_y_buffer,
   // have only one reference, ref_y_buffer is invalid and should
   // not be used for computing x->pred_mv_sad.
   if (ref_frame == TIP_FRAME) {
-    if (cpi->common.tip_ref.ref_frame[0] == NONE_FRAME ||
-        cpi->common.tip_ref.ref_frame[1] == NONE_FRAME) {
+    if (cpi->common.features.tip_frame_mode == TIP_FRAME_DISABLED) {
       const int ref_frame_idx = COMPACT_INDEX0_NRS(ref_frame);
       x->max_mv_context[ref_frame_idx] = 0;
       x->pred_mv_sad[ref_frame_idx] = INT_MAX;
