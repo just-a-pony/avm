@@ -6098,10 +6098,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
 #if CONFIG_TIP
   if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
-#if CONFIG_NEW_REF_SIGNALING
-    cm->cur_frame->base_qindex = aom_rb_read_literal(
+    cm->quant_params.base_qindex = aom_rb_read_literal(
         rb, cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_BITS_UNEXT
                                                    : QINDEX_BITS);
+#if CONFIG_NEW_REF_SIGNALING
+    cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
 #endif  // CONFIG_NEW_REF_SIGNALING
     av1_setup_past_independence(cm);
     if (!cm->tiles.large_scale) {
