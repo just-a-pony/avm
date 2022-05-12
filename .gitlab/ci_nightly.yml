@@ -82,9 +82,10 @@ Coverage Report:
       -r ../ .
   artifacts:
     reports:
-      cobertura: coverage.xml
-    paths:
-      - coverage-html
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage-html
+
 
 #
 # Tests run with varying SIMD levels
