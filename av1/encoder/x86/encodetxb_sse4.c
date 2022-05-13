@@ -121,6 +121,14 @@ void av1_txb_init_levels_signs_sse4_1(const tran_low_t *const coeff,
       lvl_top_buf + sizeof(*levels) * (TX_PAD_TOP * stride);
   _xx_fill_buffer((__m128i *)lvl_top_buf, (__m128i *)lvl_top_buf_end, zeros);
 
+  const int32_t lvl_bot_len = sizeof(*levels) * (TX_PAD_BOTTOM * stride);
+  uint8_t *lvl_bot_buf = levels + stride * (TX_PAD_TOP + height);
+  uint8_t *lvl_bot_buf_end = lvl_bot_buf + lvl_bot_len;
+  do {
+    _mm_storeu_si128((__m128i *)(lvl_bot_buf), zeros);
+    lvl_bot_buf += 16;
+  } while (lvl_bot_buf < lvl_bot_buf_end);
+
   int8_t *si_bot_buf =
       signs + stride * height + sizeof(*signs) * (TX_PAD_TOP * stride);
   int8_t *si_bot_buf_end =

@@ -149,6 +149,14 @@ void av1_txb_init_levels_signs_avx2(const tran_low_t *const coeff,
       si_bot_buf + sizeof(*signs) * (TX_PAD_BOTTOM * stride);
   _yy256_fill_buffer((__m256i *)si_bot_buf, (__m256i *)si_bot_buf_end, y_zeros);
 
+  const int32_t lvl_bot_len = sizeof(*levels) * (TX_PAD_BOTTOM * stride);
+  uint8_t *lvl_bot_buf_end = levels + (height + TX_PAD_VER) * stride;
+  uint8_t *lvl_bot_buf = lvl_bot_buf_end - ((lvl_bot_len + 31) & (~31));
+  do {
+    yy_storeu_256(lvl_bot_buf, y_zeros);
+    lvl_bot_buf += 32;
+  } while (lvl_bot_buf < lvl_bot_buf_end);
+
   int i = 0;
   uint8_t *ls = levels;
   int8_t *si = signs;

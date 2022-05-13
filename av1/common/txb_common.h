@@ -187,7 +187,7 @@ static AOM_FORCE_INLINE int get_nz_mag_skip(const uint8_t *const levels,
 
 /*
  This helper function computes the sign context index for FSC residual
- coding for a given coefficient index. Bottom, left and bottom-left
+ coding for a given coefficient index. Bottom, right and bottom-right
  samples are used to derive the index.
 */
 static AOM_FORCE_INLINE int get_sign_skip(const int8_t *const signs,
