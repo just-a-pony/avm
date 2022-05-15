@@ -1271,6 +1271,20 @@ void av1_get_entropy_contexts(BLOCK_SIZE plane_bsize,
 
 void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint8_t *ref_y_buffer,
                  int ref_y_stride, int ref_frame, BLOCK_SIZE block_size) {
+#if CONFIG_TIP
+  // When the tip buffer is invalid, for example for frames that
+  // have only one reference, ref_y_buffer is invalid and should
+  // not be used for computing x->pred_mv_sad.
+  if (ref_frame == TIP_FRAME) {
+    if (cpi->common.tip_ref.ref_frame[0] == NONE_FRAME ||
+        cpi->common.tip_ref.ref_frame[1] == NONE_FRAME) {
+      const int ref_frame_idx = COMPACT_INDEX0_NRS(ref_frame);
+      x->max_mv_context[ref_frame_idx] = 0;
+      x->pred_mv_sad[ref_frame_idx] = INT_MAX;
+      return;
+    }
+  }
+#endif  // CONFIG_TIP
   const MV_REFERENCE_FRAME ref_frames[2] = { ref_frame, NONE_FRAME };
   const int_mv ref_mv =
       av1_get_ref_mv_from_stack(0, ref_frames, 0, x->mbmi_ext);
