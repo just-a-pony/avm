@@ -48,10 +48,6 @@ static INLINE void foreach_overlappable_nb_above(const AV1_COMMON *cm,
       mi_step = 2;
     }
 
-#if CONFIG_TIP
-    if (above_mi[0]->ref_frame[0] == TIP_FRAME) continue;
-#endif  // CONFIG_TIP
-
     if (is_neighbor_overlappable(*above_mi, xd->tree_type)) {
       ++nb_count;
       fun(xd, 0, above_mi_col - mi_col, AOMMIN(xd->width, mi_step), 0,
@@ -84,10 +80,6 @@ static INLINE void foreach_overlappable_nb_left(const AV1_COMMON *cm,
       left_mi = prev_col_mi + (left_mi_row + 1) * xd->mi_stride;
       mi_step = 2;
     }
-
-#if CONFIG_TIP
-    if (left_mi[0]->ref_frame[0] == TIP_FRAME) continue;
-#endif  // CONFIG_TIP
 
     if (is_neighbor_overlappable(*left_mi, xd->tree_type)) {
       ++nb_count;

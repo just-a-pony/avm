@@ -4985,8 +4985,10 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
   x->mbmi_ext->mode_context[TIP_FRAME] = 0;
   mbmi_ext->ref_mv_count[TIP_FRAME] = UINT8_MAX;
   x->pred_mv_sad[TIP_FRAME_INDEX] = INT_MAX;
-  assert(get_ref_frame_yv12_buf(cm, TIP_FRAME) != NULL);
-  setup_buffer_ref_mvs_inter(cpi, x, TIP_FRAME, bsize, yv12_mb);
+  if (cm->seq_params.enable_tip && cm->features.tip_frame_mode) {
+    assert(get_ref_frame_yv12_buf(cm, TIP_FRAME) != NULL);
+    setup_buffer_ref_mvs_inter(cpi, x, TIP_FRAME, bsize, yv12_mb);
+  }
 #endif  // CONFIG_TIP
 
   if (is_comp_ref_allowed(bsize)) {
@@ -5040,9 +5042,6 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
   const int prune_obmc = cpi->frame_probs.obmc_probs[update_type][bsize] <
                          cpi->sf.inter_sf.prune_obmc_prob_thresh;
   if (cpi->oxcf.motion_mode_cfg.enable_obmc && !cpi->sf.inter_sf.disable_obmc &&
-#if CONFIG_TIP
-      !is_tip_ref_frame(mbmi->ref_frame[0]) &&
-#endif  // CONFIG_TIP
       !prune_obmc) {
     if (check_num_overlappable_neighbors(mbmi) &&
         is_motion_variation_allowed_bsize(bsize)) {

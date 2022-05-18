@@ -1874,6 +1874,10 @@ motion_mode_allowed(const WarpedMotionParams *gm_params, const MACROBLOCKD *xd,
 
 static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
                                            int tree_type) {
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
+#endif  // CONFIG_TIP
+
 #if CONFIG_IBC_SR_EXT
   return (is_inter_block(mbmi, tree_type) &&
           !is_intrabc_block(mbmi, tree_type));
