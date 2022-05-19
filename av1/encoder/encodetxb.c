@@ -317,16 +317,14 @@ void av1_txb_init_levels_signs_c(const tran_low_t *const coeff, const int width,
   ls += TX_PAD_TOP * stride;
   memset(signs, 0, sizeof(*signs) * (TX_PAD_TOP * stride));
   si += TX_PAD_TOP * stride;
-  int8_t temp_coeff;
   for (int i = 0; i < height; i++) {
     // left 4 pad
     for (int j = 0; j < TX_PAD_LEFT; j++) {
       *ls++ = 0;
     }
     for (int j = 0; j < width; j++) {
-      temp_coeff = coeff[i * width + j];
-      *si++ = (int8_t)((temp_coeff == 0) ? 0 : ((temp_coeff > 0) ? 1 : -1));
-      *ls++ = (uint8_t)clamp(abs(temp_coeff), 0, INT8_MAX);
+      *si++ = (int8_t)(coeff[i * width + j] > 0) ? 1 : -1;
+      *ls++ = (uint8_t)clamp(abs(coeff[i * width + j]), 0, INT8_MAX);
     }
     // right 4 pad
     for (int j = 0; j < TX_PAD_RIGHT; j++) {
