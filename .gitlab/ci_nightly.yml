@@ -84,7 +84,9 @@ Coverage Report:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: coverage-html
+        path: coverage.xml
+    paths:
+      - coverage-html
 
 
 #
