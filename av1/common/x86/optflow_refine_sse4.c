@@ -1137,17 +1137,17 @@ static AOM_FORCE_INLINE void calc_mv(const __m128i u2, const __m128i v2,
                                      int *vx1, int *vy1) {
   int64_t su2, suv, sv2, suw, svw;
   if (block_num == 0) {
-    su2 = _mm_extract_epi32(u2, 0) + _mm_extract_epi32(u2, 1);
-    sv2 = _mm_extract_epi32(v2, 0) + _mm_extract_epi32(v2, 1);
-    suv = _mm_extract_epi32(uv, 0) + _mm_extract_epi32(uv, 1);
-    suw = _mm_extract_epi32(uw, 0) + _mm_extract_epi32(uw, 1);
-    svw = _mm_extract_epi32(vw, 0) + _mm_extract_epi32(vw, 1);
+    su2 = (int64_t)_mm_extract_epi32(u2, 0) + _mm_extract_epi32(u2, 1);
+    sv2 = (int64_t)_mm_extract_epi32(v2, 0) + _mm_extract_epi32(v2, 1);
+    suv = (int64_t)_mm_extract_epi32(uv, 0) + _mm_extract_epi32(uv, 1);
+    suw = (int64_t)_mm_extract_epi32(uw, 0) + _mm_extract_epi32(uw, 1);
+    svw = (int64_t)_mm_extract_epi32(vw, 0) + _mm_extract_epi32(vw, 1);
   } else {
-    su2 = _mm_extract_epi32(u2, 2) + _mm_extract_epi32(u2, 3);
-    sv2 = _mm_extract_epi32(v2, 2) + _mm_extract_epi32(v2, 3);
-    suv = _mm_extract_epi32(uv, 2) + _mm_extract_epi32(uv, 3);
-    suw = _mm_extract_epi32(uw, 2) + _mm_extract_epi32(uw, 3);
-    svw = _mm_extract_epi32(vw, 2) + _mm_extract_epi32(vw, 3);
+    su2 = (int64_t)_mm_extract_epi32(u2, 2) + _mm_extract_epi32(u2, 3);
+    sv2 = (int64_t)_mm_extract_epi32(v2, 2) + _mm_extract_epi32(v2, 3);
+    suv = (int64_t)_mm_extract_epi32(uv, 2) + _mm_extract_epi32(uv, 3);
+    suw = (int64_t)_mm_extract_epi32(uw, 2) + _mm_extract_epi32(uw, 3);
+    svw = (int64_t)_mm_extract_epi32(vw, 2) + _mm_extract_epi32(vw, 3);
   }
 
   calc_mv_process(su2, sv2, suv, suw, svw, d0, d1, bits, rls_alpha, vx0, vy0,
