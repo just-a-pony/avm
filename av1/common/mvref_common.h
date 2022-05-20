@@ -618,7 +618,7 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
       int tmp_col = mi_col;
       int tmp_bh = bh;
       int tmp_bw = bw;
-      if (!frame_is_intra_only(cm)) {
+      if (!cm->seq_params.enable_sdp || !frame_is_intra_only(cm)) {
         if (xd->is_chroma_ref && av1_num_planes(cm) > 1) {
           const struct macroblockd_plane *const pd = &xd->plane[1];
           if ((bw < 8 && pd->subsampling_x) && (bh < 8 && pd->subsampling_y)) {
