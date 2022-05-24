@@ -80,6 +80,7 @@ Coverage Report:
       --html --html-details ../coverage-html/coverage.html
       --print-summary
       -r ../ .
+  coverage: '/lines:\s(\d+.\d+\%)/'
   artifacts:
     reports:
       coverage_report:
