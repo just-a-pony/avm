@@ -115,20 +115,12 @@ void av1_intra_mode_cnn_partition(const AV1_COMMON *const cm, MACROBLOCK *x,
     const int width = 65, height = 65,
               stride = x->plane[AOM_PLANE_Y].src.stride;
 
-    if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
-      uint16_t *image[1] = {
-        CONVERT_TO_SHORTPTR(x->plane[AOM_PLANE_Y].src.buf) - stride - 1
-      };
+    uint16_t *image[1] = { CONVERT_TO_SHORTPTR(x->plane[AOM_PLANE_Y].src.buf) -
+                           stride - 1 };
 
-      av1_cnn_predict_img_multi_out_highbd(image, width, height, stride,
-                                           cnn_config, &thread_data, bit_depth,
-                                           &output);
-    } else {
-      uint8_t *image[1] = { x->plane[AOM_PLANE_Y].src.buf - stride - 1 };
-
-      av1_cnn_predict_img_multi_out(image, width, height, stride, cnn_config,
-                                    &thread_data, &output);
-    }
+    av1_cnn_predict_img_multi_out_highbd(image, width, height, stride,
+                                         cnn_config, &thread_data, bit_depth,
+                                         &output);
 
     part_info->cnn_output_valid = 1;
   }
@@ -782,11 +774,8 @@ BLOCK_SIZE av1_predict_max_partition(const AV1_COMP *const cpi,
     const MACROBLOCKD *const xd = &x->e_mbd;
     // TODO(debargha): x->source_variance is unavailable at this point,
     // so compute. The redundant recomputation later can be removed.
-    const unsigned int source_variance =
-        is_cur_buf_hbd(xd)
-            ? av1_high_get_sby_perpixel_variance(cpi, &x->plane[0].src, sb_size,
-                                                 xd->bd)
-            : av1_get_sby_perpixel_variance(cpi, &x->plane[0].src, sb_size);
+    const unsigned int source_variance = av1_high_get_sby_perpixel_variance(
+        cpi, &x->plane[0].src, sb_size, xd->bd);
     if (source_variance > 16) {
       const double thresh = source_variance < 128 ? 0.05 : 0.1;
       for (result = MAX_NUM_CLASSES_MAX_MIN_PART_PRED - 1; result >= 0;
@@ -985,13 +974,8 @@ void av1_ml_prune_rect_partition(const AV1_COMP *const cpi,
   // Variance ratios
   const MACROBLOCKD *const xd = &x->e_mbd;
   int whole_block_variance;
-  if (is_cur_buf_hbd(xd)) {
-    whole_block_variance = av1_high_get_sby_perpixel_variance(
-        cpi, &x->plane[0].src, bsize, xd->bd);
-  } else {
-    whole_block_variance =
-        av1_get_sby_perpixel_variance(cpi, &x->plane[0].src, bsize);
-  }
+  whole_block_variance =
+      av1_high_get_sby_perpixel_variance(cpi, &x->plane[0].src, bsize, xd->bd);
   whole_block_variance = AOMMAX(whole_block_variance, 1);
 
   int split_variance[SUB_PARTITIONS_SPLIT];
@@ -1003,12 +987,8 @@ void av1_ml_prune_rect_partition(const AV1_COMP *const cpi,
     const int x_idx = (i & 1) * bw / 2;
     const int y_idx = (i >> 1) * bw / 2;
     buf.buf = x->plane[0].src.buf + x_idx + y_idx * buf.stride;
-    if (is_cur_buf_hbd(xd)) {
-      split_variance[i] =
-          av1_high_get_sby_perpixel_variance(cpi, &buf, subsize, xd->bd);
-    } else {
-      split_variance[i] = av1_get_sby_perpixel_variance(cpi, &buf, subsize);
-    }
+    split_variance[i] =
+        av1_high_get_sby_perpixel_variance(cpi, &buf, subsize, xd->bd);
   }
 
   for (int i = 0; i < SUB_PARTITIONS_SPLIT; i++)
@@ -1189,17 +1169,10 @@ void av1_ml_prune_4_partition(
       horz_4_src.buf = src + i * block_size_high[horz_4_bs] * src_stride;
       vert_4_src.buf = src + i * block_size_wide[vert_4_bs];
 
-      if (is_cur_buf_hbd(xd)) {
-        horz_4_source_var[i] = av1_high_get_sby_perpixel_variance(
-            cpi, &horz_4_src, horz_4_bs, xd->bd);
-        vert_4_source_var[i] = av1_high_get_sby_perpixel_variance(
-            cpi, &vert_4_src, vert_4_bs, xd->bd);
-      } else {
-        horz_4_source_var[i] =
-            av1_get_sby_perpixel_variance(cpi, &horz_4_src, horz_4_bs);
-        vert_4_source_var[i] =
-            av1_get_sby_perpixel_variance(cpi, &vert_4_src, vert_4_bs);
-      }
+      horz_4_source_var[i] = av1_high_get_sby_perpixel_variance(
+          cpi, &horz_4_src, horz_4_bs, xd->bd);
+      vert_4_source_var[i] = av1_high_get_sby_perpixel_variance(
+          cpi, &vert_4_src, vert_4_bs, xd->bd);
     }
   }
 

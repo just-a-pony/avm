@@ -5209,7 +5209,7 @@ static void highbd_inv_txfm2d_add_h_identity_ssse41(const int32_t *input,
   const int buf_size_w_div4 = input_stride >> 2;
   const int buf_size_h_div8 = (eoby + 8) >> 3;
   const int rect_type = get_rect_tx_log_ratio(txfm_size_col, txfm_size_row);
-  const int fun_idx = lowbd_txfm_all_1d_zeros_idx[eoby];
+  const int fun_idx = highbd_txfm_all_1d_zeros_idx[eoby];
   const transform_1d_sse4_1 row_txfm =
       highbd_txfm_all_1d_zeros_w8_arr[txw_idx][hitx_1d_tab[tx_type]][0];
   const transform_1d_sse4_1 col_txfm =
@@ -5273,7 +5273,7 @@ static void highbd_inv_txfm2d_add_v_identity_ssse41(const int32_t *input,
   const int row_max = AOMMIN(32, txfm_size_row);
   const int buf_size_nonzero_w_div8 = (eobx + 8) >> 3;
   const int rect_type = get_rect_tx_log_ratio(txfm_size_col, txfm_size_row);
-  const int fun_idx = lowbd_txfm_all_1d_zeros_idx[eobx];
+  const int fun_idx = highbd_txfm_all_1d_zeros_idx[eobx];
   const transform_1d_sse4_1 row_txfm =
       highbd_txfm_all_1d_zeros_w8_arr[txw_idx][hitx_1d_tab[tx_type]][fun_idx];
   const transform_1d_sse4_1 col_txfm =
@@ -5413,8 +5413,8 @@ static void highbd_inv_txfm2d_add_no_identity_sse41(const int32_t *input,
   const int input_stride = AOMMIN(32, txfm_size_col);
   const int rect_type = get_rect_tx_log_ratio(txfm_size_col, txfm_size_row);
 
-  const int fun_idx_x = lowbd_txfm_all_1d_zeros_idx[eobx];
-  const int fun_idx_y = lowbd_txfm_all_1d_zeros_idx[eoby];
+  const int fun_idx_x = highbd_txfm_all_1d_zeros_idx[eobx];
+  const int fun_idx_y = highbd_txfm_all_1d_zeros_idx[eoby];
   const transform_1d_sse4_1 row_txfm =
       highbd_txfm_all_1d_zeros_w8_arr[txw_idx][hitx_1d_tab[tx_type]][fun_idx_x];
   const transform_1d_sse4_1 col_txfm =

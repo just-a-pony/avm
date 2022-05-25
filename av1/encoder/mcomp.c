@@ -2203,7 +2203,7 @@ int av1_intrabc_hash_search(const AV1_COMP *cpi, const MACROBLOCKD *xd,
   hash_table *ref_frame_hash = &intrabc_hash_info->intrabc_hash_table;
 
   av1_get_block_hash_value(intrabc_hash_info, src, src_stride, block_width,
-                           &hash_value1, &hash_value2, is_cur_buf_hbd(xd));
+                           &hash_value1, &hash_value2);
 
   const int count = av1_hash_table_count(ref_frame_hash, hash_value1);
   if (count <= 1) {
@@ -2759,48 +2759,26 @@ static int upsampled_pref_error(MACROBLOCKD *xd, const AV1_COMMON *cm,
 
   unsigned int besterr;
 
-  if (is_cur_buf_hbd(xd)) {
-    DECLARE_ALIGNED(16, uint16_t, pred16[MAX_SB_SQUARE]);
-    uint8_t *pred8 = CONVERT_TO_BYTEPTR(pred16);
-    if (second_pred != NULL) {
-      if (mask) {
-        aom_highbd_comp_mask_upsampled_pred(
-            xd, cm, mi_row, mi_col, this_mv, pred8, second_pred, w, h,
-            subpel_x_q3, subpel_y_q3, ref, ref_stride, mask, mask_stride,
-            invert_mask, xd->bd, subpel_search_type);
-      } else {
-        aom_highbd_comp_avg_upsampled_pred(
-            xd, cm, mi_row, mi_col, this_mv, pred8, second_pred, w, h,
-            subpel_x_q3, subpel_y_q3, ref, ref_stride, xd->bd,
-            subpel_search_type);
-      }
+  DECLARE_ALIGNED(16, uint16_t, pred16[MAX_SB_SQUARE]);
+  uint8_t *pred8 = CONVERT_TO_BYTEPTR(pred16);
+  if (second_pred != NULL) {
+    if (mask) {
+      aom_highbd_comp_mask_upsampled_pred(
+          xd, cm, mi_row, mi_col, this_mv, pred8, second_pred, w, h,
+          subpel_x_q3, subpel_y_q3, ref, ref_stride, mask, mask_stride,
+          invert_mask, xd->bd, subpel_search_type);
     } else {
-      aom_highbd_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred8, w, h,
-                                subpel_x_q3, subpel_y_q3, ref, ref_stride,
-                                xd->bd, subpel_search_type);
+      aom_highbd_comp_avg_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred8,
+                                         second_pred, w, h, subpel_x_q3,
+                                         subpel_y_q3, ref, ref_stride, xd->bd,
+                                         subpel_search_type);
     }
-    besterr = vfp->vf(pred8, w, src, src_stride, sse);
   } else {
-    DECLARE_ALIGNED(16, uint8_t, pred[MAX_SB_SQUARE]);
-    if (second_pred != NULL) {
-      if (mask) {
-        aom_comp_mask_upsampled_pred(
-            xd, cm, mi_row, mi_col, this_mv, pred, second_pred, w, h,
-            subpel_x_q3, subpel_y_q3, ref, ref_stride, mask, mask_stride,
-            invert_mask, subpel_search_type);
-      } else {
-        aom_comp_avg_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred,
-                                    second_pred, w, h, subpel_x_q3, subpel_y_q3,
-                                    ref, ref_stride, subpel_search_type);
-      }
-    } else {
-      aom_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred, w, h,
-                         subpel_x_q3, subpel_y_q3, ref, ref_stride,
-                         subpel_search_type);
-    }
-
-    besterr = vfp->vf(pred, w, src, src_stride, sse);
+    aom_highbd_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred8, w, h,
+                              subpel_x_q3, subpel_y_q3, ref, ref_stride, xd->bd,
+                              subpel_search_type);
   }
+  besterr = vfp->vf(pred8, w, src, src_stride, sse);
 
   return besterr;
 }
@@ -3097,6 +3075,7 @@ static unsigned int setup_center_error(
     const MACROBLOCKD *xd, const MV *bestmv,
     const SUBPEL_SEARCH_VAR_PARAMS *var_params,
     const MV_COST_PARAMS *mv_cost_params, unsigned int *sse1, int *distortion) {
+  (void)xd;
   const aom_variance_fn_ptr_t *vfp = var_params->vfp;
   const int w = var_params->w;
   const int h = var_params->h;
@@ -3114,26 +3093,15 @@ static unsigned int setup_center_error(
   unsigned int besterr;
 
   if (second_pred != NULL) {
-    if (is_cur_buf_hbd(xd)) {
-      DECLARE_ALIGNED(16, uint16_t, comp_pred16[MAX_SB_SQUARE]);
-      uint8_t *comp_pred = CONVERT_TO_BYTEPTR(comp_pred16);
-      if (mask) {
-        aom_highbd_comp_mask_pred(comp_pred, second_pred, w, h, y, y_stride,
-                                  mask, mask_stride, invert_mask);
-      } else {
-        aom_highbd_comp_avg_pred(comp_pred, second_pred, w, h, y, y_stride);
-      }
-      besterr = vfp->vf(comp_pred, w, src, src_stride, sse1);
+    DECLARE_ALIGNED(16, uint16_t, comp_pred16[MAX_SB_SQUARE]);
+    uint8_t *comp_pred = CONVERT_TO_BYTEPTR(comp_pred16);
+    if (mask) {
+      aom_highbd_comp_mask_pred(comp_pred, second_pred, w, h, y, y_stride, mask,
+                                mask_stride, invert_mask);
     } else {
-      DECLARE_ALIGNED(16, uint8_t, comp_pred[MAX_SB_SQUARE]);
-      if (mask) {
-        aom_comp_mask_pred(comp_pred, second_pred, w, h, y, y_stride, mask,
-                           mask_stride, invert_mask);
-      } else {
-        aom_comp_avg_pred(comp_pred, second_pred, w, h, y, y_stride);
-      }
-      besterr = vfp->vf(comp_pred, w, src, src_stride, sse1);
+      aom_highbd_comp_avg_pred(comp_pred, second_pred, w, h, y, y_stride);
     }
+    besterr = vfp->vf(comp_pred, w, src, src_stride, sse1);
   } else {
     besterr = vfp->vf(y, y_stride, src, src_stride, sse1);
   }
@@ -4168,18 +4136,11 @@ static int upsampled_obmc_pref_error(MACROBLOCKD *xd, const AV1_COMMON *cm,
 
   unsigned int besterr;
   DECLARE_ALIGNED(16, uint8_t, pred[2 * MAX_SB_SQUARE]);
-  if (is_cur_buf_hbd(xd)) {
-    uint8_t *pred8 = CONVERT_TO_BYTEPTR(pred);
-    aom_highbd_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred8, w, h,
-                              subpel_x_q3, subpel_y_q3, ref, ref_stride, xd->bd,
-                              subpel_search_type);
-    besterr = vfp->ovf(pred8, w, wsrc, mask, sse);
-  } else {
-    aom_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred, w, h, subpel_x_q3,
-                       subpel_y_q3, ref, ref_stride, subpel_search_type);
-
-    besterr = vfp->ovf(pred, w, wsrc, mask, sse);
-  }
+  uint8_t *pred8 = CONVERT_TO_BYTEPTR(pred);
+  aom_highbd_upsampled_pred(xd, cm, mi_row, mi_col, this_mv, pred8, w, h,
+                            subpel_x_q3, subpel_y_q3, ref, ref_stride, xd->bd,
+                            subpel_search_type);
+  besterr = vfp->ovf(pred8, w, wsrc, mask, sse);
 
   return besterr;
 }

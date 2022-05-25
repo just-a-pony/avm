@@ -143,24 +143,6 @@ void av1_end_first_pass(AV1_COMP *cpi) {
     output_stats(cpi->twopass.stats_buf_ctx->total_stats, cpi->output_pkt_list);
 }
 
-static aom_variance_fn_t get_block_variance_fn(BLOCK_SIZE bsize) {
-  switch (bsize) {
-    case BLOCK_8X8: return aom_mse8x8;
-    case BLOCK_16X8: return aom_mse16x8;
-    case BLOCK_8X16: return aom_mse8x16;
-    default: return aom_mse16x16;
-  }
-}
-
-static unsigned int get_prediction_error(BLOCK_SIZE bsize,
-                                         const struct buf_2d *src,
-                                         const struct buf_2d *ref) {
-  unsigned int sse;
-  const aom_variance_fn_t fn = get_block_variance_fn(bsize);
-  fn(src->buf, src->stride, ref->buf, ref->stride, &sse);
-  return sse;
-}
-
 static aom_variance_fn_t highbd_get_block_variance_fn(BLOCK_SIZE bsize,
                                                       int bd) {
   switch (bd) {
@@ -362,17 +344,15 @@ static int firstpass_intra_prediction(
 
   av1_encode_intra_block_plane(cpi, x, bsize, 0, DRY_RUN_NORMAL, 0);
   int this_intra_error = aom_get_mb_ss(x->plane[0].src_diff);
-  if (seq_params->use_highbitdepth) {
-    switch (seq_params->bit_depth) {
-      case AOM_BITS_8: break;
-      case AOM_BITS_10: this_intra_error >>= 4; break;
-      case AOM_BITS_12: this_intra_error >>= 8; break;
-      default:
-        assert(0 &&
-               "seq_params->bit_depth should be AOM_BITS_8, "
-               "AOM_BITS_10 or AOM_BITS_12");
-        return -1;
-    }
+  switch (seq_params->bit_depth) {
+    case AOM_BITS_8: break;
+    case AOM_BITS_10: this_intra_error >>= 4; break;
+    case AOM_BITS_12: this_intra_error >>= 8; break;
+    default:
+      assert(0 &&
+             "seq_params->bit_depth should be AOM_BITS_8, "
+             "AOM_BITS_10 or AOM_BITS_12");
+      return -1;
   }
 
   if (this_intra_error < UL_INTRA_THRESH) {
@@ -390,23 +370,17 @@ static int firstpass_intra_prediction(
   }
 
   int level_sample;
-  if (seq_params->use_highbitdepth) {
-    level_sample = CONVERT_TO_SHORTPTR(x->plane[0].src.buf)[0];
-  } else {
-    level_sample = x->plane[0].src.buf[0];
-  }
+  level_sample = CONVERT_TO_SHORTPTR(x->plane[0].src.buf)[0];
 
-  if (seq_params->use_highbitdepth) {
-    switch (seq_params->bit_depth) {
-      case AOM_BITS_8: break;
-      case AOM_BITS_10: level_sample >>= 2; break;
-      case AOM_BITS_12: level_sample >>= 4; break;
-      default:
-        assert(0 &&
-               "seq_params->bit_depth should be AOM_BITS_8, "
-               "AOM_BITS_10 or AOM_BITS_12");
-        return -1;
-    }
+  switch (seq_params->bit_depth) {
+    case AOM_BITS_8: break;
+    case AOM_BITS_10: level_sample >>= 2; break;
+    case AOM_BITS_12: level_sample >>= 4; break;
+    default:
+      assert(0 &&
+             "seq_params->bit_depth should be AOM_BITS_8, "
+             "AOM_BITS_10 or AOM_BITS_12");
+      return -1;
   }
   if ((level_sample < DARK_THRESH) && (log_intra < 9.0)) {
     stats->brightness_factor += 1.0 + (0.01 * (DARK_THRESH - level_sample));
@@ -426,13 +400,12 @@ static int firstpass_intra_prediction(
   // Accumulate the intra error.
   stats->intra_error += (int64_t)this_intra_error;
 
-  const int hbd = is_cur_buf_hbd(xd);
   const int stride = x->plane[0].src.stride;
   uint8_t *buf = x->plane[0].src.buf;
   for (int r8 = 0; r8 < 2; ++r8) {
     for (int c8 = 0; c8 < 2; ++c8) {
       stats->frame_avg_wavelet_energy += av1_haar_ac_sad_8x8_uint8_input(
-          buf + c8 * 8 + r8 * 8 * stride, stride, hbd);
+          buf + c8 * 8 + r8 * 8 * stride, stride);
     }
   }
 
@@ -440,15 +413,11 @@ static int firstpass_intra_prediction(
 }
 
 // Returns the sum of square error between source and reference blocks.
-static int get_prediction_error_bitdepth(const int is_high_bitdepth,
-                                         const int bitdepth,
+static int get_prediction_error_bitdepth(const int bitdepth,
                                          const BLOCK_SIZE block_size,
                                          const struct buf_2d *src,
                                          const struct buf_2d *ref) {
-  if (is_high_bitdepth) {
-    return highbd_get_prediction_error(block_size, src, ref, bitdepth);
-  }
-  return get_prediction_error(block_size, src, ref);
+  return highbd_get_prediction_error(block_size, src, ref, bitdepth);
 }
 
 // Accumulates motion vector stats.
@@ -541,7 +510,6 @@ static int firstpass_inter_prediction(
   CurrentFrame *const current_frame = &cm->current_frame;
   MACROBLOCK *const x = &td->mb;
   MACROBLOCKD *const xd = &x->e_mbd;
-  const int is_high_bitdepth = is_cur_buf_hbd(xd);
   const int bitdepth = xd->bd;
   const int mb_scale = mi_size_wide[fp_block_size];
   const BLOCK_SIZE bsize = get_bsize(mi_params, mb_row, mb_col);
@@ -556,9 +524,8 @@ static int firstpass_inter_prediction(
                         (fp_block_size_height >> MI_SIZE_LOG2),
                         cpi->oxcf.border_in_pixels);
 
-  int motion_error =
-      get_prediction_error_bitdepth(is_high_bitdepth, bitdepth, bsize,
-                                    &x->plane[0].src, &xd->plane[0].pre[0]);
+  int motion_error = get_prediction_error_bitdepth(
+      bitdepth, bsize, &x->plane[0].src, &xd->plane[0].pre[0]);
 
   // Compute the motion error of the 0,0 motion using the last source
   // frame as the reference. Skip the further motion search on
@@ -568,8 +535,7 @@ static int firstpass_inter_prediction(
       cpi->unscaled_last_source->y_buffer + src_yoffset;
   unscaled_last_source_buf_2d.stride = cpi->unscaled_last_source->y_stride;
   const int raw_motion_error = get_prediction_error_bitdepth(
-      is_high_bitdepth, bitdepth, bsize, &x->plane[0].src,
-      &unscaled_last_source_buf_2d);
+      bitdepth, bsize, &x->plane[0].src, &unscaled_last_source_buf_2d);
   raw_motion_err_list[raw_motion_err_counts] = raw_motion_error;
 
   // TODO(pengchong): Replace the hard-coded threshold
@@ -596,9 +562,8 @@ static int firstpass_inter_prediction(
       // Assume 0,0 motion with no mv overhead.
       xd->plane[0].pre[0].buf = golden_frame->y_buffer + recon_yoffset;
       xd->plane[0].pre[0].stride = golden_frame->y_stride;
-      gf_motion_error =
-          get_prediction_error_bitdepth(is_high_bitdepth, bitdepth, bsize,
-                                        &x->plane[0].src, &xd->plane[0].pre[0]);
+      gf_motion_error = get_prediction_error_bitdepth(
+          bitdepth, bsize, &x->plane[0].src, &xd->plane[0].pre[0]);
       first_pass_motion_search(cpi, x, &kZeroMv, &tmp_mv, &gf_motion_error);
     }
     if (gf_motion_error < motion_error && gf_motion_error < this_intra_error) {
@@ -621,9 +586,8 @@ static int firstpass_inter_prediction(
     if (alt_ref_frame != NULL) {
       xd->plane[0].pre[0].buf = alt_ref_frame->y_buffer + alt_ref_frame_yoffset;
       xd->plane[0].pre[0].stride = alt_ref_frame->y_stride;
-      alt_motion_error =
-          get_prediction_error_bitdepth(is_high_bitdepth, bitdepth, bsize,
-                                        &x->plane[0].src, &xd->plane[0].pre[0]);
+      alt_motion_error = get_prediction_error_bitdepth(
+          bitdepth, bsize, &x->plane[0].src, &xd->plane[0].pre[0]);
       first_pass_motion_search(cpi, x, &kZeroMv, &tmp_mv, &alt_motion_error);
     }
     if (alt_motion_error < motion_error && alt_motion_error < gf_motion_error &&

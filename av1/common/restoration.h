@@ -341,7 +341,7 @@ typedef struct FilterFrameCtxt {
   const RestorationInfo *rsi;
   int tile_stripe0;
   int ss_x, ss_y;
-  int highbd, bit_depth;
+  int bit_depth;
   uint8_t *data8, *dst8;
   int data_stride, dst_stride;
   AV1PixelRect tile_rect;
@@ -364,7 +364,7 @@ void av1_alloc_restoration_struct(struct AV1Common *cm, RestorationInfo *rsi,
 void av1_free_restoration_struct(RestorationInfo *rst_info);
 
 void av1_extend_frame(uint8_t *data, int width, int height, int stride,
-                      int border_horz, int border_vert, int highbd);
+                      int border_horz, int border_vert);
 void av1_decode_xq(const int *xqd, int *xq, const sgr_params_type *params);
 
 /*!\endcond */
@@ -384,7 +384,6 @@ void av1_decode_xq(const int *xqd, int *xq, const sgr_params_type *params);
  * \param[in]  tile_stripe0  Index of the first stripe in this tile
  * \param[in]  ss_x          Horizontal subsampling for plane
  * \param[in]  ss_y          Vertical subsampling for plane
- * \param[in]  highbd        Whether high bitdepth pipeline is used
  * \param[in]  bit_depth     Bit-depth of the video
  * \param[in]  data8         Frame data (pointing at the top-left corner of
  *                           the frame, not the restoration unit).
@@ -404,8 +403,8 @@ void av1_loop_restoration_filter_unit(
     const RestorationTileLimits *limits, const RestorationUnitInfo *rui,
     const RestorationStripeBoundaries *rsb, RestorationLineBuffers *rlbs,
     const AV1PixelRect *tile_rect, int tile_stripe0, int ss_x, int ss_y,
-    int highbd, int bit_depth, uint8_t *data8, int stride, uint8_t *dst8,
-    int dst_stride, int32_t *tmpbuf, int optimized_lr);
+    int bit_depth, uint8_t *data8, int stride, uint8_t *dst8, int dst_stride,
+    int32_t *tmpbuf, int optimized_lr);
 
 /*!\brief Function for applying loop restoration filter to a frame
  *

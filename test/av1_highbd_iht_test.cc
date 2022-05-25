@@ -237,7 +237,6 @@ void AV1HighbdInvTxfm2d::RunAV1InvTxfm2dTest(TX_TYPE tx_type_, TX_SIZE tx_size_,
   txfm_param.tx_size = tx_size_;
   txfm_param.lossless = 0;
   txfm_param.bd = bit_depth_;
-  txfm_param.is_hbd = 1;
   txfm_param.tx_set_type = EXT_TX_SET_ALL16;
 
   for (int cnt = 0; cnt < randTimes; ++cnt) {

@@ -154,15 +154,15 @@ static AOM_INLINE void compute_global_motion_for_ref_frame(
             params_by_motion[i].inliers, params_by_motion[i].num_inliers);
 
         ref_frame_error = av1_segmented_frame_error(
-            is_cur_buf_hbd(xd), xd->bd, ref_buf[frame]->y_buffer,
-            ref_buf[frame]->y_stride, cpi->source->y_buffer, src_width,
-            src_height, src_stride, segment_map, segment_map_w);
+            xd->bd, ref_buf[frame]->y_buffer, ref_buf[frame]->y_stride,
+            cpi->source->y_buffer, src_width, src_height, src_stride,
+            segment_map, segment_map_w);
 
         const int64_t erroradv_threshold =
             calc_erroradv_threshold(ref_frame_error);
 
         const int64_t warp_error = av1_refine_integerized_param(
-            &tmp_wm_params, tmp_wm_params.wmtype, is_cur_buf_hbd(xd), xd->bd,
+            &tmp_wm_params, tmp_wm_params.wmtype, xd->bd,
             ref_buf[frame]->y_buffer, ref_buf[frame]->y_width,
             ref_buf[frame]->y_height, ref_buf[frame]->y_stride,
             cpi->source->y_buffer, src_width, src_height, src_stride,
@@ -467,12 +467,10 @@ static AOM_INLINE void setup_global_motion_info_params(AV1_COMP *cpi) {
   YV12_BUFFER_CONFIG *source = cpi->source;
 
   gm_info->src_buffer = source->y_buffer;
-  if (source->flags & YV12_FLAG_HIGHBITDEPTH) {
-    // The source buffer is 16-bit, so we need to convert to 8 bits for the
-    // following code. We cache the result until the source frame is released.
-    gm_info->src_buffer =
-        av1_downconvert_frame(source, cpi->common.seq_params.bit_depth);
-  }
+  // The source buffer is 16-bit, so we need to convert to 8 bits for the
+  // following code. We cache the result until the source frame is released.
+  gm_info->src_buffer =
+      av1_downconvert_frame(source, cpi->common.seq_params.bit_depth);
 
   gm_info->segment_map_w =
       (source->y_width + WARP_ERROR_BLOCK) >> WARP_ERROR_BLOCK_LOG;

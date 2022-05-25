@@ -450,7 +450,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_opfl_refine = tool_cfg->enable_opfl_refine;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_TIP
-  seq->enable_tip = seq->use_highbitdepth ? tool_cfg->enable_tip : 0;
+  seq->enable_tip = tool_cfg->enable_tip;
 
   if (oxcf->superres_cfg.superres_mode != AOM_SUPERRES_NONE) {
     seq->enable_tip = 0;
@@ -540,7 +540,6 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
 
   seq_params->profile = oxcf->profile;
   seq_params->bit_depth = oxcf->tool_cfg.bit_depth;
-  seq_params->use_highbitdepth = oxcf->use_highbitdepth;
   seq_params->color_primaries = color_cfg->color_primaries;
   seq_params->transfer_characteristics = color_cfg->transfer_characteristics;
   seq_params->matrix_coefficients = color_cfg->matrix_coefficients;
@@ -735,9 +734,6 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
     seq_params->enable_tip = 0;
   }
 
-  if (!seq_params->use_highbitdepth) {
-    seq_params->enable_tip = 0;
-  }
 #endif  // CONFIG_TIP
   x->e_mbd.bd = (int)seq_params->bit_depth;
   x->e_mbd.global_motion = cm->global_motion;
@@ -1192,232 +1188,6 @@ AV1_COMP *av1_create_compressor(AV1EncoderConfig *oxcf, BufferPool *const pool,
   av1_zero(cpi->partition_stats);
 #endif
 
-#define BFP(BT, SDF, SDAF, VF, SVF, SVAF, SDX4DF, JSDAF, JSVAF) \
-  cpi->fn_ptr[BT].sdf = SDF;                                    \
-  cpi->fn_ptr[BT].sdaf = SDAF;                                  \
-  cpi->fn_ptr[BT].vf = VF;                                      \
-  cpi->fn_ptr[BT].svf = SVF;                                    \
-  cpi->fn_ptr[BT].svaf = SVAF;                                  \
-  cpi->fn_ptr[BT].sdx4df = SDX4DF;                              \
-  cpi->fn_ptr[BT].jsdaf = JSDAF;                                \
-  cpi->fn_ptr[BT].jsvaf = JSVAF;
-
-  BFP(BLOCK_4X16, aom_sad4x16, aom_sad4x16_avg, aom_variance4x16,
-      aom_sub_pixel_variance4x16, aom_sub_pixel_avg_variance4x16,
-      aom_sad4x16x4d, aom_dist_wtd_sad4x16_avg,
-      aom_dist_wtd_sub_pixel_avg_variance4x16)
-
-  BFP(BLOCK_16X4, aom_sad16x4, aom_sad16x4_avg, aom_variance16x4,
-      aom_sub_pixel_variance16x4, aom_sub_pixel_avg_variance16x4,
-      aom_sad16x4x4d, aom_dist_wtd_sad16x4_avg,
-      aom_dist_wtd_sub_pixel_avg_variance16x4)
-
-  BFP(BLOCK_8X32, aom_sad8x32, aom_sad8x32_avg, aom_variance8x32,
-      aom_sub_pixel_variance8x32, aom_sub_pixel_avg_variance8x32,
-      aom_sad8x32x4d, aom_dist_wtd_sad8x32_avg,
-      aom_dist_wtd_sub_pixel_avg_variance8x32)
-
-  BFP(BLOCK_32X8, aom_sad32x8, aom_sad32x8_avg, aom_variance32x8,
-      aom_sub_pixel_variance32x8, aom_sub_pixel_avg_variance32x8,
-      aom_sad32x8x4d, aom_dist_wtd_sad32x8_avg,
-      aom_dist_wtd_sub_pixel_avg_variance32x8)
-
-  BFP(BLOCK_16X64, aom_sad16x64, aom_sad16x64_avg, aom_variance16x64,
-      aom_sub_pixel_variance16x64, aom_sub_pixel_avg_variance16x64,
-      aom_sad16x64x4d, aom_dist_wtd_sad16x64_avg,
-      aom_dist_wtd_sub_pixel_avg_variance16x64)
-
-  BFP(BLOCK_64X16, aom_sad64x16, aom_sad64x16_avg, aom_variance64x16,
-      aom_sub_pixel_variance64x16, aom_sub_pixel_avg_variance64x16,
-      aom_sad64x16x4d, aom_dist_wtd_sad64x16_avg,
-      aom_dist_wtd_sub_pixel_avg_variance64x16)
-
-  BFP(BLOCK_128X128, aom_sad128x128, aom_sad128x128_avg, aom_variance128x128,
-      aom_sub_pixel_variance128x128, aom_sub_pixel_avg_variance128x128,
-      aom_sad128x128x4d, aom_dist_wtd_sad128x128_avg,
-      aom_dist_wtd_sub_pixel_avg_variance128x128)
-
-  BFP(BLOCK_128X64, aom_sad128x64, aom_sad128x64_avg, aom_variance128x64,
-      aom_sub_pixel_variance128x64, aom_sub_pixel_avg_variance128x64,
-      aom_sad128x64x4d, aom_dist_wtd_sad128x64_avg,
-      aom_dist_wtd_sub_pixel_avg_variance128x64)
-
-  BFP(BLOCK_64X128, aom_sad64x128, aom_sad64x128_avg, aom_variance64x128,
-      aom_sub_pixel_variance64x128, aom_sub_pixel_avg_variance64x128,
-      aom_sad64x128x4d, aom_dist_wtd_sad64x128_avg,
-      aom_dist_wtd_sub_pixel_avg_variance64x128)
-
-  BFP(BLOCK_32X16, aom_sad32x16, aom_sad32x16_avg, aom_variance32x16,
-      aom_sub_pixel_variance32x16, aom_sub_pixel_avg_variance32x16,
-      aom_sad32x16x4d, aom_dist_wtd_sad32x16_avg,
-      aom_dist_wtd_sub_pixel_avg_variance32x16)
-
-  BFP(BLOCK_16X32, aom_sad16x32, aom_sad16x32_avg, aom_variance16x32,
-      aom_sub_pixel_variance16x32, aom_sub_pixel_avg_variance16x32,
-      aom_sad16x32x4d, aom_dist_wtd_sad16x32_avg,
-      aom_dist_wtd_sub_pixel_avg_variance16x32)
-
-  BFP(BLOCK_64X32, aom_sad64x32, aom_sad64x32_avg, aom_variance64x32,
-      aom_sub_pixel_variance64x32, aom_sub_pixel_avg_variance64x32,
-      aom_sad64x32x4d, aom_dist_wtd_sad64x32_avg,
-      aom_dist_wtd_sub_pixel_avg_variance64x32)
-
-  BFP(BLOCK_32X64, aom_sad32x64, aom_sad32x64_avg, aom_variance32x64,
-      aom_sub_pixel_variance32x64, aom_sub_pixel_avg_variance32x64,
-      aom_sad32x64x4d, aom_dist_wtd_sad32x64_avg,
-      aom_dist_wtd_sub_pixel_avg_variance32x64)
-
-  BFP(BLOCK_32X32, aom_sad32x32, aom_sad32x32_avg, aom_variance32x32,
-      aom_sub_pixel_variance32x32, aom_sub_pixel_avg_variance32x32,
-      aom_sad32x32x4d, aom_dist_wtd_sad32x32_avg,
-      aom_dist_wtd_sub_pixel_avg_variance32x32)
-
-  BFP(BLOCK_64X64, aom_sad64x64, aom_sad64x64_avg, aom_variance64x64,
-      aom_sub_pixel_variance64x64, aom_sub_pixel_avg_variance64x64,
-      aom_sad64x64x4d, aom_dist_wtd_sad64x64_avg,
-      aom_dist_wtd_sub_pixel_avg_variance64x64)
-
-  BFP(BLOCK_16X16, aom_sad16x16, aom_sad16x16_avg, aom_variance16x16,
-      aom_sub_pixel_variance16x16, aom_sub_pixel_avg_variance16x16,
-      aom_sad16x16x4d, aom_dist_wtd_sad16x16_avg,
-      aom_dist_wtd_sub_pixel_avg_variance16x16)
-
-  BFP(BLOCK_16X8, aom_sad16x8, aom_sad16x8_avg, aom_variance16x8,
-      aom_sub_pixel_variance16x8, aom_sub_pixel_avg_variance16x8,
-      aom_sad16x8x4d, aom_dist_wtd_sad16x8_avg,
-      aom_dist_wtd_sub_pixel_avg_variance16x8)
-
-  BFP(BLOCK_8X16, aom_sad8x16, aom_sad8x16_avg, aom_variance8x16,
-      aom_sub_pixel_variance8x16, aom_sub_pixel_avg_variance8x16,
-      aom_sad8x16x4d, aom_dist_wtd_sad8x16_avg,
-      aom_dist_wtd_sub_pixel_avg_variance8x16)
-
-  BFP(BLOCK_8X8, aom_sad8x8, aom_sad8x8_avg, aom_variance8x8,
-      aom_sub_pixel_variance8x8, aom_sub_pixel_avg_variance8x8, aom_sad8x8x4d,
-      aom_dist_wtd_sad8x8_avg, aom_dist_wtd_sub_pixel_avg_variance8x8)
-
-  BFP(BLOCK_8X4, aom_sad8x4, aom_sad8x4_avg, aom_variance8x4,
-      aom_sub_pixel_variance8x4, aom_sub_pixel_avg_variance8x4, aom_sad8x4x4d,
-      aom_dist_wtd_sad8x4_avg, aom_dist_wtd_sub_pixel_avg_variance8x4)
-
-  BFP(BLOCK_4X8, aom_sad4x8, aom_sad4x8_avg, aom_variance4x8,
-      aom_sub_pixel_variance4x8, aom_sub_pixel_avg_variance4x8, aom_sad4x8x4d,
-      aom_dist_wtd_sad4x8_avg, aom_dist_wtd_sub_pixel_avg_variance4x8)
-
-  BFP(BLOCK_4X4, aom_sad4x4, aom_sad4x4_avg, aom_variance4x4,
-      aom_sub_pixel_variance4x4, aom_sub_pixel_avg_variance4x4, aom_sad4x4x4d,
-      aom_dist_wtd_sad4x4_avg, aom_dist_wtd_sub_pixel_avg_variance4x4)
-
-#define OBFP(BT, OSDF, OVF, OSVF) \
-  cpi->fn_ptr[BT].osdf = OSDF;    \
-  cpi->fn_ptr[BT].ovf = OVF;      \
-  cpi->fn_ptr[BT].osvf = OSVF;
-
-  OBFP(BLOCK_128X128, aom_obmc_sad128x128, aom_obmc_variance128x128,
-       aom_obmc_sub_pixel_variance128x128)
-  OBFP(BLOCK_128X64, aom_obmc_sad128x64, aom_obmc_variance128x64,
-       aom_obmc_sub_pixel_variance128x64)
-  OBFP(BLOCK_64X128, aom_obmc_sad64x128, aom_obmc_variance64x128,
-       aom_obmc_sub_pixel_variance64x128)
-  OBFP(BLOCK_64X64, aom_obmc_sad64x64, aom_obmc_variance64x64,
-       aom_obmc_sub_pixel_variance64x64)
-  OBFP(BLOCK_64X32, aom_obmc_sad64x32, aom_obmc_variance64x32,
-       aom_obmc_sub_pixel_variance64x32)
-  OBFP(BLOCK_32X64, aom_obmc_sad32x64, aom_obmc_variance32x64,
-       aom_obmc_sub_pixel_variance32x64)
-  OBFP(BLOCK_32X32, aom_obmc_sad32x32, aom_obmc_variance32x32,
-       aom_obmc_sub_pixel_variance32x32)
-  OBFP(BLOCK_32X16, aom_obmc_sad32x16, aom_obmc_variance32x16,
-       aom_obmc_sub_pixel_variance32x16)
-  OBFP(BLOCK_16X32, aom_obmc_sad16x32, aom_obmc_variance16x32,
-       aom_obmc_sub_pixel_variance16x32)
-  OBFP(BLOCK_16X16, aom_obmc_sad16x16, aom_obmc_variance16x16,
-       aom_obmc_sub_pixel_variance16x16)
-  OBFP(BLOCK_16X8, aom_obmc_sad16x8, aom_obmc_variance16x8,
-       aom_obmc_sub_pixel_variance16x8)
-  OBFP(BLOCK_8X16, aom_obmc_sad8x16, aom_obmc_variance8x16,
-       aom_obmc_sub_pixel_variance8x16)
-  OBFP(BLOCK_8X8, aom_obmc_sad8x8, aom_obmc_variance8x8,
-       aom_obmc_sub_pixel_variance8x8)
-  OBFP(BLOCK_4X8, aom_obmc_sad4x8, aom_obmc_variance4x8,
-       aom_obmc_sub_pixel_variance4x8)
-  OBFP(BLOCK_8X4, aom_obmc_sad8x4, aom_obmc_variance8x4,
-       aom_obmc_sub_pixel_variance8x4)
-  OBFP(BLOCK_4X4, aom_obmc_sad4x4, aom_obmc_variance4x4,
-       aom_obmc_sub_pixel_variance4x4)
-  OBFP(BLOCK_4X16, aom_obmc_sad4x16, aom_obmc_variance4x16,
-       aom_obmc_sub_pixel_variance4x16)
-  OBFP(BLOCK_16X4, aom_obmc_sad16x4, aom_obmc_variance16x4,
-       aom_obmc_sub_pixel_variance16x4)
-  OBFP(BLOCK_8X32, aom_obmc_sad8x32, aom_obmc_variance8x32,
-       aom_obmc_sub_pixel_variance8x32)
-  OBFP(BLOCK_32X8, aom_obmc_sad32x8, aom_obmc_variance32x8,
-       aom_obmc_sub_pixel_variance32x8)
-  OBFP(BLOCK_16X64, aom_obmc_sad16x64, aom_obmc_variance16x64,
-       aom_obmc_sub_pixel_variance16x64)
-  OBFP(BLOCK_64X16, aom_obmc_sad64x16, aom_obmc_variance64x16,
-       aom_obmc_sub_pixel_variance64x16)
-
-#define MBFP(BT, MCSDF, MCSVF)  \
-  cpi->fn_ptr[BT].msdf = MCSDF; \
-  cpi->fn_ptr[BT].msvf = MCSVF;
-
-  MBFP(BLOCK_128X128, aom_masked_sad128x128,
-       aom_masked_sub_pixel_variance128x128)
-  MBFP(BLOCK_128X64, aom_masked_sad128x64, aom_masked_sub_pixel_variance128x64)
-  MBFP(BLOCK_64X128, aom_masked_sad64x128, aom_masked_sub_pixel_variance64x128)
-  MBFP(BLOCK_64X64, aom_masked_sad64x64, aom_masked_sub_pixel_variance64x64)
-  MBFP(BLOCK_64X32, aom_masked_sad64x32, aom_masked_sub_pixel_variance64x32)
-  MBFP(BLOCK_32X64, aom_masked_sad32x64, aom_masked_sub_pixel_variance32x64)
-  MBFP(BLOCK_32X32, aom_masked_sad32x32, aom_masked_sub_pixel_variance32x32)
-  MBFP(BLOCK_32X16, aom_masked_sad32x16, aom_masked_sub_pixel_variance32x16)
-  MBFP(BLOCK_16X32, aom_masked_sad16x32, aom_masked_sub_pixel_variance16x32)
-  MBFP(BLOCK_16X16, aom_masked_sad16x16, aom_masked_sub_pixel_variance16x16)
-  MBFP(BLOCK_16X8, aom_masked_sad16x8, aom_masked_sub_pixel_variance16x8)
-  MBFP(BLOCK_8X16, aom_masked_sad8x16, aom_masked_sub_pixel_variance8x16)
-  MBFP(BLOCK_8X8, aom_masked_sad8x8, aom_masked_sub_pixel_variance8x8)
-  MBFP(BLOCK_4X8, aom_masked_sad4x8, aom_masked_sub_pixel_variance4x8)
-  MBFP(BLOCK_8X4, aom_masked_sad8x4, aom_masked_sub_pixel_variance8x4)
-  MBFP(BLOCK_4X4, aom_masked_sad4x4, aom_masked_sub_pixel_variance4x4)
-
-  MBFP(BLOCK_4X16, aom_masked_sad4x16, aom_masked_sub_pixel_variance4x16)
-
-  MBFP(BLOCK_16X4, aom_masked_sad16x4, aom_masked_sub_pixel_variance16x4)
-
-  MBFP(BLOCK_8X32, aom_masked_sad8x32, aom_masked_sub_pixel_variance8x32)
-
-  MBFP(BLOCK_32X8, aom_masked_sad32x8, aom_masked_sub_pixel_variance32x8)
-
-  MBFP(BLOCK_16X64, aom_masked_sad16x64, aom_masked_sub_pixel_variance16x64)
-
-  MBFP(BLOCK_64X16, aom_masked_sad64x16, aom_masked_sub_pixel_variance64x16)
-
-#define SDSFP(BT, SDSF, SDSX4DF) \
-  cpi->fn_ptr[BT].sdsf = SDSF;   \
-  cpi->fn_ptr[BT].sdsx4df = SDSX4DF;
-
-  SDSFP(BLOCK_128X128, aom_sad_skip_128x128, aom_sad_skip_128x128x4d);
-  SDSFP(BLOCK_128X64, aom_sad_skip_128x64, aom_sad_skip_128x64x4d);
-  SDSFP(BLOCK_64X128, aom_sad_skip_64x128, aom_sad_skip_64x128x4d);
-  SDSFP(BLOCK_64X64, aom_sad_skip_64x64, aom_sad_skip_64x64x4d);
-  SDSFP(BLOCK_64X32, aom_sad_skip_64x32, aom_sad_skip_64x32x4d);
-  SDSFP(BLOCK_64X16, aom_sad_skip_64x16, aom_sad_skip_64x16x4d);
-  SDSFP(BLOCK_32X64, aom_sad_skip_32x64, aom_sad_skip_32x64x4d);
-  SDSFP(BLOCK_32X32, aom_sad_skip_32x32, aom_sad_skip_32x32x4d);
-  SDSFP(BLOCK_32X16, aom_sad_skip_32x16, aom_sad_skip_32x16x4d);
-  SDSFP(BLOCK_32X8, aom_sad_skip_32x8, aom_sad_skip_32x8x4d);
-
-  SDSFP(BLOCK_16X64, aom_sad_skip_16x64, aom_sad_skip_16x64x4d);
-  SDSFP(BLOCK_16X32, aom_sad_skip_16x32, aom_sad_skip_16x32x4d);
-  SDSFP(BLOCK_16X16, aom_sad_skip_16x16, aom_sad_skip_16x16x4d);
-  SDSFP(BLOCK_16X8, aom_sad_skip_16x8, aom_sad_skip_16x8x4d);
-  SDSFP(BLOCK_8X16, aom_sad_skip_8x16, aom_sad_skip_8x16x4d);
-  SDSFP(BLOCK_8X8, aom_sad_skip_8x8, aom_sad_skip_8x8x4d);
-  SDSFP(BLOCK_4X16, aom_sad_skip_4x16, aom_sad_skip_4x16x4d);
-  SDSFP(BLOCK_4X8, aom_sad_skip_4x8, aom_sad_skip_4x8x4d);
-  SDSFP(BLOCK_8X32, aom_sad_skip_8x32, aom_sad_skip_8x32x4d);
-#undef SDSFP
-
   highbd_set_var_fns(cpi);
 
   /* av1_init_quantizer() is first called here. Add check in
@@ -1720,56 +1490,31 @@ void aom_write_one_yuv_frame(AV1_COMMON *cm, YV12_BUFFER_CONFIG *s) {
   uint8_t *src = s->y_buffer;
   int h = cm->height;
   if (yuv_rec_file == NULL) return;
-  if (s->flags & YV12_FLAG_HIGHBITDEPTH) {
-    uint16_t *src16 = CONVERT_TO_SHORTPTR(s->y_buffer);
-
-    do {
-      fwrite(src16, s->y_width, 2, yuv_rec_file);
-      src16 += s->y_stride;
-    } while (--h);
-
-    src16 = CONVERT_TO_SHORTPTR(s->u_buffer);
-    h = s->uv_height;
-
-    do {
-      fwrite(src16, s->uv_width, 2, yuv_rec_file);
-      src16 += s->uv_stride;
-    } while (--h);
-
-    src16 = CONVERT_TO_SHORTPTR(s->v_buffer);
-    h = s->uv_height;
-
-    do {
-      fwrite(src16, s->uv_width, 2, yuv_rec_file);
-      src16 += s->uv_stride;
-    } while (--h);
-
-    fflush(yuv_rec_file);
-    return;
-  }
+  uint16_t *src16 = CONVERT_TO_SHORTPTR(s->y_buffer);
 
   do {
-    fwrite(src, s->y_width, 1, yuv_rec_file);
-    src += s->y_stride;
+    fwrite(src16, s->y_width, 2, yuv_rec_file);
+    src16 += s->y_stride;
   } while (--h);
 
-  src = s->u_buffer;
+  src16 = CONVERT_TO_SHORTPTR(s->u_buffer);
   h = s->uv_height;
 
   do {
-    fwrite(src, s->uv_width, 1, yuv_rec_file);
-    src += s->uv_stride;
+    fwrite(src16, s->uv_width, 2, yuv_rec_file);
+    src16 += s->uv_stride;
   } while (--h);
 
-  src = s->v_buffer;
+  src16 = CONVERT_TO_SHORTPTR(s->v_buffer);
   h = s->uv_height;
 
   do {
-    fwrite(src, s->uv_width, 1, yuv_rec_file);
-    src += s->uv_stride;
+    fwrite(src16, s->uv_width, 2, yuv_rec_file);
+    src16 += s->uv_stride;
   } while (--h);
 
   fflush(yuv_rec_file);
+  return;
 }
 #endif  // OUTPUT_YUV_REC
 
@@ -1854,7 +1599,6 @@ void av1_set_screen_content_options(const AV1_COMP *cpi,
   // blocks that have few luma colors.
   const uint8_t *src = cpi->unfiltered_source->y_buffer;
   assert(src != NULL);
-  const int use_hbd = cpi->unfiltered_source->flags & YV12_FLAG_HIGHBITDEPTH;
   const int stride = cpi->unfiltered_source->y_stride;
   const int width = cpi->unfiltered_source->y_width;
   const int height = cpi->unfiltered_source->y_height;
@@ -1875,20 +1619,15 @@ void av1_set_screen_content_options(const AV1_COMP *cpi,
       int count_buf[1 << 8];  // Maximum (1 << 8) bins for hbd path.
       const uint8_t *const this_src = src + r * stride + c;
       int n_colors;
-      if (use_hbd)
-        av1_count_colors_highbd(this_src, stride, blk_w, blk_h, bd, NULL,
-                                count_buf, &n_colors, NULL);
-      else
-        av1_count_colors(this_src, stride, blk_w, blk_h, count_buf, &n_colors);
+      av1_count_colors_highbd(this_src, stride, blk_w, blk_h, bd, NULL,
+                              count_buf, &n_colors, NULL);
       if (n_colors > 1 && n_colors <= color_thresh) {
         ++counts_1;
         struct buf_2d buf;
         buf.stride = stride;
         buf.buf = (uint8_t *)this_src;
         const unsigned int var =
-            use_hbd
-                ? av1_high_get_sby_perpixel_variance(cpi, &buf, BLOCK_16X16, bd)
-                : av1_get_sby_perpixel_variance(cpi, &buf, BLOCK_16X16);
+            av1_high_get_sby_perpixel_variance(cpi, &buf, BLOCK_16X16, bd);
         if (var > var_thresh) ++counts_2;
       }
     }
@@ -2010,19 +1749,17 @@ static void init_ref_frame_bufs(AV1_COMP *cpi) {
   }
 }
 
-void av1_check_initial_width(AV1_COMP *cpi, int use_highbitdepth,
-                             int subsampling_x, int subsampling_y) {
+void av1_check_initial_width(AV1_COMP *cpi, int subsampling_x,
+                             int subsampling_y) {
   AV1_COMMON *const cm = &cpi->common;
   SequenceHeader *const seq_params = &cm->seq_params;
   InitialDimensions *const initial_dimensions = &cpi->initial_dimensions;
 
   if (!initial_dimensions->width ||
-      seq_params->use_highbitdepth != use_highbitdepth ||
       seq_params->subsampling_x != subsampling_x ||
       seq_params->subsampling_y != subsampling_y) {
     seq_params->subsampling_x = subsampling_x;
     seq_params->subsampling_y = subsampling_y;
-    seq_params->use_highbitdepth = use_highbitdepth;
 
     av1_set_speed_features_framesize_independent(cpi, cpi->oxcf.speed);
     av1_set_speed_features_framesize_dependent(cpi, cpi->oxcf.speed);
@@ -2045,8 +1782,7 @@ void av1_check_initial_width(AV1_COMP *cpi, int use_highbitdepth,
 int av1_set_size_literal(AV1_COMP *cpi, int width, int height) {
   AV1_COMMON *cm = &cpi->common;
   InitialDimensions *const initial_dimensions = &cpi->initial_dimensions;
-  av1_check_initial_width(cpi, cm->seq_params.use_highbitdepth,
-                          cm->seq_params.subsampling_x,
+  av1_check_initial_width(cpi, cm->seq_params.subsampling_x,
                           cm->seq_params.subsampling_y);
 
   if (width <= 0 || height <= 0) return 1;
@@ -2111,9 +1847,8 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   // Reset the frame pointers to the current frame size.
   if (aom_realloc_frame_buffer(
           &cm->cur_frame->buf, cm->width, cm->height, seq_params->subsampling_x,
-          seq_params->subsampling_y, seq_params->use_highbitdepth,
-          cpi->oxcf.border_in_pixels, cm->features.byte_alignment, NULL, NULL,
-          NULL))
+          seq_params->subsampling_y, cpi->oxcf.border_in_pixels,
+          cm->features.byte_alignment, NULL, NULL, NULL))
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate frame buffer");
 
@@ -2203,18 +1938,10 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
       const int dst_stride = xd->plane[pli].dst.stride;
       for (int r = 0; r < pic_height; ++r) {
         for (int c = 0; c < pic_width; ++c) {
-          if (cm->seq_params.use_highbitdepth) {
-            if (pli == 0)
-              ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
-                        CCSO_PADDING_SIZE] =
-                  CONVERT_TO_SHORTPTR(
-                      xd->plane[pli].dst.buf)[r * dst_stride + c];
-          } else {
-            if (pli == 0)
-              ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
-                        CCSO_PADDING_SIZE] =
-                  xd->plane[pli].dst.buf[r * dst_stride + c];
-          }
+          if (pli == 0)
+            ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
+                      CCSO_PADDING_SIZE] =
+                CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[r * dst_stride + c];
         }
       }
     }
@@ -2277,16 +2004,10 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
       }
       for (int r = 0; r < pic_height; ++r) {
         for (int c = 0; c < pic_width; ++c) {
-          if (cm->seq_params.use_highbitdepth) {
-            rec_uv[pli][r * ccso_stride + c] =
-                CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[r * dst_stride + c];
-            org_uv[pli][r * ccso_stride + c] =
-                CONVERT_TO_SHORTPTR(ref_buffer)[r * ref_stride + c];
-          } else {
-            rec_uv[pli][r * ccso_stride + c] =
-                xd->plane[pli].dst.buf[r * dst_stride + c];
-            org_uv[pli][r * ccso_stride + c] = ref_buffer[r * ref_stride + c];
-          }
+          rec_uv[pli][r * ccso_stride + c] =
+              CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[r * dst_stride + c];
+          org_uv[pli][r * ccso_stride + c] =
+              CONVERT_TO_SHORTPTR(ref_buffer)[r * ref_stride + c];
         }
       }
     }
@@ -2829,9 +2550,7 @@ static INLINE int compute_tip_direct_output_mode_RD(AV1_COMP *cpi,
 
     // Compute sse and rate.
     YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
-    *sse = (cm->seq_params.use_highbitdepth)
-               ? aom_highbd_get_y_sse(cpi->source, tip_frame_buf)
-               : aom_get_y_sse(cpi->source, tip_frame_buf);
+    *sse = aom_highbd_get_y_sse(cpi->source, tip_frame_buf);
 
     const int64_t bits = (*size << 3);
     *rate = (bits << 5);  // To match scale.
@@ -2854,10 +2573,7 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
     tip_as_ref_sse = *sse;
     tip_as_ref_rate = *rate;
   } else {
-    tip_as_ref_sse =
-        (cm->seq_params.use_highbitdepth)
-            ? aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf)
-            : aom_get_y_sse(cpi->source, &cm->cur_frame->buf);
+    tip_as_ref_sse = aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf);
 
     const int64_t bits = (*size << 3);
     tip_as_ref_rate = (bits << 5);  // To match scale.
@@ -2970,11 +2686,7 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
   // fixed interval. Note the reconstruction error if it is the frame before
   // the force key frame
   if (cpi->rc.next_key_frame_forced && cpi->rc.frames_to_key == 1) {
-    if (seq_params->use_highbitdepth) {
-      cpi->ambient_err = aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf);
-    } else {
-      cpi->ambient_err = aom_get_y_sse(cpi->source, &cm->cur_frame->buf);
-    }
+    cpi->ambient_err = aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf);
   }
 
   cm->cur_frame->buf.color_primaries = seq_params->color_primaries;
@@ -3032,9 +2744,7 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
 
   // Compute sse and rate.
   if (sse != NULL) {
-    *sse = (seq_params->use_highbitdepth)
-               ? aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf)
-               : aom_get_y_sse(cpi->source, &cm->cur_frame->buf);
+    *sse = aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf);
   }
   if (rate != NULL) {
     const int64_t bits = (*size << 3);
@@ -3403,13 +3113,8 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     if (cm->current_frame_id == -1) {
       int lsb, msb;
       /* quasi-random initialization of current_frame_id for a key frame */
-      if (cpi->source->flags & YV12_FLAG_HIGHBITDEPTH) {
-        lsb = CONVERT_TO_SHORTPTR(cpi->source->y_buffer)[0] & 0xff;
-        msb = CONVERT_TO_SHORTPTR(cpi->source->y_buffer)[1] & 0xff;
-      } else {
-        lsb = cpi->source->y_buffer[0] & 0xff;
-        msb = cpi->source->y_buffer[1] & 0xff;
-      }
+      lsb = CONVERT_TO_SHORTPTR(cpi->source->y_buffer)[0] & 0xff;
+      msb = CONVERT_TO_SHORTPTR(cpi->source->y_buffer)[1] & 0xff;
       cm->current_frame_id =
           ((msb << 8) + lsb) % (1 << seq_params->frame_id_length);
 
@@ -3660,7 +3365,6 @@ int av1_receive_raw_frame(AV1_COMP *cpi, aom_enc_frame_flags_t frame_flags,
   int res = 0;
   const int subsampling_x = sd->subsampling_x;
   const int subsampling_y = sd->subsampling_y;
-  const int use_highbitdepth = (sd->flags & YV12_FLAG_HIGHBITDEPTH) != 0;
 
 #if CONFIG_TUNE_VMAF
   if (!is_stat_generation_stage(cpi) &&
@@ -3684,8 +3388,7 @@ int av1_receive_raw_frame(AV1_COMP *cpi, aom_enc_frame_flags_t frame_flags,
       res = -1;
 #endif  //  CONFIG_DENOISE
 
-  if (av1_lookahead_push(cpi->lookahead, sd, time_stamp, end_time,
-                         use_highbitdepth, frame_flags))
+  if (av1_lookahead_push(cpi->lookahead, sd, time_stamp, end_time, frame_flags))
     res = -1;
 #if CONFIG_INTERNAL_STATS
   aom_usec_timer_mark(&timer);
@@ -3738,7 +3441,6 @@ static void adjust_image_stat(double y, double u, double v, double all,
 
 static void compute_internal_stats(AV1_COMP *cpi, int frame_bytes) {
   AV1_COMMON *const cm = &cpi->common;
-  double samples = 0.0;
   const uint32_t in_bit_depth = cpi->oxcf.input_cfg.input_bit_depth;
   const uint32_t bit_depth = cpi->td.mb.e_mbd.bd;
 
@@ -3761,13 +3463,8 @@ static void compute_internal_stats(AV1_COMP *cpi, int frame_bytes) {
                         &cpi->psnr);
       cpi->total_sq_error += psnr.sse[0];
       cpi->total_samples += psnr.samples[0];
-      samples = psnr.samples[0];
-      // TODO(yaowu): unify these two versions into one.
-      if (cm->seq_params.use_highbitdepth)
-        frame_ssim2 =
-            aom_highbd_calc_ssim(orig, recon, &weight, bit_depth, in_bit_depth);
-      else
-        frame_ssim2 = aom_calc_ssim(orig, recon, &weight);
+      frame_ssim2 =
+          aom_highbd_calc_ssim(orig, recon, &weight, bit_depth, in_bit_depth);
 
       cpi->worst_ssim = AOMMIN(cpi->worst_ssim, frame_ssim2);
       cpi->summed_quality += frame_ssim2 * weight;
@@ -3786,31 +3483,6 @@ static void compute_internal_stats(AV1_COMP *cpi, int frame_bytes) {
         fclose(f);
       }
 #endif
-    }
-    if (cpi->b_calculate_blockiness) {
-      if (!cm->seq_params.use_highbitdepth) {
-        const double frame_blockiness =
-            av1_get_blockiness(orig->y_buffer, orig->y_stride, recon->y_buffer,
-                               recon->y_stride, orig->y_width, orig->y_height);
-        cpi->worst_blockiness = AOMMAX(cpi->worst_blockiness, frame_blockiness);
-        cpi->total_blockiness += frame_blockiness;
-      }
-
-      if (cpi->b_calculate_consistency) {
-        if (!cm->seq_params.use_highbitdepth) {
-          const double this_inconsistency = aom_get_ssim_metrics(
-              orig->y_buffer, orig->y_stride, recon->y_buffer, recon->y_stride,
-              orig->y_width, orig->y_height, cpi->ssim_vars, &cpi->metrics, 1);
-
-          const double peak = (double)((1 << in_bit_depth) - 1);
-          const double consistency =
-              aom_sse_to_psnr(samples, peak, cpi->total_inconsistency);
-          if (consistency > 0.0)
-            cpi->worst_consistency =
-                AOMMIN(cpi->worst_consistency, consistency);
-          cpi->total_inconsistency += this_inconsistency;
-        }
-      }
     }
 
     frame_all =

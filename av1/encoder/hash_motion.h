@@ -92,8 +92,7 @@ int av1_hash_is_vertical_perfect(const YV12_BUFFER_CONFIG *picture,
 
 void av1_get_block_hash_value(IntraBCHashInfo *intrabc_hash_info,
                               const uint8_t *y_src, int stride, int block_size,
-                              uint32_t *hash_value1, uint32_t *hash_value2,
-                              int use_highbitdepth);
+                              uint32_t *hash_value1, uint32_t *hash_value2);
 
 #ifdef __cplusplus
 }  // extern "C"

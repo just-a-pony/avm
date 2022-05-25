@@ -121,40 +121,6 @@ static AOM_INLINE int get_hist_bin_idx(int dx, int dy) {
 }
 #undef FIX_PREC_BITS
 
-static AOM_INLINE void generate_hog(const uint8_t *src, int stride, int rows,
-                                    int cols, float *hist) {
-  float total = 0.1f;
-  src += stride;
-  for (int r = 1; r < rows - 1; ++r) {
-    for (int c = 1; c < cols - 1; ++c) {
-      const uint8_t *above = &src[c - stride];
-      const uint8_t *below = &src[c + stride];
-      const uint8_t *left = &src[c - 1];
-      const uint8_t *right = &src[c + 1];
-      // Calculate gradient using Sobel fitlers.
-      const int dx = (right[-stride] + 2 * right[0] + right[stride]) -
-                     (left[-stride] + 2 * left[0] + left[stride]);
-      const int dy = (below[-1] + 2 * below[0] + below[1]) -
-                     (above[-1] + 2 * above[0] + above[1]);
-      if (dx == 0 && dy == 0) continue;
-      const int temp = abs(dx) + abs(dy);
-      if (!temp) continue;
-      total += temp;
-      if (dx == 0) {
-        hist[0] += temp / 2;
-        hist[BINS - 1] += temp / 2;
-      } else {
-        const int idx = get_hist_bin_idx(dx, dy);
-        assert(idx >= 0 && idx < BINS);
-        hist[idx] += temp;
-      }
-    }
-    src += stride;
-  }
-
-  for (int i = 0; i < BINS; ++i) hist[i] /= total;
-}
-
 static AOM_INLINE void generate_hog_hbd(const uint8_t *src8, int stride,
                                         int rows, int cols, float *hist) {
   float total = 0.1f;
@@ -205,11 +171,7 @@ static AOM_INLINE void prune_intra_mode_with_hog(
   const int src_stride = x->plane[0].src.stride;
   const uint8_t *src = x->plane[0].src.buf;
   float hist[BINS] = { 0.0f };
-  if (is_cur_buf_hbd(xd)) {
-    generate_hog_hbd(src, src_stride, rows, cols, hist);
-  } else {
-    generate_hog(src, src_stride, rows, cols, hist);
-  }
+  generate_hog_hbd(src, src_stride, rows, cols, hist);
 
   for (int i = 0; i < DIRECTIONAL_MODES; ++i) {
     float this_score = intra_hog_model_bias[i];

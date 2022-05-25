@@ -246,7 +246,6 @@ static void init_txfm_param(const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
 #endif  // CONFIG_IST_FIX_B098
   txfm_param->lossless = xd->lossless[xd->mi[0]->segment_id];
   txfm_param->bd = xd->bd;
-  txfm_param->is_hbd = is_cur_buf_hbd(xd);
   txfm_param->tx_set_type = av1_get_ext_tx_set_type(
       txfm_param->tx_size, is_inter_block(xd->mi[0], xd->tree_type),
       reduced_tx_set);
@@ -321,29 +320,6 @@ void av1_highbd_inv_txfm_add_c(const tran_low_t *input, uint8_t *dest,
   }
 }
 
-void av1_inv_txfm_add_c(const tran_low_t *dqcoeff, uint8_t *dst, int stride,
-                        const TxfmParam *txfm_param) {
-  const TX_SIZE tx_size = txfm_param->tx_size;
-  DECLARE_ALIGNED(32, uint16_t, tmp[MAX_TX_SQUARE]);
-  int tmp_stride = MAX_TX_SIZE;
-  int w = tx_size_wide[tx_size];
-  int h = tx_size_high[tx_size];
-  for (int r = 0; r < h; ++r) {
-    for (int c = 0; c < w; ++c) {
-      tmp[r * tmp_stride + c] = dst[r * stride + c];
-    }
-  }
-
-  av1_highbd_inv_txfm_add(dqcoeff, CONVERT_TO_BYTEPTR(tmp), tmp_stride,
-                          txfm_param);
-
-  for (int r = 0; r < h; ++r) {
-    for (int c = 0; c < w; ++c) {
-      dst[r * stride + c] = (uint8_t)tmp[r * tmp_stride + c];
-    }
-  }
-}
-
 void av1_inverse_transform_block(const MACROBLOCKD *xd,
 #if CONFIG_IST
                                  tran_low_t *dqcoeff,
@@ -373,11 +349,7 @@ void av1_inverse_transform_block(const MACROBLOCKD *xd,
   av1_inv_stxfm(dqcoeff, &txfm_param);
 #endif
 
-  if (txfm_param.is_hbd) {
-    av1_highbd_inv_txfm_add(dqcoeff, dst, stride, &txfm_param);
-  } else {
-    av1_inv_txfm_add(dqcoeff, dst, stride, &txfm_param);
-  }
+  av1_highbd_inv_txfm_add(dqcoeff, dst, stride, &txfm_param);
 }
 
 // Inverse secondary transform

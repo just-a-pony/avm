@@ -26,6 +26,9 @@ static void yuvconfig2image(aom_image_t *img, const YV12_BUFFER_CONFIG *yv12,
                             void *user_priv) AOM_UNUSED;
 static aom_codec_err_t image2yuvconfig(const aom_image_t *img,
                                        YV12_BUFFER_CONFIG *yv12) AOM_UNUSED;
+static void image2yuvconfig_upshift(aom_image_t *hbd_img,
+                                    const aom_image_t *img,
+                                    YV12_BUFFER_CONFIG *yv12) AOM_UNUSED;
 #include "av1/av1_iface_common.h"
 
 #define MAX_SUBGOP_CODES 3

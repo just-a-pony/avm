@@ -12,6 +12,7 @@
 #ifndef AOM_AV1_ENCODER_PICKCDEF_H_
 #define AOM_AV1_ENCODER_PICKCDEF_H_
 
+#include "av1/common/av1_common_int.h"
 #include "av1/common/cdef.h"
 #include "av1/encoder/speed_features.h"
 

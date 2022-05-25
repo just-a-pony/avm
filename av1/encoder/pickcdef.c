@@ -237,17 +237,6 @@ static void copy_sb16_16_highbd(uint16_t *dst, int dstride, const void *src,
     memcpy(dst + r * dstride, base + r * sstride, hsize * sizeof(*base));
 }
 
-static void copy_sb16_16(uint16_t *dst, int dstride, const void *src,
-                         int src_voffset, int src_hoffset, int sstride,
-                         int vsize, int hsize) {
-  int r, c;
-  const uint8_t *src8 = (uint8_t *)src;
-  const uint8_t *base = &src8[src_voffset * sstride + src_hoffset];
-  for (r = 0; r < vsize; r++)
-    for (c = 0; c < hsize; c++)
-      dst[r * dstride + c] = (uint16_t)base[r * sstride + c];
-}
-
 static INLINE void init_src_params(int *src_stride, int *width, int *height,
                                    int *width_log2, int *height_log2,
                                    BLOCK_SIZE bsize) {
@@ -276,29 +265,6 @@ static uint64_t compute_cdef_dist_highbd(void *dst, int dstride, uint16_t *src,
     by = dlist[bi].by;
     bx = dlist[bi].bx;
     sum += aom_mse_wxh_16bit_highbd(
-        &dst_buff[(by << height_log2) * dstride + (bx << width_log2)], dstride,
-        &src[bi << (height_log2 + width_log2)], src_stride, width, height);
-  }
-  return sum >> 2 * coeff_shift;
-}
-
-static uint64_t compute_cdef_dist(void *dst, int dstride, uint16_t *src,
-                                  cdef_list *dlist, int cdef_count,
-                                  BLOCK_SIZE bsize, int coeff_shift, int row,
-                                  int col) {
-  assert(bsize == BLOCK_4X4 || bsize == BLOCK_4X8 || bsize == BLOCK_8X4 ||
-         bsize == BLOCK_8X8);
-  uint64_t sum = 0;
-  int bi, bx, by;
-  uint8_t *dst8 = (uint8_t *)dst;
-  uint8_t *dst_buff = &dst8[row * dstride + col];
-  int src_stride, width, height, width_log2, height_log2;
-  init_src_params(&src_stride, &width, &height, &width_log2, &height_log2,
-                  bsize);
-  for (bi = 0; bi < cdef_count; bi++) {
-    by = dlist[bi].by;
-    bx = dlist[bi].bx;
-    sum += aom_mse_wxh_16bit(
         &dst_buff[(by << height_log2) * dstride + (bx << width_log2)], dstride,
         &src[bi << (height_log2 + width_log2)], src_stride, width, height);
   }
@@ -441,13 +407,8 @@ void av1_cdef_search(const YV12_BUFFER_CONFIG *frame,
   copy_fn_t copy_fn;
   compute_cdef_dist_t compute_cdef_dist_fn;
 
-  if (cm->seq_params.use_highbitdepth) {
-    copy_fn = copy_sb16_16_highbd;
-    compute_cdef_dist_fn = compute_cdef_dist_highbd;
-  } else {
-    copy_fn = copy_sb16_16;
-    compute_cdef_dist_fn = compute_cdef_dist;
-  }
+  copy_fn = copy_sb16_16_highbd;
+  compute_cdef_dist_fn = compute_cdef_dist_highbd;
 
   DECLARE_ALIGNED(32, uint16_t, inbuf[CDEF_INBUF_SIZE]);
   uint16_t *const in = inbuf + CDEF_VBORDER * CDEF_BSTRIDE + CDEF_HBORDER;

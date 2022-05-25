@@ -1386,7 +1386,7 @@ static INLINE void src_convert_hbd_copy(const uint16_t *src, int src_stride,
 int av1_selfguided_restoration_neon(const uint8_t *dat8, int width, int height,
                                     int stride, int32_t *flt0, int32_t *flt1,
                                     int flt_stride, int sgr_params_idx,
-                                    int bit_depth, int highbd) {
+                                    int bit_depth) {
   const sgr_params_type *const params = &av1_sgr_params[sgr_params_idx];
   assert(!(params->r[0] == 0 && params->r[1] == 0));
 
@@ -1398,20 +1398,12 @@ int av1_selfguided_restoration_neon(const uint8_t *dat8, int width, int height,
   const int height_ext = height + 2 * SGRPROJ_BORDER_VERT;
   const int dgd_stride = stride;
 
-  if (highbd) {
-    const uint16_t *dgd16_tmp = CONVERT_TO_SHORTPTR(dat8);
-    src_convert_hbd_copy(
-        dgd16_tmp - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
-        dgd_stride,
-        dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
-        dgd16_stride, width_ext, height_ext);
-  } else {
-    src_convert_u8_to_u16(
-        dat8 - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
-        dgd_stride,
-        dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
-        dgd16_stride, width_ext, height_ext);
-  }
+  const uint16_t *dgd16_tmp = CONVERT_TO_SHORTPTR(dat8);
+  src_convert_hbd_copy(
+      dgd16_tmp - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
+      dgd_stride,
+      dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
+      dgd16_stride, width_ext, height_ext);
 
   if (params->r[0] > 0)
     restoration_fast_internal(dgd16, width, height, dgd16_stride, flt0,
@@ -1426,7 +1418,7 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
                                            int height, int stride, int eps,
                                            const int *xqd, uint8_t *dst8,
                                            int dst_stride, int32_t *tmpbuf,
-                                           int bit_depth, int highbd) {
+                                           int bit_depth) {
   int32_t *flt0 = tmpbuf;
   int32_t *flt1 = flt0 + RESTORATION_UNITPELS_MAX;
   assert(width * height <= RESTORATION_UNITPELS_MAX);
@@ -1442,20 +1434,12 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
 
   assert(!(params->r[0] == 0 && params->r[1] == 0));
 
-  if (highbd) {
-    const uint16_t *dgd16_tmp = CONVERT_TO_SHORTPTR(dat8);
-    src_convert_hbd_copy(
-        dgd16_tmp - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
-        dgd_stride,
-        dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
-        dgd16_stride, width_ext, height_ext);
-  } else {
-    src_convert_u8_to_u16(
-        dat8 - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
-        dgd_stride,
-        dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
-        dgd16_stride, width_ext, height_ext);
-  }
+  const uint16_t *dgd16_tmp = CONVERT_TO_SHORTPTR(dat8);
+  src_convert_hbd_copy(
+      dgd16_tmp - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
+      dgd_stride,
+      dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
+      dgd16_stride, width_ext, height_ext);
 
   if (params->r[0] > 0)
     restoration_fast_internal(dgd16, width, height, dgd16_stride, flt0, width,
@@ -1474,7 +1458,6 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
     int16x8_t r0, s0;
     uint16x8_t r4;
     int32x4_t u0, u4, v0, v4, f00, f10;
-    uint8x8_t t0;
     int count = 0, w = width, h = height, rc = 0;
 
     const int32x4_t xq0_vec = vdupq_n_s32(xq[0]);
@@ -1527,13 +1510,8 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
 
         r4 = vreinterpretq_u16_s16(vmaxq_s16(r0, zero));
 
-        if (highbd) {
-          r4 = vminq_u16(r4, max);
-          vst1q_u16(dst16_ptr, r4);
-        } else {
-          t0 = vqmovn_u16(r4);
-          vst1_u8(dst_ptr, t0);
-        }
+        r4 = vminq_u16(r4, max);
+        vst1q_u16(dst16_ptr, r4);
 
         w -= 8;
         count += 8;

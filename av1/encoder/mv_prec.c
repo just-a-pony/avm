@@ -307,35 +307,19 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
   const int num_cols = block_size_wide[bsize];
   const int y_stride = cpi->source->y_stride;
   const int px_row = 4 * mi_row, px_col = 4 * mi_col;
-  const int buf_is_hbd = cpi->source->flags & YV12_FLAG_HIGHBITDEPTH;
   const int bd = cm->seq_params.bit_depth;
-  if (buf_is_hbd) {
-    uint16_t *source_buf =
-        CONVERT_TO_SHORTPTR(cpi->source->y_buffer) + px_row * y_stride + px_col;
-    for (int row = 0; row < num_rows - 1; row++) {
-      for (int col = 0; col < num_cols - 1; col++) {
-        const int offset = row * y_stride + col;
-        const int horz_diff =
-            abs(source_buf[offset + 1] - source_buf[offset]) >> (bd - 8);
-        const int vert_diff =
-            abs(source_buf[offset + y_stride] - source_buf[offset]) >> (bd - 8);
-        mv_stats->horz_text += horz_diff;
-        mv_stats->vert_text += vert_diff;
-        mv_stats->diag_text += horz_diff * vert_diff;
-      }
-    }
-  } else {
-    uint8_t *source_buf = cpi->source->y_buffer + px_row * y_stride + px_col;
-    for (int row = 0; row < num_rows - 1; row++) {
-      for (int col = 0; col < num_cols - 1; col++) {
-        const int offset = row * y_stride + col;
-        const int horz_diff = abs(source_buf[offset + 1] - source_buf[offset]);
-        const int vert_diff =
-            abs(source_buf[offset + y_stride] - source_buf[offset]);
-        mv_stats->horz_text += horz_diff;
-        mv_stats->vert_text += vert_diff;
-        mv_stats->diag_text += horz_diff * vert_diff;
-      }
+  uint16_t *source_buf =
+      CONVERT_TO_SHORTPTR(cpi->source->y_buffer) + px_row * y_stride + px_col;
+  for (int row = 0; row < num_rows - 1; row++) {
+    for (int col = 0; col < num_cols - 1; col++) {
+      const int offset = row * y_stride + col;
+      const int horz_diff =
+          abs(source_buf[offset + 1] - source_buf[offset]) >> (bd - 8);
+      const int vert_diff =
+          abs(source_buf[offset + y_stride] - source_buf[offset]) >> (bd - 8);
+      mv_stats->horz_text += horz_diff;
+      mv_stats->vert_text += vert_diff;
+      mv_stats->diag_text += horz_diff * vert_diff;
     }
   }
 }

@@ -126,7 +126,6 @@ typedef struct InterPredParams {
   int subsampling_y;
   const struct scale_factors *scale_factors;
   int bit_depth;
-  int use_hbd_buf;
   INTERINTER_COMPOUND_DATA mask_comp;
   BLOCK_SIZE sb_type;
   int is_intrabc;
@@ -208,8 +207,7 @@ static const int32_t coeffs_bicubic[4][2][2] = {
 void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
                            int block_height, int pix_row, int pix_col,
                            int subsampling_x, int subsampling_y, int bit_depth,
-                           int use_hbd_buf, int is_intrabc,
-                           const struct scale_factors *sf,
+                           int is_intrabc, const struct scale_factors *sf,
                            const struct buf_2d *ref_buf,
                            InterpFilter interp_filter);
 
@@ -288,26 +286,6 @@ static INLINE void revert_scale_extra_bits(SubpelParams *sp) {
   assert(sp->subpel_y < SUBPEL_SHIFTS);
   assert(sp->xs <= SUBPEL_SHIFTS);
   assert(sp->ys <= SUBPEL_SHIFTS);
-}
-
-static INLINE void inter_predictor(
-    const uint8_t *src, int src_stride, uint8_t *dst, int dst_stride,
-    const SubpelParams *subpel_params, int w, int h,
-    ConvolveParams *conv_params, const InterpFilterParams *interp_filters[2]) {
-  assert(conv_params->do_average == 0 || conv_params->do_average == 1);
-  const int is_scaled = has_scale(subpel_params->xs, subpel_params->ys);
-  if (is_scaled) {
-    av1_convolve_2d_facade(src, src_stride, dst, dst_stride, w, h,
-                           interp_filters, subpel_params->subpel_x,
-                           subpel_params->xs, subpel_params->subpel_y,
-                           subpel_params->ys, 1, conv_params);
-  } else {
-    SubpelParams sp = *subpel_params;
-    revert_scale_extra_bits(&sp);
-    av1_convolve_2d_facade(src, src_stride, dst, dst_stride, w, h,
-                           interp_filters, sp.subpel_x, sp.xs, sp.subpel_y,
-                           sp.ys, 0, conv_params);
-  }
 }
 
 static INLINE void highbd_inter_predictor(

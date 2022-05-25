@@ -645,7 +645,7 @@ void aom_highbd_upsampled_pred_sse2(MACROBLOCKD *xd,
       av1_init_inter_params(
           &inter_pred_params, width, height, mi_y >> pd->subsampling_y,
           mi_x >> pd->subsampling_x, pd->subsampling_x, pd->subsampling_y,
-          xd->bd, is_cur_buf_hbd(xd), is_intrabc, sf, pre_buf, filters);
+          xd->bd, is_intrabc, sf, pre_buf, filters);
       av1_enc_build_one_inter_predictor(comp_pred8, width, mv,
                                         &inter_pred_params);
       return;

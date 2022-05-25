@@ -241,7 +241,7 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
 
   av1_read_sequence_header(cm, rb, seq_params);
 
-  av1_read_color_config(rb, pbi->allow_lowbitdepth, seq_params, &cm->error);
+  av1_read_color_config(rb, seq_params, &cm->error);
   if (!(seq_params->subsampling_x == 0 && seq_params->subsampling_y == 0) &&
       !(seq_params->subsampling_x == 1 && seq_params->subsampling_y == 1) &&
       !(seq_params->subsampling_x == 1 && seq_params->subsampling_y == 0)) {
@@ -385,40 +385,12 @@ static void alloc_tile_list_buffer(AV1Decoder *pbi) {
          (pbi->output_frame_width_in_tiles_minus_1 + 1) *
              (pbi->output_frame_height_in_tiles_minus_1 + 1));
 
-  // Allocate the tile list output buffer.
-  // Note: if cm->seq_params.use_highbitdepth is 1 and cm->seq_params.bit_depth
-  // is 8, we could allocate less memory, namely, 8 bits/pixel.
   if (aom_alloc_frame_buffer(&pbi->tile_list_outbuf, output_frame_width,
                              output_frame_height, cm->seq_params.subsampling_x,
-                             cm->seq_params.subsampling_y,
-                             (cm->seq_params.use_highbitdepth &&
-                              (cm->seq_params.bit_depth > AOM_BITS_8)),
-                             0, cm->features.byte_alignment))
+                             cm->seq_params.subsampling_y, 0,
+                             cm->features.byte_alignment))
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate the tile list output buffer");
-}
-
-static void yv12_tile_copy(const YV12_BUFFER_CONFIG *src, int hstart1,
-                           int hend1, int vstart1, int vend1,
-                           YV12_BUFFER_CONFIG *dst, int hstart2, int vstart2,
-                           int plane) {
-  const int src_stride = (plane > 0) ? src->strides[1] : src->strides[0];
-  const int dst_stride = (plane > 0) ? dst->strides[1] : dst->strides[0];
-  int row, col;
-
-  assert(src->flags & YV12_FLAG_HIGHBITDEPTH);
-  assert(!(dst->flags & YV12_FLAG_HIGHBITDEPTH));
-
-  const uint16_t *src16 =
-      CONVERT_TO_SHORTPTR(src->buffers[plane] + vstart1 * src_stride + hstart1);
-  uint8_t *dst8 = dst->buffers[plane] + vstart2 * dst_stride + hstart2;
-
-  for (row = vstart1; row < vend1; ++row) {
-    for (col = 0; col < (hend1 - hstart1); ++col) *dst8++ = (uint8_t)(*src16++);
-    src16 += src_stride - (hend1 - hstart1);
-    dst8 += dst_stride - (hend1 - hstart1);
-  }
-  return;
 }
 
 static void copy_decoded_tile_to_tile_list_buffer(AV1Decoder *pbi,
@@ -453,26 +425,20 @@ static void copy_decoded_tile_to_tile_list_buffer(AV1Decoder *pbi,
     int vstart2 = tr * h;
     int hstart2 = tc * w;
 
-    if (cm->seq_params.use_highbitdepth &&
-        cm->seq_params.bit_depth == AOM_BITS_8) {
-      yv12_tile_copy(cur_frame, hstart1, hend1, vstart1, vend1,
-                     &pbi->tile_list_outbuf, hstart2, vstart2, plane);
-    } else {
-      switch (plane) {
-        case 0:
-          aom_yv12_partial_copy_y(cur_frame, hstart1, hend1, vstart1, vend1,
-                                  &pbi->tile_list_outbuf, hstart2, vstart2);
-          break;
-        case 1:
-          aom_yv12_partial_copy_u(cur_frame, hstart1, hend1, vstart1, vend1,
-                                  &pbi->tile_list_outbuf, hstart2, vstart2);
-          break;
-        case 2:
-          aom_yv12_partial_copy_v(cur_frame, hstart1, hend1, vstart1, vend1,
-                                  &pbi->tile_list_outbuf, hstart2, vstart2);
-          break;
-        default: assert(0);
-      }
+    switch (plane) {
+      case 0:
+        aom_yv12_partial_copy_y(cur_frame, hstart1, hend1, vstart1, vend1,
+                                &pbi->tile_list_outbuf, hstart2, vstart2);
+        break;
+      case 1:
+        aom_yv12_partial_copy_u(cur_frame, hstart1, hend1, vstart1, vend1,
+                                &pbi->tile_list_outbuf, hstart2, vstart2);
+        break;
+      case 2:
+        aom_yv12_partial_copy_v(cur_frame, hstart1, hend1, vstart1, vend1,
+                                &pbi->tile_list_outbuf, hstart2, vstart2);
+        break;
+      default: assert(0);
     }
   }
 }

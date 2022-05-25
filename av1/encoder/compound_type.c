@@ -154,10 +154,8 @@ static int8_t estimate_wedge_sign(const AV1_COMP *cpi, const MACROBLOCK *x,
   const BLOCK_SIZE f_index = split_qtr[bsize];
   assert(f_index != BLOCK_INVALID);
 
-  if (is_cur_buf_hbd(&x->e_mbd)) {
-    pred0 = CONVERT_TO_BYTEPTR(pred0);
-    pred1 = CONVERT_TO_BYTEPTR(pred1);
-  }
+  pred0 = CONVERT_TO_BYTEPTR(pred0);
+  pred1 = CONVERT_TO_BYTEPTR(pred1);
 
   // Residual variance computation over relevant quandrants in order to
   // find TL + BR, TL = sum(1st,2nd,3rd) quadrants of (pred0 - pred1),
@@ -202,17 +200,12 @@ static int64_t pick_wedge(const AV1_COMP *const cpi, const MACROBLOCK *const x,
   const int8_t wedge_types = get_wedge_types_lookup(bsize);
   const uint8_t *mask;
   uint64_t sse;
-  const int hbd = is_cur_buf_hbd(xd);
-  const int bd_round = hbd ? (xd->bd - 8) * 2 : 0;
+  const int bd_round = (xd->bd - 8) * 2;
 
   DECLARE_ALIGNED(32, int16_t, residual0[MAX_SB_SQUARE]);  // src - pred0
 
-  if (hbd) {
-    aom_highbd_subtract_block(bh, bw, residual0, bw, src->buf, src->stride,
-                              CONVERT_TO_BYTEPTR(p0), bw, xd->bd);
-  } else {
-    aom_subtract_block(bh, bw, residual0, bw, src->buf, src->stride, p0, bw);
-  }
+  aom_highbd_subtract_block(bh, bw, residual0, bw, src->buf, src->stride,
+                            CONVERT_TO_BYTEPTR(p0), bw, xd->bd);
 
   int64_t sign_limit = ((int64_t)aom_sum_squares_i16(residual0, N) -
                         (int64_t)aom_sum_squares_i16(residual1, N)) *
@@ -274,8 +267,7 @@ static int64_t pick_wedge_fixed_sign(
   const int8_t wedge_types = get_wedge_types_lookup(bsize);
   const uint8_t *mask;
   uint64_t sse;
-  const int hbd = is_cur_buf_hbd(xd);
-  const int bd_round = hbd ? (xd->bd - 8) * 2 : 0;
+  const int bd_round = (xd->bd - 8) * 2;
   for (wedge_index = 0; wedge_index < wedge_types; ++wedge_index) {
     mask = av1_get_contiguous_soft_mask(wedge_index, wedge_sign, bsize);
     sse = av1_wedge_sse_from_residuals(residual1, diff10, mask, N);
@@ -344,20 +336,15 @@ static int64_t pick_interinter_seg(const AV1_COMP *const cpi,
   DIFFWTD_MASK_TYPE cur_mask_type;
   int64_t best_rd = INT64_MAX;
   DIFFWTD_MASK_TYPE best_mask_type = 0;
-  const int hbd = is_cur_buf_hbd(xd);
-  const int bd_round = hbd ? (xd->bd - 8) * 2 : 0;
+  const int bd_round = (xd->bd - 8) * 2;
   DECLARE_ALIGNED(16, uint8_t, seg_mask[2 * MAX_SB_SQUARE]);
   uint8_t *tmp_mask[2] = { xd->seg_mask, seg_mask };
   // try each mask type and its inverse
   for (cur_mask_type = 0; cur_mask_type < DIFFWTD_MASK_TYPES; cur_mask_type++) {
     // build mask and inverse
-    if (hbd)
-      av1_build_compound_diffwtd_mask_highbd(
-          tmp_mask[cur_mask_type], cur_mask_type, CONVERT_TO_BYTEPTR(p0), bw,
-          CONVERT_TO_BYTEPTR(p1), bw, bh, bw, xd->bd);
-    else
-      av1_build_compound_diffwtd_mask(tmp_mask[cur_mask_type], cur_mask_type,
-                                      p0, bw, p1, bw, bh, bw);
+    av1_build_compound_diffwtd_mask_highbd(
+        tmp_mask[cur_mask_type], cur_mask_type, CONVERT_TO_BYTEPTR(p0), bw,
+        CONVERT_TO_BYTEPTR(p1), bw, bh, bw, xd->bd);
 
     // compute rd for mask
     uint64_t sse = av1_wedge_sse_from_residuals(residual1, diff10,
@@ -397,15 +384,10 @@ static int64_t pick_interintra_wedge(const AV1_COMP *const cpi,
   DECLARE_ALIGNED(32, int16_t, residual1[MAX_SB_SQUARE]);  // src - pred1
   DECLARE_ALIGNED(32, int16_t, diff10[MAX_SB_SQUARE]);     // pred1 - pred0
 
-  if (is_cur_buf_hbd(xd)) {
-    aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride,
-                              CONVERT_TO_BYTEPTR(p1), bw, xd->bd);
-    aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(p1), bw,
-                              CONVERT_TO_BYTEPTR(p0), bw, xd->bd);
-  } else {
-    aom_subtract_block(bh, bw, residual1, bw, src->buf, src->stride, p1, bw);
-    aom_subtract_block(bh, bw, diff10, bw, p1, bw, p0, bw);
-  }
+  aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride,
+                            CONVERT_TO_BYTEPTR(p1), bw, xd->bd);
+  aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(p1), bw,
+                            CONVERT_TO_BYTEPTR(p0), bw, xd->bd);
 
   int8_t wedge_index = -1;
   uint64_t sse;
@@ -427,15 +409,10 @@ static AOM_INLINE void get_inter_predictor_masked_compound_y(
   av1_build_inter_predictor_single_buf_y(xd, bsize, 1, pred1, stride);
   const struct buf_2d *const src = &x->plane[0].src;
 
-  if (is_cur_buf_hbd(xd)) {
-    aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride,
-                              CONVERT_TO_BYTEPTR(pred1), bw, xd->bd);
-    aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(pred1), bw,
-                              CONVERT_TO_BYTEPTR(pred0), bw, xd->bd);
-  } else {
-    aom_subtract_block(bh, bw, residual1, bw, src->buf, src->stride, pred1, bw);
-    aom_subtract_block(bh, bw, diff10, bw, pred1, bw, pred0, bw);
-  }
+  aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride,
+                            CONVERT_TO_BYTEPTR(pred1), bw, xd->bd);
+  aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(pred1), bw,
+                            CONVERT_TO_BYTEPTR(pred0), bw, xd->bd);
 }
 
 // Computes the rd cost for the given interintra mode and updates the best
@@ -511,7 +488,7 @@ static AOM_INLINE int64_t compute_best_wedge_interintra(
   const int bw = block_size_wide[bsize];
   int64_t best_interintra_rd_wedge = INT64_MAX;
   int64_t best_total_rd = INT64_MAX;
-  uint8_t *intrapred = get_buf_by_bd(xd, intrapred_);
+  uint8_t *intrapred = CONVERT_TO_BYTEPTR(intrapred_);
   for (INTERINTRA_MODE mode = 0; mode < INTERINTRA_MODES; ++mode) {
     mbmi->interintra_mode = mode;
     av1_build_intra_predictors_for_interintra(cm, xd, bsize, 0, orig_dst,
@@ -743,8 +720,8 @@ int av1_handle_inter_intra_mode(const AV1_COMP *const cpi, MACROBLOCK *const x,
   const int bw = block_size_wide[bsize];
   DECLARE_ALIGNED(16, uint8_t, tmp_buf_[2 * MAX_INTERINTRA_SB_SQUARE]);
   DECLARE_ALIGNED(16, uint8_t, intrapred_[2 * MAX_INTERINTRA_SB_SQUARE]);
-  uint8_t *tmp_buf = get_buf_by_bd(xd, tmp_buf_);
-  uint8_t *intrapred = get_buf_by_bd(xd, intrapred_);
+  uint8_t *tmp_buf = CONVERT_TO_BYTEPTR(tmp_buf_);
+  uint8_t *intrapred = CONVERT_TO_BYTEPTR(intrapred_);
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
 
@@ -1058,11 +1035,8 @@ static int64_t masked_compound_type_rd(
   if (cpi->sf.inter_sf.prune_wedge_pred_diff_based &&
       compound_type == COMPOUND_WEDGE) {
     unsigned int sse;
-    if (is_cur_buf_hbd(xd))
-      (void)cpi->fn_ptr[bsize].vf(CONVERT_TO_BYTEPTR(pred0), stride,
-                                  CONVERT_TO_BYTEPTR(pred1), stride, &sse);
-    else
-      (void)cpi->fn_ptr[bsize].vf(pred0, stride, pred1, stride, &sse);
+    (void)cpi->fn_ptr[bsize].vf(CONVERT_TO_BYTEPTR(pred0), stride,
+                                CONVERT_TO_BYTEPTR(pred1), stride, &sse);
     const unsigned int mse =
         ROUND_POWER_OF_TWO(sse, num_pels_log2_lookup[bsize]);
     // If two predictors are very similar, skip wedge compound mode search

@@ -455,7 +455,6 @@ typedef struct SequenceHeader {
   // Color config.
   aom_bit_depth_t bit_depth;  // AOM_BITS_8 in profile 0 or 1,
                               // AOM_BITS_10 or AOM_BITS_12 in profile 2 or 3.
-  uint8_t use_highbitdepth;   // If true, we need to use 16bit frame buffers.
   uint8_t monochrome;         // Monochorme video
   aom_color_primaries_t color_primaries;
   aom_transfer_characteristics_t transfer_characteristics;

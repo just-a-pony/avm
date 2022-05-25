@@ -129,21 +129,6 @@ int av1_qindex_to_quantizer(int qindex, aom_bit_depth_t bit_depth);
 void av1_quantize_skip(intptr_t n_coeffs, tran_low_t *qcoeff_ptr,
                        tran_low_t *dqcoeff_ptr, uint16_t *eob_ptr);
 
-void av1_quantize_fp_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
-                            const MACROBLOCK_PLANE *p, tran_low_t *qcoeff_ptr,
-                            tran_low_t *dqcoeff_ptr, uint16_t *eob_ptr,
-                            const SCAN_ORDER *sc, const QUANT_PARAM *qparam);
-
-void av1_quantize_b_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
-                           const MACROBLOCK_PLANE *p, tran_low_t *qcoeff_ptr,
-                           tran_low_t *dqcoeff_ptr, uint16_t *eob_ptr,
-                           const SCAN_ORDER *sc, const QUANT_PARAM *qparam);
-
-void av1_quantize_dc_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
-                            const MACROBLOCK_PLANE *p, tran_low_t *qcoeff_ptr,
-                            tran_low_t *dqcoeff_ptr, uint16_t *eob_ptr,
-                            const SCAN_ORDER *sc, const QUANT_PARAM *qparam);
-
 void av1_highbd_quantize_fp_facade(const tran_low_t *coeff_ptr,
                                    intptr_t n_coeffs, const MACROBLOCK_PLANE *p,
                                    tran_low_t *qcoeff_ptr,

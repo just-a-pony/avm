@@ -415,8 +415,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
           continue;
         mismatch_record_block_pre(pd->dst.buf, pd->dst.stride,
                                   cm->current_frame.order_hint, plane, pixel_c,
-                                  pixel_r, pd->width, pd->height,
-                                  xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH);
+                                  pixel_r, pd->width, pd->height);
       }
     }
 #else
@@ -763,13 +762,8 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
   // Reset skip mode flag.
   mbmi->skip_mode = 0;
 
-  if (is_cur_buf_hbd(xd)) {
-    x->source_variance = av1_high_get_sby_perpixel_variance(
-        cpi, &x->plane[0].src, bsize, xd->bd);
-  } else {
-    x->source_variance =
-        av1_get_sby_perpixel_variance(cpi, &x->plane[0].src, bsize);
-  }
+  x->source_variance =
+      av1_high_get_sby_perpixel_variance(cpi, &x->plane[0].src, bsize, xd->bd);
 
   // Initialize default mode evaluation params
   set_mode_eval_params(cpi, x, DEFAULT_EVAL);
@@ -3366,13 +3360,8 @@ BEGIN_PARTITION_SEARCH:
 
   if (pb_source_variance == UINT_MAX) {
     av1_setup_src_planes(x, cpi->source, mi_row, mi_col, num_planes, bsize);
-    if (is_cur_buf_hbd(xd)) {
-      pb_source_variance = av1_high_get_sby_perpixel_variance(
-          cpi, &x->plane[0].src, bsize, xd->bd);
-    } else {
-      pb_source_variance =
-          av1_get_sby_perpixel_variance(cpi, &x->plane[0].src, bsize);
-    }
+    pb_source_variance = av1_high_get_sby_perpixel_variance(
+        cpi, &x->plane[0].src, bsize, xd->bd);
   }
 
   assert(IMPLIES(!cpi->oxcf.part_cfg.enable_rect_partitions,

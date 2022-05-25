@@ -392,14 +392,4 @@ INSTANTIATE_TEST_SUITE_P(SSE2, QuantizeTest,
                          ::testing::ValuesIn(kQParamArraySSE2));
 #endif  // HAVE_SSE2
 
-#if HAVE_NEON
-const QuantizeParam kQParamArrayNEON[] = {
-  make_tuple(&av1_quantize_fp_c, &av1_quantize_fp_c,
-             static_cast<TX_SIZE>(TX_16X16), TYPE_FP, AOM_BITS_8),
-};
-
-INSTANTIATE_TEST_SUITE_P(NEON, QuantizeTest,
-                         ::testing::ValuesIn(kQParamArrayNEON));
-#endif  // HAVE_NEON
-
 }  // namespace

@@ -156,24 +156,11 @@ void call_dualfilter(uint16_t *s, DUAL_LOOP_PARAM, int bd,
   op(s, p, blimit0, limit0, thresh0, blimit1, limit1, thresh1, bd);
 }
 
-void call_filter(uint8_t *s, LOOP_PARAM, int bd, loop_op_t op) {
-  (void)bd;
-  op(s, p, blimit, limit, thresh);
-}
-void call_dualfilter(uint8_t *s, DUAL_LOOP_PARAM, int bd, dual_loop_op_t op) {
-  (void)bd;
-  op(s, p, blimit0, limit0, thresh0, blimit1, limit1, thresh1);
-};
-
 typedef LoopTestParam<hbdloop_op_t, hbdloop_param_t> Loop8Test6Param_hbd;
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(Loop8Test6Param_hbd);
 typedef LoopTestParam<hbddual_loop_op_t, hbddual_loop_param_t>
     Loop8Test9Param_hbd;
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(Loop8Test9Param_hbd);
-typedef LoopTestParam<loop_op_t, loop_param_t> Loop8Test6Param_lbd;
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(Loop8Test6Param_lbd);
-typedef LoopTestParam<dual_loop_op_t, dual_loop_param_t> Loop8Test9Param_lbd;
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(Loop8Test9Param_lbd);
 
 #define OPCHECK(a, b)                                                          \
   ACMRandom rnd(ACMRandom::DeterministicSeed());                               \
@@ -216,7 +203,6 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(Loop8Test9Param_lbd);
       << "First failed at test case " << first_failure;
 
 TEST_P(Loop8Test6Param_hbd, OperationCheck) { OPCHECK(uint16_t, 16); }
-TEST_P(Loop8Test6Param_lbd, OperationCheck) { OPCHECK(uint8_t, 8); }
 
 #define VALCHECK(a, b)                                                         \
   ACMRandom rnd(ACMRandom::DeterministicSeed());                               \
@@ -262,7 +248,6 @@ TEST_P(Loop8Test6Param_lbd, OperationCheck) { OPCHECK(uint8_t, 8); }
       << "First failed at test case " << first_failure;
 
 TEST_P(Loop8Test6Param_hbd, ValueCheck) { VALCHECK(uint16_t, 16); }
-TEST_P(Loop8Test6Param_lbd, ValueCheck) { VALCHECK(uint8_t, 8); }
 
 #define SPEEDCHECK(a, b)                                                      \
   ACMRandom rnd(ACMRandom::DeterministicSeed());                              \
@@ -290,7 +275,6 @@ TEST_P(Loop8Test6Param_lbd, ValueCheck) { VALCHECK(uint8_t, 8); }
   }
 
 TEST_P(Loop8Test6Param_hbd, DISABLED_Speed) { SPEEDCHECK(uint16_t, 16); }
-TEST_P(Loop8Test6Param_lbd, DISABLED_Speed) { SPEEDCHECK(uint8_t, 8); }
 
 #define OPCHECKd(a, b)                                                         \
   ACMRandom rnd(ACMRandom::DeterministicSeed());                               \
@@ -347,7 +331,6 @@ TEST_P(Loop8Test6Param_lbd, DISABLED_Speed) { SPEEDCHECK(uint8_t, 8); }
       << "First failed at test case " << first_failure;
 
 TEST_P(Loop8Test9Param_hbd, OperationCheck) { OPCHECKd(uint16_t, 16); }
-TEST_P(Loop8Test9Param_lbd, OperationCheck) { OPCHECKd(uint8_t, 8); }
 
 #define VALCHECKd(a, b)                                                        \
   ACMRandom rnd(ACMRandom::DeterministicSeed());                               \
@@ -406,7 +389,6 @@ TEST_P(Loop8Test9Param_lbd, OperationCheck) { OPCHECKd(uint8_t, 8); }
       << "First failed at test case " << first_failure;
 
 TEST_P(Loop8Test9Param_hbd, ValueCheck) { VALCHECKd(uint16_t, 16); }
-TEST_P(Loop8Test9Param_lbd, ValueCheck) { VALCHECKd(uint8_t, 8); }
 
 #define SPEEDCHECKd(a, b)                                                    \
   ACMRandom rnd(ACMRandom::DeterministicSeed());                             \
@@ -446,7 +428,6 @@ TEST_P(Loop8Test9Param_lbd, ValueCheck) { VALCHECKd(uint8_t, 8); }
   }
 
 TEST_P(Loop8Test9Param_hbd, DISABLED_Speed) { SPEEDCHECKd(uint16_t, 16); }
-TEST_P(Loop8Test9Param_lbd, DISABLED_Speed) { SPEEDCHECKd(uint8_t, 8); }
 
 using std::make_tuple;
 
@@ -496,35 +477,6 @@ const hbdloop_param_t kHbdLoop8Test6[] = {
 
 INSTANTIATE_TEST_SUITE_P(SSE2, Loop8Test6Param_hbd,
                          ::testing::ValuesIn(kHbdLoop8Test6));
-
-const loop_param_t kLoop8Test6[] = {
-  make_tuple(&aom_lpf_horizontal_4_sse2, &aom_lpf_horizontal_4_c, 8),
-  make_tuple(&aom_lpf_horizontal_8_sse2, &aom_lpf_horizontal_8_c, 8),
-  make_tuple(&aom_lpf_horizontal_6_sse2, &aom_lpf_horizontal_6_c, 8),
-  make_tuple(&aom_lpf_vertical_6_sse2, &aom_lpf_vertical_6_c, 8),
-  make_tuple(&aom_lpf_horizontal_14_sse2, &aom_lpf_horizontal_14_c, 8),
-  make_tuple(&aom_lpf_vertical_4_sse2, &aom_lpf_vertical_4_c, 8),
-  make_tuple(&aom_lpf_vertical_8_sse2, &aom_lpf_vertical_8_c, 8),
-  make_tuple(&aom_lpf_vertical_14_sse2, &aom_lpf_vertical_14_c, 8),
-};
-
-INSTANTIATE_TEST_SUITE_P(SSE2, Loop8Test6Param_lbd,
-                         ::testing::ValuesIn(kLoop8Test6));
-
-const dual_loop_param_t kLoop8Test9[] = {
-  make_tuple(&aom_lpf_horizontal_4_dual_sse2, &aom_lpf_horizontal_4_dual_c, 8),
-  make_tuple(&aom_lpf_vertical_4_dual_sse2, &aom_lpf_vertical_4_dual_c, 8),
-  make_tuple(&aom_lpf_horizontal_6_dual_sse2, &aom_lpf_horizontal_6_dual_c, 8),
-  make_tuple(&aom_lpf_vertical_6_dual_sse2, &aom_lpf_vertical_6_dual_c, 8),
-  make_tuple(&aom_lpf_horizontal_8_dual_sse2, &aom_lpf_horizontal_8_dual_c, 8),
-  make_tuple(&aom_lpf_vertical_8_dual_sse2, &aom_lpf_vertical_8_dual_c, 8),
-  make_tuple(&aom_lpf_horizontal_14_dual_sse2, &aom_lpf_horizontal_14_dual_c,
-             8),
-  make_tuple(&aom_lpf_vertical_14_dual_sse2, &aom_lpf_vertical_14_dual_c, 8)
-};
-
-INSTANTIATE_TEST_SUITE_P(SSE2, Loop8Test9Param_lbd,
-                         ::testing::ValuesIn(kLoop8Test9));
 
 #endif  // HAVE_SSE2
 
@@ -584,22 +536,6 @@ INSTANTIATE_TEST_SUITE_P(SSE2, Loop8Test9Param_hbd,
                          ::testing::ValuesIn(kHbdLoop8Test9));
 
 #endif  // HAVE_SSE2
-
-#if HAVE_NEON
-const loop_param_t kLoop8Test6[] = {
-  make_tuple(&aom_lpf_vertical_14_neon, &aom_lpf_vertical_14_c, 8),
-  make_tuple(&aom_lpf_vertical_8_neon, &aom_lpf_vertical_8_c, 8),
-  make_tuple(&aom_lpf_vertical_6_neon, &aom_lpf_vertical_6_c, 8),
-  make_tuple(&aom_lpf_vertical_4_neon, &aom_lpf_vertical_4_c, 8),
-  make_tuple(&aom_lpf_horizontal_14_neon, &aom_lpf_horizontal_14_c, 8),
-  make_tuple(&aom_lpf_horizontal_8_neon, &aom_lpf_horizontal_8_c, 8),
-  make_tuple(&aom_lpf_horizontal_6_neon, &aom_lpf_horizontal_6_c, 8),
-  make_tuple(&aom_lpf_horizontal_4_neon, &aom_lpf_horizontal_4_c, 8)
-};
-
-INSTANTIATE_TEST_SUITE_P(NEON, Loop8Test6Param_lbd,
-                         ::testing::ValuesIn(kLoop8Test6));
-#endif  // HAVE_NEON
 
 #if HAVE_AVX2
 const hbddual_loop_param_t kHbdLoop8Test9Avx2[] = {

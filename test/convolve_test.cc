@@ -776,15 +776,6 @@ INSTANTIATE_TEST_SUITE_P(SSE2, ConvolveTest,
                          ::testing::ValuesIn(kArrayConvolve_sse2));
 #endif
 
-#if HAVE_SSSE3
-const ConvolveFunctions convolve8_ssse3(aom_convolve8_horiz_ssse3,
-                                        aom_convolve8_vert_ssse3, 0);
-
-const ConvolveParam kArrayConvolve8_ssse3[] = { ALL_SIZES(convolve8_ssse3) };
-INSTANTIATE_TEST_SUITE_P(SSSE3, ConvolveTest,
-                         ::testing::ValuesIn(kArrayConvolve8_ssse3));
-#endif
-
 #if HAVE_AVX2
 const ConvolveFunctions wrap_convolve8_avx2(wrap_convolve8_horiz_avx2_8,
                                             wrap_convolve8_vert_avx2_8, 8);

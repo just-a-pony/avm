@@ -56,10 +56,6 @@ extern "C" {
  */
 #define AOM_CODEC_CAP_PSNR 0x10000 /**< Can issue PSNR packets */
 
-/*! Can support input images at greater than 8 bitdepth.
- */
-#define AOM_CODEC_CAP_HIGHBITDEPTH 0x40000
-
 /*! \brief Initialization-time Feature Enabling
  *
  *  Certain codec features must be known at initialization time, to allow
@@ -68,8 +64,6 @@ extern "C" {
  *  The available flags are specified by AOM_CODEC_USE_* defines.
  */
 #define AOM_CODEC_USE_PSNR 0x10000 /**< Calculate PSNR on each frame */
-/*!\brief Make the encoder output one  partition at a time. */
-#define AOM_CODEC_USE_HIGHBITDEPTH 0x40000 /**< Use high bitdepth */
 /*!\brief Print per frame stats. */
 #define AOM_CODEC_USE_PER_FRAME_STATS 0x80000 /**< Enable printing of stats */
 

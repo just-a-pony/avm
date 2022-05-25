@@ -274,7 +274,6 @@ typedef struct AV1Decoder {
   // So we track whether this is the first frame or not.
   int decoding_first_frame;
 
-  int allow_lowbitdepth;
   int max_threads;
   int inv_tile_order;
   int need_resync;  // wait for key/intra-only frame.

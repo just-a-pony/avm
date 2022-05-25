@@ -49,25 +49,8 @@ static int enable_noise_estimation(AV1_COMP *const cpi) {
        (cpi->common.width != resize_pending_params->width ||
         cpi->common.height != resize_pending_params->height));
 
-  if (cpi->common.seq_params.use_highbitdepth) return 0;
-
-// Enable noise estimation if denoising is on.
-#if CONFIG_AV1_TEMPORAL_DENOISING
-  if (cpi->oxcf.noise_sensitivity > 0 && cpi->common.width >= 320 &&
-      cpi->common.height >= 180)
-    return 1;
-#endif
-  // Only allow noise estimate under certain encoding mode.
-  // Enabled for 1 pass CBR, speed >=5, and if resolution is same as original.
-  // Not enabled for SVC mode and screen_content_mode.
-  // Not enabled for low resolutions.
-  if (cpi->oxcf.pass == 0 && cpi->oxcf.rc_cfg.mode == AOM_CBR &&
-      cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ && cpi->oxcf.speed >= 5 &&
-      resize_pending == 0 && cpi->oxcf.tune_cfg.content != AOM_CONTENT_SCREEN &&
-      cpi->common.width * cpi->common.height >= 640 * 360)
-    return 1;
-  else
-    return 0;
+  (void)resize_pending;
+  /* if (cpi->common.seq_params.use_highbitdepth) */ return 0;
 }
 
 #if CONFIG_AV1_TEMPORAL_DENOISING

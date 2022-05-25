@@ -40,7 +40,6 @@ class AV1DecodeMultiThreadedTest
     cfg.w = 704;
     cfg.h = 576;
     cfg.threads = 1;
-    cfg.allow_lowbitdepth = 1;
     single_thread_dec_ = codec_->CreateDecoder(cfg, 0);
 
     // Test cfg.threads == powers of 2.

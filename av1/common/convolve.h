@@ -53,13 +53,6 @@ typedef void (*aom_highbd_convolve_fn_t)(
 struct AV1Common;
 struct scale_factors;
 
-void av1_convolve_2d_facade(const uint8_t *src, int src_stride, uint8_t *dst,
-                            int dst_stride, int w, int h,
-                            const InterpFilterParams *interp_filters[2],
-                            const int subpel_x_qn, int x_step_q4,
-                            const int subpel_y_qn, int y_step_q4, int scaled,
-                            ConvolveParams *conv_params);
-
 static INLINE int is_uneven_wtd_comp_avg(const ConvolveParams *params) {
   return params->do_average &&
          (params->fwd_offset != (1 << (DIST_PRECISION_BITS - 1)) ||

@@ -35,7 +35,6 @@ class TileIndependenceTest
     cfg.w = 704;
     cfg.h = 576;
     cfg.threads = 1;
-    cfg.allow_lowbitdepth = 1;
     fw_dec_ = codec_->CreateDecoder(cfg, 0);
     inv_dec_ = codec_->CreateDecoder(cfg, 0);
     inv_dec_->Control(AV1_INVERT_TILE_DECODE_ORDER, 1);

@@ -112,7 +112,6 @@ class HorzSuperresEndToEndTest
     cfg_.g_input_bit_depth = (unsigned int)test_video_param_.bit_depth;
     cfg_.g_bit_depth = test_video_param_.bit_depth;
     init_flags_ = AOM_CODEC_USE_PSNR;
-    if (cfg_.g_bit_depth > 8) init_flags_ |= AOM_CODEC_USE_HIGHBITDEPTH;
 
     // Set superres parameters
     cfg_.rc_superres_mode = superres_mode_;
@@ -216,7 +215,6 @@ class HorzSuperresFixedEndToEndTest
     cfg_.g_input_bit_depth = (unsigned int)test_video_param_.bit_depth;
     cfg_.g_bit_depth = test_video_param_.bit_depth;
     init_flags_ = AOM_CODEC_USE_PSNR;
-    if (cfg_.g_bit_depth > 8) init_flags_ |= AOM_CODEC_USE_HIGHBITDEPTH;
 
     // Set superres parameters
     cfg_.rc_superres_mode = superres_mode_;
@@ -327,7 +325,6 @@ class HorzSuperresQThreshEndToEndTest
     cfg_.g_input_bit_depth = (unsigned int)test_video_param_.bit_depth;
     cfg_.g_bit_depth = test_video_param_.bit_depth;
     init_flags_ = AOM_CODEC_USE_PSNR;
-    if (cfg_.g_bit_depth > 8) init_flags_ |= AOM_CODEC_USE_HIGHBITDEPTH;
 
     // Set superres parameters
     cfg_.rc_superres_mode = superres_mode_;

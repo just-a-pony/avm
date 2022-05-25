@@ -70,13 +70,6 @@ typedef unsigned int (*aom_masked_subpixvariance_fn_t)(
     const uint8_t *ref, int ref_stride, const uint8_t *second_pred,
     const uint8_t *msk, int msk_stride, int invert_mask, unsigned int *sse);
 
-void aom_highbd_comp_mask_upsampled_pred(
-    MACROBLOCKD *xd, const struct AV1Common *const cm, int mi_row, int mi_col,
-    const MV *const mv, uint8_t *comp_pred8, const uint8_t *pred8, int width,
-    int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref8,
-    int ref_stride, const uint8_t *mask, int mask_stride, int invert_mask,
-    int bd, int subpel_search);
-
 typedef unsigned int (*aom_obmc_sad_fn_t)(const uint8_t *pred, int pred_stride,
                                           const int32_t *wsrc,
                                           const int32_t *msk);
@@ -120,9 +113,6 @@ void aom_highbd_var_filter_block2d_bil_second_pass(
     unsigned int src_pixels_per_line, unsigned int pixel_step,
     unsigned int output_height, unsigned int output_width,
     const uint8_t *filter);
-
-uint32_t aom_sse_odd_size(const uint8_t *a, int a_stride, const uint8_t *b,
-                          int b_stride, int w, int h);
 
 uint64_t aom_highbd_sse_odd_size(const uint8_t *a, int a_stride,
                                  const uint8_t *b, int b_stride, int w, int h);

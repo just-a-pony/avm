@@ -701,65 +701,6 @@ Error:
   aom_free(arrbuf2);
 }
 
-static void upscale_normative_rect(const uint8_t *const input, int height,
-                                   int width, int in_stride, uint8_t *output,
-                                   int height2, int width2, int out_stride,
-                                   int x_step_qn, int x0_qn, int pad_left,
-                                   int pad_right) {
-  assert(width > 0);
-  assert(height > 0);
-  assert(width2 > 0);
-  assert(height2 > 0);
-  assert(height2 == height);
-
-  // Extend the left/right pixels of the tile column if needed
-  // (either because we can't sample from other tiles, or because we're at
-  // a frame edge).
-  // Save the overwritten pixels into tmp_left and tmp_right.
-  // Note: Because we pass input-1 to av1_convolve_horiz_rs, we need one extra
-  // column of border pixels compared to what we'd naively think.
-  const int border_cols = UPSCALE_NORMATIVE_TAPS / 2 + 1;
-  uint8_t *tmp_left =
-      NULL;  // Silence spurious "may be used uninitialized" warnings
-  uint8_t *tmp_right = NULL;
-  uint8_t *const in_tl = (uint8_t *)(input - border_cols);  // Cast off 'const'
-  uint8_t *const in_tr = (uint8_t *)(input + width);
-  if (pad_left) {
-    tmp_left = (uint8_t *)aom_malloc(sizeof(*tmp_left) * border_cols * height);
-    for (int i = 0; i < height; i++) {
-      memcpy(tmp_left + i * border_cols, in_tl + i * in_stride, border_cols);
-      memset(in_tl + i * in_stride, input[i * in_stride], border_cols);
-    }
-  }
-  if (pad_right) {
-    tmp_right =
-        (uint8_t *)aom_malloc(sizeof(*tmp_right) * border_cols * height);
-    for (int i = 0; i < height; i++) {
-      memcpy(tmp_right + i * border_cols, in_tr + i * in_stride, border_cols);
-      memset(in_tr + i * in_stride, input[i * in_stride + width - 1],
-             border_cols);
-    }
-  }
-
-  av1_convolve_horiz_rs(input - 1, in_stride, output, out_stride, width2,
-                        height2, &av1_resize_filter_normative[0][0], x0_qn,
-                        x_step_qn);
-
-  // Restore the left/right border pixels
-  if (pad_left) {
-    for (int i = 0; i < height; i++) {
-      memcpy(in_tl + i * in_stride, tmp_left + i * border_cols, border_cols);
-    }
-    aom_free(tmp_left);
-  }
-  if (pad_right) {
-    for (int i = 0; i < height; i++) {
-      memcpy(in_tr + i * in_stride, tmp_right + i * border_cols, border_cols);
-    }
-    aom_free(tmp_right);
-  }
-}
-
 static void highbd_interpolate_core(const uint16_t *const input, int in_length,
                                     uint16_t *output, int out_length, int bd,
                                     const int16_t *interp_filters,
@@ -1212,14 +1153,15 @@ void av1_resize_and_extend_frame_c(const YV12_BUFFER_CONFIG *src,
       const int y_q4 = y * (16 / factor) * src_h / dst_h + phase_scaler;
       for (int x = 0; x < dst_w; x += 16) {
         const int x_q4 = x * (16 / factor) * src_w / dst_w + phase_scaler;
-        const uint8_t *src_ptr = srcs[i] +
-                                 (y / factor) * src_h / dst_h * src_stride +
-                                 (x / factor) * src_w / dst_w;
-        uint8_t *dst_ptr = dsts[i] + (y / factor) * dst_stride + (x / factor);
+        const uint16_t *src_ptr = CONVERT_TO_SHORTPTR(srcs[i]);
+        uint16_t *dst_ptr = CONVERT_TO_SHORTPTR(dsts[i]);
 
-        aom_convolve8_c(src_ptr, src_stride, dst_ptr, dst_stride, kernel,
-                        x_q4 & 0xf, 16 * src_w / dst_w, y_q4 & 0xf,
-                        16 * src_h / dst_h, 16 / factor, 16 / factor);
+        aom_highbd_convolve8_c(
+            src_ptr + (y / factor) * src_h / dst_h * src_stride +
+                (x / factor) * src_w / dst_w,
+            src_stride, dst_ptr + (y / factor) * dst_stride + (x / factor),
+            dst_stride, kernel, x_q4 & 0xf, 16 * src_w / dst_w, y_q4 & 0xf,
+            16 * src_h / dst_h, 16 / factor, 16 / factor, 8);
       }
     }
   }
@@ -1234,16 +1176,10 @@ void av1_resize_and_extend_frame_nonnormative(const YV12_BUFFER_CONFIG *src,
   // the static analysis warnings.
   for (int i = 0; i < AOMMIN(num_planes, MAX_MB_PLANE); ++i) {
     const int is_uv = i > 0;
-    if (src->flags & YV12_FLAG_HIGHBITDEPTH)
-      av1_highbd_resize_plane(src->buffers[i], src->crop_heights[is_uv],
-                              src->crop_widths[is_uv], src->strides[is_uv],
-                              dst->buffers[i], dst->crop_heights[is_uv],
-                              dst->crop_widths[is_uv], dst->strides[is_uv], bd);
-    else
-      av1_resize_plane(src->buffers[i], src->crop_heights[is_uv],
-                       src->crop_widths[is_uv], src->strides[is_uv],
-                       dst->buffers[i], dst->crop_heights[is_uv],
-                       dst->crop_widths[is_uv], dst->strides[is_uv]);
+    av1_highbd_resize_plane(src->buffers[i], src->crop_heights[is_uv],
+                            src->crop_widths[is_uv], src->strides[is_uv],
+                            dst->buffers[i], dst->crop_heights[is_uv],
+                            dst->crop_widths[is_uv], dst->strides[is_uv], bd);
   }
   aom_extend_frame_borders(dst, num_planes);
 }
@@ -1293,15 +1229,10 @@ void av1_upscale_normative_rows(const AV1_COMMON *cm, const uint8_t *src,
     const int pad_left = (j == 0);
     const int pad_right = (j == cm->tiles.cols - 1);
 
-    if (cm->seq_params.use_highbitdepth)
-      highbd_upscale_normative_rect(src_ptr, rows, src_width, src_stride,
-                                    dst_ptr, rows, dst_width, dst_stride,
-                                    x_step_qn, x0_qn, pad_left, pad_right,
-                                    cm->seq_params.bit_depth);
-    else
-      upscale_normative_rect(src_ptr, rows, src_width, src_stride, dst_ptr,
-                             rows, dst_width, dst_stride, x_step_qn, x0_qn,
-                             pad_left, pad_right);
+    highbd_upscale_normative_rect(src_ptr, rows, src_width, src_stride, dst_ptr,
+                                  rows, dst_width, dst_stride, x_step_qn, x0_qn,
+                                  pad_left, pad_right,
+                                  cm->seq_params.bit_depth);
 
     // Update the fractional pixel offset to prepare for the next tile column.
     x0_qn += (dst_width * x_step_qn) - (src_width << RS_SCALE_SUBPEL_BITS);
@@ -1418,8 +1349,7 @@ void av1_superres_upscale(AV1_COMMON *cm, BufferPool *const pool) {
   const int aligned_width = ALIGN_POWER_OF_TWO(cm->width, 3);
   if (aom_alloc_frame_buffer(
           &copy_buffer, aligned_width, cm->height, seq_params->subsampling_x,
-          seq_params->subsampling_y, seq_params->use_highbitdepth,
-          AOM_BORDER_IN_PIXELS, byte_alignment))
+          seq_params->subsampling_y, AOM_BORDER_IN_PIXELS, byte_alignment))
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate copy buffer for superres upscaling");
 
@@ -1450,8 +1380,8 @@ void av1_superres_upscale(AV1_COMMON *cm, BufferPool *const pool) {
     if (aom_realloc_frame_buffer(
             frame_to_show, cm->superres_upscaled_width,
             cm->superres_upscaled_height, seq_params->subsampling_x,
-            seq_params->subsampling_y, seq_params->use_highbitdepth,
-            AOM_BORDER_IN_PIXELS, byte_alignment, fb, cb, cb_priv)) {
+            seq_params->subsampling_y, AOM_BORDER_IN_PIXELS, byte_alignment, fb,
+            cb, cb_priv)) {
       unlock_buffer_pool(pool);
       aom_internal_error(
           &cm->error, AOM_CODEC_MEM_ERROR,
@@ -1467,8 +1397,7 @@ void av1_superres_upscale(AV1_COMMON *cm, BufferPool *const pool) {
     if (aom_alloc_frame_buffer(
             frame_to_show, cm->superres_upscaled_width,
             cm->superres_upscaled_height, seq_params->subsampling_x,
-            seq_params->subsampling_y, seq_params->use_highbitdepth,
-            AOM_BORDER_IN_PIXELS, byte_alignment))
+            seq_params->subsampling_y, AOM_BORDER_IN_PIXELS, byte_alignment))
       aom_internal_error(
           &cm->error, AOM_CODEC_MEM_ERROR,
           "Failed to reallocate current frame buffer for superres upscaling");

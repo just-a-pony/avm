@@ -140,9 +140,8 @@ void av1_enc_build_inter_predictor_y(MACROBLOCKD *xd, int mi_row, int mi_col) {
   const struct scale_factors *const sf = xd->block_ref_scale_factors[0];
 
   av1_init_inter_params(&inter_pred_params, pd->width, pd->height, mi_y, mi_x,
-                        pd->subsampling_x, pd->subsampling_y, xd->bd,
-                        is_cur_buf_hbd(xd), false, sf, pd->pre,
-                        xd->mi[0]->interp_fltr);
+                        pd->subsampling_x, pd->subsampling_y, xd->bd, false, sf,
+                        pd->pre, xd->mi[0]->interp_fltr);
 
   inter_pred_params.conv_params = get_conv_params_no_round(
       0, AOM_PLANE_Y, xd->tmp_conv_dst, MAX_SB_SIZE, false, xd->bd);
@@ -245,11 +244,10 @@ static INLINE void build_obmc_prediction(MACROBLOCKD *xd, int rel_mi_row,
     const struct buf_2d *const pre_buf = &pd->pre[0];
     const MV mv = above_mbmi->mv[0].as_mv;
 
-    av1_init_inter_params(&inter_pred_params, bw, bh, mi_y >> pd->subsampling_y,
-                          mi_x >> pd->subsampling_x, pd->subsampling_x,
-                          pd->subsampling_y, xd->bd, is_cur_buf_hbd(xd), 0,
-                          xd->block_ref_scale_factors[0], pre_buf,
-                          above_mbmi->interp_fltr);
+    av1_init_inter_params(
+        &inter_pred_params, bw, bh, mi_y >> pd->subsampling_y,
+        mi_x >> pd->subsampling_x, pd->subsampling_x, pd->subsampling_y, xd->bd,
+        0, xd->block_ref_scale_factors[0], pre_buf, above_mbmi->interp_fltr);
     inter_pred_params.conv_params = get_conv_params(0, j, xd->bd);
 
     av1_enc_build_one_inter_predictor(pd->dst.buf, pd->dst.stride, &mv,
@@ -334,33 +332,18 @@ void av1_build_inter_predictor_single_buf_y(MACROBLOCKD *xd, BLOCK_SIZE bsize,
 
   InterPredParams inter_pred_params;
 
-  av1_init_inter_params(&inter_pred_params, bw, bh, mi_y >> pd->subsampling_y,
-                        mi_x >> pd->subsampling_x, pd->subsampling_x,
-                        pd->subsampling_y, xd->bd, is_cur_buf_hbd(xd), 0,
-                        xd->block_ref_scale_factors[ref], &pd->pre[ref],
-                        mi->interp_fltr);
+  av1_init_inter_params(
+      &inter_pred_params, bw, bh, mi_y >> pd->subsampling_y,
+      mi_x >> pd->subsampling_x, pd->subsampling_x, pd->subsampling_y, xd->bd,
+      0, xd->block_ref_scale_factors[ref], &pd->pre[ref], mi->interp_fltr);
   inter_pred_params.conv_params = get_conv_params(0, plane, xd->bd);
   av1_init_warp_params(&inter_pred_params, &warp_types, ref, xd, mi);
 
-  uint8_t *const dst = get_buf_by_bd(xd, ext_dst);
+  uint8_t *const dst = CONVERT_TO_BYTEPTR(ext_dst);
   const MV mv = mi->mv[ref].as_mv;
 
   av1_enc_build_one_inter_predictor(dst, ext_dst_stride, &mv,
                                     &inter_pred_params);
-}
-
-static void build_masked_compound(
-    uint8_t *dst, int dst_stride, const uint8_t *src0, int src0_stride,
-    const uint8_t *src1, int src1_stride,
-    const INTERINTER_COMPOUND_DATA *const comp_data, BLOCK_SIZE sb_type, int h,
-    int w) {
-  // Derive subsampling from h and w passed in. May be refactored to
-  // pass in subsampling factors directly.
-  const int subh = (2 << mi_size_high_log2[sb_type]) == h;
-  const int subw = (2 << mi_size_wide_log2[sb_type]) == w;
-  const uint8_t *mask = av1_get_compound_type_mask(comp_data, sb_type);
-  aom_blend_a64_mask(dst, dst_stride, src0, src0_stride, src1, src1_stride,
-                     mask, block_size_wide[sb_type], w, h, subw, subh);
 }
 
 static void build_masked_compound_highbd(
@@ -390,39 +373,22 @@ static void build_wedge_inter_predictor_from_buf(
   uint8_t *const dst = dst_buf->buf + dst_buf->stride * y + x;
   mbmi->interinter_comp.seg_mask = xd->seg_mask;
   const INTERINTER_COMPOUND_DATA *comp_data = &mbmi->interinter_comp;
-  const int is_hbd = is_cur_buf_hbd(xd);
 
   if (is_compound && is_masked_compound_type(comp_data->type)) {
     if (!plane && comp_data->type == COMPOUND_DIFFWTD) {
-      if (is_hbd) {
-        av1_build_compound_diffwtd_mask_highbd(
-            comp_data->seg_mask, comp_data->mask_type,
-            CONVERT_TO_BYTEPTR(ext_dst0), ext_dst_stride0,
-            CONVERT_TO_BYTEPTR(ext_dst1), ext_dst_stride1, h, w, xd->bd);
-      } else {
-        av1_build_compound_diffwtd_mask(
-            comp_data->seg_mask, comp_data->mask_type, ext_dst0,
-            ext_dst_stride0, ext_dst1, ext_dst_stride1, h, w);
-      }
+      av1_build_compound_diffwtd_mask_highbd(
+          comp_data->seg_mask, comp_data->mask_type,
+          CONVERT_TO_BYTEPTR(ext_dst0), ext_dst_stride0,
+          CONVERT_TO_BYTEPTR(ext_dst1), ext_dst_stride1, h, w, xd->bd);
     }
 
-    if (is_hbd) {
-      build_masked_compound_highbd(
-          dst, dst_buf->stride, CONVERT_TO_BYTEPTR(ext_dst0), ext_dst_stride0,
-          CONVERT_TO_BYTEPTR(ext_dst1), ext_dst_stride1, comp_data,
-          mbmi->sb_type[PLANE_TYPE_Y], h, w, xd->bd);
-    } else {
-      build_masked_compound(dst, dst_buf->stride, ext_dst0, ext_dst_stride0,
-                            ext_dst1, ext_dst_stride1, comp_data,
-                            mbmi->sb_type[PLANE_TYPE_Y], h, w);
-    }
+    build_masked_compound_highbd(
+        dst, dst_buf->stride, CONVERT_TO_BYTEPTR(ext_dst0), ext_dst_stride0,
+        CONVERT_TO_BYTEPTR(ext_dst1), ext_dst_stride1, comp_data,
+        mbmi->sb_type[PLANE_TYPE_Y], h, w, xd->bd);
   } else {
-    if (is_hbd) {
-      aom_highbd_convolve_copy(CONVERT_TO_SHORTPTR(ext_dst0), ext_dst_stride0,
-                               CONVERT_TO_SHORTPTR(dst), dst_buf->stride, w, h);
-    } else {
-      aom_convolve_copy(ext_dst0, ext_dst_stride0, dst, dst_buf->stride, w, h);
-    }
+    aom_highbd_convolve_copy(CONVERT_TO_SHORTPTR(ext_dst0), ext_dst_stride0,
+                             CONVERT_TO_SHORTPTR(dst), dst_buf->stride, w, h);
   }
 }
 

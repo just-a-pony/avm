@@ -608,7 +608,6 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
   uint8_t *const dst = dst_buf->buf;
 
   const int bd = cm->seq_params.bit_depth;
-  const int high_bd = cm->seq_params.use_highbitdepth;
 
   const int ss_x = plane ? cm->seq_params.subsampling_x : 0;
   const int ss_y = plane ? cm->seq_params.subsampling_y : 0;
@@ -622,8 +621,8 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
 
     InterPredParams inter_pred_params;
     av1_init_inter_params(&inter_pred_params, comp_bw, comp_bh, comp_pixel_y,
-                          comp_pixel_x, ss_x, ss_y, bd, high_bd, 0, sf,
-                          pred_buf, MULTITAP_SHARP);
+                          comp_pixel_x, ss_x, ss_y, bd, 0, sf, pred_buf,
+                          MULTITAP_SHARP);
 
     inter_pred_params.comp_mode = UNIFORM_COMP;
 
@@ -848,59 +847,6 @@ static void tip_extend_plane_block_based_highbd(
   }
 }
 
-static void tip_extend_plane_block_based(uint8_t *const src, int src_stride,
-                                         int width, int height, int extend_top,
-                                         int extend_left, int extend_bottom,
-                                         int extend_right, int start_w,
-                                         int start_h, int blk_w, int blk_h) {
-  assert(src != NULL);
-  int i = 0;
-
-  if (extend_left) {
-    // copy the left most columns out
-    uint8_t *src_ptr = src + start_h * src_stride;
-    uint8_t *dst_ptr = src_ptr - extend_left;
-    for (i = 0; i < blk_h; ++i) {
-      memset(dst_ptr, src_ptr[0], extend_left);
-      src_ptr += src_stride;
-      dst_ptr += src_stride;
-    }
-  }
-
-  if (extend_right) {
-    // copy the right most columns out
-    uint8_t *src_ptr = src + start_h * src_stride + width - 1;
-    uint8_t *dst_ptr = src_ptr + 1;
-    for (i = 0; i < blk_h; ++i) {
-      memset(dst_ptr, src_ptr[0], extend_right);
-      src_ptr += src_stride;
-      dst_ptr += src_stride;
-    }
-  }
-
-  if (extend_top) {
-    // copy the top lines into each line of the respective borders
-    uint8_t *src_ptr = src + start_w - extend_left;
-    uint8_t *dst_ptr = src_ptr - src_stride * extend_top;
-    const int extend_size = extend_left + extend_right + blk_w;
-    for (i = 0; i < extend_top; ++i) {
-      memcpy(dst_ptr, src_ptr, extend_size);
-      dst_ptr += src_stride;
-    }
-  }
-
-  if (extend_bottom) {
-    // copy the bottom lines into each line of the respective borders
-    uint8_t *src_ptr = src + src_stride * (height - 1) + start_w - extend_left;
-    uint8_t *dst_ptr = src_ptr + src_stride;
-    const int extend_size = extend_left + extend_right + blk_w;
-    for (i = 0; i < extend_bottom; ++i) {
-      memcpy(dst_ptr, src_ptr, extend_size);
-      dst_ptr += src_stride;
-    }
-  }
-}
-
 static void tip_extend_plane_border(AV1_COMMON *cm, int blk_row_start,
                                     int blk_col_start, int blk_height,
                                     int blk_width) {
@@ -931,7 +877,6 @@ static void tip_extend_plane_border(AV1_COMMON *cm, int blk_row_start,
   }
 
   if (top_border || bottom_border || left_border || right_border) {
-    const int is_high_bitdepth = tip_buf->flags & YV12_FLAG_HIGHBITDEPTH;
     const int subsampling_x = cm->seq_params.subsampling_x;
     const int subsampling_y = cm->seq_params.subsampling_y;
     const int y_stride = tip_buf->y_stride;
@@ -955,43 +900,23 @@ static void tip_extend_plane_border(AV1_COMMON *cm, int blk_row_start,
     const int uv_extend_left = extend_left >> subsampling_x;
     const int uv_extend_right = extend_right >> subsampling_x;
 
-    if (is_high_bitdepth) {
-      tip_extend_plane_block_based_highbd(
-          y_dst, y_stride, y_width, y_height, extend_top, extend_left,
-          extend_bottom, extend_right, blk_col_start, blk_row_start, blk_width,
-          blk_height);
+    tip_extend_plane_block_based_highbd(y_dst, y_stride, y_width, y_height,
+                                        extend_top, extend_left, extend_bottom,
+                                        extend_right, blk_col_start,
+                                        blk_row_start, blk_width, blk_height);
 
-      blk_col_start >>= subsampling_x;
-      blk_row_start >>= subsampling_y;
-      blk_width >>= subsampling_x;
-      blk_height >>= subsampling_y;
-      tip_extend_plane_block_based_highbd(
-          u_dst, uv_stride, uv_width, uv_heigh, uv_extend_top, uv_extend_left,
-          uv_extend_bottom, uv_extend_right, blk_col_start, blk_row_start,
-          blk_width, blk_height);
-      tip_extend_plane_block_based_highbd(
-          v_dst, uv_stride, uv_width, uv_heigh, uv_extend_top, uv_extend_left,
-          uv_extend_bottom, uv_extend_right, blk_col_start, blk_row_start,
-          blk_width, blk_height);
-    } else {
-      tip_extend_plane_block_based(y_dst, y_stride, y_width, y_height,
-                                   extend_top, extend_left, extend_bottom,
-                                   extend_right, blk_col_start, blk_row_start,
-                                   blk_width, blk_height);
-
-      blk_col_start >>= subsampling_x;
-      blk_row_start >>= subsampling_y;
-      blk_width >>= subsampling_x;
-      blk_height >>= subsampling_y;
-      tip_extend_plane_block_based(
-          u_dst, uv_stride, uv_width, uv_heigh, uv_extend_top, uv_extend_left,
-          uv_extend_bottom, uv_extend_right, blk_col_start, blk_row_start,
-          blk_width, blk_height);
-      tip_extend_plane_block_based(
-          v_dst, uv_stride, uv_width, uv_heigh, uv_extend_top, uv_extend_left,
-          uv_extend_bottom, uv_extend_right, blk_col_start, blk_row_start,
-          blk_width, blk_height);
-    }
+    blk_col_start >>= subsampling_x;
+    blk_row_start >>= subsampling_y;
+    blk_width >>= subsampling_x;
+    blk_height >>= subsampling_y;
+    tip_extend_plane_block_based_highbd(
+        u_dst, uv_stride, uv_width, uv_heigh, uv_extend_top, uv_extend_left,
+        uv_extend_bottom, uv_extend_right, blk_col_start, blk_row_start,
+        blk_width, blk_height);
+    tip_extend_plane_block_based_highbd(
+        v_dst, uv_stride, uv_width, uv_heigh, uv_extend_top, uv_extend_left,
+        uv_extend_bottom, uv_extend_right, blk_col_start, blk_row_start,
+        blk_width, blk_height);
   }
 }
 

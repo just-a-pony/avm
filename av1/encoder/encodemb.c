@@ -41,13 +41,8 @@ void av1_subtract_block(const MACROBLOCKD *xd, int rows, int cols,
                         const uint8_t *src8, ptrdiff_t src_stride,
                         const uint8_t *pred8, ptrdiff_t pred_stride) {
   assert(rows >= 4 && cols >= 4);
-  if (is_cur_buf_hbd(xd)) {
-    aom_highbd_subtract_block(rows, cols, diff, diff_stride, src8, src_stride,
-                              pred8, pred_stride, xd->bd);
-    return;
-  }
-  aom_subtract_block(rows, cols, diff, diff_stride, src8, src_stride, pred8,
-                     pred_stride);
+  aom_highbd_subtract_block(rows, cols, diff, diff_stride, src8, src_stride,
+                            pred8, pred_stride, xd->bd);
 }
 
 void av1_subtract_txb(MACROBLOCK *x, int plane, BLOCK_SIZE plane_bsize,
@@ -440,7 +435,6 @@ void av1_setup_xform(const AV1_COMMON *cm, MACROBLOCK *x,
                               cm->features.reduced_tx_set_used);
 
   txfm_param->bd = xd->bd;
-  txfm_param->is_hbd = is_cur_buf_hbd(xd);
 }
 void av1_setup_quant(TX_SIZE tx_size, int use_optimize_b, int xform_quant_idx,
                      int use_quant_b_adapt, QUANT_PARAM *qparam) {
@@ -618,8 +612,7 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
     mi_to_pixel_loc(&pixel_c, &pixel_r, xd->mi_col, xd->mi_row, blk_col,
                     blk_row, pd->subsampling_x, pd->subsampling_y);
     mismatch_record_block_tx(dst, pd->dst.stride, cm->current_frame.order_hint,
-                             plane, pixel_c, pixel_r, blk_w, blk_h,
-                             xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH);
+                             plane, pixel_c, pixel_r, blk_w, blk_h);
   }
 #endif
 }
@@ -781,11 +774,7 @@ static void encode_block_pass1(int plane, int block, int blk_row, int blk_col,
 
   if (p->eobs[block] > 0) {
     txfm_param.eob = p->eobs[block];
-    if (txfm_param.is_hbd) {
-      av1_highbd_inv_txfm_add(dqcoeff, dst, pd->dst.stride, &txfm_param);
-      return;
-    }
-    av1_inv_txfm_add(dqcoeff, dst, pd->dst.stride, &txfm_param);
+    av1_highbd_inv_txfm_add(dqcoeff, dst, pd->dst.stride, &txfm_param);
   }
 }
 

@@ -56,13 +56,8 @@ static int64_t calculate_sse(MACROBLOCKD *const xd,
                              const int bh) {
   int64_t sse = 0;
   const int shift = xd->bd - 8;
-  if (is_cur_buf_hbd(xd)) {
-    sse = aom_highbd_sse(p->src.buf, p->src.stride, pd->dst.buf, pd->dst.stride,
-                         bw, bh);
-  } else {
-    sse =
-        aom_sse(p->src.buf, p->src.stride, pd->dst.buf, pd->dst.stride, bw, bh);
-  }
+  sse = aom_highbd_sse(p->src.buf, p->src.stride, pd->dst.buf, pd->dst.stride,
+                       bw, bh);
   sse = ROUND_POWER_OF_TWO(sse, shift * 2);
   return sse;
 }
@@ -90,7 +85,7 @@ static AOM_INLINE void model_rd_from_sse(const AV1_COMP *const cpi,
   (void)num_samples;
   const MACROBLOCKD *const xd = &x->e_mbd;
   const struct macroblock_plane *const p = &x->plane[plane];
-  const int dequant_shift = (is_cur_buf_hbd(xd)) ? xd->bd - 5 : 3;
+  const int dequant_shift = xd->bd - 5;
 
   // Fast approximate the modelling function.
   if (cpi->sf.rd_sf.simple_model_rd_from_var) {
@@ -124,7 +119,7 @@ static AOM_INLINE void model_rd_with_curvfit(const AV1_COMP *const cpi,
   (void)plane_bsize;
   const MACROBLOCKD *const xd = &x->e_mbd;
   const struct macroblock_plane *const p = &x->plane[plane];
-  const int dequant_shift = (is_cur_buf_hbd(xd)) ? xd->bd - 5 : 3;
+  const int dequant_shift = xd->bd - 5;
   const int qstep = AOMMAX(
       ROUND_POWER_OF_TWO(p->dequant_QTX[1], QUANT_TABLE_BITS) >> dequant_shift,
       1);

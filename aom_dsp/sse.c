@@ -17,23 +17,6 @@
 
 #include "aom/aom_integer.h"
 
-int64_t aom_sse_c(const uint8_t *a, int a_stride, const uint8_t *b,
-                  int b_stride, int width, int height) {
-  int y, x;
-  int64_t sse = 0;
-
-  for (y = 0; y < height; y++) {
-    for (x = 0; x < width; x++) {
-      const int32_t diff = abs(a[x] - b[x]);
-      sse += diff * diff;
-    }
-
-    a += a_stride;
-    b += b_stride;
-  }
-  return sse;
-}
-
 int64_t aom_highbd_sse_c(const uint8_t *a8, int a_stride, const uint8_t *b8,
                          int b_stride, int width, int height) {
   int y, x;

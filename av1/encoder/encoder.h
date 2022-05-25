@@ -1112,10 +1112,6 @@ typedef struct AV1EncoderConfig {
   // Indicates if row-based multi-threading should be enabled or not.
   bool row_mt;
 
-  // Indicates if 16bit frame buffers are to be used i.e., the content is >
-  // 8-bit.
-  bool use_highbitdepth;
-
   // Indicates the bitstream syntax mode. 0 indicates bitstream is saved as
   // Section 5 bitstream, while 1 indicates the bitstream is saved in Annex - B
   // format.
@@ -2907,8 +2903,8 @@ void av1_remove_compressor(AV1_COMP *cpi);
 
 void av1_change_config(AV1_COMP *cpi, const AV1EncoderConfig *oxcf);
 
-void av1_check_initial_width(AV1_COMP *cpi, int use_highbitdepth,
-                             int subsampling_x, int subsampling_y);
+void av1_check_initial_width(AV1_COMP *cpi, int subsampling_x,
+                             int subsampling_y);
 
 void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
                                const AV1EncoderConfig *oxcf);

@@ -396,16 +396,14 @@ TEST_P(SSETest, DISABLED_Speed) {
 }
 
 #if HAVE_NEON
-TestSSEFuncs sse_neon[] = { TestSSEFuncs(&aom_sse_c, &aom_sse_neon),
-                            TestSSEFuncs(&aom_highbd_sse_c,
+TestSSEFuncs sse_neon[] = { TestSSEFuncs(&aom_highbd_sse_c,
                                          &aom_highbd_sse_neon) };
 INSTANTIATE_TEST_SUITE_P(NEON, SSETest,
                          Combine(ValuesIn(sse_neon), Range(4, 129, 4)));
 #endif  // HAVE_NEON
 
 #if HAVE_SSE4_1
-TestSSEFuncs sse_sse4[] = { TestSSEFuncs(&aom_sse_c, &aom_sse_sse4_1),
-                            TestSSEFuncs(&aom_highbd_sse_c,
+TestSSEFuncs sse_sse4[] = { TestSSEFuncs(&aom_highbd_sse_c,
                                          &aom_highbd_sse_sse4_1) };
 INSTANTIATE_TEST_SUITE_P(SSE4_1, SSETest,
                          Combine(ValuesIn(sse_sse4), Range(4, 129, 4)));
@@ -413,8 +411,7 @@ INSTANTIATE_TEST_SUITE_P(SSE4_1, SSETest,
 
 #if HAVE_AVX2
 
-TestSSEFuncs sse_avx2[] = { TestSSEFuncs(&aom_sse_c, &aom_sse_avx2),
-                            TestSSEFuncs(&aom_highbd_sse_c,
+TestSSEFuncs sse_avx2[] = { TestSSEFuncs(&aom_highbd_sse_c,
                                          &aom_highbd_sse_avx2) };
 INSTANTIATE_TEST_SUITE_P(AVX2, SSETest,
                          Combine(ValuesIn(sse_avx2), Range(4, 129, 4)));

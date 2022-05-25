@@ -49,16 +49,10 @@ static AOM_INLINE void get_quantize_error(const MACROBLOCK *x, int plane,
   QUANT_PARAM quant_param;
   av1_setup_quant(tx_size, 0, AV1_XFORM_QUANT_FP, 0, &quant_param);
 
-  if (is_cur_buf_hbd(xd)) {
-    av1_highbd_quantize_fp_facade(coeff, pix_num, p, qcoeff, dqcoeff, eob,
-                                  scan_order, &quant_param);
-    *recon_error =
-        av1_highbd_block_error(coeff, dqcoeff, pix_num, sse, xd->bd) >> shift;
-  } else {
-    av1_quantize_fp_facade(coeff, pix_num, p, qcoeff, dqcoeff, eob, scan_order,
-                           &quant_param);
-    *recon_error = av1_block_error(coeff, dqcoeff, pix_num, sse) >> shift;
-  }
+  av1_highbd_quantize_fp_facade(coeff, pix_num, p, qcoeff, dqcoeff, eob,
+                                scan_order, &quant_param);
+  *recon_error =
+      av1_highbd_block_error(coeff, dqcoeff, pix_num, sse, xd->bd) >> shift;
 
   *recon_error = AOMMAX(*recon_error, 1);
 
@@ -68,7 +62,7 @@ static AOM_INLINE void get_quantize_error(const MACROBLOCK *x, int plane,
 
 static AOM_INLINE void tpl_fwd_txfm(const int16_t *src_diff, int bw,
                                     tran_low_t *coeff, TX_SIZE tx_size,
-                                    int bit_depth, int is_hbd) {
+                                    int bit_depth) {
   TxfmParam txfm_param;
   txfm_param.tx_type = DCT_DCT;
 #if CONFIG_IST
@@ -79,7 +73,6 @@ static AOM_INLINE void tpl_fwd_txfm(const int16_t *src_diff, int bw,
   txfm_param.tx_set_type = EXT_TX_SET_ALL16;
 
   txfm_param.bd = bit_depth;
-  txfm_param.is_hbd = is_hbd;
   av1_fwd_txfm(src_diff, coeff, bw, &txfm_param);
 }
 
@@ -94,7 +87,7 @@ static AOM_INLINE int64_t tpl_get_satd_cost(const MACROBLOCK *x,
 
   av1_subtract_block(xd, bh, bw, src_diff, diff_stride, src, src_stride, dst,
                      dst_stride);
-  tpl_fwd_txfm(src_diff, bw, coeff, tx_size, xd->bd, is_cur_buf_hbd(xd));
+  tpl_fwd_txfm(src_diff, bw, coeff, tx_size, xd->bd);
   return aom_satd(coeff, pix_num);
 }
 
@@ -122,8 +115,7 @@ static AOM_INLINE void txfm_quant_rdcost(
   uint16_t eob;
   av1_subtract_block(xd, bh, bw, src_diff, diff_stride, src, src_stride, dst,
                      dst_stride);
-  tpl_fwd_txfm(src_diff, diff_stride, coeff, tx_size, xd->bd,
-               is_cur_buf_hbd(xd));
+  tpl_fwd_txfm(src_diff, diff_stride, coeff, tx_size, xd->bd);
 
   get_quantize_error(x, 0, coeff, qcoeff, dqcoeff, tx_size, &eob, recon_error,
                      sse);
@@ -260,8 +252,7 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   tran_low_t *dqcoeff = aom_memalign(32, tpl_block_pels * sizeof(tran_low_t));
   tran_low_t *best_coeff =
       aom_memalign(32, tpl_block_pels * sizeof(tran_low_t));
-  uint8_t *predictor =
-      is_cur_buf_hbd(xd) ? CONVERT_TO_BYTEPTR(predictor8) : predictor8;
+  uint8_t *predictor = CONVERT_TO_BYTEPTR(predictor8);
   int64_t recon_error = 1, sse = 1;
 
   memset(tpl_stats, 0, sizeof(*tpl_stats));
@@ -283,16 +274,10 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   // Pre-load the bottom left line.
   if (xd->left_available &&
       mi_row + tx_size_high_unit[tx_size] < xd->tile.mi_row_end) {
-    if (is_cur_buf_hbd(xd)) {
-      uint16_t *dst = CONVERT_TO_SHORTPTR(dst_buffer);
-      for (int i = 0; i < bw; ++i)
-        dst[(bw + i) * dst_buffer_stride - 1] =
-            dst[(bw - 1) * dst_buffer_stride - 1];
-    } else {
-      for (int i = 0; i < bw; ++i)
-        dst_buffer[(bw + i) * dst_buffer_stride - 1] =
-            dst_buffer[(bw - 1) * dst_buffer_stride - 1];
-    }
+    uint16_t *dst = CONVERT_TO_SHORTPTR(dst_buffer);
+    for (int i = 0; i < bw; ++i)
+      dst[(bw + i) * dst_buffer_stride - 1] =
+          dst[(bw - 1) * dst_buffer_stride - 1];
   }
 
   // if cpi->sf.tpl_sf.prune_intra_modes is on, then search only DC_PRED,
@@ -423,8 +408,8 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
                               ref_frame_ptr->y_stride };
     InterPredParams inter_pred_params;
     av1_init_inter_params(&inter_pred_params, bw, bh, mi_row * MI_SIZE,
-                          mi_col * MI_SIZE, 0, 0, xd->bd, is_cur_buf_hbd(xd), 0,
-                          &tpl_data->sf, &ref_buf, kernel);
+                          mi_col * MI_SIZE, 0, 0, xd->bd, 0, &tpl_data->sf,
+                          &ref_buf, kernel);
     inter_pred_params.conv_params = get_conv_params(0, 0, xd->bd);
 
     av1_enc_build_one_inter_predictor(predictor, bw, &best_rfidx_mv.as_mv,
@@ -478,8 +463,8 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
                               ref_frame_ptr->y_width, ref_frame_ptr->y_height,
                               ref_frame_ptr->y_stride };
     av1_init_inter_params(&inter_pred_params, bw, bh, mi_row * MI_SIZE,
-                          mi_col * MI_SIZE, 0, 0, xd->bd, is_cur_buf_hbd(xd), 0,
-                          &tpl_data->sf, &ref_buf, kernel);
+                          mi_col * MI_SIZE, 0, 0, xd->bd, 0, &tpl_data->sf,
+                          &ref_buf, kernel);
     inter_pred_params.conv_params = get_conv_params(0, 0, xd->bd);
 
     av1_enc_build_one_inter_predictor(dst_buffer, dst_buffer_stride,

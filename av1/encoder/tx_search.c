@@ -482,7 +482,6 @@ static int predict_skip_txfm(const AV1_COMMON *cm, MACROBLOCK *x,
   param.tx_type = DCT_DCT;
   param.tx_size = max_tx_size;
   param.bd = xd->bd;
-  param.is_hbd = is_cur_buf_hbd(xd);
   param.lossless = 0;
   param.tx_set_type = av1_get_ext_tx_set_type(
       param.tx_size, is_inter_block(xd->mi[0], xd->tree_type), reduced_tx_set);
@@ -530,7 +529,7 @@ static AOM_INLINE void set_skip_txfm(MACROBLOCK *x, RD_STATS *rd_stats,
   for (int i = 0; i < n4; ++i)
     set_blk_skip(x->txfm_search_info.blk_skip, 0, i, 1);
   rd_stats->skip_txfm = 1;
-  if (is_cur_buf_hbd(xd)) dist = ROUND_POWER_OF_TWO(dist, (xd->bd - 8) * 2);
+  dist = ROUND_POWER_OF_TWO(dist, (xd->bd - 8) * 2);
   rd_stats->dist = rd_stats->sse = (dist << 4);
   // Though decision is to make the block as skip based on luma stats,
   // it is possible that block becomes non skip after chroma rd. In addition
@@ -614,24 +613,14 @@ static AOM_INLINE void get_energy_distribution_fine(
     assert(bw <= 32);
     assert(bh <= 32);
     assert(((bw - 1) >> w_shift) + (((bh - 1) >> h_shift) << 2) == 15);
-    if (cpi->common.seq_params.use_highbitdepth) {
-      const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-      const uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
-      for (int i = 0; i < bh; ++i)
-        for (int j = 0; j < bw; ++j) {
-          const int index = (j >> w_shift) + ((i >> h_shift) << 2);
-          esq[index] +=
-              (src16[j + i * src_stride] - dst16[j + i * dst_stride]) *
-              (src16[j + i * src_stride] - dst16[j + i * dst_stride]);
-        }
-    } else {
-      for (int i = 0; i < bh; ++i)
-        for (int j = 0; j < bw; ++j) {
-          const int index = (j >> w_shift) + ((i >> h_shift) << 2);
-          esq[index] += (src[j + i * src_stride] - dst[j + i * dst_stride]) *
-                        (src[j + i * src_stride] - dst[j + i * dst_stride]);
-        }
-    }
+    const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
+    const uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
+    for (int i = 0; i < bh; ++i)
+      for (int j = 0; j < bw; ++j) {
+        const int index = (j >> w_shift) + ((i >> h_shift) << 2);
+        esq[index] += (src16[j + i * src_stride] - dst16[j + i * dst_stride]) *
+                      (src16[j + i * src_stride] - dst16[j + i * dst_stride]);
+      }
   } else {  // Calculate 'esq' values using 'vf' functions on the 16 sub-blocks.
     const int f_index =
         (bsize < BLOCK_SIZES) ? bsize - BLOCK_16X16 : bsize - BLOCK_8X16;
@@ -812,7 +801,7 @@ static AOM_INLINE void PrintTransformUnitStats(
   const struct macroblockd_plane *const pd = &xd->plane[plane];
   const int txw = tx_size_wide[tx_size];
   const int txh = tx_size_high[tx_size];
-  const int dequant_shift = (is_cur_buf_hbd(xd)) ? xd->bd - 5 : 3;
+  const int dequant_shift = xd->bd - 5;
 
   const int q_step =
       ROUND_POWER_OF_TWO(p->dequant_QTX[1], QUANT_TABLE_BITS) >> dequant_shift;
@@ -963,19 +952,6 @@ static double get_highbd_diff_mean(const uint8_t *src8, int src_stride,
   return sum / (w * h);
 }
 
-static double get_diff_mean(const uint8_t *src, int src_stride,
-                            const uint8_t *dst, int dst_stride, int w, int h) {
-  double sum = 0.0;
-  for (int j = 0; j < h; ++j) {
-    for (int i = 0; i < w; ++i) {
-      const int diff = src[j * src_stride + i] - dst[j * dst_stride + i];
-      sum += diff;
-    }
-  }
-  assert(w > 0 && h > 0);
-  return sum / (w * h);
-}
-
 static AOM_INLINE void PrintPredictionUnitStats(const AV1_COMP *const cpi,
                                                 const TileDataEnc *tile_data,
                                                 MACROBLOCK *x,
@@ -1008,7 +984,7 @@ static AOM_INLINE void PrintPredictionUnitStats(const AV1_COMP *const cpi,
   get_txb_dimensions(xd, plane, plane_bsize, 0, 0, plane_bsize, NULL, NULL, &bw,
                      &bh);
   const int num_samples = bw * bh;
-  const int dequant_shift = (is_cur_buf_hbd(xd)) ? xd->bd - 5 : 3;
+  const int dequant_shift = xd->bd - 5;
 
   const int q_step =
       ROUND_POWER_OF_TWO(p->dequant_QTX[1], QUANT_TABLE_BITS) >> dequant_shift;
@@ -1067,13 +1043,8 @@ static AOM_INLINE void PrintPredictionUnitStats(const AV1_COMP *const cpi,
           model_rdcost_norm);
 
   double mean;
-  if (is_cur_buf_hbd(xd)) {
-    mean = get_highbd_diff_mean(p->src.buf, p->src.stride, pd->dst.buf,
-                                pd->dst.stride, bw, bh);
-  } else {
-    mean = get_diff_mean(p->src.buf, p->src.stride, pd->dst.buf, pd->dst.stride,
-                         bw, bh);
-  }
+  mean = get_highbd_diff_mean(p->src.buf, p->src.stride, pd->dst.buf,
+                              pd->dst.stride, bw, bh);
   mean /= (1 << shift);
   float hor_corr, vert_corr;
   av1_get_horver_correlation_full(src_diff, diff_stride, bw, bh, &hor_corr,
@@ -1198,14 +1169,10 @@ static unsigned pixel_dist_visible_only(
   }
 
   const MACROBLOCKD *xd = &x->e_mbd;
-  if (is_cur_buf_hbd(xd)) {
-    uint64_t sse64 = aom_highbd_sse_odd_size(src, src_stride, dst, dst_stride,
-                                             visible_cols, visible_rows);
-    return (unsigned int)ROUND_POWER_OF_TWO(sse64, (xd->bd - 8) * 2);
-  }
+  uint64_t sse64 = aom_highbd_sse_odd_size(src, src_stride, dst, dst_stride,
+                                           visible_cols, visible_rows);
+  return (unsigned int)ROUND_POWER_OF_TWO(sse64, (xd->bd - 8) * 2);
 
-  sse = aom_sse_odd_size(src, src_stride, dst, dst_stride, visible_cols,
-                         visible_rows);
   return sse;
 }
 
@@ -1262,14 +1229,9 @@ static INLINE int64_t dist_block_px_domain(const AV1_COMP *cpi, MACROBLOCK *x,
   uint8_t *recon;
   DECLARE_ALIGNED(16, uint16_t, recon16[MAX_TX_SQUARE]);
 
-  if (is_cur_buf_hbd(xd)) {
-    recon = CONVERT_TO_BYTEPTR(recon16);
-    aom_highbd_convolve_copy(CONVERT_TO_SHORTPTR(dst), dst_stride,
-                             CONVERT_TO_SHORTPTR(recon), MAX_TX_SIZE, bsw, bsh);
-  } else {
-    recon = (uint8_t *)recon16;
-    aom_convolve_copy(dst, dst_stride, recon, MAX_TX_SIZE, bsw, bsh);
-  }
+  recon = CONVERT_TO_BYTEPTR(recon16);
+  aom_highbd_convolve_copy(CONVERT_TO_SHORTPTR(dst), dst_stride,
+                           CONVERT_TO_SHORTPTR(recon), MAX_TX_SIZE, bsw, bsh);
 
   const PLANE_TYPE plane_type = get_plane_type(plane);
   TX_TYPE tx_type = av1_get_tx_type(xd, plane_type, blk_row, blk_col, tx_size,
@@ -1395,11 +1357,8 @@ static INLINE void dist_block_tx_domain(MACROBLOCK *x, int plane, int block,
   tran_low_t *const coeff = p->coeff + block_offset;
   tran_low_t *const dqcoeff = p->dqcoeff + block_offset;
   MACROBLOCKD *const xd = &x->e_mbd;
-  if (is_cur_buf_hbd(xd))
-    *out_dist = av1_highbd_block_error(coeff, dqcoeff, buffer_length, &this_sse,
-                                       xd->bd);
-  else
-    *out_dist = av1_block_error(coeff, dqcoeff, buffer_length, &this_sse);
+  *out_dist =
+      av1_highbd_block_error(coeff, dqcoeff, buffer_length, &this_sse, xd->bd);
 
   *out_dist = RIGHT_SIGNED_SHIFT(*out_dist, shift);
   *out_sse = RIGHT_SIGNED_SHIFT(this_sse, shift);
@@ -2242,7 +2201,7 @@ static INLINE void predict_dc_only_block(
     int *dc_only_blk) {
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
-  const int dequant_shift = (is_cur_buf_hbd(xd)) ? xd->bd - 5 : 3;
+  const int dequant_shift = xd->bd - 5;
 
   const int qstep =
       ROUND_POWER_OF_TWO(x->plane[plane].dequant_QTX[1], QUANT_TABLE_BITS) >>
@@ -2257,8 +2216,7 @@ static INLINE void predict_dc_only_block(
                                 per_px_mean, &block_var);
   assert((*block_mse_q8) != UINT_MAX);
   uint64_t var_threshold = (uint64_t)(1.8 * qstep * qstep);
-  if (is_cur_buf_hbd(xd))
-    block_var = ROUND_POWER_OF_TWO(block_var, (xd->bd - 8) * 2);
+  block_var = ROUND_POWER_OF_TWO(block_var, (xd->bd - 8) * 2);
   // Early prediction of skip block if residual mean and variance are less
   // than qstep based threshold
   if (((llabs(*per_px_mean) * dc_coeff_scale[tx_size]) < (dc_qstep << 12)) &&
@@ -2270,8 +2228,7 @@ static INLINE void predict_dc_only_block(
 
     x->plane[plane].eobs[block] = 0;
 
-    if (is_cur_buf_hbd(xd))
-      *block_sse = ROUND_POWER_OF_TWO((*block_sse), (xd->bd - 8) * 2);
+    *block_sse = ROUND_POWER_OF_TWO((*block_sse), (xd->bd - 8) * 2);
 
     best_rd_stats->dist = (*block_sse) << 4;
     best_rd_stats->sse = best_rd_stats->dist;
@@ -2397,7 +2354,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   int txk_map[TX_TYPES] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
   };
-  const int dequant_shift = (is_cur_buf_hbd(xd)) ? xd->bd - 5 : 3;
+  const int dequant_shift = xd->bd - 5;
 
   const int qstep =
       ROUND_POWER_OF_TWO(x->plane[plane].dequant_QTX[1], QUANT_TABLE_BITS) >>
@@ -2434,10 +2391,8 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                           &txk_allowed, txk_map);
   const uint16_t allowed_tx_mask = tx_mask;
 
-  if (is_cur_buf_hbd(xd)) {
-    block_sse = ROUND_POWER_OF_TWO(block_sse, (xd->bd - 8) * 2);
-    block_mse_q8 = ROUND_POWER_OF_TWO(block_mse_q8, (xd->bd - 8) * 2);
-  }
+  block_sse = ROUND_POWER_OF_TWO(block_sse, (xd->bd - 8) * 2);
+  block_mse_q8 = ROUND_POWER_OF_TWO(block_mse_q8, (xd->bd - 8) * 2);
   block_sse *= 16;
   // Use mse / qstep^2 based threshold logic to take decision of R-D
   // optimization of coeffs. For smaller residuals, coeff optimization

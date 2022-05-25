@@ -799,33 +799,6 @@ static int64_t get_sse(const AV1_COMP *cpi, const MACROBLOCK *x,
   return total_sse;
 }
 
-int64_t av1_block_error_c(const tran_low_t *coeff, const tran_low_t *dqcoeff,
-                          intptr_t block_size, int64_t *ssz) {
-  int i;
-  int64_t error = 0, sqcoeff = 0;
-
-  for (i = 0; i < block_size; i++) {
-    const int diff = coeff[i] - dqcoeff[i];
-    error += diff * diff;
-    sqcoeff += coeff[i] * coeff[i];
-  }
-
-  *ssz = sqcoeff;
-  return error;
-}
-
-int64_t av1_block_error_lp_c(const int16_t *coeff, const int16_t *dqcoeff,
-                             intptr_t block_size) {
-  int64_t error = 0;
-
-  for (int i = 0; i < block_size; i++) {
-    const int diff = coeff[i] - dqcoeff[i];
-    error += diff * diff;
-  }
-
-  return error;
-}
-
 int64_t av1_highbd_block_error_c(const tran_low_t *coeff,
                                  const tran_low_t *dqcoeff, intptr_t block_size,
                                  int64_t *ssz, int bd) {
@@ -4832,28 +4805,18 @@ static AOM_INLINE void init_mode_skip_mask(mode_skip_mask_t *mask,
 }
 
 static AOM_INLINE void init_neighbor_pred_buf(
-    const OBMCBuffer *const obmc_buffer, HandleInterModeArgs *const args,
-    int is_hbd) {
-  if (is_hbd) {
-    const int len = sizeof(uint16_t);
-    args->above_pred_buf[0] = CONVERT_TO_BYTEPTR(obmc_buffer->above_pred);
-    args->above_pred_buf[1] = CONVERT_TO_BYTEPTR(obmc_buffer->above_pred +
-                                                 (MAX_SB_SQUARE >> 1) * len);
-    args->above_pred_buf[2] =
-        CONVERT_TO_BYTEPTR(obmc_buffer->above_pred + MAX_SB_SQUARE * len);
-    args->left_pred_buf[0] = CONVERT_TO_BYTEPTR(obmc_buffer->left_pred);
-    args->left_pred_buf[1] =
-        CONVERT_TO_BYTEPTR(obmc_buffer->left_pred + (MAX_SB_SQUARE >> 1) * len);
-    args->left_pred_buf[2] =
-        CONVERT_TO_BYTEPTR(obmc_buffer->left_pred + MAX_SB_SQUARE * len);
-  } else {
-    args->above_pred_buf[0] = obmc_buffer->above_pred;
-    args->above_pred_buf[1] = obmc_buffer->above_pred + (MAX_SB_SQUARE >> 1);
-    args->above_pred_buf[2] = obmc_buffer->above_pred + MAX_SB_SQUARE;
-    args->left_pred_buf[0] = obmc_buffer->left_pred;
-    args->left_pred_buf[1] = obmc_buffer->left_pred + (MAX_SB_SQUARE >> 1);
-    args->left_pred_buf[2] = obmc_buffer->left_pred + MAX_SB_SQUARE;
-  }
+    const OBMCBuffer *const obmc_buffer, HandleInterModeArgs *const args) {
+  const int len = sizeof(uint16_t);
+  args->above_pred_buf[0] = CONVERT_TO_BYTEPTR(obmc_buffer->above_pred);
+  args->above_pred_buf[1] =
+      CONVERT_TO_BYTEPTR(obmc_buffer->above_pred + (MAX_SB_SQUARE >> 1) * len);
+  args->above_pred_buf[2] =
+      CONVERT_TO_BYTEPTR(obmc_buffer->above_pred + MAX_SB_SQUARE * len);
+  args->left_pred_buf[0] = CONVERT_TO_BYTEPTR(obmc_buffer->left_pred);
+  args->left_pred_buf[1] =
+      CONVERT_TO_BYTEPTR(obmc_buffer->left_pred + (MAX_SB_SQUARE >> 1) * len);
+  args->left_pred_buf[2] =
+      CONVERT_TO_BYTEPTR(obmc_buffer->left_pred + MAX_SB_SQUARE * len);
 }
 
 #if CONFIG_NEW_REF_SIGNALING
@@ -4941,7 +4904,7 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
   MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
   unsigned char segment_id = mbmi->segment_id;
 
-  init_neighbor_pred_buf(&x->obmc_buffer, args, is_cur_buf_hbd(&x->e_mbd));
+  init_neighbor_pred_buf(&x->obmc_buffer, args);
   av1_collect_neighbors_ref_counts(xd);
   estimate_ref_frame_costs(cm, xd, &x->mode_costs, segment_id, ref_costs_single,
                            ref_costs_comp);
@@ -6351,7 +6314,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   int num_single_modes_processed = 0;
 
   // Temporary buffers used by handle_inter_mode().
-  uint8_t *const tmp_buf = get_buf_by_bd(xd, x->tmp_pred_bufs[0]);
+  uint8_t *const tmp_buf = CONVERT_TO_BYTEPTR(x->tmp_pred_bufs[0]);
 
   // The best RD found for the reference frame, among single reference modes.
   // Note that the 0-th element will contain a cut-off that is later used
@@ -7246,34 +7209,19 @@ static INLINE void calc_target_weighted_pred_above(
   int32_t *wsrc = ctxt->obmc_buffer->wsrc + (rel_mi_col * MI_SIZE);
   int32_t *mask = ctxt->obmc_buffer->mask + (rel_mi_col * MI_SIZE);
   const uint8_t *tmp = ctxt->tmp + rel_mi_col * MI_SIZE;
-  const int is_hbd = is_cur_buf_hbd(xd);
 
-  if (!is_hbd) {
-    for (int row = 0; row < ctxt->overlap; ++row) {
-      const uint8_t m0 = mask1d[row];
-      const uint8_t m1 = AOM_BLEND_A64_MAX_ALPHA - m0;
-      for (int col = 0; col < op_mi_size * MI_SIZE; ++col) {
-        wsrc[col] = m1 * tmp[col];
-        mask[col] = m0;
-      }
-      wsrc += bw;
-      mask += bw;
-      tmp += ctxt->tmp_stride;
-    }
-  } else {
-    const uint16_t *tmp16 = CONVERT_TO_SHORTPTR(tmp);
+  const uint16_t *tmp16 = CONVERT_TO_SHORTPTR(tmp);
 
-    for (int row = 0; row < ctxt->overlap; ++row) {
-      const uint8_t m0 = mask1d[row];
-      const uint8_t m1 = AOM_BLEND_A64_MAX_ALPHA - m0;
-      for (int col = 0; col < op_mi_size * MI_SIZE; ++col) {
-        wsrc[col] = m1 * tmp16[col];
-        mask[col] = m0;
-      }
-      wsrc += bw;
-      mask += bw;
-      tmp16 += ctxt->tmp_stride;
+  for (int row = 0; row < ctxt->overlap; ++row) {
+    const uint8_t m0 = mask1d[row];
+    const uint8_t m1 = AOM_BLEND_A64_MAX_ALPHA - m0;
+    for (int col = 0; col < op_mi_size * MI_SIZE; ++col) {
+      wsrc[col] = m1 * tmp16[col];
+      mask[col] = m0;
     }
+    wsrc += bw;
+    mask += bw;
+    tmp16 += ctxt->tmp_stride;
   }
 }
 
@@ -7294,36 +7242,19 @@ static INLINE void calc_target_weighted_pred_left(
   int32_t *wsrc = ctxt->obmc_buffer->wsrc + (rel_mi_row * MI_SIZE * bw);
   int32_t *mask = ctxt->obmc_buffer->mask + (rel_mi_row * MI_SIZE * bw);
   const uint8_t *tmp = ctxt->tmp + (rel_mi_row * MI_SIZE * ctxt->tmp_stride);
-  const int is_hbd = is_cur_buf_hbd(xd);
+  const uint16_t *tmp16 = CONVERT_TO_SHORTPTR(tmp);
 
-  if (!is_hbd) {
-    for (int row = 0; row < op_mi_size * MI_SIZE; ++row) {
-      for (int col = 0; col < ctxt->overlap; ++col) {
-        const uint8_t m0 = mask1d[col];
-        const uint8_t m1 = AOM_BLEND_A64_MAX_ALPHA - m0;
-        wsrc[col] = (wsrc[col] >> AOM_BLEND_A64_ROUND_BITS) * m0 +
-                    (tmp[col] << AOM_BLEND_A64_ROUND_BITS) * m1;
-        mask[col] = (mask[col] >> AOM_BLEND_A64_ROUND_BITS) * m0;
-      }
-      wsrc += bw;
-      mask += bw;
-      tmp += ctxt->tmp_stride;
+  for (int row = 0; row < op_mi_size * MI_SIZE; ++row) {
+    for (int col = 0; col < ctxt->overlap; ++col) {
+      const uint8_t m0 = mask1d[col];
+      const uint8_t m1 = AOM_BLEND_A64_MAX_ALPHA - m0;
+      wsrc[col] = (wsrc[col] >> AOM_BLEND_A64_ROUND_BITS) * m0 +
+                  (tmp16[col] << AOM_BLEND_A64_ROUND_BITS) * m1;
+      mask[col] = (mask[col] >> AOM_BLEND_A64_ROUND_BITS) * m0;
     }
-  } else {
-    const uint16_t *tmp16 = CONVERT_TO_SHORTPTR(tmp);
-
-    for (int row = 0; row < op_mi_size * MI_SIZE; ++row) {
-      for (int col = 0; col < ctxt->overlap; ++col) {
-        const uint8_t m0 = mask1d[col];
-        const uint8_t m1 = AOM_BLEND_A64_MAX_ALPHA - m0;
-        wsrc[col] = (wsrc[col] >> AOM_BLEND_A64_ROUND_BITS) * m0 +
-                    (tmp16[col] << AOM_BLEND_A64_ROUND_BITS) * m1;
-        mask[col] = (mask[col] >> AOM_BLEND_A64_ROUND_BITS) * m0;
-      }
-      wsrc += bw;
-      mask += bw;
-      tmp16 += ctxt->tmp_stride;
-    }
+    wsrc += bw;
+    mask += bw;
+    tmp16 += ctxt->tmp_stride;
   }
 }
 
@@ -7376,7 +7307,6 @@ static AOM_INLINE void calc_target_weighted_pred(
   int32_t *mask_buf = obmc_buffer->mask;
   int32_t *wsrc_buf = obmc_buffer->wsrc;
 
-  const int is_hbd = is_cur_buf_hbd(xd);
   const int src_scale = AOM_BLEND_A64_MAX_ALPHA * AOM_BLEND_A64_MAX_ALPHA;
 
   // plane 0 should not be sub-sampled
@@ -7413,26 +7343,14 @@ static AOM_INLINE void calc_target_weighted_pred(
                                  calc_target_weighted_pred_left, &ctxt);
   }
 
-  if (!is_hbd) {
-    const uint8_t *src = x->plane[0].src.buf;
+  const uint16_t *src = CONVERT_TO_SHORTPTR(x->plane[0].src.buf);
 
-    for (int row = 0; row < bh; ++row) {
-      for (int col = 0; col < bw; ++col) {
-        wsrc_buf[col] = src[col] * src_scale - wsrc_buf[col];
-      }
-      wsrc_buf += bw;
-      src += x->plane[0].src.stride;
+  for (int row = 0; row < bh; ++row) {
+    for (int col = 0; col < bw; ++col) {
+      wsrc_buf[col] = src[col] * src_scale - wsrc_buf[col];
     }
-  } else {
-    const uint16_t *src = CONVERT_TO_SHORTPTR(x->plane[0].src.buf);
-
-    for (int row = 0; row < bh; ++row) {
-      for (int col = 0; col < bw; ++col) {
-        wsrc_buf[col] = src[col] * src_scale - wsrc_buf[col];
-      }
-      wsrc_buf += bw;
-      src += x->plane[0].src.stride;
-    }
+    wsrc_buf += bw;
+    src += x->plane[0].src.stride;
   }
 }
 
@@ -7453,18 +7371,12 @@ static AOM_INLINE void calc_target_weighted_pred(
    2 * (src)[(i) + (stride) * ((j) + 1)] -  /* NOLINT */ \
    (src)[((i) + 1) + (stride) * ((j) + 1)]) /* NOLINT */
 
-sobel_xy av1_sobel(const uint8_t *input, int stride, int i, int j,
-                   bool high_bd) {
+sobel_xy av1_sobel(const uint8_t *input, int stride, int i, int j) {
   int16_t s_x;
   int16_t s_y;
-  if (high_bd) {
-    const uint16_t *src = CONVERT_TO_SHORTPTR(input);
-    s_x = SOBEL_X(src, stride, i, j);
-    s_y = SOBEL_Y(src, stride, i, j);
-  } else {
-    s_x = SOBEL_X(input, stride, i, j);
-    s_y = SOBEL_Y(input, stride, i, j);
-  }
+  const uint16_t *src = CONVERT_TO_SHORTPTR(input);
+  s_x = SOBEL_X(src, stride, i, j);
+  s_y = SOBEL_Y(src, stride, i, j);
   sobel_xy r = { .x = s_x, .y = s_y };
   return r;
 }
@@ -7475,7 +7387,7 @@ DECLARE_ALIGNED(16, static const int16_t, gauss_filter[8]) = { 2,  12, 30, 40,
                                                                30, 12, 2,  0 };
 
 void av1_gaussian_blur(const uint8_t *src, int src_stride, int w, int h,
-                       uint8_t *dst, bool high_bd, int bd) {
+                       uint8_t *dst, int bd) {
   ConvolveParams conv_params = get_conv_params(0, 0, bd);
   InterpFilterParams filter = { .filter_ptr = gauss_filter,
                                 .taps = 8,
@@ -7485,18 +7397,12 @@ void av1_gaussian_blur(const uint8_t *src, int src_stride, int w, int h,
   assert(w % 8 == 0);
   // Because we use an eight tap filter, the stride should be at least 7 + w.
   assert(src_stride >= w + 7);
-  if (high_bd) {
-    av1_highbd_convolve_2d_sr(CONVERT_TO_SHORTPTR(src), src_stride,
-                              CONVERT_TO_SHORTPTR(dst), w, w, h, &filter,
-                              &filter, 0, 0, &conv_params, bd);
-  } else {
-    av1_convolve_2d_sr(src, src_stride, dst, w, w, h, &filter, &filter, 0, 0,
-                       &conv_params);
-  }
+  av1_highbd_convolve_2d_sr(CONVERT_TO_SHORTPTR(src), src_stride,
+                            CONVERT_TO_SHORTPTR(dst), w, w, h, &filter, &filter,
+                            0, 0, &conv_params, bd);
 }
 
-static EdgeInfo edge_probability(const uint8_t *input, int w, int h,
-                                 bool high_bd, int bd) {
+static EdgeInfo edge_probability(const uint8_t *input, int w, int h, int bd) {
   // The probability of an edge in the whole image is the same as the highest
   // probability of an edge for any individual pixel. Use Sobel as the metric
   // for finding an edge.
@@ -7506,7 +7412,7 @@ static EdgeInfo edge_probability(const uint8_t *input, int w, int h,
   // Ignore the 1 pixel border around the image for the computation.
   for (int j = 1; j < h - 1; ++j) {
     for (int i = 1; i < w - 1; ++i) {
-      sobel_xy g = av1_sobel(input, w, i, j, high_bd);
+      sobel_xy g = av1_sobel(input, w, i, j);
       // Scale down to 8-bit to get same output regardless of bit depth.
       int16_t g_x = g.x >> (bd - 8);
       int16_t g_y = g.y >> (bd - 8);
@@ -7524,27 +7430,19 @@ static EdgeInfo edge_probability(const uint8_t *input, int w, int h,
  * edges in the image.
  */
 EdgeInfo av1_edge_exists(const uint8_t *src, int src_stride, int w, int h,
-                         bool high_bd, int bd) {
+                         int bd) {
   if (w < 3 || h < 3) {
     EdgeInfo n = { .magnitude = 0, .x = 0, .y = 0 };
     return n;
   }
   uint8_t *blurred;
-  if (high_bd) {
-    blurred = CONVERT_TO_BYTEPTR(aom_memalign(32, sizeof(uint16_t) * w * h));
-  } else {
-    blurred = (uint8_t *)aom_memalign(32, sizeof(uint8_t) * w * h);
-  }
-  av1_gaussian_blur(src, src_stride, w, h, blurred, high_bd, bd);
+  blurred = CONVERT_TO_BYTEPTR(aom_memalign(32, sizeof(uint16_t) * w * h));
+  av1_gaussian_blur(src, src_stride, w, h, blurred, bd);
   // Skip the non-maximum suppression step in Canny edge detection. We just
   // want a probability of an edge existing in the buffer, which is determined
   // by the strongest edge in it -- we don't need to eliminate the weaker
   // edges. Use Sobel for the edge detection.
-  EdgeInfo prob = edge_probability(blurred, w, h, high_bd, bd);
-  if (high_bd) {
-    aom_free(CONVERT_TO_SHORTPTR(blurred));
-  } else {
-    aom_free(blurred);
-  }
+  EdgeInfo prob = edge_probability(blurred, w, h, bd);
+  aom_free(CONVERT_TO_SHORTPTR(blurred));
   return prob;
 }

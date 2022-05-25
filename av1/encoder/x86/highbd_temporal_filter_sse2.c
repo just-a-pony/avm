@@ -245,11 +245,9 @@ void av1_highbd_apply_temporal_filter_sse2(
     const int num_planes, const double *noise_levels, const MV *subblock_mvs,
     const int *subblock_mses, const int q_factor, const int filter_strength,
     const uint8_t *pred, uint32_t *accum, uint16_t *count) {
-  const int is_high_bitdepth = frame_to_filter->flags & YV12_FLAG_HIGHBITDEPTH;
   assert(block_size == BLOCK_32X32 && "Only support 32x32 block with avx2!");
   assert(TF_WINDOW_LENGTH == 5 && "Only support window length 5 with avx2!");
   assert(num_planes >= 1 && num_planes <= MAX_MB_PLANE);
-  (void)is_high_bitdepth;
 
   const int mb_height = block_size_high[block_size];
   const int mb_width = block_size_wide[block_size];

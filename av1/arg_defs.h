@@ -79,7 +79,6 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t large_scale_tile;
   arg_def_t monochrome;
   arg_def_t full_still_picture_hdr;
-  arg_def_t use_16bit_internal;
   arg_def_t dropframe_thresh;
   arg_def_t resize_mode;
   arg_def_t resize_denominator;

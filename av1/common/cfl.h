@@ -149,9 +149,6 @@ void cfl_load_dc_pred(MACROBLOCKD *const xd, uint8_t *dst, int dst_stride,
 // The RTCD script does not support passing in an array, so we wrap it in this
 // function.
 #define CFL_GET_SUBSAMPLE_FUNCTION(arch)  \
-  CFL_SUBSAMPLE_FUNCTIONS(arch, 420, lbd) \
-  CFL_SUBSAMPLE_FUNCTIONS(arch, 422, lbd) \
-  CFL_SUBSAMPLE_FUNCTIONS(arch, 444, lbd) \
   CFL_SUBSAMPLE_FUNCTIONS(arch, 420, hbd) \
   CFL_SUBSAMPLE_FUNCTIONS(arch, 422, hbd) \
   CFL_SUBSAMPLE_FUNCTIONS(arch, 444, hbd)
@@ -216,14 +213,6 @@ void cfl_load_dc_pred(MACROBLOCKD *const xd, uint8_t *dst, int dst_stride,
 void cfl_subtract_average_4x4_c(const uint16_t *src, int16_t *dst);
 void cfl_subtract_average_4x8_c(const uint16_t *src, int16_t *dst);
 void cfl_subtract_average_4x16_c(const uint16_t *src, int16_t *dst);
-
-#define CFL_PREDICT_lbd(arch, width, height)                              \
-  void cfl_predict_lbd_##width##x##height##_##arch(                       \
-      const int16_t *pred_buf_q3, uint8_t *dst, int dst_stride,           \
-      int alpha_q3) {                                                     \
-    cfl_predict_lbd_##arch(pred_buf_q3, dst, dst_stride, alpha_q3, width, \
-                           height);                                       \
-  }
 
 #define CFL_PREDICT_hbd(arch, width, height)                                   \
   void cfl_predict_hbd_##width##x##height##_##arch(                            \

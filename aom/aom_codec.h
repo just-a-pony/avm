@@ -83,7 +83,7 @@
  *       {
  *           aom_codec_ctx_t algo;
  *           int threads = 4;
- *           aom_codec_dec_cfg_t cfg = { threads, 0, 0, 1 };
+ *           aom_codec_dec_cfg_t cfg = { threads, 0, 0 };
  *           res = aom_codec_dec_init(&algo, &my_codec, &cfg, 0);
  *       }
  *     </pre>

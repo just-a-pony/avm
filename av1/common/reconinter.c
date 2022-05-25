@@ -60,8 +60,7 @@ int av1_allow_warp(const MB_MODE_INFO *const mbmi,
 void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
                            int block_height, int pix_row, int pix_col,
                            int subsampling_x, int subsampling_y, int bit_depth,
-                           int use_hbd_buf, int is_intrabc,
-                           const struct scale_factors *sf,
+                           int is_intrabc, const struct scale_factors *sf,
                            const struct buf_2d *ref_buf,
                            InterpFilter interp_filter) {
   inter_pred_params->block_width = block_width;
@@ -75,7 +74,6 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
   inter_pred_params->subsampling_x = subsampling_x;
   inter_pred_params->subsampling_y = subsampling_y;
   inter_pred_params->bit_depth = bit_depth;
-  inter_pred_params->use_hbd_buf = use_hbd_buf;
   inter_pred_params->is_intrabc = is_intrabc;
   inter_pred_params->scale_factors = sf;
   inter_pred_params->ref_frame_buf = *ref_buf;
@@ -127,8 +125,8 @@ void av1_make_inter_predictor(const uint8_t *src, int src_stride, uint8_t *dst,
   // TODO(jingning): av1_warp_plane() can be further cleaned up.
   if (inter_pred_params->mode == WARP_PRED) {
     av1_warp_plane(
-        &inter_pred_params->warp_params, inter_pred_params->use_hbd_buf,
-        inter_pred_params->bit_depth, inter_pred_params->ref_frame_buf.buf0,
+        &inter_pred_params->warp_params, inter_pred_params->bit_depth,
+        inter_pred_params->ref_frame_buf.buf0,
         inter_pred_params->ref_frame_buf.width,
         inter_pred_params->ref_frame_buf.height,
         inter_pred_params->ref_frame_buf.stride, dst,
@@ -137,20 +135,11 @@ void av1_make_inter_predictor(const uint8_t *src, int src_stride, uint8_t *dst,
         dst_stride, inter_pred_params->subsampling_x,
         inter_pred_params->subsampling_y, &inter_pred_params->conv_params);
   } else if (inter_pred_params->mode == TRANSLATION_PRED) {
-    if (inter_pred_params->use_hbd_buf) {
-      highbd_inter_predictor(src, src_stride, dst, dst_stride, subpel_params,
-                             inter_pred_params->block_width,
-                             inter_pred_params->block_height,
-                             &inter_pred_params->conv_params,
-                             inter_pred_params->interp_filter_params,
-                             inter_pred_params->bit_depth);
-    } else {
-      inter_predictor(src, src_stride, dst, dst_stride, subpel_params,
-                      inter_pred_params->block_width,
-                      inter_pred_params->block_height,
-                      &inter_pred_params->conv_params,
-                      inter_pred_params->interp_filter_params);
-    }
+    highbd_inter_predictor(
+        src, src_stride, dst, dst_stride, subpel_params,
+        inter_pred_params->block_width, inter_pred_params->block_height,
+        &inter_pred_params->conv_params,
+        inter_pred_params->interp_filter_params, inter_pred_params->bit_depth);
   }
 }
 
@@ -375,22 +364,6 @@ static AOM_INLINE void diffwtd_mask(uint8_t *mask, int which_inverse,
       m = clamp(mask_base + (diff / DIFF_FACTOR), 0, AOM_BLEND_A64_MAX_ALPHA);
       mask[i * w + j] = which_inverse ? AOM_BLEND_A64_MAX_ALPHA - m : m;
     }
-  }
-}
-
-void av1_build_compound_diffwtd_mask_c(uint8_t *mask,
-                                       DIFFWTD_MASK_TYPE mask_type,
-                                       const uint8_t *src0, int src0_stride,
-                                       const uint8_t *src1, int src1_stride,
-                                       int h, int w) {
-  switch (mask_type) {
-    case DIFFWTD_38:
-      diffwtd_mask(mask, 0, 38, src0, src0_stride, src1, src1_stride, h, w);
-      break;
-    case DIFFWTD_38_INV:
-      diffwtd_mask(mask, 1, 38, src0, src0_stride, src1, src1_stride, h, w);
-      break;
-    default: assert(0);
   }
 }
 
@@ -659,8 +632,7 @@ void av1_opfl_build_inter_predictor(
 
   av1_init_inter_params(inter_pred_params, bw, bh, pre_y, pre_x,
                         pd->subsampling_x, pd->subsampling_y, xd->bd,
-                        is_cur_buf_hbd(xd), mi->use_intrabc[0], sf, pre_buf,
-                        mi->interp_fltr);
+                        mi->use_intrabc[0], sf, pre_buf, mi->interp_fltr);
 
   inter_pred_params->conv_params = get_conv_params_no_round(
       0, plane, xd->tmp_conv_dst, MAX_SB_SIZE, is_compound, xd->bd);
@@ -740,71 +712,9 @@ void av1_compute_subpel_gradients_mc_highbd(
                             bw, CONVERT_TO_BYTEPTR(tmp_buf1), bw, xd->bd);
 }
 
-// Note: grad_prec_bits param returned correspond to the precision
-// of the gradient information in bits assuming gradient
-// computed at unit pixel step normalization is 0 scale.
-// Negative values indicate gradient returned at reduced precision, and
-// positive values indicate gradient returned at higher precision.
-void av1_compute_subpel_gradients_mc_lowbd(
-    MACROBLOCKD *xd, const MB_MODE_INFO *mi, int bw, int bh, int mi_x, int mi_y,
-    uint8_t **mc_buf, InterPredParams *inter_pred_params,
-    CalcSubpelParamsFunc calc_subpel_params_func, int ref, int *grad_prec_bits,
-    int16_t *x_grad, int16_t *y_grad) {
-  *grad_prec_bits = 3 - SUBPEL_GRAD_DELTA_BITS - 2;
-
-  // Original predictor
-  const MV mv_orig = mi->mv[ref].as_mv;
-  MV mv_modified = mv_orig;
-  uint8_t tmp_buf1[MAX_SB_SIZE * MAX_SB_SIZE] = { 0 };
-  uint8_t tmp_buf2[MAX_SB_SIZE * MAX_SB_SIZE] = { 0 };
-  // X gradient
-  // Get predictor to the left
-  mv_modified.col = mv_orig.col - (1 << (3 - SUBPEL_GRAD_DELTA_BITS));
-  mv_modified.row = mv_orig.row;
-  av1_build_one_inter_predictor(tmp_buf1, bw, &mv_modified, inter_pred_params,
-                                xd, mi_x, mi_y, ref, mc_buf,
-                                calc_subpel_params_func);
-  // Get predictor to the right
-  mv_modified.col = mv_orig.col + (1 << (3 - SUBPEL_GRAD_DELTA_BITS));
-  mv_modified.row = mv_orig.row;
-  av1_build_one_inter_predictor(tmp_buf2, bw, &mv_modified, inter_pred_params,
-                                xd, mi_x, mi_y, ref, mc_buf,
-                                calc_subpel_params_func);
-  // Compute difference.
-  // Note since the deltas are at +2^g/8 and -2^g/8 subpel locations
-  // (g = 3 - SUBPEL_GRAD_DELTA_BITS), the actual unit pel gradient is
-  // 4/2^g = 2^(2-g) times the difference. Therefore the gradient returned
-  // is at reduced precision by 2-g bits. That explains the grad_prec_bits
-  // return value of g-2 at the end of this function.
-
-  aom_subtract_block(bh, bw, x_grad, bw, tmp_buf2, bw, tmp_buf1, bw);
-
-  // Y gradient
-  // Get predictor below
-  mv_modified.col = mv_orig.col;
-  mv_modified.row = mv_orig.row - (1 << (3 - SUBPEL_GRAD_DELTA_BITS));
-  av1_build_one_inter_predictor(tmp_buf1, bw, &mv_modified, inter_pred_params,
-                                xd, mi_x, mi_y, ref, mc_buf,
-                                calc_subpel_params_func);
-  // Get predictor above
-  mv_modified.col = mv_orig.col;
-  mv_modified.row = mv_orig.row + (1 << (3 - SUBPEL_GRAD_DELTA_BITS));
-  av1_build_one_inter_predictor(tmp_buf2, bw, &mv_modified, inter_pred_params,
-                                xd, mi_x, mi_y, ref, mc_buf,
-                                calc_subpel_params_func);
-  // Compute difference.
-  // Note since the deltas are at +2^g/8 and -2^g/8 subpel locations
-  // (g = 3 - SUBPEL_GRAD_DELTA_BITS), the actual unit pel gradient is
-  // 4/2^g = 2^(2-g) times the difference. Therefore the gradient returned
-  // is at reduced precision by 2-g bits. That explains the grad_prec_bits
-  // return value of g-2 at the end of this function.
-
-  aom_subtract_block(bh, bw, y_grad, bw, tmp_buf2, bw, tmp_buf1, bw);
-}
-
-void av1_bicubic_grad_interpolation_c(const int16_t *pred_src, int16_t *x_grad,
-                                      int16_t *y_grad, const int bw,
-                                      const int bh) {
+void av1_bicubic_grad_interpolation_highbd_c(const int16_t *pred_src,
+                                             int16_t *x_grad, int16_t *y_grad,
+                                             const int bw, const int bh) {
 #if OPFL_BICUBIC_GRAD
   for (int i = 0; i < bh; i++) {
     for (int j = 0; j < bw; j++) {
@@ -853,12 +763,6 @@ void av1_bicubic_grad_interpolation_c(const int16_t *pred_src, int16_t *x_grad,
 #endif  // OPFL_BICUBIC_GRAD
 }
 
-void av1_bicubic_grad_interpolation_highbd_c(const int16_t *pred_src,
-                                             int16_t *x_grad, int16_t *y_grad,
-                                             const int bw, const int bh) {
-  av1_bicubic_grad_interpolation_c(pred_src, x_grad, y_grad, bw, bh);
-}
-
 #if OPFL_BILINEAR_GRAD
 void av1_bilinear_grad_interpolation_c(const int16_t *pred_src, int16_t *x_grad,
                                        int16_t *y_grad, const int bw,
@@ -894,16 +798,13 @@ void av1_bilinear_grad_interpolation_c(const int16_t *pred_src, int16_t *x_grad,
 #if OPFL_BILINEAR_GRAD || OPFL_BICUBIC_GRAD
 void av1_compute_subpel_gradients_interp(int16_t *pred_dst, int bw, int bh,
                                          int *grad_prec_bits, int16_t *x_grad,
-                                         int16_t *y_grad, int is_hbd) {
+                                         int16_t *y_grad) {
   // Reuse pixels in pred_dst to compute gradients
 #if OPFL_BILINEAR_GRAD
   (void)is_hbd;
   av1_bilinear_grad_interpolation_c(pred_dst, x_grad, y_grad, bw, bh);
 #else
-  if (is_hbd)
-    av1_bicubic_grad_interpolation_highbd(pred_dst, x_grad, y_grad, bw, bh);
-  else
-    av1_bicubic_grad_interpolation(pred_dst, x_grad, y_grad, bw, bh);
+  av1_bicubic_grad_interpolation_highbd(pred_dst, x_grad, y_grad, bw, bh);
 #endif  // OPFL_BILINEAR_GRAD
   *grad_prec_bits = 3 - SUBPEL_GRAD_DELTA_BITS - 2;
 }
@@ -1164,31 +1065,6 @@ int av1_opfl_mv_refinement_nxn_highbd_c(const uint16_t *p0, int pstride0,
   return n_blocks;
 }
 
-// Function to compute optical flow offsets in nxn blocks
-int av1_opfl_mv_refinement_nxn_lowbd_c(const uint8_t *p0, int pstride0,
-                                       const uint8_t *p1, int pstride1,
-                                       const int16_t *gx0, const int16_t *gy0,
-                                       const int16_t *gx1, const int16_t *gy1,
-                                       int gstride, int bw, int bh, int n,
-                                       int d0, int d1, int grad_prec_bits,
-                                       int mv_prec_bits, int *vx0, int *vy0,
-                                       int *vx1, int *vy1) {
-  assert(bw % n == 0 && bh % n == 0);
-  int n_blocks = 0;
-  for (int i = 0; i < bh; i += n) {
-    for (int j = 0; j < bw; j += n) {
-      av1_opfl_mv_refinement_lowbd(
-          p0 + (i * pstride0 + j), pstride0, p1 + (i * pstride1 + j), pstride1,
-          gx0 + (i * gstride + j), gy0 + (i * gstride + j),
-          gx1 + (i * gstride + j), gy1 + (i * gstride + j), gstride, n, n, d0,
-          d1, grad_prec_bits, mv_prec_bits, vx0 + n_blocks, vy0 + n_blocks,
-          vx1 + n_blocks, vy1 + n_blocks);
-      n_blocks++;
-    }
-  }
-  return n_blocks;
-}
-
 #if OPFL_COMBINE_INTERP_GRAD_LS
 static AOM_FORCE_INLINE void compute_pred_using_interp_grad(
     const uint8_t *src1, const uint8_t *src2, int16_t *dst1, int16_t *dst2,
@@ -1207,32 +1083,6 @@ static AOM_FORCE_INLINE void compute_pred_using_interp_grad(
   }
 }
 #endif  // OPFL_COMBINE_INTERP_GRAD_LS
-
-void av1_copy_pred_array_c(const uint8_t *src1, const uint8_t *src2,
-                           int16_t *dst1, int16_t *dst2, int bw, int bh, int d0,
-                           int d1) {
-#if OPFL_BILINEAR_GRAD || OPFL_BICUBIC_GRAD
-#if OPFL_COMBINE_INTERP_GRAD_LS
-  compute_pred_using_interp_grad(src1, src2, dst1, dst2, bw, bh, d0, d1);
-#else
-  (void)src2;
-  (void)dst2;
-  (void)d0;
-  (void)d1;
-  for (int i = 0; i < bh; ++i)
-    for (int j = 0; j < bw; ++j) dst1[i * bw + j] = (int16_t)src1[i * bw + j];
-#endif  // OPFL_COMBINE_INTERP_GRAD_LS
-#else
-  (void)src1;
-  (void)dst1;
-  (void)src2;
-  (void)dst2;
-  (void)d0;
-  (void)d1;
-  (void)bw;
-  (void)bh;
-#endif  // OPFL_BILINEAR_GRAD || OPFL_BICUBIC_GRAD
-}
 
 #if OPFL_COMBINE_INTERP_GRAD_LS
 static AOM_FORCE_INLINE void compute_pred_using_interp_grad_highbd(
@@ -1328,8 +1178,7 @@ static int get_optflow_based_mv_highbd(
       (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
   av1_copy_pred_array_highbd(dst0, dst1, tmp0, tmp1, bw, bh, d0, d1);
   // Buffers gx0 and gy0 are used to store the gradients of tmp0
-  av1_compute_subpel_gradients_interp(tmp0, bw, bh, &grad_prec_bits, gx0, gy0,
-                                      is_cur_buf_hbd(xd));
+  av1_compute_subpel_gradients_interp(tmp0, bw, bh, &grad_prec_bits, gx0, gy0);
 
   n_blocks = av1_opfl_mv_refinement_nxn_interp_grad(
       tmp1, bw, gx0, gy0, bw, bw, bh, n, d0, d1, grad_prec_bits, target_prec,
@@ -1341,12 +1190,10 @@ static int get_optflow_based_mv_highbd(
   int16_t *tmp =
       (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
   av1_copy_pred_array_highbd(dst0, NULL, tmp, NULL, bw, bh, d0, d1);
-  av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx0, gy0,
-                                      is_cur_buf_hbd(xd));
+  av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx0, gy0);
 
   av1_copy_pred_array_highbd(dst1, NULL, tmp, NULL, bw, bh, d0, d1);
-  av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx1, gy1,
-                                      is_cur_buf_hbd(xd));
+  av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx1, gy1);
 
   n_blocks = av1_opfl_mv_refinement_nxn_highbd(
       dst0, bw, dst1, bw, gx0, gy0, gx1, gy1, bw, bw, bh, n, d0, d1,
@@ -1364,118 +1211,6 @@ static int get_optflow_based_mv_highbd(
                                          &grad_prec_bits, gx1, gy1);
 
   n_blocks = av1_opfl_mv_refinement_nxn_highbd(
-      dst0, bw, dst1, bw, gx0, gy0, gx1, gy1, bw, bw, bh, n, d0, d1,
-      grad_prec_bits, target_prec, vx0, vy0, vx1, vy1);
-
-#endif  // OPFL_BILINEAR_GRAD || OPFL_BICUBIC_GRAD
-
-  for (int i = 0; i < n_blocks; i++) {
-#if OPFL_CLAMP_MV_DELTA
-    mv_refined[i * 2].as_mv.row +=
-        clamp(vy0[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
-    mv_refined[i * 2].as_mv.col +=
-        clamp(vx0[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
-    mv_refined[i * 2 + 1].as_mv.row +=
-        clamp(vy1[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
-    mv_refined[i * 2 + 1].as_mv.col +=
-        clamp(vx1[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
-#else
-    mv_refined[i * 2].as_mv.row += vy0[i];
-    mv_refined[i * 2].as_mv.col += vx0[i];
-    mv_refined[i * 2 + 1].as_mv.row += vy1[i];
-    mv_refined[i * 2 + 1].as_mv.col += vx1[i];
-#endif
-  }
-
-  return target_prec;
-}
-
-static int get_optflow_based_mv_lowbd(
-    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mbmi,
-    int_mv *mv_refined, int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
-    CalcSubpelParamsFunc calc_subpel_params_func, int16_t *gx0, int16_t *gy0,
-    int16_t *gx1, int16_t *gy1, int *vx0, int *vy0, int *vx1, int *vy1,
-    uint8_t *dst0, uint8_t *dst1) {
-  const int target_prec = MV_REFINE_PREC_BITS;
-  // Convert output MV to 1/16th pel
-  assert(MV_REFINE_PREC_BITS >= 3);
-  for (int mvi = 0; mvi < N_OF_OFFSETS; mvi++) {
-    mv_refined[mvi * 2].as_mv.row *= 1 << (MV_REFINE_PREC_BITS - 3);
-    mv_refined[mvi * 2].as_mv.col *= 1 << (MV_REFINE_PREC_BITS - 3);
-    mv_refined[mvi * 2 + 1].as_mv.row *= 1 << (MV_REFINE_PREC_BITS - 3);
-    mv_refined[mvi * 2 + 1].as_mv.col *= 1 << (MV_REFINE_PREC_BITS - 3);
-  }
-
-  // Obtain d0 and d1
-  const RefCntBuffer *const r0_buf = get_ref_frame_buf(cm, mbmi->ref_frame[0]);
-  const RefCntBuffer *const r1_buf = get_ref_frame_buf(cm, mbmi->ref_frame[1]);
-  int d0 = get_relative_dist(&cm->seq_params.order_hint_info,
-                             cm->cur_frame->order_hint, r0_buf->order_hint);
-  int d1 = get_relative_dist(&cm->seq_params.order_hint_info,
-                             cm->cur_frame->order_hint, r1_buf->order_hint);
-  if (d0 == 0 || d1 == 0) return target_prec;
-
-  // Obrain P0 and P1
-  InterPredParams params0, params1;
-  av1_opfl_build_inter_predictor(cm, xd, plane, mbmi, bw, bh, mi_x, mi_y,
-                                 mc_buf, &params0, calc_subpel_params_func, 0,
-                                 dst0);
-  av1_opfl_build_inter_predictor(cm, xd, plane, mbmi, bw, bh, mi_x, mi_y,
-                                 mc_buf, &params1, calc_subpel_params_func, 1,
-                                 dst1);
-
-  int n_blocks = 1;
-  int grad_prec_bits;
-  int n = opfl_get_subblock_size(bw, bh, plane);
-
-#if OPFL_BILINEAR_GRAD || OPFL_BICUBIC_GRAD
-  // Compute gradients of P0 and P1 with interpolation
-#if OPFL_COMBINE_INTERP_GRAD_LS
-  (void)gx1;
-  (void)gy1;
-
-  // Compute tmp1 = P0 - P1 and gradients of tmp0 = d0 * P0 - d1 * P1
-  int16_t *tmp0 =
-      (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
-  int16_t *tmp1 =
-      (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
-  av1_copy_pred_array(dst0, dst1, tmp0, tmp1, bw, bh, d0, d1);
-  // Buffers gx0 and gy0 are used to store the gradients of tmp0
-  av1_compute_subpel_gradients_interp(tmp0, bw, bh, &grad_prec_bits, gx0, gy0,
-                                      is_cur_buf_hbd(xd));
-
-  n_blocks = av1_opfl_mv_refinement_nxn_interp_grad(
-      tmp1, bw, gx0, gy0, bw, bw, bh, n, d0, d1, grad_prec_bits, target_prec,
-      vx0, vy0, vx1, vy1);
-
-  aom_free(tmp0);
-  aom_free(tmp1);
-#else
-  int16_t *tmp =
-      (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
-  av1_copy_pred_array(dst0, NULL, tmp, NULL, bw, bh, d0, d1);
-  av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx0, gy0,
-                                      is_cur_buf_hbd(xd));
-  av1_copy_pred_array(dst1, NULL, tmp, NULL, bw, bh, d0, d1);
-  av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx1, gy1,
-                                      is_cur_buf_hbd(xd));
-
-  n_blocks = av1_opfl_mv_refinement_nxn_lowbd(
-      dst0, bw, dst1, bw, gx0, gy0, gx1, gy1, bw, bw, bh, n, d0, d1,
-      grad_prec_bits, target_prec, vx0, vy0, vx1, vy1);
-
-  aom_free(tmp);
-#endif  // OPFL_COMBINE_INTERP_GRAD_LS
-#else
-  // Compute gradients of P0 and P1 with MC
-  av1_compute_subpel_gradients_mc_lowbd(xd, mbmi, bw, bh, mi_x, mi_y, mc_buf,
-                                        &params0, calc_subpel_params_func, 0,
-                                        &grad_prec_bits, gx0, gy0);
-  av1_compute_subpel_gradients_mc_lowbd(xd, mbmi, bw, bh, mi_x, mi_y, mc_buf,
-                                        &params1, calc_subpel_params_func, 1,
-                                        &grad_prec_bits, gx1, gy1);
-
-  n_blocks = av1_opfl_mv_refinement_nxn_lowbd(
       dst0, bw, dst1, bw, gx0, gy0, gx1, gy1, bw, bw, bh, n, d0, d1,
       grad_prec_bits, target_prec, vx0, vy0, vx1, vy1);
 
@@ -1579,16 +1314,10 @@ static AOM_INLINE void build_masked_compound_no_round(
   const int ssx = inter_pred_params->subsampling_x;
   const uint8_t *mask = av1_get_compound_type_mask(comp_data, sb_type);
   const int mask_stride = block_size_wide[sb_type];
-  if (inter_pred_params->use_hbd_buf) {
-    aom_highbd_blend_a64_d16_mask(dst, dst_stride, src0, src0_stride, src1,
-                                  src1_stride, mask, mask_stride, w, h, ssx,
-                                  ssy, &inter_pred_params->conv_params,
-                                  inter_pred_params->bit_depth);
-  } else {
-    aom_lowbd_blend_a64_d16_mask(dst, dst_stride, src0, src0_stride, src1,
-                                 src1_stride, mask, mask_stride, w, h, ssx, ssy,
-                                 &inter_pred_params->conv_params);
-  }
+  aom_highbd_blend_a64_d16_mask(dst, dst_stride, src0, src0_stride, src1,
+                                src1_stride, mask, mask_stride, w, h, ssx, ssy,
+                                &inter_pred_params->conv_params,
+                                inter_pred_params->bit_depth);
 }
 
 static void make_masked_inter_predictor(const uint8_t *pre, int pre_stride,
@@ -1602,8 +1331,7 @@ static void make_masked_inter_predictor(const uint8_t *pre, int pre_stride,
   // a temporary buffer, then will blend that temporary buffer with that from
   // the other reference.
   DECLARE_ALIGNED(32, uint8_t, tmp_buf[2 * MAX_SB_SQUARE]);
-  uint8_t *tmp_dst =
-      inter_pred_params->use_hbd_buf ? CONVERT_TO_BYTEPTR(tmp_buf) : tmp_buf;
+  uint8_t *tmp_dst = CONVERT_TO_BYTEPTR(tmp_buf);
 
   const int tmp_buf_stride = MAX_SB_SIZE;
   CONV_BUF_TYPE *org_dst = inter_pred_params->conv_params.dst;
@@ -1743,8 +1471,8 @@ static void build_inter_predictors_sub8x8(
       InterPredParams inter_pred_params;
       av1_init_inter_params(&inter_pred_params, b4_w, b4_h, pre_y + y,
                             pre_x + x, pd->subsampling_x, pd->subsampling_y,
-                            xd->bd, is_cur_buf_hbd(xd), mi->use_intrabc[0], sf,
-                            &pre_buf, this_mbmi->interp_fltr);
+                            xd->bd, mi->use_intrabc[0], sf, &pre_buf,
+                            this_mbmi->interp_fltr);
       inter_pred_params.conv_params =
           get_conv_params_no_round(ref, plane, NULL, 0, is_compound, xd->bd);
 
@@ -1837,28 +1565,16 @@ static void build_inter_predictors_8x8_and_bigger(
     }
     // Refine MV using optical flow. The final output MV will be in 1/16
     // precision.
-    if (is_cur_buf_hbd(xd)) {
-      dst0 = CONVERT_TO_BYTEPTR(
-          aom_calloc(1, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(uint16_t)));
-      dst1 = CONVERT_TO_BYTEPTR(
-          aom_calloc(1, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(uint16_t)));
-      get_optflow_based_mv_highbd(
-          cm, xd, plane, mi, mv_refined, bw, bh, mi_x, mi_y, mc_buf,
-          calc_subpel_params_func, gx0, gy0, gx1, gy1, vx0, vy0, vx1, vy1,
-          CONVERT_TO_SHORTPTR(dst0), CONVERT_TO_SHORTPTR(dst1));
-      aom_free(CONVERT_TO_SHORTPTR(dst0));
-      aom_free(CONVERT_TO_SHORTPTR(dst1));
-    } else {
-      dst0 =
-          (uint8_t *)aom_calloc(1, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(uint8_t));
-      dst1 =
-          (uint8_t *)aom_calloc(1, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(uint8_t));
-      get_optflow_based_mv_lowbd(cm, xd, plane, mi, mv_refined, bw, bh, mi_x,
-                                 mi_y, mc_buf, calc_subpel_params_func, gx0,
-                                 gy0, gx1, gy1, vx0, vy0, vx1, vy1, dst0, dst1);
-      aom_free(dst0);
-      aom_free(dst1);
-    }
+    dst0 = CONVERT_TO_BYTEPTR(
+        aom_calloc(1, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(uint16_t)));
+    dst1 = CONVERT_TO_BYTEPTR(
+        aom_calloc(1, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(uint16_t)));
+    get_optflow_based_mv_highbd(
+        cm, xd, plane, mi, mv_refined, bw, bh, mi_x, mi_y, mc_buf,
+        calc_subpel_params_func, gx0, gy0, gx1, gy1, vx0, vy0, vx1, vy1,
+        CONVERT_TO_SHORTPTR(dst0), CONVERT_TO_SHORTPTR(dst1));
+    aom_free(CONVERT_TO_SHORTPTR(dst0));
+    aom_free(CONVERT_TO_SHORTPTR(dst1));
     aom_free(gx0);
     aom_free(gx1);
   }
@@ -1875,8 +1591,7 @@ static void build_inter_predictors_8x8_and_bigger(
     InterPredParams inter_pred_params;
     av1_init_inter_params(&inter_pred_params, bw, bh, pre_y, pre_x,
                           pd->subsampling_x, pd->subsampling_y, xd->bd,
-                          is_cur_buf_hbd(xd), mi->use_intrabc[0], sf, pre_buf,
-                          mi->interp_fltr);
+                          mi->use_intrabc[0], sf, pre_buf, mi->interp_fltr);
     if (is_compound) av1_init_comp_mode(&inter_pred_params);
     inter_pred_params.conv_params = get_conv_params_no_round(
         ref, plane, xd->tmp_conv_dst, MAX_SB_SIZE, is_compound, xd->bd);
@@ -2087,13 +1802,8 @@ static INLINE void build_obmc_inter_pred_above(
     const int tmp_stride = ctxt->adjacent_stride[plane];
     const uint8_t *const tmp = &ctxt->adjacent[plane][plane_col];
     const uint8_t *const mask = av1_get_obmc_mask(bh);
-    const int is_hbd = is_cur_buf_hbd(xd);
-    if (is_hbd)
-      aom_highbd_blend_a64_vmask(dst, dst_stride, dst, dst_stride, tmp,
-                                 tmp_stride, mask, bw, bh, xd->bd);
-    else
-      aom_blend_a64_vmask(dst, dst_stride, dst, dst_stride, tmp, tmp_stride,
-                          mask, bw, bh);
+    aom_highbd_blend_a64_vmask(dst, dst_stride, dst, dst_stride, tmp,
+                               tmp_stride, mask, bw, bh, xd->bd);
   }
 }
 
@@ -2122,13 +1832,8 @@ static INLINE void build_obmc_inter_pred_left(
     const uint8_t *const tmp = &ctxt->adjacent[plane][plane_row * tmp_stride];
     const uint8_t *const mask = av1_get_obmc_mask(bw);
 
-    const int is_hbd = is_cur_buf_hbd(xd);
-    if (is_hbd)
-      aom_highbd_blend_a64_hmask(dst, dst_stride, dst, dst_stride, tmp,
-                                 tmp_stride, mask, bw, bh, xd->bd);
-    else
-      aom_blend_a64_hmask(dst, dst_stride, dst, dst_stride, tmp, tmp_stride,
-                          mask, bw, bh);
+    aom_highbd_blend_a64_hmask(dst, dst_stride, dst, dst_stride, tmp,
+                               tmp_stride, mask, bw, bh, xd->bd);
   }
 }
 
@@ -2158,26 +1863,15 @@ void av1_build_obmc_inter_prediction(const AV1_COMMON *cm, MACROBLOCKD *xd,
 
 void av1_setup_obmc_dst_bufs(MACROBLOCKD *xd, uint8_t **dst_buf1,
                              uint8_t **dst_buf2) {
-  if (is_cur_buf_hbd(xd)) {
-    int len = sizeof(uint16_t);
-    dst_buf1[0] = CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[0]);
-    dst_buf1[1] =
-        CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[0] + MAX_SB_SQUARE * len);
-    dst_buf1[2] =
-        CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[0] + MAX_SB_SQUARE * 2 * len);
-    dst_buf2[0] = CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[1]);
-    dst_buf2[1] =
-        CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[1] + MAX_SB_SQUARE * len);
-    dst_buf2[2] =
-        CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[1] + MAX_SB_SQUARE * 2 * len);
-  } else {
-    dst_buf1[0] = xd->tmp_obmc_bufs[0];
-    dst_buf1[1] = xd->tmp_obmc_bufs[0] + MAX_SB_SQUARE;
-    dst_buf1[2] = xd->tmp_obmc_bufs[0] + MAX_SB_SQUARE * 2;
-    dst_buf2[0] = xd->tmp_obmc_bufs[1];
-    dst_buf2[1] = xd->tmp_obmc_bufs[1] + MAX_SB_SQUARE;
-    dst_buf2[2] = xd->tmp_obmc_bufs[1] + MAX_SB_SQUARE * 2;
-  }
+  int len = sizeof(uint16_t);
+  dst_buf1[0] = CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[0]);
+  dst_buf1[1] = CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[0] + MAX_SB_SQUARE * len);
+  dst_buf1[2] =
+      CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[0] + MAX_SB_SQUARE * 2 * len);
+  dst_buf2[0] = CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[1]);
+  dst_buf2[1] = CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[1] + MAX_SB_SQUARE * len);
+  dst_buf2[2] =
+      CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[1] + MAX_SB_SQUARE * 2 * len);
 }
 
 void av1_setup_build_prediction_by_above_pred(
@@ -2260,32 +1954,6 @@ void av1_setup_build_prediction_by_left_pred(MACROBLOCKD *xd, int rel_mi_row,
       GET_MV_SUBPEL((xd->height - rel_mi_row - left_mi_height) * MI_SIZE);
 }
 
-static AOM_INLINE void combine_interintra(
-    INTERINTRA_MODE mode, int8_t use_wedge_interintra, int8_t wedge_index,
-    int8_t wedge_sign, BLOCK_SIZE bsize, BLOCK_SIZE plane_bsize,
-    uint8_t *comppred, int compstride, const uint8_t *interpred,
-    int interstride, const uint8_t *intrapred, int intrastride) {
-  const int bw = block_size_wide[plane_bsize];
-  const int bh = block_size_high[plane_bsize];
-
-  if (use_wedge_interintra) {
-    if (av1_is_wedge_used(bsize)) {
-      const uint8_t *mask =
-          av1_get_contiguous_soft_mask(wedge_index, wedge_sign, bsize);
-      const int subw = 2 * mi_size_wide[bsize] == bw;
-      const int subh = 2 * mi_size_high[bsize] == bh;
-      aom_blend_a64_mask(comppred, compstride, intrapred, intrastride,
-                         interpred, interstride, mask, block_size_wide[bsize],
-                         bw, bh, subw, subh);
-    }
-    return;
-  }
-
-  const uint8_t *mask = smooth_interintra_mask_buf[mode][plane_bsize];
-  aom_blend_a64_mask(comppred, compstride, intrapred, intrastride, interpred,
-                     interstride, mask, bw, bw, bh, 0, 0);
-}
-
 static AOM_INLINE void combine_interintra_highbd(
     INTERINTRA_MODE mode, int8_t use_wedge_interintra, int8_t wedge_index,
     int8_t wedge_sign, BLOCK_SIZE bsize, BLOCK_SIZE plane_bsize,
@@ -2341,20 +2009,11 @@ void av1_combine_interintra(MACROBLOCKD *xd, BLOCK_SIZE bsize, int plane,
   const int ssy = xd->plane[plane].subsampling_y;
   const BLOCK_SIZE plane_bsize = get_plane_block_size(bsize, ssx, ssy);
 
-  if (is_cur_buf_hbd(xd)) {
-    combine_interintra_highbd(
-        xd->mi[0]->interintra_mode, xd->mi[0]->use_wedge_interintra,
-        xd->mi[0]->interintra_wedge_index, INTERINTRA_WEDGE_SIGN, bsize,
-        plane_bsize, xd->plane[plane].dst.buf, xd->plane[plane].dst.stride,
-        inter_pred, inter_stride, intra_pred, intra_stride, xd->bd);
-    return;
-  }
-
-  combine_interintra(
+  combine_interintra_highbd(
       xd->mi[0]->interintra_mode, xd->mi[0]->use_wedge_interintra,
       xd->mi[0]->interintra_wedge_index, INTERINTRA_WEDGE_SIGN, bsize,
       plane_bsize, xd->plane[plane].dst.buf, xd->plane[plane].dst.stride,
-      inter_pred, inter_stride, intra_pred, intra_stride);
+      inter_pred, inter_stride, intra_pred, intra_stride, xd->bd);
 }
 
 // build interintra_predictors for one plane
@@ -2363,18 +2022,10 @@ void av1_build_interintra_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                     const BUFFER_SET *ctx, int plane,
                                     BLOCK_SIZE bsize) {
   assert(bsize < BLOCK_SIZES_ALL);
-  if (is_cur_buf_hbd(xd)) {
-    DECLARE_ALIGNED(16, uint16_t, intrapredictor[MAX_SB_SQUARE]);
-    av1_build_intra_predictors_for_interintra(
-        cm, xd, bsize, plane, ctx, CONVERT_TO_BYTEPTR(intrapredictor),
-        MAX_SB_SIZE);
-    av1_combine_interintra(xd, bsize, plane, pred, stride,
-                           CONVERT_TO_BYTEPTR(intrapredictor), MAX_SB_SIZE);
-  } else {
-    DECLARE_ALIGNED(16, uint8_t, intrapredictor[MAX_SB_SQUARE]);
-    av1_build_intra_predictors_for_interintra(cm, xd, bsize, plane, ctx,
-                                              intrapredictor, MAX_SB_SIZE);
-    av1_combine_interintra(xd, bsize, plane, pred, stride, intrapredictor,
-                           MAX_SB_SIZE);
-  }
+  DECLARE_ALIGNED(16, uint16_t, intrapredictor[MAX_SB_SQUARE]);
+  av1_build_intra_predictors_for_interintra(cm, xd, bsize, plane, ctx,
+                                            CONVERT_TO_BYTEPTR(intrapredictor),
+                                            MAX_SB_SIZE);
+  av1_combine_interintra(xd, bsize, plane, pred, stride,
+                         CONVERT_TO_BYTEPTR(intrapredictor), MAX_SB_SIZE);
 }

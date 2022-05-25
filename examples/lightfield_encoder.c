@@ -369,7 +369,6 @@ int main(int argc, char **argv) {
   cfg.kf_mode = AOM_KF_DISABLED;
   cfg.large_scale_tile = 0;  // Only set it to 1 for camera frame encoding.
   cfg.g_bit_depth = AOM_BITS_8;
-  flags |= AOM_CODEC_USE_HIGHBITDEPTH;
 
   if (!(infile = fopen(infile_arg, "rb")))
     die("Failed to open %s for reading", infile_arg);

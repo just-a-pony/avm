@@ -242,15 +242,9 @@ static AOM_INLINE void palette_rd_y(
     return;
   }
   PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
-  if (cpi->common.seq_params.use_highbitdepth) {
-    for (int i = 0; i < num_unique_colors; ++i) {
-      pmi->palette_colors[i] = clip_pixel_highbd(
-          (int)centroids[i], cpi->common.seq_params.bit_depth);
-    }
-  } else {
-    for (int i = 0; i < num_unique_colors; ++i) {
-      pmi->palette_colors[i] = clip_pixel(centroids[i]);
-    }
+  for (int i = 0; i < num_unique_colors; ++i) {
+    pmi->palette_colors[i] =
+        clip_pixel_highbd((int)centroids[i], cpi->common.seq_params.bit_depth);
   }
   pmi->palette_size[0] = num_unique_colors;
   MACROBLOCKD *const xd = &x->e_mbd;
@@ -447,54 +441,32 @@ void av1_rd_pick_palette_intra_sby(
   av1_get_block_dimensions(bsize, 0, xd, &block_width, &block_height, &rows,
                            &cols);
   const SequenceHeader *const seq_params = &cpi->common.seq_params;
-  const int is_hbd = seq_params->use_highbitdepth;
   const int bit_depth = seq_params->bit_depth;
   int unused;
 
   int count_buf[1 << 12];      // Maximum (1 << 12) color levels.
   int count_buf_8bit[1 << 8];  // Maximum (1 << 8) bins for hbd path.
   int colors, colors_threshold = 0;
-  if (is_hbd) {
-    av1_count_colors_highbd(src, src_stride, rows, cols, bit_depth, count_buf,
-                            count_buf_8bit, &colors_threshold, &colors);
-  } else {
-    av1_count_colors(src, src_stride, rows, cols, count_buf, &colors);
-    colors_threshold = colors;
-  }
+  av1_count_colors_highbd(src, src_stride, rows, cols, bit_depth, count_buf,
+                          count_buf_8bit, &colors_threshold, &colors);
 
   uint8_t *const color_map = xd->plane[0].color_index_map;
   if (colors_threshold > 1 && colors_threshold <= 64) {
     int *const data = x->palette_buffer->kmeans_data_buf;
     int centroids[PALETTE_MAX_SIZE];
     int lb, ub;
-    if (is_hbd) {
-      int *data_pt = data;
-      const uint16_t *src_pt = CONVERT_TO_SHORTPTR(src);
-      lb = ub = src_pt[0];
-      for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-          const int val = src_pt[c];
-          data_pt[c] = val;
-          lb = AOMMIN(lb, val);
-          ub = AOMMAX(ub, val);
-        }
-        src_pt += src_stride;
-        data_pt += cols;
+    int *data_pt = data;
+    const uint16_t *src_pt = CONVERT_TO_SHORTPTR(src);
+    lb = ub = src_pt[0];
+    for (int r = 0; r < rows; ++r) {
+      for (int c = 0; c < cols; ++c) {
+        const int val = src_pt[c];
+        data_pt[c] = val;
+        lb = AOMMIN(lb, val);
+        ub = AOMMAX(ub, val);
       }
-    } else {
-      int *data_pt = data;
-      const uint8_t *src_pt = src;
-      lb = ub = src[0];
-      for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-          const int val = src_pt[c];
-          data_pt[c] = val;
-          lb = AOMMIN(lb, val);
-          ub = AOMMAX(ub, val);
-        }
-        src_pt += src_stride;
-        data_pt += cols;
-      }
+      src_pt += src_stride;
+      data_pt += cols;
     }
 
     mbmi->mode = DC_PRED;
@@ -701,19 +673,12 @@ void av1_rd_pick_palette_intra_sbuv(const AV1_COMP *cpi, MACROBLOCK *x,
 #endif                         // CONFIG_AIMC
   int count_buf[1 << 12];      // Maximum (1 << 12) color levels.
   int count_buf_8bit[1 << 8];  // Maximum (1 << 8) bins for hbd path.
-  if (seq_params->use_highbitdepth) {
-    av1_count_colors_highbd(src_u, src_stride, rows, cols,
-                            seq_params->bit_depth, count_buf, count_buf_8bit,
-                            &colors_threshold_u, &colors_u);
-    av1_count_colors_highbd(src_v, src_stride, rows, cols,
-                            seq_params->bit_depth, count_buf, count_buf_8bit,
-                            &colors_threshold_v, &colors_v);
-  } else {
-    av1_count_colors(src_u, src_stride, rows, cols, count_buf, &colors_u);
-    av1_count_colors(src_v, src_stride, rows, cols, count_buf, &colors_v);
-    colors_threshold_u = colors_u;
-    colors_threshold_v = colors_v;
-  }
+  av1_count_colors_highbd(src_u, src_stride, rows, cols, seq_params->bit_depth,
+                          count_buf, count_buf_8bit, &colors_threshold_u,
+                          &colors_u);
+  av1_count_colors_highbd(src_v, src_stride, rows, cols, seq_params->bit_depth,
+                          count_buf, count_buf_8bit, &colors_threshold_v,
+                          &colors_v);
 
   uint16_t color_cache[2 * PALETTE_MAX_SIZE];
   const int n_cache = av1_get_palette_cache(xd, 1, color_cache);
@@ -732,31 +697,17 @@ void av1_rd_pick_palette_intra_sbuv(const AV1_COMP *cpi, MACROBLOCK *x,
 
     uint16_t *src_u16 = CONVERT_TO_SHORTPTR(src_u);
     uint16_t *src_v16 = CONVERT_TO_SHORTPTR(src_v);
-    if (seq_params->use_highbitdepth) {
-      lb_u = src_u16[0];
-      ub_u = src_u16[0];
-      lb_v = src_v16[0];
-      ub_v = src_v16[0];
-    } else {
-      lb_u = src_u[0];
-      ub_u = src_u[0];
-      lb_v = src_v[0];
-      ub_v = src_v[0];
-    }
+    lb_u = src_u16[0];
+    ub_u = src_u16[0];
+    lb_v = src_v16[0];
+    ub_v = src_v16[0];
 
     for (r = 0; r < rows; ++r) {
       for (c = 0; c < cols; ++c) {
-        if (seq_params->use_highbitdepth) {
-          val_u = src_u16[r * src_stride + c];
-          val_v = src_v16[r * src_stride + c];
-          data[(r * cols + c) * 2] = val_u;
-          data[(r * cols + c) * 2 + 1] = val_v;
-        } else {
-          val_u = src_u[r * src_stride + c];
-          val_v = src_v[r * src_stride + c];
-          data[(r * cols + c) * 2] = val_u;
-          data[(r * cols + c) * 2 + 1] = val_v;
-        }
+        val_u = src_u16[r * src_stride + c];
+        val_v = src_v16[r * src_stride + c];
+        data[(r * cols + c) * 2] = val_u;
+        data[(r * cols + c) * 2 + 1] = val_v;
         if (val_u < lb_u)
           lb_u = val_u;
         else if (val_u > ub_u)
@@ -796,12 +747,8 @@ void av1_rd_pick_palette_intra_sbuv(const AV1_COMP *cpi, MACROBLOCK *x,
       pmi->palette_size[1] = n;
       for (i = 1; i < 3; ++i) {
         for (j = 0; j < n; ++j) {
-          if (seq_params->use_highbitdepth)
-            pmi->palette_colors[i * PALETTE_MAX_SIZE + j] = clip_pixel_highbd(
-                (int)centroids[j * 2 + i - 1], seq_params->bit_depth);
-          else
-            pmi->palette_colors[i * PALETTE_MAX_SIZE + j] =
-                clip_pixel((int)centroids[j * 2 + i - 1]);
+          pmi->palette_colors[i * PALETTE_MAX_SIZE + j] = clip_pixel_highbd(
+              (int)centroids[j * 2 + i - 1], seq_params->bit_depth);
         }
       }
 
@@ -846,18 +793,14 @@ void av1_restore_uv_color_map(const AV1_COMP *cpi, MACROBLOCK *x) {
   const uint16_t *const src_u16 = CONVERT_TO_SHORTPTR(src_u);
   const uint16_t *const src_v16 = CONVERT_TO_SHORTPTR(src_v);
   int plane_block_width, plane_block_height, rows, cols;
+  (void)cpi;
   av1_get_block_dimensions(bsize, 1, xd, &plane_block_width,
                            &plane_block_height, &rows, &cols);
 
   for (r = 0; r < rows; ++r) {
     for (c = 0; c < cols; ++c) {
-      if (cpi->common.seq_params.use_highbitdepth) {
-        data[(r * cols + c) * 2] = src_u16[r * src_stride + c];
-        data[(r * cols + c) * 2 + 1] = src_v16[r * src_stride + c];
-      } else {
-        data[(r * cols + c) * 2] = src_u[r * src_stride + c];
-        data[(r * cols + c) * 2 + 1] = src_v[r * src_stride + c];
-      }
+      data[(r * cols + c) * 2] = src_u16[r * src_stride + c];
+      data[(r * cols + c) * 2 + 1] = src_v16[r * src_stride + c];
     }
   }
 

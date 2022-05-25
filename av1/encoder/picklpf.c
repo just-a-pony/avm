@@ -126,8 +126,7 @@ static int64_t try_filter_frame(const YV12_BUFFER_CONFIG *sd,
 #endif
                           plane, plane + 1, partial_frame);
 
-  filt_err = aom_get_sse_plane(sd, &cm->cur_frame->buf, plane,
-                               cm->seq_params.use_highbitdepth);
+  filt_err = aom_get_sse_plane(sd, &cm->cur_frame->buf, plane);
 
   // Re-instate the unfiltered frame
   yv12_copy_plane(&cpi->last_frame_uf, &cm->cur_frame->buf, plane);

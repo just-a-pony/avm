@@ -38,15 +38,6 @@ void derive_ccso_sample_pos(int *rec_idx, const int ccso_stride,
                             const uint8_t ext_filter_support);
 #endif
 
-void apply_ccso_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
-                       const uint16_t *temp_rec_y_buf, uint8_t *rec_yv_8,
-                       const int dst_stride, const int8_t *filter_offset,
-#if CONFIG_CCSO_EXT
-                       const int shift_bits,
-#endif
-                       const uint8_t quant_step_size,
-                       const uint8_t ext_filter_support);
-
 void apply_ccso_filter_hbd(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
                            const uint16_t *temp_rec_y_buf, uint16_t *rec_uv_16,
                            const int dst_stride, const int8_t *filter_offset,

@@ -273,7 +273,6 @@ const arg_def_t *global_args[] = {
   &g_av1_codec_arg_defs.large_scale_tile,
   &g_av1_codec_arg_defs.monochrome,
   &g_av1_codec_arg_defs.full_still_picture_hdr,
-  &g_av1_codec_arg_defs.use_16bit_internal,
   &g_av1_codec_arg_defs.save_as_annexb,
   NULL
 };
@@ -537,8 +536,6 @@ struct stream_config {
   int write_webm;
   const char *film_grain_filename;
   int write_ivf;
-  // whether to use 16bit internal buffers
-  int use_16bit_internal;
 #if CONFIG_TUNE_VMAF
   const char *vmaf_model_path;
 #endif
@@ -1107,9 +1104,6 @@ static int parse_stream_params(struct AvxEncoderConfig *global,
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.full_still_picture_hdr,
                          argi)) {
       config->cfg.full_still_picture_hdr = 1;
-    } else if (arg_match(&arg, &g_av1_codec_arg_defs.use_16bit_internal,
-                         argi)) {
-      warn("%s option deprecated. default to 1 always.\n", arg.name);
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.dropframe_thresh, argi)) {
       config->cfg.rc_dropframe_thresh = arg_parse_uint(&arg);
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.resize_mode, argi)) {
@@ -1244,7 +1238,6 @@ static int parse_stream_params(struct AvxEncoderConfig *global,
       if (!match) argj++;
     }
   }
-  config->use_16bit_internal = 1;
 
   return eos_mark_found;
 }
@@ -1620,7 +1613,6 @@ static void initialize_encoder(struct stream_state *stream,
   int flags = 0;
 
   flags |= global->show_psnr ? AOM_CODEC_USE_PSNR : 0;
-  flags |= stream->config.use_16bit_internal ? AOM_CODEC_USE_HIGHBITDEPTH : 0;
   flags |= global->quiet ? 0 : AOM_CODEC_USE_PER_FRAME_STATS;
 
   /* Construct Encoder Context */
@@ -1670,7 +1662,7 @@ static void initialize_encoder(struct stream_state *stream,
   if (global->test_decode != TEST_DECODE_OFF) {
     aom_codec_iface_t *decoder = get_aom_decoder_by_short_name(
         get_short_name_by_aom_encoder(global->codec));
-    aom_codec_dec_cfg_t cfg = { 0, 0, 0, !stream->config.use_16bit_internal };
+    aom_codec_dec_cfg_t cfg = { 0, 0, 0 };
     aom_codec_dec_init(&stream->decoder, decoder, &cfg, 0);
 
     if (strcmp(get_short_name_by_aom_encoder(global->codec), "av1") == 0) {
@@ -1902,34 +1894,12 @@ static void test_decode(struct stream_state *stream,
   AOM_CODEC_CONTROL_TYPECHECKED(&stream->decoder, AV1_GET_NEW_FRAME_IMAGE,
                                 &dec_img);
 
-  if ((enc_img.fmt & AOM_IMG_FMT_HIGHBITDEPTH) !=
-      (dec_img.fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
-    if (enc_img.fmt & AOM_IMG_FMT_HIGHBITDEPTH) {
-      aom_image_t enc_hbd_img;
-      aom_img_alloc(&enc_hbd_img, enc_img.fmt - AOM_IMG_FMT_HIGHBITDEPTH,
-                    enc_img.d_w, enc_img.d_h, 16);
-      aom_img_truncate_16_to_8(&enc_hbd_img, &enc_img);
-      enc_img = enc_hbd_img;
-    }
-    if (dec_img.fmt & AOM_IMG_FMT_HIGHBITDEPTH) {
-      aom_image_t dec_hbd_img;
-      aom_img_alloc(&dec_hbd_img, dec_img.fmt - AOM_IMG_FMT_HIGHBITDEPTH,
-                    dec_img.d_w, dec_img.d_h, 16);
-      aom_img_truncate_16_to_8(&dec_hbd_img, &dec_img);
-      dec_img = dec_hbd_img;
-    }
-  }
-
   ctx_exit_on_error(&stream->encoder, "Failed to get encoder reference frame");
   ctx_exit_on_error(&stream->decoder, "Failed to get decoder reference frame");
 
   if (!aom_compare_img(&enc_img, &dec_img)) {
     int y[4], u[4], v[4];
-    if (enc_img.fmt & AOM_IMG_FMT_HIGHBITDEPTH) {
-      aom_find_mismatch_high(&enc_img, &dec_img, y, u, v);
-    } else {
-      aom_find_mismatch(&enc_img, &dec_img, y, u, v);
-    }
+    aom_find_mismatch_high(&enc_img, &dec_img, y, u, v);
     stream->decoder.err = 1;
     warn_or_exit_on_error(&stream->decoder, fatal == TEST_DECODE_FATAL,
                           "Stream %d: Encode/decode mismatch on frame %d at"
@@ -1950,7 +1920,6 @@ int main(int argc, const char **argv_) {
   aom_image_t raw;
   aom_image_t raw_shift;
   int allocated_raw_shift = 0;
-  int do_16bit_internal = 0;
   int input_shift = 0;
 
   struct AvxInputContext input;
@@ -2164,7 +2133,6 @@ int main(int argc, const char **argv_) {
         }
       }
       // Force encoder to use 16-bit pipeline for 8-bit video/image
-      stream->config.use_16bit_internal = 1;
       if (profile_updated && !global.quiet) {
         fprintf(stderr,
                 "Warning: automatically updating to profile %d to "
@@ -2254,9 +2222,6 @@ int main(int argc, const char **argv_) {
       // Currently assume that the bit_depths for all streams using
       // highbitdepth are the same.
       FOREACH_STREAM(stream, streams) {
-        if (stream->config.use_16bit_internal) {
-          do_16bit_internal = 1;
-        }
         input_shift = (int)stream->config.cfg.g_bit_depth -
                       stream->config.cfg.g_input_bit_depth;
       };
@@ -2294,8 +2259,7 @@ int main(int argc, const char **argv_) {
       fflush(stdout);
 
       aom_image_t *frame_to_encode;
-      if (input_shift || (do_16bit_internal && input.bit_depth == 8)) {
-        assert(do_16bit_internal);
+      if (input_shift || input.bit_depth == 8) {
         // Input bit depth and stream bit depth do not match, so up
         // shift frame to stream bit depth
         if (!allocated_raw_shift) {
@@ -2308,22 +2272,11 @@ int main(int argc, const char **argv_) {
       } else {
         frame_to_encode = &raw;
       }
-      if (do_16bit_internal) {
-        assert(frame_to_encode->fmt & AOM_IMG_FMT_HIGHBITDEPTH);
-        FOREACH_STREAM(stream, streams) {
-          if (stream->config.use_16bit_internal)
-            encode_frame(stream, &global, frame_avail ? frame_to_encode : NULL,
-                         seen_frames);
-          else
-            assert(0);
-        };
-      } else {
-        assert((frame_to_encode->fmt & AOM_IMG_FMT_HIGHBITDEPTH) == 0);
-        FOREACH_STREAM(stream, streams) {
-          encode_frame(stream, &global, frame_avail ? frame_to_encode : NULL,
-                       seen_frames);
-        }
-      }
+      assert(frame_to_encode->fmt & AOM_IMG_FMT_HIGHBITDEPTH);
+      FOREACH_STREAM(stream, streams) {
+        encode_frame(stream, &global, frame_avail ? frame_to_encode : NULL,
+                     seen_frames);
+      };
 
       FOREACH_STREAM(stream, streams) { update_quantizer_histogram(stream); }
 

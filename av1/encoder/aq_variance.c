@@ -34,8 +34,6 @@ static const double deltaq_rate_ratio[MAX_SEGMENTS] = { 2.5,  2.0, 1.5, 1.0,
 #define ENERGY_IN_BOUNDS(energy) \
   assert((energy) >= ENERGY_MIN && (energy) <= ENERGY_MAX)
 
-DECLARE_ALIGNED(16, static const uint8_t, av1_all_zeros[MAX_SB_SIZE]) = { 0 };
-
 DECLARE_ALIGNED(16, static const uint16_t,
                 av1_highbd_all_zeros[MAX_SB_SIZE]) = { 0 };
 
@@ -131,20 +129,11 @@ int av1_log_block_var(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bs) {
 
   for (i = 0; i < bh; i += 4) {
     for (j = 0; j < bw; j += 4) {
-      if (is_cur_buf_hbd(xd)) {
-        var +=
-            log(1.0 + cpi->fn_ptr[BLOCK_4X4].vf(
-                          x->plane[0].src.buf + i * x->plane[0].src.stride + j,
-                          x->plane[0].src.stride,
-                          CONVERT_TO_BYTEPTR(av1_highbd_all_zeros), 0, &sse) /
-                          16);
-      } else {
-        var +=
-            log(1.0 + cpi->fn_ptr[BLOCK_4X4].vf(
-                          x->plane[0].src.buf + i * x->plane[0].src.stride + j,
-                          x->plane[0].src.stride, av1_all_zeros, 0, &sse) /
-                          16);
-      }
+      var += log(1.0 + cpi->fn_ptr[BLOCK_4X4].vf(
+                           x->plane[0].src.buf + i * x->plane[0].src.stride + j,
+                           x->plane[0].src.stride,
+                           CONVERT_TO_BYTEPTR(av1_highbd_all_zeros), 0, &sse) /
+                           16);
     }
   }
   // Use average of 4x4 log variance. The range for 8 bit 0 - 9.704121561.
@@ -158,17 +147,15 @@ int av1_log_block_var(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bs) {
 #define DEFAULT_E_MIDPOINT 10.0
 
 static unsigned int haar_ac_energy(MACROBLOCK *x, BLOCK_SIZE bs) {
-  MACROBLOCKD *xd = &x->e_mbd;
   int stride = x->plane[0].src.stride;
   uint8_t *buf = x->plane[0].src.buf;
   const int bw = MI_SIZE * mi_size_wide[bs];
   const int bh = MI_SIZE * mi_size_high[bs];
-  const int hbd = is_cur_buf_hbd(xd);
 
   int var = 0;
   for (int r = 0; r < bh; r += 8)
     for (int c = 0; c < bw; c += 8) {
-      var += av1_haar_ac_sad_8x8_uint8_input(buf + c + r * stride, stride, hbd);
+      var += av1_haar_ac_sad_8x8_uint8_input(buf + c + r * stride, stride);
     }
 
   return (unsigned int)((uint64_t)var * 256) >> num_pels_log2_lookup[bs];

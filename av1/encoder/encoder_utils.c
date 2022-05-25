@@ -555,8 +555,8 @@ void av1_scale_references(AV1_COMP *cpi, const InterpFilter filter,
           if (aom_realloc_frame_buffer(
                   &new_fb->buf, cm->width, cm->height,
                   cm->seq_params.subsampling_x, cm->seq_params.subsampling_y,
-                  cm->seq_params.use_highbitdepth, AOM_BORDER_IN_PIXELS,
-                  cm->features.byte_alignment, NULL, NULL, NULL)) {
+                  AOM_BORDER_IN_PIXELS, cm->features.byte_alignment, NULL, NULL,
+                  NULL)) {
             if (force_scaling) {
               // Release the reference acquired in the get_free_fb() call above.
               --new_fb->ref_count;
@@ -946,28 +946,16 @@ int av1_is_integer_mv(const YV12_BUFFER_CONFIG *cur_picture,
       p_cur += (y_pos * stride_cur + x_pos);
       p_ref += (y_pos * stride_ref + x_pos);
 
-      if (cur_picture->flags & YV12_FLAG_HIGHBITDEPTH) {
-        uint16_t *p16_cur = CONVERT_TO_SHORTPTR(p_cur);
-        uint16_t *p16_ref = CONVERT_TO_SHORTPTR(p_ref);
-        for (int tmpY = 0; tmpY < block_size && match; tmpY++) {
-          for (int tmpX = 0; tmpX < block_size && match; tmpX++) {
-            if (p16_cur[tmpX] != p16_ref[tmpX]) {
-              match = 0;
-            }
+      uint16_t *p16_cur = CONVERT_TO_SHORTPTR(p_cur);
+      uint16_t *p16_ref = CONVERT_TO_SHORTPTR(p_ref);
+      for (int tmpY = 0; tmpY < block_size && match; tmpY++) {
+        for (int tmpX = 0; tmpX < block_size && match; tmpX++) {
+          if (p16_cur[tmpX] != p16_ref[tmpX]) {
+            match = 0;
           }
-          p16_cur += stride_cur;
-          p16_ref += stride_ref;
         }
-      } else {
-        for (int tmpY = 0; tmpY < block_size && match; tmpY++) {
-          for (int tmpX = 0; tmpX < block_size && match; tmpX++) {
-            if (p_cur[tmpX] != p_ref[tmpX]) {
-              match = 0;
-            }
-          }
-          p_cur += stride_cur;
-          p_ref += stride_ref;
-        }
+        p16_cur += stride_cur;
+        p16_ref += stride_ref;
       }
 
       if (match) {
@@ -1039,7 +1027,6 @@ void av1_set_mb_ssim_rdmult_scaling(AV1_COMP *cpi) {
   const int num_cols = (mi_params->mi_cols + num_mi_w - 1) / num_mi_w;
   const int num_rows = (mi_params->mi_rows + num_mi_h - 1) / num_mi_h;
   double log_sum = 0.0;
-  const int use_hbd = cpi->source->flags & YV12_FLAG_HIGHBITDEPTH;
 
   // Loop through each 16x16 block.
   for (int row = 0; row < num_rows; ++row) {
@@ -1061,12 +1048,8 @@ void av1_set_mb_ssim_rdmult_scaling(AV1_COMP *cpi) {
           buf.buf = y_buffer + row_offset_y * y_stride + col_offset_y;
           buf.stride = y_stride;
 
-          if (use_hbd) {
-            var += av1_high_get_sby_perpixel_variance(cpi, &buf, BLOCK_8X8,
-                                                      xd->bd);
-          } else {
-            var += av1_get_sby_perpixel_variance(cpi, &buf, BLOCK_8X8);
-          }
+          var +=
+              av1_high_get_sby_perpixel_variance(cpi, &buf, BLOCK_8X8, xd->bd);
 
           num_of_var += 1.0;
         }

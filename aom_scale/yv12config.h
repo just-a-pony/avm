@@ -119,11 +119,8 @@ typedef struct yv12_buffer_config {
 
 /*!\cond */
 
-#define YV12_FLAG_HIGHBITDEPTH 8
-
 int aom_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
-                           int ss_x, int ss_y, int use_highbitdepth, int border,
-                           int byte_alignment);
+                           int ss_x, int ss_y, int border, int byte_alignment);
 
 // Updates the yv12 buffer config with the frame buffer. |byte_alignment| must
 // be a power of 2, from 32 to 1024. 0 sets legacy alignment. If cb is not
@@ -133,8 +130,7 @@ int aom_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
 // internally to decode the current frame. Returns 0 on success. Returns < 0
 // on failure.
 int aom_realloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
-                             int ss_x, int ss_y, int use_highbitdepth,
-                             int border, int byte_alignment,
+                             int ss_x, int ss_y, int border, int byte_alignment,
                              aom_codec_frame_buffer_t *fb,
                              aom_get_frame_buffer_cb_fn_t cb, void *cb_priv);
 

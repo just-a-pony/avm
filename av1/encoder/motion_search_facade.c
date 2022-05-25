@@ -371,7 +371,7 @@ void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 
   // Prediction buffer from second frame.
   DECLARE_ALIGNED(16, uint8_t, second_pred16[MAX_SB_SQUARE * sizeof(uint16_t)]);
-  uint8_t *second_pred = get_buf_by_bd(xd, second_pred16);
+  uint8_t *second_pred = CONVERT_TO_BYTEPTR(second_pred16);
   int_mv best_mv;
 
   // Allow joint search multiple times iteratively for each reference frame
@@ -424,8 +424,8 @@ void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     InterPredParams inter_pred_params;
     const InterpFilter interp_filters = EIGHTTAP_REGULAR;
     av1_init_inter_params(&inter_pred_params, pw, ph, mi_row * MI_SIZE,
-                          mi_col * MI_SIZE, 0, 0, xd->bd, is_cur_buf_hbd(xd), 0,
-                          &cm->sf_identity, &ref_yv12[!id], interp_filters);
+                          mi_col * MI_SIZE, 0, 0, xd->bd, 0, &cm->sf_identity,
+                          &ref_yv12[!id], interp_filters);
     inter_pred_params.conv_params = get_conv_params(0, 0, xd->bd);
 
     // Since we have scaled the reference frames to match the size of the
@@ -604,8 +604,8 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     other_mv->col = ref_other_mv.as_mv.col;
     struct buf_2d ref_yv12 = xd->plane[0].pre[!ref_idx];
     av1_init_inter_params(&inter_pred_params, pw, ph, mi_row * MI_SIZE,
-                          mi_col * MI_SIZE, 0, 0, xd->bd, is_cur_buf_hbd(xd), 0,
-                          &cm->sf_identity, &ref_yv12, mbmi->interp_fltr);
+                          mi_col * MI_SIZE, 0, 0, xd->bd, 0, &cm->sf_identity,
+                          &ref_yv12, mbmi->interp_fltr);
     inter_pred_params.conv_params = get_conv_params(0, PLANE_TYPE_Y, xd->bd);
   }
 #endif  // CONFIG_JOINT_MVD
@@ -790,9 +790,8 @@ static AOM_INLINE void build_second_inter_pred(const AV1_COMP *cpi,
   InterPredParams inter_pred_params;
 
   av1_init_inter_params(&inter_pred_params, pw, ph, p_row, p_col,
-                        pd->subsampling_x, pd->subsampling_y, xd->bd,
-                        is_cur_buf_hbd(xd), 0, &sf, &ref_yv12,
-                        mbmi->interp_fltr);
+                        pd->subsampling_x, pd->subsampling_y, xd->bd, 0, &sf,
+                        &ref_yv12, mbmi->interp_fltr);
   inter_pred_params.conv_params = get_conv_params(0, plane, xd->bd);
 
   // Get the prediction block from the 'other' reference frame.
@@ -806,16 +805,14 @@ void av1_compound_single_motion_search_interinter(
     const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize, int_mv *cur_mv,
     const uint8_t *mask, int mask_stride, int *rate_mv, int ref_idx) {
   MACROBLOCKD *xd = &x->e_mbd;
+  (void)xd;
   // This function should only ever be called for compound modes
   assert(has_second_ref(xd->mi[0]));
 
   // Prediction buffer from second frame.
   DECLARE_ALIGNED(16, uint16_t, second_pred_alloc_16[MAX_SB_SQUARE]);
   uint8_t *second_pred;
-  if (is_cur_buf_hbd(xd))
-    second_pred = CONVERT_TO_BYTEPTR(second_pred_alloc_16);
-  else
-    second_pred = (uint8_t *)second_pred_alloc_16;
+  second_pred = CONVERT_TO_BYTEPTR(second_pred_alloc_16);
 
   MV *this_mv = &cur_mv[ref_idx].as_mv;
 #if CONFIG_JOINT_MVD

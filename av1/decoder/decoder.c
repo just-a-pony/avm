@@ -337,9 +337,7 @@ static int equal_dimensions_and_border(const YV12_BUFFER_CONFIG *a,
   return a->y_height == b->y_height && a->y_width == b->y_width &&
          a->uv_height == b->uv_height && a->uv_width == b->uv_width &&
          a->y_stride == b->y_stride && a->uv_stride == b->uv_stride &&
-         a->border == b->border &&
-         (a->flags & YV12_FLAG_HIGHBITDEPTH) ==
-             (b->flags & YV12_FLAG_HIGHBITDEPTH);
+         a->border == b->border;
 }
 
 aom_codec_err_t av1_set_reference_dec(AV1_COMMON *cm, int idx,

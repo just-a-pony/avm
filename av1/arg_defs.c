@@ -213,8 +213,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "monochrome", 0, "Monochrome video (no chroma planes)"),
   .full_still_picture_hdr = ARG_DEF(NULL, "full-still-picture-hdr", 0,
                                     "Use full header for still picture"),
-  .use_16bit_internal =
-      ARG_DEF(NULL, "use-16bit-internal", 0, "Force use of 16-bit pipeline"),
   .dropframe_thresh =
       ARG_DEF(NULL, "drop-frame", 1, "Temporal resampling threshold (buf %)"),
   .resize_mode = ARG_DEF(NULL, "resize-mode", 1, "Frame resize mode"),

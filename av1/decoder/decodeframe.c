@@ -108,27 +108,17 @@ int av1_check_trailing_bits(AV1Decoder *pbi, struct aom_read_bit_buffer *rb) {
 static AOM_INLINE void set_planes_to_neutral_grey(
     const SequenceHeader *const seq_params, const YV12_BUFFER_CONFIG *const buf,
     int only_chroma) {
-  if (seq_params->use_highbitdepth) {
-    const int val = 1 << (seq_params->bit_depth - 1);
-    for (int plane = only_chroma; plane < MAX_MB_PLANE; plane++) {
-      const int is_uv = plane > 0;
-      uint16_t *const base = CONVERT_TO_SHORTPTR(buf->buffers[plane]);
-      // Set the first row to neutral grey. Then copy the first row to all
-      // subsequent rows.
-      if (buf->crop_heights[is_uv] > 0) {
-        aom_memset16(base, val, buf->crop_widths[is_uv]);
-        for (int row_idx = 1; row_idx < buf->crop_heights[is_uv]; row_idx++) {
-          memcpy(&base[row_idx * buf->strides[is_uv]], base,
-                 sizeof(*base) * buf->crop_widths[is_uv]);
-        }
-      }
-    }
-  } else {
-    for (int plane = only_chroma; plane < MAX_MB_PLANE; plane++) {
-      const int is_uv = plane > 0;
-      for (int row_idx = 0; row_idx < buf->crop_heights[is_uv]; row_idx++) {
-        memset(&buf->buffers[plane][row_idx * buf->uv_stride], 1 << 7,
-               buf->crop_widths[is_uv]);
+  const int val = 1 << (seq_params->bit_depth - 1);
+  for (int plane = only_chroma; plane < MAX_MB_PLANE; plane++) {
+    const int is_uv = plane > 0;
+    uint16_t *const base = CONVERT_TO_SHORTPTR(buf->buffers[plane]);
+    // Set the first row to neutral grey. Then copy the first row to all
+    // subsequent rows.
+    if (buf->crop_heights[is_uv] > 0) {
+      aom_memset16(base, val, buf->crop_widths[is_uv]);
+      for (int row_idx = 1; row_idx < buf->crop_heights[is_uv]; row_idx++) {
+        memcpy(&base[row_idx * buf->strides[is_uv]], base,
+               sizeof(*base) * buf->crop_widths[is_uv]);
       }
     }
   }
@@ -286,8 +276,7 @@ static AOM_INLINE void inverse_transform_inter_block(
   mi_to_pixel_loc(&pixel_c, &pixel_r, mi_col, mi_row, blk_col, blk_row,
                   pd->subsampling_x, pd->subsampling_y);
   mismatch_check_block_tx(dst, pd->dst.stride, cm->current_frame.order_hint,
-                          plane, pixel_c, pixel_r, blk_w, blk_h,
-                          xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH);
+                          plane, pixel_c, pixel_r, blk_w, blk_h);
 #endif
 }
 
@@ -463,42 +452,6 @@ static AOM_INLINE void highbd_build_mc_border(const uint8_t *src8,
   } while (--b_h);
 }
 
-static AOM_INLINE void build_mc_border(const uint8_t *src, int src_stride,
-                                       uint8_t *dst, int dst_stride, int x,
-                                       int y, int b_w, int b_h, int w, int h) {
-  // Get a pointer to the start of the real data for this row.
-  const uint8_t *ref_row = src - x - y * src_stride;
-
-  if (y >= h)
-    ref_row += (h - 1) * src_stride;
-  else if (y > 0)
-    ref_row += y * src_stride;
-
-  do {
-    int right = 0, copy;
-    int left = x < 0 ? -x : 0;
-
-    if (left > b_w) left = b_w;
-
-    if (x + b_w > w) right = x + b_w - w;
-
-    if (right > b_w) right = b_w;
-
-    copy = b_w - left - right;
-
-    if (left) memset(dst, ref_row[0], left);
-
-    if (copy) memcpy(dst + left, ref_row + x + left, copy);
-
-    if (right) memset(dst + left + copy, ref_row[w - 1], right);
-
-    dst += dst_stride;
-    ++y;
-
-    if (y > 0 && y < h) ref_row += src_stride;
-  } while (--b_h);
-}
-
 static INLINE int update_extend_mc_border_params(
     const struct scale_factors *const sf, struct buf_2d *const pre_buf,
     MV32 scaled_mv, PadBlock *block, int subpel_x_mv, int subpel_y_mv,
@@ -544,7 +497,7 @@ static INLINE void extend_mc_border(const struct scale_factors *const sf,
                                     struct buf_2d *const pre_buf,
                                     MV32 scaled_mv, PadBlock block,
                                     int subpel_x_mv, int subpel_y_mv,
-                                    int do_warp, int is_intrabc, int highbd,
+                                    int do_warp, int is_intrabc,
                                     uint8_t *mc_buf, uint8_t **pre,
                                     int *src_stride) {
   int x_pad = 0, y_pad = 0;
@@ -559,14 +512,8 @@ static INLINE void extend_mc_border(const struct scale_factors *const sf,
     const int b_h = block.y1 - block.y0;
 
     // Extend the border.
-    if (highbd) {
-      highbd_build_mc_border(buf_ptr, buf_stride, mc_buf, b_w, block.x0,
-                             block.y0, b_w, b_h, pre_buf->width,
-                             pre_buf->height);
-    } else {
-      build_mc_border(buf_ptr, buf_stride, mc_buf, b_w, block.x0, block.y0, b_w,
-                      b_h, pre_buf->width, pre_buf->height);
-    }
+    highbd_build_mc_border(buf_ptr, buf_stride, mc_buf, b_w, block.x0, block.y0,
+                           b_w, b_h, pre_buf->width, pre_buf->height);
 
     *src_stride = b_w;
     *pre = mc_buf + y_pad * (AOM_INTERP_EXTEND - 1) * b_w +
@@ -712,11 +659,11 @@ static void dec_calc_subpel_params_and_extend(
                          use_optflow_refinement,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
                          &scaled_mv, &subpel_x_mv, &subpel_y_mv);
-  extend_mc_border(
-      inter_pred_params->scale_factors, &inter_pred_params->ref_frame_buf,
-      scaled_mv, block, subpel_x_mv, subpel_y_mv,
-      inter_pred_params->mode == WARP_PRED, inter_pred_params->is_intrabc,
-      inter_pred_params->use_hbd_buf, mc_buf[ref], pre, src_stride);
+  extend_mc_border(inter_pred_params->scale_factors,
+                   &inter_pred_params->ref_frame_buf, scaled_mv, block,
+                   subpel_x_mv, subpel_y_mv,
+                   inter_pred_params->mode == WARP_PRED,
+                   inter_pred_params->is_intrabc, mc_buf[ref], pre, src_stride);
 }
 
 #if CONFIG_TIP
@@ -825,11 +772,11 @@ static void tip_dec_calc_subpel_params_and_extend(
   tip_dec_calc_subpel_params(src_mv, inter_pred_params, mi_x, mi_y, pre,
                              subpel_params, src_stride, &block, &scaled_mv,
                              &subpel_x_mv, &subpel_y_mv);
-  extend_mc_border(
-      inter_pred_params->scale_factors, &inter_pred_params->ref_frame_buf,
-      scaled_mv, block, subpel_x_mv, subpel_y_mv,
-      inter_pred_params->mode == WARP_PRED, inter_pred_params->is_intrabc,
-      inter_pred_params->use_hbd_buf, mc_buf[ref], pre, src_stride);
+  extend_mc_border(inter_pred_params->scale_factors,
+                   &inter_pred_params->ref_frame_buf, scaled_mv, block,
+                   subpel_x_mv, subpel_y_mv,
+                   inter_pred_params->mode == WARP_PRED,
+                   inter_pred_params->is_intrabc, mc_buf[ref], pre, src_stride);
 }
 
 static void av1_dec_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd,
@@ -1185,8 +1132,7 @@ static AOM_INLINE void predict_inter_block(AV1_COMMON *const cm,
       continue;
     mismatch_check_block_pre(pd->dst.buf, pd->dst.stride,
                              cm->current_frame.order_hint, plane, pixel_c,
-                             pixel_r, pd->width, pd->height,
-                             xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH);
+                             pixel_r, pd->width, pd->height);
   }
 #endif
 }
@@ -2723,9 +2669,9 @@ static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
   lock_buffer_pool(pool);
   if (aom_realloc_frame_buffer(
           &cm->cur_frame->buf, cm->width, cm->height, seq_params->subsampling_x,
-          seq_params->subsampling_y, seq_params->use_highbitdepth,
-          AOM_DEC_BORDER_IN_PIXELS, cm->features.byte_alignment,
-          &cm->cur_frame->raw_frame_buffer, pool->get_fb_cb, pool->cb_priv)) {
+          seq_params->subsampling_y, AOM_DEC_BORDER_IN_PIXELS,
+          cm->features.byte_alignment, &cm->cur_frame->raw_frame_buffer,
+          pool->get_fb_cb, pool->cb_priv)) {
     unlock_buffer_pool(pool);
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate frame buffer");
@@ -2751,9 +2697,8 @@ static AOM_INLINE void setup_tip_frame_size(AV1_COMMON *cm) {
   YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
   if (aom_realloc_frame_buffer(
           tip_frame_buf, cm->width, cm->height, seq_params->subsampling_x,
-          seq_params->subsampling_y, seq_params->use_highbitdepth,
-          AOM_DEC_BORDER_IN_PIXELS, cm->features.byte_alignment, NULL, NULL,
-          NULL)) {
+          seq_params->subsampling_y, AOM_DEC_BORDER_IN_PIXELS,
+          cm->features.byte_alignment, NULL, NULL, NULL)) {
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate frame buffer");
   }
@@ -4210,14 +4155,10 @@ static AOM_INLINE void alloc_dec_jobs(AV1DecTileMT *tile_mt_info,
 void av1_free_mc_tmp_buf(ThreadData *thread_data) {
   int ref;
   for (ref = 0; ref < 2; ref++) {
-    if (thread_data->mc_buf_use_highbd)
-      aom_free(CONVERT_TO_SHORTPTR(thread_data->mc_buf[ref]));
-    else
-      aom_free(thread_data->mc_buf[ref]);
+    aom_free(CONVERT_TO_SHORTPTR(thread_data->mc_buf[ref]));
     thread_data->mc_buf[ref] = NULL;
   }
   thread_data->mc_buf_size = 0;
-  thread_data->mc_buf_use_highbd = 0;
 
   aom_free(thread_data->tmp_conv_dst);
   thread_data->tmp_conv_dst = NULL;
@@ -4229,26 +4170,19 @@ void av1_free_mc_tmp_buf(ThreadData *thread_data) {
 
 static AOM_INLINE void allocate_mc_tmp_buf(AV1_COMMON *const cm,
                                            ThreadData *thread_data,
-                                           int buf_size, int use_highbd) {
+                                           int buf_size) {
   for (int ref = 0; ref < 2; ref++) {
     // The mc_buf/hbd_mc_buf must be zeroed to fix a intermittent valgrind error
     // 'Conditional jump or move depends on uninitialised value' from the loop
     // filter. Uninitialized reads in convolve function (e.g. horiz_4tap path in
     // av1_convolve_2d_sr_avx2()) from mc_buf/hbd_mc_buf are seen to be the
     // potential reason for this issue.
-    if (use_highbd) {
-      uint16_t *hbd_mc_buf;
-      CHECK_MEM_ERROR(cm, hbd_mc_buf, (uint16_t *)aom_memalign(16, buf_size));
-      memset(hbd_mc_buf, 0, buf_size);
-      thread_data->mc_buf[ref] = CONVERT_TO_BYTEPTR(hbd_mc_buf);
-    } else {
-      CHECK_MEM_ERROR(cm, thread_data->mc_buf[ref],
-                      (uint8_t *)aom_memalign(16, buf_size));
-      memset(thread_data->mc_buf[ref], 0, buf_size);
-    }
+    uint16_t *hbd_mc_buf;
+    CHECK_MEM_ERROR(cm, hbd_mc_buf, (uint16_t *)aom_memalign(16, buf_size));
+    memset(hbd_mc_buf, 0, buf_size);
+    thread_data->mc_buf[ref] = CONVERT_TO_BYTEPTR(hbd_mc_buf);
   }
   thread_data->mc_buf_size = buf_size;
-  thread_data->mc_buf_use_highbd = use_highbd;
 
   CHECK_MEM_ERROR(cm, thread_data->tmp_conv_dst,
                   aom_memalign(32, MAX_SB_SIZE * MAX_SB_SIZE *
@@ -4367,13 +4301,12 @@ static AOM_INLINE void decode_mt_init(AV1Decoder *pbi) {
       thread_data->error_info.setjmp = 0;
     }
   }
-  const int use_highbd = cm->seq_params.use_highbitdepth;
-  const int buf_size = MC_TEMP_BUF_PELS << use_highbd;
+  const int buf_size = MC_TEMP_BUF_PELS << 1;
   for (worker_idx = 0; worker_idx < pbi->max_threads - 1; ++worker_idx) {
     DecWorkerData *const thread_data = pbi->thread_data + worker_idx;
     if (thread_data->td->mc_buf_size != buf_size) {
       av1_free_mc_tmp_buf(thread_data->td);
-      allocate_mc_tmp_buf(cm, thread_data->td, buf_size, use_highbd);
+      allocate_mc_tmp_buf(cm, thread_data->td, buf_size);
     }
   }
 }
@@ -4899,12 +4832,10 @@ static AOM_INLINE void read_film_grain(AV1_COMMON *cm,
 }
 
 void av1_read_color_config(struct aom_read_bit_buffer *rb,
-                           int allow_lowbitdepth, SequenceHeader *seq_params,
+                           SequenceHeader *seq_params,
                            struct aom_internal_error_info *error_info) {
   read_bitdepth(rb, seq_params, error_info);
 
-  seq_params->use_highbitdepth =
-      seq_params->bit_depth > AOM_BITS_8 || !allow_lowbitdepth;
   // monochrome bit (not needed for PROFILE_1)
   const int is_monochrome =
       seq_params->profile != PROFILE_1 ? aom_rb_read_bit(rb) : 0;
@@ -5724,9 +5655,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           if (aom_realloc_frame_buffer(
                   &buf->buf, seq_params->max_frame_width,
                   seq_params->max_frame_height, seq_params->subsampling_x,
-                  seq_params->subsampling_y, seq_params->use_highbitdepth,
-                  AOM_BORDER_IN_PIXELS, features->byte_alignment,
-                  &buf->raw_frame_buffer, pool->get_fb_cb, pool->cb_priv)) {
+                  seq_params->subsampling_y, AOM_BORDER_IN_PIXELS,
+                  features->byte_alignment, &buf->raw_frame_buffer,
+                  pool->get_fb_cb, pool->cb_priv)) {
             decrease_ref_count(buf, pool);
             unlock_buffer_pool(pool);
             aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
@@ -6444,11 +6375,10 @@ static AOM_INLINE void setup_frame_info(AV1Decoder *pbi) {
       cm->rst_info[2].frame_restoration_type != RESTORE_NONE) {
     av1_alloc_restoration_buffers(cm);
   }
-  const int use_highbd = cm->seq_params.use_highbitdepth;
-  const int buf_size = MC_TEMP_BUF_PELS << use_highbd;
+  const int buf_size = MC_TEMP_BUF_PELS << 1;
   if (pbi->td.mc_buf_size != buf_size) {
     av1_free_mc_tmp_buf(&pbi->td);
-    allocate_mc_tmp_buf(cm, &pbi->td, buf_size, use_highbd);
+    allocate_mc_tmp_buf(cm, &pbi->td, buf_size);
   }
 }
 
@@ -6531,24 +6461,14 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #endif
         for (int r = 0; r < pic_height; ++r) {
           for (int c = 0; c < pic_width; ++c) {
-            if (cm->seq_params.use_highbitdepth) {
 #if CONFIG_CCSO_EXT
-              ext_rec_y[c] = CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[c];
+            ext_rec_y[c] = CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[c];
 #else
-                ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
-                          CCSO_PADDING_SIZE] =
-                    CONVERT_TO_SHORTPTR(
-                        xd->plane[pli].dst.buf)[r * dst_stride + c];
+              ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
+                        CCSO_PADDING_SIZE] =
+                  CONVERT_TO_SHORTPTR(
+                      xd->plane[pli].dst.buf)[r * dst_stride + c];
 #endif
-            } else {
-#if CONFIG_CCSO_EXT
-              ext_rec_y[c] = xd->plane[pli].dst.buf[c];
-#else
-                ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
-                          CCSO_PADDING_SIZE] =
-                    xd->plane[pli].dst.buf[r * dst_stride + c];
-#endif
-            }
           }
 #if CONFIG_CCSO_EXT
           ext_rec_y += ccso_stride_ext;
