@@ -146,6 +146,6 @@ int aom_arm_cpu_caps(void) {
 }
 #else  /* end __linux__ */
 #error \
-    "--enable-runtime-cpu-detect selected, but no CPU detection method " \
-"available for your platform. Reconfigure with --disable-runtime-cpu-detect."
+    "-DCONFIG_RUNTIME_CPU_DETECT=1 selected, but no CPU detection method " \
+"available for your platform. Reconfigure with -DCONFIG_RUNTIME_CPU_DETECT=0"
 #endif
