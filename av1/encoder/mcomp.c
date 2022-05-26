@@ -465,7 +465,11 @@ void av1_init_motion_compensation_nstep(search_site_config *cfg, int stride) {
   int stage_index = 0;
   cfg->stride = stride;
   int radius = 1;
+#if CONFIG_MV_SEARCH_RANGE
+  for (stage_index = 0; stage_index < 16; ++stage_index) {
+#else
   for (stage_index = 0; stage_index < 15; ++stage_index) {
+#endif  // CONFIG_MV_SEARCH_RANGE
     int tan_radius = AOMMAX((int)(0.41 * radius), 1);
     int num_search_pts = 12;
     if (radius <= 5) {
@@ -496,7 +500,9 @@ void av1_init_motion_compensation_nstep(search_site_config *cfg, int stride) {
     cfg->searches_per_step[stage_index] = num_search_pts;
     cfg->radius[stage_index] = radius;
     ++num_search_steps;
+#if !CONFIG_MV_SEARCH_RANGE
     if (stage_index < 12)
+#endif  // CONFIG_MV_SEARCH_RANGE
       radius = (int)AOMMAX((radius * 1.5 + 0.5), radius + 1);
   }
   cfg->num_search_steps = num_search_steps;

@@ -199,6 +199,9 @@ set_aom_config_var(CONFIG_SKIP_MODE_ENHANCEMENT 1
 set_aom_config_var(CONFIG_NEW_DF 1
                    "AV2 experiment flag on new deblocking filter.")
 set_aom_config_var(CONFIG_TIP 1 "Enable temporal interpolated prediction (TIP)")
+# This is an encode-only change.
+set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
+                   "Enable a sufficient MV search range.")
 
 #
 # Variables in this section control optional features of the build system.
