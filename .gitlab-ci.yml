@@ -418,10 +418,8 @@ Build (x86_64-clang):
           - debug
           - release
   variables:
-    CMAKE_FLAGS: >-
-      -DENABLE_CCACHE=1
-      -DCMAKE_C_COMPILER=clang
-      -DCMAKE_CXX_COMPILER=clang++
+    EXTRA_CMAKE_FLAGS: >-
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 
 Example Build (x86_64-gcc):
   stage: build

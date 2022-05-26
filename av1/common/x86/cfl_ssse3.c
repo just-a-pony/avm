@@ -18,11 +18,6 @@
 
 #include "av1/common/x86/cfl_simd.h"
 
-// Load 32-bit integer from memory into the first element of dst.
-static INLINE __m128i _mm_loadh_epi32(__m128i const *mem_addr) {
-  return _mm_cvtsi32_si128(*((int *)mem_addr));
-}
-
 // Store 32-bit integer from the first element of a into memory.
 static INLINE void _mm_storeh_epi32(__m128i const *mem_addr, __m128i a) {
   *((int *)mem_addr) = _mm_cvtsi128_si32(a);

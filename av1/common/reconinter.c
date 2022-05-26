@@ -352,21 +352,6 @@ void av1_build_compound_diffwtd_mask_d16_c(
   }
 }
 
-static AOM_INLINE void diffwtd_mask(uint8_t *mask, int which_inverse,
-                                    int mask_base, const uint8_t *src0,
-                                    int src0_stride, const uint8_t *src1,
-                                    int src1_stride, int h, int w) {
-  int i, j, m, diff;
-  for (i = 0; i < h; ++i) {
-    for (j = 0; j < w; ++j) {
-      diff =
-          abs((int)src0[i * src0_stride + j] - (int)src1[i * src1_stride + j]);
-      m = clamp(mask_base + (diff / DIFF_FACTOR), 0, AOM_BLEND_A64_MAX_ALPHA);
-      mask[i * w + j] = which_inverse ? AOM_BLEND_A64_MAX_ALPHA - m : m;
-    }
-  }
-}
-
 static AOM_FORCE_INLINE void diffwtd_mask_highbd(
     uint8_t *mask, int which_inverse, int mask_base, const uint16_t *src0,
     int src0_stride, const uint16_t *src1, int src1_stride, int h, int w,
@@ -1064,25 +1049,6 @@ int av1_opfl_mv_refinement_nxn_highbd_c(const uint16_t *p0, int pstride0,
   }
   return n_blocks;
 }
-
-#if OPFL_COMBINE_INTERP_GRAD_LS
-static AOM_FORCE_INLINE void compute_pred_using_interp_grad(
-    const uint8_t *src1, const uint8_t *src2, int16_t *dst1, int16_t *dst2,
-    int bw, int bh, int d0, int d1) {
-  for (int i = 0; i < bh; ++i) {
-    for (int j = 0; j < bw; ++j) {
-      // To avoid overflow, we clamp d0*P0-d1*P1 and P0-P1. Since d0 and d1 are
-      // at most 5 bits, this clamping is only required in highbd, but it is
-      // also added here for consistency.
-      int32_t tmp_dst =
-          d0 * (int32_t)src1[i * bw + j] - d1 * (int32_t)src2[i * bw + j];
-      dst1[i * bw + j] = clamp(tmp_dst, INT16_MIN, INT16_MAX);
-      tmp_dst = d0 * ((int32_t)src1[i * bw + j] - (int32_t)src2[i * bw + j]);
-      dst2[i * bw + j] = clamp(tmp_dst, INT16_MIN, INT16_MAX);
-    }
-  }
-}
-#endif  // OPFL_COMBINE_INTERP_GRAD_LS
 
 #if OPFL_COMBINE_INTERP_GRAD_LS
 static AOM_FORCE_INLINE void compute_pred_using_interp_grad_highbd(

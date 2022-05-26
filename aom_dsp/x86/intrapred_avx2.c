@@ -16,56 +16,6 @@
 #include "aom_dsp/x86/intrapred_x86.h"
 #include "aom_dsp/x86/lpf_common_sse2.h"
 
-static INLINE __m256i dc_sum_64(const uint8_t *ref) {
-  const __m256i x0 = _mm256_loadu_si256((const __m256i *)ref);
-  const __m256i x1 = _mm256_loadu_si256((const __m256i *)(ref + 32));
-  const __m256i zero = _mm256_setzero_si256();
-  __m256i y0 = _mm256_sad_epu8(x0, zero);
-  __m256i y1 = _mm256_sad_epu8(x1, zero);
-  y0 = _mm256_add_epi64(y0, y1);
-  __m256i u0 = _mm256_permute2x128_si256(y0, y0, 1);
-  y0 = _mm256_add_epi64(u0, y0);
-  u0 = _mm256_unpackhi_epi64(y0, y0);
-  return _mm256_add_epi16(y0, u0);
-}
-
-static INLINE __m256i dc_sum_32(const uint8_t *ref) {
-  const __m256i x = _mm256_loadu_si256((const __m256i *)ref);
-  const __m256i zero = _mm256_setzero_si256();
-  __m256i y = _mm256_sad_epu8(x, zero);
-  __m256i u = _mm256_permute2x128_si256(y, y, 1);
-  y = _mm256_add_epi64(u, y);
-  u = _mm256_unpackhi_epi64(y, y);
-  return _mm256_add_epi16(y, u);
-}
-
-static INLINE void row_store_32xh(const __m256i *r, int height, uint8_t *dst,
-                                  ptrdiff_t stride) {
-  for (int i = 0; i < height; ++i) {
-    _mm256_storeu_si256((__m256i *)dst, *r);
-    dst += stride;
-  }
-}
-
-static INLINE void row_store_32x2xh(const __m256i *r0, const __m256i *r1,
-                                    int height, uint8_t *dst,
-                                    ptrdiff_t stride) {
-  for (int i = 0; i < height; ++i) {
-    _mm256_storeu_si256((__m256i *)dst, *r0);
-    _mm256_storeu_si256((__m256i *)(dst + 32), *r1);
-    dst += stride;
-  }
-}
-
-static INLINE void row_store_64xh(const __m256i *r, int height, uint8_t *dst,
-                                  ptrdiff_t stride) {
-  for (int i = 0; i < height; ++i) {
-    _mm256_storeu_si256((__m256i *)dst, *r);
-    _mm256_storeu_si256((__m256i *)(dst + 32), *r);
-    dst += stride;
-  }
-}
-
 static DECLARE_ALIGNED(16, uint8_t, HighbdLoadMaskx[8][16]) = {
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
   { 0, 1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 },

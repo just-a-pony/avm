@@ -21,19 +21,6 @@
 #include "aom_dsp/aom_filter.h"
 #include "aom_ports/mem.h"
 
-static INLINE int horz_scalar_product(const uint8_t *a, const int16_t *b) {
-  int sum = 0;
-  for (int k = 0; k < SUBPEL_TAPS; ++k) sum += a[k] * b[k];
-  return sum;
-}
-
-static INLINE int vert_scalar_product(const uint8_t *a, ptrdiff_t a_stride,
-                                      const int16_t *b) {
-  int sum = 0;
-  for (int k = 0; k < SUBPEL_TAPS; ++k) sum += a[k * a_stride] * b[k];
-  return sum;
-}
-
 static const InterpKernel *get_filter_base(const int16_t *filter) {
   // NOTE: This assumes that the filter table is 256-byte aligned.
   return (const InterpKernel *)(((intptr_t)filter) & ~((intptr_t)0xFF));

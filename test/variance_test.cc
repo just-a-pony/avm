@@ -769,8 +769,6 @@ void SubpelVarianceTest<SubpixAvgVarMxNFunc>::RefTest() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static const int kMaskMax = 64;
-
 typedef TestParams<ObmcSubpelVarFunc> ObmcSubpelVarianceParams;
 
 template <typename FunctionType>
