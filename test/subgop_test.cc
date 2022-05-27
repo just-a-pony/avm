@@ -857,6 +857,9 @@ class SubGopSwitchingTestLarge
     SetMode(::libaom_test::kOnePassGood);
     cfg_.g_threads = 1;
     cfg_.rc_end_usage = rc_end_usage_;
+    // Keep sufficient distance between keyframes to let subgop configs be used.
+    cfg_.kf_min_dist = 65;
+    cfg_.kf_max_dist = 9999;
     cfg_.g_lag_in_frames = test_params_.lag_in_frames;
   }
 
