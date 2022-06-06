@@ -2290,11 +2290,11 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
   // Add second closest from future and past if there are fewer than
   // MFMV_STACK_SIZE frames processed so far.
   if (closest_ref[1][1] != -1 && n_refs_used < MFMV_STACK_SIZE) {
-    const int ret = motion_field_projection(cm, closest_ref[1][1], 0, 0);
+    const int ret = motion_field_projection(cm, closest_ref[1][1], 0, 1);
     n_refs_used += ret;
   }
   if (closest_ref[0][1] != -1 && n_refs_used < MFMV_STACK_SIZE) {
-    const int ret = motion_field_projection(cm, closest_ref[0][1], 2, 0);
+    const int ret = motion_field_projection(cm, closest_ref[0][1], 2, 1);
     n_refs_used += ret;
   }
 #endif  // CONFIG_TMVP_IMPROVEMENT || CONFIG_TIP
