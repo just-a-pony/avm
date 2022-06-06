@@ -4078,12 +4078,10 @@ static AOM_INLINE void write_uncompressed_header_obu(
 
 #if CONFIG_TIP
   if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
-#if CONFIG_NEW_REF_SIGNALING
     aom_wb_write_literal(wb, quant_params->base_qindex,
                          cm->seq_params.bit_depth == AOM_BITS_8
                              ? QINDEX_BITS_UNEXT
                              : QINDEX_BITS);
-#endif  // CONFIG_NEW_REF_SIGNALING
     return;
   }
 #endif  // CONFIG_TIP
