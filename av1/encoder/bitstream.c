@@ -4032,24 +4032,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
         write_frame_size(cm, frame_size_override_flag, wb);
       }
 
-#if CONFIG_IBC_SR_EXT
-      if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
-        aom_wb_write_bit(wb, features->allow_intrabc);
-#endif  // CONFIG_IBC_SR_EXT
-
-      aom_wb_write_primitive_quniform(
-          wb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1,
-          features->max_drl_bits - MIN_MAX_DRL_BITS);
-      if (!features->cur_frame_force_integer_mv) {
-        aom_wb_write_bit(wb, features->allow_high_precision_mv);
-      }
-      write_frame_interp_filter(features->interp_filter, wb);
-      aom_wb_write_bit(wb, features->switchable_motion_mode);
-#if CONFIG_OPTFLOW_REFINEMENT
-      if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
-        aom_wb_write_literal(wb, features->opfl_refine_type, 2);
-      }
-#endif  // CONFIG_OPTFLOW_REFINEMENT
       if (frame_might_allow_ref_frame_mvs(cm)) {
         aom_wb_write_bit(wb, features->allow_ref_frame_mvs);
       } else {
@@ -4062,9 +4044,46 @@ static AOM_INLINE void write_uncompressed_header_obu(
           aom_wb_write_bit(wb, features->allow_tip_hole_fill);
         }
       }
+
+      if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
+#endif  // CONFIG_TIP
+#if CONFIG_IBC_SR_EXT
+        if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
+          aom_wb_write_bit(wb, features->allow_intrabc);
+#endif  // CONFIG_IBC_SR_EXT
+
+        aom_wb_write_primitive_quniform(
+            wb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1,
+            features->max_drl_bits - MIN_MAX_DRL_BITS);
+        if (!features->cur_frame_force_integer_mv) {
+          aom_wb_write_bit(wb, features->allow_high_precision_mv);
+        }
+        write_frame_interp_filter(features->interp_filter, wb);
+        aom_wb_write_bit(wb, features->switchable_motion_mode);
+#if CONFIG_OPTFLOW_REFINEMENT
+        if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
+          aom_wb_write_literal(wb, features->opfl_refine_type, 2);
+        }
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_TIP
+      }
 #endif  // CONFIG_TIP
     }
   }
+
+#if CONFIG_TIP
+  if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
+    aom_wb_write_literal(wb, quant_params->base_qindex,
+                         cm->seq_params.bit_depth == AOM_BITS_8
+                             ? QINDEX_BITS_UNEXT
+                             : QINDEX_BITS);
+    write_tile_info(cm, saved_wb, wb);
+    if (seq_params->film_grain_params_present &&
+        (cm->show_frame || cm->showable_frame))
+      write_film_grain_params(cpi, wb);
+    return;
+  }
+#endif  // CONFIG_TIP
 
   const int might_bwd_adapt = !(seq_params->reduced_still_picture_hdr) &&
                               !(features->disable_cdf_update);
@@ -4075,16 +4094,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
     aom_wb_write_bit(
         wb, features->refresh_frame_context == REFRESH_FRAME_CONTEXT_DISABLED);
   }
-
-#if CONFIG_TIP
-  if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
-    aom_wb_write_literal(wb, quant_params->base_qindex,
-                         cm->seq_params.bit_depth == AOM_BITS_8
-                             ? QINDEX_BITS_UNEXT
-                             : QINDEX_BITS);
-    return;
-  }
-#endif  // CONFIG_TIP
 
   write_tile_info(cm, saved_wb, wb);
   encode_quantization(quant_params, av1_num_planes(cm),

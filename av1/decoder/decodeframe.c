@@ -5885,44 +5885,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         setup_frame_size(cm, frame_size_override_flag, rb);
       }
 
-#if CONFIG_IBC_SR_EXT
-      if (features->allow_screen_content_tools && !av1_superres_scaled(cm)) {
-        features->allow_intrabc = aom_rb_read_bit(rb);
-        features->allow_global_intrabc = 0;
-        features->allow_local_intrabc = features->allow_intrabc;
-      }
-#endif  // CONFIG_IBC_SR_EXT
-
-      features->max_drl_bits =
-          aom_rb_read_primitive_quniform(
-              rb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1) +
-          MIN_MAX_DRL_BITS;
-      if (features->cur_frame_force_integer_mv) {
-        features->allow_high_precision_mv = 0;
-      } else {
-        features->allow_high_precision_mv = aom_rb_read_bit(rb);
-      }
-      features->interp_filter = read_frame_interp_filter(rb);
-      features->switchable_motion_mode = aom_rb_read_bit(rb);
-#if CONFIG_OPTFLOW_REFINEMENT
-      if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
-        features->opfl_refine_type = aom_rb_read_literal(rb, 2);
-      } else {
-        features->opfl_refine_type = cm->seq_params.enable_opfl_refine;
-      }
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-    }
-
-    cm->prev_frame = get_primary_ref_frame_buf(cm);
-    if (features->primary_ref_frame != PRIMARY_REF_NONE &&
-        get_primary_ref_frame_buf(cm) == NULL) {
-      aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
-                         "Reference frame containing this frame's initial "
-                         "frame context is unavailable.");
-    }
-
-    if (!(current_frame->frame_type == INTRA_ONLY_FRAME) &&
-        pbi->need_resync != 1) {
       if (frame_might_allow_ref_frame_mvs(cm))
         features->allow_ref_frame_mvs = aom_rb_read_bit(rb);
       else
@@ -5944,8 +5906,50 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       } else {
         features->tip_frame_mode = TIP_FRAME_DISABLED;
       }
-#endif  // CONFIG_TIP
 
+      if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
+#endif  // CONFIG_TIP
+#if CONFIG_IBC_SR_EXT
+        if (features->allow_screen_content_tools && !av1_superres_scaled(cm)) {
+          features->allow_intrabc = aom_rb_read_bit(rb);
+          features->allow_global_intrabc = 0;
+          features->allow_local_intrabc = features->allow_intrabc;
+        }
+#endif  // CONFIG_IBC_SR_EXT
+
+        features->max_drl_bits =
+            aom_rb_read_primitive_quniform(
+                rb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1) +
+            MIN_MAX_DRL_BITS;
+        if (features->cur_frame_force_integer_mv) {
+          features->allow_high_precision_mv = 0;
+        } else {
+          features->allow_high_precision_mv = aom_rb_read_bit(rb);
+        }
+        features->interp_filter = read_frame_interp_filter(rb);
+        features->switchable_motion_mode = aom_rb_read_bit(rb);
+#if CONFIG_OPTFLOW_REFINEMENT
+        if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
+          features->opfl_refine_type = aom_rb_read_literal(rb, 2);
+        } else {
+          features->opfl_refine_type = cm->seq_params.enable_opfl_refine;
+        }
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_TIP
+      }
+#endif  // CONFIG_TIP
+    }
+
+    cm->prev_frame = get_primary_ref_frame_buf(cm);
+    if (features->primary_ref_frame != PRIMARY_REF_NONE &&
+        get_primary_ref_frame_buf(cm) == NULL) {
+      aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                         "Reference frame containing this frame's initial "
+                         "frame context is unavailable.");
+    }
+
+    if (!(current_frame->frame_type == INTRA_ONLY_FRAME) &&
+        pbi->need_resync != 1) {
 #if CONFIG_NEW_REF_SIGNALING
       for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
         const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, i);
@@ -5987,16 +5991,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   cm->cur_frame->frame_type = current_frame->frame_type;
 
   update_ref_frame_id(pbi);
-
-  const int might_bwd_adapt = !(seq_params->reduced_still_picture_hdr) &&
-                              !(features->disable_cdf_update);
-  if (might_bwd_adapt) {
-    features->refresh_frame_context = aom_rb_read_bit(rb)
-                                          ? REFRESH_FRAME_CONTEXT_DISABLED
-                                          : REFRESH_FRAME_CONTEXT_BACKWARD;
-  } else {
-    features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
-  }
 
   cm->cur_frame->buf.bit_depth = seq_params->bit_depth;
   cm->cur_frame->buf.color_primaries = seq_params->color_primaries;
@@ -6056,6 +6050,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_NEW_REF_SIGNALING
     cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
 #endif  // CONFIG_NEW_REF_SIGNALING
+    features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
+    read_tile_info(pbi, rb);
+    cm->cur_frame->film_grain_params_present =
+        seq_params->film_grain_params_present;
+    read_film_grain(cm, rb);
     av1_setup_past_independence(cm);
     if (!cm->tiles.large_scale) {
       cm->cur_frame->frame_context = *cm->fc;
@@ -6065,6 +6064,16 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     return 0;
   }
 #endif  // CONFIG_TIP
+
+  const int might_bwd_adapt = !(seq_params->reduced_still_picture_hdr) &&
+                              !(features->disable_cdf_update);
+  if (might_bwd_adapt) {
+    features->refresh_frame_context = aom_rb_read_bit(rb)
+                                          ? REFRESH_FRAME_CONTEXT_DISABLED
+                                          : REFRESH_FRAME_CONTEXT_BACKWARD;
+  } else {
+    features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
+  }
 
   read_tile_info(pbi, rb);
   if (!av1_is_min_tile_width_satisfied(cm)) {
