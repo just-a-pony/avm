@@ -637,6 +637,40 @@ static size_t read_metadata_hdr_mdcv(AV1Decoder *const pbi, const uint8_t *data,
   return kMdcvPayloadSize;
 }
 
+static int read_metadata_frame_hash(AV1Decoder *const pbi,
+                                    struct aom_read_bit_buffer *rb) {
+  AV1_COMMON *const cm = &pbi->common;
+  const unsigned hash_type = aom_rb_read_literal(rb, 4);
+  const unsigned per_plane = aom_rb_read_bit(rb);
+  const unsigned has_grain = aom_rb_read_bit(rb);
+  aom_rb_read_literal(rb, 2);  // reserved
+
+  // If hash_type is reserved for future use, ignore the entire OBU
+  if (hash_type) return -1;
+
+  FrameHash *const frame_hash = has_grain ? &cm->cur_frame->grain_frame_hash
+                                          : &cm->cur_frame->raw_frame_hash;
+  memset(frame_hash, 0, sizeof(*frame_hash));
+
+  frame_hash->hash_type = hash_type;
+  frame_hash->per_plane = per_plane;
+  frame_hash->has_grain = has_grain;
+  if (per_plane) {
+    const int num_planes = av1_num_planes(cm);
+    for (int i = 0; i < num_planes; ++i) {
+      PlaneHash *plane = &frame_hash->plane[i];
+      for (size_t j = 0; j < 16; ++j)
+        plane->md5[j] = aom_rb_read_literal(rb, 8);
+    }
+  } else {
+    PlaneHash *plane = &frame_hash->plane[0];
+    for (size_t i = 0; i < 16; ++i) plane->md5[i] = aom_rb_read_literal(rb, 8);
+  }
+  frame_hash->is_present = 1;
+
+  return 0;
+}
+
 static void scalability_structure(struct aom_read_bit_buffer *rb) {
   const int spatial_layers_cnt_minus_1 = aom_rb_read_literal(rb, 2);
   const int spatial_layer_dimensions_present_flag = aom_rb_read_bit(rb);
@@ -740,7 +774,7 @@ static size_t read_metadata(AV1Decoder *pbi, const uint8_t *data, size_t sz) {
     return 0;
   }
   const OBU_METADATA_TYPE metadata_type = (OBU_METADATA_TYPE)type_value;
-  if (metadata_type == 0 || metadata_type >= 6) {
+  if (metadata_type == 0 || metadata_type >= 7) {
     // If metadata_type is reserved for future use or a user private value,
     // ignore the entire OBU and just check trailing bits.
     if (get_last_nonzero_byte(data + type_length, sz - type_length) == 0) {
@@ -777,6 +811,16 @@ static size_t read_metadata(AV1Decoder *pbi, const uint8_t *data, size_t sz) {
   av1_init_read_bit_buffer(pbi, &rb, data + type_length, data + sz);
   if (metadata_type == OBU_METADATA_TYPE_SCALABILITY) {
     read_metadata_scalability(&rb);
+  } else if (metadata_type == OBU_METADATA_TYPE_DECODED_FRAME_HASH) {
+    if (read_metadata_frame_hash(pbi, &rb)) {
+      // Unsupported Decoded Frame Hash metadata. Ignoring the entire OBU and
+      // just checking trailing bits
+      if (get_last_nonzero_byte(data + type_length, sz - type_length) == 0) {
+        cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+        return 0;
+      }
+      return sz;
+    }
   } else {
     assert(metadata_type == OBU_METADATA_TYPE_TIMECODE);
     read_metadata_timecode(&rb);

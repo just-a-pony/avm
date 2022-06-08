@@ -980,6 +980,26 @@ typedef struct aom_codec_enc_cfg {
    */
   int fixed_qp_offsets[FIXED_QP_OFFSET_COUNT];
 
+  /*!\brief Codec control function to set what decoded frame hash metadata to
+   * write, unsigned int parameter
+   *
+   * - 0 = disabled (default)
+   * - 1 = write decoded frame hash metadata for raw frames
+   * - 2 = write decoded frame hash metadata for frames with film grain applied
+   * - 3 = write decoded frame hash metadata for both
+   */
+  unsigned int frame_hash_metadata;
+
+  /*!\brief Codec control function to set if the hash values are written for
+   * each plane instead of the entire frame, unsigned int parameter
+   *
+   * \attention Only applicable if decoded frame hash metadata is not disabled.
+   *
+   * - 0 = per frame (default)
+   * - 1 = per plane
+   */
+  unsigned int frame_hash_per_plane;
+
   /*!\brief Options defined per config file
    *
    */

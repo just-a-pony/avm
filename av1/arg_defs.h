@@ -259,6 +259,8 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
 #endif  // CONFIG_AV1_ENCODER
+  arg_def_t frame_hash_metadata;
+  arg_def_t frame_hash_per_plane;
 } av1_codec_arg_definitions_t;
 
 extern const av1_codec_arg_definitions_t g_av1_codec_arg_defs;

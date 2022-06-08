@@ -154,6 +154,7 @@ static aom_codec_err_t decoder_destroy(aom_codec_alg_priv_t *ctx) {
   aom_free(ctx->frame_worker);
   aom_free(ctx->buffer_pool);
   aom_img_free(&ctx->img);
+  aom_img_free(&ctx->image_with_grain);
   aom_free(ctx);
   return AOM_CODEC_OK;
 }
@@ -731,6 +732,9 @@ static aom_image_t *add_grain_if_needed(aom_codec_alg_priv_t *ctx,
 
   grain_img->user_priv = img->user_priv;
   grain_img->fb_priv = fb->priv;
+  aom_img_remove_metadata(grain_img);
+  grain_img->metadata = img->metadata;
+  img->metadata = NULL;
   if (av1_add_film_grain(grain_params, img, grain_img)) {
     pool->release_fb_cb(pool->cb_priv, fb);
     return NULL;
@@ -746,6 +750,26 @@ static void move_decoder_metadata_to_img(AV1Decoder *pbi, aom_image_t *img) {
     assert(!img->metadata);
     img->metadata = pbi->metadata;
     pbi->metadata = NULL;
+  }
+}
+
+static void copy_frame_hash_metadata_to_img(
+    AV1Decoder *pbi, aom_image_t *img, RefCntBuffer *const output_frame_buf) {
+  AV1_COMMON *const cm = &pbi->common;
+  const int num_planes = av1_num_planes(cm);
+  if (!output_frame_buf || !img) return;
+
+  if (output_frame_buf->raw_frame_hash.is_present) {
+    FrameHash *raw = &output_frame_buf->raw_frame_hash;
+    const int sz = 1 + (raw->per_plane ? num_planes * 16 : 16);
+    aom_img_add_metadata(img, OBU_METADATA_TYPE_DECODED_FRAME_HASH,
+                         (uint8_t *)raw, sz, AOM_MIF_ANY_FRAME);
+  }
+  if (output_frame_buf->grain_frame_hash.is_present) {
+    FrameHash *grain = &output_frame_buf->grain_frame_hash;
+    const int sz = 1 + (grain->per_plane ? num_planes * 16 : 16);
+    aom_img_add_metadata(img, OBU_METADATA_TYPE_DECODED_FRAME_HASH,
+                         (uint8_t *)grain, sz, AOM_MIF_ANY_FRAME);
   }
 }
 
@@ -785,6 +809,7 @@ static aom_image_t *decoder_get_frame(aom_codec_alg_priv_t *ctx,
         aom_img_remove_metadata(&ctx->img);
         yuvconfig2image(&ctx->img, sd, frame_worker_data->user_priv);
         move_decoder_metadata_to_img(pbi, &ctx->img);
+        copy_frame_hash_metadata_to_img(pbi, &ctx->img, output_frame_buf);
 
         if (!pbi->ext_tile_debug && tiles->large_scale) {
           *index += 1;  // Advance the iterator to point to the next image

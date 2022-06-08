@@ -5409,8 +5409,22 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       // already been allocated, it will not be released by
       // assign_frame_buffer_p()!
       assert(!cm->cur_frame->raw_frame_buffer.data);
+
+      FrameHash raw_frame_hash = cm->cur_frame->raw_frame_hash;
+      FrameHash grain_frame_hash = cm->cur_frame->grain_frame_hash;
+
       assign_frame_buffer_p(&cm->cur_frame, frame_to_show);
       pbi->reset_decoder_state = frame_to_show->frame_type == KEY_FRAME;
+
+      // Combine any Decoded Frame Header metadata that was parsed before
+      // the referenced frame with any parsed before this
+      // show_existing_frame header, e.g. raw frame hash values before the
+      // referenced coded frame and post film grain hash values before this
+      // header.
+      if (raw_frame_hash.is_present)
+        cm->cur_frame->raw_frame_hash = raw_frame_hash;
+      if (grain_frame_hash.is_present)
+        cm->cur_frame->grain_frame_hash = grain_frame_hash;
       unlock_buffer_pool(pool);
 
       cm->lf.filter_level[0] = 0;

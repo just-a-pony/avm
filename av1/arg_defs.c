@@ -708,5 +708,13 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                               "Enable reference MV bank (0: false "
                               "1: true)"),
 #endif  // CONFIG_REF_MV_BANK
+  .frame_hash_metadata = ARG_DEF(
+      NULL, "frame-hash", 1,
+      "Write decoded frame hash metadata OBUs. "
+      "(0: disabled (default), 1: raw frames, 2: film grain applied, 3: both)"),
+  .frame_hash_per_plane =
+      ARG_DEF(NULL, "use-per-plane-frame-hash", 1,
+              "Write hash values for each plane instead of the entire frame. "
+              "(0: false (default), 1: true)"),
 #endif  // CONFIG_AV1_ENCODER
 };

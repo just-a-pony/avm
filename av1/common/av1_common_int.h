@@ -198,6 +198,19 @@ typedef struct {
 } MV_REF;
 #endif  // CONFIG_TIP
 
+typedef struct PlaneHash {
+  uint8_t md5[16];
+} PlaneHash;
+
+typedef struct FrameHash {
+  uint8_t unused : 2;
+  uint8_t has_grain : 1;
+  uint8_t per_plane : 1;
+  uint8_t hash_type : 4;
+  PlaneHash plane[3];
+  int is_present;
+} FrameHash;
+
 typedef struct RefCntBuffer {
   // For a RefCntBuffer, the following are reference-holding variables:
   // - cm->ref_frame_map[]
@@ -266,6 +279,9 @@ typedef struct RefCntBuffer {
 #if CONFIG_NEW_REF_SIGNALING
   int base_qindex;
 #endif  // CONFIG_NEW_REF_SIGNALING
+
+  FrameHash raw_frame_hash;
+  FrameHash grain_frame_hash;
 } RefCntBuffer;
 
 typedef struct BufferPool {
@@ -1573,6 +1589,8 @@ static INLINE RefCntBuffer *assign_cur_frame_new_fb(AV1_COMMON *const cm) {
   cm->cur_frame = &cm->buffer_pool->frame_bufs[new_fb_idx];
   cm->cur_frame->buf.buf_8bit_valid = 0;
   av1_zero(cm->cur_frame->interp_filter_selected);
+  av1_zero(cm->cur_frame->raw_frame_hash);
+  av1_zero(cm->cur_frame->grain_frame_hash);
   return cm->cur_frame;
 }
 

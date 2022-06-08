@@ -867,6 +867,12 @@ typedef struct {
   // Indicates if optical flow refinement should be enabled
   aom_opfl_refine_type enable_opfl_refine;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+  // Indicates what frame hash metadata to write
+  unsigned int frame_hash_metadata;
+
+  // Indicates if the hash values are written for each plane instead of the
+  // entire frame.
+  bool frame_hash_per_plane;
 } ToolCfg;
 
 #define MAX_SUBGOP_CONFIGS 64

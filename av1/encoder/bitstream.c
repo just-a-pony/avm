@@ -26,6 +26,9 @@
 #include "aom_util/debug_util.h"
 #endif  // CONFIG_BITSTREAM_DEBUG
 
+#include "common/md5_utils.h"
+#include "common/rawenc.h"
+
 #include "av1/common/blockd.h"
 #include "av1/common/cdef.h"
 #if CONFIG_CCSO
@@ -50,6 +53,12 @@
 #include "av1/encoder/palette.h"
 #include "av1/encoder/segmentation.h"
 #include "av1/encoder/tokenize.h"
+
+// Silence compiler warning for unused static functions
+static void image2yuvconfig_upshift(aom_image_t *hbd_img,
+                                    const aom_image_t *img,
+                                    YV12_BUFFER_CONFIG *yv12) AOM_UNUSED;
+#include "av1/av1_iface_common.h"
 
 #define ENC_MISMATCH_DEBUG 0
 
@@ -4876,6 +4885,92 @@ static size_t av1_write_metadata_array(AV1_COMP *const cpi, uint8_t *dst) {
   return total_bytes_written;
 }
 
+static void write_frame_hash(AV1_COMP *const cpi,
+                             struct aom_write_bit_buffer *wb,
+                             aom_image_t *img) {
+  MD5Context md5_ctx;
+  unsigned char md5_digest[16];
+  const int yuv[3] = { AOM_PLANE_Y, AOM_PLANE_U, AOM_PLANE_V };
+  const int planes = img->monochrome ? 1 : 3;
+  if (cpi->oxcf.tool_cfg.frame_hash_per_plane) {
+    for (int i = 0; i < planes; i++) {
+      MD5Init(&md5_ctx);
+      raw_update_image_md5(img, &yuv[i], 1, &md5_ctx);
+      MD5Final(md5_digest, &md5_ctx);
+      for (size_t j = 0; j < sizeof(md5_digest); j++)
+        aom_wb_write_literal(wb, md5_digest[j], 8);
+    }
+  } else {
+    MD5Init(&md5_ctx);
+    raw_update_image_md5(img, yuv, planes, &md5_ctx);
+    MD5Final(md5_digest, &md5_ctx);
+    for (size_t i = 0; i < sizeof(md5_digest); i++)
+      aom_wb_write_literal(wb, md5_digest[i], 8);
+  }
+}
+
+static size_t av1_write_frame_hash_metadata(
+    AV1_COMP *const cpi, uint8_t *dst,
+    const aom_film_grain_t *const grain_params) {
+  if (!cpi->source) return 0;
+  AV1_COMMON *const cm = &cpi->common;
+  aom_image_t img;
+  unsigned char
+      payload[49];  // max three hash values per plane (48 bytes) + 1 bytes
+  struct aom_write_bit_buffer wb = { payload, 0 };
+
+  yuvconfig2image(&img, &cm->cur_frame->buf, NULL);
+
+  aom_wb_write_literal(&wb, 0, 4);  // hash_type, 0 = md5
+  aom_wb_write_literal(&wb, cpi->oxcf.tool_cfg.frame_hash_per_plane, 1);
+  aom_wb_write_literal(&wb, !!grain_params, 1);
+  aom_wb_write_literal(&wb, 0, 2);
+  if (grain_params) {
+    const int w_even = ALIGN_POWER_OF_TWO(img.d_w, 1);
+    const int h_even = ALIGN_POWER_OF_TWO(img.d_h, 1);
+    aom_image_t *grain_img = aom_img_alloc(NULL, img.fmt, w_even, h_even, 32);
+    if (!grain_img) {
+      aom_internal_error(&cpi->common.error, AOM_CODEC_MEM_ERROR,
+                         "Error allocating film grain image");
+    }
+    if (av1_add_film_grain(grain_params, &img, grain_img)) {
+      aom_internal_error(&cpi->common.error, AOM_CODEC_MEM_ERROR,
+                         "Grain systhesis failed");
+    }
+    write_frame_hash(cpi, &wb, grain_img);
+    aom_img_free(grain_img);
+  } else {
+    write_frame_hash(cpi, &wb, &img);
+  }
+
+  aom_metadata_t *metadata =
+      aom_img_metadata_alloc(OBU_METADATA_TYPE_DECODED_FRAME_HASH, payload,
+                             aom_wb_bytes_written(&wb), AOM_MIF_ANY_FRAME);
+  if (!metadata) {
+    aom_internal_error(&cpi->common.error, AOM_CODEC_MEM_ERROR,
+                       "Error allocating metadata");
+  }
+
+  size_t total_bytes_written = 0;
+  size_t obu_header_size =
+      av1_write_obu_header(&cpi->level_params, OBU_METADATA, 0, dst);
+  size_t obu_payload_size =
+      av1_write_metadata_obu(metadata, dst + obu_header_size);
+  size_t length_field_size =
+      obu_memmove(obu_header_size, obu_payload_size, dst);
+  if (av1_write_uleb_obu_size(obu_header_size, obu_payload_size, dst) ==
+      AOM_CODEC_OK) {
+    const size_t obu_size = obu_header_size + obu_payload_size;
+    total_bytes_written += obu_size + length_field_size;
+  } else {
+    aom_internal_error(&cpi->common.error, AOM_CODEC_ERROR,
+                       "Error writing metadata OBU size");
+  }
+  aom_img_metadata_free(metadata);
+
+  return total_bytes_written;
+}
+
 int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
                        int *const largest_tile_id) {
   uint8_t *data = dst;
@@ -4920,6 +5015,22 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
 
   // write metadata obus before the frame obu that has the show_frame flag set
   if (cm->show_frame) data += av1_write_metadata_array(cpi, data);
+
+  if (cpi->oxcf.tool_cfg.frame_hash_metadata) {
+    // write frame hash metadata obu for raw frames before the frame obu that
+    // has the tile groups
+    if ((cpi->oxcf.tool_cfg.frame_hash_metadata & 1) &&
+        (cm->show_frame || cm->showable_frame) &&
+        !encode_show_existing_frame(cm))
+      data += av1_write_frame_hash_metadata(cpi, data, NULL);
+    // write frame hash metadata obu for frames with film grain params applied
+    // before the frame obu that outputs the frame
+    const aom_film_grain_t *grain_params = &cm->cur_frame->film_grain_params;
+    if ((cpi->oxcf.tool_cfg.frame_hash_metadata & 2) &&
+        cm->seq_params.film_grain_params_present && cm->show_frame &&
+        grain_params->apply_grain)
+      data += av1_write_frame_hash_metadata(cpi, data, grain_params);
+  }
 
   const int write_frame_header =
       (cpi->num_tg > 1 || encode_show_existing_frame(cm)
