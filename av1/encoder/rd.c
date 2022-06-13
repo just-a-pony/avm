@@ -312,6 +312,12 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                fc->comp_inter_cdf[i], NULL);
     }
 
+#if CONFIG_TIP
+    for (i = 0; i < TIP_CONTEXTS; ++i) {
+      av1_cost_tokens_from_cdf(mode_costs->tip_cost[i], fc->tip_cdf[i], NULL);
+    }
+#endif  // CONFIG_TIP
+
 #if CONFIG_NEW_REF_SIGNALING
     for (i = 0; i < REF_CONTEXTS; ++i) {
       for (j = 0; j < INTER_REFS_PER_FRAME - 1; ++j) {
@@ -341,12 +347,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                  fc->single_ref_cdf[i][j], NULL);
       }
     }
-
-#if CONFIG_TIP
-    for (i = 0; i < TIP_CONTEXTS; ++i) {
-      av1_cost_tokens_from_cdf(mode_costs->tip_cost[i], fc->tip_cdf[i], NULL);
-    }
-#endif  // CONFIG_TIP
 
     for (i = 0; i < COMP_REF_TYPE_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->comp_ref_type_cost[i],
