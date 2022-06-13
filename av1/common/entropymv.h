@@ -49,17 +49,18 @@ static INLINE int mv_joint_horizontal(MV_JOINT_TYPE type) {
 /* Symbols for coding magnitude class of nonzero components */
 #define MV_CLASSES 11
 enum {
-  MV_CLASS_0 = 0,   /* (0, 2]     integer pel */
-  MV_CLASS_1 = 1,   /* (2, 4]     integer pel */
-  MV_CLASS_2 = 2,   /* (4, 8]     integer pel */
-  MV_CLASS_3 = 3,   /* (8, 16]    integer pel */
-  MV_CLASS_4 = 4,   /* (16, 32]   integer pel */
-  MV_CLASS_5 = 5,   /* (32, 64]   integer pel */
-  MV_CLASS_6 = 6,   /* (64, 128]  integer pel */
-  MV_CLASS_7 = 7,   /* (128, 256] integer pel */
-  MV_CLASS_8 = 8,   /* (256, 512] integer pel */
-  MV_CLASS_9 = 9,   /* (512, 1024] integer pel */
-  MV_CLASS_10 = 10, /* (1024,2048] integer pel */
+  /* Class specifies the integer pel range */
+  MV_CLASS_0 = 0,   /* When AMVD is applied:(0, 1], {2}. Otherwise:(0, 2] */
+  MV_CLASS_1 = 1,   /* When AMVD is applied:{4}. Otherwise:(2, 4] */
+  MV_CLASS_2 = 2,   /* When AMVD is applied:{8}. Otherwise:(4, 8] */
+  MV_CLASS_3 = 3,   /* When AMVD is applied:{16}. Otherwise:(8, 16] */
+  MV_CLASS_4 = 4,   /* When AMVD is applied:{32}. Otherwise:(16, 32] */
+  MV_CLASS_5 = 5,   /* When AMVD is applied:{64}. Otherwise:(32, 64] */
+  MV_CLASS_6 = 6,   /* When AMVD is applied:{128}. Otherwise:(64, 128] */
+  MV_CLASS_7 = 7,   /* When AMVD is applied:{256}. Otherwise:(128, 256] */
+  MV_CLASS_8 = 8,   /* When AMVD is applied:{512}. Otherwise:(256, 512] */
+  MV_CLASS_9 = 9,   /* When AMVD is applied:{1024}. Otherwise:(512, 1024] */
+  MV_CLASS_10 = 10, /* When AMVD is applied:{2048}. Otherwise:(1024,2048] */
 } UENUM1BYTE(MV_CLASS_TYPE);
 
 #define CLASS0_BITS 1 /* bits at integer precision for class 0 */
