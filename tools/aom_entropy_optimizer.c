@@ -509,17 +509,17 @@ int main(int argc, const char **argv) {
   cts_each_dim[0] = INTRA_INTER_SKIP_TXFM_CONTEXTS;
   cts_each_dim[1] = INTRA_INTER_CONTEXTS;
   cts_each_dim[2] = 2;
-  optimize_cdf_table(
-      &fc.intra_inter[0][0][0], probsfile, 3, cts_each_dim,
-      "static const aom_cdf_prob\n"
-      "default_intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)]");
-#else
-  cts_each_dim[0] = INTRA_INTER_CONTEXTS;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.intra_inter[0][0], probsfile, 2, cts_each_dim,
+  optimize_cdf_table(&fc.intra_inter[0][0][0], probsfile, 3, cts_each_dim,
                      "static const aom_cdf_prob\n"
                      "default_intra_inter_cdf[INTRA_INTER_SKIP_TXFM_CONTEXTS]["
                      "INTRA_INTER_CONTEXTS][CDF_SIZE(2)]");
+#else
+  cts_each_dim[0] = INTRA_INTER_CONTEXTS;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(
+      &fc.intra_inter[0][0], probsfile, 2, cts_each_dim,
+      "static const aom_cdf_prob\n"
+      "default_intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)]");
 #endif  // CONFIG_CONTEXT_DERIVATION
   /* Single/comp ref flag */
   cts_each_dim[0] = COMP_INTER_CONTEXTS;
