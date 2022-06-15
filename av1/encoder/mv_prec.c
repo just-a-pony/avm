@@ -134,36 +134,23 @@ static AOM_INLINE int keep_one_comp_stat(MV_STATS *mv_stats, int comp_val,
 #endif  // CONFIG_ADAPTIVE_MVD
   }
   rates[r_idx++] = int_bit_rate;
+  int use_fractional_mv = !cpi->common.features.cur_frame_force_integer_mv;
 #if CONFIG_ADAPTIVE_MVD
-  int use_fractional_mv = 1;
   if (is_adaptive_mvd && (mv_class != MV_CLASS_0 || int_part > 0))
     use_fractional_mv = 0;
 #endif  // CONFIG_ADAPTIVE_MVD
-#if CONFIG_ADAPTIVE_MVD
   const int frac_part_rate =
       use_fractional_mv ? get_symbol_cost(frac_part_cdf, frac_part) : 0;
-#else
-  const int frac_part_rate = get_symbol_cost(frac_part_cdf, frac_part);
-#endif  // CONFIG_ADAPTIVE_MVD
   rates[r_idx++] = frac_part_rate;
-#if CONFIG_ADAPTIVE_MVD
   const int high_part_rate = (use_hp && use_fractional_mv)
                                  ? get_symbol_cost(high_part_cdf, high_part)
                                  : 0;
-#else
-  const int high_part_rate =
-      use_hp ? get_symbol_cost(high_part_cdf, high_part) : 0;
-#endif  // CONFIG_ADAPTIVE_MVD
-#if CONFIG_ADAPTIVE_MVD
   if (use_fractional_mv) {
-#endif  // CONFIG_ADAPTIVE_MVD
     update_cdf(frac_part_cdf, frac_part, MV_FP_SIZE);
     if (use_hp) {
       update_cdf(high_part_cdf, high_part, 2);
     }
-#if CONFIG_ADAPTIVE_MVD
   }
-#endif  // CONFIG_ADAPTIVE_MVD
   rates[r_idx++] = high_part_rate;
 
   mv_stats->last_bit_zero += !high_part;
