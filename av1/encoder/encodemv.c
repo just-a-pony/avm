@@ -47,13 +47,13 @@ static void update_mv_component_stats(int comp, nmv_component *mvcomp,
 #endif  // CONFIG_ADAPTIVE_MVD
 
 #if CONFIG_ADAPTIVE_MVD
-  int use_integer_mv = 1;
+  int use_mv_class_offset = 1;
   if (is_adaptive_mvd && (mv_class != MV_CLASS_0 || d > 0)) {
     assert(fr == 3 && hp == 1);
     precision = MV_SUBPEL_NONE;
   }
-  if (mv_class > MV_CLASS_0 && is_adaptive_mvd) use_integer_mv = 0;
-  if (use_integer_mv) {
+  if (mv_class > MV_CLASS_0 && is_adaptive_mvd) use_mv_class_offset = 0;
+  if (use_mv_class_offset) {
 #endif  // CONFIG_ADAPTIVE_MVD
     // Integer bits
     if (mv_class == MV_CLASS_0) {
@@ -144,15 +144,14 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
       MV_CLASSES);
 
 #if CONFIG_ADAPTIVE_MVD
-  int use_integer_mv = 1;
+  int use_mv_class_offset = 1;
   if (is_adaptive_mvd && (mv_class != MV_CLASS_0 || d > 0)) {
     assert(fr == 3 && hp == 1);
     precision = MV_SUBPEL_NONE;
   }
-  if (mv_class > MV_CLASS_0 && is_adaptive_mvd) use_integer_mv = 0;
-  if (use_integer_mv) {
+  if (mv_class > MV_CLASS_0 && is_adaptive_mvd) use_mv_class_offset = 0;
+  if (use_mv_class_offset) {
 #endif  // CONFIG_ADAPTIVE_MVD
-
     // Integer bits
     if (mv_class == MV_CLASS_0) {
       aom_write_symbol(w, d, mvcomp->class0_cdf, CLASS0_SIZE);

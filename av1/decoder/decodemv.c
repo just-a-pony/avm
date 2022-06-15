@@ -1257,11 +1257,10 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp,
   const int class0 = mv_class == MV_CLASS_0;
 
 #if CONFIG_ADAPTIVE_MVD
-  int use_integer_mv = 1;
-  if (mv_class > MV_CLASS_0 && is_adaptive_mvd) use_integer_mv = 0;
-  if (use_integer_mv) {
+  int use_mv_class_offset = 1;
+  if (mv_class > MV_CLASS_0 && is_adaptive_mvd) use_mv_class_offset = 0;
+  if (use_mv_class_offset) {
 #endif  // CONFIG_ADAPTIVE_MVD
-
     // Integer part
     if (class0) {
       d = aom_read_symbol(r, mvcomp->class0_cdf, CLASS0_SIZE, ACCT_STR);
