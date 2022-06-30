@@ -1770,12 +1770,22 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
     return aom_read_cdf(r, cdf, 2, ACCT_STR) ? PARTITION_SPLIT : PARTITION_VERT;
   }
 }
+#if CONFIG_FLEX_MVRES
+// Set the superblock level parameters
+static void set_sb_mv_precision(SB_INFO *sbi, AV1Decoder *const pbi) {
+  AV1_COMMON *const cm = &pbi->common;
+  sbi->sb_mv_precision = cm->features.fr_mv_precision;
+}
+#endif
 
 // TODO(slavarnway): eliminate bsize and subsize in future commits
 static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
                                         ThreadData *const td, int mi_row,
                                         int mi_col, aom_reader *reader,
                                         BLOCK_SIZE bsize,
+#if CONFIG_FLEX_MVRES
+                                        SB_INFO *sbi,
+#endif
                                         int parse_decode_flag) {
   assert(bsize < BLOCK_SIZES_ALL);
   AV1_COMMON *const cm = &pbi->common;
@@ -1800,8 +1810,16 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   static const block_visitor_fn_t block_visit[4] = { NULL, parse_decode_block,
                                                      decode_block,
                                                      parse_decode_block };
+#if CONFIG_FLEX_MVRES
+  const int is_sb_root = bsize == cm->seq_params.sb_size;
+#endif
 
   if (parse_decode_flag & 1) {
+#if CONFIG_FLEX_MVRES
+    if (is_sb_root) {
+      set_sb_mv_precision(sbi, pbi);
+    }
+#endif
     const int plane_start = get_partition_plane_start(xd->tree_type);
     const int plane_end =
         get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
@@ -1847,9 +1865,16 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 #define DEC_BLOCK(db_r, db_c, db_subsize)                                  \
   block_visit[parse_decode_flag](pbi, td, DEC_BLOCK_STX_ARG(db_r), (db_c), \
                                  reader, DEC_BLOCK_EPT_ARG(db_subsize))
+
+#if CONFIG_FLEX_MVRES
+#define DEC_PARTITION(db_r, db_c, db_subsize)                        \
+  decode_partition(pbi, td, DEC_BLOCK_STX_ARG(db_r), (db_c), reader, \
+                   (db_subsize), sbi, parse_decode_flag)
+#else
 #define DEC_PARTITION(db_r, db_c, db_subsize)                        \
   decode_partition(pbi, td, DEC_BLOCK_STX_ARG(db_r), (db_c), reader, \
                    (db_subsize), parse_decode_flag)
+#endif
 
   switch (partition) {
     case PARTITION_NONE: DEC_BLOCK(mi_row, mi_col, subsize); break;
@@ -1946,10 +1971,18 @@ static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
           ? 2
           : 1;
   xd->tree_type = (total_loop_num == 1 ? SHARED_PART : LUMA_PART);
-  decode_partition(pbi, td, mi_row, mi_col, reader, bsize, parse_decode_flag);
+  decode_partition(pbi, td, mi_row, mi_col, reader, bsize,
+#if CONFIG_FLEX_MVRES
+                   xd->sbi,
+#endif
+                   parse_decode_flag);
   if (total_loop_num == 2) {
     xd->tree_type = CHROMA_PART;
-    decode_partition(pbi, td, mi_row, mi_col, reader, bsize, parse_decode_flag);
+    decode_partition(pbi, td, mi_row, mi_col, reader, bsize,
+#if CONFIG_FLEX_MVRES
+                     xd->sbi,
+#endif
+                     parse_decode_flag);
     xd->tree_type = SHARED_PART;
   }
 }
@@ -3369,6 +3402,9 @@ static AOM_INLINE void decode_tile_sb_row(AV1Decoder *pbi, ThreadData *const td,
 #if CONFIG_IBC_SR_EXT
     av1_reset_is_mi_coded_map(&td->dcb.xd, cm->seq_params.mib_size);
 #endif  // CONFIG_IBC_SR_EXT
+#if CONFIG_FLEX_MVRES
+    td->dcb.xd.sbi = av1_get_sb_info(cm, mi_row, mi_col);
+#endif
     set_cb_buffer(pbi, &td->dcb, pbi->cb_buffer_base, num_planes, mi_row,
                   mi_col);
 
@@ -3464,6 +3500,9 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
 #if CONFIG_IBC_SR_EXT
       av1_reset_is_mi_coded_map(xd, cm->seq_params.mib_size);
 #endif  // CONFIG_IBC_SR_EXT
+#if CONFIG_FLEX_MVRES
+      av1_set_sb_info(cm, xd, mi_row, mi_col);
+#endif
       set_cb_buffer(pbi, dcb, &td->cb_buffer_base, num_planes, 0, 0);
 #if CONFIG_REF_MV_BANK
       // td->ref_mv_bank is initialized as xd->ref_mv_bank, and used
@@ -3474,6 +3513,7 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
 #endif  // CONFIG_REF_MV_BANK
       decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                           cm->seq_params.sb_size, 0x3);
+
       if (aom_reader_has_overflowed(td->bit_reader)) {
         aom_merge_corrupted_flag(&dcb->corrupted, 1);
         return;
@@ -3958,6 +3998,9 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
 #if CONFIG_IBC_SR_EXT
       av1_reset_is_mi_coded_map(&td->dcb.xd, cm->seq_params.mib_size);
 #endif  // CONFIG_IBC_SR_EXT
+#if CONFIG_FLEX_MVRES
+      av1_set_sb_info(cm, xd, mi_row, mi_col);
+#endif
       set_cb_buffer(pbi, dcb, pbi->cb_buffer_base, num_planes, mi_row, mi_col);
 
 #if CONFIG_REF_MV_BANK
@@ -5097,6 +5140,9 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #if CONFIG_ADAPTIVE_MVD
   seq_params->enable_adaptive_mvd = aom_rb_read_bit(rb);
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  seq_params->enable_flex_mvres = aom_rb_read_bit(rb);
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_NEW_TX_PARTITION
   seq_params->enable_tx_split_4way = aom_rb_read_bit(rb);
 #endif  // CONFIG_NEW_TX_PARTITION
@@ -5105,7 +5151,12 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 static int read_global_motion_params(WarpedMotionParams *params,
                                      const WarpedMotionParams *ref_params,
                                      struct aom_read_bit_buffer *rb,
+#if !CONFIG_FLEX_MVRES
                                      int allow_hp) {
+#else
+                                     MvSubpelPrecision precision) {
+  const int precision_loss = get_gm_precision_loss(precision);
+#endif
   TransformationType type = aom_rb_read_bit(rb);
   if (type != IDENTITY) {
     if (aom_rb_read_bit(rb))
@@ -5148,14 +5199,28 @@ static int read_global_motion_params(WarpedMotionParams *params,
 
   if (type >= TRANSLATION) {
     const int trans_bits = (type == TRANSLATION)
+#if CONFIG_FLEX_MVRES
+                               ? GM_ABS_TRANS_ONLY_BITS - precision_loss
+#else
                                ? GM_ABS_TRANS_ONLY_BITS - !allow_hp
+#endif
                                : GM_ABS_TRANS_BITS;
     const int trans_dec_factor =
-        (type == TRANSLATION) ? GM_TRANS_ONLY_DECODE_FACTOR * (1 << !allow_hp)
-                              : GM_TRANS_DECODE_FACTOR;
+        (type == TRANSLATION)
+#if CONFIG_FLEX_MVRES
+            ? GM_TRANS_ONLY_DECODE_FACTOR * (1 << precision_loss)
+#else
+            ? GM_TRANS_ONLY_DECODE_FACTOR * (1 << !allow_hp)
+#endif
+            : GM_TRANS_DECODE_FACTOR;
     const int trans_prec_diff = (type == TRANSLATION)
+#if CONFIG_FLEX_MVRES
+                                    ? GM_TRANS_ONLY_PREC_DIFF + precision_loss
+#else
                                     ? GM_TRANS_ONLY_PREC_DIFF + !allow_hp
+#endif
                                     : GM_TRANS_PREC_DIFF;
+
     params->wmmat[0] = aom_rb_read_signed_primitive_refsubexpfin(
                            rb, (1 << trans_bits) + 1, SUBEXPFIN_K,
                            (ref_params->wmmat[0] >> trans_prec_diff)) *
@@ -5185,8 +5250,13 @@ static AOM_INLINE void read_global_motion(AV1_COMMON *cm,
         cm->prev_frame ? &cm->prev_frame->global_motion[frame]
                        : &default_warp_params;
     int good_params =
+#if !CONFIG_FLEX_MVRES
         read_global_motion_params(&cm->global_motion[frame], ref_params, rb,
                                   cm->features.allow_high_precision_mv);
+#else
+        read_global_motion_params(&cm->global_motion[frame], ref_params, rb,
+                                  cm->features.fr_mv_precision);
+#endif
     if (!good_params) {
 #if WARPED_MOTION_DEBUG
       printf("Warning: unexpected global motion shear params from aomenc\n");
@@ -5935,11 +6005,29 @@ static int read_uncompressed_header(AV1Decoder *pbi,
             aom_rb_read_primitive_quniform(
                 rb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1) +
             MIN_MAX_DRL_BITS;
+
+#if CONFIG_FLEX_MVRES
         if (features->cur_frame_force_integer_mv) {
-          features->allow_high_precision_mv = 0;
+          features->fr_mv_precision = MV_PRECISION_ONE_PEL;
         } else {
-          features->allow_high_precision_mv = aom_rb_read_bit(rb);
+          features->fr_mv_precision = aom_rb_read_bit(rb)
+                                          ? MV_PRECISION_ONE_EIGHTH_PEL
+                                          : MV_PRECISION_QTR_PEL;
+          features->most_probable_fr_mv_precision = features->fr_mv_precision;
         }
+        if (features->fr_mv_precision == MV_PRECISION_ONE_PEL) {
+          features->use_pb_mv_precision = 0;
+        } else {
+          features->use_pb_mv_precision = cm->seq_params.enable_flex_mvres;
+        }
+#else
+      if (features->cur_frame_force_integer_mv) {
+        features->allow_high_precision_mv = 0;
+      } else {
+        features->allow_high_precision_mv = aom_rb_read_bit(rb);
+      }
+#endif
+
         features->interp_filter = read_frame_interp_filter(rb);
         features->switchable_motion_mode = aom_rb_read_bit(rb);
 #if CONFIG_OPTFLOW_REFINEMENT

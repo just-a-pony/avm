@@ -395,6 +395,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                                  "Enable adaptive MVD resolution"
                                  "(0: false, 1: true (default))"),
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  .enable_flex_mvres = ARG_DEF(NULL, "enable-flex-mvres", 1,
+                               "Enable flexible MV resolution"
+                               "(0: false, 1: true (default))"),
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
   .enable_joint_mvd = ARG_DEF(NULL, "enable-joint-mvd", 1,
                               "Enable joint MVD coding"

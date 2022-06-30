@@ -36,6 +36,14 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
                               BLOCK_SIZE bsize, int ref_idx, int *rate_mv,
                               int search_range, inter_mode_info *mode_info,
                               int_mv *best_mv);
+#if CONFIG_FLEX_MVRES
+void av1_single_motion_search_high_precision(const AV1_COMP *const cpi,
+                                             MACROBLOCK *x, BLOCK_SIZE bsize,
+                                             int ref_idx, int *rate_mv,
+                                             inter_mode_info *mode_info,
+                                             const int_mv *start_mv,
+                                             int_mv *best_mv);
+#endif
 
 void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
                              BLOCK_SIZE bsize, int_mv *cur_mv,

@@ -408,10 +408,21 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
       av1_cost_tokens_from_cdf(mode_costs->use_optflow_cost[i],
                                fc->use_optflow_cdf[i], NULL);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
-    av1_cost_tokens_from_cdf(mode_costs->adaptive_mvd_cost,
-                             fc->adaptive_mvd_cdf, NULL);
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+#if CONFIG_FLEX_MVRES
+
+    for (j = 0; j < NUM_MV_PREC_MPP_CONTEXT; ++j) {
+      av1_cost_tokens_from_cdf(mode_costs->pb_block_mv_mpp_flag_costs[j],
+                               fc->pb_mv_mpp_flag_cdf[j], NULL);
+    }
+    for (i = MV_PRECISION_HALF_PEL; i < NUM_MV_PRECISIONS; ++i) {
+      for (j = 0; j < MV_PREC_DOWN_CONTEXTS; ++j)
+        av1_cost_tokens_from_cdf(
+            mode_costs
+                ->pb_block_mv_precision_costs[j][i - MV_PRECISION_HALF_PEL],
+            fc->pb_mv_precision_cdf[j][i - MV_PRECISION_HALF_PEL], NULL);
+    }
+
+#endif  // CONFIG_FLEX_MVRES
     for (i = 0; i < INTER_COMPOUND_MODE_CONTEXTS; ++i)
       av1_cost_tokens_from_cdf(mode_costs->inter_compound_mode_cost[i],
                                fc->inter_compound_mode_cdf[i], NULL);
@@ -809,7 +820,29 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
 #endif  // CONFIG_FORWARDSKIP
 }
 
+#if CONFIG_FLEX_MVRES
+void fill_dv_costs(IntraBCMvCosts *dv_costs, const FRAME_CONTEXT *fc,
+                   MvCosts *mv_costs) {
+  dv_costs->dv_costs[0] = &dv_costs->dv_costs_alloc[0][MV_MAX];
+  dv_costs->dv_costs[1] = &dv_costs->dv_costs_alloc[1][MV_MAX];
+  av1_build_nmv_cost_table(dv_costs->joint_mv, dv_costs->dv_costs, &fc->ndvc,
+                           MV_PRECISION_ONE_PEL
+#if CONFIG_ADAPTIVE_MVD
+                           ,
+                           0
+#endif
+  );
+
 #if CONFIG_BVCOST_UPDATE
+  // Copy the pointer of the dv cost to the mvcost
+  mv_costs->dv_joint_cost = &dv_costs->joint_mv[0];
+  mv_costs->dv_nmv_cost[0] = dv_costs->dv_costs[0];
+  mv_costs->dv_nmv_cost[1] = dv_costs->dv_costs[1];
+#else
+  (void)mv_costs;
+#endif
+}
+#elif CONFIG_BVCOST_UPDATE
 void av1_fill_dv_costs(const FRAME_CONTEXT *fc, IntraBCMVCosts *dv_costs) {
   int *dvcost[2] = { &dv_costs->mv_component[0][MV_MAX],
                      &dv_costs->mv_component[1][MV_MAX] };
@@ -819,8 +852,46 @@ void av1_fill_dv_costs(const FRAME_CONTEXT *fc, IntraBCMVCosts *dv_costs) {
 #endif  // CONFIG_ADAPTIVE_MVD
                            dvcost, &fc->ndvc, MV_SUBPEL_NONE);
 }
-#endif  // CONFIG_BVCOST_UPDATE
+#endif
 
+#if CONFIG_FLEX_MVRES
+void av1_fill_mv_costs(const FRAME_CONTEXT *fc, int integer_mv,
+                       MvSubpelPrecision fr_mv_precision, MvCosts *mv_costs) {
+  for (MvSubpelPrecision pb_mv_prec = MV_PRECISION_8_PEL;
+       pb_mv_prec < NUM_MV_PRECISIONS; pb_mv_prec++) {
+    mv_costs->nmv_costs[pb_mv_prec][0] =
+        &mv_costs->nmv_costs_alloc[pb_mv_prec][0][MV_MAX];
+    mv_costs->nmv_costs[pb_mv_prec][1] =
+        &mv_costs->nmv_costs_alloc[pb_mv_prec][1][MV_MAX];
+    av1_build_nmv_cost_table(mv_costs->nmv_joint_cost,
+                             mv_costs->nmv_costs[pb_mv_prec], &fc->nmvc,
+                             pb_mv_prec
+#if CONFIG_ADAPTIVE_MVD
+                             ,
+                             0
+#endif
+    );
+    (void)integer_mv;
+#if !CONFIG_ADAPTIVE_MVD
+    (void)fr_mv_precision;
+#endif
+  }
+
+#if CONFIG_ADAPTIVE_MVD
+  mv_costs->amvd_nmv_cost[0] = &mv_costs->amvd_nmv_cost_alloc[0][MV_MAX];
+  mv_costs->amvd_nmv_cost[1] = &mv_costs->amvd_nmv_cost_alloc[1][MV_MAX];
+  av1_build_nmv_cost_table(
+      mv_costs->amvd_nmv_joint_cost, mv_costs->amvd_nmv_cost, &fc->nmvc,
+#if BUGFIX_AMVD_AMVR
+      (fr_mv_precision <= MV_PRECISION_QTR_PEL ? fr_mv_precision
+                                               : MV_PRECISION_QTR_PEL),
+#else
+      fr_mv_precision,
+#endif
+      1);
+#endif
+}
+#else
 void av1_fill_mv_costs(const FRAME_CONTEXT *fc, int integer_mv, int usehp,
                        MvCosts *mv_costs) {
   mv_costs->nmv_cost[0] = &mv_costs->nmv_cost_alloc[0][MV_MAX];
@@ -859,6 +930,7 @@ void av1_fill_mv_costs(const FRAME_CONTEXT *fc, int integer_mv, int usehp,
                              mv_costs->mv_cost_stack, &fc->nmvc, usehp);
   }
 }
+#endif
 
 void av1_initialize_rd_consts(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
@@ -878,14 +950,20 @@ void av1_initialize_rd_consts(AV1_COMP *cpi) {
   if ((cpi->oxcf.cost_upd_freq.mv != COST_UPD_OFF) || frame_is_intra_only(cm) ||
       (cm->current_frame.frame_number & 0x07) == 1)
     av1_fill_mv_costs(cm->fc, cm->features.cur_frame_force_integer_mv,
+#if CONFIG_FLEX_MVRES
+                      cm->features.fr_mv_precision, mv_costs);
+#else
                       cm->features.allow_high_precision_mv, mv_costs);
+#endif
 
   if (cm->features.allow_screen_content_tools &&
 #if !CONFIG_BVCOST_UPDATE
       frame_is_intra_only(cm) &&
 #endif  // !CONFIG_BVCOST_UPDATE
       !is_stat_generation_stage(cpi)) {
-
+#if CONFIG_FLEX_MVRES
+    fill_dv_costs(&cpi->dv_costs, cm->fc, mv_costs);
+#else
     IntraBCMVCosts *const dv_costs = &cpi->dv_costs;
     int *dvcost[2] = { &dv_costs->mv_component[0][MV_MAX],
                        &dv_costs->mv_component[1][MV_MAX] };
@@ -894,6 +972,7 @@ void av1_initialize_rd_consts(AV1_COMP *cpi) {
                              dv_costs->amvd_joint_mv, dvcost,
 #endif  // CONFIG_ADAPTIVE_MVD
                              dvcost, &cm->fc->ndvc, MV_SUBPEL_NONE);
+#endif
   }
 
   if (!is_stat_generation_stage(cpi)) {

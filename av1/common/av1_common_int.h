@@ -442,6 +442,9 @@ typedef struct SequenceHeader {
 #if CONFIG_ADAPTIVE_MVD
   uint8_t enable_adaptive_mvd;  // enables/disables adaptive MVD resolution
 #endif                          // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  uint8_t enable_flex_mvres;  // enables/disables flexible MV resolution
+#endif                        // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
   uint8_t enable_joint_mvd;            // enables/disables joint MVD coding
 #endif                                 // CONFIG_JOINT_MVD
@@ -536,15 +539,34 @@ typedef struct {
    * If true, CDF update in the symbol encoding/decoding process is disabled.
    */
   bool disable_cdf_update;
+#if CONFIG_FLEX_MVRES
+  /*!
+   * The maximum allowable mv precision of the current frame.
+   */
+  MvSubpelPrecision fr_mv_precision;
+  /*!
+   * The most probable mv precision of the current frame.
+   */
+  MvSubpelPrecision most_probable_fr_mv_precision;
+#else
   /*!
    * If true, motion vectors are specified to eighth pel precision; and
    * if false, motion vectors are specified to quarter pel precision.
    */
   bool allow_high_precision_mv;
+#endif
+
   /*!
    * If true, force integer motion vectors; if false, use the default.
    */
   bool cur_frame_force_integer_mv;
+#if CONFIG_FLEX_MVRES
+  /*!
+   * If true, allow the mv precision to be changed at the prediction block
+   * level.
+   */
+  bool use_pb_mv_precision;
+#endif  // CONFIG_FLEX_MVRES
   /*!
    * If true, palette tool and/or intra block copy tools may be used.
    */
@@ -805,6 +827,34 @@ struct CommonModeInfoParams {
                     int height);
   /**@}*/
 };
+#if CONFIG_FLEX_MVRES
+typedef struct CommonSBInfoParams CommonSBInfoParams;
+/*!
+ * \brief Params related to SB_INFO arrays and related info.
+ */
+struct CommonSBInfoParams {
+  /*!
+   * Grid of pointers to SB_INFO structs.
+   */
+  SB_INFO *sbi_grid_base;
+  /*!
+   * Stride for 'sbi_grid_base'.
+   */
+  int sbi_stride;
+  /*!
+   * Number of superblocks in the vertical direction.
+   */
+  int sb_rows;
+  /*!
+   * Number of superblocks in the horizontal direction.
+   */
+  int sb_cols;
+  /*!
+   * Number of SB_INFO structs that are currently allocated.
+   */
+  int sbi_alloc_size;
+};
+#endif
 
 typedef struct CommonQuantParams CommonQuantParams;
 /*!
@@ -1302,6 +1352,12 @@ typedef struct AV1Common {
    */
   CommonModeInfoParams mi_params;
 
+#if CONFIG_FLEX_MVRES
+  /*!
+   * Params related to SB_INFO arrays and related info.
+   */
+  CommonSBInfoParams sbi_params;
+#endif
 #if CONFIG_ENTROPY_STATS
   /*!
    * Context type used by token CDFs, in the range 0 .. (TOKEN_CDF_Q_CTXS - 1).
@@ -2607,6 +2663,25 @@ static INLINE void set_sb_size(SequenceHeader *const seq_params,
   seq_params->mib_size_log2 = mi_size_wide_log2[seq_params->sb_size];
 }
 
+#if CONFIG_FLEX_MVRES
+static INLINE SB_INFO *av1_get_sb_info(AV1_COMMON *cm, int mi_row, int mi_col) {
+  const int sb_row = mi_row >> cm->seq_params.mib_size_log2;
+  const int sb_col = mi_col >> cm->seq_params.mib_size_log2;
+  return cm->sbi_params.sbi_grid_base + sb_row * cm->sbi_params.sbi_stride +
+         sb_col;
+}
+
+static INLINE void av1_set_sb_info(AV1_COMMON *cm, MACROBLOCKD *xd, int mi_row,
+                                   int mi_col) {
+  SB_INFO *sbi = xd->sbi = av1_get_sb_info(cm, mi_row, mi_col);
+
+  sbi->mi_row = mi_row;
+  sbi->mi_col = mi_col;
+
+  sbi->sb_mv_precision = cm->features.fr_mv_precision;
+}
+#endif
+
 // Returns true if the frame is fully lossless at the coded resolution.
 // Note: If super-resolution is used, such a frame will still NOT be lossless at
 // the upscaled resolution.
@@ -2802,6 +2877,17 @@ static INLINE int is_global_intrabc_allowed(const AV1_COMMON *const cm) {
 #endif
 }
 /*!\endcond */
+
+#if CONFIG_FLEX_MVRES
+static inline int is_this_mv_precision_compliant(
+    const MV this_mv, MvSubpelPrecision pb_mv_precision) {
+  bool check_row = this_mv.row &
+                   ((1 << (MV_PRECISION_ONE_EIGHTH_PEL - pb_mv_precision)) - 1);
+  bool check_col = this_mv.col &
+                   ((1 << (MV_PRECISION_ONE_EIGHTH_PEL - pb_mv_precision)) - 1);
+  return (check_row || check_col) ? 0 : 1;
+}
+#endif  // CONFIG_FLEX_MVRES
 
 #ifdef __cplusplus
 }  // extern "C"

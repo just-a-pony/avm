@@ -129,9 +129,6 @@ typedef struct frame_contexts {
   aom_cdf_prob inter_compound_mode_cdf[INTER_COMPOUND_MODE_CONTEXTS]
                                       [CDF_SIZE(INTER_COMPOUND_MODES)];
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if IMPROVED_AMVD
-  aom_cdf_prob adaptive_mvd_cdf[CDF_SIZE(2)];
-#endif  // IMPROVED_AMVD
   aom_cdf_prob compound_type_cdf[BLOCK_SIZES_ALL]
                                 [CDF_SIZE(MASKED_COMPOUND_TYPES)];
   aom_cdf_prob wedge_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(16)];
@@ -263,6 +260,13 @@ typedef struct frame_contexts {
 #if CONFIG_IST
   aom_cdf_prob stx_cdf[TX_SIZES][CDF_SIZE(STX_TYPES)];
 #endif
+#if CONFIG_FLEX_MVRES
+  aom_cdf_prob pb_mv_mpp_flag_cdf[NUM_MV_PREC_MPP_CONTEXT][CDF_SIZE(2)];
+
+  aom_cdf_prob pb_mv_precision_cdf[MV_PREC_DOWN_CONTEXTS]
+                                  [NUM_PB_FLEX_QUALIFIED_MAX_PREC]
+                                  [CDF_SIZE(FLEX_MV_COSTS_SIZE)];
+#endif  // CONFIG_FLEX_MVRES
   int initialized;
 } FRAME_CONTEXT;
 
@@ -354,10 +358,13 @@ static INLINE int16_t av1_drl_ctx(int16_t mode_ctx) {
 
 #if CONFIG_OPTFLOW_REFINEMENT
 static const int comp_idx_to_opfl_mode[INTER_COMPOUND_REF_TYPES] = {
-  NEAR_NEARMV_OPTFLOW, NEAR_NEWMV_OPTFLOW, NEW_NEARMV_OPTFLOW, -1,
+  NEAR_NEARMV_OPTFLOW,     NEAR_NEWMV_OPTFLOW, NEW_NEARMV_OPTFLOW, -1,
   NEW_NEWMV_OPTFLOW,
 #if CONFIG_JOINT_MVD
   JOINT_NEWMV_OPTFLOW,
+#if IMPROVED_AMVD
+  JOINT_AMVDNEWMV_OPTFLOW,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 };
 
@@ -375,6 +382,10 @@ static INLINE int opfl_get_comp_idx(int mode) {
 #if CONFIG_JOINT_MVD
     case JOINT_NEWMV:
     case JOINT_NEWMV_OPTFLOW: return INTER_COMPOUND_OFFSET(JOINT_NEWMV);
+#if IMPROVED_AMVD
+    case JOINT_AMVDNEWMV:
+    case JOINT_AMVDNEWMV_OPTFLOW: return INTER_COMPOUND_OFFSET(JOINT_AMVDNEWMV);
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
     default: assert(0); return 0;
   }

@@ -107,6 +107,9 @@ static INLINE PREDICTION_MODE compound_ref0_mode(PREDICTION_MODE mode) {
 #if CONFIG_JOINT_MVD
     NEWMV,  // JOINT_NEWMV
 #endif      // CONFIG_JOINT_MVD
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+    NEWMV,  // JOINT_AMVDNEWMV
+#endif      // IMPROVED_AMVD && CONFIG_JOINT_MVD
 #if CONFIG_OPTFLOW_REFINEMENT
     NEARMV,  // NEAR_NEARMV_OPTFLOW
     NEARMV,  // NEAR_NEWMV_OPTFLOW
@@ -115,6 +118,9 @@ static INLINE PREDICTION_MODE compound_ref0_mode(PREDICTION_MODE mode) {
 #if CONFIG_JOINT_MVD
     NEWMV,  // JOINT_NEWMV_OPTFLOW
 #endif      // CONFIG_JOINT_MVD
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+    NEWMV,  // JOINT_AMVDNEWMV_OPTFLOW
+#endif      // IMPROVED_AMVD && CONFIG_JOINT_MVD
 #endif      // CONFIG_OPTFLOW_REFINEMENT
   };
   assert(NELEMENTS(lut) == MB_MODE_COUNT);
@@ -151,6 +157,9 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
 #if CONFIG_JOINT_MVD
     NEARMV,  // JOINT_NEWMV
 #endif       // CONFIG_JOINT_MVD
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+    NEARMV,  // JOINT_AMVDNEWMV
+#endif       // IMPROVED_AMVD && CONFIG_JOINT_MVD
 #if CONFIG_OPTFLOW_REFINEMENT
     NEARMV,  // NEAR_NEARMV_OPTFLOW
     NEWMV,   // NEAR_NEWMV_OPTFLOW
@@ -159,6 +168,9 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
 #if CONFIG_JOINT_MVD
     NEARMV,  // JOINT_NEWMV_OPTFLOW
 #endif       // CONFIG_JOINT_MVD
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+    NEARMV,  // JOINT_AMVDNEWMV_OPTFLOW
+#endif       // IMPROVED_AMVD && CONFIG_JOINT_MVD
 #endif       // CONFIG_OPTFLOW_REFINEMENT
   };
   assert(NELEMENTS(lut) == MB_MODE_COUNT);
@@ -170,8 +182,14 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
 // return whether current mode is joint MVD coding mode
 static INLINE int is_joint_mvd_coding_mode(PREDICTION_MODE mode) {
   return mode == JOINT_NEWMV
+#if IMPROVED_AMVD
+         || mode == JOINT_AMVDNEWMV
+#endif  // IMPROVED_AMVD
 #if CONFIG_OPTFLOW_REFINEMENT
          || mode == JOINT_NEWMV_OPTFLOW
+#if IMPROVED_AMVD
+         || mode == JOINT_AMVDNEWMV_OPTFLOW
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
       ;
 }
@@ -194,6 +212,12 @@ static INLINE int have_nearmv_newmv_in_inter_mode(PREDICTION_MODE mode) {
 #if CONFIG_JOINT_MVD
          is_joint_mvd_coding_mode(mode) ||
 #endif  // CONFIG_JOINT_MVD
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+         mode == JOINT_AMVDNEWMV ||
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+#if IMPROVED_AMVD && CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
+         mode == JOINT_AMVDNEWMV_OPTFLOW ||
+#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD && CONFIG_OPTFLOW_REFINEMENT
          mode == NEW_NEARMV;
 }
 
@@ -210,8 +234,12 @@ static INLINE int have_newmv_in_each_reference(PREDICTION_MODE mode) {
 
 #if IMPROVED_AMVD && CONFIG_JOINT_MVD
 // return whether current mode is joint AMVD coding mode
-static INLINE int is_joint_amvd_coding_mode(int adaptive_mvd_flag) {
-  return adaptive_mvd_flag;
+static INLINE int is_joint_amvd_coding_mode(PREDICTION_MODE mode) {
+  return mode == JOINT_AMVDNEWMV
+#if CONFIG_OPTFLOW_REFINEMENT
+         || mode == JOINT_AMVDNEWMV_OPTFLOW
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+      ;
 }
 #endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
 
@@ -350,6 +378,18 @@ typedef struct MB_MODE_INFO {
 #endif  // CONFIG_NEW_TX_PARTITION
   /*! \brief Filter used in subpel interpolation. */
   int interp_fltr;
+#if CONFIG_FLEX_MVRES
+  /*! The maximum mv_precision allowed for the given partition block. */
+  MvSubpelPrecision max_mv_precision;
+  /*! The mv_precision used by the given partition block. */
+  MvSubpelPrecision pb_mv_precision;
+  /*! The most probable mv_precision used by the given partition block. */
+  MvSubpelPrecision most_probable_pb_mv_precision;
+  /*!
+   * The precision_set of the current frame.
+   */
+  uint8_t mb_precision_set;
+#endif
   /*! \brief The motion mode used by the inter prediction. */
   MOTION_MODE motion_mode;
   /*! \brief Number of samples used by warp causal */
@@ -365,10 +405,6 @@ typedef struct MB_MODE_INFO {
   int8_t interintra_wedge_index;
   /*! \brief Struct that stores the data used in interinter compound mode. */
   INTERINTER_COMPOUND_DATA interinter_comp;
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
-  /*! \brief The adaptive MVD resolution flag for JOINT_NEWMV mode. */
-  int adaptive_mvd_flag;
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
   /**@}*/
 
   /*****************************************************************************
@@ -497,7 +533,13 @@ static INLINE int get_partition_plane_end(int tree_type, int num_planes) {
 static INLINE int is_intrabc_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return mbmi->use_intrabc[tree_type == CHROMA_PART];
 }
-
+#if CONFIG_FLEX_MVRES
+typedef struct SB_INFO {
+  int mi_row;
+  int mi_col;
+  MvSubpelPrecision sb_mv_precision;
+} SB_INFO;
+#endif
 static INLINE PREDICTION_MODE get_uv_mode(UV_PREDICTION_MODE mode) {
   assert(mode < UV_INTRA_MODES);
   static const PREDICTION_MODE uv2y[] = {
@@ -891,6 +933,12 @@ typedef struct macroblockd {
    */
   MB_MODE_INFO *chroma_above_mbmi;
 
+#if CONFIG_FLEX_MVRES
+  /*!
+   * SB_INFO for the superblock that the current coding block is located in
+   */
+  SB_INFO *sbi;
+#endif
   /*!
    * Appropriate offset based on current 'mi_row' and 'mi_col', inside
    * 'tx_type_map' in one of 'CommonModeInfoParams', 'PICK_MODE_CONTEXT' or
@@ -1750,6 +1798,8 @@ typedef void (*foreach_transformed_block_visitor)(int plane, int block,
                                                   BLOCK_SIZE plane_bsize,
                                                   TX_SIZE tx_size, void *arg);
 
+void av1_reset_is_mi_coded_map(MACROBLOCKD *xd, int stride);
+
 void av1_set_entropy_contexts(const MACROBLOCKD *xd,
                               struct macroblockd_plane *pd, int plane,
                               BLOCK_SIZE plane_bsize, TX_SIZE tx_size,
@@ -1861,7 +1911,6 @@ motion_mode_allowed(const WarpedMotionParams *gm_params, const MACROBLOCKD *xd,
     return SIMPLE_TRANSLATION;
   }
 }
-
 static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
                                            int tree_type) {
 #if CONFIG_TIP

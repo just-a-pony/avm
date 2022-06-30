@@ -10115,6 +10115,9 @@ static const int16_t
                   };
 
 #endif
+#if CONFIG_FLEX_MVRES
+static const int min_class_with_offset[7] = { 4, 3, 2, 0, 0, 0, 0 };
+#endif
 #ifdef __cplusplus
 }  // extern "C"
 #endif

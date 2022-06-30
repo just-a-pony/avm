@@ -106,6 +106,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_ADAPTIVE_MVD
     GET_PARAMS(enable_adaptive_mvd);
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+    GET_PARAMS(enable_flex_mvres);
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
     GET_PARAMS(enable_joint_mvd);
 #endif  // CONFIG_JOINT_MVD

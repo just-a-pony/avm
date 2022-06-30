@@ -483,6 +483,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_ADAPTIVE_MVD
   seq->enable_adaptive_mvd = tool_cfg->enable_adaptive_mvd;
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  seq->enable_flex_mvres = tool_cfg->enable_flex_mvres;
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
   seq->enable_joint_mvd = tool_cfg->enable_joint_mvd;
 #endif  // CONFIG_JOINT_MVD
@@ -802,7 +805,11 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   // Add logic to choose this in the range [MIN_MAX_DRL_BITS, MAX_MAX_DRL_BITS]
   set_max_drl_bits(cpi);
 
+#if CONFIG_FLEX_MVRES
+  av1_set_high_precision_mv(cpi, MV_PRECISION_ONE_EIGHTH_PEL);
+#else
   av1_set_high_precision_mv(cpi, 1, 0);
+#endif
 
   set_rc_buffer_sizes(rc, rc_cfg);
 
@@ -820,6 +827,7 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
 
   cm->features.interp_filter =
       oxcf->tile_cfg.enable_large_scale_tile ? EIGHTTAP_REGULAR : SWITCHABLE;
+
   cm->features.switchable_motion_mode = 1;
 #if CONFIG_OPTFLOW_REFINEMENT
   cm->features.opfl_refine_type = REFINE_SWITCHABLE;
@@ -2258,7 +2266,17 @@ static int encode_without_recode(AV1_COMP *cpi) {
 
   // Set the motion vector precision based on mv stats from the last coded
   // frame.
-  if (!frame_is_intra_only(cm)) av1_pick_and_set_high_precision_mv(cpi, q);
+  if (!frame_is_intra_only(cm)) {
+    av1_pick_and_set_high_precision_mv(cpi, q);
+  }
+#if CONFIG_FLEX_MVRES
+  else {
+    // TODO(chiyotsai@google.com): The frame level mv precision should be set to
+    // MV_SUBPEL_NONE for more accurate intrabc search. But doing this right now
+    // will cause an unwanted STATS_CHANGED. Fix this upstream instead.
+    // av1_set_high_precision_mv(cpi, MV_PRECISION_ONE_PEL);
+  }
+#endif
 
   // transform / motion compensation build reconstruction frame
   av1_encode_frame(cpi);
@@ -2356,7 +2374,11 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
   int overshoot_seen = 0;
   int undershoot_seen = 0;
   int low_cr_seen = 0;
+#if CONFIG_FLEX_MVRES
+  MvSubpelPrecision last_loop_mv_prec = cm->features.fr_mv_precision;
+#else
   int last_loop_allow_hp = 0;
+#endif
 
   do {
     loop = 0;
@@ -2441,12 +2463,26 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
 
       // If the precision has changed during different iteration of the loop,
       // then we need to reset the global motion vectors
+#if CONFIG_FLEX_MVRES
+      if (loop_count > 0 && cm->features.fr_mv_precision != last_loop_mv_prec) {
+        gm_info->search_done = 0;
+      }
+      last_loop_mv_prec = cm->features.fr_mv_precision;
+    } else {
+      // TODO(chiyotsai@google.com): The frame level mv precision should be set
+      // to MV_SUBPEL_NONE for more accurate intrabc search. But doing this
+      // right now will cause an unwanted STATS_CHANGED. Fix this upstream
+      // instead.
+      // av1_set_high_precision_mv(cpi, MV_PRECISION_ONE_PEL);
+    }
+#else
       if (loop_count > 0 &&
           cm->features.allow_high_precision_mv != last_loop_allow_hp) {
         gm_info->search_done = 0;
       }
       last_loop_allow_hp = cm->features.allow_high_precision_mv;
     }
+#endif
 
     // transform / motion compensation build reconstruction frame
     av1_encode_frame(cpi);
@@ -2456,6 +2492,7 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
     if (cpi->mv_stats.valid) {
       av1_zero(cpi->mv_stats);
     }
+
     // Gather the mv_stats for the next frame
     if (cpi->sf.hl_sf.high_precision_mv_usage == LAST_MV_DATA &&
         av1_frame_allows_smart_mv(cpi)) {
@@ -3055,6 +3092,13 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
   }
   set_max_drl_bits(cpi);
 
+#if 0  // CONFIG_FLEX_MVRES
+  if (frame_is_intra_only(cm)) {
+    features->cur_frame_force_integer_mv = 1;
+    features->fr_mv_precision = MV_PRECISION_ONE_PEL;
+  }
+#endif
+
   // Set default state for segment based loop filter update flags.
   cm->lf.mode_ref_delta_update = 0;
 
@@ -3515,7 +3559,11 @@ int av1_get_compressed_data(AV1_COMP *cpi, unsigned int *frame_flags,
   struct aom_usec_timer cmptimer;
   aom_usec_timer_start(&cmptimer);
 #endif
+#if CONFIG_FLEX_MVRES
+  av1_set_high_precision_mv(cpi, MV_PRECISION_ONE_EIGHTH_PEL);
+#else
   av1_set_high_precision_mv(cpi, 1, 0);
+#endif
 
   // Normal defaults
   cm->features.refresh_frame_context =

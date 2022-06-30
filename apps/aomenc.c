@@ -461,6 +461,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_ADAPTIVE_MVD
   &g_av1_codec_arg_defs.enable_adaptive_mvd,
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  &g_av1_codec_arg_defs.enable_flex_mvres,
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
   &g_av1_codec_arg_defs.enable_joint_mvd,
 #endif  // CONFIG_JOINT_MVD
@@ -617,6 +620,9 @@ static void init_config(cfg_options_t *config) {
 #if CONFIG_ADAPTIVE_MVD
   config->enable_adaptive_mvd = 1;
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  config->enable_flex_mvres = 1;
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
   config->enable_joint_mvd = 1;
 #endif
@@ -1495,6 +1501,11 @@ static void show_stream_config(struct stream_state *stream,
           "                               : Adaptive MVD resolution: (%d)\n",
           encoder_cfg->enable_adaptive_mvd);
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  fprintf(stdout,
+          "                               : Flexible MV precisions: (%d)\n",
+          encoder_cfg->enable_flex_mvres);
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
   fprintf(stdout, "                               : Joint MVD coding: (%d)\n",
           encoder_cfg->enable_joint_mvd);

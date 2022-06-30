@@ -1502,8 +1502,10 @@ static void build_inter_predictors_8x8_and_bigger(
   assert(IMPLIES(
       use_optflow_refinement && mi->interinter_comp.type != COMPOUND_AVERAGE,
       cm->features.opfl_refine_type == REFINE_ALL));
-  assert(IMPLIES(use_optflow_refinement && mi->interp_fltr != MULTITAP_SHARP,
+#if !CONFIG_FLEX_MVRES
+  assert(IMPLIES(use_optflow_refinement && mi->interp_fltr == MULTITAP_SHARP,
                  cm->features.opfl_refine_type == REFINE_ALL));
+#endif
 
   // Arrays to hold optical flow offsets.
   int vx0[N_OF_OFFSETS] = { 0 };
@@ -1995,3 +1997,166 @@ void av1_build_interintra_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,
   av1_combine_interintra(xd, bsize, plane, pred, stride,
                          CONVERT_TO_BYTEPTR(intrapredictor), MAX_SB_SIZE);
 }
+
+#if CONFIG_FLEX_MVRES
+int av1_get_mpp_flag_context(const AV1_COMMON *cm, const MACROBLOCKD *xd) {
+  (void)cm;
+  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
+  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
+  const int above_mpp_flag =
+      (above_mi && is_inter_block(above_mi, SHARED_PART) &&
+       !is_intrabc_block(above_mi, SHARED_PART))
+          ? (above_mi->most_probable_pb_mv_precision ==
+             above_mi->pb_mv_precision)
+          : 0;
+  const int left_mpp_flag =
+      (left_mi && is_inter_block(left_mi, SHARED_PART) &&
+       !is_intrabc_block(left_mi, SHARED_PART))
+          ? (left_mi->most_probable_pb_mv_precision == left_mi->pb_mv_precision)
+          : 0;
+
+  return (above_mpp_flag + left_mpp_flag);
+}
+
+int av1_get_pb_mv_precision_down_context(const AV1_COMMON *cm,
+                                         const MACROBLOCKD *xd) {
+  (void)cm;
+  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
+  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
+  const int above_down =
+      (above_mi && is_inter_block(above_mi, SHARED_PART) &&
+       !is_intrabc_block(above_mi, SHARED_PART))
+          ? above_mi->max_mv_precision - above_mi->pb_mv_precision
+          : 0;
+  const int left_down =
+      (left_mi && is_inter_block(left_mi, SHARED_PART) &&
+       !is_intrabc_block(left_mi, SHARED_PART))  // && !left_mi->skip_mode)
+          ? left_mi->max_mv_precision - left_mi->pb_mv_precision
+          : 0;
+  assert(above_down >= 0);
+  assert(left_down >= 0);
+  return (above_down + left_down > 0);
+}
+
+int av1_get_mv_class_context(const MvSubpelPrecision pb_mv_precision) {
+  return pb_mv_precision;
+}
+
+void set_mv_precision(MB_MODE_INFO *mbmi, MvSubpelPrecision precision) {
+  mbmi->pb_mv_precision = precision;
+}
+#if BUGFIX_AMVD_AMVR
+// set the mv precision for amvd applied mode
+void set_amvd_mv_precision(MB_MODE_INFO *mbmi, MvSubpelPrecision precision) {
+  mbmi->pb_mv_precision =
+      precision <= MV_PRECISION_QTR_PEL ? precision : MV_PRECISION_QTR_PEL;
+}
+#endif  // BUGFIX_AMVD_AMVR
+int av1_get_pb_mv_precision_index(const MB_MODE_INFO *mbmi) {
+  const PRECISION_SET *precision_def =
+      &av1_mv_precision_sets[mbmi->mb_precision_set];
+  int coded_precision_idx = -1;
+  for (int precision_dx = precision_def->num_precisions - 1; precision_dx >= 0;
+       precision_dx--) {
+    MvSubpelPrecision pb_mv_precision = precision_def->precision[precision_dx];
+    if (pb_mv_precision != mbmi->most_probable_pb_mv_precision) {
+      coded_precision_idx++;
+      if (pb_mv_precision == mbmi->pb_mv_precision) return coded_precision_idx;
+    }
+  }
+  assert(0);
+  return coded_precision_idx;
+}
+
+MvSubpelPrecision av1_get_precision_from_index(MB_MODE_INFO *mbmi,
+                                               int precision_idx_coded_value) {
+  const PRECISION_SET *precision_def =
+      &av1_mv_precision_sets[mbmi->mb_precision_set];
+  int coded_precision_idx = -1;
+  MvSubpelPrecision pb_mv_precision = NUM_MV_PRECISIONS;
+  for (int precision_dx = precision_def->num_precisions - 1; precision_dx >= 0;
+       precision_dx--) {
+    pb_mv_precision = precision_def->precision[precision_dx];
+    if (pb_mv_precision != mbmi->most_probable_pb_mv_precision) {
+      coded_precision_idx++;
+      if (coded_precision_idx == precision_idx_coded_value)
+        return pb_mv_precision;
+    }
+  }
+  assert(0);
+  return pb_mv_precision;
+}
+void set_most_probable_mv_precision(const AV1_COMMON *const cm,
+                                    MB_MODE_INFO *mbmi,
+                                    const BLOCK_SIZE bsize) {
+  (void)bsize;
+  (void)cm;
+  const PRECISION_SET *precision_def =
+      &av1_mv_precision_sets[mbmi->mb_precision_set];
+  mbmi->most_probable_pb_mv_precision =
+      precision_def->precision[precision_def->num_precisions - 1];
+
+#if CONFIG_DEBUG
+  int mpp_found = 0;
+  for (int precision_dx = precision_def->num_precisions - 1; precision_dx >= 0;
+       precision_dx--) {
+    MvSubpelPrecision pb_mv_precision = precision_def->precision[precision_dx];
+    if (pb_mv_precision == mbmi->most_probable_pb_mv_precision) {
+      mpp_found = 1;
+      break;
+    }
+  }
+  assert(mpp_found);
+#endif
+}
+void set_precision_set(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
+                       MB_MODE_INFO *mbmi, const BLOCK_SIZE bsize,
+                       uint8_t ref_mv_idx) {
+  (void)bsize;
+  (void)cm;
+  (void)xd;
+  (void)ref_mv_idx;
+
+  int set_idx = 0;
+
+  int offset_idx = (mbmi->max_mv_precision == MV_PRECISION_QTR_PEL)
+                       ? NUMBER_OF_PRECISION_SETS
+                       : 0;
+  mbmi->mb_precision_set = set_idx + offset_idx;
+}
+void set_default_precision_set(const AV1_COMMON *const cm, MB_MODE_INFO *mbmi,
+                               const BLOCK_SIZE bsize) {
+  (void)bsize;
+  (void)cm;
+  int set_idx = 0;
+  int offset_idx = (mbmi->max_mv_precision == MV_PRECISION_QTR_PEL)
+                       ? NUMBER_OF_PRECISION_SETS
+                       : 0;
+  mbmi->mb_precision_set = set_idx + offset_idx;
+}
+void set_default_max_mv_precision(MB_MODE_INFO *mbmi,
+                                  MvSubpelPrecision precision) {
+  mbmi->max_mv_precision = precision;
+}
+MvSubpelPrecision av1_get_mbmi_max_mv_precision(const AV1_COMMON *const cm,
+                                                const SB_INFO *sbi,
+                                                const MB_MODE_INFO *mbmi) {
+  (void)mbmi;
+  (void)sbi;
+  return cm->features.fr_mv_precision;
+}
+
+int is_pb_mv_precision_active(const AV1_COMMON *const cm,
+                              const MB_MODE_INFO *mbmi,
+                              const BLOCK_SIZE bsize) {
+  (void)bsize;
+#if CONFIG_ADAPTIVE_MVD
+  if (enable_adaptive_mvd_resolution(cm, mbmi)) return 0;
+#endif
+  return cm->seq_params.enable_flex_mvres &&
+         (mbmi->max_mv_precision >= MV_PRECISION_HALF_PEL) &&
+         cm->features.use_pb_mv_precision &&
+         have_newmv_in_inter_mode(mbmi->mode);
+}
+
+#endif

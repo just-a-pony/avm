@@ -768,10 +768,6 @@ static const aom_cdf_prob default_drl2_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(16777) }, { AOM_CDF2(16998) }, { AOM_CDF2(14311) },
   { AOM_CDF2(16618) }, { AOM_CDF2(14980) }, { AOM_CDF2(15963) }
 };
-#if IMPROVED_AMVD
-static const aom_cdf_prob default_adaptive_mvd_cdf[CDF_SIZE(2)] = { AOM_CDF2(
-    25384) };
-#endif  // IMPROVED_AMVD
 #if CONFIG_OPTFLOW_REFINEMENT
 static const aom_cdf_prob
     default_use_optflow_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(2)] = {
@@ -790,6 +786,16 @@ static const aom_cdf_prob
     default_inter_compound_mode_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(
         INTER_COMPOUND_MODES)] = {
 #endif
+#if IMPROVED_AMVD
+      { AOM_CDF7(8510, 13103, 16330, 17536, 23536, 29536) },
+      { AOM_CDF7(12805, 16117, 19655, 20891, 24891, 29891) },
+      { AOM_CDF7(13700, 16333, 19425, 20305, 25305, 29305) },
+      { AOM_CDF7(13047, 16124, 19840, 20223, 25223, 29223) },
+      { AOM_CDF7(20632, 22637, 24394, 25608, 28608, 31608) },
+      { AOM_CDF7(13703, 16315, 19653, 20122, 25122, 30122) },
+      { AOM_CDF7(20458, 22512, 24304, 25008, 29008, 31008) },
+      { AOM_CDF7(19368, 22274, 23890, 24364, 28364, 31364) }
+#else
       { AOM_CDF6(8510, 13103, 16330, 17536, 24536) },
       { AOM_CDF6(12805, 16117, 19655, 20891, 26891) },
       { AOM_CDF6(13700, 16333, 19425, 20305, 26305) },
@@ -798,6 +804,7 @@ static const aom_cdf_prob
       { AOM_CDF6(13703, 16315, 19653, 20122, 26122) },
       { AOM_CDF6(20458, 22512, 24304, 25008, 30008) },
       { AOM_CDF6(19368, 22274, 23890, 24364, 29364) }
+#endif  // IMPROVED_AMVD
     };
 #else
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -1558,6 +1565,20 @@ static const aom_cdf_prob default_stx_cdf[TX_SIZES][CDF_SIZE(STX_TYPES)] = {
 };
 #endif
 
+#if CONFIG_FLEX_MVRES
+static const aom_cdf_prob
+    default_pb_mv_most_probable_precision_cdf[NUM_MV_PREC_MPP_CONTEXT][CDF_SIZE(
+        2)] = { { AOM_CDF2(26227) }, { AOM_CDF2(22380) }, { AOM_CDF2(15446) } };
+static const aom_cdf_prob default_pb_mv_precision_cdf
+    [MV_PREC_DOWN_CONTEXTS][NUM_PB_FLEX_QUALIFIED_MAX_PREC]
+    [CDF_SIZE(FLEX_MV_COSTS_SIZE)] = { { { AOM_CDF3(10923, 21845) },
+                                         { AOM_CDF3(25702, 31870) },
+                                         { AOM_CDF3(18150, 31007) } },
+                                       { { AOM_CDF3(10923, 21845) },
+                                         { AOM_CDF3(25055, 31858) },
+                                         { AOM_CDF3(21049, 31413) } } };
+#endif  // CONFIG_FLEX_MVRES
+
 #define MAX_COLOR_CONTEXT_HASH 8
 // Negative values are invalid
 static const int palette_color_index_context_lookup[MAX_COLOR_CONTEXT_HASH +
@@ -1839,9 +1860,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #if CONFIG_OPTFLOW_REFINEMENT
   av1_copy(fc->use_optflow_cdf, default_use_optflow_cdf);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if IMPROVED_AMVD
-  av1_copy(fc->adaptive_mvd_cdf, default_adaptive_mvd_cdf);
-#endif  // IMPROVED_AMVD
   av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
   av1_copy(fc->compound_type_cdf, default_compound_type_cdf);
   av1_copy(fc->wedge_idx_cdf, default_wedge_idx_cdf);
@@ -1910,6 +1928,10 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #if CONFIG_IST
   av1_copy(fc->stx_cdf, default_stx_cdf);
 #endif
+#if CONFIG_FLEX_MVRES
+  av1_copy(fc->pb_mv_precision_cdf, default_pb_mv_precision_cdf);
+  av1_copy(fc->pb_mv_mpp_flag_cdf, default_pb_mv_most_probable_precision_cdf);
+#endif  // CONFIG_FLEX_MVRES
 }
 
 void av1_set_default_ref_deltas(int8_t *ref_deltas) {

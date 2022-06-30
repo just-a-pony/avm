@@ -48,5 +48,4 @@ macro(fix_experiment_configs)
   if(NOT CONFIG_CCSO AND CONFIG_CCSO_EXT)
     change_config_and_warn(CONFIG_CCSO_EXT 0 !CONFIG_CCSO)
   endif()
-
 endmacro()

@@ -475,6 +475,10 @@ static INLINE void init_encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
   const AV1_COMMON *cm = &cpi->common;
   const TileInfo *tile_info = &tile_data->tile_info;
   MACROBLOCK *x = &td->mb;
+#if CONFIG_FLEX_MVRES
+  MACROBLOCKD *const xd = &x->e_mbd;
+  SB_INFO *sbi = xd->sbi;
+#endif
 
   const SPEED_FEATURES *sf = &cpi->sf;
   const int use_simple_motion_search =
@@ -486,6 +490,10 @@ static INLINE void init_encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
   if (use_simple_motion_search) {
     init_simple_motion_search_mvs(sms_root);
   }
+
+#if CONFIG_FLEX_MVRES
+  (void)sbi;
+#endif
 
   init_ref_frame_space(cpi, td, mi_row, mi_col);
   x->sb_energy_level = 0;
@@ -537,6 +545,10 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
           ? 2
           : 1;
   MACROBLOCKD *const xd = &x->e_mbd;
+
+#if CONFIG_FLEX_MVRES
+  x->e_mbd.sbi->sb_mv_precision = cm->features.fr_mv_precision;
+#endif  // CONFIG_FLEX_MVRES
 
   init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row, mi_col,
                     1);
@@ -601,6 +613,11 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
     // the general concept of 1-pass/2-pass encoders.
     const int num_passes =
         cpi->oxcf.unit_test_cfg.sb_multipass_unit_test ? 2 : 1;
+
+#if CONFIG_FLEX_MVRES
+    // Sets the sb_mv_precision
+    x->e_mbd.sbi->sb_mv_precision = cm->features.fr_mv_precision;
+#endif  // CONFIG_FLEX_MVRES
 
     if (num_passes == 1) {
       for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
@@ -718,6 +735,9 @@ static AOM_INLINE void encode_sb_row(AV1_COMP *cpi, ThreadData *td,
 #if CONFIG_IBC_SR_EXT
     av1_reset_is_mi_coded_map(xd, cm->seq_params.mib_size);
 #endif  // CONFIG_IBC_SR_EXT
+#if CONFIG_FLEX_MVRES
+    av1_set_sb_info(cm, xd, mi_row, mi_col);
+#endif
     if (tile_data->allow_update_cdf && row_mt_enabled &&
         (tile_info->mi_row_start != mi_row)) {
       if ((tile_info->mi_col_start == mi_col)) {

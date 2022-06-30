@@ -13,6 +13,9 @@
 #include "aom_dsp/binary_codes_writer.h"
 #include "aom_ports/system_state.h"
 
+#if CONFIG_FLEX_MVRES
+#include "av1/common/mv.h"
+#endif
 #include "av1/encoder/corner_detect.h"
 #include "av1/encoder/encoder.h"
 #include "av1/encoder/ethread.h"
@@ -23,7 +26,13 @@
 
 // Computes the cost for the warp parameters.
 static int gm_get_params_cost(const WarpedMotionParams *gm,
+#if CONFIG_FLEX_MVRES
+                              const WarpedMotionParams *ref_gm,
+                              MvSubpelPrecision precision) {
+  const int precision_loss = get_gm_precision_loss(precision);
+#else
                               const WarpedMotionParams *ref_gm, int allow_hp) {
+#endif
   int params_cost = 0;
   int trans_bits, trans_prec_diff;
   switch (gm->wmtype) {
@@ -51,10 +60,18 @@ static int gm_get_params_cost(const WarpedMotionParams *gm,
       AOM_FALLTHROUGH_INTENDED;
     case TRANSLATION:
       trans_bits = (gm->wmtype == TRANSLATION)
+#if CONFIG_FLEX_MVRES
+                       ? GM_ABS_TRANS_ONLY_BITS - precision_loss
+#else
                        ? GM_ABS_TRANS_ONLY_BITS - !allow_hp
+#endif
                        : GM_ABS_TRANS_BITS;
       trans_prec_diff = (gm->wmtype == TRANSLATION)
+#if CONFIG_FLEX_MVRES
+                            ? GM_TRANS_ONLY_PREC_DIFF + precision_loss
+#else
                             ? GM_TRANS_ONLY_PREC_DIFF + !allow_hp
+#endif
                             : GM_TRANS_PREC_DIFF;
       params_cost += aom_count_signed_primitive_refsubexpfin(
           (1 << trans_bits) + 1, SUBEXPFIN_K,
@@ -185,11 +202,19 @@ static AOM_INLINE void compute_global_motion_for_ref_frame(
 
     if (cm->global_motion[frame].wmtype == TRANSLATION) {
       cm->global_motion[frame].wmmat[0] =
+#if CONFIG_FLEX_MVRES
+          convert_to_trans_prec(cm->features.fr_mv_precision,
+#else
           convert_to_trans_prec(cm->features.allow_high_precision_mv,
+#endif
                                 cm->global_motion[frame].wmmat[0]) *
           GM_TRANS_ONLY_DECODE_FACTOR;
       cm->global_motion[frame].wmmat[1] =
+#if CONFIG_FLEX_MVRES
+          convert_to_trans_prec(cm->features.fr_mv_precision,
+#else
           convert_to_trans_prec(cm->features.allow_high_precision_mv,
+#endif
                                 cm->global_motion[frame].wmmat[1]) *
           GM_TRANS_ONLY_DECODE_FACTOR;
     }
@@ -203,7 +228,11 @@ static AOM_INLINE void compute_global_motion_for_ref_frame(
     if (!av1_is_enough_erroradvantage(
             (double)best_warp_error / ref_frame_error,
             gm_get_params_cost(&cm->global_motion[frame], ref_params,
+#if CONFIG_FLEX_MVRES
+                               cm->features.fr_mv_precision))) {
+#else
                                cm->features.allow_high_precision_mv))) {
+#endif
       cm->global_motion[frame] = default_warp_params;
     }
 
@@ -236,7 +265,11 @@ void av1_compute_gm_for_valid_ref_frames(
 
   gm_info->params_cost[frame] =
       gm_get_params_cost(&cm->global_motion[frame], ref_params,
+#if !CONFIG_FLEX_MVRES
                          cm->features.allow_high_precision_mv) +
+#else
+                         cm->features.fr_mv_precision) +
+#endif
       gm_info->type_cost[cm->global_motion[frame].wmtype] -
       gm_info->type_cost[IDENTITY];
 }

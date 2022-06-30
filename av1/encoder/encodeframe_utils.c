@@ -1105,9 +1105,15 @@ static void avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr, int wt_left,
     AVERAGE_CDF(nmv_left->comps[i].amvd_classes_cdf,
                 nmv_tr->comps[i].amvd_classes_cdf, MV_CLASSES);
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+    AVERAGE_CDF(nmv_left->comps[i].class0_fp_cdf,
+                nmv_tr->comps[i].class0_fp_cdf, 2);
+    AVERAGE_CDF(nmv_left->comps[i].fp_cdf, nmv_tr->comps[i].fp_cdf, 2);
+#else
     AVERAGE_CDF(nmv_left->comps[i].class0_fp_cdf,
                 nmv_tr->comps[i].class0_fp_cdf, MV_FP_SIZE);
     AVERAGE_CDF(nmv_left->comps[i].fp_cdf, nmv_tr->comps[i].fp_cdf, MV_FP_SIZE);
+#endif  // CONFIG_FLEX_MVRES
     AVERAGE_CDF(nmv_left->comps[i].sign_cdf, nmv_tr->comps[i].sign_cdf, 2);
     AVERAGE_CDF(nmv_left->comps[i].class0_hp_cdf,
                 nmv_tr->comps[i].class0_hp_cdf, 2);
@@ -1163,9 +1169,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->inter_compound_mode_cdf,
               ctx_tr->inter_compound_mode_cdf, INTER_COMPOUND_MODES);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if IMPROVED_AMVD
-  AVERAGE_CDF(ctx_left->adaptive_mvd_cdf, ctx_tr->adaptive_mvd_cdf, 2);
-#endif  // IMPROVED_AMVD
   AVERAGE_CDF(ctx_left->compound_type_cdf, ctx_tr->compound_type_cdf,
               MASKED_COMPOUND_TYPES);
   AVERAGE_CDF(ctx_left->wedge_idx_cdf, ctx_tr->wedge_idx_cdf, 16);
@@ -1335,11 +1338,36 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVG_CDF_STRIDE(ctx_left->stx_cdf, ctx_tr->stx_cdf, STX_TYPES,
                  CDF_SIZE(STX_TYPES));
 #endif
+#if CONFIG_FLEX_MVRES
+
+  for (int p = 0; p < NUM_MV_PREC_MPP_CONTEXT; ++p) {
+    AVG_CDF_STRIDE(ctx_left->pb_mv_mpp_flag_cdf[p],
+                   ctx_tr->pb_mv_mpp_flag_cdf[p], 2, CDF_SIZE(2));
+  }
+  for (int p = MV_PRECISION_HALF_PEL; p < NUM_MV_PRECISIONS; ++p) {
+    int mb_precision_set = (p == MV_PRECISION_QTR_PEL);
+    const PRECISION_SET *precision_def =
+        &av1_mv_precision_sets[mb_precision_set];
+    int num_precisions = precision_def->num_precisions;
+    for (int j = 0; j < MV_PREC_DOWN_CONTEXTS; ++j) {
+      AVG_CDF_STRIDE(
+          ctx_left->pb_mv_precision_cdf[j][p - MV_PRECISION_HALF_PEL],
+          ctx_tr->pb_mv_precision_cdf[j][p - MV_PRECISION_HALF_PEL],
+          num_precisions - 1, CDF_SIZE(FLEX_MV_COSTS_SIZE));
+    }
+  }
+
+#endif  // CONFIG_FLEX_MVRES
 }
 
 // Memset the mbmis at the current superblock to 0
+#if CONFIG_FLEX_MVRES
+void av1_reset_mbmi(const CommonModeInfoParams *const mi_params,
+                    BLOCK_SIZE sb_size, int mi_row, int mi_col) {
+#else
 void av1_reset_mbmi(CommonModeInfoParams *const mi_params, BLOCK_SIZE sb_size,
                     int mi_row, int mi_col) {
+#endif
   // size of sb in unit of mi (BLOCK_4X4)
   const int sb_size_mi = mi_size_wide[sb_size];
   const int mi_alloc_size_1d = mi_size_wide[mi_params->mi_alloc_bsize];
@@ -1490,10 +1518,18 @@ void av1_set_cost_upd_freq(AV1_COMP *cpi, ThreadData *td,
           mi_col != tile_info->mi_col_start)
         break;
       av1_fill_mv_costs(xd->tile_ctx, cm->features.cur_frame_force_integer_mv,
+#if CONFIG_FLEX_MVRES
+                        cm->features.fr_mv_precision, &x->mv_costs);
+#else
                         cm->features.allow_high_precision_mv, &x->mv_costs);
+#endif
 #if CONFIG_BVCOST_UPDATE
       if (cm->features.allow_intrabc) {
+#if CONFIG_FLEX_MVRES
+        fill_dv_costs(&cpi->dv_costs, xd->tile_ctx, &x->mv_costs);
+#else
         av1_fill_dv_costs(xd->tile_ctx, &cpi->dv_costs);
+#endif
       }
 #endif  // CONFIG_BVCOST_UPDATE
       break;

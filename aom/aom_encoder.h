@@ -303,6 +303,12 @@ typedef struct cfg_options {
    */
   unsigned int enable_adaptive_mvd;
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  /*!\brief enable Flexible MV resolution
+   *
+   */
+  unsigned int enable_flex_mvres;
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_JOINT_MVD
   /*!\brief enable joint MVD coding
    *

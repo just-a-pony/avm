@@ -158,9 +158,18 @@ void av1_free_above_context_buffers(CommonContexts *above_contexts) {
   above_contexts->num_mi_cols = 0;
   above_contexts->num_planes = 0;
 }
-
+#if CONFIG_FLEX_MVRES
+static void free_sbi(CommonSBInfoParams *sbi_params) {
+  aom_free(sbi_params->sbi_grid_base);
+  sbi_params->sbi_grid_base = NULL;
+  sbi_params->sbi_alloc_size = 0;
+}
+#endif
 void av1_free_context_buffers(AV1_COMMON *cm) {
   cm->mi_params.free_mi(&cm->mi_params);
+#if CONFIG_FLEX_MVRES
+  free_sbi(&cm->sbi_params);
+#endif
 
   av1_free_above_context_buffers(&cm->above_contexts);
 
@@ -243,11 +252,44 @@ static int alloc_mi(CommonModeInfoParams *mi_params) {
 
   return 0;
 }
+#if CONFIG_FLEX_MVRES
+static void set_sb_si(AV1_COMMON *cm) {
+  CommonSBInfoParams *const sbi_params = &cm->sbi_params;
+  const int mib_size_log2 = cm->seq_params.mib_size_log2;
+  sbi_params->sb_cols =
+      ALIGN_POWER_OF_TWO(cm->mi_params.mi_cols, mib_size_log2) >> mib_size_log2;
+  sbi_params->sb_rows =
+      ALIGN_POWER_OF_TWO(cm->mi_params.mi_rows, mib_size_log2) >> mib_size_log2;
+  sbi_params->sbi_stride = cm->mi_params.mi_stride >> mib_size_log2;
+}
+
+static int alloc_sbi(CommonSBInfoParams *sbi_params) {
+  const int sbi_size =
+      sbi_params->sbi_stride * calc_mi_size(sbi_params->sb_rows);
+
+  if (sbi_params->sbi_alloc_size < sbi_size) {
+    free_sbi(sbi_params);
+    sbi_params->sbi_grid_base = aom_calloc(sbi_size, sizeof(SB_INFO));
+
+    if (!sbi_params->sbi_grid_base) return 1;
+
+    sbi_params->sbi_alloc_size = sbi_size;
+  }
+
+  return 0;
+}
+#endif
 
 int av1_alloc_context_buffers(AV1_COMMON *cm, int width, int height) {
   CommonModeInfoParams *const mi_params = &cm->mi_params;
   mi_params->set_mb_mi(mi_params, width, height);
   if (alloc_mi(mi_params)) goto fail;
+#if CONFIG_FLEX_MVRES
+  CommonSBInfoParams *const sbi_params = &cm->sbi_params;
+  set_sb_si(cm);
+  if (alloc_sbi(sbi_params)) goto fail;
+#endif
+
   return 0;
 
 fail:

@@ -161,6 +161,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWLA,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWLA,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWLA,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWLA,
   THR_COMP_GLOBAL_GLOBALLA,
@@ -171,6 +174,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWLA,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWLA,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWLA,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -178,6 +184,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWL2A,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWL2A,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWL2A,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWL2A,
   THR_COMP_GLOBAL_GLOBALL2A,
@@ -188,6 +197,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWL2A,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWL2A,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWL2A,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -195,6 +207,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWL3A,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWL3A,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWL3A,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWL3A,
   THR_COMP_GLOBAL_GLOBALL3A,
@@ -205,6 +220,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWL3A,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWL3A,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWL3A,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -212,6 +230,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWGA,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWGA,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWGA,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWGA,
   THR_COMP_GLOBAL_GLOBALGA,
@@ -222,6 +243,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWGA,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWGA,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWGA,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -229,6 +253,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWLB,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWLB,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWLB,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWLB,
   THR_COMP_GLOBAL_GLOBALLB,
@@ -239,6 +266,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWLB,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWLB,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWLB,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -246,6 +276,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWL2B,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWL2B,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWL2B,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWL2B,
   THR_COMP_GLOBAL_GLOBALL2B,
@@ -256,6 +289,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWL2B,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWL2B,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWL2B,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -263,6 +299,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWL3B,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWL3B,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWL3B,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWL3B,
   THR_COMP_GLOBAL_GLOBALL3B,
@@ -273,6 +312,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWL3B,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWL3B,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWL3B,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -280,6 +322,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWGB,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWGB,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWGB,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWGB,
   THR_COMP_GLOBAL_GLOBALGB,
@@ -290,6 +335,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWGB,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWGB,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWGB,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -297,6 +345,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWLA2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWLA2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWLA2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWLA2,
   THR_COMP_GLOBAL_GLOBALLA2,
@@ -307,6 +358,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWLA2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWLA2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWLA2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -314,6 +368,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWL2A2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWL2A2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWL2A2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWL2A2,
   THR_COMP_GLOBAL_GLOBALL2A2,
@@ -324,6 +381,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWL2A2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWL2A2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWL2A2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -331,6 +391,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWL3A2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWL3A2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWL3A2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWL3A2,
   THR_COMP_GLOBAL_GLOBALL3A2,
@@ -341,6 +404,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWL3A2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWL3A2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWL3A2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -348,6 +414,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWGA2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWGA2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWGA2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWGA2,
   THR_COMP_GLOBAL_GLOBALGA2,
@@ -358,6 +427,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWGA2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWGA2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWGA2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -365,6 +437,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWLL2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWLL2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWLL2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWLL2,
   THR_COMP_GLOBAL_GLOBALLL2,
@@ -375,6 +450,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWLL2,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWLL2,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWLL2,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -382,6 +460,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWLL3,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWLL3,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWLL3,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWLL3,
   THR_COMP_GLOBAL_GLOBALLL3,
@@ -392,6 +473,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWLL3,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWLL3,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWLL3,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -399,6 +483,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWLG,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWLG,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWLG,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWLG,
   THR_COMP_GLOBAL_GLOBALLG,
@@ -409,6 +496,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWLG,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWLG,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWLG,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -416,6 +506,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEAR_NEWBA,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEWBA,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEWBA,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
   THR_COMP_NEW_NEWBA,
   THR_COMP_GLOBAL_GLOBALBA,
@@ -426,6 +519,9 @@ static const THR_MODES av1_default_mode_order[MAX_MODES] = {
   THR_COMP_NEW_NEW_OPTFLOWBA,
 #if CONFIG_JOINT_MVD
   THR_COMP_JOINT_NEW_OPTFLOWBA,
+#if IMPROVED_AMVD
+  THR_COMP_JOINT_AMVDNEW_OPTFLOWBA,
+#endif  // IMPROVED_AMVD
 #endif  // CONFIG_JOINT_MVD
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
@@ -480,10 +576,18 @@ typedef struct InterModeSearchState {
   unsigned int best_pred_sse;
   int64_t best_pred_diff[REFERENCE_MODES];
 
-  // Save a set of single_newmv for each checked ref_mv.
+// Save a set of single_newmv for each checked ref_mv.
+#if CONFIG_FLEX_MVRES
+  int_mv single_newmv[NUM_MV_PRECISIONS][MAX_REF_MV_SEARCH][SINGLE_REF_FRAMES];
+  int single_newmv_rate[NUM_MV_PRECISIONS][MAX_REF_MV_SEARCH]
+                       [SINGLE_REF_FRAMES];
+  int single_newmv_valid[NUM_MV_PRECISIONS][MAX_REF_MV_SEARCH]
+                        [SINGLE_REF_FRAMES];
+#else
   int_mv single_newmv[MAX_REF_MV_SEARCH][SINGLE_REF_FRAMES];
   int single_newmv_rate[MAX_REF_MV_SEARCH][SINGLE_REF_FRAMES];
   int single_newmv_valid[MAX_REF_MV_SEARCH][SINGLE_REF_FRAMES];
+#endif
   int64_t modelled_rd[MB_MODE_COUNT][MAX_REF_MV_SEARCH][SINGLE_REF_FRAMES];
   // The rd of simple translation in single inter modes
   int64_t simple_rd[MB_MODE_COUNT][MAX_REF_MV_SEARCH][SINGLE_REF_FRAMES];
@@ -849,6 +953,33 @@ static int cost_mv_ref(const ModeCosts *const mode_costs, PREDICTION_MODE mode,
   return mode_costs
       ->inter_single_mode_cost[ismode_ctx][mode - SINGLE_INTER_MODE_START];
 }
+
+#if CONFIG_FLEX_MVRES
+static int cost_mv_precision(const ModeCosts *const mode_costs,
+                             MvSubpelPrecision max_mv_precision,
+                             MvSubpelPrecision pb_mv_precision,
+                             const int down_ctx,
+                             MvSubpelPrecision most_probable_pb_mv_precision,
+                             const int mpp_flag_context,
+                             const MB_MODE_INFO *mbmi) {
+  int flex_mv_cost = 0;
+  const int mpp_flag = (pb_mv_precision == most_probable_pb_mv_precision);
+  flex_mv_cost +=
+      (mode_costs->pb_block_mv_mpp_flag_costs[mpp_flag_context][mpp_flag]);
+
+  if (!mpp_flag) {
+    int down = av1_get_pb_mv_precision_index(mbmi);
+    assert(down >= 0);
+
+    flex_mv_cost +=
+        (mode_costs->pb_block_mv_precision_costs[down_ctx]
+                                                [max_mv_precision -
+                                                 MV_PRECISION_HALF_PEL][down]);
+  }
+
+  return flex_mv_cost;
+}
+#endif
 
 static INLINE PREDICTION_MODE get_single_mode(PREDICTION_MODE this_mode,
                                               int ref_idx) {
@@ -1286,11 +1417,22 @@ static INLINE int clamp_and_check_mv(int_mv *out_mv, int_mv in_mv,
                                      const MACROBLOCK *x) {
   const MACROBLOCKD *const xd = &x->e_mbd;
   *out_mv = in_mv;
+#if CONFIG_FLEX_MVRES
+  // This function is called only for non-NEW MV modes.
+  // Therefore, PB based MV resolution  is not necessary.
+  lower_mv_precision(&out_mv->as_mv, cm->features.fr_mv_precision);
+#else
   lower_mv_precision(&out_mv->as_mv, cm->features.allow_high_precision_mv,
                      cm->features.cur_frame_force_integer_mv);
+#endif
   clamp_mv2(&out_mv->as_mv, xd);
   return av1_is_fullmv_in_range(&x->mv_limits,
-                                get_fullmv_from_mv(&out_mv->as_mv));
+                                get_fullmv_from_mv(&out_mv->as_mv)
+#if CONFIG_FLEX_MVRES
+                                    ,
+                                cm->features.fr_mv_precision
+#endif
+  );
 }
 
 // To use single newmv directly for compound modes, need to clamp the mv to the
@@ -1325,10 +1467,39 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
   };
 #endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
   const int ref_mv_idx = mbmi->ref_mv_idx;
+#if CONFIG_FLEX_MVRES
+  const MvSubpelPrecision pb_mv_precision = mbmi->pb_mv_precision;
+#endif
 
   if (is_comp_pred) {
+#if CONFIG_FLEX_MVRES
+    int valid_mv0_found = 0;
+    int valid_precision_mv0 = NUM_MV_PRECISIONS;
+    for (int prev_mv_precision = pb_mv_precision;
+         prev_mv_precision <= mbmi->max_mv_precision; prev_mv_precision++) {
+      if (args->single_newmv_valid[prev_mv_precision][ref_mv_idx][refs[0]]) {
+        valid_mv0_found = 1;
+        valid_precision_mv0 = prev_mv_precision;
+        break;
+      }
+    }
+
+    int valid_mv1_found = 0;
+    int valid_precision_mv1 = NUM_MV_PRECISIONS;
+    for (int prev_mv_precision = pb_mv_precision;
+         prev_mv_precision <= mbmi->max_mv_precision; prev_mv_precision++) {
+      if (args->single_newmv_valid[prev_mv_precision][ref_mv_idx][refs[1]]) {
+        valid_mv1_found = 1;
+        valid_precision_mv1 = prev_mv_precision;
+        break;
+      }
+    }
+    const int valid_mv0 = valid_mv0_found;
+    const int valid_mv1 = valid_mv1_found;
+#else
     const int valid_mv0 = args->single_newmv_valid[ref_mv_idx][refs[0]];
     const int valid_mv1 = args->single_newmv_valid[ref_mv_idx][refs[1]];
+#endif
 
 #if CONFIG_OPTFLOW_REFINEMENT
     if (this_mode == NEW_NEWMV || this_mode == NEW_NEWMV_OPTFLOW) {
@@ -1336,11 +1507,28 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
     if (this_mode == NEW_NEWMV) {
 #endif  // CONFIG_OPTFLOW_REFINEMENT
       if (valid_mv0) {
+#if CONFIG_FLEX_MVRES
+        cur_mv[0].as_int =
+            args->single_newmv[valid_precision_mv0][ref_mv_idx][refs[0]].as_int;
+#else
         cur_mv[0].as_int = args->single_newmv[ref_mv_idx][refs[0]].as_int;
+#endif
+
+#if CONFIG_FLEX_MVRES
+        lower_mv_precision(&cur_mv[0].as_mv, pb_mv_precision);
+#endif
         clamp_mv_in_range(x, &cur_mv[0], 0);
       }
       if (valid_mv1) {
+#if CONFIG_FLEX_MVRES
+        cur_mv[1].as_int =
+            args->single_newmv[valid_precision_mv1][ref_mv_idx][refs[1]].as_int;
+#else
         cur_mv[1].as_int = args->single_newmv[ref_mv_idx][refs[1]].as_int;
+#endif
+#if CONFIG_FLEX_MVRES
+        lower_mv_precision(&cur_mv[1].as_mv, pb_mv_precision);
+#endif
         clamp_mv_in_range(x, &cur_mv[1], 1);
       }
 
@@ -1353,9 +1541,20 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         *rate_mv = 0;
         for (int i = 0; i < 2; ++i) {
           const int_mv ref_mv = av1_get_ref_mv(x, i);
+#if CONFIG_FLEX_MVRES
+          *rate_mv +=
+              av1_mv_bit_cost(&cur_mv[i].as_mv, &ref_mv.as_mv, pb_mv_precision,
+                              &x->mv_costs, MV_COST_WEIGHT
+#if CONFIG_ADAPTIVE_MVD
+                              ,
+                              0
+#endif
+              );
+#else
           *rate_mv += av1_mv_bit_cost(
               &cur_mv[i].as_mv, &ref_mv.as_mv, x->mv_costs.nmv_joint_cost,
               x->mv_costs.mv_cost_stack, MV_COST_WEIGHT);
+#endif
         }
       }
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -1364,11 +1563,22 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
     } else if (this_mode == NEAR_NEWMV) {
 #endif  // CONFIG_OPTFLOW_REFINEMENT
       if (valid_mv1) {
+#if CONFIG_FLEX_MVRES
+        cur_mv[1].as_int =
+            args->single_newmv[valid_precision_mv1][ref_mv_idx][refs[1]].as_int;
+#else
         cur_mv[1].as_int = args->single_newmv[ref_mv_idx][refs[1]].as_int;
+#endif
+#if CONFIG_FLEX_MVRES
+        lower_mv_precision(&cur_mv[1].as_mv, pb_mv_precision);
+#endif
         clamp_mv_in_range(x, &cur_mv[1], 1);
       }
 #if CONFIG_ADAPTIVE_MVD
       if (cm->seq_params.enable_adaptive_mvd) {
+#if CONFIG_FLEX_MVRES
+        assert(mbmi->pb_mv_precision == mbmi->max_mv_precision);
+#endif
         av1_compound_single_motion_search_interinter(cpi, x, bsize, cur_mv,
                                                      NULL, 0, rate_mv, 1);
       } else {
@@ -1381,14 +1591,24 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         } else {
           const int_mv ref_mv = av1_get_ref_mv(x, 1);
           *rate_mv = av1_mv_bit_cost(&cur_mv[1].as_mv, &ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                                     pb_mv_precision, &x->mv_costs,
+#else
 #if CONFIG_ADAPTIVE_MVD
-                                     x->mv_costs.amvd_nmv_joint_cost,
-                                     x->mv_costs.amvd_mv_cost_stack,
+                                   x->mv_costs.amvd_nmv_joint_cost,
+                                   x->mv_costs.amvd_mv_cost_stack,
 #else
                                    x->mv_costs.nmv_joint_cost,
                                    x->mv_costs.mv_cost_stack,
 #endif  // CONFIG_ADAPTIVE_MVD
-                                     MV_COST_WEIGHT);
+#endif
+                                     MV_COST_WEIGHT
+
+#if CONFIG_ADAPTIVE_MVD && CONFIG_FLEX_MVRES
+                                     ,
+                                     0
+#endif
+          );
         }
 #if CONFIG_ADAPTIVE_MVD
       }
@@ -1413,14 +1633,30 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
       const int jmvd_base_ref_list = get_joint_mvd_base_ref_list(cm, mbmi);
       const int valid_mv_base = (!jmvd_base_ref_list && valid_mv0) ||
                                 (jmvd_base_ref_list && valid_mv1);
-      if (valid_mv_base) {
+      if (valid_mv_base
+#if IMPROVED_AMVD
+          && !is_joint_amvd_coding_mode(mbmi->mode)
+#endif  // IMPROVED_AMVD
+      ) {
         cur_mv[jmvd_base_ref_list].as_int =
+#if CONFIG_FLEX_MVRES
+            args->single_newmv[jmvd_base_ref_list == 0 ? valid_precision_mv0
+                                                       : valid_precision_mv1]
+                              [ref_mv_idx][refs[jmvd_base_ref_list]]
+                                  .as_int;
+#else
             args->single_newmv[ref_mv_idx][refs[jmvd_base_ref_list]].as_int;
+#endif
+
+#if CONFIG_FLEX_MVRES
+        lower_mv_precision(&cur_mv[jmvd_base_ref_list].as_mv, pb_mv_precision);
+#endif
+
         clamp_mv_in_range(x, &cur_mv[jmvd_base_ref_list], jmvd_base_ref_list);
       }
       av1_compound_single_motion_search_interinter(
           cpi, x, bsize, cur_mv, NULL, 0, rate_mv, jmvd_base_ref_list);
-#endif  // CONFIG_JOINT_MVD
+#endif
     } else {
 #if CONFIG_OPTFLOW_REFINEMENT
       assert(this_mode == NEW_NEARMV || this_mode == NEW_NEARMV_OPTFLOW);
@@ -1428,11 +1664,23 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
       assert(this_mode == NEW_NEARMV);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
       if (valid_mv0) {
+#if CONFIG_FLEX_MVRES
+        cur_mv[0].as_int =
+            args->single_newmv[valid_precision_mv0][ref_mv_idx][refs[0]].as_int;
+#else
         cur_mv[0].as_int = args->single_newmv[ref_mv_idx][refs[0]].as_int;
+#endif
+
+#if CONFIG_FLEX_MVRES
+        lower_mv_precision(&cur_mv[0].as_mv, pb_mv_precision);
+#endif
         clamp_mv_in_range(x, &cur_mv[0], 0);
       }
 #if CONFIG_ADAPTIVE_MVD
       if (cm->seq_params.enable_adaptive_mvd) {
+#if CONFIG_FLEX_MVRES
+        assert(mbmi->pb_mv_precision == mbmi->max_mv_precision);
+#endif
         av1_compound_single_motion_search_interinter(cpi, x, bsize, cur_mv,
                                                      NULL, 0, rate_mv, 0);
       } else {
@@ -1445,14 +1693,24 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         } else {
           const int_mv ref_mv = av1_get_ref_mv(x, 0);
           *rate_mv = av1_mv_bit_cost(&cur_mv[0].as_mv, &ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                                     pb_mv_precision, &x->mv_costs,
+#else
 #if CONFIG_ADAPTIVE_MVD
-                                     x->mv_costs.amvd_nmv_joint_cost,
-                                     x->mv_costs.amvd_mv_cost_stack,
+                                   x->mv_costs.amvd_nmv_joint_cost,
+                                   x->mv_costs.amvd_mv_cost_stack,
 #else
                                    x->mv_costs.nmv_joint_cost,
                                    x->mv_costs.mv_cost_stack,
 #endif  // CONFIG_ADAPTIVE_MVD
-                                     MV_COST_WEIGHT);
+#endif
+                                     MV_COST_WEIGHT
+#if CONFIG_FLEX_MVRES && CONFIG_ADAPTIVE_MVD
+                                     ,
+                                     0
+#endif
+
+          );
         }
 #if CONFIG_ADAPTIVE_MVD
       }
@@ -1462,7 +1720,9 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
   } else if (this_mode == AMVDNEWMV) {
     const int ref_idx = 0;
     int_mv best_mv;
-
+#if CONFIG_FLEX_MVRES
+    assert(mbmi->pb_mv_precision == mbmi->max_mv_precision);
+#endif
     av1_amvd_single_motion_search(cpi, x, bsize, &best_mv.as_mv, rate_mv,
                                   ref_idx);
     if (best_mv.as_int == INVALID_MV) return INT64_MAX;
@@ -1471,49 +1731,104 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
   } else {
     // Single ref case.
     const int ref_idx = 0;
-    int search_range = INT_MAX;
-
-    if (cpi->sf.mv_sf.reduce_search_range && mbmi->ref_mv_idx > 0) {
-      const MV ref_mv = av1_get_ref_mv(x, ref_idx).as_mv;
-      int min_mv_diff = INT_MAX;
-      int best_match = -1;
-      MV best_mv = { 0 };
-      for (int idx = 0; idx < mbmi->ref_mv_idx; ++idx) {
-        MV prev_ref_mv = av1_get_ref_mv_from_stack(ref_idx, mbmi->ref_frame,
-                                                   idx, x->mbmi_ext)
-                             .as_mv;
-        const int ref_mv_diff = AOMMAX(abs(ref_mv.row - prev_ref_mv.row),
-                                       abs(ref_mv.col - prev_ref_mv.col));
-
-        if (min_mv_diff > ref_mv_diff) {
-          min_mv_diff = ref_mv_diff;
-          best_match = idx;
-          best_mv = prev_ref_mv;
+    int_mv best_mv;
+#if CONFIG_FLEX_MVRES
+    int valid_precision_mv0 = NUM_MV_PRECISIONS;
+    int do_refine_ms = (cpi->sf.flexmv_sf.fast_motion_search_low_precision &&
+                        pb_mv_precision < mbmi->max_mv_precision) &&
+                       is_pb_mv_precision_active(&cpi->common, mbmi, bsize);
+    if (do_refine_ms) {
+      int valid_mv0_found = 0;
+      for (int prev_mv_precision = pb_mv_precision;
+           prev_mv_precision <= mbmi->max_mv_precision; prev_mv_precision++) {
+        if (args->single_newmv_valid[prev_mv_precision][ref_mv_idx][refs[0]]) {
+          valid_mv0_found = 1;
+          valid_precision_mv0 = prev_mv_precision;
+          break;
         }
       }
 
-      if (min_mv_diff < (16 << 3)) {
-        if (args->single_newmv_valid[best_match][refs[0]]) {
-          search_range = min_mv_diff;
-          search_range +=
-              AOMMAX(abs(args->single_newmv[best_match][refs[0]].as_mv.row -
-                         best_mv.row),
-                     abs(args->single_newmv[best_match][refs[0]].as_mv.col -
-                         best_mv.col));
-          // Get full pixel search range.
-          search_range = (search_range + 4) >> 3;
-        }
-      }
+      do_refine_ms &= valid_mv0_found;
     }
 
-    int_mv best_mv;
-    av1_single_motion_search(cpi, x, bsize, ref_idx, rate_mv, search_range,
-                             mode_info, &best_mv);
+    if (do_refine_ms) {
+      int_mv start_mv;
+      assert(valid_precision_mv0 > pb_mv_precision &&
+             valid_precision_mv0 < NUM_MV_PRECISIONS);
+      start_mv.as_int =
+          args->single_newmv[valid_precision_mv0][ref_mv_idx][refs[0]].as_int;
+      lower_mv_precision(&start_mv.as_mv, pb_mv_precision);
+      av1_single_motion_search_high_precision(cpi, x, bsize, ref_idx, rate_mv,
+                                              mode_info, &start_mv, &best_mv);
+
+    } else {
+#endif
+      int search_range = INT_MAX;
+      if (cpi->sf.mv_sf.reduce_search_range && mbmi->ref_mv_idx > 0) {
+        const MV ref_mv = av1_get_ref_mv(x, ref_idx).as_mv;
+        int min_mv_diff = INT_MAX;
+        int best_match = -1;
+        MV best_mv1 = { 0 };
+        for (int idx = 0; idx < mbmi->ref_mv_idx; ++idx) {
+          MV prev_ref_mv = av1_get_ref_mv_from_stack(ref_idx, mbmi->ref_frame,
+                                                     idx, x->mbmi_ext)
+                               .as_mv;
+          const int ref_mv_diff = AOMMAX(abs(ref_mv.row - prev_ref_mv.row),
+                                         abs(ref_mv.col - prev_ref_mv.col));
+
+          if (min_mv_diff > ref_mv_diff) {
+            min_mv_diff = ref_mv_diff;
+            best_match = idx;
+            best_mv1 = prev_ref_mv;
+          }
+        }
+
+        if (min_mv_diff < (16 << 3)) {
+#if CONFIG_FLEX_MVRES
+          if (args->single_newmv_valid[pb_mv_precision][best_match][refs[0]]) {
+#else
+        if (args->single_newmv_valid[best_match][refs[0]]) {
+#endif
+            search_range = min_mv_diff;
+#if CONFIG_FLEX_MVRES
+            search_range += AOMMAX(
+                abs(args->single_newmv[pb_mv_precision][best_match][refs[0]]
+                        .as_mv.row -
+                    best_mv1.row),
+                abs(args->single_newmv[pb_mv_precision][best_match][refs[0]]
+                        .as_mv.col -
+                    best_mv1.col));
+#else
+          search_range +=
+              AOMMAX(abs(args->single_newmv[best_match][refs[0]].as_mv.row -
+                         best_mv1.row),
+                     abs(args->single_newmv[best_match][refs[0]].as_mv.col -
+                         best_mv1.col));
+#endif
+
+            // Get full pixel search range.
+            search_range = (search_range + 4) >> 3;
+          }
+        }
+      }
+      av1_single_motion_search(cpi, x, bsize, ref_idx, rate_mv, search_range,
+                               mode_info, &best_mv);
+#if CONFIG_FLEX_MVRES
+    }
+#endif
+
     if (best_mv.as_int == INVALID_MV) return INT64_MAX;
 
+#if CONFIG_FLEX_MVRES
+    args->single_newmv[pb_mv_precision][ref_mv_idx][refs[0]] = best_mv;
+    args->single_newmv_rate[pb_mv_precision][ref_mv_idx][refs[0]] = *rate_mv;
+    args->single_newmv_valid[pb_mv_precision][ref_mv_idx][refs[0]] = 1;
+#else
     args->single_newmv[ref_mv_idx][refs[0]] = best_mv;
     args->single_newmv_rate[ref_mv_idx][refs[0]] = *rate_mv;
     args->single_newmv_valid[ref_mv_idx][refs[0]] = 1;
+#endif
+
     cur_mv[0].as_int = best_mv.as_int;
   }
 
@@ -1749,16 +2064,27 @@ static int64_t motion_mode_rd(
                                mbmi->mv[0].as_mv.row, mbmi->mv[0].as_mv.col,
                                &mbmi->wm_params, mi_row, mi_col)) {
         assert(!is_comp_pred);
-        if (this_mode == NEWMV) {
+        if (this_mode == NEWMV
+#if CONFIG_FLEX_MVRES
+            && (mbmi->pb_mv_precision >= MV_PRECISION_ONE_PEL)
+#endif
+        ) {
           // Refine MV for NEWMV mode
           const int_mv mv0 = mbmi->mv[0];
           const WarpedMotionParams wm_params0 = mbmi->wm_params;
           const int num_proj_ref0 = mbmi->num_proj_ref;
 
           const int_mv ref_mv = av1_get_ref_mv(x, 0);
+#if CONFIG_FLEX_MVRES
+          const MvSubpelPrecision pb_mv_precision = mbmi->pb_mv_precision;
+#endif
           SUBPEL_MOTION_SEARCH_PARAMS ms_params;
           av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize,
-                                            &ref_mv.as_mv, NULL);
+                                            &ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                                            pb_mv_precision,
+#endif
+                                            NULL);
 
           // Refine MV in a small range.
           av1_refine_warped_mv(xd, cm, &ms_params, bsize, pts0, pts_inref0,
@@ -1766,9 +2092,20 @@ static int64_t motion_mode_rd(
 
           if (mv0.as_int != mbmi->mv[0].as_int) {
             // Keep the refined MV and WM parameters.
+#if CONFIG_FLEX_MVRES
+            tmp_rate_mv =
+                av1_mv_bit_cost(&mbmi->mv[0].as_mv, &ref_mv.as_mv,
+                                pb_mv_precision, &x->mv_costs, MV_COST_WEIGHT
+#if CONFIG_ADAPTIVE_MVD
+                                ,
+                                ms_params.mv_cost_params.is_adaptive_mvd
+#endif
+                );
+#else
             tmp_rate_mv = av1_mv_bit_cost(
                 &mbmi->mv[0].as_mv, &ref_mv.as_mv, x->mv_costs.nmv_joint_cost,
                 x->mv_costs.mv_cost_stack, MV_COST_WEIGHT);
+#endif
             tmp_rate2 = rate2_nocoeff - rate_mv0 + tmp_rate_mv;
           } else {
             // Restore the old MV and WM parameters.
@@ -2167,7 +2504,12 @@ static INLINE int is_single_newmv_valid(const HandleInterModeArgs *const args,
     const PREDICTION_MODE single_mode = get_single_mode(this_mode, ref_idx);
     const MV_REFERENCE_FRAME ref = mbmi->ref_frame[ref_idx];
     if (single_mode == NEWMV &&
+#if CONFIG_FLEX_MVRES
+        args->single_newmv_valid[mbmi->pb_mv_precision][mbmi->ref_mv_idx]
+                                [ref] == 0) {
+#else
         args->single_newmv_valid[mbmi->ref_mv_idx][ref] == 0) {
+#endif
       return 0;
     }
   }
@@ -2262,10 +2604,17 @@ static bool ref_mv_idx_early_breakout(
 }
 
 // Compute the estimated RD cost for the motion vector with simple translation.
-static int64_t simple_translation_pred_rd(
-    AV1_COMP *const cpi, MACROBLOCK *x, RD_STATS *rd_stats,
-    HandleInterModeArgs *args, int ref_mv_idx, inter_mode_info *mode_info,
-    int64_t ref_best_rd, BLOCK_SIZE bsize) {
+static int64_t simple_translation_pred_rd(AV1_COMP *const cpi, MACROBLOCK *x,
+                                          RD_STATS *rd_stats,
+                                          HandleInterModeArgs *args,
+                                          int ref_mv_idx,
+                                          inter_mode_info *mode_info,
+                                          int64_t ref_best_rd, BLOCK_SIZE bsize
+#if CONFIG_FLEX_MVRES
+                                          ,
+                                          const int flex_mv_cost
+#endif
+) {
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
   MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
@@ -2293,8 +2642,12 @@ static int64_t simple_translation_pred_rd(
   mbmi->ref_mv_idx = ref_mv_idx;
 
   rd_stats->rate += args->ref_frame_cost + args->single_comp_cost;
+#if CONFIG_FLEX_MVRES
+  rd_stats->rate += flex_mv_cost;
+#endif
   const int drl_cost =
       get_drl_cost(cpi->common.features.max_drl_bits, mbmi, mbmi_ext, x);
+
   rd_stats->rate += drl_cost;
   mode_info[ref_mv_idx].drl_cost = drl_cost;
 
@@ -2304,6 +2657,9 @@ static int64_t simple_translation_pred_rd(
   }
   assert(have_nearmv_in_inter_mode(mbmi->mode));
   for (int i = 0; i < is_comp_pred + 1; ++i) {
+#if CONFIG_FLEX_MVRES
+    lower_mv_precision(&cur_mv[i].as_mv, mbmi->pb_mv_precision);
+#endif
     mbmi->mv[i].as_int = cur_mv[i].as_int;
   }
   const int ref_mv_cost = cost_mv_ref(mode_costs, mbmi->mode,
@@ -2312,12 +2668,6 @@ static int64_t simple_translation_pred_rd(
 #endif  // CONFIG_OPTFLOW_REFINEMENT
                                       mode_ctx);
   rd_stats->rate += ref_mv_cost;
-
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
-  if (is_joint_mvd_coding_mode(mbmi->mode) &&
-      cm->seq_params.enable_adaptive_mvd)
-    rd_stats->rate += mode_costs->adaptive_mvd_cost[mbmi->adaptive_mvd_flag];
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
 
   if (RDCOST(x->rdmult, rd_stats->rate, 0) > ref_best_rd) {
     return INT64_MAX;
@@ -2356,6 +2706,57 @@ static INLINE bool mask_check_bit(int mask, int index) {
   return (mask >> index) & 0x1;
 }
 
+#if CONFIG_FLEX_MVRES
+static int skip_similar_ref_mv(AV1_COMP *const cpi, MACROBLOCK *x,
+                               BLOCK_SIZE bsize) {
+  AV1_COMMON *const cm = &cpi->common;
+  const MACROBLOCKD *const xd = &x->e_mbd;
+  const MB_MODE_INFO *const mbmi = xd->mi[0];
+  const MB_MODE_INFO_EXT *mbmi_ext = x->mbmi_ext;
+
+  if (is_pb_mv_precision_active(cm, mbmi, bsize) &&
+      (mbmi->pb_mv_precision < mbmi->max_mv_precision) &&
+      mbmi->ref_mv_idx > 0) {
+    const int is_comp_pred = has_second_ref(mbmi);
+    const uint8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
+    int_mv this_refmv[2];
+    this_refmv[0].as_int = 0;
+    this_refmv[1].as_int = 0;
+    for (int i = 0; i < is_comp_pred + 1; ++i) {
+      this_refmv[i] =
+          (i == 0)
+              ? mbmi_ext->ref_mv_stack[ref_frame_type][mbmi->ref_mv_idx].this_mv
+              : mbmi_ext->ref_mv_stack[ref_frame_type][mbmi->ref_mv_idx]
+                    .comp_mv;
+      lower_mv_precision(&this_refmv[i].as_mv, mbmi->pb_mv_precision);
+    }
+
+    for (int prev_ref_mv_idx = 0; prev_ref_mv_idx < mbmi->ref_mv_idx;
+         prev_ref_mv_idx++) {
+      int_mv prev_refmv[2];
+      prev_refmv[0].as_int = INVALID_MV;
+      prev_refmv[1].as_int = INVALID_MV;
+
+      for (int i = 0; i < is_comp_pred + 1; ++i) {
+        prev_refmv[i] =
+            (i == 0) ? mbmi_ext->ref_mv_stack[ref_frame_type][prev_ref_mv_idx]
+                           .this_mv
+                     : mbmi_ext->ref_mv_stack[ref_frame_type][prev_ref_mv_idx]
+                           .comp_mv;
+        lower_mv_precision(&prev_refmv[i].as_mv, mbmi->pb_mv_precision);
+      }
+      int prev_refmv_same_as_curr_ref_mv =
+          (this_refmv[0].as_int == prev_refmv[0].as_int);
+      if (is_comp_pred)
+        prev_refmv_same_as_curr_ref_mv &=
+            (this_refmv[1].as_int == prev_refmv[1].as_int);
+      if (prev_refmv_same_as_curr_ref_mv) return 1;
+    }
+  }
+  return 0;
+}
+#endif
+
 // Before performing the full MV search in handle_inter_mode, do a simple
 // translation search and see if we can eliminate any motion vectors.
 // Returns an integer where, if the i-th bit is set, it means that the i-th
@@ -2364,7 +2765,12 @@ static int ref_mv_idx_to_search(AV1_COMP *const cpi, MACROBLOCK *x,
                                 RD_STATS *rd_stats,
                                 HandleInterModeArgs *const args,
                                 int64_t ref_best_rd, inter_mode_info *mode_info,
-                                BLOCK_SIZE bsize, const int ref_set) {
+                                BLOCK_SIZE bsize, const int ref_set
+#if CONFIG_FLEX_MVRES
+                                ,
+                                const int flex_mv_cost
+#endif
+) {
   AV1_COMMON *const cm = &cpi->common;
   const MACROBLOCKD *const xd = &x->e_mbd;
   const MB_MODE_INFO *const mbmi = xd->mi[0];
@@ -2410,7 +2816,12 @@ static int ref_mv_idx_to_search(AV1_COMP *const cpi, MACROBLOCK *x,
       continue;
     }
     idx_rdcost[ref_mv_idx] = simple_translation_pred_rd(
-        cpi, x, rd_stats, args, ref_mv_idx, mode_info, ref_best_rd, bsize);
+        cpi, x, rd_stats, args, ref_mv_idx, mode_info, ref_best_rd, bsize
+#if CONFIG_FLEX_MVRES
+        ,
+        flex_mv_cost
+#endif
+    );
   }
   // Find the index with the best RD cost.
   int best_idx = 0;
@@ -2696,6 +3107,9 @@ static AOM_INLINE int prune_modes_based_on_tpl_stats(
 static int skip_repeated_newmv(
     AV1_COMP *const cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
     const int do_tx_search, const PREDICTION_MODE this_mode,
+#if CONFIG_FLEX_MVRES
+    const MvSubpelPrecision pb_mv_precision,
+#endif
     MB_MODE_INFO *best_mbmi, motion_mode_candidate *motion_mode_cand,
     int64_t *ref_best_rd, RD_STATS *best_rd_stats, RD_STATS *best_rd_stats_y,
     RD_STATS *best_rd_stats_uv, inter_mode_info *mode_info,
@@ -2708,13 +3122,25 @@ static int skip_repeated_newmv(
   const AV1_COMMON *cm = &cpi->common;
   const int num_planes = av1_num_planes(cm);
 
+#if CONFIG_FLEX_MVRES && CONFIG_ADAPTIVE_MVD
+  MB_MODE_INFO *mbmi = xd->mi[0];
+  const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
+#endif
+
   int skip = 0;
   int this_rate_mv = 0;
   int i;
   for (i = 0; i < ref_mv_idx; ++i) {
     // Check if the motion search result same as previous results
+#if CONFIG_FLEX_MVRES
+    if (cur_mv[0].as_int ==
+            args->single_newmv[pb_mv_precision][i][refs[0]].as_int &&
+        args->single_newmv_valid[pb_mv_precision][i][refs[0]]) {
+#else
     if (cur_mv[0].as_int == args->single_newmv[i][refs[0]].as_int &&
         args->single_newmv_valid[i][refs[0]]) {
+#endif
+
       // If the compared mode has no valid rd, it is unlikely this
       // mode will be the best mode
       if (mode_info[i].rd == INT64_MAX) {
@@ -2725,9 +3151,20 @@ static int skip_repeated_newmv(
       if (mode_info[i].mv.as_int != INVALID_MV) {
         const int compare_cost = mode_info[i].rate_mv + mode_info[i].drl_cost;
         const int_mv ref_mv = av1_get_ref_mv(x, 0);
+#if CONFIG_FLEX_MVRES
+        this_rate_mv =
+            av1_mv_bit_cost(&mode_info[i].mv.as_mv, &ref_mv.as_mv,
+                            pb_mv_precision, &x->mv_costs, MV_COST_WEIGHT
+#if CONFIG_ADAPTIVE_MVD
+                            ,
+                            is_adaptive_mvd
+#endif
+            );
+#else
         this_rate_mv = av1_mv_bit_cost(
             &mode_info[i].mv.as_mv, &ref_mv.as_mv, x->mv_costs.nmv_joint_cost,
             x->mv_costs.mv_cost_stack, MV_COST_WEIGHT);
+#endif
         const int this_cost = this_rate_mv + drl_cost;
 
         if (compare_cost <= this_cost) {
@@ -2741,7 +3178,11 @@ static int skip_repeated_newmv(
           // best_mv is the same as ref_mv. In this case we skip and
           // rely on NEAR(EST)MV instead
           if (best_mbmi->ref_mv_idx == i &&
-              best_mbmi->mv[0].as_int != ref_mv.as_int) {
+              best_mbmi->mv[0].as_int != ref_mv.as_int
+#if CONFIG_FLEX_MVRES
+              && best_mbmi->pb_mv_precision == pb_mv_precision
+#endif
+          ) {
             assert(*best_rd != INT64_MAX);
             assert(best_mbmi->mv[0].as_int == mode_info[i].mv.as_int);
             best_mbmi->ref_mv_idx = ref_mv_idx;
@@ -3046,7 +3487,11 @@ static int64_t handle_inter_mode(
   MB_MODE_INFO best_mbmi = *mbmi;
   int best_xskip_txfm = 0;
   int64_t newmv_ret_val = INT64_MAX;
+#if CONFIG_FLEX_MVRES
+  inter_mode_info mode_info[NUM_MV_PRECISIONS][MAX_REF_MV_SEARCH];
+#else
   inter_mode_info mode_info[MAX_REF_MV_SEARCH];
+#endif
 
   // Do not prune the mode based on inter cost from tpl if the current ref frame
   // is the winner ref in neighbouring blocks.
@@ -3065,25 +3510,81 @@ static int64_t handle_inter_mode(
   const int ref_set = get_drl_refmv_count(cm->features.max_drl_bits, x,
                                           mbmi->ref_frame, this_mode);
   // Save MV results from first 2 ref_mv_idx.
+#if CONFIG_FLEX_MVRES
+  int_mv save_mv[NUM_MV_PRECISIONS][MAX_REF_MV_SEARCH - 1][2];
+#else
   int_mv save_mv[MAX_REF_MV_SEARCH - 1][2];
+#endif
   int best_ref_mv_idx = -1;
   const int16_t mode_ctx =
       av1_mode_context_analyzer(mbmi_ext->mode_context, mbmi->ref_frame);
+#if !CONFIG_FLEX_MVRES
   const int idx_mask = ref_mv_idx_to_search(cpi, x, rd_stats, args, ref_best_rd,
                                             mode_info, bsize, ref_set);
+#endif
+
   const ModeCosts *mode_costs = &x->mode_costs;
   const int ref_mv_cost = cost_mv_ref(mode_costs, this_mode,
 #if CONFIG_OPTFLOW_REFINEMENT
                                       cm, mbmi,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
                                       mode_ctx);
+
   const int base_rate =
       args->ref_frame_cost + args->single_comp_cost + ref_mv_cost;
 
+#if CONFIG_FLEX_MVRES
+  for (int pb_mv_precision = mbmi->max_mv_precision;
+       pb_mv_precision >= MV_PRECISION_8_PEL; pb_mv_precision--) {
+    for (i = 0; i < MAX_REF_MV_SEARCH - 1; ++i) {
+      save_mv[pb_mv_precision][i][0].as_int = INVALID_MV;
+      save_mv[pb_mv_precision][i][1].as_int = INVALID_MV;
+    }
+  }
+#else
   for (i = 0; i < MAX_REF_MV_SEARCH - 1; ++i) {
     save_mv[i][0].as_int = INVALID_MV;
     save_mv[i][1].as_int = INVALID_MV;
   }
+#endif
+
+#if CONFIG_FLEX_MVRES
+  int flex_mv_cost[NUM_MV_PRECISIONS] = { 0, 0, 0, 0, 0, 0, 0 };
+  int idx_mask[NUM_MV_PRECISIONS] = { 0, 0, 0, 0, 0, 0, 0 };
+  if (is_pb_mv_precision_active(cm, mbmi, bsize)) {
+    const int down_ctx = av1_get_pb_mv_precision_down_context(cm, xd);
+    const int mpp_flag_context = av1_get_mpp_flag_context(cm, xd);
+    set_precision_set(cm, xd, mbmi, bsize, 0);
+    set_most_probable_mv_precision(cm, mbmi, bsize);
+    const PRECISION_SET *precision_def =
+        &av1_mv_precision_sets[mbmi->mb_precision_set];
+    for (int precision_dx = precision_def->num_precisions - 1;
+         precision_dx >= 0; precision_dx--) {
+      MvSubpelPrecision pb_mv_precision =
+          precision_def->precision[precision_dx];
+      assert(pb_mv_precision <= mbmi->max_mv_precision);
+      set_mv_precision(mbmi, pb_mv_precision);
+
+      flex_mv_cost[pb_mv_precision] = cost_mv_precision(
+          mode_costs, mbmi->max_mv_precision, pb_mv_precision, down_ctx,
+          mbmi->most_probable_pb_mv_precision, mpp_flag_context, mbmi);
+      set_mv_precision(mbmi, pb_mv_precision);
+      idx_mask[pb_mv_precision] = ref_mv_idx_to_search(
+          cpi, x, rd_stats, args, ref_best_rd, mode_info[pb_mv_precision],
+          bsize, ref_set, flex_mv_cost[pb_mv_precision]);
+    }
+
+    // restore the MV precision to max value
+    set_mv_precision(mbmi, mbmi->max_mv_precision);
+  }
+
+  else {
+    set_mv_precision(mbmi, mbmi->max_mv_precision);
+    idx_mask[mbmi->max_mv_precision] = ref_mv_idx_to_search(
+        cpi, x, rd_stats, args, ref_best_rd, mode_info[mbmi->max_mv_precision],
+        bsize, ref_set, 0);
+  }
+#endif
 
   // Main loop of this function. This will  iterate over all of the ref mvs
   // in the dynamic reference list and do the following:
@@ -3094,17 +3595,71 @@ static int64_t handle_inter_mode(
   //    5.) Pick the motion mode (SIMPLE_TRANSLATION, OBMC_CAUSAL,
   //        WARPED_CAUSAL)
   //    6.) Update stats if best so far
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
-  const int is_joint_amvd_allowed =
-      is_joint_mvd_coding_mode(this_mode) && cm->seq_params.enable_adaptive_mvd;
-  for (int amvd_idx = 0; amvd_idx <= is_joint_amvd_allowed; ++amvd_idx) {
-    mbmi->adaptive_mvd_flag = amvd_idx;
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
-    for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ++ref_mv_idx) {
+  for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ++ref_mv_idx) {
+#if CONFIG_FLEX_MVRES
+
+    // Initialize compound mode data
+    mbmi->interinter_comp.type = COMPOUND_AVERAGE;
+    mbmi->comp_group_idx = 0;
+    if (mbmi->ref_frame[1] == INTRA_FRAME) mbmi->ref_frame[1] = NONE_FRAME;
+
+    mbmi->num_proj_ref = 0;
+    mbmi->motion_mode = SIMPLE_TRANSLATION;
+    mbmi->ref_mv_idx = ref_mv_idx;
+
+    set_mv_precision(mbmi, mbmi->max_mv_precision);
+    if (prune_modes_based_on_tpl && !ref_match_found_in_above_nb &&
+        !ref_match_found_in_left_nb && (ref_best_rd != INT64_MAX)) {
+      // Skip mode if TPL model indicates it will not be beneficial.
+      if (prune_modes_based_on_tpl_stats(
+              &cm->features, inter_cost_info_from_tpl, refs, ref_mv_idx,
+              this_mode, cpi->sf.inter_sf.prune_inter_modes_based_on_tpl))
+        continue;
+    }
+    const int drl_cost =
+        get_drl_cost(cm->features.max_drl_bits, mbmi, mbmi_ext, x);
+
+#if CONFIG_FLEX_MVRES
+    MvSubpelPrecision best_precision_so_far = mbmi->max_mv_precision;
+    int64_t best_precision_rd_so_far = INT64_MAX;
+    set_precision_set(cm, xd, mbmi, bsize, ref_mv_idx);
+    set_most_probable_mv_precision(cm, mbmi, bsize);
+    const PRECISION_SET *precision_def =
+        &av1_mv_precision_sets[mbmi->mb_precision_set];
+    for (int precision_dx = precision_def->num_precisions - 1;
+         precision_dx >= 0; precision_dx--) {
+      MvSubpelPrecision pb_mv_precision =
+          precision_def->precision[precision_dx];
+      assert(pb_mv_precision <= mbmi->max_mv_precision);
+      mbmi->pb_mv_precision = pb_mv_precision;
+      if (!is_pb_mv_precision_active(cm, mbmi, bsize) &&
+          (pb_mv_precision != mbmi->max_mv_precision)) {
+        continue;
+      }
+
+      if (is_pb_mv_precision_active(cm, mbmi, bsize)) {
+        if (cpi->sf.flexmv_sf.terminate_early_4_pel_precision &&
+            pb_mv_precision < MV_PRECISION_FOUR_PEL &&
+            best_precision_so_far >= MV_PRECISION_QTR_PEL)
+          continue;
+        if (mbmi->ref_mv_idx) {
+          if (cpi->sf.flexmv_sf.do_not_search_8_pel_precision &&
+              mbmi->pb_mv_precision == MV_PRECISION_8_PEL)
+            continue;
+
+          if (cpi->sf.flexmv_sf.do_not_search_4_pel_precision &&
+              mbmi->pb_mv_precision == MV_PRECISION_FOUR_PEL)
+            continue;
+        }
+      }
+
+#endif
+#endif
+
+#if !CONFIG_FLEX_MVRES
       mode_info[ref_mv_idx].full_search_mv.as_int = INVALID_MV;
       mode_info[ref_mv_idx].mv.as_int = INVALID_MV;
       mode_info[ref_mv_idx].rd = INT64_MAX;
-
       if (!mask_check_bit(idx_mask, ref_mv_idx)) {
         // MV did not perform well in simple translation search. Skip it.
         continue;
@@ -3118,7 +3673,6 @@ static int64_t handle_inter_mode(
           continue;
       }
       av1_init_rd_stats(rd_stats);
-
       // Initialize compound mode data
       mbmi->interinter_comp.type = COMPOUND_AVERAGE;
       mbmi->comp_group_idx = 0;
@@ -3132,19 +3686,14 @@ static int64_t handle_inter_mode(
       rd_stats->rate = base_rate;
       const int drl_cost =
           get_drl_cost(cm->features.max_drl_bits, mbmi, mbmi_ext, x);
+
       rd_stats->rate += drl_cost;
       mode_info[ref_mv_idx].drl_cost = drl_cost;
-
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
-      if (is_joint_amvd_allowed)
-        rd_stats->rate += mode_costs->adaptive_mvd_cost[amvd_idx];
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+#endif
 
       int rs = 0;
       int compmode_interinter_cost = 0;
-
       int_mv cur_mv[2];
-
       // TODO(Cherma): Extend this speed feature to support compound mode
       int skip_repeated_ref_mv =
           is_comp_pred ? 0 : cpi->sf.inter_sf.skip_repeated_ref_mv;
@@ -3152,6 +3701,22 @@ static int64_t handle_inter_mode(
       if (!build_cur_mv(cur_mv, this_mode, cm, x, skip_repeated_ref_mv)) {
         continue;
       }
+#if CONFIG_FLEX_MVRES
+      mode_info[mbmi->pb_mv_precision][ref_mv_idx].full_search_mv.as_int =
+          INVALID_MV;
+      mode_info[mbmi->pb_mv_precision][ref_mv_idx].mv.as_int = INVALID_MV;
+      mode_info[mbmi->pb_mv_precision][ref_mv_idx].rd = INT64_MAX;
+      mode_info[mbmi->pb_mv_precision][ref_mv_idx].drl_cost = drl_cost;
+      if (!mask_check_bit(idx_mask[mbmi->pb_mv_precision], ref_mv_idx)) {
+        // MV did not perform well in simple translation search. Skip it.
+        continue;
+      }
+
+      if (cpi->sf.flexmv_sf.skip_similar_ref_mv &&
+          skip_similar_ref_mv(cpi, x, bsize)) {
+        continue;
+      }
+#endif
 
       // The above call to build_cur_mv does not handle NEWMV modes. Build
       // the mv here if we have NEWMV for any predictors.
@@ -3159,30 +3724,69 @@ static int64_t handle_inter_mode(
 #if CONFIG_COLLECT_COMPONENT_TIMING
         start_timing(cpi, handle_newmv_time);
 #endif
-        newmv_ret_val =
-            handle_newmv(cpi, x, bsize, cur_mv, &rate_mv, args, mode_info);
+        newmv_ret_val = handle_newmv(cpi, x, bsize, cur_mv, &rate_mv, args,
+#if CONFIG_FLEX_MVRES
+                                     mode_info[mbmi->pb_mv_precision]);
+#else
+                                   mode_info);
+#endif
 #if CONFIG_COLLECT_COMPONENT_TIMING
         end_timing(cpi, handle_newmv_time);
 #endif
 
         if (newmv_ret_val != 0) continue;
 
-        rd_stats->rate += rate_mv;
-
-        // skip NEWMV mode in drl if the motion search result is the same
-        // as a previous result
-        if (cpi->sf.inter_sf.skip_repeated_newmv &&
-            skip_repeated_newmv(cpi, x, bsize, do_tx_search, this_mode,
-                                &best_mbmi, motion_mode_cand, &ref_best_rd,
-                                &best_rd_stats, &best_rd_stats_y,
-                                &best_rd_stats_uv, mode_info, args, drl_cost,
-                                refs, cur_mv, &best_rd, orig_dst, ref_mv_idx))
+          // skip NEWMV mode in drl if the motion search result is the same
+          // as a previous result
+#if CONFIG_FLEX_MVRES
+        int skip_new_mv = cpi->sf.inter_sf.skip_repeated_newmv ||
+                          (mbmi->pb_mv_precision != mbmi->max_mv_precision &&
+                           cpi->sf.flexmv_sf.skip_repeated_newmv_low_prec);
+        if (skip_new_mv &&
+            skip_repeated_newmv(
+                cpi, x, bsize, do_tx_search, this_mode, mbmi->pb_mv_precision,
+                &best_mbmi, motion_mode_cand, &ref_best_rd, &best_rd_stats,
+                &best_rd_stats_y, &best_rd_stats_uv,
+                mode_info[mbmi->pb_mv_precision], args, drl_cost, refs, cur_mv,
+                &best_rd, orig_dst, ref_mv_idx))
+#else
+      if (cpi->sf.inter_sf.skip_repeated_newmv &&
+          skip_repeated_newmv(cpi, x, bsize, do_tx_search, this_mode,
+                              &best_mbmi, motion_mode_cand, &ref_best_rd,
+                              &best_rd_stats, &best_rd_stats_y,
+                              &best_rd_stats_uv, mode_info, args, drl_cost,
+                              refs, cur_mv, &best_rd, orig_dst, ref_mv_idx))
+#endif
           continue;
       }
+
+#if CONFIG_FLEX_MVRES
+      av1_init_rd_stats(rd_stats);
+      // Initialize compound mode data
+      mbmi->interinter_comp.type = COMPOUND_AVERAGE;
+      mbmi->comp_group_idx = 0;
+      if (mbmi->ref_frame[1] == INTRA_FRAME) mbmi->ref_frame[1] = NONE_FRAME;
+
+      mbmi->num_proj_ref = 0;
+      mbmi->motion_mode = SIMPLE_TRANSLATION;
+      mbmi->ref_mv_idx = ref_mv_idx;
+
+      // Compute cost for signalling this DRL index
+      rd_stats->rate = base_rate;
+      rd_stats->rate += flex_mv_cost[mbmi->pb_mv_precision];
+      rd_stats->rate += drl_cost;
+#endif
+
+      rd_stats->rate += rate_mv;
+
       // Copy the motion vector for this mode into mbmi struct
       for (i = 0; i < is_comp_pred + 1; ++i) {
         mbmi->mv[i].as_int = cur_mv[i].as_int;
       }
+
+#if CONFIG_FLEX_MVRES
+      assert(check_mv_precision(cm, mbmi));
+#endif
 
       const int like_nearest = (mbmi->mode == NEARMV ||
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -3198,7 +3802,12 @@ static int64_t handle_inter_mode(
       // is enabled, and the current MV is similar to a previous one.
       if (cpi->sf.inter_sf.prune_ref_mv_idx_search && is_comp_pred &&
           prune_ref_mv_idx_search(&cm->features, ref_mv_idx, best_ref_mv_idx,
-                                  save_mv, mbmi,
+#if CONFIG_FLEX_MVRES
+                                  save_mv[mbmi->pb_mv_precision], mbmi,
+#else
+
+                                save_mv, mbmi,
+#endif
                                   cpi->sf.inter_sf.prune_ref_mv_idx_search))
         continue;
 
@@ -3213,7 +3822,7 @@ static int64_t handle_inter_mode(
       // cannot be the best compound mode
       if (is_comp_pred
 #if IMPROVED_AMVD && CONFIG_JOINT_MVD
-          && !is_joint_amvd_coding_mode(mbmi->adaptive_mvd_flag)
+          && !is_joint_amvd_coding_mode(mbmi->mode)
 #endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
       ) {
         const int not_best_mode = process_compound_inter_mode(
@@ -3222,6 +3831,10 @@ static int64_t handle_inter_mode(
             &skip_build_pred);
         if (not_best_mode) continue;
       }
+
+#if CONFIG_FLEX_MVRES
+      assert(check_mv_precision(cm, mbmi));
+#endif
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
       end_timing(cpi, compound_type_rd_time);
@@ -3234,6 +3847,10 @@ static int64_t handle_inter_mode(
       ret_val = av1_interpolation_filter_search(
           x, cpi, tile_data, bsize, &tmp_dst, &orig_dst, &rd, &rs,
           &skip_build_pred, args, ref_best_rd);
+
+#if CONFIG_FLEX_MVRES
+      assert(check_mv_precision(cm, mbmi));
+#endif
 #if CONFIG_COLLECT_COMPONENT_TIMING
       end_timing(cpi, interpolation_filter_search_time);
 #endif
@@ -3261,6 +3878,7 @@ static int64_t handle_inter_mode(
           const int64_t mrd =
               AOMMIN(args->modelled_rd[mode0][ref_mv_idx][refs[0]],
                      args->modelled_rd[mode1][ref_mv_idx][refs[1]]);
+
           if ((rd >> 3) * 6 > mrd && ref_best_rd < INT64_MAX) {
             restore_dst_buf(xd, orig_dst, num_planes);
             continue;
@@ -3290,14 +3908,35 @@ static int64_t handle_inter_mode(
       assert(
           IMPLIES(!av1_check_newmv_joint_nonzero(cm, x), ret_val == INT64_MAX));
 
+#if CONFIG_FLEX_MVRES
+      assert(check_mv_precision(cm, mbmi));
+#endif
+
       if (ret_val != INT64_MAX) {
         int64_t tmp_rd = RDCOST(x->rdmult, rd_stats->rate, rd_stats->dist);
-        if (tmp_rd < mode_info[ref_mv_idx].rd) {
-          // Only update mode_info if the new result is actually better.
-          mode_info[ref_mv_idx].mv.as_int = mbmi->mv[0].as_int;
-          mode_info[ref_mv_idx].rate_mv = rate_mv;
-          mode_info[ref_mv_idx].rd = tmp_rd;
+
+#if CONFIG_FLEX_MVRES
+        if (is_pb_mv_precision_active(cm, mbmi, bsize) &&
+            tmp_rd < best_precision_rd_so_far) {
+          best_precision_so_far = mbmi->pb_mv_precision;
+          best_precision_rd_so_far = tmp_rd;
         }
+        if (tmp_rd < mode_info[mbmi->pb_mv_precision][ref_mv_idx].rd) {
+          // Only update mode_info if the new result is actually better.
+          mode_info[mbmi->pb_mv_precision][ref_mv_idx].mv.as_int =
+              mbmi->mv[0].as_int;
+          mode_info[mbmi->pb_mv_precision][ref_mv_idx].rate_mv = rate_mv;
+          mode_info[mbmi->pb_mv_precision][ref_mv_idx].rd = tmp_rd;
+        }
+#else
+      if (tmp_rd < mode_info[ref_mv_idx].rd) {
+        // Only update mode_info if the new result is actually better.
+        mode_info[ref_mv_idx].mv.as_int = mbmi->mv[0].as_int;
+        mode_info[ref_mv_idx].rate_mv = rate_mv;
+        mode_info[ref_mv_idx].rd = tmp_rd;
+      }
+#endif
+
         // Collect mode stats for multiwinner mode processing
         store_winner_mode_stats(
             &cpi->common, x, mbmi, rd_stats, rd_stats_y, rd_stats_uv, refs,
@@ -3318,6 +3957,9 @@ static int64_t handle_inter_mode(
           motion_mode_cand->rate_mv = rate_mv;
           motion_mode_cand->rate2_nocoeff = rate2_nocoeff;
         }
+#if CONFIG_FLEX_MVRES
+        assert(check_mv_precision(cm, mbmi));
+#endif
 
         if (tmp_rd < ref_best_rd) {
           ref_best_rd = tmp_rd;
@@ -3325,10 +3967,10 @@ static int64_t handle_inter_mode(
         }
       }
       restore_dst_buf(xd, orig_dst, num_planes);
+#if CONFIG_FLEX_MVRES
     }
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+#endif
   }
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
 
   if (best_rd == INT64_MAX) return INT64_MAX;
 
@@ -3357,7 +3999,13 @@ static INLINE int is_bv_valid(const FULLPEL_MV *full_mv, const AV1_COMMON *cm,
                               BLOCK_SIZE bsize,
                               FULLPEL_MOTION_SEARCH_PARAMS fullms_params) {
   const MV dv = get_mv_from_fullmv(full_mv);
-  if (!av1_is_fullmv_in_range(&fullms_params.mv_limits, *full_mv)) return 0;
+  if (!av1_is_fullmv_in_range(&fullms_params.mv_limits, *full_mv
+#if CONFIG_FLEX_MVRES
+                              ,
+                              MV_PRECISION_ONE_PEL
+#endif
+                              ))
+    return 0;
   if (!av1_is_dv_valid(dv, cm, xd, mi_row, mi_col, bsize,
                        cm->seq_params.mib_size_log2))
     return 0;
@@ -3415,7 +4063,12 @@ int rd_pick_ref_bv(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
 
       fullms_params = fullms_params_init;
       av1_init_ref_mv(&fullms_params.mv_cost_params, &cur_ref_bv.as_mv);
-      av1_set_mv_search_range(&fullms_params.mv_limits, &cur_ref_bv.as_mv);
+      av1_set_mv_search_range(&fullms_params.mv_limits, &cur_ref_bv.as_mv
+#if CONFIG_FLEX_MVRES
+                              ,
+                              MV_PRECISION_ONE_PEL
+#endif
+      );
       if (fullms_params.mv_limits.col_max < fullms_params.mv_limits.col_min ||
           fullms_params.mv_limits.row_max < fullms_params.mv_limits.row_min) {
         continue;
@@ -3493,6 +4146,16 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   MB_MODE_INFO *mbmi = xd->mi[0];
   TxfmSearchInfo *txfm_info = &x->txfm_search_info;
 
+#if CONFIG_FLEX_MVRES
+  set_default_max_mv_precision(mbmi, xd->sbi->sb_mv_precision);
+  set_mv_precision(mbmi, MV_PRECISION_ONE_PEL);
+  set_default_precision_set(cm, mbmi, bsize);
+  set_most_probable_mv_precision(cm, mbmi, bsize);
+#if CONFIG_BVCOST_UPDATE
+  const int is_ibc_cost = 1;
+#endif
+#endif
+
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
   const int w = block_size_wide[bsize];
@@ -3515,8 +4178,13 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
   av1_copy_usable_ref_mv_stack_and_weight(xd, mbmi_ext, ref_frame);
 
+#if CONFIG_FLEX_MVRES
+  int_mv dv_ref = av1_find_best_ref_mv_from_stack(mbmi_ext, ref_frame,
+                                                  mbmi->pb_mv_precision);
+#else
   int_mv dv_ref = av1_find_best_ref_mv_from_stack(
       /*allow_hp=*/0, mbmi_ext, ref_frame, /*is_integer=*/0);
+#endif
   dv_ref.as_int = dv_ref.as_int == INVALID_MV ? 0 : dv_ref.as_int;
 #if CONFIG_BVP_IMPROVEMENT
   if (mbmi_ext->ref_mv_count[INTRA_FRAME] == 0) {
@@ -3552,12 +4220,24 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   FULLPEL_MOTION_SEARCH_PARAMS fullms_params;
   const search_site_config *lookahead_search_sites =
       cpi->mv_search_params.search_site_cfg[SS_CFG_LOOKAHEAD];
+  // TODO(chiyotsai@google.com): Change the resolution here to MV_SUBPEL_NONE
+  // in a separate commit.
+#if CONFIG_FLEX_MVRES
+  av1_make_default_fullpel_ms_params(&fullms_params, cpi, x, bsize,
+                                     &dv_ref.as_mv, mbmi->max_mv_precision,
+#if CONFIG_BVCOST_UPDATE
+                                     is_ibc_cost,
+#endif
+                                     lookahead_search_sites,
+                                     /*fine_search_interval=*/0);
+#else
   av1_make_default_fullpel_ms_params(&fullms_params, cpi, x, bsize,
                                      &dv_ref.as_mv, lookahead_search_sites,
                                      /*fine_search_interval=*/0);
-#if CONFIG_BVCOST_UPDATE
-  // The costs for block vector are stored in cpi->dv_costs. Assign the costs to
-  // mv_cost_params for motion search.
+#endif
+#if CONFIG_BVCOST_UPDATE && !CONFIG_FLEX_MVRES
+  // The costs for block vector are stored in cpi->dv_costs. Assign the costs
+  // to mv_cost_params for motion search.
   fullms_params.mv_cost_params.mvjcost = cpi->dv_costs.joint_mv;
   fullms_params.mv_cost_params.mvcost[0] =
       (int *)&cpi->dv_costs.mv_component[0][MV_MAX];
@@ -3673,7 +4353,13 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
       fullms_params = fullms_params_init;
       best_ref_bv = mbmi_ext->ref_mv_stack[INTRA_FRAME][0].this_mv;
       av1_init_ref_mv(&fullms_params.mv_cost_params, &best_ref_bv.as_mv);
-      av1_set_mv_search_range(&fullms_params.mv_limits, &best_ref_bv.as_mv);
+      av1_set_mv_search_range(&fullms_params.mv_limits, &best_ref_bv.as_mv
+#if CONFIG_FLEX_MVRES
+                              ,
+                              MV_PRECISION_ONE_PEL
+#endif
+
+      );
       dv_ref.as_mv = best_ref_bv.as_mv;
     }
     mbmi->ref_bv = dv_ref;
@@ -3681,7 +4367,13 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     int best_intrabc_mode = mbmi->intrabc_mode;
 #endif  // CONFIG_BVP_IMPROVEMENT
 
-    av1_set_mv_search_range(&fullms_params.mv_limits, &dv_ref.as_mv);
+    av1_set_mv_search_range(&fullms_params.mv_limits, &dv_ref.as_mv
+
+#if CONFIG_FLEX_MVRES
+                            ,
+                            mbmi->max_mv_precision
+#endif
+    );
 
     if (fullms_params.mv_limits.col_max < fullms_params.mv_limits.col_min ||
         fullms_params.mv_limits.row_max < fullms_params.mv_limits.row_min) {
@@ -3773,7 +4465,12 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     if (bestsme == INT_MAX) continue;
     const MV dv = get_mv_from_fullmv(&best_mv.as_fullmv);
     if (!av1_is_fullmv_in_range(&fullms_params.mv_limits,
-                                get_fullmv_from_mv(&dv)))
+                                get_fullmv_from_mv(&dv)
+#if CONFIG_FLEX_MVRES
+                                    ,
+                                fullms_params.mv_cost_params.pb_mv_precision
+#endif
+                                ))
       continue;
     if (!av1_is_dv_valid(dv, cm, xd, mi_row, mi_col, bsize,
                          cm->seq_params.mib_size_log2))
@@ -3803,17 +4500,28 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     mbmi->mv[0].as_mv = dv;
     mbmi->interp_fltr = BILINEAR;
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
+
     av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
                                   av1_num_planes(cm) - 1);
 
+#if CONFIG_FLEX_MVRES
+    const IntraBCMvCosts *const dv_costs = &cpi->dv_costs;
+#else
     const IntraBCMVCosts *const dv_costs = &cpi->dv_costs;
     int *dvcost[2] = { (int *)&dv_costs->mv_component[0][MV_MAX],
                        (int *)&dv_costs->mv_component[1][MV_MAX] };
+#endif
+
 #if CONFIG_BVP_IMPROVEMENT
     int rate_mv = 0;
     if (!mbmi->intrabc_mode)
+#if CONFIG_FLEX_MVRES
+      rate_mv += av1_intrabc_mv_bit_cost(&dv, &dv_ref.as_mv, dv_costs,
+                                         MV_COST_WEIGHT_SUB);
+#else
       rate_mv += av1_mv_bit_cost(&dv, &dv_ref.as_mv, dv_costs->joint_mv, dvcost,
                                  MV_COST_WEIGHT_SUB);
+#endif
 
     int rate_mode = x->mode_costs.intrabc_cost[1];
     rate_mode += x->mode_costs.intrabc_mode_cost[mbmi->intrabc_mode];
@@ -3822,8 +4530,15 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
 #else
     // TODO(aconverse@google.com): The full motion field defining discount
     // in MV_COST_WEIGHT is too large. Explore other values.
+
+#if CONFIG_FLEX_MVRES
+    const int rate_mv = av1_intrabc_mv_bit_cost(&dv, &dv_ref.as_mv, dv_costs,
+                                                MV_COST_WEIGHT_SUB);
+#else
     const int rate_mv = av1_mv_bit_cost(&dv, &dv_ref.as_mv, dv_costs->joint_mv,
                                         dvcost, MV_COST_WEIGHT_SUB);
+#endif
+
     const int rate_mode = x->mode_costs.intrabc_cost[1];
 #endif  // CONFIG_BVP_IMPROVEMENT
 
@@ -3862,11 +4577,11 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   return best_rd;
 }
 
-// TODO(chiyotsai@google.com): We are using struct $struct_name instead of their
-// typedef here because Doxygen doesn't know about the typedefs yet. So using
-// the typedef will prevent doxygen from finding this function and generating
-// the callgraph. Once documents for AV1_COMP and MACROBLOCK are added to
-// doxygen, we can revert back to using the typedefs.
+// TODO(chiyotsai@google.com): We are using struct $struct_name instead of
+// their typedef here because Doxygen doesn't know about the typedefs yet. So
+// using the typedef will prevent doxygen from finding this function and
+// generating the callgraph. Once documents for AV1_COMP and MACROBLOCK are
+// added to doxygen, we can revert back to using the typedefs.
 void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
                                struct RD_STATS *rd_cost, BLOCK_SIZE bsize,
                                PICK_MODE_CONTEXT *ctx, int64_t best_rd) {
@@ -4014,6 +4729,12 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
 #if CONFIG_IBC_SR_EXT
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
 #endif  // CONFIG_IBC_SR_EXT
+#if CONFIG_FLEX_MVRES
+  set_default_max_mv_precision(mbmi, xd->sbi->sb_mv_precision);
+  set_mv_precision(mbmi, mbmi->max_mv_precision);  // initialize to max
+  set_default_precision_set(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
+  set_most_probable_mv_precision(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
+#endif  // CONFIG_FLEX_MVRES
   const uint8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
   if (x->mbmi_ext->ref_mv_count[ref_frame_type] == UINT8_MAX) {
     if (x->mbmi_ext->ref_mv_count[ref_frame] == UINT8_MAX ||
@@ -4038,6 +4759,7 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
   assert(this_mode == NEAR_NEARMV);
   assert(mbmi->mode == NEAR_NEARMV);
 #endif
+
   assert(mbmi->ref_mv_idx == 0);
   if (!build_cur_mv(mbmi->mv, this_mode, cm, x, 0)) {
     assert(av1_check_newmv_joint_nonzero(cm, x));
@@ -4055,6 +4777,13 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   mbmi->ref_mv_idx = 0;
   mbmi->skip_mode = mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
+
+#if CONFIG_FLEX_MVRES
+  set_default_max_mv_precision(mbmi, xd->sbi->sb_mv_precision);
+  set_mv_precision(mbmi, mbmi->max_mv_precision);  // initialize to max
+  set_default_precision_set(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
+  set_most_probable_mv_precision(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
+#endif  // CONFIG_FLEX_MVRES
 
   set_default_interp_filters(mbmi,
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -4305,6 +5034,9 @@ static AOM_INLINE void rd_pick_skip_mode(
                              cm,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
                              cm->features.interp_filter);
+#if CONFIG_FLEX_MVRES
+  set_mv_precision(mbmi, mbmi->max_mv_precision);
+#endif
 
   set_ref_ptrs(cm, xd, mbmi->ref_frame[0], mbmi->ref_frame[1]);
   for (int i = 0; i < num_planes; i++) {
@@ -4349,6 +5081,10 @@ static AOM_INLINE void rd_pick_skip_mode(
     search_state->best_mbmode.mv[0].as_int = mbmi->mv[0].as_int;
     search_state->best_mbmode.mv[1].as_int = mbmi->mv[1].as_int;
     search_state->best_mbmode.ref_mv_idx = 0;
+
+#if CONFIG_FLEX_MVRES
+    search_state->best_mbmode.pb_mv_precision = mbmi->max_mv_precision;
+#endif
 
     // Set up tx_size related variables for skip-specific loop filtering.
     search_state->best_mbmode.tx_size =
@@ -4564,21 +5300,21 @@ static AOM_INLINE void refine_winner_mode_tx(
 
 /*!\cond */
 typedef struct {
-  // Mask for each reference frame, specifying which prediction modes to NOT try
-  // during search.
+  // Mask for each reference frame, specifying which prediction modes to NOT
+  // try during search.
   uint32_t pred_modes[REF_FRAMES];
-  // If ref_combo[i][j + 1] is true, do NOT try prediction using combination of
-  // reference frames (i, j).
-  // Indexing with 'j + 1' is due to the fact that 2nd reference can be -1
-  // (INVALID_FRAME).
-  // NOTE: In CONFIG_NEW_REF_SIGNALING, indexing for the reference has the
-  // order the INTER references followed by INTRA
+  // If ref_combo[i][j + 1] is true, do NOT try prediction using combination
+  // of reference frames (i, j). Indexing with 'j + 1' is due to the fact that
+  // 2nd reference can be -1 (INVALID_FRAME). NOTE: In
+  // CONFIG_NEW_REF_SIGNALING, indexing for the reference has the order the
+  // INTER references followed by INTRA
   bool ref_combo[REF_FRAMES][REF_FRAMES + 1];
 } mode_skip_mask_t;
 /*!\endcond */
 
 #if CONFIG_NEW_REF_SIGNALING
-// Update 'ref_combo' mask to disable given 'ref' in single and compound modes.
+// Update 'ref_combo' mask to disable given 'ref' in single and compound
+// modes.
 static AOM_INLINE void disable_reference(
     MV_REFERENCE_FRAME ref, bool ref_combo[REF_FRAMES][REF_FRAMES + 1]) {
   for (MV_REFERENCE_FRAME ref2 = NONE_FRAME; ref2 < REF_FRAMES; ++ref2) {
@@ -4717,8 +5453,8 @@ static AOM_INLINE void init_mode_skip_mask(mode_skip_mask_t *mask,
   for (ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
     if (!(cm->ref_frame_flags & av1_ref_frame_flag_list[ref_frame])) {
 #endif  // CONFIG_NEW_REF_SIGNALING
-      // Skip checking missing reference in both single and compound reference
-      // modes.
+        // Skip checking missing reference in both single and compound reference
+        // modes.
       disable_reference(ref_frame, mask->ref_combo);
     } else {
       // Skip fixed mv modes for poor references
@@ -4905,6 +5641,7 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
   unsigned char segment_id = mbmi->segment_id;
 
   init_neighbor_pred_buf(&x->obmc_buffer, args);
+
   av1_collect_neighbors_ref_counts(xd);
   estimate_ref_frame_costs(cm, xd, &x->mode_costs, segment_id, ref_costs_single,
                            ref_costs_comp);
@@ -5005,6 +5742,7 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
   const int prune_obmc = cpi->frame_probs.obmc_probs[update_type][bsize] <
                          cpi->sf.inter_sf.prune_obmc_prob_thresh;
   if (cpi->oxcf.motion_mode_cfg.enable_obmc && !cpi->sf.inter_sf.disable_obmc &&
+
       !prune_obmc) {
     if (check_num_overlappable_neighbors(mbmi) &&
         is_motion_variation_allowed_bsize(bsize)) {
@@ -5239,7 +5977,8 @@ static int fetch_picked_ref_frames_mask(const MACROBLOCK *const x,
 
 // Case 1: return 0, means don't skip this mode
 // Case 2: return 1, means skip this mode completely
-// Case 3: return 2, means skip compound only, but still try single motion modes
+// Case 3: return 2, means skip compound only, but still try single motion
+// modes
 static int inter_mode_search_order_independent_skip(
     const AV1_COMP *cpi, const MACROBLOCK *x, mode_skip_mask_t *mode_skip_mask,
     InterModeSearchState *search_state, int skip_ref_frame_mask,
@@ -5273,10 +6012,10 @@ static int inter_mode_search_order_independent_skip(
     int skip_ref = skip_ref_frame_mask & (1 << ref_type);
 #if CONFIG_NEW_REF_SIGNALING
     if (ref_type < INTER_REFS_PER_FRAME && skip_ref) {
-      // Since the compound ref modes depends on the motion estimation result of
-      // two single ref modes( best mv of single ref modes as the start point )
-      // If current single ref mode is marked skip, we need to check if it will
-      // be used in compound ref modes.
+      // Since the compound ref modes depends on the motion estimation result
+      // of two single ref modes( best mv of single ref modes as the start
+      // point ) If current single ref mode is marked skip, we need to check
+      // if it will be used in compound ref modes.
       for (int r = INTER_REFS_PER_FRAME; r < INTRA_FRAME; ++r) {
         if (skip_ref_frame_mask & (1 << r)) continue;
         MV_REFERENCE_FRAME rf[2];
@@ -5317,10 +6056,17 @@ static int inter_mode_search_order_independent_skip(
 static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
                              const MV_REFERENCE_FRAME *ref_frames,
 #if CONFIG_IBC_SR_EXT
-                             const AV1_COMMON *cm, MACROBLOCKD *const xd) {
+                             const AV1_COMMON *cm, MACROBLOCKD *const xd
 #else
-                             const AV1_COMMON *cm) {
+                             const AV1_COMMON *cm
 #endif  // CONFIG_IBC_SR_EXT
+
+#if CONFIG_FLEX_MVRES
+                             ,
+                             const SB_INFO *sbi
+#endif
+) {
+
   PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
   mbmi->ref_mv_idx = 0;
   mbmi->mode = curr_mode;
@@ -5341,6 +6087,13 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
 #if CONFIG_IBC_SR_EXT
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
 #endif  // CONFIG_IBC_SR_EXT
+
+#if CONFIG_FLEX_MVRES
+  set_default_max_mv_precision(mbmi, sbi->sb_mv_precision);
+  set_mv_precision(mbmi, mbmi->max_mv_precision);
+  set_default_precision_set(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
+  set_most_probable_mv_precision(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
+#endif
 }
 
 static AOM_INLINE void collect_single_states(const AV1_COMMON *const cm,
@@ -5419,8 +6172,8 @@ static AOM_INLINE void analyze_single_states(
 
     // Use the best rd of GLOBALMV or NEWMV to prune the unlikely reference
     // frames for all the modes (NEARMV may not have same motion vectors).
-    // Always keep the best of each mode because it might form the best possible
-    // combination with other mode.
+    // Always keep the best of each mode because it might form the best
+    // possible combination with other mode.
     state = search_state->single_state[dir];
     best_rd = AOMMIN(state[INTER_OFFSET(NEWMV)][0].rd,
                      state[INTER_OFFSET(GLOBALMV)][0].rd);
@@ -5677,9 +6430,8 @@ static INLINE int skip_compound_using_best_single_mode_ref(
   // 1 - NEWMV corresponding to backward direction
   const int newmv_dir = comp_mode_ref0 != NEWMV;
 
-  // Avoid pruning the compound mode when ref frame corresponding to NEWMV have
-  // NEWMV as single mode winner.
-  // Example: For an extended-compound mode,
+  // Avoid pruning the compound mode when ref frame corresponding to NEWMV
+  // have NEWMV as single mode winner. Example: For an extended-compound mode,
   // {mode, {fwd_frame, bwd_frame}} = {NEAR_NEWMV, {LAST_FRAME, ALTREF_FRAME}}
   // - Ref frame corresponding to NEWMV is ALTREF_FRAME
   // - Avoid pruning this mode, if best single mode corresponding to ref frame
@@ -5723,8 +6475,8 @@ static INLINE void update_search_state(
   search_state->best_mbmode = *mbmi;
   search_state->best_skip2 = skip_txfm;
   search_state->best_mode_skippable = new_best_rd_stats->skip_txfm;
-  // When !txfm_search_done, new_best_rd_stats won't provide correct rate_y and
-  // rate_uv because av1_txfm_search process is replaced by rd estimation.
+  // When !txfm_search_done, new_best_rd_stats won't provide correct rate_y
+  // and rate_uv because av1_txfm_search process is replaced by rd estimation.
   // Therefore, we should avoid updating best_rate_y and best_rate_uv here.
   // These two values will be updated when av1_txfm_search is called.
   if (txfm_search_done) {
@@ -5946,8 +6698,8 @@ static int skip_inter_mode(AV1_COMP *cpi, MACROBLOCK *x, const BLOCK_SIZE bsize,
 
   if (args->search_state->best_rd < mode_threshold) return 1;
 
-  // Skip this compound mode based on the RD results from the single prediction
-  // modes
+  // Skip this compound mode based on the RD results from the single
+  // prediction modes
   if (sf->inter_sf.prune_comp_search_by_single_result > 0 &&
 #if CONFIG_OPTFLOW_REFINEMENT
       this_mode < NEAR_NEARMV_OPTFLOW &&
@@ -6295,6 +7047,13 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   unsigned int ref_costs_single[SINGLE_REF_FRAMES];
   struct buf_2d yv12_mb[SINGLE_REF_FRAMES][MAX_MB_PLANE];
   unsigned int ref_costs_comp[REF_FRAMES][REF_FRAMES];
+#if CONFIG_FLEX_MVRES
+  set_default_max_mv_precision(mbmi, xd->sbi->sb_mv_precision);
+  set_default_precision_set(cm, mbmi, bsize);
+  set_mv_precision(mbmi, mbmi->max_mv_precision);
+  set_most_probable_mv_precision(cm, mbmi, bsize);
+#endif
+
   // init params, set frame modes, speed features
   set_params_rd_pick_inter_mode(cpi, x, &args, bsize, &mode_skip_mask,
                                 skip_ref_frame_mask, ref_costs_single,
@@ -6480,6 +7239,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         const int is_single_pred =
             ref_frame != INTRA_FRAME && second_ref_frame == NONE_FRAME;
 #else
+
   for (THR_MODES midx = THR_MODE_START; midx < THR_MODE_END; ++midx) {
     // Get the actual prediction mode we are trying in this iteration
     const THR_MODES mode_enum = av1_default_mode_order[midx];
@@ -6500,10 +7260,27 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         const int comp_pred = is_inter_ref_frame(second_ref_frame);
 
 #if CONFIG_IBC_SR_EXT
-        init_mbmi(mbmi, this_mode, ref_frames, cm, xd);
+        init_mbmi(mbmi, this_mode, ref_frames, cm, xd
+#if CONFIG_FLEX_MVRES
+                  ,
+                  xd->sbi
+#endif
+
+        );
 #else
-    init_mbmi(mbmi, this_mode, ref_frames, cm);
+    init_mbmi(mbmi, this_mode, ref_frames, cm
+#if CONFIG_FLEX_MVRES
+              ,
+              xd->sbi
+#endif
+    );
 #endif  // CONFIG_IBC_SR_EXT
+
+#if CONFIG_FLEX_MVRES
+        set_mv_precision(mbmi, mbmi->max_mv_precision);
+        if (is_pb_mv_precision_active(cm, mbmi, bsize))
+          set_most_probable_mv_precision(cm, mbmi, bsize);
+#endif
 
 #if CONFIG_OPTFLOW_REFINEMENT
         // Optical flow compound modes are only enabled with enable_order_hint
@@ -6534,9 +7311,23 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           continue;
 
 #if IMPROVED_AMVD
-        if (this_mode == AMVDNEWMV && cm->seq_params.enable_adaptive_mvd == 0)
+        if ((this_mode == AMVDNEWMV
+#if CONFIG_JOINT_MVD
+             || mbmi->mode == JOINT_AMVDNEWMV
+#if CONFIG_OPTFLOW_REFINEMENT
+             || mbmi->mode == JOINT_AMVDNEWMV_OPTFLOW
+#endif
+#endif
+             ) &&
+            cm->seq_params.enable_adaptive_mvd == 0)
           continue;
 #endif  // IMPROVED_AMVD
+
+#if CONFIG_JOINT_MVD
+        if (is_joint_mvd_coding_mode(this_mode) &&
+            cm->seq_params.enable_joint_mvd == 0)
+          continue;
+#endif
 
         // Select prediction reference frames.
         for (i = 0; i < num_planes; i++) {
@@ -6545,6 +7336,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           if (comp_pred)
             xd->plane[i].pre[1] =
                 yv12_mb[COMPACT_INDEX0_NRS(second_ref_frame)][i];
+
 #else
       xd->plane[i].pre[0] = yv12_mb[ref_frame][i];
       if (comp_pred) xd->plane[i].pre[1] = yv12_mb[second_ref_frame][i];
@@ -6638,8 +7430,8 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           search_state.best_skip_rd[1] = skip_rd[1];
         }
         if (cpi->sf.winner_mode_sf.motion_mode_for_winner_cand) {
-          // Add this mode to motion mode candidate list for motion mode search
-          // if using motion_mode_for_winner_cand speed feature
+          // Add this mode to motion mode candidate list for motion mode
+          // search if using motion_mode_for_winner_cand speed feature
           handle_winner_cand(mbmi, &best_motion_mode_cands,
                              max_winner_motion_mode_cand, this_rd,
                              &motion_mode_cand, args.skip_motion_mode);
@@ -6649,6 +7441,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         record_best_compound(cm->current_frame.reference_mode, &rd_stats,
                              comp_pred, x->rdmult, &search_state,
                              compmode_cost);
+
 #if CONFIG_NEW_REF_SIGNALING
       }  // end of ref1 loop
     }    // end of ref0 loop
@@ -6807,9 +7600,19 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #endif  // CONFIG_NEW_REF_SIGNALING
 
 #if CONFIG_IBC_SR_EXT
-        init_mbmi(mbmi, this_mode, refs, cm, xd);
+        init_mbmi(mbmi, this_mode, refs, cm, xd
+#if CONFIG_FLEX_MVRES
+                  ,
+                  xd->sbi
+#endif
+        );
 #else
-      init_mbmi(mbmi, this_mode, refs, cm);
+      init_mbmi(mbmi, this_mode, refs, cm
+#if CONFIG_FLEX_MVRES
+                ,
+                xd->sbi
+#endif
+      );
 #endif  // CONFIG_IBC_SR_EXT
         txfm_info->skip_txfm = 0;
 
@@ -6833,6 +7636,9 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
                               x, txfm_search_done);
         }
       }
+#if CONFIG_FLEX_MVRES
+      set_mv_precision(mbmi, mbmi->max_mv_precision);
+#endif
     }
 #if CONFIG_FORWARDSKIP
   }
@@ -6975,6 +7781,10 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   *mbmi = search_state.best_mbmode;
   assert(av1_check_newmv_joint_nonzero(cm, x));
 
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi));
+#endif
+
   txfm_info->skip_txfm |= search_state.best_skip2;
 
   // Note: this section is needed since the mode may have been forced to
@@ -6995,6 +7805,10 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           search_state.intra_search_state.best_pred_rd[i];
     }
   }
+
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi));
+#endif
 
   txfm_info->skip_txfm |= search_state.best_mode_skippable;
 
@@ -7087,9 +7901,14 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
   } else {
 #endif  // CONFIG_TIP
     mbmi->mv[0].as_int =
+#if CONFIG_FLEX_MVRES
         gm_get_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
-                             features->allow_high_precision_mv, bsize, mi_col,
-                             mi_row, features->cur_frame_force_integer_mv)
+                             features->fr_mv_precision, bsize, mi_col, mi_row)
+#else
+      gm_get_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
+                           features->allow_high_precision_mv, bsize, mi_col,
+                           mi_row, features->cur_frame_force_integer_mv)
+#endif
             .as_int;
 #if CONFIG_TIP
   }
@@ -7100,6 +7919,12 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
   mbmi->ref_mv_idx = 0;
 
   mbmi->motion_mode = SIMPLE_TRANSLATION;
+#if CONFIG_FLEX_MVRES
+  set_default_max_mv_precision(mbmi, xd->sbi->sb_mv_precision);
+  set_mv_precision(mbmi, mbmi->max_mv_precision);
+  set_default_precision_set(cm, mbmi, bsize);
+  set_most_probable_mv_precision(cm, mbmi, bsize);
+#endif
   av1_count_overlappable_neighbors(cm, xd);
   if (is_motion_variation_allowed_bsize(bsize) && !has_second_ref(mbmi)) {
     int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
@@ -7110,8 +7935,12 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
                                              mbmi->num_proj_ref, bsize);
   }
 
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi));
+#endif
   const InterpFilter interp_filter = features->interp_filter;
   set_default_interp_filters(mbmi,
+
 #if CONFIG_OPTFLOW_REFINEMENT
                              cm,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
@@ -7143,6 +7972,7 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
 
     // Estimate the reference frame signaling cost and add it
     // to the rolling cost variable.
+
 #if CONFIG_NEW_REF_SIGNALING
   rate2 += ref_costs_single[last_frame];
 #else
@@ -7242,6 +8072,7 @@ static INLINE void calc_target_weighted_pred_left(
   int32_t *wsrc = ctxt->obmc_buffer->wsrc + (rel_mi_row * MI_SIZE * bw);
   int32_t *mask = ctxt->obmc_buffer->mask + (rel_mi_row * MI_SIZE * bw);
   const uint8_t *tmp = ctxt->tmp + (rel_mi_row * MI_SIZE * ctxt->tmp_stride);
+
   const uint16_t *tmp16 = CONVERT_TO_SHORTPTR(tmp);
 
   for (int row = 0; row < op_mi_size * MI_SIZE; ++row) {

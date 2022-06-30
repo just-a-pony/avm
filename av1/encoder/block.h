@@ -703,6 +703,14 @@ typedef struct {
   int inter_single_mode_cost[INTER_SINGLE_MODE_CONTEXTS][INTER_SINGLE_MODES];
   //! drl_mode_cost
   int drl_mode_cost[3][DRL_MODE_CONTEXTS][2];
+#if CONFIG_FLEX_MVRES
+  /*! Costs for coding the most probable mv resolution. */
+  int pb_block_mv_mpp_flag_costs[NUM_MV_PREC_MPP_CONTEXT][2];
+
+  /*! Costs for coding the mv resolution. */
+  int pb_block_mv_precision_costs[MV_PREC_DOWN_CONTEXTS][FLEX_MV_COSTS_SIZE]
+                                 [NUM_MV_PRECISIONS];
+#endif
   /**@}*/
 
   /*****************************************************************************
@@ -767,10 +775,6 @@ typedef struct {
   int inter_compound_mode_cost[INTER_COMPOUND_MODE_CONTEXTS]
                               [INTER_COMPOUND_MODES];
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
-  //! adaptive_mvd_cost
-  int adaptive_mvd_cost[2];
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
   //! compound_type_cost
   int compound_type_cost[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
   //! wedge_idx_cost
@@ -860,7 +864,45 @@ typedef struct {
   //! A multiplier that converts mv cost to l1 error.
   int sadperbit;
   /**@}*/
+#if CONFIG_FLEX_MVRES
+  /*****************************************************************************
+   * \name Encoding Costs
+   * Here are the entropy costs needed to encode a given mv.
+   * \ref nmv_costs_alloc is an array that holds the memory for mv cost. Since
+   * the motion vectors can be negative, we save a pointer to the middle of the
+   * array in \ref nmv_costs for easier referencing.
+   ****************************************************************************/
+  /**@{*/
+  /*! Costs for coding the zero components. */
+  int nmv_joint_cost[MV_JOINTS];
 
+  /*! Allocates memory for motion vector costs. */
+  int nmv_costs_alloc[NUM_MV_PRECISIONS][2][MV_VALS];
+  /*! Points to the middle of \ref nmv_costs_alloc. */
+  int *nmv_costs[NUM_MV_PRECISIONS][2];
+
+#if CONFIG_ADAPTIVE_MVD
+  //! Costs for coding the zero components when adaptive MVD resolution is
+  //! applied
+  int amvd_nmv_joint_cost[MV_JOINTS];
+
+  //! Allocates memory for 1/4-pel motion vector costs when adaptive MVD
+  //! resolution is applied
+  int amvd_nmv_cost_alloc[2][MV_VALS];
+
+  //! Points to the middle of \ref amvd_nmv_cost_alloc
+  int *amvd_nmv_cost[2];
+#endif  // CONFIG_ADAPTIVE_MVD
+
+#if CONFIG_BVCOST_UPDATE
+  /*! Costs for coding the zero components of dv cost. */
+  int *dv_joint_cost;
+
+  /*! Points to the middle of dvcost. */
+  int *dv_nmv_cost[2];
+#endif
+
+#else
   /*****************************************************************************
    * \name Encoding Costs
    * Here are the entropy costs needed to encode a given mv.
@@ -910,9 +952,29 @@ typedef struct {
   //! Points to the nmv_cost_hp in use.
   int **amvd_mv_cost_stack;
 #endif  // CONFIG_ADAPTIVE_MVD
+#endif
   /**@}*/
 } MvCosts;
 
+#if CONFIG_FLEX_MVRES
+/*! \brief Holds mv costs for intrabc.
+ */
+typedef struct {
+  /*! Costs for coding the joint mv. */
+  // TODO(huisu@google.com): we can update dv_joint_cost per SB.
+  int joint_mv[MV_JOINTS];
+
+  /*! \brief Cost of transmitting the actual motion vector.
+   *  mv_costs_alloc[0][i] is the cost of motion vector with horizontal
+   * component (mv_row) equal to i - MV_MAX. mv_costs_alloc[1][i] is the cost of
+   * motion vector with vertical component (mv_col) equal to i - MV_MAX.
+   */
+  int dv_costs_alloc[2][MV_VALS];
+
+  /*! Points to the middle of \ref dv_costs_alloc. */
+  int *dv_costs[2];
+} IntraBCMvCosts;
+#endif
 /*! \brief Holds the costs needed to encode the coefficients
  */
 typedef struct {

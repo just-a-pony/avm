@@ -269,6 +269,9 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader) {
 #if CONFIG_ADAPTIVE_MVD
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_adaptive_mvd);
 #endif  // CONFIG_ADAPTIVE_MVD
+#if CONFIG_FLEX_MVRES
+  AV1C_READ_BIT_OR_RETURN_ERROR(enable_flex_mvres);
+#endif  // CONFIG_FLEX_MVRES
 #if CONFIG_NEW_TX_PARTITION
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_tx_split_4way);
 #endif  // CONFIG_NEW_TX_PARTITION
