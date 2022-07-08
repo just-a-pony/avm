@@ -284,7 +284,7 @@ static AOM_INLINE int keep_one_comp_stat(MV_STATS *mv_stats, int comp_val,
                : (cur_mvcomp_ctx->class0_fp_cdf[int_part][0]);
   if (use_fractional_mv) {
     if (pb_mv_precision > MV_PRECISION_ONE_PEL) {
-      frac_part_rate = get_symbol_cost(frac_part_cdf, frac_part);
+      frac_part_rate = get_symbol_cost(frac_part_cdf, frac_part >> 1);
       update_cdf(frac_part_cdf, frac_part >> 1, 2);
     }
 
@@ -293,7 +293,7 @@ static AOM_INLINE int keep_one_comp_stat(MV_STATS *mv_stats, int comp_val,
           mv_class
               ? (cur_mvcomp_ctx->fp_cdf[1 + (frac_part >> 1)])
               : (cur_mvcomp_ctx->class0_fp_cdf[int_part][1 + (frac_part >> 1)]);
-      frac_part_rate_qpel = get_symbol_cost(frac_part_cdf, frac_part);
+      frac_part_rate_qpel = get_symbol_cost(frac_part_cdf, frac_part & 1);
       frac_part_rate += frac_part_rate_qpel;
       update_cdf(frac_part_cdf, frac_part & 1, 2);
     }
@@ -383,7 +383,10 @@ static AOM_INLINE void keep_one_mv_stat(
                                [max_mv_precision - MV_PRECISION_HALF_PEL];
 
   MV low_prec_ref_mv = *ref_mv;
-  lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
+#if BUGFIX_AMVD_AMVR
+  if (!is_adaptive_mvd)
+#endif
+    lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { cur_mv->row - low_prec_ref_mv.row,
                     cur_mv->col - low_prec_ref_mv.col };
 #else
@@ -511,7 +514,6 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
   const int allow_pb_mv_precision =
       is_pb_mv_precision_active(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
   MvSubpelPrecision pb_mv_precision = mbmi->pb_mv_precision;
-  assert(pb_mv_precision == mbmi->pb_mv_precision);
   const int most_probable_pb_mv_precision = mbmi->most_probable_pb_mv_precision;
 #endif
 

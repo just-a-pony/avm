@@ -483,9 +483,13 @@ static INLINE int get_mv_cost_with_precision(
 #endif
 
   MV low_prec_ref_mv = ref_mv;
-  lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
+#if BUGFIX_AMVD_AMVR
+  if (!is_adaptive_mvd)
+#endif
+    lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { mv.row - low_prec_ref_mv.row,
                     mv.col - low_prec_ref_mv.col };
+
   if (mvcost) {
     return (int)ROUND_POWER_OF_TWO_64(
         (int64_t)mv_cost(&diff, mvjcost, mvcost) * weight, round_bits);
@@ -554,7 +558,10 @@ static INLINE int mv_err_cost(const MV mv,
   const MV_COST_TYPE mv_cost_type = mv_cost_params->mv_cost_type;
   const MvCosts *mv_costs = mv_cost_params->mv_costs;
   MV low_prec_ref_mv = ref_mv;
-  lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
+#if BUGFIX_AMVD_AMVR
+  if (!mv_cost_params->is_adaptive_mvd)
+#endif
+    lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { mv.row - low_prec_ref_mv.row,
                     mv.col - low_prec_ref_mv.col };
 
@@ -617,7 +624,10 @@ static INLINE int mvsad_err_cost(const FULLPEL_MV mv,
   MV ref_mv = { GET_MV_SUBPEL(mv_cost_params->full_ref_mv.row),
                 GET_MV_SUBPEL(mv_cost_params->full_ref_mv.col) };
 
-  lower_mv_precision(&ref_mv, pb_mv_precision);
+#if BUGFIX_AMVD_AMVR
+  if (!mv_cost_params->is_adaptive_mvd)
+#endif
+    lower_mv_precision(&ref_mv, pb_mv_precision);
 
   const MV diff = { (this_mv.row - ref_mv.row), (this_mv.col - ref_mv.col) };
 
