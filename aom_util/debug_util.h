@@ -54,7 +54,7 @@ void mismatch_record_block_pre(const uint8_t *src, int src_stride,
                                int pixel_r, int blk_w, int blk_h);
 void mismatch_record_block_tx(const uint8_t *src, int src_stride,
                               int frame_offset, int plane, int pixel_c,
-                              int pixel_r, int blk_w, int blk_h, int highbd);
+                              int pixel_r, int blk_w, int blk_h);
 void mismatch_check_block_pre(const uint8_t *src, int src_stride,
                               int frame_offset, int plane, int pixel_c,
                               int pixel_r, int blk_w, int blk_h);
