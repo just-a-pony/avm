@@ -43,9 +43,16 @@ static void read_cdef(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
   const int skip_txfm = xd->mi[0]->skip_txfm[xd->tree_type == CHROMA_PART];
   if (cm->features.coded_lossless) return;
   if (is_global_intrabc_allowed(cm)) {
+#if CONFIG_FIX_CDEF_SYNTAX
+    assert(cm->cdef_info.cdef_frame_enable == 0);
+#else
     assert(cm->cdef_info.cdef_bits == 0);
+#endif  // CONFIG_FIX_CDEF_SYNTAX
     return;
   }
+#if CONFIG_FIX_CDEF_SYNTAX
+  if (!cm->cdef_info.cdef_frame_enable) return;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
 
   // At the start of a superblock, mark that we haven't yet read CDEF strengths
   // for any of the CDEF units contained in this superblock.

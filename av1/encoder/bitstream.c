@@ -1214,6 +1214,9 @@ static AOM_INLINE void write_cfl_alphas(FRAME_CONTEXT *const ec_ctx,
 static AOM_INLINE void write_cdef(AV1_COMMON *cm, MACROBLOCKD *const xd,
                                   aom_writer *w, int skip) {
   if (cm->features.coded_lossless || is_global_intrabc_allowed(cm)) return;
+#if CONFIG_FIX_CDEF_SYNTAX
+  if (!cm->cdef_info.cdef_frame_enable) return;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
   // At the start of a superblock, mark that we haven't yet written CDEF
   // strengths for any of the CDEF units contained in this superblock.
   const int sb_mask = (cm->seq_params.mib_size - 1);
@@ -2924,6 +2927,10 @@ static AOM_INLINE void encode_cdef(const AV1_COMMON *cm,
   assert(!cm->features.coded_lossless);
   if (!cm->seq_params.enable_cdef) return;
   if (is_global_intrabc_allowed(cm)) return;
+#if CONFIG_FIX_CDEF_SYNTAX
+  aom_wb_write_bit(wb, cm->cdef_info.cdef_frame_enable);
+  if (!cm->cdef_info.cdef_frame_enable) return;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
   const int num_planes = av1_num_planes(cm);
   int i;
   aom_wb_write_literal(wb, cm->cdef_info.cdef_damping - 3, 2);

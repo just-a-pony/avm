@@ -1971,15 +1971,22 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
                     cpi->sf.lpf_sf.cdef_pick_method, cpi->td.mb.rdmult);
 
     // Apply the filter
-    av1_cdef_frame(&cm->cur_frame->buf, cm, xd);
+#if CONFIG_FIX_CDEF_SYNTAX
+    if (cm->cdef_info.cdef_frame_enable)
+#endif  // CONFIG_FIX_CDEF_SYNTAX
+      av1_cdef_frame(&cm->cur_frame->buf, cm, xd);
 #if CONFIG_COLLECT_COMPONENT_TIMING
     end_timing(cpi, cdef_time);
 #endif
   } else {
+#if CONFIG_FIX_CDEF_SYNTAX
+    cm->cdef_info.cdef_frame_enable = 0;
+#else
     cm->cdef_info.cdef_bits = 0;
     cm->cdef_info.cdef_strengths[0] = 0;
     cm->cdef_info.nb_cdef_strengths = 1;
     cm->cdef_info.cdef_uv_strengths[0] = 0;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
   }
 
 #if CONFIG_CCSO
@@ -2632,10 +2639,14 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
 
     cm->lf.filter_level[0] = 0;
     cm->lf.filter_level[1] = 0;
+#if CONFIG_FIX_CDEF_SYNTAX
+    cm->cdef_info.cdef_frame_enable = 0;
+#else
     cm->cdef_info.cdef_bits = 0;
     cm->cdef_info.cdef_strengths[0] = 0;
     cm->cdef_info.nb_cdef_strengths = 1;
     cm->cdef_info.cdef_uv_strengths[0] = 0;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
     cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
@@ -2744,10 +2755,14 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
   } else {
     cm->lf.filter_level[0] = 0;
     cm->lf.filter_level[1] = 0;
+#if CONFIG_FIX_CDEF_SYNTAX
+    cm->cdef_info.cdef_frame_enable = 0;
+#else
     cm->cdef_info.cdef_bits = 0;
     cm->cdef_info.cdef_strengths[0] = 0;
     cm->cdef_info.nb_cdef_strengths = 1;
     cm->cdef_info.cdef_uv_strengths[0] = 0;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
     cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[2].frame_restoration_type = RESTORE_NONE;

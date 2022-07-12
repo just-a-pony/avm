@@ -2475,6 +2475,10 @@ static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
   CdefInfo *const cdef_info = &cm->cdef_info;
 
   if (is_global_intrabc_allowed(cm)) return;
+#if CONFIG_FIX_CDEF_SYNTAX
+  cdef_info->cdef_frame_enable = aom_rb_read_bit(rb);
+  if (!cdef_info->cdef_frame_enable) return;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
   cdef_info->cdef_damping = aom_rb_read_literal(rb, 2) + 3;
   cdef_info->cdef_bits = aom_rb_read_literal(rb, 2);
   cdef_info->nb_cdef_strengths = 1 << cdef_info->cdef_bits;
@@ -6135,10 +6139,14 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     struct loopfilter *lf = &cm->lf;
     lf->filter_level[0] = 0;
     lf->filter_level[1] = 0;
+#if CONFIG_FIX_CDEF_SYNTAX
+    cm->cdef_info.cdef_frame_enable = 0;
+#else
     cm->cdef_info.cdef_bits = 0;
     cm->cdef_info.cdef_strengths[0] = 0;
     cm->cdef_info.nb_cdef_strengths = 1;
     cm->cdef_info.cdef_uv_strengths[0] = 0;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
     cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
@@ -6250,9 +6258,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     cm->lf.filter_level[1] = 0;
   }
   if (features->coded_lossless || !seq_params->enable_cdef) {
+#if CONFIG_FIX_CDEF_SYNTAX
+    cm->cdef_info.cdef_frame_enable = 0;
+#else
     cm->cdef_info.cdef_bits = 0;
     cm->cdef_info.cdef_strengths[0] = 0;
     cm->cdef_info.cdef_uv_strengths[0] = 0;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
   }
   if (features->all_lossless || !seq_params->enable_restoration) {
     cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
@@ -6600,10 +6612,15 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
         cm->rst_info[0].frame_restoration_type != RESTORE_NONE ||
         cm->rst_info[1].frame_restoration_type != RESTORE_NONE ||
         cm->rst_info[2].frame_restoration_type != RESTORE_NONE;
-    const int do_cdef =
-        !pbi->skip_loop_filter && !cm->features.coded_lossless &&
-        (cm->cdef_info.cdef_bits || cm->cdef_info.cdef_strengths[0] ||
-         cm->cdef_info.cdef_uv_strengths[0]);
+    const int do_cdef = !pbi->skip_loop_filter &&
+                        !cm->features.coded_lossless &&
+#if CONFIG_FIX_CDEF_SYNTAX
+                        cm->cdef_info.cdef_frame_enable;
+#else
+                        (cm->cdef_info.cdef_bits ||
+                         cm->cdef_info.cdef_strengths[0] ||
+                         cm->cdef_info.cdef_uv_strengths[0]);
+#endif  // CONFIG_FIX_CDEF_SYNTAX
     const int do_superres = av1_superres_scaled(cm);
 
     const int optimized_loop_restoration =

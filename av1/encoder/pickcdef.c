@@ -511,8 +511,19 @@ void av1_cdef_search(const YV12_BUFFER_CONFIG *frame,
                                       pick_method);
     }
 
+#if CONFIG_FIX_CDEF_SYNTAX
+    /* check if cdef is on for the current frame, and assign total bits
+     * accordingly. */
+    const int cdef_on_bits =
+        sb_count * i +
+        nb_strengths * CDEF_STRENGTH_BITS * (num_planes > 1 ? 2 : 1) + 1;
+    const int cdef_off_bit = 1;
+    const int is_cdef_on = (i || best_lev0[0] || best_lev1[0]);
+    const int total_bits = is_cdef_on ? cdef_on_bits : cdef_off_bit;
+#else
     const int total_bits = sb_count * i + nb_strengths * CDEF_STRENGTH_BITS *
                                               (num_planes > 1 ? 2 : 1);
+#endif  // CONFIG_FIX_CDEF_SYNTAX
     const int rate_cost = av1_cost_literal(total_bits);
     const uint64_t dist = tot_mse * 16;
     const uint64_t rd = RDCOST(rdmult, rate_cost, dist);
@@ -579,6 +590,11 @@ void av1_cdef_search(const YV12_BUFFER_CONFIG *frame,
   }
 
   cdef_info->cdef_damping = damping;
+#if CONFIG_FIX_CDEF_SYNTAX
+  cdef_info->cdef_frame_enable =
+      (cdef_info->cdef_bits || cdef_info->cdef_strengths[0] ||
+       cdef_info->cdef_uv_strengths[0]);
+#endif  // CONFIG_FIX_CDEF_SYNTAX
 
   aom_free(mse[0]);
   aom_free(mse[1]);

@@ -316,6 +316,9 @@ typedef struct {
   int cdef_uv_strengths[CDEF_MAX_STRENGTHS]; /*!< CDEF strength values for
                                                 chroma */
   int cdef_bits; /*!< Number of CDEF strength values in bits */
+#if CONFIG_FIX_CDEF_SYNTAX
+  int cdef_frame_enable; /*!< CDEF on/off for current frame */
+#endif                   // CONFIG_FIX_CDEF_SYNTAX
 } CdefInfo;
 
 #if CONFIG_OPTFLOW_REFINEMENT
