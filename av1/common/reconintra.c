@@ -1826,6 +1826,7 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
       assert(block_size_high[plane_bsize] == tx_size_high[tx_size]);
     }
 #endif
+#if !CONFIG_IMPROVED_CFL
     CFL_CTX *const cfl = &xd->cfl;
     CFL_PRED_TYPE pred_plane = get_cfl_pred_type(plane);
     if (cfl->dc_pred_is_cached[pred_plane] == 0) {
@@ -1840,12 +1841,42 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
     } else {
       cfl_load_dc_pred(xd, dst, dst_stride, tx_size, pred_plane);
     }
+#endif
     if (xd->tree_type == CHROMA_PART) {
       const int luma_tx_size =
           av1_get_max_uv_txsize(mbmi->sb_type[PLANE_TYPE_UV], 0, 0);
       cfl_store_tx(xd, blk_row, blk_col, luma_tx_size,
                    mbmi->sb_type[PLANE_TYPE_UV]);
     }
+#if CONFIG_IMPROVED_CFL
+    CFL_CTX *const cfl = &xd->cfl;
+    CFL_PRED_TYPE pred_plane = get_cfl_pred_type(plane);
+    if (cfl->dc_pred_is_cached[pred_plane] == 0) {
+      av1_predict_intra_block(cm, xd, pd->width, pd->height, tx_size, mode,
+                              angle_delta, use_palette, filter_intra_mode, dst,
+                              dst_stride, dst, dst_stride, blk_col, blk_row,
+                              plane);
+      if (cfl->use_dc_pred_cache) {
+        cfl_store_dc_pred(xd, dst, pred_plane, tx_size_wide[tx_size]);
+        cfl->dc_pred_is_cached[pred_plane] = 1;
+      }
+    } else {
+      cfl_load_dc_pred(xd, dst, dst_stride, tx_size, pred_plane);
+    }
+
+    const int luma_tx_size =
+        av1_get_max_uv_txsize(mbmi->sb_type[PLANE_TYPE_UV], 0, 0);
+    cfl_implicit_fetch_neighbor_luma(cm, xd, blk_row << cfl->subsampling_y,
+                                     blk_col << cfl->subsampling_x,
+                                     luma_tx_size);
+    cfl_calc_luma_dc(xd, blk_row, blk_col, tx_size);
+
+    if (mbmi->cfl_idx == CFL_DERIVED_ALPHA) {
+      cfl_implicit_fetch_neighbor_chroma(cm, xd, plane, blk_row, blk_col,
+                                         tx_size);
+      cfl_derive_implicit_scaling_factor(xd, plane, blk_row, blk_col, tx_size);
+    }
+#endif
     cfl_predict_block(xd, dst, dst_stride, tx_size, plane);
     return;
   }

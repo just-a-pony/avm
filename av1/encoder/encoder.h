@@ -1184,6 +1184,9 @@ typedef struct FRAME_COUNTS {
   unsigned int fsc_mode[FSC_MODE_CONTEXTS][FSC_BSIZE_CONTEXTS][FSC_MODES];
 #endif  // CONFIG_FORWARDSKIP
   unsigned int mrl_index[MRL_LINE_NUMBER];
+#if CONFIG_IMPROVED_CFL
+  unsigned int cfl_index[CFL_TYPE_COUNT];
+#endif
   unsigned int cfl_sign[CFL_JOINT_SIGNS];
   unsigned int cfl_alpha[CFL_ALPHA_CONTEXTS][CFL_ALPHABET_SIZE];
   unsigned int palette_y_mode[PALATTE_BSIZE_CTXS][PALETTE_Y_MODE_CONTEXTS][2];

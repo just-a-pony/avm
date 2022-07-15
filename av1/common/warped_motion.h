@@ -76,6 +76,50 @@ static INLINE int16_t resolve_divisor_32(uint32_t D, int16_t *shift) {
   return div_lut[f];
 }
 
+#if CONFIG_IMPROVED_CFL
+static INLINE int16_t resolve_divisor_32_CfL(int32_t N, int32_t D,
+                                             int16_t shift) {
+  int32_t f_n, f_d;
+  int ret;
+
+  assert(D >= 0);
+  int sign_N = N >= 0 ? 0 : 1;
+
+  if (sign_N) N = -N;
+
+  if (N == 0 || D == 0)
+    return 0;
+  else {
+    int16_t shift_n = get_msb(N);
+    int16_t shift_d = get_msb(D);
+    // e is obtained from D after resetting the most significant 1 bit.
+    const int32_t e_d = D - ((uint32_t)1 << shift_d);
+    // Get the most significant DIV_LUT_BITS (8) bits of e into f
+    if (shift_d > DIV_LUT_BITS)
+      f_d = ROUND_POWER_OF_TWO(e_d, shift_d - DIV_LUT_BITS);
+    else
+      f_d = e_d << (DIV_LUT_BITS - shift_d);
+    assert(f_d <= DIV_LUT_NUM);
+
+    if (shift_n > DIV_LUT_BITS)
+      f_n = ROUND_POWER_OF_TWO(N, shift_n - DIV_LUT_BITS);
+    else
+      f_n = N << (DIV_LUT_BITS - shift_n);
+
+    assert(f_d <= DIV_LUT_NUM);
+    assert(f_n <= DIV_LUT_NUM * 2);
+
+    ret = div_lut[f_d] * f_n >>
+          (DIV_LUT_PREC_BITS + DIV_LUT_BITS + shift_d - shift_n - shift);
+
+    if (ret >= (2 << shift) - 1) ret = (2 << shift) - 1;
+
+    if (sign_N) ret = -ret;
+    return ret;
+  }
+}
+#endif
+
 extern const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8];
 
 DECLARE_ALIGNED(8, extern const int8_t,

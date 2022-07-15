@@ -389,6 +389,12 @@ int main(int argc, const char **argv) {
       "[EXT_TX_SIZES][CDF_SIZE(TX_TYPES)]");
 
   /* Chroma from Luma */
+#if CONFIG_IMPROVED_CFL
+  cts_each_dim[0] = CFL_TYPE_COUNT;
+  optimize_cdf_table(&fc.cfl_index[0], probsfile, 1, cts_each_dim,
+                     "static const aom_cdf_prob\n"
+                     "default_cfl_index_cdf[CDF_SIZE(CFL_TYPE_COUNT)]");
+#endif
   cts_each_dim[0] = CFL_JOINT_SIGNS;
   optimize_cdf_table(&fc.cfl_sign[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob\n"

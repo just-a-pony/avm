@@ -178,7 +178,8 @@ static INLINE void cfl_predict_hbd_ssse3(const int16_t *pred_buf_q3,
                                          int alpha_q3, int bd, int width,
                                          int height) {
   const __m128i alpha_sign = _mm_set1_epi16(alpha_q3);
-  const __m128i alpha_q12 = _mm_slli_epi16(_mm_abs_epi16(alpha_sign), 9);
+  const __m128i alpha_q12 =
+      _mm_slli_epi16(_mm_abs_epi16(alpha_sign), (9 - CFL_ADD_BITS_ALPHA));
   const __m128i dc_q0 = _mm_set1_epi16(*dst);
   const __m128i max = highbd_max_epi16(bd);
   const __m128i zeros = _mm_setzero_si128();

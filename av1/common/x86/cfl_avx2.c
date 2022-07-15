@@ -166,7 +166,8 @@ static INLINE void cfl_predict_hbd_avx2(const int16_t *pred_buf_q3,
   // Use SSSE3 version for smaller widths
   assert(width == 16 || width == 32);
   const __m256i alpha_sign = _mm256_set1_epi16(alpha_q3);
-  const __m256i alpha_q12 = _mm256_slli_epi16(_mm256_abs_epi16(alpha_sign), 9);
+  const __m256i alpha_q12 =
+      _mm256_slli_epi16(_mm256_abs_epi16(alpha_sign), (9 - CFL_ADD_BITS_ALPHA));
   const __m256i dc_q0 = _mm256_loadu_si256((__m256i *)dst);
   const __m256i max = highbd_max_epi16(bd);
 

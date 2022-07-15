@@ -1186,6 +1186,13 @@ static AOM_INLINE void write_fsc_mode(uint8_t fsc_mode, aom_writer *w,
 }
 #endif  // CONFIG_FORWARDSKIP
 
+#if CONFIG_IMPROVED_CFL
+static AOM_INLINE void write_cfl_index(FRAME_CONTEXT *ec_ctx, uint8_t cfl_index,
+                                       aom_writer *w) {
+  aom_write_symbol(w, cfl_index > 0, ec_ctx->cfl_index_cdf, CFL_TYPE_COUNT);
+}
+#endif
+
 #if !CONFIG_AIMC
 static AOM_INLINE void write_intra_uv_mode(FRAME_CONTEXT *frame_ctx,
                                            UV_PREDICTION_MODE uv_mode,
@@ -1513,8 +1520,13 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
       }
     }
 #endif  // CONFIG_AIMC
-    if (uv_mode == UV_CFL_PRED)
-      write_cfl_alphas(ec_ctx, mbmi->cfl_alpha_idx, mbmi->cfl_alpha_signs, w);
+    if (uv_mode == UV_CFL_PRED) {
+#if CONFIG_IMPROVED_CFL
+      write_cfl_index(ec_ctx, mbmi->cfl_idx, w);
+      if (mbmi->cfl_idx == 0)
+#endif
+        write_cfl_alphas(ec_ctx, mbmi->cfl_alpha_idx, mbmi->cfl_alpha_signs, w);
+    }
   }
 
   // Palette.

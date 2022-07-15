@@ -607,9 +607,23 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   // Search through all non-palette modes.
 #if CONFIG_AIMC
   get_uv_intra_mode_set(mbmi);
+#if CONFIG_IMPROVED_CFL
+  int implicit_cfl_mode_num = CONFIG_IMPROVED_CFL;
+  for (int mode_idx = 0; mode_idx < UV_INTRA_MODES + implicit_cfl_mode_num;
+       ++mode_idx) {
+    int real_mode_idx = mode_idx;
+    mbmi->cfl_idx = 0;
+    if (mode_idx >= UV_INTRA_MODES) {
+      real_mode_idx = UV_INTRA_MODES - 1;
+      mbmi->cfl_idx = mode_idx - real_mode_idx;
+    }
+    mbmi->uv_mode_idx = real_mode_idx;
+    mbmi->uv_mode = mbmi->uv_intra_mode_list[real_mode_idx];
+#else
   for (int mode_idx = 0; mode_idx < UV_INTRA_MODES; ++mode_idx) {
     mbmi->uv_mode_idx = mode_idx;
     mbmi->uv_mode = mbmi->uv_intra_mode_list[mode_idx];
+#endif
     if (mbmi->uv_mode == mbmi->mode)
       mbmi->angle_delta[PLANE_TYPE_UV] = mbmi->angle_delta[PLANE_TYPE_Y];
     else
@@ -636,14 +650,27 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
 
     // Init variables for cfl and angle delta
     int cfl_alpha_rate = 0;
+#if CONFIG_IMPROVED_CFL
+    int cfl_idx_rate = 0;
+#endif
     if (mode == UV_CFL_PRED) {
       if (!is_cfl_allowed(xd) || !intra_mode_cfg->enable_cfl_intra) continue;
       const TX_SIZE uv_tx_size = av1_get_tx_size(AOM_PLANE_U, xd);
-      cfl_alpha_rate = cfl_rd_pick_alpha(x, cpi, uv_tx_size, best_rd);
+#if CONFIG_IMPROVED_CFL
+      if (mbmi->cfl_idx == 0)
+#endif
+        cfl_alpha_rate = cfl_rd_pick_alpha(x, cpi, uv_tx_size, best_rd);
+#if CONFIG_IMPROVED_CFL
+      cfl_idx_rate = x->mode_costs.cfl_index_cost[mbmi->cfl_idx > 0];
+#endif
       if (cfl_alpha_rate == INT_MAX) continue;
     }
 #if CONFIG_AIMC
+#if CONFIG_IMPROVED_CFL
+    mode_cost += cfl_alpha_rate + cfl_idx_rate;
+#else
     mode_cost += cfl_alpha_rate;
+#endif
     if (!av1_txfm_uvrd(cpi, x, &tokenonly_rd_stats, bsize, best_rd)) {
       continue;
     }
@@ -672,7 +699,7 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                 intra_mode_info_cost_uv(cpi, x, mbmi, bsize, mode_cost);
     if (mode == UV_CFL_PRED) {
       assert(is_cfl_allowed(xd) && intra_mode_cfg->enable_cfl_intra);
-#if CONFIG_DEBUG
+#if CONFIG_DEBUG && !CONFIG_IMPROVED_CFL
       if (!xd->lossless[mbmi->segment_id])
         assert(xd->cfl.rate == tokenonly_rd_stats.rate + mode_cost);
 #endif  // CONFIG_DEBUG

@@ -122,6 +122,9 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
   }
 #endif  // CONFIG_FORWARDSKIP
 
+#if CONFIG_IMPROVED_CFL
+  av1_cost_tokens_from_cdf(mode_costs->cfl_index_cost, fc->cfl_index_cdf, NULL);
+#endif
 #if CONFIG_AIMC
   av1_cost_tokens_from_cdf(mode_costs->y_primary_flag_cost, fc->y_mode_set_cdf,
                            NULL);

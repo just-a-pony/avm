@@ -218,6 +218,14 @@ static uint8_t read_fsc_mode(aom_reader *r, aom_cdf_prob *fsc_cdf) {
 }
 #endif  // CONFIG_FORWARDSKIP
 
+#if CONFIG_IMPROVED_CFL
+static uint8_t read_cfl_index(FRAME_CONTEXT *ec_ctx, aom_reader *r) {
+  uint8_t cfl_index =
+      aom_read_symbol(r, ec_ctx->cfl_index_cdf, CFL_TYPE_COUNT, ACCT_STR);
+  return cfl_index;
+}
+#endif
+
 #if !CONFIG_AIMC
 static UV_PREDICTION_MODE read_intra_mode_uv(FRAME_CONTEXT *ec_ctx,
                                              aom_reader *r,
@@ -1251,8 +1259,12 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
       }
 #endif  // CONFIG_AIMC
       if (mbmi->uv_mode == UV_CFL_PRED) {
-        mbmi->cfl_alpha_idx =
-            read_cfl_alphas(ec_ctx, r, &mbmi->cfl_alpha_signs);
+#if CONFIG_IMPROVED_CFL
+        { mbmi->cfl_idx = read_cfl_index(ec_ctx, r); }
+        if (mbmi->cfl_idx == 0)
+#endif
+          mbmi->cfl_alpha_idx =
+              read_cfl_alphas(ec_ctx, r, &mbmi->cfl_alpha_signs);
       }
     } else {
       // Avoid decoding angle_info if there is is no chroma prediction
@@ -1814,8 +1826,14 @@ static void read_intra_block_mode_info(AV1_COMMON *const cm,
     }
 #endif  // CONFIG_AIMC
     if (mbmi->uv_mode == UV_CFL_PRED) {
-      mbmi->cfl_alpha_idx =
-          read_cfl_alphas(xd->tile_ctx, r, &mbmi->cfl_alpha_signs);
+#if CONFIG_IMPROVED_CFL
+      { mbmi->cfl_idx = read_cfl_index(ec_ctx, r); }
+      if (mbmi->cfl_idx == 0)
+#endif
+      {
+        mbmi->cfl_alpha_idx =
+            read_cfl_alphas(xd->tile_ctx, r, &mbmi->cfl_alpha_signs);
+      }
     }
   } else {
     // Avoid decoding angle_info if there is is no chroma prediction
