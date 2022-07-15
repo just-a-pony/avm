@@ -2636,6 +2636,8 @@ static aom_codec_frame_flags_t get_frame_pkt_flags(const AV1_COMP *cpi,
   if (lib_flags & FRAMEFLAGS_SWITCH) flags |= AOM_FRAME_IS_SWITCH;
   if (lib_flags & FRAMEFLAGS_ERROR_RESILIENT)
     flags |= AOM_FRAME_IS_ERROR_RESILIENT;
+  if (lib_flags & FRAMEFLAGS_HAS_FILM_GRAIN_PARAMS)
+    flags |= AOM_FRAME_HAS_FILM_GRAIN_PARAMS;
   if (cpi->droppable) flags |= AOM_FRAME_IS_DROPPABLE;
 
   return flags;

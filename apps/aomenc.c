@@ -1114,7 +1114,7 @@ static int parse_stream_params(struct AvxEncoderConfig *global,
       config->cfg.full_still_picture_hdr = 1;
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.frame_hash_metadata,
                          argi)) {
-      config->cfg.frame_hash_metadata = arg_parse_uint(&arg);
+      config->cfg.frame_hash_metadata = arg_parse_enum_or_int(&arg);
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.frame_hash_per_plane,
                          argi)) {
       config->cfg.frame_hash_per_plane = arg_parse_uint(&arg);

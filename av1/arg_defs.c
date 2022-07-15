@@ -132,6 +132,14 @@ static const struct arg_enum_list color_primaries_enum[] = {
   { "ebu3213", AOM_CICP_CP_EBU_3213 },
   { NULL, 0 }
 };
+
+static const struct arg_enum_list frame_hash_metadata_enum[] = {
+  { "off", AOM_DFH_DISABLED },
+  { "raw", AOM_DFH_RAW },
+  { "filmgrain", AOM_DFH_FG },
+  { "both", AOM_DFH_BOTH },
+  { NULL, 0 }
+};
 #endif  // CONFIG_AV1_ENCODER
 
 const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
@@ -713,10 +721,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                               "Enable reference MV bank (0: false "
                               "1: true)"),
 #endif  // CONFIG_REF_MV_BANK
-  .frame_hash_metadata = ARG_DEF(
+  .frame_hash_metadata = ARG_DEF_ENUM(
       NULL, "frame-hash", 1,
-      "Write decoded frame hash metadata OBUs. "
-      "(0: disabled (default), 1: raw frames, 2: film grain applied, 3: both)"),
+      "Write decoded frame hash metadata OBUs:", frame_hash_metadata_enum),
   .frame_hash_per_plane =
       ARG_DEF(NULL, "use-per-plane-frame-hash", 1,
               "Write hash values for each plane instead of the entire frame. "

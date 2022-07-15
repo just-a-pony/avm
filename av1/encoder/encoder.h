@@ -107,6 +107,7 @@ enum {
   FRAMEFLAGS_INTRAONLY = 1 << 4,
   FRAMEFLAGS_SWITCH = 1 << 5,
   FRAMEFLAGS_ERROR_RESILIENT = 1 << 6,
+  FRAMEFLAGS_HAS_FILM_GRAIN_PARAMS = 1 << 7,
 } UENUM1BYTE(FRAMETYPE_FLAGS);
 
 static INLINE int get_true_pyr_level(int frame_level, int frame_order,

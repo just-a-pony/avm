@@ -211,6 +211,28 @@ typedef enum {
 } aom_opfl_refine_type;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
+/*!\brief Decoded Frame Hash Metadata OBU writing mode.
+ *
+ * This enumeration determines whether one or more metadata OBUs of type
+ * Decoded Frame Hash are written before each encoded frame.
+ */
+enum aom_frame_hash_mode {
+  /**< Encoder does not write Decoded Frame Hash Metadata OBUs. */
+  AOM_DFH_DISABLED,
+  /**< Encoder writes Decoded Frame Hash Metadata OBUs for frames as
+   *   they are in reference picture buffer. */
+  AOM_DFH_RAW,
+  /**< Encoder writes Decoded Frame Hash Metadata OBUs for frames as
+   *   they are output, which may be as they are in reference picture buffer
+   *   or after Film Grain has been applied if such parameters are present. */
+  AOM_DFH_FG,
+  /**< Encoder writes Decoded Frame Hash Metadata OBUs for frames both
+   *   as they are in reference picture buffer and as they are output.
+   *   The latter is only written if it differs from the former (e.g.,
+   *   film grain has been applied if such parameters are present.) */
+  AOM_DFH_BOTH,
+};
+
 /*!\brief Encoder Config Options
  *
  * This type allows to enumerate and control flags defined for encoder control
@@ -987,14 +1009,9 @@ typedef struct aom_codec_enc_cfg {
   int fixed_qp_offsets[FIXED_QP_OFFSET_COUNT];
 
   /*!\brief Codec control function to set what decoded frame hash metadata to
-   * write, unsigned int parameter
-   *
-   * - 0 = disabled (default)
-   * - 1 = write decoded frame hash metadata for raw frames
-   * - 2 = write decoded frame hash metadata for frames with film grain applied
-   * - 3 = write decoded frame hash metadata for both
+   * write
    */
-  unsigned int frame_hash_metadata;
+  enum aom_frame_hash_mode frame_hash_metadata;
 
   /*!\brief Codec control function to set if the hash values are written for
    * each plane instead of the entire frame, unsigned int parameter

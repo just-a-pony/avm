@@ -173,6 +173,9 @@ static void set_additional_frame_flags(const AV1_COMMON *const cm,
   if (cm->features.error_resilient_mode) {
     *frame_flags |= FRAMEFLAGS_ERROR_RESILIENT;
   }
+  if (cm->film_grain_params.apply_grain) {
+    *frame_flags |= FRAMEFLAGS_HAS_FILM_GRAIN_PARAMS;
+  }
 }
 
 static INLINE void update_keyframe_counters(AV1_COMP *cpi) {

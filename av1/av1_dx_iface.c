@@ -1085,6 +1085,9 @@ static aom_codec_err_t ctrl_get_frame_flags(aom_codec_alg_priv_t *ctx,
   if (pbi->common.features.error_resilient_mode) {
     *arg |= AOM_FRAME_IS_ERROR_RESILIENT;
   }
+  if (pbi->common.film_grain_params.apply_grain) {
+    *arg |= AOM_FRAME_HAS_FILM_GRAIN_PARAMS;
+  }
   return AOM_CODEC_OK;
 }
 

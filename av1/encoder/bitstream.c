@@ -5165,18 +5165,24 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
   if (cm->show_frame) data += av1_write_metadata_array(cpi, data);
 
   if (cpi->oxcf.tool_cfg.frame_hash_metadata) {
+    const aom_film_grain_t *grain_params = &cm->cur_frame->film_grain_params;
+    const int apply_grain =
+        cm->seq_params.film_grain_params_present && grain_params->apply_grain;
     // write frame hash metadata obu for raw frames before the frame obu that
     // has the tile groups
-    if ((cpi->oxcf.tool_cfg.frame_hash_metadata & 1) &&
+    const int write_raw_frame_hash =
+        ((cpi->oxcf.tool_cfg.frame_hash_metadata & 1) ||
+         ((cpi->oxcf.tool_cfg.frame_hash_metadata & 2) && !apply_grain)) &&
         (cm->show_frame || cm->showable_frame) &&
-        !encode_show_existing_frame(cm))
+        !encode_show_existing_frame(cm);
+    if (write_raw_frame_hash)
       data += av1_write_frame_hash_metadata(cpi, data, NULL);
     // write frame hash metadata obu for frames with film grain params applied
     // before the frame obu that outputs the frame
-    const aom_film_grain_t *grain_params = &cm->cur_frame->film_grain_params;
-    if ((cpi->oxcf.tool_cfg.frame_hash_metadata & 2) &&
-        cm->seq_params.film_grain_params_present && cm->show_frame &&
-        grain_params->apply_grain)
+    const int write_grain_frame_hash =
+        (cpi->oxcf.tool_cfg.frame_hash_metadata & 2) && cm->show_frame &&
+        apply_grain;
+    if (write_grain_frame_hash)
       data += av1_write_frame_hash_metadata(cpi, data, grain_params);
   }
 
