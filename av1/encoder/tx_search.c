@@ -2991,6 +2991,16 @@ static void select_tx_partition_type(
   uint8_t full_blk_skip[MAX_TX_PARTITIONS] = { 0 };
 
   // TODO(sarahparker) Add back all of the tx search speed features.
+  const int threshold = cpi->sf.tx_sf.tx_type_search.ml_tx_split_thresh;
+  const int threshold_horzvert =
+      cpi->sf.tx_sf.tx_type_search.ml_tx_split_horzvert_thresh;
+  const int try_ml_predict_tx_split =
+      x->e_mbd.bd == 8 && max_tx_size > TX_4X4 && threshold >= 0;
+  int split_score = INT_MAX;
+  if (try_ml_predict_tx_split) {
+    split_score =
+        ml_predict_tx_split(x, plane_bsize, blk_row, blk_col, max_tx_size);
+  }
   for (TX_PARTITION_TYPE type = 0; type < TX_PARTITION_TYPES; ++type) {
     // Skip any illegal partitions for this block size
     if (!use_tx_partition(type, max_tx_size)) continue;
@@ -3000,22 +3010,15 @@ static void select_tx_partition_type(
     }
     // int ml_tx_split_horzvert_thresh;
     // ML based speed feature to skip searching for split transform blocks.
-    if (x->e_mbd.bd == 8) {
-      const int threshold = cpi->sf.tx_sf.tx_type_search.ml_tx_split_thresh;
-      const int threshold_horzvert =
-          cpi->sf.tx_sf.tx_type_search.ml_tx_split_horzvert_thresh;
-      if (threshold >= 0) {
-        const int split_score =
-            ml_predict_tx_split(x, plane_bsize, blk_row, blk_col, max_tx_size);
-        if (((!is_rect && type == TX_PARTITION_SPLIT) ||
-             (is_rect && is_vert_rect && type == TX_PARTITION_HORZ) ||
-             (is_rect && !is_vert_rect && type == TX_PARTITION_VERT))) {
-          if (split_score < -threshold) continue;
-        }
-        if ((type == TX_PARTITION_HORZ || type == TX_PARTITION_VERT) &&
-            split_score < -threshold_horzvert)
-          continue;
+    if (try_ml_predict_tx_split) {
+      if (((!is_rect && type == TX_PARTITION_SPLIT) ||
+           (is_rect && is_vert_rect && type == TX_PARTITION_HORZ) ||
+           (is_rect && !is_vert_rect && type == TX_PARTITION_VERT))) {
+        if (split_score < -threshold) continue;
       }
+      if ((type == TX_PARTITION_HORZ || type == TX_PARTITION_VERT) &&
+          split_score < -threshold_horzvert)
+        continue;
     }
     if (cpi->sf.tx_sf.tx_type_search.prune_inter_4way_split) {
       if (type == TX_PARTITION_VERT4 && best_tx_partition != TX_PARTITION_VERT)
