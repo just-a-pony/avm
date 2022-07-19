@@ -329,12 +329,11 @@ static AOM_INLINE void keep_one_mv_stat(
     const MvSubpelPrecision max_mv_precision, const int allow_pb_mv_precision,
     const MvSubpelPrecision pb_mv_precision,
     const int most_probable_pb_mv_precision
-#if CONFIG_FLEX_MVRES
+#endif  // CONFIG_FLEX_MVRES
+#if CONFIG_FLEX_MVRES || CONFIG_ADAPTIVE_MVD
     ,
     const MB_MODE_INFO *mbmi
-#endif
-#endif
-
+#endif  // CONFIG_ADAPTIVE_MVD || CONFIG_FLEX_MVRES
 ) {
   const MACROBLOCK *const x = &cpi->td.mb;
   const MACROBLOCKD *const xd = &x->e_mbd;
@@ -342,12 +341,6 @@ static AOM_INLINE void keep_one_mv_stat(
   nmv_context *nmvc = &ec_ctx->nmvc;
 #if CONFIG_ADAPTIVE_MVD
   const AV1_COMMON *cm = &cpi->common;
-#if !CONFIG_FLEX_MVRES
-  MB_MODE_INFO *mbmi = xd->mi[0];
-#endif
-#endif
-
-#if CONFIG_ADAPTIVE_MVD
   const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
   aom_cdf_prob *joint_cdf =
       is_adaptive_mvd ? nmvc->amvd_joints_cdf : nmvc->joints_cdf;
@@ -494,6 +487,8 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
     return;
   }
 
+  // While collecting the mv stats after encoding a frame, mbmi should be
+  // derived from mi_grid_base instead of using xd->mi[0].
   const MB_MODE_INFO *mbmi =
       mi_params->mi_grid_base[mi_row * mi_params->mi_stride + mi_col];
   const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame =
@@ -534,9 +529,12 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
 #if CONFIG_FLEX_MVRES
                        ,
                        max_mv_precision, allow_pb_mv_precision, pb_mv_precision,
-                       most_probable_pb_mv_precision, mbmi
-#endif
-
+                       most_probable_pb_mv_precision
+#endif  // CONFIG_FLEX_MVRES
+#if CONFIG_FLEX_MVRES || CONFIG_ADAPTIVE_MVD
+                       ,
+                       mbmi
+#endif  // CONFIG_ADAPTIVE_MVD || CONFIG_FLEX_MVRES
       );
     }
   } else if (have_nearmv_newmv_in_inter_mode(mode)) {
@@ -567,8 +565,12 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
 #if CONFIG_FLEX_MVRES
                      ,
                      max_mv_precision, allow_pb_mv_precision, pb_mv_precision,
-                     most_probable_pb_mv_precision, mbmi
-#endif
+                     most_probable_pb_mv_precision
+#endif  // CONFIG_FLEX_MVRES
+#if CONFIG_FLEX_MVRES || CONFIG_ADAPTIVE_MVD
+                     ,
+                     mbmi
+#endif  // CONFIG_ADAPTIVE_MVD || CONFIG_FLEX_MVRES
     );
   } else {
     // No new_mv

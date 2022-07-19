@@ -203,7 +203,7 @@ set_aom_config_var(CONFIG_FLEX_MVRES 1
                    "AV2 flexible mv precision experiment flag")
 
 # This is an encode-only change.
-set_aom_config_var(CONFIG_MV_SEARCH_RANGE 0
+set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
                    "Enable a sufficient MV search range.")
 set_aom_config_var(CONFIG_FIX_CDEF_SYNTAX 1
                    "AV2 experiment flag to fix CDEF syntax.")
