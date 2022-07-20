@@ -5045,6 +5045,14 @@ int av1_return_max_sub_pixel_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
   // has to be 0.
 #if CONFIG_FLEX_MVRES
   lower_mv_precision(bestmv, ms_params->mv_cost_params.pb_mv_precision);
+
+  const int radix = (1 << (MV_PRECISION_ONE_EIGHTH_PEL -
+                           ms_params->mv_cost_params.pb_mv_precision));
+  // Clamp mv after the modification.
+  if (bestmv->row <= MV_LOW) bestmv->row += radix;
+  if (bestmv->row >= MV_UPP) bestmv->row -= radix;
+  if (bestmv->col <= MV_LOW) bestmv->col += radix;
+  if (bestmv->col >= MV_UPP) bestmv->col -= radix;
 #else
   lower_mv_precision(bestmv, allow_hp, 0);
 #endif
@@ -5079,6 +5087,14 @@ int av1_return_min_sub_pixel_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
   lower_mv_precision(bestmv, allow_hp, 0);
 #else
   lower_mv_precision(bestmv, ms_params->mv_cost_params.pb_mv_precision);
+
+  const int radix = (1 << (MV_PRECISION_ONE_EIGHTH_PEL -
+                           ms_params->mv_cost_params.pb_mv_precision));
+  // Clamp mv after the modification.
+  if (bestmv->row <= MV_LOW) bestmv->row += radix;
+  if (bestmv->row >= MV_UPP) bestmv->row -= radix;
+  if (bestmv->col <= MV_LOW) bestmv->col += radix;
+  if (bestmv->col >= MV_UPP) bestmv->col -= radix;
 #endif
   return besterr;
 }
