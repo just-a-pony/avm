@@ -432,10 +432,9 @@ void cfl_derive_implicit_scaling_factor(MACROBLOCKD *const xd, int plane,
   }
 
   if (count > 0) {
-    int der = sum_xx - sum_x * sum_x / count;
-    int nor = sum_xy - sum_x * sum_y / count;
-    int shift = 3 + CFL_ADD_BITS_ALPHA;
-
+    const int32_t der = sum_xx - (int32_t)((int64_t)sum_x * sum_x / count);
+    const int32_t nor = sum_xy - (int32_t)((int64_t)sum_x * sum_y / count);
+    const int16_t shift = 3 + CFL_ADD_BITS_ALPHA;
     mbmi->cfl_implicit_alpha[plane - 1] =
         resolve_divisor_32_CfL(nor, der, shift);
   } else {
