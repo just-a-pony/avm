@@ -932,22 +932,17 @@ static aom_codec_err_t ctrl_copy_reference(aom_codec_alg_priv_t *ctx,
                                            va_list args) {
   const av1_ref_frame_t *const frame = va_arg(args, av1_ref_frame_t *);
   if (frame) {
-    aom_image_t *hbd_img = NULL;
     YV12_BUFFER_CONFIG sd;
     AVxWorker *const worker = ctx->frame_worker;
     FrameWorkerData *const frame_worker_data = (FrameWorkerData *)worker->data1;
     if (!(frame->img.fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
-      hbd_img = aom_img_alloc(NULL, frame->img.fmt | AOM_IMG_FMT_HIGHBITDEPTH,
-                              frame->img.w, frame->img.h, 32);
-      if (!hbd_img) return AOM_CODEC_MEM_ERROR;
-      image2yuvconfig_upshift(hbd_img, &frame->img, &sd);
-    } else {
-      image2yuvconfig(&frame->img, &sd);
+      AV1_COMMON *cm = &frame_worker_data->pbi->common;
+      aom_internal_error(&cm->error, AOM_CODEC_INVALID_PARAM,
+                         "Incorrect buffer dimensions");
+      return cm->error.error_code;
     }
-    aom_codec_err_t res =
-        av1_copy_reference_dec(frame_worker_data->pbi, frame->idx, &sd);
-    aom_img_free(hbd_img);
-    return res;
+    image2yuvconfig(&frame->img, &sd);
+    return av1_copy_reference_dec(frame_worker_data->pbi, frame->idx, &sd);
   } else {
     return AOM_CODEC_INVALID_PARAM;
   }
@@ -997,20 +992,16 @@ static aom_codec_err_t ctrl_copy_new_frame_image(aom_codec_alg_priv_t *ctx,
     FrameWorkerData *const frame_worker_data = (FrameWorkerData *)worker->data1;
 
     if (av1_get_frame_to_show(frame_worker_data->pbi, &new_frame) == 0) {
-      aom_image_t *hbd_img = NULL;
       YV12_BUFFER_CONFIG sd;
       if (!(img->fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
-        hbd_img = aom_img_alloc(NULL, img->fmt | AOM_IMG_FMT_HIGHBITDEPTH,
-                                img->w, img->h, 32);
-        if (!hbd_img) return AOM_CODEC_MEM_ERROR;
-        image2yuvconfig_upshift(hbd_img, img, &sd);
-      } else {
-        image2yuvconfig(img, &sd);
+        AV1_COMMON *cm = &frame_worker_data->pbi->common;
+        aom_internal_error(&cm->error, AOM_CODEC_INVALID_PARAM,
+                           "Incorrect buffer dimensions");
+        return cm->error.error_code;
       }
-      aom_codec_err_t res = av1_copy_new_frame_dec(
-          &frame_worker_data->pbi->common, &new_frame, &sd);
-      aom_img_free(hbd_img);
-      return res;
+      image2yuvconfig(img, &sd);
+      return av1_copy_new_frame_dec(&frame_worker_data->pbi->common, &new_frame,
+                                    &sd);
     } else {
       return AOM_CODEC_ERROR;
     }

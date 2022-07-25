@@ -3121,19 +3121,16 @@ static aom_codec_err_t ctrl_copy_reference(aom_codec_alg_priv_t *ctx,
   av1_ref_frame_t *const frame = va_arg(args, av1_ref_frame_t *);
 
   if (frame != NULL) {
-    aom_image_t *hbd_img = NULL;
     YV12_BUFFER_CONFIG sd;
 
     if (!(frame->img.fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
-      hbd_img = aom_img_alloc(NULL, frame->img.fmt | AOM_IMG_FMT_HIGHBITDEPTH,
-                              frame->img.w, frame->img.h, 32);
-      if (!hbd_img) return AOM_CODEC_MEM_ERROR;
-      image2yuvconfig_upshift(hbd_img, &frame->img, &sd);
-    } else {
-      image2yuvconfig(&frame->img, &sd);
+      AV1_COMMON *cm = &ctx->cpi->common;
+      aom_internal_error(&cm->error, AOM_CODEC_INVALID_PARAM,
+                         "Incorrect buffer dimensions");
+      return cm->error.error_code;
     }
+    image2yuvconfig(&frame->img, &sd);
     av1_copy_reference_enc(ctx->cpi, frame->idx, &sd);
-    aom_img_free(hbd_img);
     return AOM_CODEC_OK;
   } else {
     return AOM_CODEC_INVALID_PARAM;
@@ -3181,21 +3178,16 @@ static aom_codec_err_t ctrl_copy_new_frame_image(aom_codec_alg_priv_t *ctx,
     YV12_BUFFER_CONFIG new_frame;
 
     if (av1_get_last_show_frame(ctx->cpi, &new_frame) == 0) {
-      aom_image_t *hbd_img = NULL;
       YV12_BUFFER_CONFIG sd;
 
       if (!(new_img->fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
-        hbd_img = aom_img_alloc(NULL, new_img->fmt | AOM_IMG_FMT_HIGHBITDEPTH,
-                                new_img->w, new_img->h, 32);
-        if (!hbd_img) return AOM_CODEC_MEM_ERROR;
-        image2yuvconfig_upshift(hbd_img, new_img, &sd);
-      } else {
-        image2yuvconfig(new_img, &sd);
+        AV1_COMMON *cm = &ctx->cpi->common;
+        aom_internal_error(&cm->error, AOM_CODEC_INVALID_PARAM,
+                           "Incorrect buffer dimensions");
+        return cm->error.error_code;
       }
-      aom_codec_err_t res =
-          av1_copy_new_frame_enc(&ctx->cpi->common, &new_frame, &sd);
-      aom_img_free(hbd_img);
-      return res;
+      image2yuvconfig(new_img, &sd);
+      return av1_copy_new_frame_enc(&ctx->cpi->common, &new_frame, &sd);
     } else {
       return AOM_CODEC_ERROR;
     }
