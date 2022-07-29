@@ -499,9 +499,67 @@ static INLINE void av1_set_fractional_mv(int_mv *fractional_best_mv) {
   }
 }
 
-static INLINE void av1_set_subpel_mv_search_range(SubpelMvLimits *subpel_limits,
-                                                  const FullMvLimits *mv_limits,
-                                                  const MV *ref_mv) {
+#if CONFIG_FLEX_MVRES
+// This function convert the mv value to the target precision
+// bias is the value of addition or subtraction
+// bias in +1 for minimum and -1 for maximum
+// offset is the steps for target precision
+// Offset value need to be subtracted from the max value to confirm the
+// generated MV value does not go to out of bound
+static INLINE int av1_lower_mv_limit(const int mv, const int shift,
+                                     const int bias) {
+  const int offset = (1 << shift);
+  int out = (((abs(mv) >> shift) << shift) + bias * offset);
+  return out * (mv < 0 ? -1 : 1);
+}
+#endif
+
+static INLINE void av1_set_subpel_mv_search_range(
+    SubpelMvLimits *subpel_limits, const FullMvLimits *mv_limits,
+    const MV *ref_mv
+#if CONFIG_FLEX_MVRES
+    ,
+    MvSubpelPrecision pb_mv_precision
+#endif
+
+) {
+
+#if CONFIG_FLEX_MVRES
+  //  We have to make sure the generated mv_limits
+  //  are compatible with target precision.
+  MV low_prec_ref_mv = *ref_mv;
+  lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
+  // sub_pel_prec_shift is the number of LSBs need to be 0 to make the
+  // mv/mv_limit compatible
+  const int sub_pel_prec_shift =
+      (MV_PRECISION_ONE_EIGHTH_PEL - pb_mv_precision);
+
+  const int max_mv = av1_lower_mv_limit(GET_MV_SUBPEL(MAX_FULL_PEL_VAL),
+                                        sub_pel_prec_shift, -1);
+
+  int col_min = av1_lower_mv_limit(GET_MV_SUBPEL(mv_limits->col_min),
+                                   sub_pel_prec_shift, 1);
+  int col_max = av1_lower_mv_limit(GET_MV_SUBPEL(mv_limits->col_max),
+                                   sub_pel_prec_shift, -1);
+  int row_min = av1_lower_mv_limit(GET_MV_SUBPEL(mv_limits->row_min),
+                                   sub_pel_prec_shift, 1);
+  int row_max = av1_lower_mv_limit(GET_MV_SUBPEL(mv_limits->row_max),
+                                   sub_pel_prec_shift, -1);
+
+  const int mv_low = av1_lower_mv_limit(MV_LOW + 1, sub_pel_prec_shift, 1);
+  const int mv_upp = av1_lower_mv_limit(MV_UPP - 1, sub_pel_prec_shift, -1);
+
+  const int minc = AOMMAX(col_min, low_prec_ref_mv.col - max_mv);
+  const int maxc = AOMMIN(col_max, low_prec_ref_mv.col + max_mv);
+  const int minr = AOMMAX(row_min, low_prec_ref_mv.row - max_mv);
+  const int maxr = AOMMIN(row_max, low_prec_ref_mv.row + max_mv);
+
+  subpel_limits->col_min = AOMMAX(mv_low + (1 << sub_pel_prec_shift), minc);
+  subpel_limits->col_max = AOMMIN(mv_upp - (1 << sub_pel_prec_shift), maxc);
+  subpel_limits->row_min = AOMMAX(mv_low + (1 << sub_pel_prec_shift), minr);
+  subpel_limits->row_max = AOMMIN(mv_upp - (1 << sub_pel_prec_shift), maxr);
+#else
+
   const int max_mv = GET_MV_SUBPEL(MAX_FULL_PEL_VAL);
   const int minc =
       AOMMAX(GET_MV_SUBPEL(mv_limits->col_min), ref_mv->col - max_mv);
@@ -511,11 +569,11 @@ static INLINE void av1_set_subpel_mv_search_range(SubpelMvLimits *subpel_limits,
       AOMMAX(GET_MV_SUBPEL(mv_limits->row_min), ref_mv->row - max_mv);
   const int maxr =
       AOMMIN(GET_MV_SUBPEL(mv_limits->row_max), ref_mv->row + max_mv);
-
   subpel_limits->col_min = AOMMAX(MV_LOW + 1, minc);
   subpel_limits->col_max = AOMMIN(MV_UPP - 1, maxc);
   subpel_limits->row_min = AOMMAX(MV_LOW + 1, minr);
   subpel_limits->row_max = AOMMIN(MV_UPP - 1, maxr);
+#endif
 }
 
 #if CONFIG_TIP

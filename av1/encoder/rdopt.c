@@ -1439,11 +1439,22 @@ static INLINE int clamp_and_check_mv(int_mv *out_mv, int_mv in_mv,
 // valid mv range. Without this, encoder would generate out of range mv, and
 // this is seen in 8k encoding.
 static INLINE void clamp_mv_in_range(MACROBLOCK *const x, int_mv *mv,
-                                     int ref_idx) {
+                                     int ref_idx
+#if CONFIG_FLEX_MVRES
+                                     ,
+                                     MvSubpelPrecision pb_mv_precision
+#endif
+
+) {
   const int_mv ref_mv = av1_get_ref_mv(x, ref_idx);
   SubpelMvLimits mv_limits;
 
-  av1_set_subpel_mv_search_range(&mv_limits, &x->mv_limits, &ref_mv.as_mv);
+  av1_set_subpel_mv_search_range(&mv_limits, &x->mv_limits, &ref_mv.as_mv
+#if CONFIG_FLEX_MVRES
+                                 ,
+                                 pb_mv_precision
+#endif
+  );
   clamp_mv(&mv->as_mv, &mv_limits);
 }
 
@@ -1517,7 +1528,13 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
 #if CONFIG_FLEX_MVRES
         lower_mv_precision(&cur_mv[0].as_mv, pb_mv_precision);
 #endif
-        clamp_mv_in_range(x, &cur_mv[0], 0);
+        clamp_mv_in_range(x, &cur_mv[0], 0
+#if CONFIG_FLEX_MVRES
+                          ,
+                          pb_mv_precision
+#endif
+
+        );
       }
       if (valid_mv1) {
 #if CONFIG_FLEX_MVRES
@@ -1529,7 +1546,12 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
 #if CONFIG_FLEX_MVRES
         lower_mv_precision(&cur_mv[1].as_mv, pb_mv_precision);
 #endif
-        clamp_mv_in_range(x, &cur_mv[1], 1);
+        clamp_mv_in_range(x, &cur_mv[1], 1
+#if CONFIG_FLEX_MVRES
+                          ,
+                          pb_mv_precision
+#endif
+        );
       }
 
       // aomenc1
@@ -1572,7 +1594,13 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
 #if CONFIG_FLEX_MVRES
         lower_mv_precision(&cur_mv[1].as_mv, pb_mv_precision);
 #endif
-        clamp_mv_in_range(x, &cur_mv[1], 1);
+        clamp_mv_in_range(x, &cur_mv[1], 1
+#if CONFIG_FLEX_MVRES
+                          ,
+                          pb_mv_precision
+#endif
+
+        );
       }
 #if CONFIG_ADAPTIVE_MVD
       if (cm->seq_params.enable_adaptive_mvd) {
@@ -1652,7 +1680,13 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         lower_mv_precision(&cur_mv[jmvd_base_ref_list].as_mv, pb_mv_precision);
 #endif
 
-        clamp_mv_in_range(x, &cur_mv[jmvd_base_ref_list], jmvd_base_ref_list);
+        clamp_mv_in_range(x, &cur_mv[jmvd_base_ref_list], jmvd_base_ref_list
+
+#if CONFIG_FLEX_MVRES
+                          ,
+                          pb_mv_precision
+#endif
+        );
       }
       av1_compound_single_motion_search_interinter(
           cpi, x, bsize, cur_mv, NULL, 0, rate_mv, jmvd_base_ref_list);
@@ -1674,7 +1708,14 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
 #if CONFIG_FLEX_MVRES
         lower_mv_precision(&cur_mv[0].as_mv, pb_mv_precision);
 #endif
-        clamp_mv_in_range(x, &cur_mv[0], 0);
+        clamp_mv_in_range(x, &cur_mv[0], 0
+
+#if CONFIG_FLEX_MVRES
+                          ,
+                          pb_mv_precision
+#endif
+
+        );
       }
 #if CONFIG_ADAPTIVE_MVD
       if (cm->seq_params.enable_adaptive_mvd) {
@@ -1758,6 +1799,8 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
       start_mv.as_int =
           args->single_newmv[valid_precision_mv0][ref_mv_idx][refs[0]].as_int;
       lower_mv_precision(&start_mv.as_mv, pb_mv_precision);
+      clamp_mv_in_range(x, &start_mv, 0, pb_mv_precision);
+
       av1_single_motion_search_high_precision(cpi, x, bsize, ref_idx, rate_mv,
                                               mode_info, &start_mv, &best_mv);
 
@@ -1813,6 +1856,7 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
       }
       av1_single_motion_search(cpi, x, bsize, ref_idx, rate_mv, search_range,
                                mode_info, &best_mv);
+
 #if CONFIG_FLEX_MVRES
     }
 #endif
@@ -3152,6 +3196,13 @@ static int skip_repeated_newmv(
         const int compare_cost = mode_info[i].rate_mv + mode_info[i].drl_cost;
         const int_mv ref_mv = av1_get_ref_mv(x, 0);
 #if CONFIG_FLEX_MVRES
+        // Check if this MV is within mv_limit
+        SubpelMvLimits mv_limits;
+        av1_set_subpel_mv_search_range(&mv_limits, &x->mv_limits, &ref_mv.as_mv,
+                                       pb_mv_precision);
+        if (!av1_is_subpelmv_in_range(&mv_limits, mode_info[i].mv.as_mv))
+          continue;
+
         this_rate_mv =
             av1_mv_bit_cost(&mode_info[i].mv.as_mv, &ref_mv.as_mv,
                             pb_mv_precision, &x->mv_costs, MV_COST_WEIGHT
@@ -3215,8 +3266,13 @@ static int skip_repeated_newmv(
         args->simple_rd[this_mode][i][refs[0]];
     mode_info[ref_mv_idx].rd = mode_info[i].rd;
     mode_info[ref_mv_idx].rate_mv = this_rate_mv;
+#if CONFIG_FLEX_MVRES
+    int_mv temp_mv = mode_info[i].mv;
+    clamp_mv_in_range(x, &temp_mv, 0, pb_mv_precision);
+    mode_info[ref_mv_idx].mv.as_int = temp_mv.as_int;
+#else
     mode_info[ref_mv_idx].mv.as_int = mode_info[i].mv.as_int;
-
+#endif
     restore_dst_buf(xd, orig_dst, num_planes);
     return 1;
   }

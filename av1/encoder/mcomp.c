@@ -269,8 +269,12 @@ void av1_make_default_subpel_ms_params(SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
     av1_set_tip_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits);
   } else {
 #endif  // CONFIG_TIP
-    av1_set_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits,
-                                   ref_mv);
+    av1_set_subpel_mv_search_range(&ms_params->mv_limits, &x->mv_limits, ref_mv
+#if CONFIG_FLEX_MVRES
+                                   ,
+                                   pb_mv_precision
+#endif
+    );
 #if CONFIG_TIP
   }
 #endif  // CONFIG_TIP
@@ -329,14 +333,44 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
 
 ) {
 #if CONFIG_FLEX_MVRES
-  MV low_prec_mv = *mv;
+  //  in case of CONFIG_FLEX_MVRES we have to make sure the generated mv_limits
+  //  are compatible with target precision.
+  // prec_shift is the number of LSBs need to be 0 to make the mv/mv_limit
+  // compatible
+  const int prec_shift = (pb_mv_precision < MV_PRECISION_ONE_PEL)
+                             ? (MV_PRECISION_ONE_PEL - pb_mv_precision)
+                             : 0;
+
+  const int max_full_mv = av1_lower_mv_limit(MAX_FULL_PEL_VAL, prec_shift, -1);
+  const int mv_low =
+      av1_lower_mv_limit(GET_MV_RAWPEL(MV_LOW + 1), prec_shift, 1);
+  const int mv_upp =
+      av1_lower_mv_limit(GET_MV_RAWPEL(MV_UPP - 1), prec_shift, -1);
+
+  // Producing the reference mv value to the target precision
+  FULLPEL_MV full_ref_mv = get_fullmv_from_mv(mv);
+  MV low_prec_mv = { GET_MV_SUBPEL(full_ref_mv.row),
+                     GET_MV_SUBPEL(full_ref_mv.col) };
   lower_mv_precision(&low_prec_mv, pb_mv_precision);
-  int col_min = GET_MV_RAWPEL(low_prec_mv.col) - MAX_FULL_PEL_VAL +
+
+  // generating min/max value based on differences
+  int col_min = GET_MV_RAWPEL(low_prec_mv.col) - max_full_mv +
                 (low_prec_mv.col & 7 ? 1 : 0);
-  int row_min = GET_MV_RAWPEL(low_prec_mv.row) - MAX_FULL_PEL_VAL +
+  int row_min = GET_MV_RAWPEL(low_prec_mv.row) - max_full_mv +
                 (low_prec_mv.row & 7 ? 1 : 0);
-  int col_max = GET_MV_RAWPEL(low_prec_mv.col) + MAX_FULL_PEL_VAL;
-  int row_max = GET_MV_RAWPEL(low_prec_mv.row) + MAX_FULL_PEL_VAL;
+  int col_max = GET_MV_RAWPEL(low_prec_mv.col) + max_full_mv;
+  int row_max = GET_MV_RAWPEL(low_prec_mv.row) + max_full_mv;
+
+  col_min = AOMMAX(col_min, mv_low + (1 << prec_shift));
+  row_min = AOMMAX(row_min, mv_low + (1 << prec_shift));
+  col_max = AOMMIN(col_max, mv_upp - (1 << prec_shift));
+  row_max = AOMMIN(row_max, mv_upp - (1 << prec_shift));
+
+  full_pel_lower_mv_precision_one_comp(&mv_limits->col_min, pb_mv_precision, 0);
+  full_pel_lower_mv_precision_one_comp(&mv_limits->row_min, pb_mv_precision, 0);
+  full_pel_lower_mv_precision_one_comp(&mv_limits->col_max, pb_mv_precision, 1);
+  full_pel_lower_mv_precision_one_comp(&mv_limits->row_max, pb_mv_precision, 1);
+
 #else
 
   int col_min =
@@ -345,12 +379,12 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
       GET_MV_RAWPEL(mv->row) - MAX_FULL_PEL_VAL + (mv->row & 7 ? 1 : 0);
   int col_max = GET_MV_RAWPEL(mv->col) + MAX_FULL_PEL_VAL;
   int row_max = GET_MV_RAWPEL(mv->row) + MAX_FULL_PEL_VAL;
-#endif
 
   col_min = AOMMAX(col_min, GET_MV_RAWPEL(MV_LOW) + 1);
   row_min = AOMMAX(row_min, GET_MV_RAWPEL(MV_LOW) + 1);
   col_max = AOMMIN(col_max, GET_MV_RAWPEL(MV_UPP) - 1);
   row_max = AOMMIN(row_max, GET_MV_RAWPEL(MV_UPP) - 1);
+#endif
 
   // Get intersection of UMV window and valid MV window to reduce # of checks
   // in diamond search.
@@ -358,13 +392,6 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
   if (mv_limits->col_max > col_max) mv_limits->col_max = col_max;
   if (mv_limits->row_min < row_min) mv_limits->row_min = row_min;
   if (mv_limits->row_max > row_max) mv_limits->row_max = row_max;
-
-#if CONFIG_FLEX_MVRES
-  full_pel_lower_mv_precision_one_comp(&mv_limits->col_min, pb_mv_precision, 0);
-  full_pel_lower_mv_precision_one_comp(&mv_limits->row_min, pb_mv_precision, 0);
-  full_pel_lower_mv_precision_one_comp(&mv_limits->col_max, pb_mv_precision, 1);
-  full_pel_lower_mv_precision_one_comp(&mv_limits->row_max, pb_mv_precision, 1);
-#endif
 }
 
 #if CONFIG_TIP
@@ -3169,7 +3196,13 @@ unsigned int av1_int_pro_motion_estimation(const AV1_COMP *cpi, MACROBLOCK *x,
     av1_set_tip_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits);
   } else {
 #endif  // CONFIG_TIP
-    av1_set_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits, ref_mv);
+    av1_set_subpel_mv_search_range(&subpel_mv_limits, &x->mv_limits, ref_mv
+
+#if CONFIG_FLEX_MVRES
+                                   ,
+                                   mi->pb_mv_precision
+#endif
+    );
 #if CONFIG_TIP
   }
 #endif  // CONFIG_TIP
@@ -5043,17 +5076,7 @@ int av1_return_max_sub_pixel_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
 
   // In the sub-pel motion search, if hp is not used, then the last bit of mv
   // has to be 0.
-#if CONFIG_FLEX_MVRES
-  lower_mv_precision(bestmv, ms_params->mv_cost_params.pb_mv_precision);
-
-  const int radix = (1 << (MV_PRECISION_ONE_EIGHTH_PEL -
-                           ms_params->mv_cost_params.pb_mv_precision));
-  // Clamp mv after the modification.
-  if (bestmv->row <= MV_LOW) bestmv->row += radix;
-  if (bestmv->row >= MV_UPP) bestmv->row -= radix;
-  if (bestmv->col <= MV_LOW) bestmv->col += radix;
-  if (bestmv->col >= MV_UPP) bestmv->col -= radix;
-#else
+#if !CONFIG_FLEX_MVRES
   lower_mv_precision(bestmv, allow_hp, 0);
 #endif
   return besterr;
@@ -5085,16 +5108,6 @@ int av1_return_min_sub_pixel_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
   // has to be 0.
 #if !CONFIG_FLEX_MVRES
   lower_mv_precision(bestmv, allow_hp, 0);
-#else
-  lower_mv_precision(bestmv, ms_params->mv_cost_params.pb_mv_precision);
-
-  const int radix = (1 << (MV_PRECISION_ONE_EIGHTH_PEL -
-                           ms_params->mv_cost_params.pb_mv_precision));
-  // Clamp mv after the modification.
-  if (bestmv->row <= MV_LOW) bestmv->row += radix;
-  if (bestmv->row >= MV_UPP) bestmv->row -= radix;
-  if (bestmv->col <= MV_LOW) bestmv->col += radix;
-  if (bestmv->col >= MV_UPP) bestmv->col -= radix;
 #endif
   return besterr;
 }
