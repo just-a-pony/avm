@@ -3513,7 +3513,9 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
       // for MV referencing during decoding the tile.
       // xd->ref_mv_bank is updated as decoding goes.
       xd->ref_mv_bank.rmb_sb_hits = 0;
+#if !CONFIG_C043_MVP_IMPROVEMENTS
       td->ref_mv_bank = xd->ref_mv_bank;
+#endif  // !CONFIG_C043_MVP_IMPROVEMENTS
 #endif  // CONFIG_REF_MV_BANK
       decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,
                           cm->seq_params.sb_size, 0x3);
@@ -4009,7 +4011,9 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
 
 #if CONFIG_REF_MV_BANK
       xd->ref_mv_bank.rmb_sb_hits = 0;
+#if !CONFIG_C043_MVP_IMPROVEMENTS
       td->ref_mv_bank = xd->ref_mv_bank;
+#endif  // !CONFIG_C043_MVP_IMPROVEMENTS
 #endif  // CONFIG_REF_MV_BANK
         // Bit-stream parsing of the superblock
       decode_partition_sb(pbi, td, mi_row, mi_col, td->bit_reader,

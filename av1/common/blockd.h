@@ -1090,6 +1090,18 @@ typedef struct macroblockd {
    */
   bool is_first_horizontal_rect;
 
+#if CONFIG_C043_MVP_IMPROVEMENTS
+  /*!
+   * True if this is the last horizontal rectangular block in a HORIZONTAL or
+   * HORIZONTAL_4 partition.
+   */
+  bool is_last_horizontal_rect;
+  /*!
+   * True if this is the 1st vertical rectangular block in a VERTICAL or
+   * VERTICAL_4 partition.
+   */
+  bool is_first_vertical_rect;
+#endif  // CONFIG_C043_MVP_IMPROVEMENTS
   /*!
    * Counts of each reference frame in the above and left neighboring blocks.
    * NOTE: Take into account both single and comp references.

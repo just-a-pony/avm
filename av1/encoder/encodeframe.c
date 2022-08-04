@@ -636,6 +636,9 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
       // First pass
       SB_FIRST_PASS_STATS sb_fp_stats;
       av1_backup_sb_state(&sb_fp_stats, cpi, td, tile_data, mi_row, mi_col);
+#if CONFIG_C043_MVP_IMPROVEMENTS
+      REF_MV_BANK stored_mv_bank = td->mb.e_mbd.ref_mv_bank;
+#endif  // CONFIG_C043_MVP_IMPROVEMENTS
       for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
         xd->tree_type =
             (total_loop_num == 1 ? SHARED_PART
@@ -656,6 +659,9 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
       av1_reset_simple_motion_tree_partition(sms_root, sb_size);
 
       av1_restore_sb_state(&sb_fp_stats, cpi, td, tile_data, mi_row, mi_col);
+#if CONFIG_C043_MVP_IMPROVEMENTS
+      td->mb.e_mbd.ref_mv_bank = stored_mv_bank;
+#endif  // CONFIG_C043_MVP_IMPROVEMENTS
       for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
         xd->tree_type =
             (total_loop_num == 1 ? SHARED_PART

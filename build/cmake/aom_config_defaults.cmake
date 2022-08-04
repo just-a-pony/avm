@@ -137,6 +137,8 @@ set_aom_config_var(CONFIG_ZERO_OFFSET_BITUPSHIFT 0
                    "Use zero offset for non-normative bit upshift")
 
 # AV2 experiment flags.
+set_aom_config_var(CONFIG_C043_MVP_IMPROVEMENTS 1
+                   "AV2 enable MVP list improvements.")
 set_aom_config_var(CONFIG_FORWARDSKIP 1
                    "AV2 enable forward skip residual coding.")
 set_aom_config_var(CONFIG_COMPOUND_WARP_SAMPLES 1 NUMBER
