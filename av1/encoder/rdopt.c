@@ -4280,7 +4280,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   // in a separate commit.
 #if CONFIG_FLEX_MVRES
   av1_make_default_fullpel_ms_params(&fullms_params, cpi, x, bsize,
-                                     &dv_ref.as_mv, mbmi->max_mv_precision,
+                                     &dv_ref.as_mv, mbmi->pb_mv_precision,
 #if CONFIG_BVCOST_UPDATE
                                      is_ibc_cost,
 #endif
@@ -4392,6 +4392,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
       }
     }
 #endif  // CONFIG_IBC_SR_EXT
+
     assert(fullms_params.mv_limits.col_min >= fullms_params.mv_limits.col_min);
     assert(fullms_params.mv_limits.col_max <= fullms_params.mv_limits.col_max);
     assert(fullms_params.mv_limits.row_min >= fullms_params.mv_limits.row_min);
@@ -4427,7 +4428,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
 
 #if CONFIG_FLEX_MVRES
                             ,
-                            mbmi->max_mv_precision
+                            mbmi->pb_mv_precision
 #endif
     );
 

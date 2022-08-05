@@ -595,6 +595,7 @@ static INLINE int mv_err_cost(const MV mv,
 #endif
 
   const MV abs_diff = { abs(diff.row), abs(diff.col) };
+
   switch (mv_cost_type) {
     case MV_COST_ENTROPY:
 #if CONFIG_FLEX_MVRES
@@ -2866,6 +2867,16 @@ int av1_pick_ref_bv(FULLPEL_MV *best_full_mv,
     get_default_ref_bv(&cur_ref_bv, fullms_params);
 
     av1_init_ref_mv(&ref_bv_ms_params.mv_cost_params, &cur_ref_bv.as_mv);
+
+#if CONFIG_FLEX_MVRES
+    // ref_mv value is changed. mv_limits need to recalculate
+    av1_set_mv_search_range(&ref_bv_ms_params.mv_limits, &cur_ref_bv.as_mv,
+                            mbmi->pb_mv_precision);
+    if (!av1_is_fullmv_in_range(&ref_bv_ms_params.mv_limits, *best_full_mv,
+                                MV_PRECISION_ONE_PEL))
+      continue;
+#endif
+
     cur_ref_bv_cost =
         av1_get_ref_bv_rate_cost(0, cur_intrabc_drl_idx, x, ref_bv_ms_params,
                                  ref_bv_cnt) +
