@@ -1731,7 +1731,7 @@ static AOM_INLINE void setup_ref_mv_list(
       && ref_frame != INTRA_FRAME
 #endif  // CONFIG_BVP_IMPROVEMENT
   ) {
-    const REF_MV_BANK *ref_mv_bank = xd->ref_mv_bank_pt;
+    const REF_MV_BANK *ref_mv_bank = &xd->ref_mv_bank;
     const CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[ref_frame];
     const int count = ref_mv_bank->rmb_count[ref_frame];
     const int start_idx = ref_mv_bank->rmb_start_idx[ref_frame];

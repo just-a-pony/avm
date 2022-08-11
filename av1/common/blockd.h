@@ -852,8 +852,7 @@ typedef struct macroblockd {
    * \name Reference MV bank info.
    */
   /**@{*/
-  REF_MV_BANK ref_mv_bank;     /*!< Ref mv bank to update */
-  REF_MV_BANK *ref_mv_bank_pt; /*!< Pointer to bank to refer to */
+  REF_MV_BANK ref_mv_bank; /*!< Ref mv bank to update */
   /**@}*/
 #endif  // CONFIG_REF_MV_BANK
 
