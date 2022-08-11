@@ -7822,9 +7822,10 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 
   const InterpFilter interp_filter = features->interp_filter;
   (void)interp_filter;
-  assert((interp_filter == SWITCHABLE) ||
-         (interp_filter == search_state.best_mbmode.interp_fltr) ||
-         !is_inter_block(&search_state.best_mbmode, xd->tree_type));
+  // TODO(any): Fix issue !92 and re-enable the assert below
+  // assert((interp_filter == SWITCHABLE) ||
+  //        (interp_filter == search_state.best_mbmode.interp_fltr) ||
+  //        !is_inter_block(&search_state.best_mbmode, xd->tree_type));
 
   if (!cpi->rc.is_src_frame_alt_ref && cpi->sf.inter_sf.adaptive_rd_thresh) {
     av1_update_rd_thresh_fact(cm, x->thresh_freq_fact,
