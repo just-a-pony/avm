@@ -341,11 +341,9 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
                              ? (MV_PRECISION_ONE_PEL - pb_mv_precision)
                              : 0;
 
-  const int max_full_mv = av1_lower_mv_limit(MAX_FULL_PEL_VAL, prec_shift, -1);
-  const int mv_low =
-      av1_lower_mv_limit(GET_MV_RAWPEL(MV_LOW + 1), prec_shift, 1);
-  const int mv_upp =
-      av1_lower_mv_limit(GET_MV_RAWPEL(MV_UPP - 1), prec_shift, -1);
+  const int max_full_mv = av1_lower_mv_limit(MAX_FULL_PEL_VAL, prec_shift);
+  const int mv_low = av1_lower_mv_limit(GET_MV_RAWPEL(MV_LOW + 1), prec_shift);
+  const int mv_upp = av1_lower_mv_limit(GET_MV_RAWPEL(MV_UPP - 1), prec_shift);
 
   // Producing the reference mv value to the target precision
   FULLPEL_MV full_ref_mv = get_fullmv_from_mv(mv);
