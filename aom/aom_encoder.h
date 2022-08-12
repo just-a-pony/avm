@@ -301,12 +301,6 @@ typedef struct cfg_options {
    */
   unsigned int enable_orip;
 #endif  // CONFIG_ORIP
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  /*!\brief enable 4-way transform split
-   *
-   */
-  unsigned int enable_tx_split_4way;
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #if CONFIG_IST
   /*!\brief enable Intra secondary transform
    *

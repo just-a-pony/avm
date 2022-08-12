@@ -299,21 +299,11 @@ enum {
 //  |       |      |   |   |
 //  +-------+      +---+---+
 //
-//  HORZ4              VERT4
-//  +-------+      +-+-+-+-+
-//  +-------+      | | | | |
-//  +-------+      | | | | |
-//  +-------+      | | | | |
-//  +-------+      +-+-+-+-+
 enum {
   TX_PARTITION_NONE,
   TX_PARTITION_SPLIT,
   TX_PARTITION_HORZ,
   TX_PARTITION_VERT,
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  TX_PARTITION_HORZ4,
-  TX_PARTITION_VERT4,
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
   TX_PARTITION_TYPES,
   TX_PARTITION_TYPES_INTRA = TX_PARTITION_TYPES,
 } UENUM1BYTE(TX_PARTITION_TYPE);

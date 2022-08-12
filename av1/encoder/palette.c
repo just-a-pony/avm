@@ -276,12 +276,7 @@ static AOM_INLINE void palette_rd_y(
   int64_t this_rd = RDCOST(x->rdmult, this_rate, tokenonly_rd_stats.dist);
   if (!xd->lossless[mbmi->segment_id] &&
       block_signals_txsize(mbmi->sb_type[PLANE_TYPE_Y])) {
-    tokenonly_rd_stats.rate -=
-        tx_size_cost(x,
-#if CONFIG_NEW_TX_PARTITION_6ARY
-                     cpi->common.seq_params.enable_tx_split_4way,
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
-                     bsize, mbmi->tx_size);
+    tokenonly_rd_stats.rate -= tx_size_cost(x, bsize, mbmi->tx_size);
   }
   // Collect mode stats for multiwinner mode processing
   const int txfm_search_done = 1;

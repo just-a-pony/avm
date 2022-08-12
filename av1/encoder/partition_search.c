@@ -52,10 +52,6 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
   const TX_PARTITION_TYPE partition = mbmi->tx_partition_type[txb_size_index];
   const int allow_horz = allow_tx_horz_split(max_tx_size);
   const int allow_vert = allow_tx_vert_split(max_tx_size);
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  const int allow_horz4 = allow_tx_horz4_split(max_tx_size);
-  const int allow_vert4 = allow_tx_vert4_split(max_tx_size);
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
   if (allow_horz && allow_vert) {
     const TX_PARTITION_TYPE split4_partition = get_split4_partition(partition);
     const int split4_ctx =
@@ -79,26 +75,6 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
             ->intra_4way_txfm_partition[is_rect][split4_ctx][split4_partition];
 #endif  // CONFIG_ENTROPY_STATS
 
-#if CONFIG_NEW_TX_PARTITION_6ARY
-    if (((split4_partition == TX_PARTITION_VERT) && allow_vert4) ||
-        ((split4_partition == TX_PARTITION_HORZ) && allow_horz4)) {
-      const int has_split = (partition == TX_PARTITION_HORZ4) ||
-                            (partition == TX_PARTITION_VERT4);
-      if (allow_update_cdf) {
-        aom_cdf_prob *split2_rect_cdf =
-            is_inter ? xd->tile_ctx->inter_2way_rect_txfm_partition_cdf
-                     : xd->tile_ctx->intra_2way_rect_txfm_partition_cdf;
-        update_cdf(split2_rect_cdf, has_split, 2);
-      }
-#if CONFIG_ENTROPY_STATS
-      if (is_inter)
-        ++counts->inter_2way_rect_txfm_partition[has_split];
-      else
-        ++counts->intra_2way_rect_txfm_partition[has_split];
-#endif  // CONFIG_ENTROPY_STATS
-    }
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
-
   } else if (allow_horz || allow_vert) {
     const int has_first_split = partition != TX_PARTITION_NONE;
     if (allow_update_cdf) {
@@ -113,25 +89,6 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
     else
       ++counts->intra_2way_txfm_partition[has_first_split];
 #endif  // CONFIG_ENTROPY_STATS
-
-#if CONFIG_NEW_TX_PARTITION_6ARY
-    if (has_first_split && (allow_horz4 || allow_vert4)) {
-      const int has_second_split = (partition == TX_PARTITION_VERT4) ||
-                                   (partition == TX_PARTITION_HORZ4);
-      if (allow_update_cdf) {
-        aom_cdf_prob *split2_rect_cdf =
-            is_inter ? xd->tile_ctx->inter_2way_rect_txfm_partition_cdf
-                     : xd->tile_ctx->intra_2way_rect_txfm_partition_cdf;
-        update_cdf(split2_rect_cdf, has_second_split, 2);
-      }
-#if CONFIG_ENTROPY_STATS
-      if (is_inter)
-        ++counts->inter_2way_txfm_partition[has_second_split];
-      else
-        ++counts->intra_2way_txfm_partition[has_second_split];
-#endif  // CONFIG_ENTROPY_STATS
-    }
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 
   } else {
     assert(!allow_horz && !allow_vert);

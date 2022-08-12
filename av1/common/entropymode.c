@@ -1411,10 +1411,6 @@ static const aom_cdf_prob default_inter_4way_txfm_partition_cdf
 static const aom_cdf_prob default_inter_2way_txfm_partition_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(30531)
 };
-#if CONFIG_NEW_TX_PARTITION_6ARY
-static const aom_cdf_prob default_inter_2way_rect_txfm_partition_cdf[CDF_SIZE(
-    2)] = { AOM_CDF2(30531) };
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #else   // CONFIG_NEW_TX_PARTITION
 static const aom_cdf_prob
     default_txfm_partition_cdf[TXFM_PARTITION_CONTEXTS][CDF_SIZE(2)] = {
@@ -1543,10 +1539,6 @@ static const aom_cdf_prob
 static const aom_cdf_prob default_intra_2way_txfm_partition_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(30531)
 };
-#if CONFIG_NEW_TX_PARTITION_6ARY
-static const aom_cdf_prob default_intra_2way_rect_txfm_partition_cdf[CDF_SIZE(
-    2)] = { AOM_CDF2(30531) };
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #else   // CONFIG_NEW_TX_PARTITION
 static const aom_cdf_prob default_tx_size_cdf[MAX_TX_CATS][TX_SIZE_CONTEXTS]
                                              [CDF_SIZE(MAX_TX_DEPTH + 1)] = {
@@ -1842,10 +1834,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
            default_inter_4way_txfm_partition_cdf);
   av1_copy(fc->inter_2way_txfm_partition_cdf,
            default_inter_2way_txfm_partition_cdf);
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  av1_copy(fc->inter_2way_rect_txfm_partition_cdf,
-           default_inter_2way_rect_txfm_partition_cdf);
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #else
   av1_copy(fc->txfm_partition_cdf, default_txfm_partition_cdf);
 #endif  // CONFIG_NEW_TX_PARTITION
@@ -1924,10 +1912,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
            default_intra_4way_txfm_partition_cdf);
   av1_copy(fc->intra_2way_txfm_partition_cdf,
            default_intra_2way_txfm_partition_cdf);
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  av1_copy(fc->intra_2way_rect_txfm_partition_cdf,
-           default_intra_2way_rect_txfm_partition_cdf);
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #else
   av1_copy(fc->tx_size_cdf, default_tx_size_cdf);
 #endif  // CONFIG_NEW_TX_PARTITION

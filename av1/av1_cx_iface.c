@@ -124,9 +124,6 @@ struct av1_extracfg {
 #if CONFIG_ORIP
   int enable_orip;  // enable ORIP
 #endif              // CONFIG_ORIP
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  int enable_tx_split_4way;
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #if CONFIG_IST
   int enable_ist;  // enable intra secondary transform
 #endif             // CONFIG_IST
@@ -424,9 +421,6 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_ORIP
   1,    // enable ORIP
 #endif  // CONFIG_ORIP
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  0,
-#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #if CONFIG_IST
   1,    // enable intra secondary transform
 #endif  // CONFIG_IST
@@ -896,9 +890,6 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_ORIP
   cfg->enable_orip = extra_cfg->enable_orip;
 #endif
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  cfg->enable_tx_split_4way = extra_cfg->enable_tx_split_4way;
-#endif
 #if CONFIG_IST
   cfg->enable_ist = extra_cfg->enable_ist;
 #endif
@@ -985,9 +976,6 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #endif  // CONFIG_FORWARDSKIP
 #if CONFIG_ORIP
   extra_cfg->enable_orip = cfg->enable_orip;
-#endif
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  extra_cfg->enable_tx_split_4way = cfg->enable_tx_split_4way;
 #endif
 #if CONFIG_IST
   extra_cfg->enable_ist = cfg->enable_ist;
@@ -1487,9 +1475,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
       extra_cfg->disable_ml_transform_speed_features;
 #if CONFIG_IST
   txfm_cfg->enable_ist = extra_cfg->enable_ist;
-#endif
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  txfm_cfg->enable_tx_split_4way = extra_cfg->enable_tx_split_4way;
 #endif
 
   // Set compound type configuration.
@@ -3609,11 +3594,6 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.enable_orip = arg_parse_int_helper(&arg, err_string);
 #endif
-#if CONFIG_NEW_TX_PARTITION_6ARY
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tx_split_4way,
-                              argv, err_string)) {
-    extra_cfg.enable_tx_split_4way = arg_parse_int_helper(&arg, err_string);
-#endif
 #if CONFIG_IST
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ist, argv,
                               err_string)) {
@@ -4058,9 +4038,6 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #endif  // CONFIG_FORWARDSKIP
 #if CONFIG_ORIP
         1,
-#endif
-#if CONFIG_NEW_TX_PARTITION_6ARY
-        0,
 #endif
 #if CONFIG_IST
         1,
