@@ -670,19 +670,43 @@ static void dec_calc_subpel_params_and_extend(
 static AOM_INLINE void tip_dec_calc_subpel_params(
     const MV *const src_mv, InterPredParams *const inter_pred_params, int mi_x,
     int mi_y, uint8_t **pre, SubpelParams *subpel_params, int *src_stride,
-    PadBlock *block, MV32 *scaled_mv, int *subpel_x_mv, int *subpel_y_mv) {
+    PadBlock *block,
+#if CONFIG_OPTFLOW_REFINEMENT
+    int use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+    MV32 *scaled_mv, int *subpel_x_mv, int *subpel_y_mv) {
   const struct scale_factors *sf = inter_pred_params->scale_factors;
   struct buf_2d *pre_buf = &inter_pred_params->ref_frame_buf;
+#if CONFIG_OPTFLOW_REFINEMENT
+  // Use original block size to clamp MV and to extend block boundary
+  const int bw = use_optflow_refinement ? inter_pred_params->orig_block_width
+                                        : inter_pred_params->block_width;
+  const int bh = use_optflow_refinement ? inter_pred_params->orig_block_height
+                                        : inter_pred_params->block_height;
+#else
   const int bw = inter_pred_params->block_width;
   const int bh = inter_pred_params->block_height;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
   const int is_scaled = av1_is_scaled(sf);
   if (is_scaled) {
     const int ssx = inter_pred_params->subsampling_x;
     const int ssy = inter_pred_params->subsampling_y;
     int orig_pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
-    orig_pos_y += src_mv->row * (1 << (1 - ssy));
     int orig_pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
+#if CONFIG_OPTFLOW_REFINEMENT
+    if (use_optflow_refinement) {
+      orig_pos_y += ROUND_POWER_OF_TWO_SIGNED(src_mv->row * (1 << SUBPEL_BITS),
+                                              MV_REFINE_PREC_BITS + ssy);
+      orig_pos_x += ROUND_POWER_OF_TWO_SIGNED(src_mv->col * (1 << SUBPEL_BITS),
+                                              MV_REFINE_PREC_BITS + ssx);
+    } else {
+      orig_pos_y += src_mv->row * (1 << (1 - ssy));
+      orig_pos_x += src_mv->col * (1 << (1 - ssx));
+    }
+#else
+    orig_pos_y += src_mv->row * (1 << (1 - ssy));
     orig_pos_x += src_mv->col * (1 << (1 - ssx));
+#endif  // CONFIG_OPTFLOW_REFINEMENT
     int pos_y = sf->scale_value_y(orig_pos_y, sf);
     int pos_x = sf->scale_value_x(orig_pos_x, sf);
     pos_x += SCALE_EXTRA_OFF;
@@ -713,6 +737,9 @@ static AOM_INLINE void tip_dec_calc_subpel_params(
 
     MV temp_mv;
     temp_mv = tip_clamp_mv_to_umv_border_sb(inter_pred_params, src_mv, bw, bh,
+#if CONFIG_OPTFLOW_REFINEMENT
+                                            use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
                                             inter_pred_params->subsampling_x,
                                             inter_pred_params->subsampling_y);
     *scaled_mv = av1_scale_mv(&temp_mv, mi_x, mi_y, sf);
@@ -727,8 +754,11 @@ static AOM_INLINE void tip_dec_calc_subpel_params(
     int pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
 
     const MV mv_q4 = tip_clamp_mv_to_umv_border_sb(
-        inter_pred_params, src_mv, bw, bh, inter_pred_params->subsampling_x,
-        inter_pred_params->subsampling_y);
+        inter_pred_params, src_mv, bw, bh,
+#if CONFIG_OPTFLOW_REFINEMENT
+        use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+        inter_pred_params->subsampling_x, inter_pred_params->subsampling_y);
     subpel_params->xs = subpel_params->ys = SCALE_SUBPEL_SHIFTS;
     subpel_params->subpel_x = (mv_q4.col & SUBPEL_MASK) << SCALE_EXTRA_BITS;
     subpel_params->subpel_y = (mv_q4.row & SUBPEL_MASK) << SCALE_EXTRA_BITS;
@@ -763,15 +793,15 @@ static void tip_dec_calc_subpel_params_and_extend(
     uint8_t **mc_buf, uint8_t **pre, SubpelParams *subpel_params,
     int *src_stride) {
   (void)xd;
-#if CONFIG_OPTFLOW_REFINEMENT
-  (void)use_optflow_refinement;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
   PadBlock block;
   MV32 scaled_mv;
   int subpel_x_mv, subpel_y_mv;
   tip_dec_calc_subpel_params(src_mv, inter_pred_params, mi_x, mi_y, pre,
-                             subpel_params, src_stride, &block, &scaled_mv,
-                             &subpel_x_mv, &subpel_y_mv);
+                             subpel_params, src_stride, &block,
+#if CONFIG_OPTFLOW_REFINEMENT
+                             use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+                             &scaled_mv, &subpel_x_mv, &subpel_y_mv);
   extend_mc_border(inter_pred_params->scale_factors,
                    &inter_pred_params->ref_frame_buf, scaled_mv, block,
                    subpel_x_mv, subpel_y_mv,
@@ -5981,6 +6011,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_TIP
       if (cm->seq_params.enable_tip) {
         features->tip_frame_mode = aom_rb_read_literal(rb, 2);
+#if CONFIG_OPTFLOW_ON_TIP
+        features->use_optflow_tip = 1;
+#endif  // CONFIG_OPTFLOW_ON_TIP
         if (features->tip_frame_mode >= TIP_FRAME_MODES) {
           aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                              "Invalid TIP mode.");

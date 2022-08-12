@@ -46,6 +46,7 @@ list(
   "${AOM_ROOT}/aom_dsp/simd/v256_intrinsics_c.h"
   "${AOM_ROOT}/aom_dsp/simd/v64_intrinsics.h"
   "${AOM_ROOT}/aom_dsp/simd/v64_intrinsics_c.h"
+  "${AOM_ROOT}/aom_dsp/sad.c"
   "${AOM_ROOT}/aom_dsp/subtract.c"
   "${AOM_ROOT}/aom_dsp/txfm_common.h"
   "${AOM_ROOT}/aom_dsp/x86/convolve_common_intrin.h"
@@ -59,6 +60,7 @@ list(
   "${AOM_ROOT}/aom_dsp/x86/aom_subpixel_8t_sse2.asm"
   "${AOM_ROOT}/aom_dsp/x86/aom_subpixel_bilinear_sse2.asm"
   "${AOM_ROOT}/aom_dsp/x86/highbd_intrapred_asm_sse2.asm"
+  "${AOM_ROOT}/aom_dsp/x86/highbd_sad_sse2.asm"
   "${AOM_ROOT}/aom_dsp/x86/inv_wht_sse2.asm")
 
 list(
@@ -182,7 +184,7 @@ if(CONFIG_AV1_ENCODER)
     "${AOM_ROOT}/aom_dsp/psnr.h"
     "${AOM_ROOT}/aom_dsp/quantize.c"
     "${AOM_ROOT}/aom_dsp/quantize.h"
-    "${AOM_ROOT}/aom_dsp/sad.c"
+    "${AOM_ROOT}/aom_dsp/sad4d.c"
     "${AOM_ROOT}/aom_dsp/sse.c"
     "${AOM_ROOT}/aom_dsp/sad_av1.c"
     "${AOM_ROOT}/aom_dsp/sum_squares.c"
@@ -193,7 +195,6 @@ if(CONFIG_AV1_ENCODER)
     APPEND
     AOM_DSP_ENCODER_ASM_SSE2
     "${AOM_ROOT}/aom_dsp/x86/highbd_sad4d_sse2.asm"
-    "${AOM_ROOT}/aom_dsp/x86/highbd_sad_sse2.asm"
     "${AOM_ROOT}/aom_dsp/x86/highbd_subpel_variance_impl_sse2.asm"
     "${AOM_ROOT}/aom_dsp/x86/highbd_variance_impl_sse2.asm")
 

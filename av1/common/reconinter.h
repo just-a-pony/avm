@@ -413,23 +413,64 @@ void av1_opfl_mv_refinement_highbd(const uint16_t *p0, int pstride0,
                                    int gstride, int bw, int bh, int d0, int d1,
                                    int grad_prec_bits, int mv_prec_bits,
                                    int *vx0, int *vy0, int *vx1, int *vy1);
+
+void av1_opfl_build_inter_predictor(
+    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mi,
+    int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
+    InterPredParams *inter_pred_params,
+    CalcSubpelParamsFunc calc_subpel_params_func, int ref, uint8_t *pred_dst);
+
 static INLINE int is_opfl_refine_allowed(const AV1_COMMON *cm,
                                          const MB_MODE_INFO *mbmi) {
   if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_NONE ||
       cm->features.opfl_refine_type == REFINE_NONE)
     return 0;
-  if (!mbmi->ref_frame[1]) return 0;
   const unsigned int cur_index = cm->cur_frame->order_hint;
-  const RefCntBuffer *const ref0 = get_ref_frame_buf(cm, mbmi->ref_frame[0]);
-  const RefCntBuffer *const ref1 = get_ref_frame_buf(cm, mbmi->ref_frame[1]);
-  const int d0 = (int)cur_index - (int)ref0->order_hint;
-  const int d1 = (int)cur_index - (int)ref1->order_hint;
+  int d0, d1;
+#if CONFIG_OPTFLOW_ON_TIP
+  if (mbmi->ref_frame[0] == TIP_FRAME) {
+    d0 = cm->tip_ref.ref_offset[0];
+    d1 = cm->tip_ref.ref_offset[1];
+  } else {
+#endif  // CONFIG_OPTFLOW_ON_TIP
+    if (!mbmi->ref_frame[1]) return 0;
+    const RefCntBuffer *const ref0 = get_ref_frame_buf(cm, mbmi->ref_frame[0]);
+    const RefCntBuffer *const ref1 = get_ref_frame_buf(cm, mbmi->ref_frame[1]);
+    d0 = (int)cur_index - (int)ref0->order_hint;
+    d1 = (int)cur_index - (int)ref1->order_hint;
+#if CONFIG_OPTFLOW_ON_TIP
+  }
+#endif  // CONFIG_OPTFLOW_ON_TIP
   if (!((d0 <= 0) ^ (d1 <= 0))) return 0;
 
   return OPFL_DIST_RATIO_THR == 0 ||
          (AOMMAX(abs(d0), abs(d1)) <=
           OPFL_DIST_RATIO_THR * AOMMIN(abs(d0), abs(d1)));
 }
+
+// Generate refined MVs using optflow refinement
+int av1_get_optflow_based_mv_highbd(
+    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mbmi,
+    int_mv *mv_refined, int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
+    CalcSubpelParamsFunc calc_subpel_params_func, int16_t *gx0, int16_t *gy0,
+    int16_t *gx1, int16_t *gy1, int *vx0, int *vy0, int *vx1, int *vy1,
+    uint16_t *dst0, uint16_t *dst1
+#if CONFIG_OPTFLOW_ON_TIP
+    ,
+    int do_pred, int use_4x4
+#endif  // CONFIG_OPTFLOW_ON_TIP
+);
+
+// With the refined MVs, generate the inter prediction for the block.
+void av1_opfl_rebuild_inter_predictor(
+    uint8_t *dst, int dst_stride, int plane, int_mv *const mv_refined,
+    InterPredParams *inter_pred_params, MACROBLOCKD *xd, int mi_x, int mi_y,
+    int ref, uint8_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func
+#if CONFIG_OPTFLOW_ON_TIP
+    ,
+    int use_4x4
+#endif  // CONFIG_OPTFLOW_ON_TIP
+);
 
 // Integer division based on lookup table.
 // num: numerator

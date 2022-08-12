@@ -642,6 +642,12 @@ typedef struct {
    * TIP mode.
    */
   TIP_FRAME_MODE tip_frame_mode;
+#if CONFIG_OPTFLOW_ON_TIP
+  /*!
+   * Whether optflow refinement is used for TIP frames
+   */
+  int use_optflow_tip;
+#endif  // CONFIG_OPTFLOW_ON_TIP
   /*!
    * Enables/disables hole fill for TIP
    */
@@ -1569,6 +1575,33 @@ typedef struct AV1Common {
    * TIP reference frame
    */
   TIP tip_ref;
+
+#if CONFIG_OPTFLOW_ON_TIP
+  /*!
+   * Blk buffer of the first reference for tip optflow
+   */
+  uint8_t *dst0_16_tip;
+  /*!
+   * Blk buffer of the second reference for tip optflow
+   */
+  uint8_t *dst1_16_tip;
+  /*!
+   * Buffer of horizontal gradient in buffer 0
+   */
+  int16_t *gx0;
+  /*!
+   * Buffer of vertical gradient in buffer 0
+   */
+  int16_t *gy0;
+  /*!
+   * Buffer of horizontal gradient in buffer 1
+   */
+  int16_t *gx1;
+  /*!
+   * Buffer of vertical gradient in buffer 1
+   */
+  int16_t *gy1;
+#endif  // CONFIG_OPTFLOW_ON_TIP
 #endif  // CONFIG_TIP
 } AV1_COMMON;
 

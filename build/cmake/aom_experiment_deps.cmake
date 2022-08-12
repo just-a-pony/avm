@@ -48,4 +48,15 @@ macro(fix_experiment_configs)
   if(NOT CONFIG_CCSO AND CONFIG_CCSO_EXT)
     change_config_and_warn(CONFIG_CCSO_EXT 0 !CONFIG_CCSO)
   endif()
+
+  # CONFIG_OPTFLOW_ON_TIP is dependent on CONFIG_OPTFLOW_REFINEMENT and
+  # CONFIG_TIP. If any of them is off, CONFIG_OPTFLOW_ON_TIP needs to be turned
+  # off.
+  if(NOT CONFIG_OPTFLOW_REFINEMENT AND CONFIG_OPTFLOW_ON_TIP)
+    change_config_and_warn(CONFIG_OPTFLOW_ON_TIP 0 !CONFIG_OPTFLOW_REFINEMENT)
+  endif()
+  if(NOT CONFIG_TIP AND CONFIG_OPTFLOW_ON_TIP)
+    change_config_and_warn(CONFIG_OPTFLOW_ON_TIP 0 !CONFIG_TIP)
+  endif()
+
 endmacro()

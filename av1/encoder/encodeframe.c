@@ -43,7 +43,6 @@
 #include "av1/common/pred_common.h"
 #include "av1/common/quant_common.h"
 #include "av1/common/reconintra.h"
-#include "av1/common/reconinter.h"
 #include "av1/common/seg_common.h"
 #include "av1/common/tile_common.h"
 #if CONFIG_TIP
@@ -1184,7 +1183,7 @@ static AOM_INLINE void setup_prune_ref_frame_mask(AV1_COMP *cpi) {
 #endif  // !CONFIG_NEW_REF_SIGNALING
 
 #if CONFIG_TIP
-static AOM_INLINE void tip_enc_calc_subpel_params(
+AOM_INLINE void av1_tip_enc_calc_subpel_params(
     const MV *const src_mv, InterPredParams *const inter_pred_params,
     MACROBLOCKD *xd, int mi_x, int mi_y, int ref,
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -1199,9 +1198,6 @@ static AOM_INLINE void tip_enc_calc_subpel_params(
   (void)mi_y;
   (void)ref;
   (void)mc_buf;
-#if CONFIG_OPTFLOW_REFINEMENT
-  (void)use_optflow_refinement;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
   const struct scale_factors *sf = inter_pred_params->scale_factors;
   struct buf_2d *pre_buf = &inter_pred_params->ref_frame_buf;
@@ -1210,9 +1206,21 @@ static AOM_INLINE void tip_enc_calc_subpel_params(
     const int ssx = inter_pred_params->subsampling_x;
     const int ssy = inter_pred_params->subsampling_y;
     int orig_pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
-    orig_pos_y += src_mv->row * (1 << (1 - ssy));
     int orig_pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
+#if CONFIG_OPTFLOW_REFINEMENT
+    if (use_optflow_refinement) {
+      orig_pos_y += ROUND_POWER_OF_TWO_SIGNED(src_mv->row * (1 << SUBPEL_BITS),
+                                              MV_REFINE_PREC_BITS + ssy);
+      orig_pos_x += ROUND_POWER_OF_TWO_SIGNED(src_mv->col * (1 << SUBPEL_BITS),
+                                              MV_REFINE_PREC_BITS + ssx);
+    } else {
+      orig_pos_y += src_mv->row * (1 << (1 - ssy));
+      orig_pos_x += src_mv->col * (1 << (1 - ssx));
+    }
+#else
+    orig_pos_y += src_mv->row * (1 << (1 - ssy));
     orig_pos_x += src_mv->col * (1 << (1 - ssx));
+#endif  // CONFIG_OPTFLOW_REFINEMENT
     int pos_y = sf->scale_value_y(orig_pos_y, sf);
     int pos_x = sf->scale_value_x(orig_pos_x, sf);
     pos_x += SCALE_EXTRA_OFF;
@@ -1235,11 +1243,23 @@ static AOM_INLINE void tip_enc_calc_subpel_params(
   } else {
     int pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
     int pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
+#if CONFIG_OPTFLOW_REFINEMENT
+    // Use original block size to clamp MV and to extend block boundary
+    const int bw = use_optflow_refinement ? inter_pred_params->orig_block_width
+                                          : inter_pred_params->block_width;
+    const int bh = use_optflow_refinement ? inter_pred_params->orig_block_height
+                                          : inter_pred_params->block_height;
+#else
     const int bw = inter_pred_params->block_width;
     const int bh = inter_pred_params->block_height;
+#endif  // CONFIG_OPTFLOW_REFINEMENT
     const MV mv_q4 = tip_clamp_mv_to_umv_border_sb(
-        inter_pred_params, src_mv, bw, bh, inter_pred_params->subsampling_x,
-        inter_pred_params->subsampling_y);
+        inter_pred_params, src_mv, bw, bh,
+#if CONFIG_OPTFLOW_REFINEMENT
+        use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
+        inter_pred_params->subsampling_x, inter_pred_params->subsampling_y);
+
     subpel_params->xs = subpel_params->ys = SCALE_SUBPEL_SHIFTS;
     subpel_params->subpel_x = (mv_q4.col & SUBPEL_MASK) << SCALE_EXTRA_BITS;
     subpel_params->subpel_y = (mv_q4.row & SUBPEL_MASK) << SCALE_EXTRA_BITS;
@@ -1262,8 +1282,11 @@ static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
 #endif
       av1_setup_tip_motion_field(cm, 1);
       if (cm->features.tip_frame_mode) {
+#if CONFIG_OPTFLOW_ON_TIP
+        cm->features.use_optflow_tip = 1;
+#endif  // CONFIG_OPTFLOW_ON_TIP
         av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                            tip_enc_calc_subpel_params);
+                            av1_tip_enc_calc_subpel_params);
       }
 #if CONFIG_COLLECT_COMPONENT_TIMING
       end_timing(cpi, av1_enc_setup_tip_frame_time);

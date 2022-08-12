@@ -11,8 +11,10 @@
  */
 
 #include "av1/common/tip.h"
-
 #include "config/aom_scale_rtcd.h"
+#if CONFIG_OPTFLOW_ON_TIP
+#include "config/aom_dsp_rtcd.h"
+#endif  // CONFIG_OPTFLOW_ON_TIP
 
 // CHROMA_MI_SIZE is the block size in luma unit for Chroma TIP interpolation
 #define CHROMA_MI_SIZE (TMVP_MI_SIZE << 1)
@@ -599,6 +601,168 @@ static AOM_INLINE void tip_build_one_inter_predictor(
       inter_pred_params->bit_depth);
 }
 
+#if CONFIG_OPTFLOW_ON_TIP
+#define MAKE_BFP_SAD_WRAPPER_COMMON(fnname)                                  \
+  static unsigned int fnname##_8(const uint8_t *src_ptr, int source_stride,  \
+                                 const uint8_t *ref_ptr, int ref_stride) {   \
+    return fnname(src_ptr, source_stride, ref_ptr, ref_stride);              \
+  }                                                                          \
+  static unsigned int fnname##_10(const uint8_t *src_ptr, int source_stride, \
+                                  const uint8_t *ref_ptr, int ref_stride) {  \
+    return fnname(src_ptr, source_stride, ref_ptr, ref_stride) >> 2;         \
+  }                                                                          \
+  static unsigned int fnname##_12(const uint8_t *src_ptr, int source_stride, \
+                                  const uint8_t *ref_ptr, int ref_stride) {  \
+    return fnname(src_ptr, source_stride, ref_ptr, ref_stride) >> 4;         \
+  }
+
+MAKE_BFP_SAD_WRAPPER_COMMON(aom_highbd_sad8x8)
+
+// Get the proper sad calculation function for an 8x8 block
+static unsigned int get_highbd_sad_8X8(const uint8_t *src_ptr,
+                                       int source_stride,
+                                       const uint8_t *ref_ptr, int ref_stride,
+                                       int bd) {
+  if (bd == 8) {
+    return aom_highbd_sad8x8_8(src_ptr, source_stride, ref_ptr, ref_stride);
+  } else if (bd == 10) {
+    return aom_highbd_sad8x8_10(src_ptr, source_stride, ref_ptr, ref_stride);
+  } else if (bd == 12) {
+    return aom_highbd_sad8x8_12(src_ptr, source_stride, ref_ptr, ref_stride);
+  } else {
+    assert(0);
+    return 0;
+  }
+}
+
+// Build an 8x8 block in the TIP frame
+static AOM_INLINE void tip_build_inter_predictors_8x8(
+    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, TIP_PLANE *tip_plane,
+    const MV mv[2], int mi_x, int mi_y, uint8_t **mc_buf,
+    CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func,
+    uint8_t *dst, int dst_stride) {
+  // TODO(any): currently this only works for y plane
+  assert(plane == 0);
+
+  int bw = 8;
+  int bh = 8;
+
+  TIP_PLANE *const tip = &tip_plane[plane];
+
+  const int bd = cm->seq_params.bit_depth;
+
+  const int ss_x = plane ? cm->seq_params.subsampling_x : 0;
+  const int ss_y = plane ? cm->seq_params.subsampling_y : 0;
+  const int comp_pixel_x = (mi_x >> ss_x);
+  const int comp_pixel_y = (mi_y >> ss_y);
+  const int comp_bw = bw >> ss_x;
+  const int comp_bh = bh >> ss_y;
+
+  MB_MODE_INFO *mbmi = aom_calloc(1, sizeof(*mbmi));
+
+  int_mv mv_refined[2 * 4];
+
+  CONV_BUF_TYPE *org_buf = xd->tmp_conv_dst;
+  xd->tmp_conv_dst = tmp_conv_dst;
+
+  mbmi->mv[0].as_mv = mv[0];
+  mbmi->mv[1].as_mv = mv[1];
+  mbmi->ref_frame[0] = TIP_FRAME;
+  mbmi->ref_frame[1] = NONE_FRAME;
+  mbmi->interp_fltr = EIGHTTAP_REGULAR;
+  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
+  mbmi->use_intrabc[0] = 0;
+  mbmi->motion_mode = SIMPLE_TRANSLATION;
+  mbmi->sb_type[PLANE_TYPE_Y] = BLOCK_8X8;
+  mbmi->interinter_comp.type = COMPOUND_AVERAGE;
+
+  // Arrays to hold optical flow offsets.
+  int vx0[4] = { 0 };
+  int vx1[4] = { 0 };
+  int vy0[4] = { 0 };
+  int vy1[4] = { 0 };
+
+  // Pointers to gradient and dst buffers
+  int16_t *gx0 = cm->gx0, *gy0 = cm->gy0, *gx1 = cm->gx1, *gy1 = cm->gy1;
+  uint8_t *dst0 = NULL, *dst1 = NULL;
+
+  dst0 = cm->dst0_16_tip;
+  dst1 = cm->dst1_16_tip;
+
+  int do_opfl = (is_opfl_refine_allowed(cm, mbmi) && plane == 0);
+
+  const unsigned int sad_thres =
+      cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT ? 15 : 6;
+
+  const int use_4x4 = 0;
+  if (do_opfl) {
+    InterPredParams params0, params1;
+    av1_opfl_build_inter_predictor(cm, xd, plane, mbmi, bw, bh, mi_x, mi_y,
+                                   mc_buf, &params0, calc_subpel_params_func, 0,
+                                   dst0);
+    av1_opfl_build_inter_predictor(cm, xd, plane, mbmi, bw, bh, mi_x, mi_y,
+                                   mc_buf, &params1, calc_subpel_params_func, 1,
+                                   dst1);
+    const unsigned int sad = get_highbd_sad_8X8(dst0, bw, dst1, bw, bd);
+
+    if (sad < sad_thres) {
+      do_opfl = 0;
+    }
+  }
+
+  if (do_opfl) {
+    // Initialize refined mv
+    const MV mv0 = mv[0];
+    const MV mv1 = mv[1];
+    for (int mvi = 0; mvi < 4; mvi++) {
+      mv_refined[mvi * 2].as_mv = mv0;
+      mv_refined[mvi * 2 + 1].as_mv = mv1;
+    }
+    // Refine MV using optical flow. The final output MV will be in 1/16
+    // precision.
+    av1_get_optflow_based_mv_highbd(
+        cm, xd, plane, mbmi, mv_refined, bw, bh, mi_x, mi_y, mc_buf,
+        calc_subpel_params_func, gx0, gy0, gx1, gy1, vx0, vy0, vx1, vy1,
+        CONVERT_TO_SHORTPTR(dst0), CONVERT_TO_SHORTPTR(dst1), 0, use_4x4);
+  }
+
+  for (int ref = 0; ref < 2; ++ref) {
+    const struct scale_factors *const sf = cm->tip_ref.ref_scale_factor[ref];
+    struct buf_2d *const pred_buf = &tip->pred[ref];
+
+    InterPredParams inter_pred_params;
+    av1_init_inter_params(&inter_pred_params, comp_bw, comp_bh, comp_pixel_y,
+                          comp_pixel_x, ss_x, ss_y, bd, 0, sf, pred_buf,
+                          MULTITAP_SHARP);
+
+    inter_pred_params.comp_mode = UNIFORM_COMP;
+
+    const int width = (cm->mi_params.mi_cols << MI_SIZE_LOG2);
+    const int height = (cm->mi_params.mi_rows << MI_SIZE_LOG2);
+    inter_pred_params.dist_to_top_edge = -GET_MV_SUBPEL(mi_y);
+    inter_pred_params.dist_to_bottom_edge = GET_MV_SUBPEL(height - bh - mi_y);
+    inter_pred_params.dist_to_left_edge = -GET_MV_SUBPEL(mi_x);
+    inter_pred_params.dist_to_right_edge = GET_MV_SUBPEL(width - bw - mi_x);
+
+    inter_pred_params.conv_params =
+        get_conv_params_no_round(ref, plane, tmp_conv_dst, MAX_SB_SIZE, 1, bd);
+
+    if (do_opfl) {
+      av1_opfl_rebuild_inter_predictor(
+          dst, dst_stride, plane, mv_refined, &inter_pred_params, xd, mi_x,
+          mi_y, ref, mc_buf, calc_subpel_params_func, use_4x4);
+    } else {
+      tip_build_one_inter_predictor(dst, dst_stride, &mv[ref],
+                                    &inter_pred_params, xd, mi_x, mi_y, ref,
+                                    mc_buf, calc_subpel_params_func);
+    }
+  }
+
+  xd->tmp_conv_dst = org_buf;
+  aom_free(mbmi);
+}
+#endif  // CONFIG_OPTFLOW_ON_TIP
+
 static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, TIP_PLANE *tip_plane,
     const MV mv[2], int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
@@ -606,6 +770,28 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
   TIP_PLANE *const tip = &tip_plane[plane];
   struct buf_2d *const dst_buf = &tip->dst;
   uint8_t *const dst = dst_buf->buf;
+
+#if CONFIG_OPTFLOW_ON_TIP
+  int dst_stride = dst_buf->stride;
+  if (plane == 0 && cm->features.use_optflow_tip) {
+    if (bw != 8 || bh != 8) {
+      for (int h = 0; h < bh; h += 8) {
+        for (int w = 0; w < bw; w += 8) {
+          dst_buf->buf = dst + h * dst_stride + w;
+          tip_build_inter_predictors_8x8_and_bigger(
+              cm, xd, plane, tip_plane, mv, 8, 8, mi_x + w, mi_y + h, mc_buf,
+              tmp_conv_dst, calc_subpel_params_func);
+        }
+      }
+      dst_buf->buf = dst;
+      return;
+    }
+    tip_build_inter_predictors_8x8(cm, xd, plane, tip_plane, mv, mi_x, mi_y,
+                                   mc_buf, tmp_conv_dst,
+                                   calc_subpel_params_func, dst, dst_stride);
+    return;
+  }
+#endif  // CONFIG_OPTFLOW_ON_TIP
 
   const int bd = cm->seq_params.bit_depth;
 

@@ -21,6 +21,10 @@ extern "C" {
 #include "av1/common/mvref_common.h"
 #include "av1/common/reconinter.h"
 
+#if CONFIG_OPTFLOW_ON_TIP
+#define TIP_RD_CORRECTION 100000
+#endif  // CONFIG_OPTFLOW_ON_TIP
+
 // Derive temporal motion field from one closest forward and one closet backward
 // reference frames, then fill the hole
 void av1_setup_tip_motion_field(AV1_COMMON *cm, int check_tip_threshold);
@@ -117,6 +121,9 @@ static AOM_INLINE void clamp_tip_smvp_refmv(const AV1_COMMON *const cm, MV *mv,
 // Clamp MV to UMV border based on its distance to left/right/top/bottom edge
 static AOM_INLINE MV tip_clamp_mv_to_umv_border_sb(
     InterPredParams *const inter_pred_params, const MV *src_mv, int bw, int bh,
+#if CONFIG_OPTFLOW_REFINEMENT
+    int use_optflow_refinement,
+#endif  // CONFIG_OPTFLOW_REFINEMENT
     int ss_x, int ss_y) {
   // If the MV points so far into the UMV border that no visible pixels
   // are used for reconstruction, the subpel part of the MV can be
@@ -125,8 +132,33 @@ static AOM_INLINE MV tip_clamp_mv_to_umv_border_sb(
   const int spel_right = spel_left - SUBPEL_SHIFTS;
   const int spel_top = (AOM_INTERP_EXTEND + bh) << SUBPEL_BITS;
   const int spel_bottom = spel_top - SUBPEL_SHIFTS;
+#if CONFIG_OPTFLOW_REFINEMENT
+  MV clamped_mv;
+  if (use_optflow_refinement) {
+    // optflow refinement always returns MVs with 1/16 precision so it is not
+    // necessary to shift the MV before clamping
+    // Here it should be:
+    // clamped_mv.row = (int16_t)ROUND_POWER_OF_TWO_SIGNED(
+    //     src_mv->row * (1 << SUBPEL_BITS), MV_REFINE_PREC_BITS + ss_y);
+    // But currently SUBPEL_BITS == MV_REFINE_PREC_BITS
+    assert(SUBPEL_BITS == MV_REFINE_PREC_BITS);
+
+    if (ss_y || ss_x) {
+      clamped_mv.row = (int16_t)ROUND_POWER_OF_TWO_SIGNED(
+          src_mv->row * (1 << SUBPEL_BITS), MV_REFINE_PREC_BITS + ss_y);
+      clamped_mv.col = (int16_t)ROUND_POWER_OF_TWO_SIGNED(
+          src_mv->col * (1 << SUBPEL_BITS), MV_REFINE_PREC_BITS + ss_x);
+    } else {
+      clamped_mv = *src_mv;
+    }
+  } else {
+    clamped_mv.row = (int16_t)(src_mv->row * (1 << (1 - ss_y)));
+    clamped_mv.col = (int16_t)(src_mv->col * (1 << (1 - ss_x)));
+  }
+#else
   MV clamped_mv = { (int16_t)(src_mv->row * (1 << (1 - ss_y))),
                     (int16_t)(src_mv->col * (1 << (1 - ss_x))) };
+#endif  // CONFIG_OPTFLOW_REFINEMENT
   assert(ss_x <= 1);
   assert(ss_y <= 1);
   const SubpelMvLimits mv_limits = {

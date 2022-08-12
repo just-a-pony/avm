@@ -304,6 +304,10 @@ specialize "aom_highbd_blend_a64_d16_mask", qw/sse4_1 avx2/;
 add_proto qw/void aom_highbd_subtract_block/, "int rows, int cols, int16_t *diff_ptr, ptrdiff_t diff_stride, const uint8_t *src_ptr, ptrdiff_t src_stride, const uint8_t *pred_ptr, ptrdiff_t pred_stride, int bd";
 specialize qw/aom_highbd_subtract_block sse2/;
 
+add_proto qw/unsigned int/, "aom_highbd_sad8x8", "const uint8_t *src_ptr, int src_stride, const uint8_t *ref_ptr, int ref_stride";
+specialize "aom_highbd_sad8x8", qw/sse2/;
+specialize qw/aom_highbd_sad8x8 sse2/;
+
 if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
   add_proto qw/void/, "aom_get_blk_sse_sum", "const int16_t *data, int stride, int bw, int bh, int *x_sum, int64_t *x2_sum";
   specialize qw/aom_get_blk_sse_sum sse2 avx2/;

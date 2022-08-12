@@ -961,6 +961,25 @@ static INLINE void free_tip_ref_frame(AV1_COMMON *const cm) {
   aom_free_frame_buffer(&cm->tip_ref.tip_frame->buf);
   aom_free(cm->tip_ref.tip_frame);
 }
+
+#if CONFIG_OPTFLOW_ON_TIP
+static INLINE void init_optflow_bufs(AV1_COMMON *const cm) {
+  cm->dst0_16_tip =
+      CONVERT_TO_BYTEPTR(aom_memalign(32, 8 * 8 * sizeof(uint16_t)));
+  cm->dst1_16_tip =
+      CONVERT_TO_BYTEPTR(aom_memalign(32, 8 * 8 * sizeof(uint16_t)));
+  cm->gx0 = aom_memalign(32, 2 * 8 * 8 * sizeof(*cm->gx0));
+  cm->gx1 = aom_memalign(32, 2 * 8 * 8 * sizeof(*cm->gx1));
+  cm->gy0 = cm->gx0 + (8 * 8);
+  cm->gy1 = cm->gx1 + (8 * 8);
+}
+static INLINE void free_optflow_bufs(AV1_COMMON *const cm) {
+  aom_free(CONVERT_TO_SHORTPTR(cm->dst0_16_tip));
+  aom_free(CONVERT_TO_SHORTPTR(cm->dst1_16_tip));
+  aom_free(cm->gx0);
+  aom_free(cm->gx1);
+}
+#endif  // CONFIG_OPTFLOW_ON_TIP
 #endif  // CONFIG_TIP
 
 AV1_COMP *av1_create_compressor(AV1EncoderConfig *oxcf, BufferPool *const pool,
@@ -1215,6 +1234,9 @@ AV1_COMP *av1_create_compressor(AV1EncoderConfig *oxcf, BufferPool *const pool,
 
 #if CONFIG_TIP
   init_tip_ref_frame(cm);
+#if CONFIG_OPTFLOW_ON_TIP
+  init_optflow_bufs(cm);
+#endif  // CONFIG_OPTFLOW_ON_TIP
 #endif  // CONFIG_TIP
 
   cm->error.setjmp = 0;
@@ -1424,6 +1446,9 @@ void av1_remove_compressor(AV1_COMP *cpi) {
 
 #if CONFIG_TIP
   free_tip_ref_frame(cm);
+#if CONFIG_OPTFLOW_ON_TIP
+  free_optflow_bufs(cm);
+#endif  // CONFIG_OPTFLOW_ON_TIP
 #endif  // CONFIG_TIP
 
   av1_remove_common(cm);
@@ -2588,6 +2613,11 @@ static INLINE int compute_tip_direct_output_mode_RD(AV1_COMP *cpi,
   AV1_COMMON *const cm = &cpi->common;
   if (allow_tip_direct_output(cm)) {
     cm->features.tip_frame_mode = TIP_FRAME_AS_OUTPUT;
+#if CONFIG_OPTFLOW_ON_TIP
+    ThreadData *const td = &cpi->td;
+    av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
+                        av1_tip_enc_calc_subpel_params);
+#endif  // CONFIG_OPTFLOW_ON_TIP
     av1_finalize_encoded_frame(cpi);
     if (av1_pack_bitstream(cpi, dest, size, largest_tile_id) != AOM_CODEC_OK)
       return AOM_CODEC_ERROR;
@@ -2623,8 +2653,7 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
     tip_as_ref_rate = (bits << 5);  // To match scale.
   }
 
-  const int64_t rdmult =
-      av1_compute_rd_mult_based_on_qindex(cpi, cm->quant_params.base_qindex);
+  const int64_t rdmult = av1_compute_rd_mult(cpi, cm->quant_params.base_qindex);
 
   const double normal_coding_rdcost = RDCOST_DBL_WITH_NATIVE_BD_DIST(
       rdmult, tip_as_ref_rate, tip_as_ref_sse, cm->seq_params.bit_depth);
