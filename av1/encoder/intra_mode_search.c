@@ -886,9 +886,9 @@ static AOM_INLINE int intra_block_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
     // not the tokenonly rate.
     this_rate_tokenonly -=
         tx_size_cost(x,
-#if CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION_6ARY
                      cpi->common.seq_params.enable_tx_split_4way,
-#endif  // CONFIG_NEW_TX_PARTITION
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
                      bsize, mbmi->tx_size);
   }
   const int this_rate =
@@ -1179,9 +1179,9 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
     // (prediction granularity), so we account for it in the full rate,
     // not the tokenonly rate.
     rd_stats_y->rate -= tx_size_cost(x,
-#if CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION_6ARY
                                      cm->seq_params.enable_tx_split_4way,
-#endif  // CONFIG_NEW_TX_PARTITION
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
                                      bsize, mbmi->tx_size);
   }
   if (num_planes > 1 && xd->is_chroma_ref) {
@@ -1566,9 +1566,9 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
         // full rate, not the tokenonly rate.
         this_rate_tokenonly -=
             tx_size_cost(x,
-#if CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION_6ARY
                          cpi->common.seq_params.enable_tx_split_4way,
-#endif  // CONFIG_NEW_TX_PARTITION
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
                          bsize, mbmi->tx_size);
       }
       this_rate =

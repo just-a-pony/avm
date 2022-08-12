@@ -145,6 +145,8 @@ set_aom_config_var(CONFIG_COMPOUND_WARP_SAMPLES 1 NUMBER
                    "AV2 compound warped motion samples experiment flag")
 set_aom_config_var(CONFIG_NEW_TX_PARTITION 0
                    "AV2 new transform partitions experiment flag.")
+set_aom_config_var(CONFIG_NEW_TX_PARTITION_6ARY 0
+	"AV2 new transform partitions (6-ary) experiment flag.")
 set_aom_config_var(
   CONFIG_ORIP 1
   "AV2 experiment flag to enable offset based refinement of intra prediction.")

@@ -158,6 +158,7 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
                                const SequenceHeader *const seq_params,
                                TX_SIZE max_tx_size, int blk_row, int blk_col,
                                aom_writer *w) {
+  (void)seq_params;
   int plane_type = (xd->tree_type == CHROMA_PART);
   const int max_blocks_high = max_block_high(xd, mbmi->sb_type[plane_type], 0);
   const int max_blocks_wide = max_block_wide(xd, mbmi->sb_type[plane_type], 0);
@@ -172,8 +173,10 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
     const int is_rect = is_rect_tx(max_tx_size);
     const int allow_horz = allow_tx_horz_split(max_tx_size);
     const int allow_vert = allow_tx_vert_split(max_tx_size);
+#if CONFIG_NEW_TX_PARTITION_6ARY
     const int allow_horz4 = allow_tx_horz4_split(max_tx_size);
     const int allow_vert4 = allow_tx_vert4_split(max_tx_size);
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
     if (allow_horz && allow_vert) {
       const int split4_ctx =
           is_inter ? txfm_partition_split4_inter_context(
@@ -186,6 +189,7 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
       const TX_PARTITION_TYPE split4_partition =
           get_split4_partition(partition);
       aom_write_symbol(w, split4_partition, split4_cdf, 4);
+#if CONFIG_NEW_TX_PARTITION_6ARY
       if (seq_params->enable_tx_split_4way) {
         if (((split4_partition == TX_PARTITION_VERT) && allow_vert4) ||
             ((split4_partition == TX_PARTITION_HORZ) && allow_horz4)) {
@@ -200,12 +204,14 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
         assert(partition != TX_PARTITION_VERT4 &&
                partition != TX_PARTITION_HORZ4);
       }
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
     } else if (allow_horz || allow_vert) {
       const int has_first_split = partition != TX_PARTITION_NONE;
       aom_cdf_prob *split2_cdf = is_inter
                                      ? ec_ctx->inter_2way_txfm_partition_cdf
                                      : ec_ctx->intra_2way_txfm_partition_cdf;
       aom_write_symbol(w, has_first_split, split2_cdf, 2);
+#if CONFIG_NEW_TX_PARTITION_6ARY
       if (seq_params->enable_tx_split_4way) {
         if (has_first_split && (allow_horz4 || allow_vert4)) {
           const int has_second_split = (partition == TX_PARTITION_VERT4) ||
@@ -219,6 +225,7 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
         assert(partition != TX_PARTITION_VERT4 &&
                partition != TX_PARTITION_HORZ4);
       }
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
     } else {
       assert(!allow_horz && !allow_vert);
       assert(partition == PARTITION_NONE);
@@ -3698,9 +3705,9 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_FLEX_MVRES
   aom_wb_write_bit(wb, seq_params->enable_flex_mvres);
 #endif  // CONFIG_FLEX_MVRES
-#if CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION_6ARY
   aom_wb_write_bit(wb, seq_params->enable_tx_split_4way);
-#endif  // CONFIG_NEW_TX_PARTITION
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 }
 
 static AOM_INLINE void write_global_motion_params(

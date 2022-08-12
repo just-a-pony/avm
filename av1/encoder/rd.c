@@ -223,8 +223,10 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
 #if CONFIG_NEW_TX_PARTITION
   av1_cost_tokens_from_cdf(mode_costs->intra_2way_txfm_partition_cost,
                            fc->intra_2way_txfm_partition_cdf, NULL);
+#if CONFIG_NEW_TX_PARTITION_6ARY
   av1_cost_tokens_from_cdf(mode_costs->intra_2way_rect_txfm_partition_cost,
                            fc->intra_2way_rect_txfm_partition_cdf, NULL);
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
   for (i = 0; i < TX_SIZE_CONTEXTS; ++i) {
     // Square
     av1_cost_tokens_from_cdf(mode_costs->intra_4way_txfm_partition_cost[0][i],
@@ -243,8 +245,10 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
 #if CONFIG_NEW_TX_PARTITION
   av1_cost_tokens_from_cdf(mode_costs->inter_2way_txfm_partition_cost,
                            fc->inter_2way_txfm_partition_cdf, NULL);
+#if CONFIG_NEW_TX_PARTITION_6ARY
   av1_cost_tokens_from_cdf(mode_costs->inter_2way_rect_txfm_partition_cost,
                            fc->inter_2way_rect_txfm_partition_cdf, NULL);
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
   for (i = 0; i < TXFM_PARTITION_INTER_CONTEXTS; ++i) {
     // Square
     av1_cost_tokens_from_cdf(mode_costs->inter_4way_txfm_partition_cost[0][i],

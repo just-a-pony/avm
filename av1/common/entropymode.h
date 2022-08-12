@@ -176,7 +176,9 @@ typedef struct frame_contexts {
   aom_cdf_prob inter_4way_txfm_partition_cdf[2][TXFM_PARTITION_INTER_CONTEXTS]
                                             [CDF_SIZE(4)];
   aom_cdf_prob inter_2way_txfm_partition_cdf[CDF_SIZE(2)];
+#if CONFIG_NEW_TX_PARTITION_6ARY
   aom_cdf_prob inter_2way_rect_txfm_partition_cdf[CDF_SIZE(2)];
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #else   // CONFIG_NEW_TX_PARTITION
   aom_cdf_prob txfm_partition_cdf[TXFM_PARTITION_CONTEXTS][CDF_SIZE(2)];
 #endif  // CONFIG_NEW_TX_PARTITION
@@ -246,7 +248,9 @@ typedef struct frame_contexts {
 #if CONFIG_NEW_TX_PARTITION
   aom_cdf_prob intra_4way_txfm_partition_cdf[2][TX_SIZE_CONTEXTS][CDF_SIZE(4)];
   aom_cdf_prob intra_2way_txfm_partition_cdf[CDF_SIZE(2)];
+#if CONFIG_NEW_TX_PARTITION_6ARY
   aom_cdf_prob intra_2way_rect_txfm_partition_cdf[CDF_SIZE(2)];
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #else
   aom_cdf_prob tx_size_cdf[MAX_TX_CATS][TX_SIZE_CONTEXTS]
                           [CDF_SIZE(MAX_TX_DEPTH + 1)];

@@ -278,9 +278,9 @@ static AOM_INLINE void palette_rd_y(
       block_signals_txsize(mbmi->sb_type[PLANE_TYPE_Y])) {
     tokenonly_rd_stats.rate -=
         tx_size_cost(x,
-#if CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION_6ARY
                      cpi->common.seq_params.enable_tx_split_4way,
-#endif
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
                      bsize, mbmi->tx_size);
   }
   // Collect mode stats for multiwinner mode processing

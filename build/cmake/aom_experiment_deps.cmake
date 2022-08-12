@@ -59,4 +59,10 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_OPTFLOW_ON_TIP 0 !CONFIG_TIP)
   endif()
 
+  # CONFIG_NEW_TX_PARTITION_6ARY depends on CONFIG_NEW_TX_PARTITION. If
+  # CONFIG_NEW_TX_PARTITION is off, CONFIG_NEW_TX_PARTITION_6ARY needs to
+  # be turned off.
+  if(NOT CONFIG_NEW_TX_PARTITION AND CONFIG_NEW_TX_PARTITION_6ARY)
+    change_config_and_warn(CONFIG_NEW_TX_PARTITION_6ARY 0 !CONFIG_NEW_TX_PARTITION)
+  endif()
 endmacro()

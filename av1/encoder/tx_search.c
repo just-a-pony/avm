@@ -3004,10 +3004,12 @@ static void select_tx_partition_type(
   for (TX_PARTITION_TYPE type = 0; type < TX_PARTITION_TYPES; ++type) {
     // Skip any illegal partitions for this block size
     if (!use_tx_partition(type, max_tx_size)) continue;
+#if CONFIG_NEW_TX_PARTITION_6ARY
     if (!cpi->common.seq_params.enable_tx_split_4way &&
         type >= TX_PARTITION_HORZ4) {
       continue;
     }
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
     // int ml_tx_split_horzvert_thresh;
     // ML based speed feature to skip searching for split transform blocks.
     if (try_ml_predict_tx_split) {
@@ -3020,12 +3022,14 @@ static void select_tx_partition_type(
           split_score < -threshold_horzvert)
         continue;
     }
+#if CONFIG_NEW_TX_PARTITION_6ARY
     if (cpi->sf.tx_sf.tx_type_search.prune_inter_4way_split) {
       if (type == TX_PARTITION_VERT4 && best_tx_partition != TX_PARTITION_VERT)
         continue;
       if (type == TX_PARTITION_HORZ4 && best_tx_partition != TX_PARTITION_HORZ)
         continue;
     }
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 
     RD_STATS partition_rd_stats;
     av1_init_rd_stats(&partition_rd_stats);
@@ -3042,11 +3046,17 @@ static void select_tx_partition_type(
 
     // Add rate cost of signalling this partition type
     if (max_tx_size > TX_4X4) {
+#if CONFIG_NEW_TX_PARTITION_6ARY
       const int is_4way_enabled = cpi->common.seq_params.enable_tx_split_4way;
       partition_rd_stats.rate += inter_tx_partition_cost(
           x, is_4way_enabled, is_rect, type, tx_above + blk_col,
           tx_left + blk_row, mbmi->sb_type[xd->tree_type == CHROMA_PART],
           max_tx_size);
+#else
+      partition_rd_stats.rate += inter_tx_partition_cost(
+          x, is_rect, type, tx_above + blk_col, tx_left + blk_row,
+          mbmi->sb_type[xd->tree_type == CHROMA_PART], max_tx_size);
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
     }
 
     // Get transform sizes created by this partition type
@@ -3353,6 +3363,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
   for (TX_PARTITION_TYPE type = 0; type < TX_PARTITION_TYPES_INTRA; ++type) {
     // Skip any illegal partitions for this block size
     if (!use_tx_partition(type, max_tx_size)) continue;
+#if CONFIG_NEW_TX_PARTITION_6ARY
     if (!cpi->common.seq_params.enable_tx_split_4way &&
         type >= TX_PARTITION_HORZ4) {
       continue;
@@ -3365,6 +3376,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
           best_tx_partition_type != TX_PARTITION_HORZ)
         continue;
     }
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
     mbmi->tx_partition_type[0] = type;
     TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
     get_tx_partition_sizes(type, max_tx_size, sub_txs);
@@ -3601,12 +3613,20 @@ int64_t av1_uniform_txfm_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
 #if CONFIG_NEW_TX_PARTITION
     const TX_SIZE max_tx_size = max_txsize_rect_lookup[bs];
     const int is_rect = is_rect_tx(max_tx_size);
+#if CONFIG_NEW_TX_PARTITION_6ARY
     const int is_4way_enabled = cpi->common.seq_params.enable_tx_split_4way;
     tx_size_rate = is_inter ? inter_tx_partition_cost(
                                   x, is_4way_enabled, is_rect, 0,
                                   xd->above_txfm_context, xd->left_txfm_context,
                                   mbmi->sb_type[PLANE_TYPE_Y], max_tx_size)
                             : tx_size_cost(x, is_4way_enabled, bs, tx_size);
+#else
+    tx_size_rate = is_inter ? inter_tx_partition_cost(
+                                  x, is_rect, 0, xd->above_txfm_context,
+                                  xd->left_txfm_context,
+                                  mbmi->sb_type[PLANE_TYPE_Y], max_tx_size)
+                            : tx_size_cost(x, bs, tx_size);
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 #else   // CONFIG_NEW_TX_PARTITION
     const int ctx =
         txfm_partition_context(xd->above_txfm_context, xd->left_txfm_context,

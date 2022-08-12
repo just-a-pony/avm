@@ -1313,6 +1313,7 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                                  const SequenceHeader *const seq_params,
                                  TX_SIZE max_tx_size, int blk_row, int blk_col,
                                  aom_reader *r) {
+  (void)seq_params;
   int plane_type = (xd->tree_type == CHROMA_PART);
   const BLOCK_SIZE bsize = mbmi->sb_type[plane_type];
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
@@ -1324,8 +1325,10 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
   const int is_rect = is_rect_tx(max_tx_size);
   const int allow_horz = allow_tx_horz_split(max_tx_size);
   const int allow_vert = allow_tx_vert_split(max_tx_size);
+#if CONFIG_NEW_TX_PARTITION_6ARY
   const int allow_horz4 = allow_tx_horz4_split(max_tx_size);
   const int allow_vert4 = allow_tx_vert4_split(max_tx_size);
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
   TX_PARTITION_TYPE partition = 0;
   /*
   If both horizontal and vertical splits are allowed for this block,
@@ -1347,6 +1350,7 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
     const TX_PARTITION_TYPE split4_partition =
         aom_read_symbol(r, split4_cdf, 4, ACCT_STR);
     partition = split4_partition;
+#if CONFIG_NEW_TX_PARTITION_6ARY
     if (seq_params->enable_tx_split_4way) {
       // If further split is allowed, read an additional bit to determine
       // the final partition type
@@ -1363,6 +1367,7 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                           : TX_PARTITION_HORZ4;
       }
     }
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
     /*
     If only one split type (horizontal or vertical) is allowed for this block,
     first signal a bit indicating whether there is any split at all. If
@@ -1374,6 +1379,7 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
     aom_cdf_prob *split2_cdf = is_inter ? ec_ctx->inter_2way_txfm_partition_cdf
                                         : ec_ctx->intra_2way_txfm_partition_cdf;
     const int has_first_split = aom_read_symbol(r, split2_cdf, 2, ACCT_STR);
+#if CONFIG_NEW_TX_PARTITION_6ARY
     if (seq_params->enable_tx_split_4way) {
       if (has_first_split) {
         // If further splitting is allowed, read a bit determine the fineal
@@ -1397,6 +1403,11 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                       ? (allow_horz ? TX_PARTITION_HORZ : TX_PARTITION_VERT)
                       : TX_PARTITION_NONE;
     }
+#else
+    partition = has_first_split
+                    ? (allow_horz ? TX_PARTITION_HORZ : TX_PARTITION_VERT)
+                    : TX_PARTITION_NONE;
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
   } else {
     assert(!allow_horz && !allow_vert);
     partition = TX_PARTITION_NONE;
@@ -5177,9 +5188,9 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #if CONFIG_FLEX_MVRES
   seq_params->enable_flex_mvres = aom_rb_read_bit(rb);
 #endif  // CONFIG_FLEX_MVRES
-#if CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION_6ARY
   seq_params->enable_tx_split_4way = aom_rb_read_bit(rb);
-#endif  // CONFIG_NEW_TX_PARTITION
+#endif  // CONFIG_NEW_TX_PARTITION_6ARY
 }
 
 static int read_global_motion_params(WarpedMotionParams *params,

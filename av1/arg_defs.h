@@ -150,7 +150,7 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_ORIP
   arg_def_t enable_orip;
 #endif
-#if CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION_6ARY
   arg_def_t enable_tx_split_4way;
 #endif
 #if CONFIG_IST
