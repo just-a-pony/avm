@@ -74,7 +74,6 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
       ++counts
             ->intra_4way_txfm_partition[is_rect][split4_ctx][split4_partition];
 #endif  // CONFIG_ENTROPY_STATS
-
   } else if (allow_horz || allow_vert) {
     const int has_first_split = partition != TX_PARTITION_NONE;
     if (allow_update_cdf) {

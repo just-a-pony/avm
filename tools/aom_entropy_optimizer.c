@@ -654,14 +654,42 @@ int main(int argc, const char **argv) {
       "[PALETTE_COLOR_INDEX_CONTEXTS][CDF_SIZE(PALETTE_COLORS)]");
 
   /* Transform size */
-#if !CONFIG_NEW_TX_PARTITION
+#if CONFIG_NEW_TX_PARTITION
+  cts_each_dim[0] = 2;
+  cts_each_dim[1] = TXFM_PARTITION_INTER_CONTEXTS;
+  cts_each_dim[2] = 4;
+  optimize_cdf_table(
+      &fc.inter_4way_txfm_partition[0][0][0], probsfile, 3, cts_each_dim,
+      "static const aom_cdf_prob default_inter_4way_txfm_partition_cdf\n"
+      "[2][TXFM_PARTITION_INTER_CONTEXTS][CDF_SIZE(4)]");
+
+  cts_each_dim[0] = 2;
+  optimize_cdf_table(
+      &fc.inter_2way_txfm_partition[0], probsfile, 1, cts_each_dim,
+      "static const aom_cdf_prob default_inter_2way_txfm_partition_cdf\n"
+      "[CDF_SIZE(2)]");
+
+  cts_each_dim[0] = 2;
+  cts_each_dim[1] = TX_SIZE_CONTEXTS;
+  cts_each_dim[2] = 4;
+  optimize_cdf_table(
+      &fc.intra_4way_txfm_partition[0][0][0], probsfile, 3, cts_each_dim,
+      "static const aom_cdf_prob default_intra_4way_txfm_partition_cdf\n"
+      "[2][TX_SIZE_CONTEXTS][CDF_SIZE(4)]");
+
+  cts_each_dim[0] = 2;
+  optimize_cdf_table(
+      &fc.intra_2way_txfm_partition[0], probsfile, 1, cts_each_dim,
+      "static const aom_cdf_prob default_intra_2way_txfm_partition_cdf\n"
+      "[CDF_SIZE(2)]");
+#else   // CONFIG_NEW_TX_PARTITION
   cts_each_dim[0] = TXFM_PARTITION_CONTEXTS;
   cts_each_dim[1] = 2;
   optimize_cdf_table(
       &fc.txfm_partition[0][0], probsfile, 2, cts_each_dim,
       "static const aom_cdf_prob\n"
       "default_txfm_partition_cdf[TXFM_PARTITION_CONTEXTS][CDF_SIZE(2)]");
-#endif  // !CONFIG_NEW_TX_PARTITION
+#endif  // CONFIG_NEW_TX_PARTITION
 
   /* Skip flag */
   cts_each_dim[0] = SKIP_CONTEXTS;
