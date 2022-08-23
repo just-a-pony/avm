@@ -641,6 +641,32 @@ static AOM_INLINE void scan_row_mbmi(
 }
 #endif  // !(CONFIG_SMVP_IMPROVEMENT && CONFIG_C043_MVP_IMPROVEMENTS)
 
+#if CONFIG_C043_MVP_IMPROVEMENTS
+// update processed_cols variable, when scan_col_mbmi() is not used for adjacent
+// neigbhors
+static AOM_INLINE void update_processed_cols(const MACROBLOCKD *xd, int mi_row,
+                                             int mi_col, int row_offset,
+                                             int col_offset, int max_col_offset,
+                                             int *processed_cols) {
+  const TileInfo *const tile = &xd->tile;
+  const POSITION mi_pos = { row_offset, col_offset };
+  if (is_inside(tile, mi_col, mi_row, &mi_pos)) {
+    const MB_MODE_INFO *const candidate =
+        xd->mi[row_offset * xd->mi_stride + col_offset];
+    const int n8_h_8 = mi_size_high[BLOCK_8X8];
+    const int candidate_bsize =
+        candidate->sb_type[xd->tree_type == CHROMA_PART];
+    const int n4_h = mi_size_high[candidate_bsize];
+    if (xd->height >= n8_h_8 && xd->height <= n4_h) {
+      const int inc = AOMMIN(-max_col_offset + col_offset + 1,
+                             mi_size_wide[candidate_bsize]);
+      // Update processed cols.
+      *processed_cols = inc - col_offset - 1;
+    }
+  }
+}
+#endif  // CONFIG_C043_MVP_IMPROVEMENTS
+
 static AOM_INLINE void scan_col_mbmi(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, int mi_row,
 #if CONFIG_TIP
@@ -1238,6 +1264,8 @@ static AOM_INLINE void setup_ref_mv_list(
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
                   refmv_count);
+    update_processed_cols(xd, mi_row, mi_col, (xd->height - 1), -1,
+                          max_col_offset, &processed_cols);
   }
   if (xd->up_available) {
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, (xd->width - 1), ref_mv_stack,
@@ -1258,6 +1286,8 @@ static AOM_INLINE void setup_ref_mv_list(
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
                   refmv_count);
+    update_processed_cols(xd, mi_row, mi_col, 0, -1, max_col_offset,
+                          &processed_cols);
   }
   if (xd->up_available) {
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, 0, ref_mv_stack,
@@ -1310,6 +1340,8 @@ static AOM_INLINE void setup_ref_mv_list(
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
                   refmv_count);
+    update_processed_cols(xd, mi_row, mi_col, (xd->height >> 1), -1,
+                          max_col_offset, &processed_cols);
   }
   if (xd->up_available) {
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, (xd->width >> 1),
@@ -1552,30 +1584,31 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif
 
 #if (CONFIG_REF_MV_BANK && CONFIG_C043_MVP_IMPROVEMENTS)
-  if (!cm->seq_params.enable_refmvbank) return;
-  const int ref_mv_limit =
-      AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
-  // If open slots are available, fetch reference MVs from the ref mv banks.
-  if (*refmv_count < ref_mv_limit
+  if (cm->seq_params.enable_refmvbank) {
+    const int ref_mv_limit =
+        AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
+    // If open slots are available, fetch reference MVs from the ref mv banks.
+    if (*refmv_count < ref_mv_limit
 #if !CONFIG_BVP_IMPROVEMENT
-      && ref_frame != INTRA_FRAME
+        && ref_frame != INTRA_FRAME
 #endif  // CONFIG_BVP_IMPROVEMENT
-  ) {
-    const REF_MV_BANK *ref_mv_bank = &xd->ref_mv_bank;
-    const CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[ref_frame];
-    const int count = ref_mv_bank->rmb_count[ref_frame];
-    const int start_idx = ref_mv_bank->rmb_start_idx[ref_frame];
-    const int is_comp = is_inter_ref_frame(rf[1]);
-    const int block_width = xd->width * MI_SIZE;
-    const int block_height = xd->height * MI_SIZE;
+    ) {
+      const REF_MV_BANK *ref_mv_bank = &xd->ref_mv_bank;
+      const CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[ref_frame];
+      const int count = ref_mv_bank->rmb_count[ref_frame];
+      const int start_idx = ref_mv_bank->rmb_start_idx[ref_frame];
+      const int is_comp = is_inter_ref_frame(rf[1]);
+      const int block_width = xd->width * MI_SIZE;
+      const int block_height = xd->height * MI_SIZE;
 
-    for (int idx_bank = 0; idx_bank < count && *refmv_count < ref_mv_limit;
-         ++idx_bank) {
-      const int idx = (start_idx + count - 1 - idx_bank) % REF_MV_BANK_SIZE;
-      const CANDIDATE_MV cand_mv = queue[idx];
-      check_rmb_cand(cand_mv, ref_mv_stack, ref_mv_weight, refmv_count, is_comp,
-                     xd->mi_row, xd->mi_col, block_width, block_height,
-                     cm->width, cm->height);
+      for (int idx_bank = 0; idx_bank < count && *refmv_count < ref_mv_limit;
+           ++idx_bank) {
+        const int idx = (start_idx + count - 1 - idx_bank) % REF_MV_BANK_SIZE;
+        const CANDIDATE_MV cand_mv = queue[idx];
+        check_rmb_cand(cand_mv, ref_mv_stack, ref_mv_weight, refmv_count,
+                       is_comp, xd->mi_row, xd->mi_col, block_width,
+                       block_height, cm->width, cm->height);
+      }
     }
   }
 #endif  // (CONFIG_REF_MV_BANK && CONFIG_C043_MVP_IMPROVEMENTS)
