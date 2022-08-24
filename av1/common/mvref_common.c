@@ -2989,6 +2989,17 @@ void av1_setup_skip_mode_allowed(AV1_COMMON *cm) {
       cm->current_frame.reference_mode == SINGLE_REFERENCE)
     return;
 
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  skip_mode_info->skip_mode_allowed = 1;
+
+  if (cm->ref_frames_info.num_total_refs > 1) {
+    skip_mode_info->ref_frame_idx_1 = 1;
+    skip_mode_info->ref_frame_idx_0 = 0;
+  } else {
+    skip_mode_info->ref_frame_idx_1 = 0;
+    skip_mode_info->ref_frame_idx_0 = 0;
+  }
+#else
   const int cur_order_hint = cm->current_frame.order_hint;
   int ref_order_hints[2] = { -1, INT_MAX };
   int ref_idx[2] = { INVALID_IDX, INVALID_IDX };
@@ -3071,6 +3082,7 @@ void av1_setup_skip_mode_allowed(AV1_COMMON *cm) {
 #endif  // CONFIG_NEW_REF_SIGNALING && CONFIG_SKIP_MODE_ENHANCEMENT
     }
   }
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 }
 
 #if !CONFIG_NEW_REF_SIGNALING

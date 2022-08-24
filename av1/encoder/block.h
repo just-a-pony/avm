@@ -724,11 +724,18 @@ typedef struct {
 #if CONFIG_NEW_REF_SIGNALING
   //! single_ref_cost
   int single_ref_cost[REF_CONTEXTS][INTER_REFS_PER_FRAME - 1][2];
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  //! comp_ref0_cost
+  int comp_ref0_cost[REF_CONTEXTS][INTER_REFS_PER_FRAME][2];
+  //! comp_ref1_cost
+  int comp_ref1_cost[REF_CONTEXTS][COMPREF_BIT_TYPES][INTER_REFS_PER_FRAME][2];
+#else
   //! comp_ref0_cost
   int comp_ref0_cost[REF_CONTEXTS][INTER_REFS_PER_FRAME - 2][2];
   //! comp_ref1_cost
   int comp_ref1_cost[REF_CONTEXTS][COMPREF_BIT_TYPES][INTER_REFS_PER_FRAME - 2]
                     [2];
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #else
   //! single_ref_cost
   int single_ref_cost[REF_CONTEXTS][SINGLE_REFS - 1][2];
@@ -1171,7 +1178,11 @@ typedef struct macroblock {
    * within a superblock, in MI resolution. They can be used to prune ref frames
    * for rectangular blocks.
    */
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  uint64_t picked_ref_frames_mask[MAX_MIB_SIZE * MAX_MIB_SIZE];
+#else
   int picked_ref_frames_mask[MAX_MIB_SIZE * MAX_MIB_SIZE];
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 
   /**@}*/
 

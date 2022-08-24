@@ -5092,6 +5092,9 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
   } else {
     seq_params->max_reference_frames = 7;
   }
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  seq_params->num_same_ref_compound = aom_rb_read_literal(rb, 2);
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #endif  // CONFIG_NEW_REF_SIGNALING
   seq_params->enable_sdp = aom_rb_read_bit(rb);
 #if CONFIG_IST
@@ -5357,6 +5360,11 @@ static INLINE int get_disp_order_hint(AV1_COMMON *const cm) {
     return 0;
 
 #if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_DISPLAY_ORDER_HINT_FIX
+  // For key frames, the implicit derivation of display_order_hit is not
+  // applied.
+  if (current_frame->frame_type == KEY_FRAME) return current_frame->order_hint;
+#endif  // CONFIG_DISPLAY_ORDER_HINT_FIX
   // Derive the exact display order hint from the signaled order_hint.
   // This requires scaling up order_hints corresponding to frame
   // numbers that exceed the number of bits available to send the order_hints.
@@ -5630,6 +5638,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
     current_frame->order_hint = aom_rb_read_literal(
         rb, seq_params->order_hint_info.order_hint_bits_minus_1 + 1);
+
     current_frame->display_order_hint = get_disp_order_hint(cm);
     current_frame->frame_number = current_frame->order_hint;
 
@@ -5833,6 +5842,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                         current_frame->frame_type == KEY_FRAME);
       av1_get_ref_frames(cm, current_frame->display_order_hint,
                          ref_frame_map_pairs);
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+      cm->ref_frames_info.num_same_ref_compound =
+          AOMMIN(cm->seq_params.num_same_ref_compound,
+                 cm->ref_frames_info.num_total_refs);
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #else
       int frame_refs_short_signaling = 0;
       // Frame refs short signaling is off when error resilient mode is on.

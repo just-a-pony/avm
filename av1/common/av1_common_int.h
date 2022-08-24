@@ -405,6 +405,10 @@ typedef struct SequenceHeader {
 #if CONFIG_NEW_REF_SIGNALING
   int explicit_ref_frame_map;  // Explicitly signal the reference frame mapping
   int max_reference_frames;    // Number of reference frames allowed
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  int num_same_ref_compound;  // Number of the allowed same reference frames for
+                              // the compound mode
+#endif                        // CONFIG_ALLOW_SAME_REF_COMPOUND
 #endif
 
   OrderHintInfo order_hint_info;
@@ -1065,6 +1069,12 @@ typedef struct {
    * Number of references with the same order hint.
    */
   int num_cur_refs;
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  /*!
+   * Number of references for the compound mode with the same slot.
+   */
+  int num_same_ref_compound;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 } RefFramesInfo;
 #endif  // CONFIG_NEW_REF_SIGNALING
 

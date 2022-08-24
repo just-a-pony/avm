@@ -2695,7 +2695,11 @@ typedef struct AV1_COMP {
   /*!
    * Mark which ref frames can be skipped for encoding current frame during RDO.
    */
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  uint64_t prune_ref_frame_mask;
+#else
   int prune_ref_frame_mask;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 
   /*!
    * Loop Restoration context.

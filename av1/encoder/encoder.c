@@ -419,6 +419,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_NEW_REF_SIGNALING
   seq->explicit_ref_frame_map = oxcf->ref_frm_cfg.explicit_ref_frame_map;
   seq->max_reference_frames = oxcf->ref_frm_cfg.max_reference_frames;
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  seq->num_same_ref_compound = SAME_REF_COMPOUND_PRUNE;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #endif  // CONFIG_NEW_REF_SIGNALING
 
   seq->max_frame_width = frm_dim_cfg->forced_max_frame_width

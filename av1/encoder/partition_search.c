@@ -1048,9 +1048,16 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #if CONFIG_NEW_REF_SIGNALING
         const int n_refs = cm->ref_frames_info.num_total_refs;
         int n_bits = 0;
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+        assert(ref0 <= ref1);
+        for (int i = 0; i < n_refs - 1 && n_bits < 2; i++) {
+          const int bit =
+              ((n_bits == 0) && (ref0 == i)) || ((n_bits == 1) && (ref1 == i));
+#else
         assert(ref0 < ref1);
         for (int i = 0; i < n_refs + n_bits - 2 && n_bits < 2; i++) {
           const int bit = ref0 == i || ref1 == i;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
           const int bit_type = n_bits == 0 ? -1
                                            : av1_get_compound_ref_bit_type(
                                                  &cm->ref_frames_info, ref0, i);
@@ -1069,6 +1076,9 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           }
 #endif  // CONFIG_ENTROPY_STATS
           n_bits += bit;
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+          if (i < cm->ref_frames_info.num_same_ref_compound) i -= bit;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
         }
 #else
         const COMP_REFERENCE_TYPE comp_ref_type = has_uni_comp_refs(mbmi)

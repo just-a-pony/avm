@@ -1103,6 +1103,61 @@ static AOM_INLINE void estimate_ref_frame_costs(
 #endif  // CONFIG_NEW_REF_SIGNALING
 
 #if CONFIG_NEW_REF_SIGNALING
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+    if (cm->current_frame.reference_mode != SINGLE_REFERENCE) {
+      for (int i = 0; i < REF_FRAMES; i++) {
+        for (int j = 0; j < REF_FRAMES; j++) ref_costs_comp[i][j] = INT_MAX;
+      }
+
+      for (int i = 0; i < n_refs; i++) {
+        int prev_cost = base_cost;
+        for (int j = 0; j < n_refs; j++) {
+          if (j < i) {
+            if (n_refs == 1)
+              continue;  // No bits need to be sent in this case
+                         // Keep track of the cost to encode the first reference
+            aom_cdf_prob ctx = av1_get_ref_pred_context(xd, j, n_refs);
+            const int bit = i == j;
+            if (j < n_refs - 1 && j < RANKED_REF0_TO_PRUNE - 1)
+              prev_cost += mode_costs->comp_ref0_cost[ctx][j][bit];
+          } else {
+            // Assign the cost of signaling both references
+            ref_costs_comp[i][j] = prev_cost;
+            ref_costs_comp[j][i] = prev_cost;
+            if (j < n_refs) {
+              aom_cdf_prob ctx = av1_get_ref_pred_context(xd, j, n_refs);
+              const int bit_type =
+                  av1_get_compound_ref_bit_type(&cm->ref_frames_info, i, j);
+              ref_costs_comp[i][j] +=
+                  mode_costs->comp_ref1_cost[ctx][bit_type][j][1];
+              ref_costs_comp[j][i] +=
+                  mode_costs->comp_ref1_cost[ctx][bit_type][j][1];
+              // Maintain the cost of sending a 0 bit for the 2nd reference to
+              // be used in the next iteration.
+              prev_cost += mode_costs->comp_ref1_cost[ctx][bit_type][j][0];
+            }
+          }
+        }
+      }
+      if (n_refs < 2) {
+        ref_costs_comp[0][0] = base_cost;
+      }
+#ifndef NDEBUG
+      for (int i = 0; i < n_refs - 1; i++) {
+        for (int j = i + 1; j < n_refs; j++) {
+          assert(ref_costs_comp[i][j] != INT_MAX);
+        }
+      }
+#endif  // NDEBUG
+    } else {
+      for (int ref0 = 0; ref0 < REF_FRAMES; ++ref0) {
+        for (int ref1 = ref0 + 1; ref1 < REF_FRAMES; ++ref1) {
+          ref_costs_comp[ref0][ref1] = 512;
+          ref_costs_comp[ref1][ref0] = 512;
+        }
+      }
+    }
+#else
     if (cm->current_frame.reference_mode != SINGLE_REFERENCE) {
       for (int i = 0; i < REF_FRAMES; i++)
         for (int j = 0; j < REF_FRAMES; j++) ref_costs_comp[i][j] = INT_MAX;
@@ -1151,6 +1206,7 @@ static AOM_INLINE void estimate_ref_frame_costs(
         }
       }
     }
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #else
     if (cm->current_frame.reference_mode != SINGLE_REFERENCE) {
       // Similar to single ref, determine cost of compound ref frames.
@@ -5662,10 +5718,18 @@ static AOM_INLINE int prune_ref_frame(const AV1_COMP *cpi, const MACROBLOCK *x,
 #endif  // CONFIG_NEW_REF_SIGNALING
 
 static AOM_INLINE int is_ref_frame_used_by_compound_ref(
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+    int ref_frame, uint64_t skip_ref_frame_mask) {
+#else
     int ref_frame, int skip_ref_frame_mask) {
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #if CONFIG_NEW_REF_SIGNALING
   for (int r = INTER_REFS_PER_FRAME; r < INTRA_FRAME; ++r) {
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+    if (!(skip_ref_frame_mask & ((uint64_t)1 << r))) {
+#else
     if (!(skip_ref_frame_mask & (1 << r))) {
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
       MV_REFERENCE_FRAME rf[2];
       av1_set_ref_frame(rf, r);
 #else
@@ -5689,7 +5753,12 @@ static AOM_INLINE int is_ref_frame_used_by_compound_ref(
 // and easy to read and maintain.
 static AOM_INLINE void set_params_rd_pick_inter_mode(
     const AV1_COMP *cpi, MACROBLOCK *x, HandleInterModeArgs *args,
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+    BLOCK_SIZE bsize, mode_skip_mask_t *mode_skip_mask,
+    uint64_t skip_ref_frame_mask,
+#else
     BLOCK_SIZE bsize, mode_skip_mask_t *mode_skip_mask, int skip_ref_frame_mask,
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
     unsigned int *ref_costs_single, unsigned int (*ref_costs_comp)[REF_FRAMES],
     struct buf_2d yv12_mb[SINGLE_REF_FRAMES][MAX_MB_PLANE]) {
   const AV1_COMMON *const cm = &cpi->common;
@@ -5723,7 +5792,11 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
 #endif  // CONFIG_NEW_REF_SIGNALING
       if (mbmi->partition != PARTITION_NONE &&
           mbmi->partition != PARTITION_SPLIT) {
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+        if (skip_ref_frame_mask & ((uint64_t)1 << ref_frame) &&
+#else
         if (skip_ref_frame_mask & (1 << ref_frame) &&
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
             !is_ref_frame_used_by_compound_ref(ref_frame, skip_ref_frame_mask))
           continue;
       }
@@ -5778,7 +5851,11 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
 
       if (mbmi->partition != PARTITION_NONE &&
           mbmi->partition != PARTITION_SPLIT) {
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+        if (skip_ref_frame_mask & ((uint64_t)1 << ref_frame)) {
+#else
         if (skip_ref_frame_mask & (1 << ref_frame)) {
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
           continue;
         }
       }
@@ -6014,8 +6091,12 @@ static int inter_mode_compatible_skip(const AV1_COMP *cpi, const MACROBLOCK *x,
   return 0;
 }
 
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+static uint64_t fetch_picked_ref_frames_mask(const MACROBLOCK *const x,
+#else
 static int fetch_picked_ref_frames_mask(const MACROBLOCK *const x,
-                                        BLOCK_SIZE bsize, int mib_size) {
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+                                             BLOCK_SIZE bsize, int mib_size) {
   const int sb_size_mask = mib_size - 1;
   const MACROBLOCKD *const xd = &x->e_mbd;
   const int mi_row = xd->mi_row;
@@ -6024,7 +6105,11 @@ static int fetch_picked_ref_frames_mask(const MACROBLOCK *const x,
   const int mi_col_in_sb = mi_col & sb_size_mask;
   const int mi_w = mi_size_wide[bsize];
   const int mi_h = mi_size_high[bsize];
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  uint64_t picked_ref_frames_mask = 0;
+#else
   int picked_ref_frames_mask = 0;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   for (int i = mi_row_in_sb; i < mi_row_in_sb + mi_h; ++i) {
     for (int j = mi_col_in_sb; j < mi_col_in_sb + mi_w; ++j) {
       picked_ref_frames_mask |= x->picked_ref_frames_mask[i * 32 + j];
@@ -6039,13 +6124,20 @@ static int fetch_picked_ref_frames_mask(const MACROBLOCK *const x,
 // modes
 static int inter_mode_search_order_independent_skip(
     const AV1_COMP *cpi, const MACROBLOCK *x, mode_skip_mask_t *mode_skip_mask,
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+    InterModeSearchState *search_state, uint64_t skip_ref_frame_mask,
+#else
     InterModeSearchState *search_state, int skip_ref_frame_mask,
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
     PREDICTION_MODE mode, const MV_REFERENCE_FRAME *ref_frame) {
   if (mask_says_skip(mode_skip_mask, ref_frame, mode)) {
     return 1;
   }
-
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  const uint8_t ref_type = av1_ref_frame_type(ref_frame);
+#else
   const int ref_type = av1_ref_frame_type(ref_frame);
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   if (prune_ref_frame(cpi, x, ref_type)) return 1;
 
   // This is only used in motion vector unit test.
@@ -6067,7 +6159,13 @@ static int inter_mode_search_order_independent_skip(
 
   int skip_motion_mode = 0;
   if (mbmi->partition != PARTITION_NONE && mbmi->partition != PARTITION_SPLIT) {
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+    assert(ref_type < (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 1) / 2) +
+                          INTER_REFS_PER_FRAME);
+    int skip_ref = (int)(skip_ref_frame_mask & ((uint64_t)1 << ref_type));
+#else
     int skip_ref = skip_ref_frame_mask & (1 << ref_type);
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #if CONFIG_NEW_REF_SIGNALING
     if (ref_type < INTER_REFS_PER_FRAME && skip_ref) {
       // Since the compound ref modes depends on the motion estimation result
@@ -6075,7 +6173,11 @@ static int inter_mode_search_order_independent_skip(
       // point ) If current single ref mode is marked skip, we need to check
       // if it will be used in compound ref modes.
       for (int r = INTER_REFS_PER_FRAME; r < INTRA_FRAME; ++r) {
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+        if (skip_ref_frame_mask & ((uint64_t)1 << r)) continue;
+#else
         if (skip_ref_frame_mask & (1 << r)) continue;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
         MV_REFERENCE_FRAME rf[2];
         av1_set_ref_frame(rf, r);
 #else
@@ -6683,7 +6785,11 @@ typedef struct {
   int *skip_motion_mode;
   mode_skip_mask_t *mode_skip_mask;
   InterModeSearchState *search_state;
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  uint64_t skip_ref_frame_mask;
+#else
   int skip_ref_frame_mask;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   int reach_first_comp_mode;
   int mode_thresh_mul_fact;
   int *num_single_modes_processed;
@@ -7084,7 +7190,11 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   av1_invalid_rd_stats(rd_cost);
 
   // Ref frames that are selected by square partition blocks.
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  uint64_t picked_ref_frames_mask = 0;
+#else
   int picked_ref_frames_mask = 0;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   if (cpi->sf.inter_sf.prune_ref_frame_for_rect_partitions &&
       mbmi->partition != PARTITION_NONE && mbmi->partition != PARTITION_SPLIT) {
     // prune_ref_frame_for_rect_partitions = 1 implies prune only extended
@@ -7099,8 +7209,13 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   }
 
   // Skip ref frames that never selected by square blocks.
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  const uint64_t skip_ref_frame_mask =
+      picked_ref_frames_mask ? ~picked_ref_frames_mask : 0;
+#else
   const int skip_ref_frame_mask =
       picked_ref_frames_mask ? ~picked_ref_frames_mask : 0;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   mode_skip_mask_t mode_skip_mask;
   unsigned int ref_costs_single[SINGLE_REF_FRAMES];
   struct buf_2d yv12_mb[SINGLE_REF_FRAMES][MAX_MB_PLANE];
@@ -7283,7 +7398,13 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
             this_mode < COMP_INTER_MODE_END && second_ref_frame == NONE_FRAME)
           continue;
         if (is_inter_ref_frame(second_ref_frame) &&
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+            ((second_ref_frame < ref_frame) ||
+             ((second_ref_frame == ref_frame) &&
+              (ref_frame >= cm->ref_frames_info.num_same_ref_compound))))
+#else
             second_ref_frame <= ref_frame)
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
           continue;
 
 #if CONFIG_TIP
