@@ -165,7 +165,6 @@ static INLINE int8_t single2comb(int n, const int8_t *const rf) {
     rfr[0] = rf[1];
     rfr[1] = rf[0];
   }
-  assert(rfr[0] < RANKED_REF0_TO_PRUNE - 1);
   int off = (n + 1) * rfr[0] - rfr[0] * (rfr[0] + 1) / 2;
   int combindex = off + rfr[1] - rfr[0];
   assert(combindex >= 0 &&

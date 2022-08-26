@@ -6160,8 +6160,8 @@ static int inter_mode_search_order_independent_skip(
   int skip_motion_mode = 0;
   if (mbmi->partition != PARTITION_NONE && mbmi->partition != PARTITION_SPLIT) {
 #if CONFIG_ALLOW_SAME_REF_COMPOUND
-    assert(ref_type < (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 1) / 2) +
-                          INTER_REFS_PER_FRAME);
+    assert(ref_type <
+           (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 3) / 2 + 2));
     int skip_ref = (int)(skip_ref_frame_mask & ((uint64_t)1 << ref_type));
 #else
     int skip_ref = skip_ref_frame_mask & (1 << ref_type);
