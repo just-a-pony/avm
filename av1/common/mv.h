@@ -400,27 +400,27 @@ static INLINE void integer_mv_precision(MV *mv) {
 // CONFIG_AMVR and precision == MV_SUBPEL_NONE, the bottom three bits will be
 // zero (so the motion vector represents an integer)
 #if CONFIG_FLEX_MVRES
-static INLINE int_mv gm_get_motion_vector(const WarpedMotionParams *gm,
-                                          MvSubpelPrecision precision,
-                                          BLOCK_SIZE bsize, int mi_col,
-                                          int mi_row) {
+static INLINE int_mv get_warp_motion_vector(const WarpedMotionParams *model,
+                                            MvSubpelPrecision precision,
+                                            BLOCK_SIZE bsize, int mi_col,
+                                            int mi_row) {
 #else
-static INLINE int_mv gm_get_motion_vector(const WarpedMotionParams *gm,
-                                          int allow_hp, BLOCK_SIZE bsize,
-                                          int mi_col, int mi_row,
-                                          int is_integer) {
+static INLINE int_mv get_warp_motion_vector(const WarpedMotionParams *model,
+                                            int allow_hp, BLOCK_SIZE bsize,
+                                            int mi_col, int mi_row,
+                                            int is_integer) {
 #endif
   int_mv res;
 
-  if (gm->wmtype == IDENTITY) {
+  if (model->wmtype == IDENTITY) {
     res.as_int = 0;
     return res;
   }
 
-  const int32_t *mat = gm->wmmat;
+  const int32_t *mat = model->wmmat;
   int x, y, tx, ty;
 
-  if (gm->wmtype == TRANSLATION) {
+  if (model->wmtype == TRANSLATION) {
     // All global motion vectors are stored with WARPEDMODEL_PREC_BITS (16)
     // bits of fractional precision. The offset for a translation is stored in
     // entries 0 and 1. For translations, all but the top three (two if
@@ -431,8 +431,8 @@ static INLINE int_mv gm_get_motion_vector(const WarpedMotionParams *gm,
     // After the right shifts, there are 3 fractional bits of precision. If
     // precision < MV_SUBPEL_EIGHTH is false, the bottom bit is always zero
     // (so we don't need a call to convert_to_trans_prec here)
-    res.as_mv.row = gm->wmmat[0] >> GM_TRANS_ONLY_PREC_DIFF;
-    res.as_mv.col = gm->wmmat[1] >> GM_TRANS_ONLY_PREC_DIFF;
+    res.as_mv.row = model->wmmat[0] >> GM_TRANS_ONLY_PREC_DIFF;
+    res.as_mv.col = model->wmmat[1] >> GM_TRANS_ONLY_PREC_DIFF;
     assert(IMPLIES(1 & (res.as_mv.row | res.as_mv.col),
                    precision == MV_PRECISION_ONE_EIGHTH_PEL));
     lower_mv_precision(&res.as_mv, precision);
@@ -440,8 +440,8 @@ static INLINE int_mv gm_get_motion_vector(const WarpedMotionParams *gm,
     // After the right shifts, there are 3 fractional bits of precision. If
     // allow_hp is false, the bottom bit is always zero (so we don't need a
     // call to convert_to_trans_prec here)
-    res.as_mv.row = gm->wmmat[0] >> GM_TRANS_ONLY_PREC_DIFF;
-    res.as_mv.col = gm->wmmat[1] >> GM_TRANS_ONLY_PREC_DIFF;
+    res.as_mv.row = model->wmmat[0] >> GM_TRANS_ONLY_PREC_DIFF;
+    res.as_mv.col = model->wmmat[1] >> GM_TRANS_ONLY_PREC_DIFF;
     assert(IMPLIES(1 & (res.as_mv.row | res.as_mv.col), allow_hp));
     if (is_integer) {
       integer_mv_precision(&res.as_mv);
@@ -453,9 +453,9 @@ static INLINE int_mv gm_get_motion_vector(const WarpedMotionParams *gm,
   x = block_center_x(mi_col, bsize);
   y = block_center_y(mi_row, bsize);
 
-  if (gm->wmtype == ROTZOOM) {
-    assert(gm->wmmat[5] == gm->wmmat[2]);
-    assert(gm->wmmat[4] == -gm->wmmat[3]);
+  if (model->wmtype == ROTZOOM) {
+    assert(model->wmmat[5] == model->wmmat[2]);
+    assert(model->wmmat[4] == -model->wmmat[3]);
   }
 
   const int xc =
@@ -483,20 +483,43 @@ static INLINE int_mv gm_get_motion_vector(const WarpedMotionParams *gm,
   return res;
 }
 
-static INLINE TransformationType get_wmtype(const WarpedMotionParams *gm) {
-  if (gm->wmmat[5] == (1 << WARPEDMODEL_PREC_BITS) && !gm->wmmat[4] &&
-      gm->wmmat[2] == (1 << WARPEDMODEL_PREC_BITS) && !gm->wmmat[3]) {
-    return ((!gm->wmmat[1] && !gm->wmmat[0]) ? IDENTITY : TRANSLATION);
+static INLINE TransformationType get_wmtype(const WarpedMotionParams *model) {
+  if (model->wmmat[5] == (1 << WARPEDMODEL_PREC_BITS) && !model->wmmat[4] &&
+      model->wmmat[2] == (1 << WARPEDMODEL_PREC_BITS) && !model->wmmat[3]) {
+    return ((!model->wmmat[1] && !model->wmmat[0]) ? IDENTITY : TRANSLATION);
   }
-  if (gm->wmmat[2] == gm->wmmat[5] && gm->wmmat[3] == -gm->wmmat[4])
+  if (model->wmmat[2] == model->wmmat[5] && model->wmmat[3] == -model->wmmat[4])
     return ROTZOOM;
   else
     return AFFINE;
 }
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+// Special value for row_offset and col_offset in the `CANDIDATE_MV` struct,
+// to indicate that this motion vector did not come from spatial prediction
+// (eg, temporal prediction, or a scaled MV from a nearby block which used
+// a different ref frame)
+//
+// The special value is 0 because the spatial scan area consists of blocks
+// both above and left of the current block. Thus valid offsets will always
+// have at least one of row_offset and col_offset negative.
+#define OFFSET_NONSPATIAL 0
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
 typedef struct candidate_mv {
   int_mv this_mv;
   int_mv comp_mv;
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  // Position of the candidate block relative to the current block.
+  // This is used to decide whether to signal the WARP_EXTEND mode,
+  // and to fetch the corresponding warp model if that is used
+  //
+  // Note(rachelbarker):
+  // If these are both set to OFFSET_NONSPATIAL, then this is a non-spatial
+  // candidate, and so does not allow WARP_EXTEND
+  int row_offset;
+  int col_offset;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 } CANDIDATE_MV;
 
 static INLINE int is_zero_mv(const MV *mv) {

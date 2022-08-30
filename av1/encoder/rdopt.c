@@ -1936,6 +1936,67 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
   return 0;
 }
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+static int cost_warp_delta_param(int index, int value,
+                                 const ModeCosts *mode_costs) {
+  assert(2 <= index && index <= 5);
+  int index_type = (index == 2 || index == 5) ? 0 : 1;
+  int coded_value = (value / WARP_DELTA_STEP) + WARP_DELTA_CODED_MAX;
+  assert(0 <= coded_value && coded_value < WARP_DELTA_NUM_SYMBOLS);
+  return mode_costs->warp_delta_param_cost[index_type][coded_value];
+}
+
+int av1_cost_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
+                        const MB_MODE_INFO *mbmi,
+                        const MB_MODE_INFO_EXT *mbmi_ext,
+                        const ModeCosts *mode_costs) {
+  const WarpedMotionParams *params = &mbmi->wm_params[0];
+  WarpedMotionParams base_params;
+  av1_get_warp_base_params(cm, xd, mbmi,
+                           mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]],
+                           &base_params, NULL);
+
+  // The RDO stage should not give us a model which is not warpable.
+  // Such models can still be signalled, but are effectively useless
+  // as we'll just fall back to translational motion
+  assert(!params->invalid);
+
+  int rate = 0;
+
+  // TODO(rachelbarker): Allow signaling warp type?
+  rate += cost_warp_delta_param(2, params->wmmat[2] - base_params.wmmat[2],
+                                mode_costs);
+  rate += cost_warp_delta_param(3, params->wmmat[3] - base_params.wmmat[3],
+                                mode_costs);
+
+  return rate;
+}
+
+static INLINE int select_modes_to_search(const AV1_COMP *const cpi,
+                                         int allowed_motion_modes,
+                                         int eval_motion_mode,
+                                         int skip_motion_mode) {
+  int modes_to_search = allowed_motion_modes;
+
+  // Modify the set of motion modes to consider according to speed features.
+  // For example, if SIMPLE_TRANSLATION has already been searched according to
+  // the motion_mode_for_winner_cand speed feature, avoid searching it again.
+  if (cpi->sf.winner_mode_sf.motion_mode_for_winner_cand) {
+    if (!eval_motion_mode) {
+      modes_to_search = (1 << SIMPLE_TRANSLATION);
+    } else {
+      // Skip translation, as will have already been evaluated
+      modes_to_search &= ~(1 << SIMPLE_TRANSLATION);
+    }
+  }
+
+  if (skip_motion_mode) {
+    modes_to_search &= (1 << SIMPLE_TRANSLATION);
+  }
+
+  return modes_to_search;
+}
+#else
 static INLINE void update_mode_start_end_index(const AV1_COMP *const cpi,
                                                int *mode_index_start,
                                                int *mode_index_end,
@@ -1954,17 +2015,17 @@ static INLINE void update_mode_start_end_index(const AV1_COMP *const cpi,
     }
   }
 }
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 /*!\brief AV1 motion mode search
  *
  * \ingroup inter_mode_search
  * Function to search over and determine the motion mode. It will update
- * mbmi->motion_mode to one of SIMPLE_TRANSLATION, OBMC_CAUSAL, or
- * WARPED_CAUSAL and determine any necessary side information for the selected
- * motion mode. It will also perform the full transform search, unless the
- * input parameter do_tx_search indicates to do an estimation of the RD rather
- * than an RD corresponding to a full transform search. It will return the
- * RD for the final motion_mode.
+ * mbmi->motion_mode and determine any necessary side information for the
+ * selected motion mode. It will also perform the full transform search, unless
+ * the input parameter do_tx_search indicates to do an estimation of the RD
+ * rather than an RD corresponding to a full transform search. It will return
+ * the RD for the final motion_mode.
  * Do the RD search for a given inter mode and compute all information relevant
  * to the input mode. It will compute the best MV,
  * compound parameters (if the mode is a compound mode) and interpolation filter
@@ -2034,6 +2095,9 @@ static int64_t motion_mode_rd(
   const int num_planes = av1_num_planes(cm);
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  MB_MODE_INFO_EXT *mbmi_ext = x->mbmi_ext;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
   const int is_comp_pred = has_second_ref(mbmi);
   const PREDICTION_MODE this_mode = mbmi->mode;
   const int rate2_nocoeff = rd_stats->rate;
@@ -2042,8 +2106,10 @@ static int64_t motion_mode_rd(
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   const int rate_mv0 = *rate_mv;
+#if !CONFIG_EXTENDED_WARP_PREDICTION
   const int interintra_allowed =
       cm->seq_params.enable_interintra_compound && is_interintra_allowed(mbmi);
+#endif  // !CONFIG_EXTENDED_WARP_PREDICTION
   int pts0[SAMPLES_ARRAY_SIZE], pts_inref0[SAMPLES_ARRAY_SIZE];
 
   assert(mbmi->ref_frame[1] != INTRA_FRAME);
@@ -2052,14 +2118,23 @@ static int64_t motion_mode_rd(
   av1_invalid_rd_stats(&best_rd_stats);
   aom_clear_system_state();
   mbmi->num_proj_ref = 1;  // assume num_proj_ref >=1
-  MOTION_MODE last_motion_mode_allowed = SIMPLE_TRANSLATION;
-  if (features->switchable_motion_mode) {
-    // Determine which motion modes to search if more than SIMPLE_TRANSLATION
-    // is allowed.
-    last_motion_mode_allowed = motion_mode_allowed(
-        xd->global_motion, xd, mbmi, features->allow_warped_motion);
-  }
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  int allowed_motion_modes = motion_mode_allowed(
+      cm, xd, mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
+  if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+    // Collect projection samples used in least squares approximation of
+    // the warped motion parameters if WARPED_CAUSAL is going to be searched.
+    mbmi->num_proj_ref = av1_findSamples(cm, xd, pts0, pts_inref0);
+  }
+  const int total_samples = mbmi->num_proj_ref;
+  if (total_samples == 0) {
+    // Do not search WARPED_CAUSAL if there are no samples to use to determine
+    // warped parameters.
+    allowed_motion_modes &= ~(1 << WARPED_CAUSAL);
+  }
+#else
+  MOTION_MODE last_motion_mode_allowed = motion_mode_allowed(cm, xd, mbmi);
   if (last_motion_mode_allowed == WARPED_CAUSAL) {
     // Collect projection samples used in least squares approximation of
     // the warped motion parameters if WARPED_CAUSAL is going to be searched.
@@ -2071,6 +2146,7 @@ static int64_t motion_mode_rd(
     // warped parameters.
     last_motion_mode_allowed = OBMC_CAUSAL;
   }
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   const MB_MODE_INFO base_mbmi = *mbmi;
   MB_MODE_INFO best_mbmi;
@@ -2083,6 +2159,10 @@ static int64_t motion_mode_rd(
   int best_rate_mv = rate_mv0;
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  int modes_to_search = select_modes_to_search(
+      cpi, allowed_motion_modes, eval_motion_mode, args->skip_motion_mode);
+#else
   int mode_index_start, mode_index_end;
   // Modify the start and end index according to speed features. For example,
   // if SIMPLE_TRANSLATION has already been searched according to
@@ -2091,18 +2171,31 @@ static int64_t motion_mode_rd(
   update_mode_start_end_index(cpi, &mode_index_start, &mode_index_end,
                               last_motion_mode_allowed, interintra_allowed,
                               eval_motion_mode);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
   // Main function loop. This loops over all of the possible motion modes and
   // computes RD to determine the best one. This process includes computing
   // any necessary side information for the motion mode and performing the
   // transform search.
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  for (int mode_index = SIMPLE_TRANSLATION; mode_index < MOTION_MODES;
+       mode_index++) {
+    if ((modes_to_search & (1 << mode_index)) == 0) continue;
+#else
   for (int mode_index = mode_index_start; mode_index <= mode_index_end;
        mode_index++) {
     if (args->skip_motion_mode && mode_index) continue;
-    int tmp_rate2 = rate2_nocoeff;
     const int is_interintra_mode = mode_index > (int)last_motion_mode_allowed;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+    int tmp_rate2 = rate2_nocoeff;
     int tmp_rate_mv = rate_mv0;
 
     *mbmi = base_mbmi;
+#if CONFIG_EXTENDED_WARP_PREDICTION
+    mbmi->motion_mode = (MOTION_MODE)mode_index;
+    if (mbmi->motion_mode != INTERINTRA) {
+      assert(mbmi->ref_frame[1] != INTRA_FRAME);
+    }
+#else
     if (is_interintra_mode) {
       // Only use SIMPLE_TRANSLATION for interintra
       mbmi->motion_mode = SIMPLE_TRANSLATION;
@@ -2110,6 +2203,7 @@ static int64_t motion_mode_rd(
       mbmi->motion_mode = (MOTION_MODE)mode_index;
       assert(mbmi->ref_frame[1] != INTRA_FRAME);
     }
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
     // Do not search OBMC if the probability of selecting it is below a
     // predetermined threshold for this update_type and block size.
@@ -2121,12 +2215,19 @@ static int64_t motion_mode_rd(
         mbmi->motion_mode == OBMC_CAUSAL)
       continue;
 
+    if (is_warp_mode(mbmi->motion_mode)) {
+      mbmi->interp_fltr = av1_unswitchable_filter(interp_filter);
+    }
+
+#if CONFIG_EXTENDED_WARP_PREDICTION
+    if (mbmi->motion_mode == SIMPLE_TRANSLATION) {
+#else
     if (mbmi->motion_mode == SIMPLE_TRANSLATION && !is_interintra_mode) {
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
       // SIMPLE_TRANSLATION mode: no need to recalculate.
       // The prediction is calculated before motion_mode_rd() is called in
       // handle_inter_mode()
     } else if (mbmi->motion_mode == OBMC_CAUSAL) {
-      const uint32_t cur_mv = mbmi->mv[0].as_int;
       // OBMC_CAUSAL not allowed for compound prediction
       assert(!is_comp_pred);
       if (this_mode == NEWMV) {
@@ -2134,22 +2235,20 @@ static int64_t motion_mode_rd(
                                  &mbmi->mv[0]);
         tmp_rate2 = rate2_nocoeff - rate_mv0 + tmp_rate_mv;
       }
-      if ((mbmi->mv[0].as_int != cur_mv) || eval_motion_mode) {
-        // Build the predictor according to the current motion vector if it has
-        // not already been built
-        av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, orig_dst, bsize,
-                                      0, av1_num_planes(cm) - 1);
-      }
       // Build the inter predictor by blending the predictor corresponding to
       // this MV, and the neighboring blocks using the OBMC model
+      av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, orig_dst, bsize, 0,
+                                    av1_num_planes(cm) - 1);
       av1_build_obmc_inter_prediction(
           cm, xd, args->above_pred_buf, args->above_pred_stride,
           args->left_pred_buf, args->left_pred_stride);
     } else if (mbmi->motion_mode == WARPED_CAUSAL) {
       int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
-      mbmi->motion_mode = WARPED_CAUSAL;
+#if CONFIG_EXTENDED_WARP_PREDICTION
+      mbmi->wm_params[0].wmtype = DEFAULT_WMTYPE;
+#else
       mbmi->wm_params.wmtype = DEFAULT_WMTYPE;
-      mbmi->interp_fltr = av1_unswitchable_filter(interp_filter);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
       memcpy(pts, pts0, total_samples * 2 * sizeof(*pts0));
       memcpy(pts_inref, pts_inref0, total_samples * 2 * sizeof(*pts_inref0));
@@ -2161,9 +2260,16 @@ static int64_t motion_mode_rd(
 
       // Compute the warped motion parameters with a least squares fit
       //  using the collected samples
+#if CONFIG_EXTENDED_WARP_PREDICTION
       if (!av1_find_projection(mbmi->num_proj_ref, pts, pts_inref, bsize,
-                               mbmi->mv[0].as_mv.row, mbmi->mv[0].as_mv.col,
-                               &mbmi->wm_params, mi_row, mi_col)) {
+                               mbmi->mv[0].as_mv, &mbmi->wm_params[0], mi_row,
+                               mi_col)) {
+#else
+      if (!av1_find_projection(mbmi->num_proj_ref, pts, pts_inref, bsize,
+                               mbmi->mv[0].as_mv, &mbmi->wm_params, mi_row,
+                               mi_col)) {
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
         assert(!is_comp_pred);
         if (this_mode == NEWMV
 #if CONFIG_FLEX_MVRES
@@ -2172,8 +2278,6 @@ static int64_t motion_mode_rd(
         ) {
           // Refine MV for NEWMV mode
           const int_mv mv0 = mbmi->mv[0];
-          const WarpedMotionParams wm_params0 = mbmi->wm_params;
-          const int num_proj_ref0 = mbmi->num_proj_ref;
 
           const int_mv ref_mv = av1_get_ref_mv(x, 0);
 #if CONFIG_FLEX_MVRES
@@ -2208,11 +2312,6 @@ static int64_t motion_mode_rd(
                 x->mv_costs.mv_cost_stack, MV_COST_WEIGHT);
 #endif
             tmp_rate2 = rate2_nocoeff - rate_mv0 + tmp_rate_mv;
-          } else {
-            // Restore the old MV and WM parameters.
-            mbmi->mv[0] = mv0;
-            mbmi->wm_params = wm_params0;
-            mbmi->num_proj_ref = num_proj_ref0;
           }
         }
 
@@ -2222,11 +2321,195 @@ static int64_t motion_mode_rd(
       } else {
         continue;
       }
+#if CONFIG_EXTENDED_WARP_PREDICTION
+    } else if (mbmi->motion_mode == INTERINTRA) {
+#else
     } else if (is_interintra_mode) {
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
       const int ret =
           av1_handle_inter_intra_mode(cpi, x, bsize, mbmi, args, ref_best_rd,
                                       &tmp_rate_mv, &tmp_rate2, orig_dst);
       if (ret < 0) continue;
+#if CONFIG_EXTENDED_WARP_PREDICTION
+    } else if (mbmi->motion_mode == WARP_DELTA) {
+#if CONFIG_FLEX_MVRES
+      if (mbmi->mode == NEWMV && mbmi->pb_mv_precision < MV_PRECISION_ONE_PEL) {
+        // Don't bother with warp modes for MV precisions >1px
+        continue;
+      }
+#endif
+
+      int_mv mv0 = mbmi->mv[0];
+      const int_mv ref_mv = av1_get_ref_mv(x, 0);
+      SUBPEL_MOTION_SEARCH_PARAMS ms_params;
+      av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize,
+                                        &ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                                        mbmi->pb_mv_precision,
+#endif
+                                        NULL);
+
+      int valid = av1_pick_warp_delta(cm, xd, mbmi, mbmi_ext, &ms_params,
+                                      &x->mode_costs);
+      if (!valid) {
+        continue;
+      }
+
+      // If we changed the MV, update costs
+      if (mv0.as_int != mbmi->mv[0].as_int) {
+        // Keep the refined MV and WM parameters.
+#if CONFIG_FLEX_MVRES
+        tmp_rate_mv =
+            av1_mv_bit_cost(&mbmi->mv[0].as_mv, &ref_mv.as_mv,
+                            mbmi->pb_mv_precision, &x->mv_costs, MV_COST_WEIGHT
+#if CONFIG_ADAPTIVE_MVD
+                            ,
+                            ms_params.mv_cost_params.is_adaptive_mvd
+#endif
+            );
+#else
+        tmp_rate_mv = av1_mv_bit_cost(
+            &mbmi->mv[0].as_mv, &ref_mv.as_mv, x->mv_costs.nmv_joint_cost,
+            x->mv_costs.mv_cost_stack, MV_COST_WEIGHT);
+#endif
+
+        tmp_rate2 = rate2_nocoeff - rate_mv0 + tmp_rate_mv;
+      }
+
+      av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
+                                    av1_num_planes(cm) - 1);
+    } else if (mbmi->motion_mode == WARP_EXTEND) {
+#if CONFIG_FLEX_MVRES
+      if (mbmi->mode == NEWMV && mbmi->pb_mv_precision < MV_PRECISION_ONE_PEL) {
+        // Don't bother with warp modes for MV precisions >1px
+        continue;
+      }
+#endif
+
+      CANDIDATE_MV *neighbor =
+          &mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]][mbmi->ref_mv_idx];
+      assert(neighbor->row_offset == -1 || neighbor->col_offset == -1);
+      const MB_MODE_INFO *neighbor_mi =
+          xd->mi[neighbor->row_offset * xd->mi_stride + neighbor->col_offset];
+
+      if (mbmi->mode == NEARMV) {
+        assert(is_warp_mode(neighbor_mi->motion_mode));
+        if (neighbor_mi->wm_params[0].invalid) {
+          // Skip invalid models
+          continue;
+        }
+        mbmi->wm_params[0] = neighbor_mi->wm_params[0];
+      } else {
+        assert(mbmi->mode == NEWMV);
+
+        bool neighbor_is_above =
+            xd->up_available &&
+            (neighbor->row_offset == -1 && neighbor->col_offset >= 0);
+
+        WarpedMotionParams neighbor_params;
+        av1_get_neighbor_warp_model(cm, neighbor_mi, &neighbor_params);
+
+        const int_mv ref_mv = av1_get_ref_mv(x, 0);
+        SUBPEL_MOTION_SEARCH_PARAMS ms_params;
+        av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize,
+                                          &ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                                          mbmi->pb_mv_precision,
+#endif
+                                          NULL);
+        const SubpelMvLimits *mv_limits = &ms_params.mv_limits;
+
+        // Note: The warp filter is only able to accept small deviations from
+        // the identity transform, up to 1/4 pel of shift per pixel.
+        // Especially for small blocks, it is likely that the motion vector
+        // estimated by the newmv search will be too distant from the
+        // neighbor's motion vectors for the warp filter to be applied.
+        // However, we don't want to give up the benefits of a good initial
+        // MV in the cases where a suitable one has already been found.
+        //
+        // To get the best of both worlds, we run an initial test to see
+        // if the motion vector found by newmv search gives a valid motion
+        // model. If so, we use that as the starting point for refinement.
+        // Otherwise, we use the MV which is predicted by the neighbor's
+        // warp model
+        // TODO(rachelbarker): Do we need this logic?
+
+        // Backup initial motion vector and resulting warp params
+        int_mv mv0 = mbmi->mv[0];
+        WarpedMotionParams wm_params0;
+        if (!av1_extend_warp_model(neighbor_is_above, bsize, &mbmi->mv[0].as_mv,
+                                   mi_row, mi_col, &neighbor_params,
+                                   &wm_params0)) {
+          // NEWMV search produced a valid model
+          mbmi->wm_params[0] = wm_params0;
+        } else {
+          // NEWMV search did not produce a valid model, so fall back to
+          // starting with the motion vector predicted by the neighbor's
+          // warp model (if any)
+#if CONFIG_FLEX_MVRES
+          mbmi->mv[0] = get_warp_motion_vector(
+              &neighbor_params, mbmi->pb_mv_precision, bsize, mi_col, mi_row);
+#else
+          mbmi->mv[0] = get_warp_motion_vector(
+              &neighbor_params, features->allow_high_precision_mv, bsize,
+              mi_col, mi_row, features->cur_frame_force_integer_mv);
+#endif
+          // Check that the prediction is in range
+          if (!av1_is_subpelmv_in_range(mv_limits, mbmi->mv[0].as_mv)) {
+            continue;
+          }
+
+          // Regenerate model with this new MV
+          //
+          // Note: This should be very close to the neighbor's warp model,
+          // but may be slightly different due to rounding. So it may be
+          // invalid even if the neighbor's warp model is valid.
+          // Because an exact copy will already have been tried using the
+          // NEARMV mode, we can just detect an invalid model and bail out.
+          //
+          // TODO(rachelbarker): Is it worth trying to search anyway in
+          // this case, in order to try to find a valid model?
+          if (av1_extend_warp_model(neighbor_is_above, bsize,
+                                    &mbmi->mv[0].as_mv, mi_row, mi_col,
+                                    &neighbor_params, &mbmi->wm_params[0])) {
+            continue;
+          }
+        }
+
+        // Refine motion vector. The final choice of MV and warp model are
+        // stored directly into `mbmi`
+        av1_refine_mv_for_warp_extend(cm, xd, &ms_params, neighbor_is_above,
+                                      bsize, &neighbor_params);
+
+        // If we changed the MV, update costs
+        if (mv0.as_int != mbmi->mv[0].as_int) {
+          // Keep the refined MV and WM parameters.
+#if CONFIG_FLEX_MVRES
+          tmp_rate_mv = av1_mv_bit_cost(&mbmi->mv[0].as_mv, &ref_mv.as_mv,
+                                        mbmi->pb_mv_precision, &x->mv_costs,
+                                        MV_COST_WEIGHT
+#if CONFIG_ADAPTIVE_MVD
+                                        ,
+                                        ms_params.mv_cost_params.is_adaptive_mvd
+#endif
+          );
+#else
+          tmp_rate_mv = av1_mv_bit_cost(
+              &mbmi->mv[0].as_mv, &ref_mv.as_mv, x->mv_costs.nmv_joint_cost,
+              x->mv_costs.mv_cost_stack, MV_COST_WEIGHT);
+#endif
+          tmp_rate2 = rate2_nocoeff - rate_mv0 + tmp_rate_mv;
+        } else {
+          // Restore the old MV and WM parameters.
+          mbmi->mv[0] = mv0;
+          mbmi->wm_params[0] = wm_params0;
+        }
+      }
+
+      // Build the warped predictor
+      av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
+                                    av1_num_planes(cm) - 1);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
     }
 
     // If we are searching newmv and the mv is the same as refmv, skip the
@@ -2240,7 +2523,66 @@ static int64_t motion_mode_rd(
     rd_stats->skip_txfm = 1;
     rd_stats->rate = tmp_rate2;
     const ModeCosts *mode_costs = &x->mode_costs;
-    if (mbmi->motion_mode != WARPED_CAUSAL) rd_stats->rate += switchable_rate;
+    if (!is_warp_mode(mbmi->motion_mode)) rd_stats->rate += switchable_rate;
+
+#if CONFIG_EXTENDED_WARP_PREDICTION
+    MOTION_MODE motion_mode = mbmi->motion_mode;
+    bool continue_motion_mode_signaling = true;
+
+    if (allowed_motion_modes & (1 << INTERINTRA)) {
+      rd_stats->rate += mode_costs->interintra_cost[size_group_lookup[bsize]]
+                                                   [motion_mode == INTERINTRA];
+      if (motion_mode == INTERINTRA) {
+        // Note(rachelbarker): Costs for other interintra-related signaling are
+        // already accounted for by `av1_handle_inter_intra_mode`
+        continue_motion_mode_signaling = false;
+      }
+    }
+
+    if (continue_motion_mode_signaling &&
+        allowed_motion_modes & (1 << OBMC_CAUSAL)) {
+      rd_stats->rate +=
+          mode_costs->obmc_cost[bsize][motion_mode == OBMC_CAUSAL];
+      if (motion_mode == OBMC_CAUSAL) {
+        continue_motion_mode_signaling = false;
+      }
+    }
+
+    if (continue_motion_mode_signaling &&
+        allowed_motion_modes & (1 << WARP_EXTEND)) {
+      int ctx1 = av1_get_warp_extend_ctx1(
+          xd, mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
+      int ctx2 = av1_get_warp_extend_ctx2(
+          xd, mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
+      rd_stats->rate +=
+          mode_costs->warp_extend_cost[ctx1][ctx2][motion_mode == WARP_EXTEND];
+      if (motion_mode == WARP_EXTEND) {
+        continue_motion_mode_signaling = false;
+      }
+    }
+
+    if (continue_motion_mode_signaling &&
+        allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+      rd_stats->rate +=
+          mode_costs->warped_causal_cost[bsize][motion_mode == WARPED_CAUSAL];
+      if (motion_mode == WARPED_CAUSAL) {
+        continue_motion_mode_signaling = false;
+      }
+    }
+
+    if (continue_motion_mode_signaling &&
+        allowed_motion_modes & (1 << WARP_DELTA)) {
+      rd_stats->rate +=
+          mode_costs->warp_delta_cost[bsize][motion_mode == WARP_DELTA];
+      if (motion_mode == WARP_DELTA) {
+        rd_stats->rate +=
+            av1_cost_warp_delta(cm, xd, mbmi, mbmi_ext, mode_costs);
+        // The following line is commented out to remove a spurious
+        // static analysis warning. Uncomment when adding a new motion mode
+        // continue_motion_mode_signaling = false;
+      }
+    }
+#else
     if (interintra_allowed) {
       rd_stats->rate +=
           mode_costs->interintra_cost[size_group_lookup[bsize]]
@@ -2256,6 +2598,7 @@ static int64_t motion_mode_rd(
             mode_costs->motion_mode_cost1[bsize][mbmi->motion_mode];
       }
     }
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
     if (!do_tx_search) {
       // Avoid doing a transform search here to speed up the overall mode
@@ -3227,6 +3570,11 @@ static int skip_repeated_newmv(
   MB_MODE_INFO *mbmi = xd->mi[0];
   const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
 #endif
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  // We can-not change the ref_mv_idx of best_mbmi becasue motion mode is tied
+  // with ref_mv_idx
+  if (is_warp_mode(best_mbmi->motion_mode)) return 0;
+#endif
 
   int skip = 0;
   int this_rate_mv = 0;
@@ -3705,8 +4053,7 @@ static int64_t handle_inter_mode(
   //    2.) Search compound type and parameters if applicable
   //    3.) Do interpolation filter search
   //    4.) Build the inter predictor
-  //    5.) Pick the motion mode (SIMPLE_TRANSLATION, OBMC_CAUSAL,
-  //        WARPED_CAUSAL)
+  //    5.) Pick the motion mode
   //    6.) Update stats if best so far
   for (int ref_mv_idx = 0; ref_mv_idx < ref_set; ++ref_mv_idx) {
 #if CONFIG_FLEX_MVRES
@@ -3770,9 +4117,12 @@ static int64_t handle_inter_mode(
 #endif
 
 #if !CONFIG_FLEX_MVRES
+      mbmi->motion_mode = SIMPLE_TRANSLATION;
+
       mode_info[ref_mv_idx].full_search_mv.as_int = INVALID_MV;
       mode_info[ref_mv_idx].mv.as_int = INVALID_MV;
       mode_info[ref_mv_idx].rd = INT64_MAX;
+
       if (!mask_check_bit(idx_mask, ref_mv_idx)) {
         // MV did not perform well in simple translation search. Skip it.
         continue;
@@ -3792,7 +4142,6 @@ static int64_t handle_inter_mode(
       if (mbmi->ref_frame[1] == INTRA_FRAME) mbmi->ref_frame[1] = NONE_FRAME;
 
       mbmi->num_proj_ref = 0;
-      mbmi->motion_mode = SIMPLE_TRANSLATION;
       mbmi->ref_mv_idx = ref_mv_idx;
 
       // Compute cost for signalling this DRL index
@@ -7908,6 +8257,9 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       mbmi->mv[0].as_int = 0;
       mbmi->skip_mode = 0;
       mbmi->mode = 0;
+#if CONFIG_EXTENDED_WARP_PREDICTION
+      mbmi->motion_mode = SIMPLE_TRANSLATION;
+#endif
 
       rd_pick_intrabc_mode_sb(cpi, x, ctx, &this_rd_cost, bsize, INT64_MAX);
 
@@ -8088,12 +8440,12 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
 #endif  // CONFIG_TIP
     mbmi->mv[0].as_int =
 #if CONFIG_FLEX_MVRES
-        gm_get_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
-                             features->fr_mv_precision, bsize, mi_col, mi_row)
+        get_warp_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
+                               features->fr_mv_precision, bsize, mi_col, mi_row)
 #else
-      gm_get_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
-                           features->allow_high_precision_mv, bsize, mi_col,
-                           mi_row, features->cur_frame_force_integer_mv)
+      get_warp_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
+                             features->allow_high_precision_mv, bsize, mi_col,
+                             mi_row, features->cur_frame_force_integer_mv)
 #endif
             .as_int;
 #if CONFIG_TIP

@@ -345,14 +345,116 @@ static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
 #endif  // !CONFIG_NEW_REF_SIGNALING
 }
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+static void write_warp_delta_param(const MACROBLOCKD *xd, int index, int value,
+                                   aom_writer *w) {
+  assert(2 <= index && index <= 5);
+  int index_type = (index == 2 || index == 5) ? 0 : 1;
+  int coded_value = (value / WARP_DELTA_STEP) + WARP_DELTA_CODED_MAX;
+  assert(0 <= coded_value && coded_value < WARP_DELTA_NUM_SYMBOLS);
+
+  aom_write_symbol(w, coded_value,
+                   xd->tile_ctx->warp_delta_param_cdf[index_type],
+                   WARP_DELTA_NUM_SYMBOLS);
+}
+
+static void write_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
+                             const MB_MODE_INFO *mbmi,
+                             const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
+                             aom_writer *w) {
+  const WarpedMotionParams *params = &mbmi->wm_params[0];
+  WarpedMotionParams base_params;
+  av1_get_warp_base_params(cm, xd, mbmi, mbmi_ext_frame->ref_mv_stack,
+                           &base_params, NULL);
+
+  // The RDO stage should not give us a model which is not warpable.
+  // Such models can still be signalled, but are effectively useless
+  // as we'll just fall back to translational motion
+  assert(!params->invalid);
+
+  // TODO(rachelbarker): Allow signaling warp type?
+  write_warp_delta_param(xd, 2, params->wmmat[2] - base_params.wmmat[2], w);
+  write_warp_delta_param(xd, 3, params->wmmat[3] - base_params.wmmat[3], w);
+}
+
+static AOM_INLINE void write_motion_mode(
+    const AV1_COMMON *cm, MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
+    const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame, aom_writer *w) {
+  const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
+  const int allowed_motion_modes =
+      motion_mode_allowed(cm, xd, mbmi_ext_frame->ref_mv_stack, mbmi);
+  assert((allowed_motion_modes & (1 << mbmi->motion_mode)) != 0);
+
+  MOTION_MODE motion_mode = mbmi->motion_mode;
+
+  // Note(rachelbarker): Both of the conditions in brackets here are used in
+  // various places to mean "is this block interintra?". This assertion is a
+  // quick check to ensure these conditions can't get out of sync.
+  assert((mbmi->ref_frame[1] == INTRA_FRAME) == (motion_mode == INTERINTRA));
+
+  if (allowed_motion_modes & (1 << INTERINTRA)) {
+    const int bsize_group = size_group_lookup[bsize];
+    aom_write_symbol(w, motion_mode == INTERINTRA,
+                     xd->tile_ctx->interintra_cdf[bsize_group], 2);
+    if (motion_mode == INTERINTRA) {
+      aom_write_symbol(w, mbmi->interintra_mode,
+                       xd->tile_ctx->interintra_mode_cdf[bsize_group],
+                       INTERINTRA_MODES);
+      if (av1_is_wedge_used(bsize)) {
+        aom_write_symbol(w, mbmi->use_wedge_interintra,
+                         xd->tile_ctx->wedge_interintra_cdf[bsize], 2);
+        if (mbmi->use_wedge_interintra) {
+          aom_write_symbol(w, mbmi->interintra_wedge_index,
+                           xd->tile_ctx->wedge_idx_cdf[bsize], MAX_WEDGE_TYPES);
+        }
+      }
+      return;
+    }
+  }
+
+  if (allowed_motion_modes & (1 << OBMC_CAUSAL)) {
+    aom_write_symbol(w, motion_mode == OBMC_CAUSAL,
+                     xd->tile_ctx->obmc_cdf[bsize], 2);
+
+    if (motion_mode == OBMC_CAUSAL) {
+      return;
+    }
+  }
+
+  if (allowed_motion_modes & (1 << WARP_EXTEND)) {
+    int ctx1 = av1_get_warp_extend_ctx1(xd, mbmi_ext_frame->ref_mv_stack, mbmi);
+    int ctx2 = av1_get_warp_extend_ctx2(xd, mbmi_ext_frame->ref_mv_stack, mbmi);
+    aom_write_symbol(w, motion_mode == WARP_EXTEND,
+                     xd->tile_ctx->warp_extend_cdf[ctx1][ctx2], 2);
+    if (motion_mode == WARP_EXTEND) {
+      return;
+    }
+  }
+
+  if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+    aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
+                     xd->tile_ctx->warped_causal_cdf[bsize], 2);
+
+    if (motion_mode == WARPED_CAUSAL) {
+      return;
+    }
+  }
+
+  if (allowed_motion_modes & (1 << WARP_DELTA)) {
+    aom_write_symbol(w, motion_mode == WARP_DELTA,
+                     xd->tile_ctx->warp_delta_cdf[bsize], 2);
+
+    if (motion_mode == WARP_DELTA) {
+      write_warp_delta(cm, xd, mbmi, mbmi_ext_frame, w);
+      return;
+    }
+  }
+}
+#else
 static AOM_INLINE void write_motion_mode(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                          const MB_MODE_INFO *mbmi,
                                          aom_writer *w) {
-  MOTION_MODE last_motion_mode_allowed =
-      cm->features.switchable_motion_mode
-          ? motion_mode_allowed(cm->global_motion, xd, mbmi,
-                                cm->features.allow_warped_motion)
-          : SIMPLE_TRANSLATION;
+  MOTION_MODE last_motion_mode_allowed = motion_mode_allowed(cm, xd, mbmi);
   assert(mbmi->motion_mode <= last_motion_mode_allowed);
   switch (last_motion_mode_allowed) {
     case SIMPLE_TRANSLATION: break;
@@ -367,6 +469,7 @@ static AOM_INLINE void write_motion_mode(const AV1_COMMON *cm, MACROBLOCKD *xd,
           MOTION_MODES);
   }
 }
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 static AOM_INLINE void write_delta_qindex(const MACROBLOCKD *xd,
                                           int delta_qindex, aom_writer *w) {
@@ -1827,6 +1930,9 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif
     }
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+    write_motion_mode(cm, xd, mbmi, mbmi_ext_frame, w);
+#else
     if (cpi->common.current_frame.reference_mode != COMPOUND_REFERENCE &&
         cpi->common.seq_params.enable_interintra_compound &&
         is_interintra_allowed(mbmi)) {
@@ -1849,6 +1955,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
     }
 
     if (mbmi->ref_frame[1] != INTRA_FRAME) write_motion_mode(cm, xd, mbmi, w);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
     // First write idx to indicate current compound inter prediction mode
     // group Group A (0): dist_wtd_comp, compound_average Group B (1):

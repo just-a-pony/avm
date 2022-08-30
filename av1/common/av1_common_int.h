@@ -139,6 +139,36 @@ extern "C" {
 #define TIP_MV_SEARCH_RANGE 4
 #endif  // CONFIG_TIP
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+#define MIN_BSIZE_WARP_DELTA 16
+
+// Using the WARP_DELTA motion mode, we can use a nearby block's warp model as
+// a prediction and then modify it with an explicitly coded delta.
+//
+// If this flag is set to 0, then any spatial reference block (ie, a DRL entry
+// which came from a block in the current frame) can provide a warp model which
+// we can use as a prediction.
+//
+// If this flag is set to 1, then only directly adjacent blocks can be used
+// as references (similar to WARP_EXTEND), meaning that we only need to store
+// one above row and one left column of warp models. This can be enabled if
+// the above behaviour causes concerns for hardware implementations.
+//
+// Interaction with different modes:
+//
+// For GLOBALMV, WARP_DELTA can always be used, and uses the global warp model
+// (if any) as a base. If no global warp model was given, we use a translational
+// model as a base.
+//
+// For NEARMV, WARP_DELTA can only be used if the reference block selected from
+// the DRL can provide a warp model under the logic mentioned above.
+//
+// For NEWMV, WARP_DELTA can always be used. If the reference block can provide
+// a warp model, then this is used as a base; otherwise the global warp model
+// (or a translational model) is used.
+#define WARP_DELTA_REQUIRES_NEIGHBOR 1
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
 /*!\cond */
 
 enum {
@@ -2934,6 +2964,190 @@ static inline int is_this_mv_precision_compliant(
 }
 #endif  // CONFIG_FLEX_MVRES
 
+static INLINE bool is_warp_mode(MOTION_MODE motion_mode) {
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  return (motion_mode >= WARPED_CAUSAL);
+#else
+  return (motion_mode == WARPED_CAUSAL);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+}
+
+#if CONFIG_EXTENDED_WARP_PREDICTION
+/* Evaluate which motion modes are allowed for the current block
+ * Returns a bit field, where motion mode `i` is allowed if and only if
+ * the i'th bit is set.
+ *
+ * That is, to check if a given motion mode is allowed, do the following:
+ *   int allowed_motion_modes = motion_mode_allowed([...]);
+ *   if (allowed_motion_modes & (1 << i)) {
+ *     [...]
+ *   }
+ */
+static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
+                                      const MACROBLOCKD *xd,
+                                      const CANDIDATE_MV *ref_mv_stack,
+                                      const MB_MODE_INFO *mbmi) {
+  const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
+  int allowed_motion_modes = (1 << SIMPLE_TRANSLATION);
+
+  if (mbmi->skip_mode || mbmi->ref_frame[0] == INTRA_FRAME) {
+    return allowed_motion_modes;
+  }
+
+  bool interintra_allowed =
+      cm->current_frame.reference_mode != COMPOUND_REFERENCE &&
+      cm->seq_params.enable_interintra_compound && is_interintra_allowed(mbmi);
+
+  if (interintra_allowed) {
+    allowed_motion_modes |= (1 << INTERINTRA);
+  }
+
+  if (!cm->features.switchable_motion_mode) {
+    return allowed_motion_modes;
+  }
+
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) {
+    return allowed_motion_modes;
+  }
+#endif  // CONFIG_TIP
+
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  if (mbmi->ref_frame[0] == mbmi->ref_frame[1]) {
+    return allowed_motion_modes;
+  }
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+
+  if (xd->cur_frame_force_integer_mv == 0) {
+    const TransformationType gm_type =
+        cm->global_motion[mbmi->ref_frame[0]].wmtype;
+    if (is_global_mv_block(mbmi, gm_type)) {
+      return allowed_motion_modes;
+    }
+  }
+
+  bool motion_variation_allowed = is_motion_variation_allowed_bsize(bsize) &&
+                                  is_inter_mode(mbmi->mode) &&
+                                  is_motion_variation_allowed_compound(mbmi);
+
+  bool obmc_allowed =
+      motion_variation_allowed && check_num_overlappable_neighbors(mbmi);
+
+  if (obmc_allowed) {
+    allowed_motion_modes |= (1 << OBMC_CAUSAL);
+  }
+
+  // From here on, all modes are warped, so have some common criteria:
+  const int allow_warped_motion =
+      motion_variation_allowed && cm->features.allow_warped_motion &&
+      !av1_is_scaled(xd->block_ref_scale_factors[0]) &&
+      !xd->cur_frame_force_integer_mv;
+
+  if (obmc_allowed && allow_warped_motion && mbmi->num_proj_ref >= 1) {
+    allowed_motion_modes |= (1 << WARPED_CAUSAL);
+  }
+
+  bool warp_extend_allowed = false;
+  PREDICTION_MODE mode = mbmi->mode;
+
+  if (allow_warped_motion && (mode == NEARMV || mode == NEWMV)) {
+    const CANDIDATE_MV *neighbor = &ref_mv_stack[mbmi->ref_mv_idx];
+
+    bool neighbor_is_above = xd->up_available && (neighbor->row_offset == -1 &&
+                                                  neighbor->col_offset >= 0);
+    bool neighbor_is_left = xd->left_available && (neighbor->col_offset == -1 &&
+                                                   neighbor->row_offset >= 0);
+    bool neighbor_is_adjacent = neighbor_is_above || neighbor_is_left;
+
+    if (neighbor_is_adjacent) {
+      const MB_MODE_INFO *neighbor_mi =
+          xd->mi[neighbor->row_offset * xd->mi_stride + neighbor->col_offset];
+
+      bool neighbor_is_warped = is_warp_mode(neighbor_mi->motion_mode);
+
+      if ((mode == NEARMV && neighbor_is_warped) || mode == NEWMV) {
+        warp_extend_allowed = true;
+      }
+    }
+  }
+
+  if (warp_extend_allowed) {
+    allowed_motion_modes |= (1 << WARP_EXTEND);
+  }
+
+  bool warp_delta_allowed =
+      allow_warped_motion &&
+      AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >=
+          MIN_BSIZE_WARP_DELTA;
+
+  if (warp_delta_allowed && mode == NEARMV) {
+#if WARP_DELTA_REQUIRES_NEIGHBOR
+    // Only allow WARP_DELTA on a NEARMV block when there is a neighboring
+    // warp block to extend from
+    warp_delta_allowed = warp_extend_allowed;
+#else
+    const CANDIDATE_MV *ref = &ref_mv_stack[mbmi->ref_mv_idx];
+    bool ref_is_spatial = (ref->row_offset != OFFSET_NONSPATIAL) &&
+                          (ref->col_offset != OFFSET_NONSPATIAL);
+    if (ref_is_spatial) {
+      const MB_MODE_INFO *ref_mi =
+          xd->mi[ref->row_offset * xd->mi_stride + ref->col_offset];
+      bool ref_is_warped = is_warp_mode(ref_mi->motion_mode);
+      warp_delta_allowed = ref_is_warped;
+    } else {
+      warp_delta_allowed = false;
+    }
+#endif
+  }
+
+  if (warp_delta_allowed) {
+    allowed_motion_modes |= (1 << WARP_DELTA);
+  }
+
+  return allowed_motion_modes;
+}
+#else
+static INLINE MOTION_MODE motion_mode_allowed(const AV1_COMMON *cm,
+                                              const MACROBLOCKD *xd,
+                                              const MB_MODE_INFO *mbmi) {
+  if (!cm->features.switchable_motion_mode) {
+    return SIMPLE_TRANSLATION;
+  }
+
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) return SIMPLE_TRANSLATION;
+#endif  // CONFIG_TIP
+
+#if CONFIG_ALLOW_SAME_REF_COMPOUND
+  if (mbmi->ref_frame[0] == mbmi->ref_frame[1]) return SIMPLE_TRANSLATION;
+#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+
+  if (xd->cur_frame_force_integer_mv == 0) {
+    const TransformationType gm_type =
+        cm->global_motion[mbmi->ref_frame[0]].wmtype;
+    if (is_global_mv_block(mbmi, gm_type)) return SIMPLE_TRANSLATION;
+  }
+
+  if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
+      is_inter_mode(mbmi->mode) && mbmi->ref_frame[1] != INTRA_FRAME &&
+      is_motion_variation_allowed_compound(mbmi)) {
+    if (!check_num_overlappable_neighbors(mbmi)) return SIMPLE_TRANSLATION;
+    assert(!has_second_ref(mbmi));
+    const int allow_warped_motion = cm->features.allow_warped_motion;
+    if (mbmi->num_proj_ref >= 1 &&
+        (allow_warped_motion &&
+         !av1_is_scaled(xd->block_ref_scale_factors[0]))) {
+      if (xd->cur_frame_force_integer_mv) {
+        return OBMC_CAUSAL;
+      }
+      return WARPED_CAUSAL;
+    }
+    return OBMC_CAUSAL;
+  } else {
+    return SIMPLE_TRANSLATION;
+  }
+}
+#endif
 #ifdef __cplusplus
 }  // extern "C"
 #endif

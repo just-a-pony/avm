@@ -15,6 +15,7 @@
 #include <memory.h>
 #include <math.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include "config/av1_rtcd.h"
 
@@ -193,6 +194,26 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
 
 /* clang-format on */
 
+// Recompute the translational part of a warp model, so that the center
+// of the current block (determined by `mi_row`, `mi_col`, `bsize`)
+// has an induced motion vector of `mv`
+void av1_set_warp_translation(int mi_row, int mi_col, BLOCK_SIZE bsize, MV mv,
+                              WarpedMotionParams *wm) {
+  const int center_x = mi_col * MI_SIZE + block_size_wide[bsize] / 2 - 1;
+  const int center_y = mi_row * MI_SIZE + block_size_high[bsize] / 2 - 1;
+
+  // Note(rachelbarker): We subtract 1 from the diagonal part of the model here.
+  // This is because the warp model M maps (current frame) pixel coordinates to
+  // (ref frame) pixel coordinates. So, in order to calculate the induced
+  // motion vector, we have to subtract the identity matrix.
+  wm->wmmat[0] = mv.col * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
+                 (center_x * (wm->wmmat[2] - (1 << WARPEDMODEL_PREC_BITS)) +
+                  center_y * wm->wmmat[3]);
+  wm->wmmat[1] = mv.row * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
+                 (center_x * wm->wmmat[4] +
+                  center_y * (wm->wmmat[5] - (1 << WARPEDMODEL_PREC_BITS)));
+}
+
 const uint16_t div_lut[DIV_LUT_NUM + 1] = {
   16384, 16320, 16257, 16194, 16132, 16070, 16009, 15948, 15888, 15828, 15768,
   15709, 15650, 15592, 15534, 15477, 15420, 15364, 15308, 15252, 15197, 15142,
@@ -251,14 +272,30 @@ int av1_get_shear_params(WarpedMotionParams *wm) {
                         (1 << WARPEDMODEL_PREC_BITS),
                     INT16_MIN, INT16_MAX);
 
-  wm->alpha = ROUND_POWER_OF_TWO_SIGNED(wm->alpha, WARP_PARAM_REDUCE_BITS) *
-              (1 << WARP_PARAM_REDUCE_BITS);
-  wm->beta = ROUND_POWER_OF_TWO_SIGNED(wm->beta, WARP_PARAM_REDUCE_BITS) *
-             (1 << WARP_PARAM_REDUCE_BITS);
-  wm->gamma = ROUND_POWER_OF_TWO_SIGNED(wm->gamma, WARP_PARAM_REDUCE_BITS) *
-              (1 << WARP_PARAM_REDUCE_BITS);
-  wm->delta = ROUND_POWER_OF_TWO_SIGNED(wm->delta, WARP_PARAM_REDUCE_BITS) *
-              (1 << WARP_PARAM_REDUCE_BITS);
+  // Note(rachelbarker):
+  // In extreme cases, the `clamp` operations in the previous block can set
+  // parameters equal to to INT16_MAX == 32767.
+  //
+  // The following round-then-multiply, which is intended to reduce the bit
+  // storage requirement in hardware, then rounds to 32768, which is outside
+  // the range of an int16_t. But casting to int16_t is okay - it will cause
+  // this value to become -32768, and so the model will be rejected
+  // by is_affine_shear_allowed(), so the outcome is the same.
+  //
+  // However, we must make this cast explicit, because otherwise the integer
+  // sanitizer (correctly) complains about overflow during an implicit cast
+  wm->alpha =
+      (int16_t)(ROUND_POWER_OF_TWO_SIGNED(wm->alpha, WARP_PARAM_REDUCE_BITS) *
+                (1 << WARP_PARAM_REDUCE_BITS));
+  wm->beta =
+      (int16_t)(ROUND_POWER_OF_TWO_SIGNED(wm->beta, WARP_PARAM_REDUCE_BITS) *
+                (1 << WARP_PARAM_REDUCE_BITS));
+  wm->gamma =
+      (int16_t)(ROUND_POWER_OF_TWO_SIGNED(wm->gamma, WARP_PARAM_REDUCE_BITS) *
+                (1 << WARP_PARAM_REDUCE_BITS));
+  wm->delta =
+      (int16_t)(ROUND_POWER_OF_TWO_SIGNED(wm->delta, WARP_PARAM_REDUCE_BITS) *
+                (1 << WARP_PARAM_REDUCE_BITS));
 
   if (!is_affine_shear_allowed(wm->alpha, wm->beta, wm->gamma, wm->delta))
     return 0;
@@ -688,8 +725,8 @@ static int32_t get_mult_shift_diag(int64_t Px, int16_t iDet, int shift) {
 #endif  // USE_LIMITED_PREC_MULT
 
 static int find_affine_int(int np, const int *pts1, const int *pts2,
-                           BLOCK_SIZE bsize, int mvy, int mvx,
-                           WarpedMotionParams *wm, int mi_row, int mi_col) {
+                           BLOCK_SIZE bsize, MV mv, WarpedMotionParams *wm,
+                           int mi_row, int mi_col) {
   int32_t A[2][2] = { { 0, 0 }, { 0, 0 } };
   int32_t Bx[2] = { 0, 0 };
   int32_t By[2] = { 0, 0 };
@@ -700,8 +737,8 @@ static int find_affine_int(int np, const int *pts1, const int *pts2,
   const int rsux = bw / 2 - 1;
   const int suy = rsuy * 8;
   const int sux = rsux * 8;
-  const int duy = suy + mvy;
-  const int dux = sux + mvx;
+  const int duy = suy + mv.row;
+  const int dux = sux + mv.col;
 
   // Assume the center pixel of the block has exactly the same motion vector
   // as transmitted for the block. First shift the origin of the source
@@ -778,38 +815,128 @@ static int find_affine_int(int np, const int *pts1, const int *pts2,
   wm->wmmat[4] = get_mult_shift_ndiag(Py[0], iDet, shift);
   wm->wmmat[5] = get_mult_shift_diag(Py[1], iDet, shift);
 
-  const int isuy = (mi_row * MI_SIZE + rsuy);
-  const int isux = (mi_col * MI_SIZE + rsux);
-  // Note: In the vx, vy expressions below, the max value of each of the
-  // 2nd and 3rd terms are (2^16 - 1) * (2^13 - 1). That leaves enough room
-  // for the first term so that the overall sum in the worst case fits
-  // within 32 bits overall.
-  const int32_t vx = mvx * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
-                     (isux * (wm->wmmat[2] - (1 << WARPEDMODEL_PREC_BITS)) +
-                      isuy * wm->wmmat[3]);
-  const int32_t vy = mvy * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
-                     (isux * wm->wmmat[4] +
-                      isuy * (wm->wmmat[5] - (1 << WARPEDMODEL_PREC_BITS)));
-  wm->wmmat[0] =
-      clamp(vx, -WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - 1);
-  wm->wmmat[1] =
-      clamp(vy, -WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - 1);
+  // check compatibility with the fast warp filter
+  if (!av1_get_shear_params(wm)) return 1;
+
+  av1_set_warp_translation(mi_row, mi_col, bsize, mv, wm);
+  wm->wmmat[0] = clamp(wm->wmmat[0], -WARPEDMODEL_TRANS_CLAMP,
+                       WARPEDMODEL_TRANS_CLAMP - 1);
+  wm->wmmat[1] = clamp(wm->wmmat[1], -WARPEDMODEL_TRANS_CLAMP,
+                       WARPEDMODEL_TRANS_CLAMP - 1);
 
   wm->wmmat[6] = wm->wmmat[7] = 0;
   return 0;
 }
 
 int av1_find_projection(int np, const int *pts1, const int *pts2,
-                        BLOCK_SIZE bsize, int mvy, int mvx,
-                        WarpedMotionParams *wm_params, int mi_row, int mi_col) {
+                        BLOCK_SIZE bsize, MV mv, WarpedMotionParams *wm_params,
+                        int mi_row, int mi_col) {
   assert(wm_params->wmtype == AFFINE);
 
-  if (find_affine_int(np, pts1, pts2, bsize, mvy, mvx, wm_params, mi_row,
-                      mi_col))
+  if (find_affine_int(np, pts1, pts2, bsize, mv, wm_params, mi_row, mi_col))
     return 1;
+
+  return 0;
+}
+
+#if CONFIG_EXTENDED_WARP_PREDICTION
+/* Given a neighboring block's warp model and the motion vector at the center
+   of the current block, construct a new warp model which is continuous with
+   the neighbor at the common edge but which has the given motion vector at
+   the center of the block.
+
+    The `neighbor_is_above` parameter should be true if the neighboring block
+    is above the current block, or false if it is to the left of the current
+    block.
+
+    Returns 0 if the resulting model can be used with the warp filter,
+    1 if not.
+*/
+int av1_extend_warp_model(const bool neighbor_is_above, const BLOCK_SIZE bsize,
+                          const MV *center_mv, const int mi_row,
+                          const int mi_col,
+                          const WarpedMotionParams *neighbor_wm,
+                          WarpedMotionParams *wm_params) {
+  const int half_width_log2 = mi_size_wide_log2[bsize] + MI_SIZE_LOG2 - 1;
+  const int half_height_log2 = mi_size_high_log2[bsize] + MI_SIZE_LOG2 - 1;
+  const int center_x = (mi_col * MI_SIZE) + (1 << half_width_log2) - 1;
+  const int center_y = (mi_row * MI_SIZE) + (1 << half_height_log2) - 1;
+  // Calculate the point (at warp model precision) where the center of the
+  // current block should be mapped to
+  int proj_center_x = (center_x * (1 << WARPEDMODEL_PREC_BITS)) +
+                      (center_mv->col * (1 << (WARPEDMODEL_PREC_BITS - 3)));
+  int proj_center_y = (center_y * (1 << WARPEDMODEL_PREC_BITS)) +
+                      (center_mv->row * (1 << (WARPEDMODEL_PREC_BITS - 3)));
+
+  *wm_params = default_warp_params;
+  wm_params->wmtype = AFFINE;
+
+  if (neighbor_is_above) {
+    // We want to construct a model which will project the block center
+    // according to the signaled motion vector, and which matches the
+    // neighbor's warp model along the top edge of the block.
+    //
+    // We do this in three steps:
+    // 1) Since the models should match along the whole top edge of the block,
+    //    the coefficients of x in the warp model must be the same as for the
+    //    neighboring block
+    //
+    // 2) The coefficients of y in the warp model can then be determined from
+    //    the difference in projected positions between a point on the edge
+    //    and the block center
+    //
+    // 3) The translational part can be derived (outside of this `if`)
+    //    by subtracting the linear part of the model from the signaled MV.
+
+    wm_params->wmmat[2] = neighbor_wm->wmmat[2];
+    wm_params->wmmat[4] = neighbor_wm->wmmat[4];
+
+    // Project above point
+    int above_x = center_x;
+    int above_y = center_y - (1 << half_height_log2);
+    int proj_above_x = neighbor_wm->wmmat[2] * above_x +
+                       neighbor_wm->wmmat[3] * above_y + neighbor_wm->wmmat[0];
+    int proj_above_y = neighbor_wm->wmmat[4] * above_x +
+                       neighbor_wm->wmmat[5] * above_y + neighbor_wm->wmmat[1];
+
+    // y coefficients are (project(center) - project(above)) / (center.y -
+    // above.y), which simplifies to (project(center) - project(above)) /
+    // 2^(half_height_log2)
+    wm_params->wmmat[3] =
+        ROUND_POWER_OF_TWO(proj_center_x - proj_above_x, half_height_log2);
+    wm_params->wmmat[5] =
+        ROUND_POWER_OF_TWO(proj_center_y - proj_above_y, half_height_log2);
+  } else {
+    // If the neighboring block is to the left of the current block, we do the
+    // same thing as for the above case, but with x and y axes interchanged
+
+    wm_params->wmmat[3] = neighbor_wm->wmmat[3];
+    wm_params->wmmat[5] = neighbor_wm->wmmat[5];
+
+    // Project left point
+    int left_x = center_x - (1 << half_width_log2);
+    int left_y = center_y;
+    int proj_left_x = neighbor_wm->wmmat[2] * left_x +
+                      neighbor_wm->wmmat[3] * left_y + neighbor_wm->wmmat[0];
+    int proj_left_y = neighbor_wm->wmmat[4] * left_x +
+                      neighbor_wm->wmmat[5] * left_y + neighbor_wm->wmmat[1];
+
+    // y coefficients are
+    //    (project(center) - project(left)) / (center.y - left.y)
+    // which simplifies to
+    //    (project(center) - project(left)) / 2^(half_width_log2)
+    wm_params->wmmat[2] =
+        ROUND_POWER_OF_TWO(proj_center_x - proj_left_x, half_width_log2);
+    wm_params->wmmat[4] =
+        ROUND_POWER_OF_TWO(proj_center_y - proj_left_y, half_width_log2);
+  }
 
   // check compatibility with the fast warp filter
   if (!av1_get_shear_params(wm_params)) return 1;
 
+  // Derive translational part from signaled MV
+  av1_set_warp_translation(mi_row, mi_col, bsize, *center_mv, wm_params);
+
   return 0;
 }
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION

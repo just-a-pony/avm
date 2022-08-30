@@ -150,8 +150,16 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->interintra_cdf, 2);
   RESET_CDF_COUNTER(fc->wedge_interintra_cdf, 2);
   RESET_CDF_COUNTER(fc->interintra_mode_cdf, INTERINTRA_MODES);
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  RESET_CDF_COUNTER(fc->obmc_cdf, 2);
+  RESET_CDF_COUNTER(fc->warped_causal_cdf, 2);
+  RESET_CDF_COUNTER(fc->warp_delta_cdf, 2);
+  RESET_CDF_COUNTER(fc->warp_delta_param_cdf, WARP_DELTA_NUM_SYMBOLS);
+  RESET_CDF_COUNTER(fc->warp_extend_cdf, 2);
+#else
   RESET_CDF_COUNTER(fc->motion_mode_cdf, MOTION_MODES);
   RESET_CDF_COUNTER(fc->obmc_cdf, 2);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_TIP
   RESET_CDF_COUNTER(fc->tip_cdf, 2);
 #endif  // CONFIG_TIP

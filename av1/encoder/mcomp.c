@@ -5162,29 +5162,28 @@ unsigned int av1_refine_warped_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
                                   BLOCK_SIZE bsize, const int *pts0,
                                   const int *pts_inref0, int total_samples) {
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_FLEX_MVRES
-  static const MV neighbors[16] = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
-                                    { 0, -2 }, { 2, 0 }, { 0, 2 }, { -2, 0 },
-                                    { 0, -4 }, { 4, 0 }, { 0, 4 }, { -4, 0 },
-                                    { 0, -8 }, { 8, 0 }, { 0, 8 }, { -8, 0 } };
-#else
-  static const MV neighbors[8] = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
-                                   { 0, -2 }, { 2, 0 }, { 0, 2 }, { -2, 0 } };
-#endif
+
+  static const MV neighbors[8] = { { 0, -1 }, { 1, 0 }, { 0, 1 },   { -1, 0 },
+                                   { 1, -1 }, { 1, 1 }, { -1, -1 }, { -1, 1 } };
+  static const int num_iterations = 8;
+  static const int num_neighbors = 8;
+
   MV *best_mv = &mbmi->mv[0].as_mv;
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  WarpedMotionParams best_wm_params = mbmi->wm_params[0];
+#else
   WarpedMotionParams best_wm_params = mbmi->wm_params;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
   int best_num_proj_ref = mbmi->num_proj_ref;
   unsigned int bestmse;
   const SubpelMvLimits *mv_limits = &ms_params->mv_limits;
 
 #if CONFIG_FLEX_MVRES
-  assert(ms_params->mv_cost_params.pb_mv_precision >= MV_PRECISION_ONE_PEL);
-  const int start = (MV_PRECISION_ONE_EIGHTH_PEL -
-                     ms_params->mv_cost_params.pb_mv_precision) *
-                    4;
+  const int mv_shift =
+      (MV_PRECISION_ONE_EIGHTH_PEL - ms_params->mv_cost_params.pb_mv_precision);
 #else
-  const int start = ms_params->allow_hp ? 0 : 4;
+  const int mv_shift = ms_params->allow_hp ? 0 : 1;
 #endif
 
   // Calculate the center position's error
@@ -5195,16 +5194,15 @@ unsigned int av1_refine_warped_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
   int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
-  // TODO(Mohammed): increase number of search iterations when flex_mv precision
-  // is ON
-  for (int ite = 0; ite < 2; ++ite) {
+
+  for (int ite = 0; ite < num_iterations; ++ite) {
     int best_idx = -1;
 
-    for (int idx = start; idx < start + 4; ++idx) {
+    for (int idx = 0; idx < num_neighbors; ++idx) {
       unsigned int thismse;
 
-      MV this_mv = { best_mv->row + neighbors[idx].row,
-                     best_mv->col + neighbors[idx].col };
+      MV this_mv = { best_mv->row + neighbors[idx].row * (1 << mv_shift),
+                     best_mv->col + neighbors[idx].col * (1 << mv_shift) };
       if (av1_is_subpelmv_in_range(mv_limits, this_mv)) {
         memcpy(pts, pts0, total_samples * 2 * sizeof(*pts0));
         memcpy(pts_inref, pts_inref0, total_samples * 2 * sizeof(*pts_inref0));
@@ -5212,14 +5210,23 @@ unsigned int av1_refine_warped_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
           mbmi->num_proj_ref =
               av1_selectSamples(&this_mv, pts, pts_inref, total_samples, bsize);
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
         if (!av1_find_projection(mbmi->num_proj_ref, pts, pts_inref, bsize,
-                                 this_mv.row, this_mv.col, &mbmi->wm_params,
-                                 mi_row, mi_col)) {
+                                 this_mv, &mbmi->wm_params[0], mi_row,
+                                 mi_col)) {
+#else
+        if (!av1_find_projection(mbmi->num_proj_ref, pts, pts_inref, bsize,
+                                 this_mv, &mbmi->wm_params, mi_row, mi_col)) {
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
           thismse = compute_motion_cost(xd, cm, ms_params, bsize, &this_mv);
 
           if (thismse < bestmse) {
             best_idx = idx;
+#if CONFIG_EXTENDED_WARP_PREDICTION
+            best_wm_params = mbmi->wm_params[0];
+#else
             best_wm_params = mbmi->wm_params;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
             best_num_proj_ref = mbmi->num_proj_ref;
             bestmse = thismse;
           }
@@ -5230,15 +5237,340 @@ unsigned int av1_refine_warped_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
     if (best_idx == -1) break;
 
     if (best_idx >= 0) {
-      best_mv->row += neighbors[best_idx].row;
-      best_mv->col += neighbors[best_idx].col;
+      best_mv->row += neighbors[best_idx].row * (1 << mv_shift);
+      best_mv->col += neighbors[best_idx].col * (1 << mv_shift);
     }
   }
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  mbmi->wm_params[0] = best_wm_params;
+#else
   mbmi->wm_params = best_wm_params;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
   mbmi->num_proj_ref = best_num_proj_ref;
   return bestmse;
 }
+
+#if CONFIG_EXTENDED_WARP_PREDICTION
+// Amount to increase/decrease parameters by each step
+//
+// Some factors which feed into the precision selection:
+// i) The largest block size is 128x128, so the distance from the block
+//    center to an edge is <= 64 pixels. And the warp filter has 64
+//    sub-pixel kernels.
+//    Thus any change of less than about 1/(2^12) pixels/pixel
+//    will not change anything.
+//
+// ii) The precision of the {alpha, beta, gamma, delta} parameters
+//     which are used in the warp filter is only 10 fractional bits
+//     (see the use of WARP_PARAM_REDUCE_BITS in av1_get_shear_params())
+//
+//     Thus any changes of < 1/(2^10) pixels/pixel will generate the
+//     exact same prediction.
+//
+// iii) The maximum shift allowed by the warp filter is on the
+//      order of 1/4 to 1/8 of a pixel per pixel, and we probably
+//      want to be able to span this range in a reasonable number
+//      of steps.
+//      eg. if we allow shifts of up to +/- 1/8 pixel/pixel, split
+//      into 8 steps, then our refinement size is 1/64 pixel/pixel
+
+// How many iterations to perform?
+// The first iteration will make steps of 1/8, then 1/16, ...,
+// with the last step taking steps of 1/2^(2+MAX_WARP_DELTA_ITERS)
+#define MAX_WARP_DELTA_ITERS 3
+
+// Returns 1 if able to select a good model, 0 if not
+int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
+                        MB_MODE_INFO *mbmi, const MB_MODE_INFO_EXT *mbmi_ext,
+                        const SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
+                        const ModeCosts *mode_costs) {
+  WarpedMotionParams *params = &mbmi->wm_params[0];
+  const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
+  int mi_row = xd->mi_row;
+  int mi_col = xd->mi_col;
+
+#if IMPROVED_AMVD
+  // Note(rachelbarker): Technically we can refine MVs for the AMVDNEWMV mode
+  // too, but it requires more complex logic for less payoff compared to
+  // refinement for NEWMV. So we don't do that currently.
+#endif  // IMPROVED_AMVD
+  bool can_refine_mv = (mbmi->mode == NEWMV);
+  const SubpelMvLimits *mv_limits = &ms_params->mv_limits;
+
+  WarpedMotionParams base_params;
+
+  // Motion vector to use at the center of the block.
+  // This is the MV which should be passed into av1_set_warp_translation()
+  // to determine the translational part of the model, and may differ from
+  // `best_mv`, which is the signaled MV (mbmi->mv[0]) and is passed into
+  // compute_motion_cost() to calculate the motion vector cost.
+  //
+  // For (AMVD)NEWMV, this will be the same as mbmi->mv[0], and will need to
+  // be updated if we refine that motion vector.
+  // For NEARMV and GLOBALMV, this will be derived from the base warp model,
+  // and may differ from mbmi->mv[0]. But in these cases it won't be refined.
+  int_mv center_mv;
+
+  av1_get_warp_base_params(cm, xd, mbmi,
+                           mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]],
+                           &base_params, &center_mv);
+
+  MV *best_mv = &mbmi->mv[0].as_mv;
+  WarpedMotionParams best_wm_params;
+  int rate, sse;
+  int delta;
+  uint64_t best_rd, inc_rd, dec_rd;
+
+  static const MV neighbors[8] = { { 0, -1 }, { 1, 0 }, { 0, 1 },   { -1, 0 },
+                                   { 1, -1 }, { 1, 1 }, { -1, -1 }, { -1, 1 } };
+  static const int num_neighbors = 8;
+
+#if CONFIG_FLEX_MVRES
+  const int mv_shift =
+      (MV_PRECISION_ONE_EIGHTH_PEL - ms_params->mv_cost_params.pb_mv_precision);
+#else
+  const int mv_shift = ms_params->allow_hp ? 0 : 1;
+#endif
+
+#if CONFIG_FLEX_MVRES
+  const int error_per_bit = ms_params->mv_cost_params.mv_costs->errorperbit;
+#else
+  const int error_per_bit = ms_params->mv_cost_params.error_per_bit;
+#endif
+
+  // Set up initial model by copying global motion model
+  // and adjusting for the chosen motion vector
+  params->wmtype = ROTZOOM;
+  params->wmmat[2] = base_params.wmmat[2];
+  params->wmmat[3] = base_params.wmmat[3];
+  params->wmmat[4] = -params->wmmat[3];
+  params->wmmat[5] = params->wmmat[2];
+  int valid = av1_get_shear_params(params);
+  params->invalid = !valid;
+  if (!valid) {
+    // Don't try to refine from a broken starting point
+    return 0;
+  }
+
+  av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv, params);
+
+  // Calculate initial error
+  best_wm_params = *params;
+  rate = av1_cost_warp_delta(cm, xd, mbmi, mbmi_ext, mode_costs);
+  sse = compute_motion_cost(xd, cm, ms_params, bsize, best_mv);
+  best_rd = sse + (int)ROUND_POWER_OF_TWO_64((int64_t)rate * error_per_bit,
+                                             RDDIV_BITS + AV1_PROB_COST_SHIFT -
+                                                 RD_EPB_SHIFT +
+                                                 PIXEL_TRANSFORM_ERROR_SCALE);
+
+  // Refine model, by making a few passes through the available
+  // parameters and trying to increase/decrease them
+  //
+  // We use a narrowing approach where we try to change each parameter
+  // by 1/8th, then each parameter by 1/16, etc.
+  // This will rapidly and efficiently explore the space of valid models,
+  // as the maximum value of any single parameter is between 1/8 and 1/4.
+  for (int iter = 0; iter < MAX_WARP_DELTA_ITERS; iter++) {
+    int step_size =
+        1 << (WARP_DELTA_STEP_BITS + (MAX_WARP_DELTA_ITERS - 1) - iter);
+
+    if (can_refine_mv) {
+      int best_idx = -1;
+
+      // Load non-translational part of the warp model
+      // This part will not be changed in the following loop,
+      // and the shear part has already been calculated (and is known to
+      // be valid), which saves us a lot of recalculation.
+      *params = best_wm_params;
+
+      // Cost up the non-translational part of the model. Again, this will
+      // not change between iterations of the following loop
+      rate = av1_cost_warp_delta(cm, xd, mbmi, mbmi_ext, mode_costs);
+
+      for (int idx = 0; idx < num_neighbors; ++idx) {
+        MV this_mv = { best_mv->row + neighbors[idx].row * (1 << mv_shift),
+                       best_mv->col + neighbors[idx].col * (1 << mv_shift) };
+        if (av1_is_subpelmv_in_range(mv_limits, this_mv)) {
+          // Update model and costs according to the motion vector which
+          // is being tried out this iteration
+          av1_set_warp_translation(mi_row, mi_col, bsize, this_mv, params);
+
+          unsigned int this_sse =
+              compute_motion_cost(xd, cm, ms_params, bsize, &this_mv);
+          uint64_t this_rd =
+              this_sse + (int)ROUND_POWER_OF_TWO_64(
+                             (int64_t)rate * error_per_bit,
+                             RDDIV_BITS + AV1_PROB_COST_SHIFT - RD_EPB_SHIFT +
+                                 PIXEL_TRANSFORM_ERROR_SCALE);
+
+          if (this_rd < best_rd) {
+            best_idx = idx;
+            best_wm_params = *params;
+            best_rd = this_rd;
+          }
+        }
+      }
+
+      if (best_idx >= 0) {
+        // Commit to this motion vector
+        best_mv->row += neighbors[best_idx].row * (1 << mv_shift);
+        best_mv->col += neighbors[best_idx].col * (1 << mv_shift);
+        center_mv.as_mv = *best_mv;
+      }
+    }
+
+    for (int param_index = 2; param_index < 4; param_index++) {
+      // Try increasing the parameter
+      *params = best_wm_params;
+      params->wmmat[param_index] += step_size;
+      delta = params->wmmat[param_index] - base_params.wmmat[param_index];
+      if (abs(delta) > WARP_DELTA_MAX) {
+        inc_rd = UINT64_MAX;
+      } else {
+        params->wmmat[4] = -params->wmmat[3];
+        params->wmmat[5] = params->wmmat[2];
+        valid = av1_get_shear_params(params);
+        params->invalid = !valid;
+        if (valid) {
+          av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv,
+                                   params);
+          rate = av1_cost_warp_delta(cm, xd, mbmi, mbmi_ext, mode_costs);
+          sse = compute_motion_cost(xd, cm, ms_params, bsize, best_mv);
+          inc_rd = sse + (int)ROUND_POWER_OF_TWO_64(
+                             (int64_t)rate * error_per_bit,
+                             RDDIV_BITS + AV1_PROB_COST_SHIFT - RD_EPB_SHIFT +
+                                 PIXEL_TRANSFORM_ERROR_SCALE);
+        } else {
+          inc_rd = UINT64_MAX;
+        }
+      }
+      WarpedMotionParams inc_params = *params;
+
+      // Try decreasing the parameter
+      *params = best_wm_params;
+      params->wmmat[param_index] -= step_size;
+      delta = params->wmmat[param_index] - base_params.wmmat[param_index];
+      if (abs(delta) > WARP_DELTA_MAX) {
+        dec_rd = UINT64_MAX;
+      } else {
+        params->wmmat[4] = -params->wmmat[3];
+        params->wmmat[5] = params->wmmat[2];
+        valid = av1_get_shear_params(params);
+        params->invalid = !valid;
+        if (valid) {
+          av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv,
+                                   params);
+          rate = av1_cost_warp_delta(cm, xd, mbmi, mbmi_ext, mode_costs);
+          sse = compute_motion_cost(xd, cm, ms_params, bsize, best_mv);
+          dec_rd = sse + (int)ROUND_POWER_OF_TWO_64(
+                             (int64_t)rate * error_per_bit,
+                             RDDIV_BITS + AV1_PROB_COST_SHIFT - RD_EPB_SHIFT +
+                                 PIXEL_TRANSFORM_ERROR_SCALE);
+        } else {
+          dec_rd = UINT64_MAX;
+        }
+      }
+      WarpedMotionParams dec_params = *params;
+
+      // Pick the best parameter value at this level
+      if (inc_rd < best_rd) {
+        if (dec_rd < inc_rd) {
+          // Decreasing is best
+          best_wm_params = dec_params;
+          best_rd = dec_rd;
+        } else {
+          // Increasing is best
+          best_wm_params = inc_params;
+          best_rd = inc_rd;
+        }
+      } else if (dec_rd < best_rd) {
+        // Decreasing is best
+        best_wm_params = dec_params;
+        best_rd = dec_rd;
+      } else {
+        // Current is best
+        // No need to change anything
+      }
+    }
+  }
+
+  mbmi->wm_params[0] = best_wm_params;
+
+  return 1;
+}
+
+// Try to improve the motion vector over the one determined by NEWMV search,
+// by running the full WARP_EXTEND prediction pipeline.
+// For now, this uses the same method as av1_refine_warped_mv()
+// TODO(rachelbarker): See if we can improve this and av1_refine_warped_mv().
+void av1_refine_mv_for_warp_extend(const AV1_COMMON *cm, MACROBLOCKD *xd,
+                                   const SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
+                                   bool neighbor_is_above, BLOCK_SIZE bsize,
+                                   const WarpedMotionParams *neighbor_params) {
+  MB_MODE_INFO *mbmi = xd->mi[0];
+
+  static const MV neighbors[8] = { { 0, -1 }, { 1, 0 }, { 0, 1 },   { -1, 0 },
+                                   { 1, -1 }, { 1, 1 }, { -1, -1 }, { -1, 1 } };
+  static const int num_iterations = 8;
+  static const int num_neighbors = 8;
+
+#if CONFIG_FLEX_MVRES
+  const int mv_shift =
+      (MV_PRECISION_ONE_EIGHTH_PEL - ms_params->mv_cost_params.pb_mv_precision);
+#else
+  const int mv_shift = ms_params->allow_hp ? 0 : 1;
+#endif
+
+  MV *best_mv = &mbmi->mv[0].as_mv;
+
+  WarpedMotionParams best_wm_params = mbmi->wm_params[0];
+  unsigned int bestmse;
+  const SubpelMvLimits *mv_limits = &ms_params->mv_limits;
+
+  // Before this function is called, motion_mode_rd will have selected a valid
+  // warp model, and stored it into mbmi->wm_params, but we have not yet
+  // actually built and evaluated the resulting prediction
+  assert(av1_is_subpelmv_in_range(mv_limits, *best_mv));
+  bestmse = compute_motion_cost(xd, cm, ms_params, bsize, best_mv);
+
+  const int mi_row = xd->mi_row;
+  const int mi_col = xd->mi_col;
+  for (int ite = 0; ite < num_iterations; ++ite) {
+    int best_idx = -1;
+
+    for (int idx = 0; idx < num_neighbors; ++idx) {
+      unsigned int thismse;
+
+      MV this_mv = { best_mv->row + neighbors[idx].row * (1 << mv_shift),
+                     best_mv->col + neighbors[idx].col * (1 << mv_shift) };
+      if (av1_is_subpelmv_in_range(mv_limits, this_mv)) {
+        if (!av1_extend_warp_model(neighbor_is_above, bsize, &this_mv, mi_row,
+                                   mi_col, neighbor_params,
+                                   &mbmi->wm_params[0])) {
+          thismse = compute_motion_cost(xd, cm, ms_params, bsize, &this_mv);
+
+          if (thismse < bestmse) {
+            best_idx = idx;
+            best_wm_params = mbmi->wm_params[0];
+            bestmse = thismse;
+          }
+        }
+      }
+    }
+
+    if (best_idx == -1) break;
+
+    if (best_idx >= 0) {
+      best_mv->row += neighbors[best_idx].row * (1 << mv_shift);
+      best_mv->col += neighbors[best_idx].col * (1 << mv_shift);
+    }
+  }
+
+  mbmi->wm_params[0] = best_wm_params;
+}
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
 // =============================================================================
 //  Subpixel Motion Search: OBMC
 // =============================================================================

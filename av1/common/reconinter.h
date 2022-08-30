@@ -646,7 +646,7 @@ static INLINE int av1_is_interp_needed(const AV1_COMMON *const cm,
   if (mbmi->mode >= NEAR_NEARMV_OPTFLOW || use_opfl_refine_all(cm, mbmi))
     return 0;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-  if (mbmi->motion_mode == WARPED_CAUSAL) return 0;
+  if (is_warp_mode(mbmi->motion_mode)) return 0;
   if (is_nontrans_global_motion(xd, xd->mi[0])) return 0;
   return 1;
 }
@@ -707,6 +707,9 @@ void av1_combine_interintra(MACROBLOCKD *xd, BLOCK_SIZE bsize, int plane,
 int av1_allow_warp(const MB_MODE_INFO *const mbmi,
                    const WarpTypesAllowed *const warp_types,
                    const WarpedMotionParams *const gm_params,
+#if CONFIG_EXTENDED_WARP_PREDICTION
+                   int ref,
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
                    int build_for_obmc, const struct scale_factors *const sf,
                    WarpedMotionParams *final_warp_params);
 

@@ -18,6 +18,7 @@
 #include <memory.h>
 #include <math.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include "config/aom_config.h"
 
@@ -242,6 +243,12 @@ static INLINE int error_measure(int err) {
   return error_measure_lut[255 + err];
 }
 
+// Recompute the translational part of a warp model, so that the center
+// of the current block (determined by `mi_row`, `mi_col`, `bsize`)
+// has an induced motion vector of `mv`
+void av1_set_warp_translation(int mi_row, int mi_col, BLOCK_SIZE bsize, MV mv,
+                              WarpedMotionParams *wm);
+
 // Returns the error between the frame described by 'ref' and the frame
 // described by 'dst'.
 int64_t av1_frame_error(int bd, const uint8_t *ref, int stride, uint8_t *dst,
@@ -274,8 +281,17 @@ void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint8_t *ref,
                     ConvolveParams *conv_params);
 
 int av1_find_projection(int np, const int *pts1, const int *pts2,
-                        BLOCK_SIZE bsize, int mvy, int mvx,
-                        WarpedMotionParams *wm_params, int mi_row, int mi_col);
+                        BLOCK_SIZE bsize, MV mv, WarpedMotionParams *wm_params,
+                        int mi_row, int mi_col);
 
 int av1_get_shear_params(WarpedMotionParams *wm);
+
+#if CONFIG_EXTENDED_WARP_PREDICTION
+int av1_extend_warp_model(const bool neighbor_is_above, const BLOCK_SIZE bsize,
+                          const MV *center_mv, const int mi_row,
+                          const int mi_col,
+                          const WarpedMotionParams *neighbor_wm,
+                          WarpedMotionParams *wm_params);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
 #endif  // AOM_AV1_COMMON_WARPED_MOTION_H_

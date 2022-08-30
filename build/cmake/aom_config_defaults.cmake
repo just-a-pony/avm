@@ -177,6 +177,9 @@ set_aom_config_var(CONFIG_IST_FIX_B076 1
 set_aom_config_var(
   CONFIG_CONTEXT_DERIVATION 1
   "AV2 experiment flag to enable modified context derivation : CWG-B065.")
+set_aom_config_var(CONFIG_EXTENDED_WARP_PREDICTION 1
+                   "AV2 experiment flag to add new local warp modes")
+
 # Source of throughput analysis : CWG-B065
 set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
                    "AV2 experiment flag to measure throughput.")

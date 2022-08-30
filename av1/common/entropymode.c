@@ -915,6 +915,77 @@ static const aom_cdf_prob default_wedge_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
              { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
                          18432, 20480, 22528, 24576, 26624, 28672, 30720) } };
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+static const aom_cdf_prob default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)] = {
+  { AOM_CDF2(21846) }, { AOM_CDF2(21846) }, { AOM_CDF2(21846) },
+  { AOM_CDF2(15659) }, { AOM_CDF2(12741) }, { AOM_CDF2(12631) },
+  { AOM_CDF2(25377) }, { AOM_CDF2(14285) }, { AOM_CDF2(20066) },
+  { AOM_CDF2(29912) }, { AOM_CDF2(25066) }, { AOM_CDF2(27617) },
+  { AOM_CDF2(31583) }, { AOM_CDF2(31269) }, { AOM_CDF2(32311) },
+  { AOM_CDF2(32717) }, { AOM_CDF2(21846) }, { AOM_CDF2(21846) },
+  { AOM_CDF2(30177) }, { AOM_CDF2(28425) }, { AOM_CDF2(30147) },
+  { AOM_CDF2(31307) }
+};
+
+static const aom_cdf_prob default_warped_causal_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
+    2)] = { { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16010) }, { AOM_CDF2(12185) }, { AOM_CDF2(13986) },
+            { AOM_CDF2(25075) }, { AOM_CDF2(11752) }, { AOM_CDF2(18953) },
+            { AOM_CDF2(28767) }, { AOM_CDF2(26616) }, { AOM_CDF2(25722) },
+            { AOM_CDF2(30623) }, { AOM_CDF2(30283) }, { AOM_CDF2(31315) },
+            { AOM_CDF2(32558) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(31272) }, { AOM_CDF2(30469) }, { AOM_CDF2(31492) },
+            { AOM_CDF2(31130) } };
+
+static const aom_cdf_prob default_warp_delta_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
+    2)] = { { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(16384) } };
+
+static const aom_cdf_prob
+    default_warp_delta_param_cdf[2][CDF_SIZE(WARP_DELTA_NUM_SYMBOLS)] = {
+      { AOM_CDF15(2185, 4369, 6554, 8738, 10923, 13107, 15292, 17476, 19661,
+                  21845, 24030, 26214, 28399, 30583) },
+      { AOM_CDF15(2185, 4369, 6554, 8738, 10923, 13107, 15292, 17476, 19661,
+                  21845, 24030, 26214, 28399, 30583) }
+    };
+
+static const aom_cdf_prob
+    default_warp_extend_cdf[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2][CDF_SIZE(
+        2)] = { { // NEARMV from warped neighbor
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) } },
+                { // NEWMV from warped neighbor
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) } },
+                { // NEWMV from global warp neighbor
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) } },
+                { // NEWMV from translational neighbor
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) },
+                  { AOM_CDF2(16384) } } };
+#else
 static const aom_cdf_prob default_motion_mode_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
     MOTION_MODES)] = { { AOM_CDF3(10923, 21845) }, { AOM_CDF3(10923, 21845) },
                        { AOM_CDF3(10923, 21845) }, { AOM_CDF3(7651, 24760) },
@@ -938,6 +1009,7 @@ static const aom_cdf_prob default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)] = {
   { AOM_CDF2(23664) }, { AOM_CDF2(20901) }, { AOM_CDF2(24008) },
   { AOM_CDF2(26879) }
 };
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_CONTEXT_DERIVATION
 static const aom_cdf_prob
@@ -1889,8 +1961,16 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->drl_cdf[1], default_drl1_cdf);
   av1_copy(fc->drl_cdf[2], default_drl2_cdf);
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  av1_copy(fc->obmc_cdf, default_obmc_cdf);
+  av1_copy(fc->warped_causal_cdf, default_warped_causal_cdf);
+  av1_copy(fc->warp_delta_cdf, default_warp_delta_cdf);
+  av1_copy(fc->warp_delta_param_cdf, default_warp_delta_param_cdf);
+  av1_copy(fc->warp_extend_cdf, default_warp_extend_cdf);
+#else
   av1_copy(fc->motion_mode_cdf, default_motion_mode_cdf);
   av1_copy(fc->obmc_cdf, default_obmc_cdf);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_OPTFLOW_REFINEMENT
   av1_copy(fc->use_optflow_cdf, default_use_optflow_cdf);
 #endif  // CONFIG_OPTFLOW_REFINEMENT

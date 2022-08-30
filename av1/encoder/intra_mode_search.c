@@ -784,6 +784,9 @@ int av1_search_palette_mode(IntraModeSearchState *intra_search_state,
   set_mv_precision(mbmi, mbmi->max_mv_precision);
 #endif
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  mbmi->motion_mode = SIMPLE_TRANSLATION;
+#endif
   RD_STATS rd_stats_y;
   av1_invalid_rd_stats(&rd_stats_y);
   av1_rd_pick_palette_intra_sby(

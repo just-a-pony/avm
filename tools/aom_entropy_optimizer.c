@@ -498,6 +498,36 @@ int main(int argc, const char **argv) {
                      "default_wedge_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(16)]");
 
   /* motion_var and warped_motion experiments */
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  cts_each_dim[0] = BLOCK_SIZES_ALL;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(&fc.obmc[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob "
+                     "default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
+  cts_each_dim[0] = BLOCK_SIZES_ALL;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(&fc.warped_causal[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob "
+                     "default_warped_causal_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
+  cts_each_dim[0] = BLOCK_SIZES_ALL;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(&fc.warp_delta[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob "
+                     "default_warp_delta_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
+  cts_each_dim[0] = 2;
+  cts_each_dim[1] = WARP_DELTA_NUM_SYMBOLS;
+  optimize_cdf_table(&fc.warp_delta_param[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob default_warp_delta_param_cdf"
+                     "[2][CDF_SIZE(WARP_DELTA_NUM_SYMBOLS)]");
+  cts_each_dim[0] = WARP_EXTEND_CTXS1;
+  cts_each_dim[1] = WARP_EXTEND_CTXS2;
+  cts_each_dim[2] = 2;
+  optimize_cdf_table(
+      &fc.warp_extend[0][0][0], probsfile, 3, cts_each_dim,
+      "static const aom_cdf_prob "
+      "default_warp_extend_cdf[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2]"
+      "[CDF_SIZE(2)]");
+#else
   cts_each_dim[0] = BLOCK_SIZES_ALL;
   cts_each_dim[1] = MOTION_MODES;
   optimize_cdf_table(
@@ -509,6 +539,7 @@ int main(int argc, const char **argv) {
   optimize_cdf_table(&fc.obmc[0][0], probsfile, 2, cts_each_dim,
                      "static const aom_cdf_prob "
                      "default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   /* Intra/inter flag */
 #if CONFIG_CONTEXT_DERIVATION

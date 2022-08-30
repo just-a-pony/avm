@@ -1247,8 +1247,16 @@ typedef struct FRAME_COUNTS {
   unsigned int interintra_mode[BLOCK_SIZE_GROUPS][INTERINTRA_MODES];
   unsigned int wedge_interintra[BLOCK_SIZES_ALL][2];
   unsigned int compound_type[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  unsigned int obmc[BLOCK_SIZES_ALL][2];
+  unsigned int warped_causal[BLOCK_SIZES_ALL][2];
+  unsigned int warp_delta[BLOCK_SIZES_ALL][2];
+  unsigned int warp_delta_param[2][WARP_DELTA_NUM_SYMBOLS];
+  unsigned int warp_extend[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2][2];
+#else
   unsigned int motion_mode[BLOCK_SIZES_ALL][MOTION_MODES];
   unsigned int obmc[BLOCK_SIZES_ALL][2];
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_CONTEXT_DERIVATION
   unsigned int intra_inter[INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS]
                           [2];

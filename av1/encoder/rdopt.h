@@ -102,6 +102,15 @@ void av1_rd_pick_inter_mode_sb_seg_skip(
     struct macroblock *x, int mi_row, int mi_col, struct RD_STATS *rd_cost,
     BLOCK_SIZE bsize, PICK_MODE_CONTEXT *ctx, int64_t best_rd_so_far);
 
+#if CONFIG_EXTENDED_WARP_PREDICTION
+// Internal function, shared by rdopt.c and mcomp.c
+// Calculate the rate cost of directly signaling a warp model
+int av1_cost_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
+                        const MB_MODE_INFO *mbmi,
+                        const MB_MODE_INFO_EXT *mbmi_ext,
+                        const ModeCosts *mode_costs);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
 // TODO(any): The defs below could potentially be moved to rdopt_utils.h instead
 // because they are not the main rdopt functions.
 /*!\cond */

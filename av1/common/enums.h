@@ -615,8 +615,15 @@ enum {
 
 enum {
   SIMPLE_TRANSLATION,
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  INTERINTRA,
+#endif            // CONFIG_EXTENDED_WARP_PREDICTION
   OBMC_CAUSAL,    // 2-sided OBMC
   WARPED_CAUSAL,  // 2-sided WARPED
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  WARP_DELTA,   // Directly-signaled warp model
+  WARP_EXTEND,  // Extension of an existing warp model into another block
+#endif
   MOTION_MODES
 } UENUM1BYTE(MOTION_MODE);
 
