@@ -11,6 +11,7 @@
  */
 
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
@@ -207,10 +208,12 @@ void WienerTestHighbd::RunWienerTest(const int32_t wiener_win,
   // will always be multiples of 64 when called from non-test code.
   // If in future any new requirements are added, these lines will
   // need changing.
-  const int h_start = (rng_.Rand16() % (MAX_WIENER_BLOCK / 2)) & ~1;
+  int h_start = (rng_.Rand16() % (MAX_WIENER_BLOCK / 2)) & ~1;
   int h_end = run_times != 1 ? 256 : (rng_.Rand16() % MAX_WIENER_BLOCK);
-  const int v_start = rng_.Rand16() % (MAX_WIENER_BLOCK / 2);
+  if (h_start > h_end) std::swap(h_start, h_end);
+  int v_start = rng_.Rand16() % (MAX_WIENER_BLOCK / 2);
   int v_end = run_times != 1 ? 256 : (rng_.Rand16() % MAX_WIENER_BLOCK);
+  if (v_start > v_end) std::swap(v_start, v_end);
   const int dgd_stride = h_end;
   const int src_stride = MAX_DATA_BLOCK;
   const int iters = run_times == 1 ? kIterations : 2;
