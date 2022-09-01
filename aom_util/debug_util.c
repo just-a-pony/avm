@@ -99,18 +99,20 @@ void bitstream_queue_push(int result, const aom_cdf_prob *cdf, int nsymbs) {
 #if CONFIG_MISMATCH_DEBUG
 static int frame_buf_idx_r = 0;
 static int frame_buf_idx_w = 0;
-static int max_frame_buf_num = 5;
+#define MAX_FRAME_BUF_NUM 6
 #define MAX_FRAME_STRIDE 1280
 #define MAX_FRAME_HEIGHT 720
 static uint16_t
-    frame_pre[5][3][MAX_FRAME_STRIDE * MAX_FRAME_HEIGHT];  // prediction only
+    frame_pre[MAX_FRAME_BUF_NUM][3]
+             [MAX_FRAME_STRIDE * MAX_FRAME_HEIGHT];  // prediction only
 static uint16_t
-    frame_tx[5][3][MAX_FRAME_STRIDE * MAX_FRAME_HEIGHT];  // prediction + txfm
+    frame_tx[MAX_FRAME_BUF_NUM][3]
+            [MAX_FRAME_STRIDE * MAX_FRAME_HEIGHT];  // prediction + txfm
 static int frame_stride = MAX_FRAME_STRIDE;
 static int frame_height = MAX_FRAME_HEIGHT;
 static int frame_size = MAX_FRAME_STRIDE * MAX_FRAME_HEIGHT;
 void mismatch_move_frame_idx_w() {
-  frame_buf_idx_w = (frame_buf_idx_w + 1) % max_frame_buf_num;
+  frame_buf_idx_w = (frame_buf_idx_w + 1) % MAX_FRAME_BUF_NUM;
   if (frame_buf_idx_w == frame_buf_idx_r) {
     printf("frame_buf overflow\n");
     assert(0);
@@ -131,12 +133,13 @@ void mismatch_move_frame_idx_r() {
     printf("frame_buf underflow\n");
     assert(0);
   }
-  frame_buf_idx_r = (frame_buf_idx_r + 1) % max_frame_buf_num;
+  frame_buf_idx_r = (frame_buf_idx_r + 1) % MAX_FRAME_BUF_NUM;
 }
 
 void mismatch_record_block_pre(const uint8_t *src, int src_stride,
                                int frame_offset, int plane, int pixel_c,
                                int pixel_r, int blk_w, int blk_h) {
+  (void)frame_offset;
   if (pixel_c + blk_w >= frame_stride || pixel_r + blk_h >= frame_height) {
     printf("frame_buf undersized\n");
     assert(0);
@@ -169,6 +172,7 @@ void mismatch_record_block_pre(const uint8_t *src, int src_stride,
 void mismatch_record_block_tx(const uint8_t *src, int src_stride,
                               int frame_offset, int plane, int pixel_c,
                               int pixel_r, int blk_w, int blk_h) {
+  (void)frame_offset;
   if (pixel_c + blk_w >= frame_stride || pixel_r + blk_h >= frame_height) {
     printf("frame_buf undersized\n");
     assert(0);
