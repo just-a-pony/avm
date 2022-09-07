@@ -1599,10 +1599,8 @@ static void build_inter_predictors_8x8_and_bigger(
   assert(IMPLIES(
       use_optflow_refinement && mi->interinter_comp.type != COMPOUND_AVERAGE,
       cm->features.opfl_refine_type == REFINE_ALL));
-#if !CONFIG_FLEX_MVRES
-  assert(IMPLIES(use_optflow_refinement && mi->interp_fltr == MULTITAP_SHARP,
+  assert(IMPLIES(use_optflow_refinement && mi->interp_fltr != MULTITAP_SHARP,
                  cm->features.opfl_refine_type == REFINE_ALL));
-#endif
 
   // Arrays to hold optical flow offsets.
   int vx0[N_OF_OFFSETS] = { 0 };
