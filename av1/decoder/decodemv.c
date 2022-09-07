@@ -284,7 +284,13 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
   for (int idx = 0; idx < max_drl_bits; ++idx) {
     aom_cdf_prob *drl_cdf =
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+        mbmi->skip_mode ? ec_ctx->skip_drl_cdf[AOMMIN(idx, 2)]
+                        : av1_get_drl_cdf(ec_ctx, xd->weight[ref_frame_type],
+                                          mode_ctx, idx);
+#else
         av1_get_drl_cdf(ec_ctx, xd->weight[ref_frame_type], mode_ctx, idx);
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     int drl_idx = aom_read_symbol(r, drl_cdf, 2, ACCT_STR);
     mbmi->ref_mv_idx = idx + drl_idx;
     if (!drl_idx) break;
@@ -2422,6 +2428,12 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
                  ec_ctx, dcb, mbmi, r);
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+    mbmi->ref_frame[0] =
+        xd->skip_mvp_candidate_list.ref_frame0[mbmi->ref_mv_idx];
+    mbmi->ref_frame[1] =
+        xd->skip_mvp_candidate_list.ref_frame1[mbmi->ref_mv_idx];
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   } else {
     if (segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP) ||
         segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_GLOBALMV)) {
@@ -2475,6 +2487,14 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   ref_mv[0] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].this_mv;
   if (is_compound && mbmi->mode != GLOBAL_GLOBALMV) {
     ref_mv[1] = xd->ref_mv_stack[ref_frame][mbmi->ref_mv_idx].comp_mv;
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+    if (mbmi->skip_mode) {
+      ref_mv[0] =
+          xd->skip_mvp_candidate_list.ref_mv_stack[mbmi->ref_mv_idx].this_mv;
+      ref_mv[1] =
+          xd->skip_mvp_candidate_list.ref_mv_stack[mbmi->ref_mv_idx].comp_mv;
+    }
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   }
 
   if (mbmi->skip_mode) {

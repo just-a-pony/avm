@@ -117,11 +117,24 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   // 0 -> 0   10 -> 1   110 -> 2    111 -> 3
   // Also use the number of reference MVs for a frame type to reduce the
   // number of bits written if there are less than 4 valid DRL indices.
-  assert(mbmi->ref_mv_idx < mbmi_ext_frame->ref_mv_count);
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  if (mbmi->skip_mode)
+    assert(mbmi->ref_mv_idx <
+           mbmi_ext_frame->skip_mvp_candidate_list.ref_mv_count);
+  else
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+    assert(mbmi->ref_mv_idx < mbmi_ext_frame->ref_mv_count);
+
   assert(mbmi->ref_mv_idx < max_drl_bits + 1);
   for (int idx = 0; idx < max_drl_bits; ++idx) {
     aom_cdf_prob *drl_cdf =
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+        mbmi->skip_mode
+            ? ec_ctx->skip_drl_cdf[AOMMIN(idx, 2)]
+            : av1_get_drl_cdf(ec_ctx, mbmi_ext_frame->weight, mode_ctx, idx);
+#else
         av1_get_drl_cdf(ec_ctx, mbmi_ext_frame->weight, mode_ctx, idx);
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     aom_write_symbol(w, mbmi->ref_mv_idx != idx, drl_cdf, 2);
     if (mbmi->ref_mv_idx == idx) break;
   }

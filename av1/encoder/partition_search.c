@@ -905,6 +905,29 @@ static void update_warp_delta_stats(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                                 fc);
 }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+static void update_skip_drl_index_stats(int max_drl_bits, FRAME_CONTEXT *fc,
+                                        FRAME_COUNTS *counts,
+                                        const MB_MODE_INFO *mbmi) {
+#if !CONFIG_ENTROPY_STATS
+  (void)counts;
+#endif  // !CONFIG_ENTROPY_STATS
+  assert(have_drl_index(mbmi->mode));
+  assert(mbmi->ref_mv_idx < max_drl_bits + 1);
+  for (int idx = 0; idx < max_drl_bits; ++idx) {
+    aom_cdf_prob *drl_cdf = fc->skip_drl_cdf[AOMMIN(idx, 2)];
+#if CONFIG_ENTROPY_STATS
+    switch (idx) {
+      case 0: counts->skip_drl_mode[idx][mbmi->ref_mv_idx != idx]++; break;
+      case 1: counts->skip_drl_mode[idx][mbmi->ref_mv_idx != idx]++; break;
+      default: counts->skip_drl_mode[2][mbmi->ref_mv_idx != idx]++; break;
+    }
+#endif  // CONFIG_ENTROPY_STATS
+    update_cdf(drl_cdf, mbmi->ref_mv_idx != idx, 2);
+    if (mbmi->ref_mv_idx == idx) break;
+  }
+}
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 
 static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   MACROBLOCK *x = &td->mb;
@@ -1034,10 +1057,14 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   if (mbmi->skip_mode && have_drl_index(mbmi->mode)) {
     FRAME_COUNTS *const counts = td->counts;
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+    update_skip_drl_index_stats(cm->features.max_drl_bits, fc, counts, mbmi);
+#else
     const int16_t mode_ctx_pristine =
         av1_mode_context_pristine(mbmi_ext->mode_context, mbmi->ref_frame);
     update_drl_index_stats(cm->features.max_drl_bits, mode_ctx_pristine, fc,
                            counts, mbmi, mbmi_ext);
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
@@ -1700,7 +1727,9 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       assert(!frame_is_intra_only(cm));
       rdc->skip_mode_used_flag = 1;
       if (cm->current_frame.reference_mode == REFERENCE_MODE_SELECT) {
+#if !CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
         assert(has_second_ref(mbmi));
+#endif  // !CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
         rdc->compound_ref_used_flag = 1;
       }
       set_ref_ptrs(cm, xd, mbmi->ref_frame[0], mbmi->ref_frame[1]);
@@ -1777,9 +1806,39 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   // frame level buffer (cpi->mbmi_ext_info.frame_base) will be used during
   // bitstream preparation.
   if (xd->tree_type != CHROMA_PART)
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  {
+    if (mbmi->skip_mode) {
+      const SkipModeInfo *const skip_mode_info =
+          &cpi->common.current_frame.skip_mode_info;
+
+      MV_REFERENCE_FRAME rf[2];
+#if CONFIG_NEW_REF_SIGNALING
+      rf[0] = skip_mode_info->ref_frame_idx_0;
+      rf[1] = skip_mode_info->ref_frame_idx_1;
+#else
+      rf[0] = LAST_FRAME + skip_mode_info->ref_frame_idx_0;
+      rf[1] = LAST_FRAME + skip_mode_info->ref_frame_idx_1;
+#endif  // CONFIG_NEW_REF_SIGNALING
+      MV_REFERENCE_FRAME ref_frame_type = av1_ref_frame_type(rf);
+
+      av1_find_mv_refs(&cpi->common, xd, mbmi, ref_frame_type,
+                       x->mbmi_ext->ref_mv_count, xd->ref_mv_stack, xd->weight,
+                       NULL, NULL, NULL);
+      // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
+      // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
+      av1_copy_usable_ref_mv_stack_and_weight(xd, x->mbmi_ext, ref_frame_type);
+    }
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     av1_copy_mbmi_ext_to_mbmi_ext_frame(
         x->mbmi_ext_frame, x->mbmi_ext,
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+        mbmi->skip_mode,
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
         av1_ref_frame_type(xd->mi[0]->ref_frame));
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  }
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   x->rdmult = origin_mult;
 }
 

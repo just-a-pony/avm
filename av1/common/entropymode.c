@@ -773,6 +773,15 @@ static const aom_cdf_prob default_drl2_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(16777) }, { AOM_CDF2(16998) }, { AOM_CDF2(14311) },
   { AOM_CDF2(16618) }, { AOM_CDF2(14980) }, { AOM_CDF2(15963) }
 };
+
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+static const aom_cdf_prob default_skip_drl_cdf[3][CDF_SIZE(2)] = {
+  { AOM_CDF2(24394) },
+  { AOM_CDF2(22637) },
+  { AOM_CDF2(21474) },
+};
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+
 #if CONFIG_OPTFLOW_REFINEMENT
 static const aom_cdf_prob
     default_use_optflow_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(2)] = {
@@ -1971,6 +1980,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->motion_mode_cdf, default_motion_mode_cdf);
   av1_copy(fc->obmc_cdf, default_obmc_cdf);
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  av1_copy(fc->skip_drl_cdf, default_skip_drl_cdf);
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 #if CONFIG_OPTFLOW_REFINEMENT
   av1_copy(fc->use_optflow_cdf, default_use_optflow_cdf);
 #endif  // CONFIG_OPTFLOW_REFINEMENT

@@ -825,6 +825,26 @@ typedef struct {
 } REF_MV_BANK;
 #endif  // CONFIG_REF_MV_BANK
 
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+/*! \brief Variables related to mvp list of skip mode.*/
+typedef struct {
+  //! MV list
+  CANDIDATE_MV ref_mv_stack[USABLE_REF_MV_STACK_SIZE];
+  //! reference list 0 reference frame index
+  MV_REFERENCE_FRAME ref_frame0[USABLE_REF_MV_STACK_SIZE];
+  //! reference list 1 reference frame index
+  MV_REFERENCE_FRAME ref_frame1[USABLE_REF_MV_STACK_SIZE];
+  //! The weights used to compute the ref mvs.
+  uint16_t weight[USABLE_REF_MV_STACK_SIZE];
+  //! Number of ref mvs in the drl.
+  uint8_t ref_mv_count;
+  //! context
+  int16_t mode_context[MODE_CTX_REF_FRAMES];  // to be updated
+  //! Global mvs
+  int_mv global_mvs[2];
+} SKIP_MODE_MVP_LIST;
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+
 /*! \brief Variables related to current coding block.
  *
  * This is a common set of variables used by both encoder and decoder.
@@ -1081,6 +1101,13 @@ typedef struct macroblockd {
    * DRL (dynamic reference list) mode contexts.
    */
   uint16_t weight[MODE_CTX_REF_FRAMES][MAX_REF_MV_STACK_SIZE];
+
+/*!
+ * skip_mvp_candidate_list is the MVP list for skip mode.
+ */
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  SKIP_MODE_MVP_LIST skip_mvp_candidate_list;
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 
   /*!
    * True if this is the last vertical rectangular block in a VERTICAL or

@@ -152,6 +152,9 @@ typedef struct frame_contexts {
   aom_cdf_prob inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS]
                                     [CDF_SIZE(INTER_SINGLE_MODES)];
   aom_cdf_prob drl_cdf[3][DRL_MODE_CONTEXTS][CDF_SIZE(2)];
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  aom_cdf_prob skip_drl_cdf[3][CDF_SIZE(2)];
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 
 #if CONFIG_OPTFLOW_REFINEMENT
   aom_cdf_prob use_optflow_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(2)];

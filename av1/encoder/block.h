@@ -232,6 +232,11 @@ typedef struct {
 #else
   int_mv global_mvs[REF_FRAMES];
 #endif  // CONFIG_NEW_REF_SIGNALING
+  //! skip_mvp_candidate_list is the MVP list for skip mode.
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  SKIP_MODE_MVP_LIST skip_mvp_candidate_list;
+#endif
+
   //! Context used to encode the current mode.
   int16_t mode_context[MODE_CTX_REF_FRAMES];
 } MB_MODE_INFO_EXT;
@@ -249,6 +254,10 @@ typedef struct {
   uint16_t weight[USABLE_REF_MV_STACK_SIZE];
   //! \copydoc MB_MODE_INFO_EXT::ref_mv_count
   uint8_t ref_mv_count;
+  //! skip_mvp_candidate_list is the MVP list for skip mode.
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  SKIP_MODE_MVP_LIST skip_mvp_candidate_list;
+#endif
   // TODO(Ravi/Remya): Reduce the buffer size of global_mvs
   //! \copydoc MB_MODE_INFO_EXT::global_mvs
 #if CONFIG_NEW_REF_SIGNALING
@@ -715,6 +724,10 @@ typedef struct {
   int pb_block_mv_precision_costs[MV_PREC_DOWN_CONTEXTS][FLEX_MV_COSTS_SIZE]
                                  [NUM_MV_PRECISIONS];
 #endif
+#if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+  //! skip_drl_mode_cost
+  int skip_drl_mode_cost[3][2];
+#endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   /**@}*/
 
   /*****************************************************************************
