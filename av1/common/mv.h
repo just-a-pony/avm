@@ -433,8 +433,15 @@ static INLINE int_mv get_warp_motion_vector(const WarpedMotionParams *model,
     // (so we don't need a call to convert_to_trans_prec here)
     res.as_mv.row = model->wmmat[0] >> GM_TRANS_ONLY_PREC_DIFF;
     res.as_mv.col = model->wmmat[1] >> GM_TRANS_ONLY_PREC_DIFF;
+
+    // When extended warp prediction is enabled, the warp model can be derived
+    // from the neighbor. Neighbor may have different MV precision than current
+    // block. Therefore, this assertion is not valid when
+    // CONFIG_EXTENDED_WARP_PREDICTION is enabled
+#if !CONFIG_EXTENDED_WARP_PREDICTION
     assert(IMPLIES(1 & (res.as_mv.row | res.as_mv.col),
                    precision == MV_PRECISION_ONE_EIGHTH_PEL));
+#endif
     lower_mv_precision(&res.as_mv, precision);
 #else
     // After the right shifts, there are 3 fractional bits of precision. If
