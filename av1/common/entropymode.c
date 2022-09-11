@@ -773,6 +773,16 @@ static const aom_cdf_prob default_drl2_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(16777) }, { AOM_CDF2(16998) }, { AOM_CDF2(14311) },
   { AOM_CDF2(16618) }, { AOM_CDF2(14980) }, { AOM_CDF2(15963) }
 };
+#if CONFIG_IMPROVED_JMVD
+static const aom_cdf_prob
+    default_jmvd_scale_mode_cdf[CDF_SIZE(JOINT_NEWMV_SCALE_FACTOR_CNT)] = {
+      AOM_CDF5(22000, 25000, 28000, 30000),
+    };
+static const aom_cdf_prob
+    default_jmvd_amvd_scale_mode_cdf[CDF_SIZE(JOINT_AMVD_SCALE_FACTOR_CNT)] = {
+      AOM_CDF3(22000, 27000),
+    };
+#endif  // CONFIG_IMPROVED_JMVD
 
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 static const aom_cdf_prob default_skip_drl_cdf[3][CDF_SIZE(2)] = {
@@ -1986,6 +1996,10 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #if CONFIG_OPTFLOW_REFINEMENT
   av1_copy(fc->use_optflow_cdf, default_use_optflow_cdf);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_IMPROVED_JMVD
+  av1_copy(fc->jmvd_scale_mode_cdf, default_jmvd_scale_mode_cdf);
+  av1_copy(fc->jmvd_amvd_scale_mode_cdf, default_jmvd_amvd_scale_mode_cdf);
+#endif  // CONFIG_IMPROVED_JMVD
   av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
   av1_copy(fc->compound_type_cdf, default_compound_type_cdf);
   av1_copy(fc->wedge_idx_cdf, default_wedge_idx_cdf);

@@ -1519,6 +1519,19 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       update_cdf(fc->inter_compound_mode_cdf[mode_ctx],
                  INTER_COMPOUND_OFFSET(mode), INTER_COMPOUND_MODES);
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+      if (is_joint_mvd_coding_mode(mbmi->mode)) {
+        const int is_joint_amvd_mode = is_joint_amvd_coding_mode(mbmi->mode);
+        aom_cdf_prob *jmvd_scale_mode_cdf = is_joint_amvd_mode
+                                                ? fc->jmvd_amvd_scale_mode_cdf
+                                                : fc->jmvd_scale_mode_cdf;
+        const int jmvd_scale_cnt = is_joint_amvd_mode
+                                       ? JOINT_AMVD_SCALE_FACTOR_CNT
+                                       : JOINT_NEWMV_SCALE_FACTOR_CNT;
+        update_cdf(jmvd_scale_mode_cdf, mbmi->jmvd_scale_mode, jmvd_scale_cnt);
+      }
+
+#endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
     } else {
       av1_update_inter_mode_stats(fc, counts, mode, mode_ctx);
     }

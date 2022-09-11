@@ -799,6 +799,12 @@ typedef struct {
   int inter_compound_mode_cost[INTER_COMPOUND_MODE_CONTEXTS]
                               [INTER_COMPOUND_MODES];
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+  //! jmvd_scale_mode_cost for JOINT_NEWMV
+  int jmvd_scale_mode_cost[JOINT_NEWMV_SCALE_FACTOR_CNT];
+  //! jmvd_scale_mode_cost for JOINT_AMVDNEWMV
+  int jmvd_amvd_scale_mode_cost[JOINT_AMVD_SCALE_FACTOR_CNT];
+#endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
   //! compound_type_cost
   int compound_type_cost[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
   //! wedge_idx_cost

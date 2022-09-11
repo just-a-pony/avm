@@ -444,6 +444,23 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
 }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
+#if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+// Read scale mode flag for joint mvd coding mode
+static PREDICTION_MODE read_jmvd_scale_mode(MACROBLOCKD *xd, aom_reader *r,
+                                            MB_MODE_INFO *const mbmi) {
+  if (!is_joint_mvd_coding_mode(mbmi->mode)) return 0;
+  const int is_joint_amvd_mode = is_joint_amvd_coding_mode(mbmi->mode);
+  aom_cdf_prob *jmvd_scale_mode_cdf =
+      is_joint_amvd_mode ? xd->tile_ctx->jmvd_amvd_scale_mode_cdf
+                         : xd->tile_ctx->jmvd_scale_mode_cdf;
+  const int jmvd_scale_cnt = is_joint_amvd_mode ? JOINT_AMVD_SCALE_FACTOR_CNT
+                                                : JOINT_NEWMV_SCALE_FACTOR_CNT;
+  const int jmvd_scale_mode =
+      aom_read_symbol(r, jmvd_scale_mode_cdf, jmvd_scale_cnt, ACCT_STR);
+  return jmvd_scale_mode;
+}
+#endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+
 static PREDICTION_MODE read_inter_compound_mode(MACROBLOCKD *xd, aom_reader *r,
 #if CONFIG_OPTFLOW_REFINEMENT
                                                 const AV1_COMMON *cm,
@@ -2244,6 +2261,9 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
                  ref_mv[jmvd_base_ref_list].as_mv.col;
 #endif
       get_mv_projection(&other_mvd, diff, sec_ref_dist, first_ref_dist);
+#if CONFIG_IMPROVED_JMVD
+      scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode);
+#endif  // CONFIG_IMPROVED_JMVD
 #if CONFIG_FLEX_MVRES
       // TODO(Mohammed): Do we need to apply block level lower mv precision?
       lower_mv_precision(&other_mvd, features->fr_mv_precision);
@@ -2449,6 +2469,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
       else
         mbmi->mode = read_inter_mode(ec_ctx, r, mode_ctx);
+#if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+      mbmi->jmvd_scale_mode = read_jmvd_scale_mode(xd, r, mbmi);
+#endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
 #if IMPROVED_AMVD
       int max_drl_bits = cm->features.max_drl_bits;
       if (mbmi->mode == AMVDNEWMV) max_drl_bits = AOMMIN(max_drl_bits, 1);

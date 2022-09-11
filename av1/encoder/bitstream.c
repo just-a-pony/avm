@@ -140,6 +140,23 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   }
 }
 
+#if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+// Write scale mode flag for joint mvd coding mode
+static AOM_INLINE void write_jmvd_scale_mode(MACROBLOCKD *xd, aom_writer *w,
+                                             const MB_MODE_INFO *const mbmi) {
+  if (!is_joint_mvd_coding_mode(mbmi->mode)) return;
+  const int is_joint_amvd_mode = is_joint_amvd_coding_mode(mbmi->mode);
+  aom_cdf_prob *jmvd_scale_mode_cdf =
+      is_joint_amvd_mode ? xd->tile_ctx->jmvd_amvd_scale_mode_cdf
+                         : xd->tile_ctx->jmvd_scale_mode_cdf;
+  const int jmvd_scale_cnt = is_joint_amvd_mode ? JOINT_AMVD_SCALE_FACTOR_CNT
+                                                : JOINT_NEWMV_SCALE_FACTOR_CNT;
+
+  aom_write_symbol(w, mbmi->jmvd_scale_mode, jmvd_scale_mode_cdf,
+                   jmvd_scale_cnt);
+}
+#endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+
 static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
                                                  PREDICTION_MODE mode,
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -1853,6 +1870,9 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
                                   mode_ctx);
       else if (is_inter_singleref_mode(mode))
         write_inter_mode(w, mode, ec_ctx, mode_ctx);
+#if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
+      write_jmvd_scale_mode(xd, w, mbmi);
+#endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
 #if IMPROVED_AMVD
       int max_drl_bits = cm->features.max_drl_bits;
       if (mbmi->mode == AMVDNEWMV) max_drl_bits = AOMMIN(max_drl_bits, 1);

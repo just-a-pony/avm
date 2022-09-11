@@ -329,6 +329,10 @@ static void set_good_speed_features_framesize_independent(
   }
 #endif
 
+#if CONFIG_IMPROVED_JMVD
+  sf->inter_sf.early_terminate_jmvd_scale_factor = 1;
+#endif
+
   // Speed 0 for all speed features that give neutral coding performance change.
   sf->gm_sf.gm_disable_recode = 1;
 #if CONFIG_NEW_REF_SIGNALING

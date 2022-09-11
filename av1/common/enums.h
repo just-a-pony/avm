@@ -53,6 +53,13 @@ extern "C" {
 #define BUGFIX_AMVD_AMVR 0
 #endif  // CONFIG_ADAPTIVE_MVD && CONFIG_FLEX_MVRES
 
+#if CONFIG_IMPROVED_JMVD
+// Supported scale modes for JOINT_NEWMV
+#define JOINT_NEWMV_SCALE_FACTOR_CNT 5
+// Supoorted scale modes for JOINT_AMVDNEWMV
+#define JOINT_AMVD_SCALE_FACTOR_CNT 3
+#endif  // CONFIG_IMPROVED_JMVD
+
 // Max superblock size
 #define MAX_SB_SIZE_LOG2 7
 #define MAX_SB_SIZE (1 << MAX_SB_SIZE_LOG2)
