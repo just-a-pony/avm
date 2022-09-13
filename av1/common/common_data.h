@@ -475,6 +475,18 @@ static const int quant_dist_lookup_table[4][2] = {
   { 13, 3 },
 };
 
+#if CONFIG_ATC_NEWTXSETS
+// Mapping of mode dependent TX  based on intra modes.
+static const int av1_md_class[INTRA_MODES] = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+};
+
+// Mapping between mode dependent TX size groups based on allowed TX sizes.
+static const int av1_size_class[MODE_DEPTX_TXSIZES] = {
+  0, 1, 2, 3, 3, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 1, 1, 2, 2,
+};
+#endif  // CONFIG_ATC_NEWTXSETS
+
 #if CONFIG_IST
 // Mapping of intra modes to IST kernel set
 // Secondary transforms are enabled only intra modes < PAETH_PRED.

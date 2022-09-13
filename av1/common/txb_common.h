@@ -111,11 +111,24 @@ static INLINE int get_br_ctx_2d(const uint8_t *const levels,
             AOMMIN(levels[pos + stride], MAX_BASE_BR_RANGE) +
             AOMMIN(levels[pos + 1 + stride], MAX_BASE_BR_RANGE);
   mag = AOMMIN((mag + 1) >> 1, 6);
+#if CONFIG_ATC_COEFCODING
+  return mag;
+#else
   //((row | col) < 2) is equivalent to ((row < 2) && (col < 2))
   if ((row | col) < 2) return mag + 7;
   return mag + 14;
+#endif  // CONFIG_ATC_COEFCODING
 }
 
+#if CONFIG_ATC_COEFCODING
+// This function returns the low range context index for
+// the low-frequency region for the EOB coefficient.
+static AOM_FORCE_INLINE int get_br_ctx_lf_eob(const int c,  // raster order
+                                              const TX_CLASS tx_class) {
+  if (tx_class == TX_CLASS_2D && c == 0) return 0;
+  return 7;
+}
+#else
 static AOM_FORCE_INLINE int get_br_ctx_eob(const int c,  // raster order
                                            const int bwl,
                                            const TX_CLASS tx_class) {
@@ -128,7 +141,85 @@ static AOM_FORCE_INLINE int get_br_ctx_eob(const int c,  // raster order
     return 7;
   return 14;
 }
+#endif  // CONFIG_ATC_COEFCODING
 
+#if CONFIG_ATC_COEFCODING
+// This function returns the low range context index/increment for the
+// coefficients residing in the low-frequency region for 2D transforms.
+// Not used for the DC term.
+static INLINE int get_br_lf_ctx_2d(const uint8_t *const levels,
+                                   const int c,  // raster order
+                                   const int bwl) {
+  assert(c > 0);
+  const int row = c >> bwl;
+  const int col = c - (row << bwl);
+  const int stride = (1 << bwl) + TX_PAD_HOR;
+  const int pos = row * stride + col;
+  int mag = AOMMIN(levels[pos + 1], MAX_BASE_BR_RANGE) +
+            AOMMIN(levels[pos + stride], MAX_BASE_BR_RANGE) +
+            AOMMIN(levels[pos + 1 + stride], MAX_BASE_BR_RANGE);
+  mag = AOMMIN((mag + 1) >> 1, 6);
+  return mag + 7;
+}
+
+// This function returns the low range context index/increment for the
+// coefficients residing in the low-frequency region for 1D and 2D
+// transforms and covers the 1D and 2D TX DC terms.
+static AOM_FORCE_INLINE int get_br_lf_ctx(const uint8_t *const levels,
+                                          const int c,  // raster order
+                                          const int bwl,
+                                          const TX_CLASS tx_class) {
+  const int row = c >> bwl;
+  const int col = c - (row << bwl);
+  const int stride = (1 << bwl) + TX_PAD_HOR;
+  const int pos = row * stride + col;
+  int mag = AOMMIN(levels[pos + 1], MAX_BASE_BR_RANGE);
+  mag += levels[pos + stride];
+  switch (tx_class) {
+    case TX_CLASS_2D:
+      mag += AOMMIN(levels[pos + stride + 1], MAX_BASE_BR_RANGE);
+      mag = AOMMIN((mag + 1) >> 1, 6);
+      if (c == 0) return mag;
+      if ((row < 2) && (col < 2)) return mag + 7;
+      break;
+    case TX_CLASS_HORIZ:
+      mag += AOMMIN(levels[pos + 2], MAX_BASE_BR_RANGE);
+      mag = AOMMIN((mag + 1) >> 1, 6);
+      if (col == 0) return mag + 7;
+      break;
+    case TX_CLASS_VERT:
+      mag += AOMMIN(levels[pos + (stride << 1)], MAX_BASE_BR_RANGE);
+      mag = AOMMIN((mag + 1) >> 1, 6);
+      if (row == 0) return mag + 7;
+      break;
+    default: break;
+  }
+  return mag + 7;
+}
+
+// This function returns the low range context index/increment for the
+// coefficients residing in the higher-frequency default region
+// for 1D and 2D transforms.
+static AOM_FORCE_INLINE int get_br_ctx(const uint8_t *const levels,
+                                       const int c,  // raster order
+                                       const int bwl, const TX_CLASS tx_class) {
+  const int row = c >> bwl;
+  const int col = c - (row << bwl);
+  const int stride = (1 << bwl) + TX_PAD_HOR;
+  const int pos = row * stride + col;
+  int mag = levels[pos + 1];
+  mag += levels[pos + stride];
+  if (tx_class == TX_CLASS_2D) {
+    mag += levels[pos + stride + 1];
+  } else if (tx_class == TX_CLASS_VERT) {
+    mag += levels[pos + (stride << 1)];
+  } else {
+    mag += levels[pos + 2];
+  }
+  mag = AOMMIN((mag + 1) >> 1, 6);
+  return mag;
+}
+#else
 static AOM_FORCE_INLINE int get_br_ctx(const uint8_t *const levels,
                                        const int c,  // raster order
                                        const int bwl, const TX_CLASS tx_class) {
@@ -162,6 +253,22 @@ static AOM_FORCE_INLINE int get_br_ctx(const uint8_t *const levels,
 
   return mag + 14;
 }
+#endif  // CONFIG_ATC_COEFCODING
+
+#if CONFIG_ATC_COEFCODING
+static const uint8_t clip_max5[256] = {
+  0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+};
+#endif  // CONFIG_ATC_COEFCODING
 
 static const uint8_t clip_max3[256] = {
   0, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -218,6 +325,35 @@ static INLINE int get_sign_ctx_skip(const int8_t *const signs,
 }
 #endif  // CONFIG_FORWARDSKIP
 
+#if CONFIG_ATC_COEFCODING
+// This function returns the template sum of absolute values
+// for coefficient coding for the low-frequency region.
+static AOM_FORCE_INLINE int get_nz_mag_lf(const uint8_t *const levels,
+                                          const int bwl,
+                                          const TX_CLASS tx_class) {
+  int mag;
+  // Note: AOMMIN(level, 5) is useless for decoder since level < 5.
+  mag = clip_max5[levels[1]];                         // { 0, 1 }
+  mag += clip_max5[levels[(1 << bwl) + TX_PAD_HOR]];  // { 1, 0 }
+  if (tx_class == TX_CLASS_2D) {
+    mag += clip_max5[levels[(1 << bwl) + TX_PAD_HOR + 1]];          // { 1, 1 }
+    mag += clip_max5[levels[2]];                                    // { 0, 2 }
+    mag += clip_max5[levels[(2 << bwl) + (2 << TX_PAD_HOR_LOG2)]];  // { 2, 0 }
+  } else if (tx_class == TX_CLASS_VERT) {
+    mag += clip_max3[levels[(2 << bwl) + (2 << TX_PAD_HOR_LOG2)]];  // { 2, 0 }
+    mag += clip_max3[levels[(3 << bwl) + (3 << TX_PAD_HOR_LOG2)]];  // { 3, 0 }
+    mag += clip_max3[levels[(4 << bwl) + (4 << TX_PAD_HOR_LOG2)]];  // { 4, 0 }
+  } else {
+    mag += clip_max3[levels[2]];  // { 0, 2 }
+    mag += clip_max3[levels[3]];  // { 0, 3 }
+    mag += clip_max3[levels[4]];  // { 0, 4 }
+  }
+  return mag;
+}
+#endif  // CONFIG_ATC_COEFCODING
+
+// This function returns the template sum of absolute values
+// for coefficient coding for the higher-frequency default region.
 static AOM_FORCE_INLINE int get_nz_mag(const uint8_t *const levels,
                                        const int bwl, const TX_CLASS tx_class) {
   int mag;
@@ -269,16 +405,81 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats_skip(const int stats,
 }
 #endif  // CONFIG_FORWARDSKIP
 
+#if CONFIG_ATC_COEFCODING
+// This function returns the base range context index/increment for the
+// coefficients residing in the low-frequency region for 1D/2D transforms.
+static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats_lf(
+    const int stats,
+    const int coeff_idx,  // raster order
+    const int bwl, const TX_CLASS tx_class) {
+  int ctx = (stats + 1) >> 1;
+  switch (tx_class) {
+    case TX_CLASS_2D: {
+      const int row = coeff_idx >> bwl;
+      const int col = coeff_idx - (row << bwl);
+      if (coeff_idx == 0) {
+        ctx = AOMMIN(ctx, 8);
+        return ctx;
+      }
+      if (row + col < 2) {
+        ctx = AOMMIN(ctx, 6);
+        return ctx + 9;
+      }
+      ctx = AOMMIN(ctx, 4);
+      return ctx + 16;
+    }
+    case TX_CLASS_HORIZ: {
+      const int row = coeff_idx >> bwl;
+      const int col = coeff_idx - (row << bwl);
+      if (col == 0) {
+        ctx = AOMMIN(ctx, 6);
+        ctx += LF_SIG_COEF_CONTEXTS_2D;
+      } else {  // col == 1
+        ctx = AOMMIN(ctx, 4);
+        ctx += LF_SIG_COEF_CONTEXTS_2D + 7;
+      }
+      return ctx;
+    }
+    case TX_CLASS_VERT: {
+      const int row = coeff_idx >> bwl;
+      if (row == 0) {
+        ctx = AOMMIN(ctx, 6);
+        ctx += LF_SIG_COEF_CONTEXTS_2D;
+      } else {  // row == 1
+        ctx = AOMMIN(ctx, 4);
+        ctx += LF_SIG_COEF_CONTEXTS_2D + 7;
+      }
+      return ctx;
+    }
+    default: break;
+  }
+  return 0;
+}
+#endif  // CONFIG_ATC_COEFCODING
+
+// This function returns the base range context index/increment for the
+// coefficients residing in the higher-frequency region for 1D/2D transforms.
 static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats(
     const int stats,
     const int coeff_idx,  // raster order
-    const int bwl, const TX_SIZE tx_size, const TX_CLASS tx_class) {
+    const int bwl,
+#if !CONFIG_ATC_COEFCODING
+    const TX_SIZE tx_size,
+#endif  // !CONFIG_ATC_COEFCODING
+    const TX_CLASS tx_class) {
   // tx_class == 0(TX_CLASS_2D)
   if ((tx_class | coeff_idx) == 0) return 0;
   int ctx = (stats + 1) >> 1;
   ctx = AOMMIN(ctx, 4);
   switch (tx_class) {
     case TX_CLASS_2D: {
+#if CONFIG_ATC_COEFCODING
+      const int row = coeff_idx >> bwl;
+      const int col = coeff_idx - (row << bwl);
+      if (row + col < 6) return ctx;
+      if (row + col < 8) return 5 + ctx;
+      return 10 + ctx;
+#else
       // This is the algorithm to generate av1_nz_map_ctx_offset[][]
       //   const int width = tx_size_wide[tx_size];
       //   const int height = tx_size_high[tx_size];
@@ -291,21 +492,33 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats(
       //   if (row + col < 4) return 5 + ctx + 1;
       //   return 21 + ctx;
       return ctx + av1_nz_map_ctx_offset[tx_size][coeff_idx];
+#endif  // CONFIG_ATC_COEFCODING
     }
     case TX_CLASS_HORIZ: {
+#if CONFIG_ATC_COEFCODING
+      return ctx + 15;
+#else
       const int row = coeff_idx >> bwl;
       const int col = coeff_idx - (row << bwl);
       return ctx + nz_map_ctx_offset_1d[col];
+#endif  // CONFIG_ATC_COEFCODING
     }
     case TX_CLASS_VERT: {
+#if CONFIG_ATC_COEFCODING
+      return ctx + 15;
+#else
       const int row = coeff_idx >> bwl;
       return ctx + nz_map_ctx_offset_1d[row];
+#endif  // CONFIG_ATC_COEFCODING
     }
     default: break;
   }
   return 0;
 }
 
+#if CONFIG_ATC_COEFCODING
+typedef aom_cdf_prob (*base_lf_cdf_arr)[CDF_SIZE(LF_BASE_SYMBOLS)];
+#endif  // CONFIG_ATC_COEFCODING
 typedef aom_cdf_prob (*base_cdf_arr)[CDF_SIZE(4)];
 typedef aom_cdf_prob (*br_cdf_arr)[CDF_SIZE(BR_CDF_SIZE)];
 
@@ -331,8 +544,51 @@ static INLINE int get_upper_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
 }
 #endif  // CONFIG_FORWARDSKIP
 
+#if CONFIG_ATC_COEFCODING
+// This function returns the base range context index/increment for the
+// coefficients residing in the low-frequency region for 2D transforms.
+static INLINE int get_lower_levels_ctx_lf_2d(const uint8_t *levels,
+                                             int coeff_idx, int bwl) {
+  assert(coeff_idx > 0);
+  int mag;
+  // Note: AOMMIN(level, 3) is useless for decoder since level < 5.
+  levels = levels + get_padded_idx(coeff_idx, bwl);
+  mag = AOMMIN(levels[1], 5);                                     // { 0, 1 }
+  mag += AOMMIN(levels[(1 << bwl) + TX_PAD_HOR], 5);              // { 1, 0 }
+  mag += AOMMIN(levels[(1 << bwl) + TX_PAD_HOR + 1], 5);          // { 1, 1 }
+  mag += AOMMIN(levels[2], 5);                                    // { 0, 2 }
+  mag += AOMMIN(levels[(2 << bwl) + (2 << TX_PAD_HOR_LOG2)], 5);  // { 2, 0 }
+  int ctx = (mag + 1) >> 1;
+  const int row = coeff_idx >> bwl;
+  const int col = coeff_idx - (row << bwl);
+  if (coeff_idx == 0) {
+    ctx = AOMMIN(ctx, 8);
+    return ctx;
+  }
+  if (row + col < 2) {
+    ctx = AOMMIN(ctx, 6);
+    return ctx + 9;
+  }
+  ctx = AOMMIN(ctx, 4);
+  return ctx + 16;
+}
+
+static AOM_FORCE_INLINE int get_lower_levels_lf_ctx(const uint8_t *levels,
+                                                    int coeff_idx, int bwl,
+                                                    TX_CLASS tx_class) {
+  const int stats =
+      get_nz_mag_lf(levels + get_padded_idx(coeff_idx, bwl), bwl, tx_class);
+  return get_nz_map_ctx_from_stats_lf(stats, coeff_idx, bwl, tx_class);
+}
+#endif  // CONFIG_ATC_COEFCODING
+
 static INLINE int get_lower_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
-                                          int bwl, TX_SIZE tx_size) {
+                                          int bwl
+#if !CONFIG_ATC_COEFCODING
+                                          ,
+                                          TX_SIZE tx_size
+#endif  // !CONFIG_ATC_COEFCODING
+) {
   assert(coeff_idx > 0);
   int mag;
   // Note: AOMMIN(level, 3) is useless for decoder since level < 3.
@@ -344,29 +600,83 @@ static INLINE int get_lower_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
   mag += AOMMIN(levels[(2 << bwl) + (2 << TX_PAD_HOR_LOG2)], 3);  // { 2, 0 }
 
   const int ctx = AOMMIN((mag + 1) >> 1, 4);
+#if CONFIG_ATC_COEFCODING
+  const int row = coeff_idx >> bwl;
+  const int col = coeff_idx - (row << bwl);
+  if (row + col < 6) return ctx;
+  if (row + col < 8) return ctx + 5;
+  return ctx + 10;
+#else
   return ctx + av1_nz_map_ctx_offset[tx_size][coeff_idx];
+#endif  // CONFIG_ATC_COEFCODING
 }
+
+#if CONFIG_ATC_COEFCODING
+// This function determines the limits to separate the low-frequency
+// coefficient coding region from the higher-frequency default
+// region. It is based on the diagonal sum (row+col) or row, columns
+// of the given coefficient in a scan order.
+static INLINE int get_lf_limits(int row, int col, TX_CLASS tx_class,
+                                int plane) {
+  int limits = 0;
+  if (tx_class == TX_CLASS_2D) {
+    limits =
+        plane == 0 ? ((row + col) < LF_2D_LIM) : ((row + col) < LF_2D_LIM_UV);
+  } else if (tx_class == TX_CLASS_HORIZ) {
+    limits = plane == 0 ? (col < LF_RC_LIM) : (col < LF_RC_LIM_UV);
+  } else {
+    limits = plane == 0 ? (row < LF_RC_LIM) : (row < LF_RC_LIM_UV);
+  }
+  return limits;
+}
+#endif  // CONFIG_ATC_COEFCODING
+
 static AOM_FORCE_INLINE int get_lower_levels_ctx(const uint8_t *levels,
                                                  int coeff_idx, int bwl,
+#if !CONFIG_ATC_COEFCODING
                                                  TX_SIZE tx_size,
+#endif  // !CONFIG_ATC_COEFCODING
                                                  TX_CLASS tx_class) {
   const int stats =
       get_nz_mag(levels + get_padded_idx(coeff_idx, bwl), bwl, tx_class);
+#if CONFIG_ATC_COEFCODING
+  return get_nz_map_ctx_from_stats(stats, coeff_idx, bwl, tx_class);
+#else
   return get_nz_map_ctx_from_stats(stats, coeff_idx, bwl, tx_size, tx_class);
+#endif  // CONFIG_ATC_COEFCODING
 }
 
 static INLINE int get_lower_levels_ctx_general(int is_last, int scan_idx,
                                                int bwl, int height,
                                                const uint8_t *levels,
-                                               int coeff_idx, TX_SIZE tx_size,
-                                               TX_CLASS tx_class) {
+                                               int coeff_idx,
+#if !CONFIG_ATC_COEFCODING
+                                               TX_SIZE tx_size,
+#endif  // !CONFIG_ATC_COEFCODING
+                                               TX_CLASS tx_class
+#if CONFIG_ATC_COEFCODING
+                                               ,
+                                               int plane
+#endif  // CONFIG_ATC_COEFCODING
+) {
   if (is_last) {
     if (scan_idx == 0) return 0;
     if (scan_idx <= (height << bwl) >> 3) return 1;
     if (scan_idx <= (height << bwl) >> 2) return 2;
     return 3;
   }
+#if CONFIG_ATC_COEFCODING
+  const int row = coeff_idx >> bwl;
+  const int col = coeff_idx - (row << bwl);
+  int limits = get_lf_limits(row, col, tx_class, plane);
+  if (limits) {
+    return get_lower_levels_lf_ctx(levels, coeff_idx, bwl, tx_class);
+  } else {
+    return get_lower_levels_ctx(levels, coeff_idx, bwl, tx_class);
+  }
+#else
   return get_lower_levels_ctx(levels, coeff_idx, bwl, tx_size, tx_class);
+#endif  // CONFIG_ATC_COEFCODING
 }
 
 static INLINE void set_dc_sign(int *cul_level, int dc_val) {

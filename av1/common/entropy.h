@@ -48,17 +48,45 @@ extern "C" {
 
 #define EOB_COEF_CONTEXTS 9
 
+#if CONFIG_ATC_COEFCODING
+// Number of coefficient coding contexts for the low-frequency region
+// for 2D and 1D transforms
+#define LF_SIG_COEF_CONTEXTS_2D 21
+#define LF_SIG_COEF_CONTEXTS_1D 12
+#define LF_SIG_COEF_CONTEXTS (LF_SIG_COEF_CONTEXTS_2D + LF_SIG_COEF_CONTEXTS_1D)
+#define LF_LEVEL_CONTEXTS 14  // low-range contexts
+
+// Number of coefficient coding contexts for the higher-frequency default region
+// for 2D and 1D transforms
+#define SIG_COEF_CONTEXTS_2D 20
+#define SIG_COEF_CONTEXTS SIG_COEF_CONTEXTS_2D  // base range contexts
+#define LEVEL_CONTEXTS 7                        // low range contexts
+
+#define SIG_COEF_CONTEXTS_EOB 4  // context count for the EOB coefficient
+
+// Number of symbols for base range coding in low-frequency region
+#define LF_BASE_SYMBOLS 6
+#define LF_NUM_BASE_LEVELS (LF_BASE_SYMBOLS - 2)
+#define LF_MAX_BASE_BR_RANGE (COEFF_BASE_RANGE + LF_NUM_BASE_LEVELS + 1)
+
+// Limits to determine the low-frequency region for coefficient coding.
+#define LF_2D_LIM 4     // row + column limit
+#define LF_2D_LIM_UV 1  // row + column limit for chroma
+#define LF_RC_LIM 2     // row or column limit
+#define LF_RC_LIM_UV 1  // row or column limit for chroma
+#else
+#define LEVEL_CONTEXTS 21
 #define SIG_COEF_CONTEXTS_2D 26
 #define SIG_COEF_CONTEXTS_1D 16
 #define SIG_COEF_CONTEXTS_EOB 4
 #define SIG_COEF_CONTEXTS (SIG_COEF_CONTEXTS_2D + SIG_COEF_CONTEXTS_1D)
+#endif  // CONFIG_ATC_COEFCODING
 
 #define COEFF_BASE_CONTEXTS (SIG_COEF_CONTEXTS)
 #define DC_SIGN_CONTEXTS 3
 
 #define BR_TMP_OFFSET 12
 #define BR_REF_CAT 4
-#define LEVEL_CONTEXTS 21
 
 #define NUM_BASE_LEVELS 2
 

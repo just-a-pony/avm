@@ -61,8 +61,12 @@ static const uint8_t rd_thresh_block_size_factor[BLOCK_SIZES_ALL] = {
 static const int use_intra_ext_tx_for_txsize[EXT_TX_SETS_INTRA]
                                             [EXT_TX_SIZES] = {
                                               { 1, 1, 1, 1 },  // unused
+#if CONFIG_ATC_NEWTXSETS
+                                              { 1, 1, 1, 0 },
+#else
                                               { 1, 1, 0, 0 },
                                               { 0, 0, 1, 0 },
+#endif  // CONFIG_ATC_NEWTXSETS
                                             };
 
 static const int use_inter_ext_tx_for_txsize[EXT_TX_SETS_INTER]
@@ -78,8 +82,12 @@ static const int av1_ext_tx_set_idx_to_type[2][AOMMAX(EXT_TX_SETS_INTRA,
   {
       // Intra
       EXT_TX_SET_DCTONLY,
+#if CONFIG_ATC_NEWTXSETS
+      EXT_NEW_TX_SET,
+#else
       EXT_TX_SET_DTT4_IDTX_1DDCT,
       EXT_TX_SET_DTT4_IDTX,
+#endif  // CONFIG_ATC_NEWTXSETS
   },
   {
       // Inter
@@ -265,9 +273,19 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
       }
     }
     for (s = 1; s < EXT_TX_SETS_INTRA; ++s) {
+#if CONFIG_ATC_NEWTXSETS
+      int tx_set_type = av1_ext_tx_set_idx_to_type[0][s];
+#endif  // CONFIG_ATC_NEWTXSETS
       if (use_intra_ext_tx_for_txsize[s][i]) {
         for (j = 0; j < INTRA_MODES; ++j) {
           av1_cost_tokens_from_cdf(
+#if CONFIG_ATC_NEWTXSETS
+              mode_costs->intra_tx_type_costs[s][i][j],
+              fc->intra_ext_tx_cdf[s][i][j],
+              tx_set_type == EXT_NEW_TX_SET
+                  ? av1_md_idx2type[av1_size_class[i]][av1_md_class[j]]
+                  : av1_ext_tx_inv[tx_set_type]);
+#else
               mode_costs->intra_tx_type_costs[s][i][j],
               fc->intra_ext_tx_cdf[s][i][j],
 #if CONFIG_FORWARDSKIP
@@ -275,6 +293,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
 #else
               av1_ext_tx_inv[av1_ext_tx_set_idx_to_type[0][s]]);
 #endif  // CONFIG_FORWARDSKIP
+#endif  // CONFIG_ATC_NEWTXSETS
         }
       }
     }
@@ -752,6 +771,21 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
         av1_cost_tokens_from_cdf(pcost->base_eob_cost[ctx],
                                  fc->coeff_base_eob_cdf[tx_size][plane][ctx],
                                  NULL);
+#if CONFIG_ATC_COEFCODING
+      for (int ctx = 0; ctx < SIG_COEF_CONTEXTS_EOB; ++ctx)
+        av1_cost_tokens_from_cdf(pcost->base_lf_eob_cost[ctx],
+                                 fc->coeff_base_lf_eob_cdf[tx_size][plane][ctx],
+                                 NULL);
+      for (int ctx = 0; ctx < LF_SIG_COEF_CONTEXTS; ++ctx) {
+        av1_cost_tokens_from_cdf(pcost->base_lf_cost[ctx],
+                                 fc->coeff_base_lf_cdf[tx_size][plane][ctx],
+                                 NULL);
+      }
+      for (int ctx = 0; ctx < SIG_COEF_CONTEXTS; ++ctx) {
+        av1_cost_tokens_from_cdf(pcost->base_cost[ctx],
+                                 fc->coeff_base_cdf[tx_size][plane][ctx], NULL);
+      }
+#else
       for (int ctx = 0; ctx < SIG_COEF_CONTEXTS; ++ctx)
         av1_cost_tokens_from_cdf(pcost->base_cost[ctx],
                                  fc->coeff_base_cdf[tx_size][plane][ctx], NULL);
@@ -766,7 +800,7 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
         pcost->base_cost[ctx][7] =
             pcost->base_cost[ctx][3] - pcost->base_cost[ctx][2];
       }
-
+#endif  // CONFIG_ATC_COEFCODING
       for (int ctx = 0; ctx < EOB_COEF_CONTEXTS; ++ctx)
         av1_cost_tokens_from_cdf(pcost->eob_extra_cost[ctx],
                                  fc->eob_extra_cdf[tx_size][plane][ctx], NULL);
@@ -786,12 +820,40 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
       }
 #endif  // CONFIG_CONTEXT_DERIVATION
 
+#if CONFIG_ATC_COEFCODING
+      for (int ctx = 0; ctx < LF_LEVEL_CONTEXTS; ++ctx) {
+        int br_lf_rate[BR_CDF_SIZE];
+        int prev_cost_lf = 0;
+        int i, j;
+        av1_cost_tokens_from_cdf(br_lf_rate, fc->coeff_br_lf_cdf[plane][ctx],
+                                 NULL);
+        for (i = 0; i < COEFF_BASE_RANGE; i += BR_CDF_SIZE - 1) {
+          for (j = 0; j < BR_CDF_SIZE - 1; j++) {
+            pcost->lps_lf_cost[ctx][i + j] = prev_cost_lf + br_lf_rate[j];
+          }
+          prev_cost_lf += br_lf_rate[j];
+        }
+        pcost->lps_lf_cost[ctx][i] = prev_cost_lf;
+      }
+      for (int ctx = 0; ctx < LF_LEVEL_CONTEXTS; ++ctx) {
+        pcost->lps_lf_cost[ctx][0 + COEFF_BASE_RANGE + 1] =
+            pcost->lps_lf_cost[ctx][0];
+        for (int i = 1; i <= COEFF_BASE_RANGE; ++i) {
+          pcost->lps_lf_cost[ctx][i + COEFF_BASE_RANGE + 1] =
+              pcost->lps_lf_cost[ctx][i] - pcost->lps_lf_cost[ctx][i - 1];
+        }
+      }
+#endif  // CONFIG_ATC_COEFCODING
       for (int ctx = 0; ctx < LEVEL_CONTEXTS; ++ctx) {
         int br_rate[BR_CDF_SIZE];
         int prev_cost = 0;
         int i, j;
         av1_cost_tokens_from_cdf(
+#if CONFIG_ATC_COEFCODING
+            br_rate, fc->coeff_br_cdf[plane][ctx],
+#else
             br_rate, fc->coeff_br_cdf[AOMMIN(tx_size, TX_32X32)][plane][ctx],
+#endif  // CONFIG_ATC_COEFCODING
             NULL);
         // printf("br_rate: ");
         // for(j = 0; j < BR_CDF_SIZE; j++)

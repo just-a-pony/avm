@@ -1246,7 +1246,12 @@ static INLINE int64_t dist_block_px_domain(const AV1_COMP *cpi, MACROBLOCK *x,
 
 static uint32_t get_intra_txb_hash(MACROBLOCK *x, int plane, int blk_row,
                                    int blk_col, BLOCK_SIZE plane_bsize,
-                                   TX_SIZE tx_size) {
+                                   TX_SIZE tx_size
+#if CONFIG_ATC_NEWTXSETS
+                                   ,
+                                   PREDICTION_MODE intra_dir
+#endif  // CONFIG_ATC_NEWTXSETS
+) {
   int16_t tmp_data[64 * 64];
   const int diff_stride = block_size_wide[plane_bsize];
   const int16_t *diff = x->plane[plane].src_diff;
@@ -1265,7 +1270,11 @@ static uint32_t get_intra_txb_hash(MACROBLOCK *x, int plane, int blk_row,
   }
   CRC32C *crc = &x->txfm_search_info.mb_rd_record.crc_calculator;
   const uint32_t hash = av1_get_crc32c_value(crc, hash_data, 2 * txb_w * txb_h);
+#if CONFIG_ATC_NEWTXSETS
+  return (hash << 9) + (tx_size << 4) + (intra_dir);
+#else
   return (hash << 5) + tx_size;
+#endif  // CONFIG_ATC_NEWTXSETS
 }
 
 // pruning thresholds for prune_txk_type and prune_txk_type_separ
@@ -1285,8 +1294,20 @@ static INLINE int is_intra_hash_match(const AV1_COMP *cpi, MACROBLOCK *x,
          frame_is_intra_only(&cpi->common) &&
          !is_inter_block(xd->mi[0], xd->tree_type) && plane == 0 &&
          tx_size_wide[tx_size] == tx_size_high[tx_size]);
+#if CONFIG_ATC_NEWTXSETS
+  MB_MODE_INFO *mbmi = xd->mi[0];
+  PREDICTION_MODE intra_dir;
+  if (mbmi->filter_intra_mode_info.use_filter_intra)
+    intra_dir =
+        fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode];
+  else
+    intra_dir = mbmi->mode;
+  const uint32_t intra_hash = get_intra_txb_hash(
+      x, plane, blk_row, blk_col, plane_bsize, tx_size, intra_dir);
+#else
   const uint32_t intra_hash =
       get_intra_txb_hash(x, plane, blk_row, blk_col, plane_bsize, tx_size);
+#endif  // CONFIG_ATC_NEWTXSETS
   const int intra_hash_idx =
       find_tx_size_rd_info(&txfm_info->txb_rd_record_intra, intra_hash);
   *intra_txb_rd_info =
@@ -1971,6 +1992,14 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
   const AV1_COMMON *cm = &cpi->common;
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
+#if CONFIG_ATC_NEWTXSETS
+  PREDICTION_MODE intra_dir;
+  if (mbmi->filter_intra_mode_info.use_filter_intra)
+    intra_dir =
+        fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode];
+  else
+    intra_dir = mbmi->mode;
+#endif  // CONFIG_ATC_NEWTXSETS
   const TxfmSearchParams *txfm_params = &x->txfm_search_params;
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   const int fast_tx_search = ftxs_mode & FTXS_DCT_AND_1D_DCT_ONLY;
@@ -1996,10 +2025,12 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
         av1_get_tx_type(xd, get_plane_type(plane), blk_row, blk_col, tx_size,
                         cm->features.reduced_tx_set_used);
   }
+#if !CONFIG_ATC_NEWTXSETS
   PREDICTION_MODE intra_dir =
       mbmi->filter_intra_mode_info.use_filter_intra
           ? fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode]
           : mbmi->mode;
+#endif  // !CONFIG_ATC_NEWTXSETS
   uint16_t ext_tx_used_flag =
       cpi->sf.tx_sf.tx_type_search.use_reduced_intra_txset &&
               tx_set_type == EXT_TX_SET_DTT4_IDTX_1DDCT
@@ -2012,6 +2043,14 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
     txk_allowed = DCT_DCT;
   }
 
+#if CONFIG_ATC_NEWTXSETS
+  if (!is_inter) {
+    uint16_t mdtx_mask =
+        av1_md_trfm_used_flag[av1_size_class[tx_size]]
+                             [is_inter ? 0 : av1_md_class[intra_dir]];
+    ext_tx_used_flag &= mdtx_mask;
+  }
+#endif  // CONFIG_ATC_NEWTXSETS
   if (cpi->oxcf.txfm_cfg.enable_flip_idtx == 0)
     ext_tx_used_flag &= DCT_ADST_TX_MASK;
 

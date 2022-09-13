@@ -1186,6 +1186,14 @@ static AOM_INLINE void write_palette_mode_info(const AV1_COMMON *cm,
 void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
                        TX_TYPE tx_type, TX_SIZE tx_size, aom_writer *w) {
   MB_MODE_INFO *mbmi = xd->mi[0];
+#if CONFIG_ATC_NEWTXSETS
+  PREDICTION_MODE intra_dir;
+  if (mbmi->filter_intra_mode_info.use_filter_intra)
+    intra_dir =
+        fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode];
+  else
+    intra_dir = mbmi->mode;
+#endif  // CONFIG_ATC_NEWTXSETS
   const FeatureFlags *const features = &cm->features;
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   if (get_ext_tx_types(tx_size, is_inter, features->reduced_tx_set_used) > 1 &&
@@ -1203,7 +1211,19 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
     // is no need to send the tx_type
     assert(eset > 0);
 #if CONFIG_IST
+#if CONFIG_ATC_NEWTXSETS
+    const int size_info = av1_size_class[tx_size];
+    if (!is_inter) {
+      const int mode_info = av1_md_class[intra_dir];
+      (void)mode_info;
+      assert(tx_set_type == EXT_NEW_TX_SET
+                 ? av1_mdtx_used_flag[av1_size_class[tx_size]][mode_info]
+                                     [get_primary_tx_type(tx_type)]
+                 : av1_ext_tx_used[tx_set_type][get_primary_tx_type(tx_type)]);
+    }
+#else
     assert(av1_ext_tx_used[tx_set_type][get_primary_tx_type(tx_type)]);
+#endif  // CONFIG_ATC_NEWTXSETS
 #else
     assert(av1_ext_tx_used[tx_set_type][tx_type]);
 #endif
@@ -1217,18 +1237,28 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
         return;
       }
 #endif  // CONFIG_FORWARDSKIP
+#if !CONFIG_ATC_NEWTXSETS
       PREDICTION_MODE intra_dir;
       if (mbmi->filter_intra_mode_info.use_filter_intra)
         intra_dir =
             fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode];
       else
         intra_dir = mbmi->mode;
+#endif  // !CONFIG_ATC_NEWTXSETS
 #if CONFIG_IST
       aom_write_symbol(
 #if CONFIG_FORWARDSKIP
+#if CONFIG_ATC_NEWTXSETS
+          w,
+          av1_tx_type_to_idx(get_primary_tx_type(tx_type), tx_set_type,
+                             intra_dir, size_info),
+          ec_ctx->intra_ext_tx_cdf[eset][square_tx_size][intra_dir],
+          av1_num_ext_tx_set_intra[tx_set_type]);
+#else
           w, av1_ext_tx_ind_intra[tx_set_type][get_primary_tx_type(tx_type)],
           ec_ctx->intra_ext_tx_cdf[eset][square_tx_size][intra_dir],
           av1_num_ext_tx_set_intra[tx_set_type]);
+#endif  // CONFIG_ATC_NEWTXSETS
 #else
           w, av1_ext_tx_ind[tx_set_type][get_primary_tx_type(tx_type)],
           ec_ctx->intra_ext_tx_cdf[eset][square_tx_size][intra_dir],

@@ -1402,8 +1402,11 @@ static INLINE int block_signals_txsize(BLOCK_SIZE bsize) {
 
 #if CONFIG_FORWARDSKIP
 // Number of transform types in each set type for intra blocks
-static const int av1_num_ext_tx_set_intra[EXT_TX_SET_TYPES] = {
-  1, 1, 4, 6, 11, 15,
+static const int av1_num_ext_tx_set_intra[EXT_TX_SET_TYPES] = { 1, 1,  4,
+                                                                6, 11, 15,
+#if CONFIG_ATC_NEWTXSETS
+                                                                7
+#endif  // CONFIG_ATC_NEWTXSETS
 };
 #endif  // CONFIG_FORWARDSKIP
 
@@ -1419,7 +1422,75 @@ static const int av1_ext_tx_used[EXT_TX_SET_TYPES][TX_TYPES] = {
   { 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0 },
   { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 },
   { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+#if CONFIG_ATC_NEWTXSETS
+  { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+#endif  // CONFIG_ATC_NEWTXSETS
 };
+
+#if CONFIG_ATC_NEWTXSETS
+static const int av1_mdtx_used_flag[EXT_TX_SIZES][INTRA_MODES][TX_TYPES] = {
+  {
+      { 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0 },
+      { 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0 },
+  },  // size_class: 0
+  {
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0 },
+  },  // size_class: 1
+  {
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0 },
+  },  // size_class: 2
+  {
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+      { 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  },  // size_class: 3
+};
+#endif  // CONFIG_ATC_NEWTXSETS
 
 static const uint16_t av1_reduced_intra_tx_used_flag[INTRA_MODES] = {
   0x080F,  // DC_PRED:       0000 1000 0000 1111
@@ -1444,7 +1515,75 @@ static const uint16_t av1_ext_tx_used_flag[EXT_TX_SET_TYPES] = {
   0x0E0F,  // 0000 1110 0000 1111
   0x0FFF,  // 0000 1111 1111 1111
   0xFFFF,  // 1111 1111 1111 1111
+#if CONFIG_ATC_NEWTXSETS
+  0xFFFF,
+#endif  // CONFIG_ATC_NEWTXSETS
 };
+
+#if CONFIG_ATC_NEWTXSETS
+static const uint16_t av1_md_trfm_used_flag[EXT_TX_SIZES][INTRA_MODES] = {
+  {
+      0x218F,
+      0x148F,
+      0x290F,
+      0x01CF,
+      0x218F,
+      0x508F,
+      0x218F,
+      0x290F,
+      0x148F,
+      0x01CF,
+      0x118F,
+      0x218F,
+      0x3C0D,
+  },  // size_class: 0
+  {
+      0x019F,
+      0x148F,
+      0x290F,
+      0x01CF,
+      0x01AF,
+      0x10AF,
+      0x019F,
+      0x211F,
+      0x00EF,
+      0x01CF,
+      0x019F,
+      0x01AF,
+      0x2C0F,
+  },  // size_class: 1
+  {
+      0x019F,
+      0x04AF,
+      0x091F,
+      0x019F,
+      0x019F,
+      0x01AF,
+      0x019F,
+      0x015F,
+      0x01AF,
+      0x019F,
+      0x019F,
+      0x01AF,
+      0x1C0F,
+  },  // size_class: 2
+  {
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+      0x0000,
+  },  // size_class: 3
+};
+#endif  // CONFIG_ATC_NEWTXSETS
 
 static const TxSetType av1_ext_tx_set_lookup[2][2] = {
   { EXT_TX_SET_DTT4_IDTX_1DDCT, EXT_TX_SET_DTT4_IDTX },
@@ -1459,15 +1598,28 @@ static INLINE TxSetType av1_get_ext_tx_set_type(TX_SIZE tx_size, int is_inter,
     return is_inter ? EXT_TX_SET_DCT_IDTX : EXT_TX_SET_DCTONLY;
   if (use_reduced_set)
     return is_inter ? EXT_TX_SET_DCT_IDTX : EXT_TX_SET_DTT4_IDTX;
+#if CONFIG_ATC_NEWTXSETS
+  if (is_inter) {
+    const TX_SIZE tx_size_sqr = txsize_sqr_map[tx_size];
+    return av1_ext_tx_set_lookup[is_inter][tx_size_sqr == TX_16X16];
+  } else {
+    return EXT_NEW_TX_SET;
+  }
+#else
   const TX_SIZE tx_size_sqr = txsize_sqr_map[tx_size];
   return av1_ext_tx_set_lookup[is_inter][tx_size_sqr == TX_16X16];
+#endif  // CONFIG_ATC_NEWTXSETS
 }
 
 // Maps tx set types to the indices.
 static const int ext_tx_set_index[2][EXT_TX_SET_TYPES] = {
   { // Intra
+#if CONFIG_ATC_NEWTXSETS
+    0, -1, -1, -1, -1, -1, 1 },
+#else
     0, -1, 2, 1, -1, -1 },
-  { // Inter
+#endif  // CONFIG_ATC_NEWTXSETS
+  {     // Inter
     0, 3, -1, -1, 2, 1 },
 };
 

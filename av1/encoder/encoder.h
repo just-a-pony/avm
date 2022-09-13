@@ -1225,8 +1225,21 @@ typedef struct FRAME_COUNTS {
   unsigned int eob_multi256[TOKEN_CDF_Q_CTXS][PLANE_TYPES][2][9];
   unsigned int eob_multi512[TOKEN_CDF_Q_CTXS][PLANE_TYPES][2][10];
   unsigned int eob_multi1024[TOKEN_CDF_Q_CTXS][PLANE_TYPES][2][11];
+#if CONFIG_ATC_COEFCODING
+  unsigned int coeff_lps_lf[PLANE_TYPES][BR_CDF_SIZE - 1][LF_LEVEL_CONTEXTS][2];
+  unsigned int coeff_base_lf_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
+                                  [LF_SIG_COEF_CONTEXTS][LF_BASE_SYMBOLS];
+  unsigned int coeff_base_lf_eob_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
+                                      [SIG_COEF_CONTEXTS_EOB]
+                                      [LF_BASE_SYMBOLS - 1];
+  unsigned int coeff_lps_lf_multi[TOKEN_CDF_Q_CTXS][PLANE_TYPES]
+                                 [LF_LEVEL_CONTEXTS][BR_CDF_SIZE];
+  unsigned int coeff_lps_multi[TOKEN_CDF_Q_CTXS][PLANE_TYPES][LEVEL_CONTEXTS]
+                              [BR_CDF_SIZE];
+#else
   unsigned int coeff_lps_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
                               [LEVEL_CONTEXTS][BR_CDF_SIZE];
+#endif  // CONFIG_ATC_COEFCODING
   unsigned int coeff_base_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
                                [SIG_COEF_CONTEXTS][NUM_BASE_LEVELS + 2];
   unsigned int coeff_base_eob_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]

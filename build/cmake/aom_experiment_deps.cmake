@@ -49,6 +49,13 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_CCSO_EXT 0 !CONFIG_CCSO)
   endif()
 
+  # CONFIG_ATC_NEWTXSETS depends on CONFIG_FORWARDSKIP. If CONFIG_FORWARDSKIP is
+  # off, then CONFIG_ATC_NEWTXSETS needs to be disabled otherwise IDTX would be
+  # disabled.
+  if(NOT CONFIG_FORWARDSKIP AND CONFIG_ATC_NEWTXSETS)
+    change_config_and_warn(CONFIG_ATC_NEWTXSETS 0 !CONFIG_FORWARDSKIP)
+  endif()
+
   # CONFIG_OPTFLOW_ON_TIP is dependent on CONFIG_OPTFLOW_REFINEMENT and
   # CONFIG_TIP. If any of them is off, CONFIG_OPTFLOW_ON_TIP needs to be turned
   # off.
