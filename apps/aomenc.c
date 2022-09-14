@@ -1911,12 +1911,13 @@ static void test_decode(struct stream_state *stream,
     aom_find_mismatch_high(&enc_img, &dec_img, y, u, v);
     stream->decoder.err = 1;
     warn_or_exit_on_error(&stream->decoder, fatal == TEST_DECODE_FATAL,
-                          "Stream %d: Encode/decode mismatch on frame %d at"
+                          "Stream %d: Encode/decode mismatch on POC %d at"
                           " Y[%d, %d] {%d/%d},"
                           " U[%d, %d] {%d/%d},"
                           " V[%d, %d] {%d/%d}",
-                          stream->index, stream->frames_out, y[0], y[1], y[2],
-                          y[3], u[0], u[1], u[2], u[3], v[0], v[1], v[2], v[3]);
+                          stream->index, stream->frames_out - 1, y[0], y[1],
+                          y[2], y[3], u[0], u[1], u[2], u[3], v[0], v[1], v[2],
+                          v[3]);
     stream->mismatch_seen = stream->frames_out;
   }
 
