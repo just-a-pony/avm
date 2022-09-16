@@ -935,6 +935,9 @@ void av1_encode_tile(AV1_COMP *cpi, ThreadData *td, int tile_row,
        mi_row += cm->seq_params.mib_size) {
 #if CONFIG_REF_MV_BANK
     av1_zero(td->mb.e_mbd.ref_mv_bank);
+#if !CONFIG_C043_MVP_IMPROVEMENTS
+    td->mb.e_mbd.ref_mv_bank_pt = &td->mb.e_mbd.ref_mv_bank;
+#endif
 #endif  // CONFIG_REF_MV_BANK
     av1_encode_sb_row(cpi, td, tile_row, tile_col, mi_row);
   }
