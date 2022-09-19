@@ -511,7 +511,7 @@ void av1_update_mv_stats(const MV *mv, const MV *ref, nmv_context *mvctx,
       mvcost[0] = 0;
       for (v = 1; v <= MV_MAX; ++v) {
         int z, c, o, d, e, f, cost = 0;
-#if CONFIG_DEBUG && CONFIG_FLEX_MVRES
+#if CONFIG_FLEX_MVRES
         const int round = MV_PRECISION_ONE_EIGHTH_PEL - pb_mv_precision;
         int v_reduced = (v >> round) << round;
         if (v != v_reduced) {

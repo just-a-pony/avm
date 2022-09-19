@@ -4384,7 +4384,7 @@ int adaptive_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #endif  // IMPROVED_AMVD
   const int forced_stop = ms_params->forced_stop;
   // const int iters_per_step = ms_params->iters_per_step;
-  const MV_COST_PARAMS *mv_cost_params = &ms_params->mv_cost_params;
+  MV_COST_PARAMS *mv_cost_params = &ms_params->mv_cost_params;
   const SUBPEL_SEARCH_VAR_PARAMS *var_params = &ms_params->var_params;
   const SUBPEL_SEARCH_TYPE subpel_search_type =
       ms_params->var_params.subpel_search_type;
@@ -4394,6 +4394,7 @@ int adaptive_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   MB_MODE_INFO *const mbmi = xd->mi[0];
 #if BUGFIX_AMVD_AMVR
   set_amvd_mv_precision(mbmi, mbmi->max_mv_precision);
+  mv_cost_params->pb_mv_precision = mbmi->pb_mv_precision;
 #else
   assert(mbmi->pb_mv_precision == mbmi->max_mv_precision);
 #endif

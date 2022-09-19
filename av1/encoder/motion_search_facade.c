@@ -905,7 +905,7 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
   struct macroblockd_plane *const pd = &xd->plane[0];
   const MvCosts *mv_costs = &x->mv_costs;
 #if CONFIG_FLEX_MVRES
-  const MvSubpelPrecision pb_mv_precision = mbmi->pb_mv_precision;
+  MvSubpelPrecision pb_mv_precision = mbmi->pb_mv_precision;
 #if CONFIG_BVCOST_UPDATE
   const int is_ibc_cost = 0;
 #endif
@@ -964,6 +964,12 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 #endif  // CONFIG_JOINT_MVD
 #if CONFIG_ADAPTIVE_MVD
   const int is_adaptive_mvd = enable_adaptive_mvd_resolution(cm, mbmi);
+#if BUGFIX_AMVD_AMVR
+  if (is_adaptive_mvd) {
+    set_amvd_mv_precision(mbmi, mbmi->max_mv_precision);
+    pb_mv_precision = mbmi->pb_mv_precision;
+  }
+#endif
   if (is_adaptive_mvd
 #if IMPROVED_AMVD && CONFIG_JOINT_MVD
       && !is_joint_amvd_coding_mode(mbmi->mode)
@@ -1329,6 +1335,11 @@ int_mv av1_simple_motion_search(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
   set_mv_precision(mbmi, mbmi->max_mv_precision);
   set_default_precision_set(cm, mbmi, bsize);
   set_most_probable_mv_precision(cm, mbmi, bsize);
+  // This function is used only during the pruning process and is not used
+  // during the actual motion search based on the prediction mode. Initialize to
+  // mbmi->mode to NEWMV mode so that is_adaptive_mvd (in the function
+  // av1_make_default_fullpel_ms_params) is disabled during pruning process
+  mbmi->mode = NEWMV;
 #endif
   const YV12_BUFFER_CONFIG *yv12 = get_ref_frame_yv12_buf(cm, ref);
   const YV12_BUFFER_CONFIG *scaled_ref_frame =
