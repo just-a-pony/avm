@@ -135,7 +135,11 @@ static INLINE int get_closest_pastcur_ref_index(const AV1_COMMON *const cm) {
 }
 
 static INLINE int get_best_past_ref_index(const AV1_COMMON *const cm) {
-  return cm->ref_frames_info.past_refs[0];
+  const int index = cm->ref_frames_info.num_past_refs > 0
+                        ? cm->ref_frames_info.past_refs[0]
+                        : NONE_FRAME;
+  assert(index < INTER_REFS_PER_FRAME);
+  return index;
 }
 
 // Gets directional i.e. past/future ref rank from overall rank
