@@ -389,6 +389,14 @@ static INLINE void av1_copy_mbmi_ext_to_mbmi_ext_frame(
   mbmi_ext_best->ref_mv_count = mbmi_ext->ref_mv_count[ref_frame_type];
   memcpy(mbmi_ext_best->global_mvs, mbmi_ext->global_mvs,
          sizeof(mbmi_ext->global_mvs));
+
+#if CONFIG_WARP_REF_LIST
+  if (ref_frame_type < SINGLE_REF_FRAMES) {
+    memcpy(mbmi_ext_best->warp_param_stack,
+           mbmi_ext->warp_param_stack[ref_frame_type],
+           sizeof(mbmi_ext->warp_param_stack[MAX_WARP_REF_CANDIDATES]));
+  }
+#endif  // CONFIG_WARP_REF_LIST
 }
 
 #ifdef __cplusplus

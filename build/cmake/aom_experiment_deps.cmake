@@ -71,4 +71,11 @@ macro(fix_experiment_configs)
   if(NOT CONFIG_JOINT_MVD AND CONFIG_IMPROVED_JMVD)
     change_config_and_warn(CONFIG_IMPROVED_JMVD 0 !CONFIG_JOINT_MVD)
   endif()
+
+  # CONFIG_WARP_REF_LIST depends on CONFIG_EXTENDED_WARP_PREDICTION
+  if(NOT CONFIG_EXTENDED_WARP_PREDICTION AND CONFIG_WARP_REF_LIST)
+    change_config_and_warn(CONFIG_WARP_REF_LIST 0
+                           !CONFIG_EXTENDED_WARP_PREDICTION)
+  endif()
+
 endmacro()

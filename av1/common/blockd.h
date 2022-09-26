@@ -535,6 +535,14 @@ typedef struct MB_MODE_INFO {
   int_mv ref_bv;
 #endif  // CONFIG_BVP_IMPROVEMENT
 
+#if CONFIG_WARP_REF_LIST
+  /*! \brief Which index to use for warp base parameter. */
+  uint8_t warp_ref_idx;
+  /*! \brief Maximum number of warp reference indices to use for warp base
+   * parameter. */
+  uint8_t max_num_warp_candidates;
+#endif  // CONFIG_WARP_REF_LIST
+
   /*! \brief Indicates if masked compound is used(1) or not (0). */
   uint8_t comp_group_idx : 1;
   /*! \brief Whether to use interintra wedge */
@@ -863,6 +871,30 @@ typedef struct {
 } REF_MV_BANK;
 #endif  // CONFIG_REF_MV_BANK
 
+#if CONFIG_WARP_REF_LIST
+#define WARP_PARAM_BANK_SIZE 4
+
+/*! \brief Variables related to reference warp parameters bank. */
+typedef struct {
+  /*!
+   * Number of warp parameters in the buffer.
+   */
+  int wpb_count[SINGLE_REF_FRAMES];
+  /*!
+   * Index corresponding to the first warp parameters in the buffer.
+   */
+  int wpb_start_idx[SINGLE_REF_FRAMES];
+  /*!
+   * Circular buffer storing the warp parameters.
+   */
+  WarpedMotionParams wpb_buffer[SINGLE_REF_FRAMES][WARP_PARAM_BANK_SIZE];
+  /*!
+   * Total number of mbmi updates conducted in SB
+   */
+  int wpb_sb_hits;
+} WARP_PARAM_BANK;
+
+#endif  // CONFIG_WARP_REF_LIST
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 /*! \brief Variables related to mvp list of skip mode.*/
 typedef struct {
@@ -920,6 +952,16 @@ typedef struct macroblockd {
   REF_MV_BANK ref_mv_bank; /*!< Ref mv bank to update */
   /**@}*/
 #endif  // CONFIG_REF_MV_BANK
+
+#if CONFIG_WARP_REF_LIST
+  /**
+   * \name Reference warp parameters bank info.
+   */
+  /**@{*/
+  WARP_PARAM_BANK warp_param_bank; /*!< Ref warp parameters bank to update */
+  WARP_PARAM_BANK *warp_param_bank_pt; /*!< Pointer to bank to refer to */
+  /**@}*/
+#endif  // CONFIG_WARP_REF_LIST
 
   /*!
    * True if current block transmits chroma information.
@@ -1149,6 +1191,17 @@ typedef struct macroblockd {
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   SKIP_MODE_MVP_LIST skip_mvp_candidate_list;
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+
+#if CONFIG_WARP_REF_LIST
+  /*!
+   * warp_param_stack contains the predicted warp parameters
+   */
+  WARP_CANDIDATE warp_param_stack[SINGLE_REF_FRAMES][MAX_WARP_REF_CANDIDATES];
+  /*!
+   * valid number of candidates in the warp_param_stack.
+   */
+  uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES];
+#endif  // CONFIG_WARP_REF_LIST
 
   /*!
    * True if this is the last vertical rectangular block in a VERTICAL or

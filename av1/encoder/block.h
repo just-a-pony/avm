@@ -248,6 +248,14 @@ typedef struct {
 
   //! Context used to encode the current mode.
   int16_t mode_context[MODE_CTX_REF_FRAMES];
+
+#if CONFIG_WARP_REF_LIST
+  /*!
+   * warp_param_stack is the warp candidate list.
+   */
+  WARP_CANDIDATE warp_param_stack[SINGLE_REF_FRAMES][MAX_WARP_REF_CANDIDATES];
+#endif  // CONFIG_WARP_REF_LIST
+
 } MB_MODE_INFO_EXT;
 
 /*! \brief Stores best extended mode information at frame level.
@@ -278,6 +286,12 @@ typedef struct {
   int16_t mode_context;
   //! Offset of current coding block's coeff buffer relative to the sb.
   int cb_offset[MAX_MB_PLANE];
+
+#if CONFIG_WARP_REF_LIST
+  //! warp_param_stack is the warp candidate list.
+  WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES];
+#endif  // CONFIG_WARP_REF_LIST
+
 } MB_MODE_INFO_EXT_FRAME;
 
 /*! \brief Txfm search results for a partition
@@ -845,8 +859,13 @@ typedef struct {
   int warped_causal_cost[BLOCK_SIZES_ALL][2];
   //! warp_delta_cost
   int warp_delta_cost[BLOCK_SIZES_ALL][2];
+
   //! warp_delta_param_cost
   int warp_delta_param_cost[2][WARP_DELTA_NUM_SYMBOLS];
+#if CONFIG_WARP_REF_LIST
+  //! warp_ref_idx_cost
+  int warp_ref_idx_cost[3][WARP_REF_CONTEXTS][2];
+#endif  // CONFIG_WARP_REF_LIST
   //! warp_extend_cost
   int warp_extend_cost[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2][2];
 #else

@@ -140,7 +140,7 @@ extern "C" {
 #endif  // CONFIG_TIP
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
-#define MIN_BSIZE_WARP_DELTA 16
+#define MIN_BSIZE_WARP_DELTA 8
 
 // Using the WARP_DELTA motion mode, we can use a nearby block's warp model as
 // a prediction and then modify it with an explicitly coded delta.
@@ -3081,6 +3081,26 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
           MIN_BSIZE_WARP_DELTA;
 
   if (warp_delta_allowed && mode == NEARMV) {
+#if CONFIG_WARP_REF_LIST
+    const CANDIDATE_MV *ref = &ref_mv_stack[mbmi->ref_mv_idx];
+    bool ref_is_spatial = false;
+    if (xd->up_available && xd->left_available) {
+      ref_is_spatial = (ref->row_offset != OFFSET_NONSPATIAL) &&
+                       (ref->col_offset != OFFSET_NONSPATIAL);
+    } else if (xd->up_available) {
+      ref_is_spatial = (ref->row_offset != OFFSET_NONSPATIAL);
+    } else if (xd->left_available) {
+      ref_is_spatial = (ref->col_offset != OFFSET_NONSPATIAL);
+    }
+    if (ref_is_spatial) {
+      const MB_MODE_INFO *ref_mi =
+          xd->mi[ref->row_offset * xd->mi_stride + ref->col_offset];
+      bool ref_is_warped = is_warp_mode(ref_mi->motion_mode);
+      warp_delta_allowed = ref_is_warped;
+    } else {
+      warp_delta_allowed = false;
+    }
+#else
 #if WARP_DELTA_REQUIRES_NEIGHBOR
     // Only allow WARP_DELTA on a NEARMV block when there is a neighboring
     // warp block to extend from
@@ -3098,6 +3118,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
       warp_delta_allowed = false;
     }
 #endif
+#endif  // CONFIG_WARP_REF_LIST
   }
 
   if (warp_delta_allowed) {

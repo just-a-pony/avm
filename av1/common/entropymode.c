@@ -1013,24 +1013,32 @@ static const aom_cdf_prob default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)] = {
 
 static const aom_cdf_prob default_warped_causal_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
     2)] = { { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16010) }, { AOM_CDF2(12185) }, { AOM_CDF2(13986) },
-            { AOM_CDF2(25075) }, { AOM_CDF2(11752) }, { AOM_CDF2(18953) },
-            { AOM_CDF2(28767) }, { AOM_CDF2(26616) }, { AOM_CDF2(25722) },
-            { AOM_CDF2(30623) }, { AOM_CDF2(30283) }, { AOM_CDF2(31315) },
-            { AOM_CDF2(32558) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(31272) }, { AOM_CDF2(30469) }, { AOM_CDF2(31492) },
-            { AOM_CDF2(31130) } };
+            { AOM_CDF2(21827) }, { AOM_CDF2(20801) }, { AOM_CDF2(22822) },
+            { AOM_CDF2(28283) }, { AOM_CDF2(17490) }, { AOM_CDF2(22156) },
+            { AOM_CDF2(29137) }, { AOM_CDF2(26381) }, { AOM_CDF2(25945) },
+            { AOM_CDF2(29190) }, { AOM_CDF2(30434) }, { AOM_CDF2(30786) },
+            { AOM_CDF2(31582) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(30177) }, { AOM_CDF2(30093) }, { AOM_CDF2(31776) },
+            { AOM_CDF2(31514) } };
 
 static const aom_cdf_prob default_warp_delta_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
     2)] = { { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
-            { AOM_CDF2(16384) } };
+            { AOM_CDF2(4015) },  { AOM_CDF2(5407) },  { AOM_CDF2(4988) },
+            { AOM_CDF2(9806) },  { AOM_CDF2(7405) },  { AOM_CDF2(7949) },
+            { AOM_CDF2(14870) }, { AOM_CDF2(18438) }, { AOM_CDF2(16459) },
+            { AOM_CDF2(19468) }, { AOM_CDF2(24415) }, { AOM_CDF2(22864) },
+            { AOM_CDF2(23527) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
+            { AOM_CDF2(19610) }, { AOM_CDF2(16215) }, { AOM_CDF2(25420) },
+            { AOM_CDF2(25105) } };
 
+#if CONFIG_WARP_REF_LIST
+static const aom_cdf_prob default_warp_ref_idx0_cdf[WARP_REF_CONTEXTS][CDF_SIZE(
+    2)] = { { AOM_CDF2(15906) } };
+static const aom_cdf_prob default_warp_ref_idx1_cdf[WARP_REF_CONTEXTS][CDF_SIZE(
+    2)] = { { AOM_CDF2(15903) } };
+static const aom_cdf_prob default_warp_ref_idx2_cdf[WARP_REF_CONTEXTS][CDF_SIZE(
+    2)] = { { AOM_CDF2(18242) } };
+#endif  // CONFIG_WARP_REF_LIST
 static const aom_cdf_prob
     default_warp_delta_param_cdf[2][CDF_SIZE(WARP_DELTA_NUM_SYMBOLS)] = {
       { AOM_CDF15(2185, 4369, 6554, 8738, 10923, 13107, 15292, 17476, 19661,
@@ -1040,35 +1048,31 @@ static const aom_cdf_prob
     };
 
 static const aom_cdf_prob
-    default_warp_extend_cdf[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2][CDF_SIZE(
-        2)] = { { // NEARMV from warped neighbor
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) } },
-                { // NEWMV from warped neighbor
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) } },
-                { // NEWMV from global warp neighbor
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) } },
-                { // NEWMV from translational neighbor
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) },
-                  { AOM_CDF2(16384) } } };
+    default_warp_extend_cdf[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2]
+                           [CDF_SIZE(2)] = { { { AOM_CDF2(16384) },
+                                               { AOM_CDF2(3701) },
+                                               { AOM_CDF2(3935) },
+                                               { AOM_CDF2(4496) },
+                                               { AOM_CDF2(6936) },
+                                               { AOM_CDF2(8605) } },
+                                             { { AOM_CDF2(16384) },
+                                               { AOM_CDF2(20815) },
+                                               { AOM_CDF2(22367) },
+                                               { AOM_CDF2(21181) },
+                                               { AOM_CDF2(20290) },
+                                               { AOM_CDF2(18347) } },
+                                             { { AOM_CDF2(16384) },
+                                               { AOM_CDF2(23160) },
+                                               { AOM_CDF2(25209) },
+                                               { AOM_CDF2(27020) },
+                                               { AOM_CDF2(28007) },
+                                               { AOM_CDF2(23946) } },
+                                             { { AOM_CDF2(16384) },
+                                               { AOM_CDF2(26707) },
+                                               { AOM_CDF2(28315) },
+                                               { AOM_CDF2(28490) },
+                                               { AOM_CDF2(26956) },
+                                               { AOM_CDF2(22093) } } };
 #else
 static const aom_cdf_prob default_motion_mode_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
     MOTION_MODES)] = { { AOM_CDF3(10923, 21845) }, { AOM_CDF3(10923, 21845) },
@@ -2049,6 +2053,11 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->obmc_cdf, default_obmc_cdf);
   av1_copy(fc->warped_causal_cdf, default_warped_causal_cdf);
   av1_copy(fc->warp_delta_cdf, default_warp_delta_cdf);
+#if CONFIG_WARP_REF_LIST
+  av1_copy(fc->warp_ref_idx_cdf[0], default_warp_ref_idx0_cdf);
+  av1_copy(fc->warp_ref_idx_cdf[1], default_warp_ref_idx1_cdf);
+  av1_copy(fc->warp_ref_idx_cdf[2], default_warp_ref_idx2_cdf);
+#endif  // CONFIG_WARP_REF_LIST
   av1_copy(fc->warp_delta_param_cdf, default_warp_delta_param_cdf);
   av1_copy(fc->warp_extend_cdf, default_warp_extend_cdf);
 #else

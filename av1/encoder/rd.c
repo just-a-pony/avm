@@ -492,6 +492,16 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
       av1_cost_tokens_from_cdf(mode_costs->warped_causal_cost[i],
                                fc->warped_causal_cdf[i], NULL);
     }
+
+#if CONFIG_WARP_REF_LIST
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < WARP_REF_CONTEXTS; j++) {
+        av1_cost_tokens_from_cdf(mode_costs->warp_ref_idx_cost[i][j],
+                                 fc->warp_ref_idx_cdf[i][j], NULL);
+      }
+    }
+#endif  // CONFIG_WARP_REF_LIST
+
     for (i = BLOCK_8X8; i < BLOCK_SIZES_ALL; i++) {
       av1_cost_tokens_from_cdf(mode_costs->warp_delta_cost[i],
                                fc->warp_delta_cdf[i], NULL);

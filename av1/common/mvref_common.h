@@ -373,7 +373,18 @@ static INLINE aom_cdf_prob *av1_get_drl_cdf(FRAME_CONTEXT *ec_ctx,
     default: return ec_ctx->drl_cdf[2][ctx];
   }
 }
-
+#if CONFIG_WARP_REF_LIST
+// Get the cdf of the warp_ref_idx
+static INLINE aom_cdf_prob *av1_get_warp_ref_idx_cdf(FRAME_CONTEXT *ec_ctx,
+                                                     int bit_idx) {
+  const int ctx = 0;
+  switch (bit_idx) {
+    case 0: return ec_ctx->warp_ref_idx_cdf[0][ctx];
+    case 1: return ec_ctx->warp_ref_idx_cdf[1][ctx];
+    default: return ec_ctx->warp_ref_idx_cdf[2][ctx];
+  }
+}
+#endif  // CONFIG_WARP_REF_LIST
 // TODO(jingning): Consider the use of lookup table for (num / den)
 // altogether.
 static int div_mult[32] = { 0,    16384, 8192, 5461, 4096, 3276, 2730, 2340,
@@ -448,13 +459,27 @@ void av1_copy_frame_mvs(const AV1_COMMON *const cm,
 // The global_mvs output parameter points to an array of REF_FRAMES elements.
 // The caller may pass a null global_mvs if it does not need the global_mvs
 // output.
-void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
-                      MB_MODE_INFO *mi, MV_REFERENCE_FRAME ref_frame,
-                      uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
-                      CANDIDATE_MV ref_mv_stack[][MAX_REF_MV_STACK_SIZE],
-                      uint16_t ref_mv_weight[][MAX_REF_MV_STACK_SIZE],
-                      int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES],
-                      int_mv *global_mvs, int16_t *mode_context);
+void av1_find_mv_refs(
+    const AV1_COMMON *cm, const MACROBLOCKD *xd, MB_MODE_INFO *mi,
+    MV_REFERENCE_FRAME ref_frame, uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
+    CANDIDATE_MV ref_mv_stack[][MAX_REF_MV_STACK_SIZE],
+    uint16_t ref_mv_weight[][MAX_REF_MV_STACK_SIZE],
+    int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES], int_mv *global_mvs,
+    int16_t *mode_context
+#if CONFIG_WARP_REF_LIST
+    ,
+    WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
+    int max_num_of_warp_candidates,
+    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]
+#endif  // CONFIG_WARP_REF_LIST
+);
+
+#if CONFIG_WARP_REF_LIST
+// Initialize the warp cadidate lists to invalid values
+void av1_initialize_warp_wrl_list(
+    WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
+    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]);
+#endif  // CONFIG_WARP_REF_LIST
 
 // check a list of motion vectors by sad score using a number rows of pixels
 // above and a number cols of pixels in the left to select the one with best
@@ -737,6 +762,11 @@ void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
 #endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_WARP_REF_LIST
+void av1_update_warp_param_bank(const AV1_COMMON *const cm,
+                                MACROBLOCKD *const xd,
+                                const MB_MODE_INFO *const mbmi);
+#endif  // CONFIG_WARP_REF_LIST
 // Decide what the base warp model should be when using WARP_DELTA.
 // The warp model to use is signalled as a delta from this.
 // The base model is stored into `params`, and can be modified further
@@ -777,16 +807,26 @@ void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
 //     MV from whatever ref block we used, is probably better than using the
 //     predicted MV from the global model, because if we wanted the latter
 //     then we would have used the GLOBALMV mode.
-static INLINE void av1_get_warp_base_params(const AV1_COMMON *cm,
-                                            const MACROBLOCKD *xd,
-                                            const MB_MODE_INFO *mbmi,
-                                            const CANDIDATE_MV *ref_mv_stack,
-                                            WarpedMotionParams *params,
-                                            int_mv *center_mv) {
+static INLINE void av1_get_warp_base_params(
+    const AV1_COMMON *cm,
+#if !CONFIG_WARP_REF_LIST
+    const MACROBLOCKD *xd,
+#endif  //! CONFIG_WARP_REF_LIST
+    const MB_MODE_INFO *mbmi,
+#if !CONFIG_WARP_REF_LIST
+    const CANDIDATE_MV *ref_mv_stack,
+#endif  //! CONFIG_WARP_REF_LIST
+    WarpedMotionParams *params, int_mv *center_mv
+#if CONFIG_WARP_REF_LIST
+    ,
+    const WARP_CANDIDATE *warp_param_stack
+#endif  // CONFIG_WARP_REF_LIST
+) {
 #if CONFIG_FLEX_MVRES
   (void)cm;
 #endif
 
+#if !CONFIG_WARP_REF_LIST
   if (mbmi->mode != GLOBALMV) {
     // Look at the reference block selected via the DRL.
     // If it is warped, use that warp model as a base; otherwise, use global
@@ -842,6 +882,11 @@ static INLINE void av1_get_warp_base_params(const AV1_COMMON *cm,
     }
   }
   *params = xd->global_motion[mbmi->ref_frame[0]];
+#else
+  assert(mbmi->warp_ref_idx < mbmi->max_num_warp_candidates);
+  *params = warp_param_stack[mbmi->warp_ref_idx].wm_params;
+#endif  //! CONFIG_WARP_REF_LIST
+
   if (center_mv != NULL) {
     *center_mv = mbmi->mv[0];
   }
@@ -919,6 +964,14 @@ static INLINE int av1_get_warp_extend_ctx2(const MACROBLOCKD *xd,
   return common_length_log2;
 }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
+#if CONFIG_WARP_REF_LIST
+void av1_find_warp_delta_base_candidates(
+    const MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
+    WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
+    WARP_CANDIDATE spatial_candidates[MAX_WARP_REF_CANDIDATES],
+    uint8_t num_wrl_cand, uint8_t *p_valid_num_candidates);
+#endif  // CONFIG_WARP_REF_LIST
 
 #ifdef __cplusplus
 }  // extern "C"

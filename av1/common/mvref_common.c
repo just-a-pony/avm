@@ -649,6 +649,75 @@ static AOM_INLINE void add_ref_mv_candidate(
 #endif  // CONFIG_TIP
 }
 
+#if CONFIG_WARP_REF_LIST
+// Check if the candidate block has valid warp parameters
+// Return 1 if the candidate warp parameters are valid
+static INLINE uint8_t is_valid_warp_parameters(
+    const AV1_COMMON *cm, const MB_MODE_INFO *neighbor_mbmi,
+    const int ref_frame, WarpedMotionParams *neighbor_params) {
+  (void)cm;
+  int is_same_ref = (neighbor_mbmi->ref_frame[0] == ref_frame);
+  if (is_same_ref && is_warp_mode(neighbor_mbmi->motion_mode) &&
+      !neighbor_mbmi->wm_params[0].invalid && neighbor_params) {
+    *neighbor_params = neighbor_mbmi->wm_params[0];
+    return 1;
+  }
+
+  return 0;
+}
+
+// Insert the candidate warp parameters to the WRL
+void insert_neighbor_warp_candidate(
+    WARP_CANDIDATE warp_candidates[MAX_WARP_REF_CANDIDATES],
+    const WarpedMotionParams *neigh_params, uint8_t curr_num_of_candidates,
+    const WarpProjectionType proj_type) {
+  if (neigh_params)
+    warp_candidates[curr_num_of_candidates].wm_params = *neigh_params;
+  warp_candidates[curr_num_of_candidates].proj_type = proj_type;
+}
+
+// Check if the candidate warp parameters are already in the list or not.
+static int is_this_param_already_in_list(
+    const uint8_t curr_num_of_candidates,
+    WARP_CANDIDATE warp_candidates[MAX_WARP_REF_CANDIDATES],
+    WarpedMotionParams neigh_params) {
+  for (int i = 0; i < curr_num_of_candidates; i++) {
+    int same_param =
+        (neigh_params.wmmat[2] == warp_candidates[i].wm_params.wmmat[2]);
+    same_param &=
+        (neigh_params.wmmat[3] == warp_candidates[i].wm_params.wmmat[3]);
+    same_param &=
+        (neigh_params.wmmat[4] == warp_candidates[i].wm_params.wmmat[4]);
+    same_param &=
+        (neigh_params.wmmat[5] == warp_candidates[i].wm_params.wmmat[5]);
+    if (same_param) return 1;
+  }
+
+  return 0;
+}
+
+void check_this_warp_candidate(
+    const AV1_COMMON *cm, const MB_MODE_INFO *const neighbor_mbmi,
+    WARP_CANDIDATE warp_candidates[MAX_WARP_REF_CANDIDATES],
+    const int ref_frame, const int max_num_of_candidates,
+    uint8_t *curr_num_of_candidates, const WarpProjectionType proj_type) {
+  if (!is_inter_block(neighbor_mbmi, SHARED_PART)) return;
+#if CONFIG_IBC_SR_EXT
+  if (is_intrabc_block(neighbor_mbmi, SHARED_PART)) return;
+#endif  // CONFIG_IBC_SR_EXT
+
+  WarpedMotionParams neigh_params;
+  if (*curr_num_of_candidates < max_num_of_candidates &&
+      is_valid_warp_parameters(cm, neighbor_mbmi, ref_frame, &neigh_params)) {
+    if (!is_this_param_already_in_list(*curr_num_of_candidates, warp_candidates,
+                                       neigh_params)) {
+      insert_neighbor_warp_candidate(warp_candidates, &neigh_params,
+                                     *curr_num_of_candidates, proj_type);
+      ++(*curr_num_of_candidates);
+    }
+  }
+}
+#endif  // CONFIG_WARP_REF_LIST
 // both CONFIG_SMVP_IMPROVEMENT and CONFIG_C043_MVP_IMPROVEMENTS are ture case,
 // scan_row_mbmi does not called
 #if !(CONFIG_SMVP_IMPROVEMENT && CONFIG_C043_MVP_IMPROVEMENTS)
@@ -669,6 +738,12 @@ static AOM_INLINE void scan_row_mbmi(
     CANDIDATE_MV *derived_mv_stack, uint16_t *derived_mv_weight,
     uint8_t *derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+    WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
+    int max_num_of_warp_candidates, uint8_t *valid_num_warp_candidates,
+    MV_REFERENCE_FRAME ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
+
     int *processed_rows) {
   int end_mi = AOMMIN(xd->width, cm->mi_params.mi_cols - mi_col);
   end_mi = AOMMIN(end_mi, mi_size_wide[BLOCK_64X64]);
@@ -717,6 +792,15 @@ static AOM_INLINE void scan_row_mbmi(
     const int cand_mi_row = xd->mi_row + row_offset;
     const int cand_mi_col = xd->mi_col + col_offset + i;
 #endif  // CONFIG_TIP
+
+#if CONFIG_WARP_REF_LIST
+    if (warp_param_stack && valid_num_warp_candidates &&
+        max_num_of_warp_candidates) {
+      check_this_warp_candidate(cm, candidate, warp_param_stack, ref_frame,
+                                max_num_of_warp_candidates,
+                                valid_num_warp_candidates, PROJ_SPATIAL);
+    }
+#endif  // CONFIG_WARP_REF_LIST
 
     add_ref_mv_candidate(
 #if CONFIG_TIP
@@ -794,6 +878,11 @@ static AOM_INLINE void scan_col_mbmi(
     CANDIDATE_MV *derived_mv_stack, uint16_t *derived_mv_weight,
     uint8_t *derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+    WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
+    int max_num_of_warp_candidates, uint8_t *valid_num_warp_candidates,
+    MV_REFERENCE_FRAME ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
     int *processed_cols) {
   int end_mi = AOMMIN(xd->height, cm->mi_params.mi_rows - mi_row);
   end_mi = AOMMIN(end_mi, mi_size_high[BLOCK_64X64]);
@@ -844,6 +933,15 @@ static AOM_INLINE void scan_col_mbmi(
     const int cand_mi_col = xd->mi_col + col_offset;
 #endif  // CONFIG_TIP
 
+#if CONFIG_WARP_REF_LIST
+    if (warp_param_stack && valid_num_warp_candidates &&
+        max_num_of_warp_candidates && (col_offset == -1)) {
+      check_this_warp_candidate(cm, candidate, warp_param_stack, ref_frame,
+                                max_num_of_warp_candidates,
+                                valid_num_warp_candidates, PROJ_SPATIAL);
+    }
+#endif  // CONFIG_WARP_REF_LIST
+
     add_ref_mv_candidate(
 #if CONFIG_TIP
 #if !CONFIG_SMVP_IMPROVEMENT
@@ -889,6 +987,11 @@ static AOM_INLINE void scan_blk_mbmi(
     CANDIDATE_MV *derived_mv_stack, uint16_t *derived_mv_weight,
     uint8_t *derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+    WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
+    int max_num_of_warp_candidates, uint8_t *valid_num_warp_candidates,
+    MV_REFERENCE_FRAME ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
     uint8_t *refmv_count) {
   const TileInfo *const tile = &xd->tile;
   POSITION mi_pos;
@@ -913,6 +1016,15 @@ static AOM_INLINE void scan_blk_mbmi(
     const int cand_mi_row = xd->mi_row + mi_pos.row;
     const int cand_mi_col = xd->mi_col + mi_pos.col;
 #endif  // CONFIG_TIP
+
+#if CONFIG_WARP_REF_LIST
+    if (warp_param_stack && valid_num_warp_candidates &&
+        max_num_of_warp_candidates) {
+      check_this_warp_candidate(cm, candidate, warp_param_stack, ref_frame,
+                                max_num_of_warp_candidates,
+                                valid_num_warp_candidates, PROJ_SPATIAL);
+    }
+#endif  // CONFIG_WARP_REF_LIST
 
     add_ref_mv_candidate(
 #if CONFIG_TIP
@@ -1386,7 +1498,14 @@ static AOM_INLINE void setup_ref_mv_list(
     MV_REFERENCE_FRAME *ref_frame_idx0, MV_REFERENCE_FRAME *ref_frame_idx1,
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     int_mv mv_ref_list[MAX_MV_REF_CANDIDATES], int_mv *gm_mv_candidates,
-    int mi_row, int mi_col, int16_t *mode_context) {
+    int mi_row, int mi_col, int16_t *mode_context
+#if CONFIG_WARP_REF_LIST
+    ,
+    WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
+    int max_num_of_warp_candidates, uint8_t *valid_num_warp_candidates
+#endif  // CONFIG_WARP_REF_LIST
+
+) {
   const int bs = AOMMAX(xd->width, xd->height);
   const int has_tr = has_top_right(cm, xd, mi_row, mi_col, bs);
 #if CONFIG_C043_MVP_IMPROVEMENTS
@@ -1467,6 +1586,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
     update_processed_cols(xd, mi_row, mi_col, (xd->height - 1), -1,
                           max_col_offset, &processed_cols);
@@ -1482,6 +1605,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
   }
   if (xd->left_available) {
@@ -1495,6 +1622,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
     update_processed_cols(xd, mi_row, mi_col, 0, -1, max_col_offset,
                           &processed_cols);
@@ -1510,6 +1641,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
   }
   if (has_bl) {
@@ -1523,6 +1658,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
   }
   if (has_tr) {
@@ -1536,6 +1675,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
   }
   if (xd->up_available && xd->left_available) {
@@ -1551,6 +1694,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
   }
   if (xd->left_available) {
@@ -1564,6 +1711,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
     update_processed_cols(xd, mi_row, mi_col, (xd->height >> 1), -1,
                           max_col_offset, &processed_cols);
@@ -1579,6 +1730,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
   }
 #else
@@ -1598,6 +1753,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   &processed_rows);
 
   // Scan the first left column mode info. col_offset = -1;
@@ -1616,6 +1775,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   &processed_cols);
 
   // Check top-right boundary
@@ -1630,6 +1793,10 @@ static AOM_INLINE void setup_ref_mv_list(
                   1, single_mv, &single_mv_count, derived_mv_stack,
                   derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                   refmv_count);
 #endif  // CONFIG_C043_MVP_IMPROVEMENTS
 
@@ -1734,6 +1901,10 @@ static AOM_INLINE void setup_ref_mv_list(
                 0, single_mv, &single_mv_count, derived_mv_stack,
                 derived_mv_weight, &derived_mv_count,
 #endif  // CONFIG_SMVP_IMPROVEMENT
+#if CONFIG_WARP_REF_LIST
+                warp_param_stack, max_num_of_warp_candidates,
+                valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
                 refmv_count);
 #endif  // !CONFIG_C043_MVP_IMPROVEMENTS
 
@@ -1753,7 +1924,12 @@ static AOM_INLINE void setup_ref_mv_list(
                     ref_frame_idx0, ref_frame_idx1,
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
                     0, single_mv, &single_mv_count, derived_mv_stack,
-                    derived_mv_weight, &derived_mv_count, &processed_cols);
+                    derived_mv_weight, &derived_mv_count,
+#if CONFIG_WARP_REF_LIST
+                    warp_param_stack, max_num_of_warp_candidates,
+                    valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
+                    &processed_cols);
     }
   }
 #else
@@ -1769,7 +1945,13 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_TIP
                     mi_col, rf, row_offset, ref_mv_stack, ref_mv_weight,
                     refmv_count, &row_match_count, &dummy_newmv_count,
-                    gm_mv_candidates, max_row_offset, &processed_rows);
+                    gm_mv_candidates, max_row_offset,
+#if CONFIG_WARP_REF_LIST
+                    warp_param_stack, max_num_of_warp_candidates,
+                    valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
+
+                    &processed_rows);
 
     if (abs(col_offset) <= abs(max_col_offset) &&
         abs(col_offset) > processed_cols)
@@ -1779,7 +1961,13 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_TIP
                     rf, col_offset, ref_mv_stack, ref_mv_weight, refmv_count,
                     &col_match_count, &dummy_newmv_count, gm_mv_candidates,
-                    max_col_offset, &processed_cols);
+                    max_col_offset,
+#if CONFIG_WARP_REF_LIST
+                    warp_param_stack, max_num_of_warp_candidates,
+                    valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_WARP_REF_LIST
+
+                    &processed_cols);
   }
 #endif  // CONFIG_SMVP_IMPROVEMENT
 
@@ -2124,6 +2312,63 @@ static AOM_INLINE void setup_ref_mv_list(
   }
 #endif  // CONFIG_REF_MV_BANK && !CONFIG_C043_MVP_IMPROVEMENTS
 
+#if CONFIG_WARP_REF_LIST
+
+  if (cm->features.allow_warped_motion && warp_param_stack &&
+      valid_num_warp_candidates &&
+      *valid_num_warp_candidates < max_num_of_warp_candidates) {
+    // Insert warp parameters from the bank
+    const WARP_PARAM_BANK *warp_param_bank = xd->warp_param_bank_pt;
+    const WarpedMotionParams *queue = warp_param_bank->wpb_buffer[ref_frame];
+    const int count = warp_param_bank->wpb_count[ref_frame];
+    const int start_idx = warp_param_bank->wpb_start_idx[ref_frame];
+
+    for (int idx_bank = 0; idx_bank < count && *valid_num_warp_candidates <
+                                                   max_num_of_warp_candidates;
+         ++idx_bank) {
+      const int idx = (start_idx + count - 1 - idx_bank) % WARP_PARAM_BANK_SIZE;
+      const WarpedMotionParams cand_warp_param = queue[idx];
+
+      if (!cand_warp_param.invalid &&
+          !is_this_param_already_in_list(*valid_num_warp_candidates,
+                                         warp_param_stack, cand_warp_param)) {
+        insert_neighbor_warp_candidate(warp_param_stack, &cand_warp_param,
+                                       *valid_num_warp_candidates,
+                                       PROJ_PARAM_BANK);
+        (*valid_num_warp_candidates)++;
+      }
+    }
+
+    // Insert Global motion of the current
+    if (*valid_num_warp_candidates < max_num_of_warp_candidates) {
+      if (!xd->global_motion[ref_frame].invalid &&
+          !is_this_param_already_in_list(*valid_num_warp_candidates,
+                                         warp_param_stack,
+                                         xd->global_motion[ref_frame])) {
+        insert_neighbor_warp_candidate(
+            warp_param_stack, &xd->global_motion[ref_frame],
+            *valid_num_warp_candidates, PROJ_GLOBAL_MOTION);
+        (*valid_num_warp_candidates)++;
+      }
+    }
+
+    // Filled with default values( currently all params are zeros)
+    int max_num_of_default_allowed = AOMMIN(2, max_num_of_warp_candidates);
+    int current_number_of_defaults = 0;
+    int tmp_curr_num = *valid_num_warp_candidates;
+    for (int cand_num = tmp_curr_num;
+         (cand_num < max_num_of_warp_candidates) &&
+         (current_number_of_defaults < max_num_of_default_allowed);
+         cand_num++) {
+      warp_param_stack[cand_num].wm_params = default_warp_params;
+      warp_param_stack[cand_num].proj_type = PROJ_DEFAULT;
+      (*valid_num_warp_candidates)++;
+      current_number_of_defaults++;
+    }
+  }
+
+#endif  // CONFIG_WARP_REF_LIST
+
 #if CONFIG_BVP_IMPROVEMENT
   // If there are open slots in reference BV candidate list
   // fetch reference BVs from the default BVPs
@@ -2152,13 +2397,34 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_BVP_IMPROVEMENT
 }
 
-void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
-                      MB_MODE_INFO *mi, MV_REFERENCE_FRAME ref_frame,
-                      uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
-                      CANDIDATE_MV ref_mv_stack[][MAX_REF_MV_STACK_SIZE],
-                      uint16_t ref_mv_weight[][MAX_REF_MV_STACK_SIZE],
-                      int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES],
-                      int_mv *global_mvs, int16_t *mode_context) {
+#if CONFIG_WARP_REF_LIST
+// Initialize the warp parameter list
+void av1_initialize_warp_wrl_list(
+    WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
+    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]) {
+  for (int ref_frame = 0; ref_frame < SINGLE_REF_FRAMES; ref_frame++) {
+    for (int warp_idx = 0; warp_idx < MAX_WARP_REF_CANDIDATES; warp_idx++) {
+      warp_param_stack[ref_frame][warp_idx].wm_params.invalid = 1;
+    }
+    valid_num_warp_candidates[ref_frame] = 0;
+  }
+}
+#endif  // CONFIG_WARP_REF_LIST
+
+void av1_find_mv_refs(
+    const AV1_COMMON *cm, const MACROBLOCKD *xd, MB_MODE_INFO *mi,
+    MV_REFERENCE_FRAME ref_frame, uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
+    CANDIDATE_MV ref_mv_stack[][MAX_REF_MV_STACK_SIZE],
+    uint16_t ref_mv_weight[][MAX_REF_MV_STACK_SIZE],
+    int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES], int_mv *global_mvs,
+    int16_t *mode_context
+#if CONFIG_WARP_REF_LIST
+    ,
+    WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
+    int max_num_of_warp_candidates,
+    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]
+#endif  // CONFIG_WARP_REF_LIST
+) {
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
   int_mv gm_mv[2];
@@ -2215,6 +2481,18 @@ void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     }
   }
 
+#if CONFIG_WARP_REF_LIST
+  bool derive_wrl = cm->features.allow_warped_motion &&
+                    (warp_param_stack && valid_num_warp_candidates &&
+                     max_num_of_warp_candidates);
+  derive_wrl &= (ref_frame < SINGLE_REF_FRAMES);
+  derive_wrl &= is_motion_variation_allowed_bsize(mi->sb_type[PLANE_TYPE_Y]);
+  if (derive_wrl && valid_num_warp_candidates) {
+    valid_num_warp_candidates[ref_frame] =
+        0;  // initialize the number of valid candidates to 0 at the beginning
+  }
+#endif  // CONFIG_WARP_REF_LIST
+
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   if (mi->skip_mode) {
     SKIP_MODE_MVP_LIST *skip_list =
@@ -2223,18 +2501,38 @@ void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                       skip_list->ref_mv_stack, skip_list->weight,
                       skip_list->ref_frame0, skip_list->ref_frame1,
                       mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv,
-                      mi_row, mi_col, skip_list->mode_context);
+                      mi_row, mi_col, skip_list->mode_context
+#if CONFIG_WARP_REF_LIST
+                      ,
+                      NULL, 0, NULL
+#endif  // CONFIG_WARP_REF_LIST
+    );
   } else {
     setup_ref_mv_list(cm, xd, ref_frame, &ref_mv_count[ref_frame],
                       ref_mv_stack[ref_frame], ref_mv_weight[ref_frame], NULL,
                       NULL, mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv,
-                      mi_row, mi_col, mode_context);
+                      mi_row, mi_col, mode_context
+#if CONFIG_WARP_REF_LIST
+                      ,
+                      derive_wrl ? warp_param_stack[ref_frame] : NULL,
+                      derive_wrl ? max_num_of_warp_candidates : 0,
+                      derive_wrl ? &valid_num_warp_candidates[ref_frame] : NULL
+#endif  // CONFIG_WARP_REF_LIST
+
+    );
   }
 #else
   setup_ref_mv_list(cm, xd, ref_frame, &ref_mv_count[ref_frame],
                     ref_mv_stack[ref_frame], ref_mv_weight[ref_frame],
                     mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv, mi_row,
-                    mi_col, mode_context);
+                    mi_col, mode_context
+#if CONFIG_WARP_REF_LIST
+                    ,
+                    derive_wrl ? warp_param_stack[ref_frame] : NULL,
+                    derive_wrl ? max_num_of_warp_candidates : 0,
+                    derive_wrl ? &valid_num_warp_candidates[ref_frame] : NULL
+#endif  // CONFIG_WARP_REF_LIST
+  );
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 }
 
@@ -3692,3 +3990,110 @@ void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
   (void)cm;
 }
 #endif  // CONFIG_REF_MV_BANK
+
+#if CONFIG_WARP_REF_LIST
+
+#define MAX_WARP_SB_HITS 64
+// Update the warp parameter bank
+//  If the warp parameters are already exist in the bank, then bank is
+//  rearranged If the warp parameters are not in the bank, insert it to the
+//  bank.
+static INLINE void update_warp_param_bank(const MB_MODE_INFO *const mbmi,
+                                          WARP_PARAM_BANK *warp_param_bank) {
+  const MV_REFERENCE_FRAME ref_frame = av1_ref_frame_type(mbmi->ref_frame);
+  WarpedMotionParams *queue = warp_param_bank->wpb_buffer[ref_frame];
+  const int start_idx = warp_param_bank->wpb_start_idx[ref_frame];
+  const int count = warp_param_bank->wpb_count[ref_frame];
+  int found = -1;
+
+  // If max hits have been reached return.
+  if (warp_param_bank->wpb_sb_hits >= MAX_WARP_SB_HITS) return;
+  // else increment count and proceed with updating.
+  ++warp_param_bank->wpb_sb_hits;
+
+  // Check if current warp parameters is already existing in the buffer.
+  for (int i = 0; i < count; ++i) {
+    const int idx = (start_idx + i) % WARP_PARAM_BANK_SIZE;
+    int same_param = (mbmi->wm_params[0].wmmat[2] == queue[idx].wmmat[2]);
+    same_param &= (mbmi->wm_params[0].wmmat[3] == queue[idx].wmmat[3]);
+
+    same_param &= (mbmi->wm_params[0].wmmat[4] == queue[idx].wmmat[4]);
+    same_param &= (mbmi->wm_params[0].wmmat[5] == queue[idx].wmmat[5]);
+
+    same_param &= (mbmi->wm_params[0].wmtype == queue[idx].wmtype);
+
+    if (same_param) {
+      found = i;
+      break;
+    }
+  }
+
+  // If current warp parameters is found in the buffer, move it to the end of
+  // the buffer.
+  if (found >= 0) {
+    const int idx = (start_idx + found) % WARP_PARAM_BANK_SIZE;
+    const WarpedMotionParams cand = queue[idx];
+    for (int i = found; i < count - 1; ++i) {
+      const int idx0 = (start_idx + i) % WARP_PARAM_BANK_SIZE;
+      const int idx1 = (start_idx + i + 1) % WARP_PARAM_BANK_SIZE;
+      queue[idx0] = queue[idx1];
+    }
+    const int tail = (start_idx + count - 1) % WARP_PARAM_BANK_SIZE;
+    queue[tail] = cand;
+    return;
+  }
+
+  // If current warp parameter is not found in the buffer, append it to the end
+  // of the buffer, and update the count and start_idx accordingly.
+  const int idx = (start_idx + count) % WARP_PARAM_BANK_SIZE;
+  queue[idx].wmtype = mbmi->wm_params[0].wmtype;
+  queue[idx].wmmat[0] = mbmi->wm_params[0].wmmat[0];
+  queue[idx].wmmat[1] = mbmi->wm_params[0].wmmat[1];
+  queue[idx].wmmat[2] = mbmi->wm_params[0].wmmat[2];
+  queue[idx].wmmat[3] = mbmi->wm_params[0].wmmat[3];
+  queue[idx].wmmat[4] = mbmi->wm_params[0].wmmat[4];
+  queue[idx].wmmat[5] = mbmi->wm_params[0].wmmat[5];
+
+  if (count < WARP_PARAM_BANK_SIZE) {
+    ++warp_param_bank->wpb_count[ref_frame];
+  } else {
+    ++warp_param_bank->wpb_start_idx[ref_frame];
+  }
+}
+void av1_update_warp_param_bank(const AV1_COMMON *const cm,
+                                MACROBLOCKD *const xd,
+                                const MB_MODE_INFO *const mbmi) {
+  (void)cm;
+  if (is_warp_mode(mbmi->motion_mode)) {
+    update_warp_param_bank(mbmi, &xd->warp_param_bank);
+  }
+}
+
+// The wrl_list is the warp reference list which is already generated in the
+// av1_find_mv_refs
+
+// If the mode is not equal to the GLOBALMV mode, wrl_list is copied to the
+// warp_param_stack
+void av1_find_warp_delta_base_candidates(
+    const MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
+    WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
+    WARP_CANDIDATE wrl_list[MAX_WARP_REF_CANDIDATES], uint8_t num_wrl_cand,
+    uint8_t *p_valid_num_candidates) {
+  // Global MV mode insert the global motion
+  if (mbmi->mode == GLOBALMV) {
+    warp_param_stack[0].wm_params = xd->global_motion[mbmi->ref_frame[0]];
+    warp_param_stack[0].proj_type = PROJ_GLOBAL_MOTION;
+    if (p_valid_num_candidates) {
+      *p_valid_num_candidates = 1;
+    }
+    return;
+  }
+
+  memcpy(&warp_param_stack[0], &wrl_list[0],
+         num_wrl_cand * sizeof(wrl_list[0]));
+  if (p_valid_num_candidates) {
+    *p_valid_num_candidates = num_wrl_cand;
+  }
+}
+
+#endif  // CONFIG_WARP_REF_LIST

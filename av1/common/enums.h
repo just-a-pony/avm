@@ -767,6 +767,11 @@ enum {
 #define USABLE_REF_MV_STACK_SIZE (MAX_REF_MV_STACK_SIZE)
 #define REF_CAT_LEVEL 640
 
+#if CONFIG_WARP_REF_LIST
+#define MAX_WARP_REF_CANDIDATES 4
+#define WARP_REF_CONTEXTS 1
+#endif  // CONFIG_WARP_REF_LIST
+
 #if CONFIG_CONTEXT_DERIVATION
 #define INTRA_INTER_SKIP_TXFM_CONTEXTS 2
 #endif  // CONFIG_CONTEXT_DERIVATION
@@ -963,6 +968,19 @@ enum {
 #define IBP_WEIGHT_SHIFT 8
 #define IBP_WEIGHT_MAX 255
 #endif
+
+#if CONFIG_WARP_REF_LIST
+/*!\enum Warp projection type
+ * \brief This enumeration defines various warp projection type supported
+ */
+typedef enum {
+  PROJ_GLOBAL_MOTION,  /**< block is from global motion */
+  PROJ_SPATIAL,        /**< Project from spatial neighborhood */
+  PROJ_PARAM_BANK,     /**< Project from circular buffer */
+  PROJ_DEFAULT,        /**< Default values */
+  WARP_PROJ_TYPES = 5, /**< Num projection types */
+} WarpProjectionType;
+#endif  // CONFIG_WARP_REF_LIST
 
 /*!\endcond */
 
