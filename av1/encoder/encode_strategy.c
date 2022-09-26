@@ -1258,6 +1258,10 @@ int av1_encode_strategy(AV1_COMP *const cpi, size_t *const size,
 #endif
   }
 
+#if CONFIG_MISMATCH_DEBUG
+  if (has_no_stats_stage(cpi)) mismatch_move_frame_idx_w();
+#endif  // CONFIG_MISMATCH_DEBUG
+
   if (!is_stat_generation_stage(cpi))
     set_ext_overrides(cm, &frame_params, ext_flags);
 
