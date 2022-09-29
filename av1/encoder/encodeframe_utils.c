@@ -1578,9 +1578,9 @@ void av1_set_cost_upd_freq(AV1_COMP *cpi, ThreadData *td,
 #if CONFIG_BVCOST_UPDATE
       if (cm->features.allow_intrabc) {
 #if CONFIG_FLEX_MVRES
-        fill_dv_costs(&cpi->dv_costs, xd->tile_ctx, &x->mv_costs);
+        fill_dv_costs(&x->dv_costs, xd->tile_ctx, &x->mv_costs);
 #else
-        av1_fill_dv_costs(xd->tile_ctx, &cpi->dv_costs);
+        av1_fill_dv_costs(xd->tile_ctx, &x->dv_costs);
 #endif
       }
 #endif  // CONFIG_BVCOST_UPDATE

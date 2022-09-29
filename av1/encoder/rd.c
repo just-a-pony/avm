@@ -1078,9 +1078,13 @@ void av1_initialize_rd_consts(AV1_COMP *cpi) {
 #endif  // !CONFIG_BVCOST_UPDATE
       !is_stat_generation_stage(cpi)) {
 #if CONFIG_FLEX_MVRES
-    fill_dv_costs(&cpi->dv_costs, cm->fc, mv_costs);
+    fill_dv_costs(&x->dv_costs, cm->fc, mv_costs);
+#else
+#if CONFIG_BVCOST_UPDATE
+    IntraBCMVCosts *const dv_costs = &x->dv_costs;
 #else
     IntraBCMVCosts *const dv_costs = &cpi->dv_costs;
+#endif
     int *dvcost[2] = { &dv_costs->mv_component[0][MV_MAX],
                        &dv_costs->mv_component[1][MV_MAX] };
     av1_build_nmv_cost_table(dv_costs->joint_mv,

@@ -1046,6 +1046,28 @@ typedef struct {
   int *dv_costs[2];
 } IntraBCMvCosts;
 #endif
+
+#if CONFIG_BVCOST_UPDATE && !CONFIG_FLEX_MVRES
+/*! \brief Holds mv costs for intrabc.
+ */
+typedef struct {
+  // Cost of transmitting the actual motion vector.
+  // mv_component[0][i] is the cost of motion vector with horizontal component
+  // (mv_row) equal to i - MV_MAX.
+  // mv_component[1][i] is the cost of motion vector with vertical component
+  // (mv_col) equal to i - MV_MAX.
+  int mv_component[2][MV_VALS];
+
+  // joint_mv[i] is the cost of transmitting joint mv(MV_JOINT_TYPE) of
+  // type i.
+  // TODO(huisu@google.com): we can update dv_joint_cost per SB.
+  int joint_mv[MV_JOINTS];
+#if CONFIG_ADAPTIVE_MVD
+  int amvd_joint_mv[MV_JOINTS];
+  int res_mv_component[2][MV_VALS];
+#endif  // CONFIG_ADAPTIVE_MVD
+} IntraBCMVCosts;
+#endif
 /*! \brief Holds the costs needed to encode the coefficients
  */
 typedef struct {
@@ -1185,6 +1207,14 @@ typedef struct macroblock {
   //! The rate needed to encode a new motion vector to the bitstream and some
   //! multipliers for motion search.
   MvCosts mv_costs;
+
+  //! The rate needed to encode a new block vector to the bitstream and some
+  //! multipliers for motion search.
+#if CONFIG_FLEX_MVRES
+  IntraBCMvCosts dv_costs;
+#elif CONFIG_BVCOST_UPDATE
+  IntraBCMVCosts dv_costs;
+#endif
 
   //! The rate needed to signal the txfm coefficients to the bitstream.
   CoeffCosts coeff_costs;

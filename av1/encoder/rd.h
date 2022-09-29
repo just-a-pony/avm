@@ -86,7 +86,7 @@ typedef struct RD_OPT {
   double r0;
 } RD_OPT;
 
-#if !CONFIG_FLEX_MVRES
+#if !CONFIG_FLEX_MVRES && !CONFIG_BVCOST_UPDATE
 typedef struct {
   // Cost of transmitting the actual motion vector.
   // mv_component[0][i] is the cost of motion vector with horizontal component
