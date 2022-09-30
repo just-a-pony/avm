@@ -245,7 +245,7 @@ typedef int64_t aom_codec_pts_t;
  *   - aom_codec_get_caps(aom_codec_iface_t *iface): returns
  *     the capabilities of the codec
  *   - aom_codec_enc_config_default: generate the default config for
- *     initializing the encoder (see documention in aom_encoder.h)
+ *     initializing the encoder (see documentation in aom_encoder.h)
  *   - aom_codec_dec_init, aom_codec_enc_init: initialize the codec context
  *     structure (see documentation on aom_codec_ctx).
  *
