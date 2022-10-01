@@ -317,6 +317,7 @@ list(
   AOM_AV1_COMMON_INTRIN_AVX2
   "${AOM_ROOT}/av1/common/cdef_block_avx2.c"
   "${AOM_ROOT}/av1/common/x86/cfl_avx2.c"
+  "${AOM_ROOT}/av1/common/x86/highbd_ccso_avx2.c"
   "${AOM_ROOT}/av1/common/x86/highbd_convolve_2d_avx2.c"
   "${AOM_ROOT}/av1/common/x86/highbd_inv_txfm_avx2.c"
   "${AOM_ROOT}/av1/common/x86/highbd_jnt_convolve_avx2.c"
