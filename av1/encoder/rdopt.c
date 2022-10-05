@@ -2979,8 +2979,9 @@ static INLINE int get_this_mv(int_mv *this_mv, PREDICTION_MODE this_mode,
   } else {
     assert(single_mode == NEARMV);
     const int ref_mv_offset = ref_mv_idx;
-    const uint8_t ref_frame_type = av1_ref_frame_type(ref_frame);
-    if (ref_mv_offset < mbmi_ext->ref_mv_count[ref_frame_type]) {
+    const int8_t ref_frame_type = av1_ref_frame_type(ref_frame);
+    if (ref_frame_type > NONE_FRAME &&
+        ref_mv_offset < mbmi_ext->ref_mv_count[ref_frame_type]) {
       assert(ref_mv_offset >= 0);
       if (ref_idx == 0) {
         *this_mv =

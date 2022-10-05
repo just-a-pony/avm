@@ -1010,7 +1010,8 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       ((xd->mi_col & (cm->seq_params.mib_size - 1)) == 0);
   const DeltaQInfo *const delta_q_info = &cm->delta_q_info;
   if (delta_q_info->delta_q_present_flag &&
-      (bsize != cm->seq_params.sb_size || !mbmi->skip_txfm) &&
+      (bsize != cm->seq_params.sb_size ||
+       !mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) &&
       super_block_upper_left) {
     const int dq = (mbmi->current_qindex - xd->current_base_qindex) /
                    delta_q_info->delta_q_res;
