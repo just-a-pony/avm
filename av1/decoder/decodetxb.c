@@ -299,10 +299,8 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
   int8_t signs_buf[TX_PAD_2D];
   int8_t *const signs = set_signs(signs_buf, width);
   eob_info *eob_data = dcb->eob_data[plane] + dcb->txb_offset[plane];
-  uint16_t *const eob = &(eob_data->eob);
-  uint16_t *const max_scan_line = &(eob_data->max_scan_line);
-  *max_scan_line = 0;
-  *eob = 0;
+  eob_data->max_scan_line = 0;
+  eob_data->eob = av1_get_max_eob(tx_size);
 
   const TX_TYPE tx_type =
       av1_get_tx_type(xd, plane_type, blk_row, blk_col, tx_size,
@@ -312,23 +310,21 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
   const SCAN_ORDER *const scan_order = get_scan(tx_size, tx_type);
   const int16_t *const scan = scan_order->scan;
 
-  *eob = av1_get_max_eob(tx_size);
-  eob_data->eob = *eob;
-  eob_data->max_scan_line = *eob;
-
-  if (*eob > 1) {
+  if (eob_data->eob > 1) {
     memset(levels_buf, 0, sizeof(*levels_buf) * TX_PAD_2D);
     memset(signs_buf, 0, sizeof(*signs_buf) * TX_PAD_2D);
     base_cdf_arr base_cdf = ec_ctx->coeff_base_cdf_idtx;
     br_cdf_arr br_cdf = ec_ctx->coeff_br_cdf_idtx;
-    read_coeffs_forward_2d(r, 0, *eob - 1, scan, bwl, levels, base_cdf, br_cdf);
+    read_coeffs_forward_2d(r, 0, eob_data->eob - 1, scan, bwl, levels, base_cdf,
+                           br_cdf);
   }
 
-  for (int c = *eob - 1; c >= 0; --c) {
+  for (int c = eob_data->eob - 1; c >= 0; --c) {
     const int pos = scan[c];
     uint8_t sign;
     tran_low_t level = levels[get_padded_idx_left(pos, bwl)];
     if (level) {
+      eob_data->max_scan_line = AOMMAX(eob_data->max_scan_line, pos);
       int idtx_sign_ctx = get_sign_ctx_skip(signs, levels, pos, bwl);
       sign =
           aom_read_symbol(r, ec_ctx->idtx_sign_cdf[idtx_sign_ctx], 2, ACCT_STR);
