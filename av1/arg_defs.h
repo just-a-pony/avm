@@ -162,6 +162,9 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_FLEX_MVRES
   arg_def_t enable_flex_mvres;
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+  arg_def_t enable_cfl_ds_filter;
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
   arg_def_t enable_joint_mvd;
 #endif  // CONFIG_JOINT_MVD

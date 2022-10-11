@@ -822,10 +822,17 @@ typedef struct {
   // Indicates if adaptive MVD resolution should be enabled.
   bool enable_adaptive_mvd;
 #endif  // CONFIG_ADAPTIVE_MVD
+
 #if CONFIG_FLEX_MVRES
   // Indicates if flexible MV resolution should be enabled.
   bool enable_flex_mvres;
 #endif  // CONFIG_FLEX_MVRES
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+  // Indicates if joint adaptive downsampling filter should be enabled.
+  int enable_cfl_ds_filter;
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+
 #if CONFIG_JOINT_MVD
   // Indicates if joint mvd coding should be enabled.
   bool enable_joint_mvd;
@@ -3051,6 +3058,8 @@ int av1_set_internal_size(AV1EncoderConfig *const oxcf,
 int av1_get_quantizer(struct AV1_COMP *cpi);
 
 int av1_convert_sect5obus_to_annexb(uint8_t *buffer, size_t *input_size);
+
+void av1_set_downsample_filter_options(AV1_COMP *cpi);
 
 // Set screen content options.
 // This function estimates whether to use screen content tools, by counting

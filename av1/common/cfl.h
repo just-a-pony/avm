@@ -79,10 +79,27 @@ static INLINE CFL_PRED_TYPE get_cfl_pred_type(PLANE_TYPE plane) {
 void cfl_predict_block(MACROBLOCKD *const xd, uint8_t *dst, int dst_stride,
                        TX_SIZE tx_size, int plane);
 
-void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size);
+void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size
+#if CONFIG_ADAPTIVE_DS_FILTER
+                     ,
+                     int filter_type
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+);
 
 void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size,
-                  BLOCK_SIZE bsize);
+                  BLOCK_SIZE bsize
+#if CONFIG_ADAPTIVE_DS_FILTER
+                  ,
+                  int filter_type
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+);
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+void cfl_luma_subsampling_420_hbd_colocated(const uint16_t *input,
+                                            int input_stride,
+                                            uint16_t *output_q3, int width,
+                                            int height);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 
 #if CONFIG_IMPROVED_CFL
 // 121 subsample filter
@@ -106,6 +123,15 @@ void cfl_implicit_fetch_neighbor_chroma(const AV1_COMMON *cm,
 void cfl_derive_implicit_scaling_factor(MACROBLOCKD *const xd, int plane,
                                         int row, int col, TX_SIZE tx_size);
 #endif
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+// Derive the implicit scaling factor for the block
+void cfl_derive_block_implicit_scaling_factor(uint16_t *l, const uint16_t *c,
+                                              const int width, const int height,
+                                              const int stride,
+                                              const int chroma_stride,
+                                              int *alpha);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 
 void cfl_store_dc_pred(MACROBLOCKD *const xd, const uint8_t *input,
                        CFL_PRED_TYPE pred_plane, int width);

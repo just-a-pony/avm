@@ -106,6 +106,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_FLEX_MVRES
     GET_PARAMS(enable_flex_mvres);
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+    GET_PARAMS(enable_cfl_ds_filter);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
     GET_PARAMS(enable_joint_mvd);
 #endif  // CONFIG_JOINT_MVD

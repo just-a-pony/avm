@@ -3891,9 +3891,14 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_ADAPTIVE_MVD
   aom_wb_write_bit(wb, seq_params->enable_adaptive_mvd);
 #endif  // CONFIG_ADAPTIVE_MVD
+
 #if CONFIG_FLEX_MVRES
   aom_wb_write_bit(wb, seq_params->enable_flex_mvres);
 #endif  // CONFIG_FLEX_MVRES
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+  aom_wb_write_literal(wb, seq_params->enable_cfl_ds_filter, 2);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 }
 
 static AOM_INLINE void write_global_motion_params(

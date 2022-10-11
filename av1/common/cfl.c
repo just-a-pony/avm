@@ -211,6 +211,18 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       uint16_t *input = CONVERT_TO_SHORTPTR(dst) - 2 * input_stride;
       for (int i = 0; i < width; i += 2) {
         const int bot = i + input_stride;
+#if CONFIG_ADAPTIVE_DS_FILTER
+        if (cm->seq_params.enable_cfl_ds_filter == 1) {
+          output_q3[i >> 1] = input[AOMMAX(0, i - 1)] + 2 * input[i] +
+                              input[i + 1] + input[bot + AOMMAX(-1, -i)] +
+                              2 * input[bot] + input[bot + 1];
+        } else if (cm->seq_params.enable_cfl_ds_filter == 2) {
+          output_q3[i >> 1] = input[i] * 8;
+        } else {
+          output_q3[i >> 1] =
+              (input[i] + input[i + 1] + input[bot] + input[bot + 1] + 2) << 1;
+        }
+#else
 #if CONFIG_IMPROVED_CFL
         output_q3[i >> 1] = input[AOMMAX(0, i - 1)] + 2 * input[i] +
                             input[i + 1] + input[bot + AOMMAX(-1, -i)] +
@@ -219,6 +231,7 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
         output_q3[i >> 1] =
             (input[i] + input[i + 1] + input[bot] + input[bot + 1] + 2) << 1;
 #endif
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
       }
     } else if (sub_y) {
       uint16_t *input = CONVERT_TO_SHORTPTR(dst) - 2 * input_stride;
@@ -248,6 +261,17 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       uint16_t *input = CONVERT_TO_SHORTPTR(dst) - 2;
       for (int j = 0; j < height; j += 2) {
         const int bot = input_stride;
+#if CONFIG_ADAPTIVE_DS_FILTER
+        if (cm->seq_params.enable_cfl_ds_filter == 1) {
+          output_q3[j >> 1] = input[-1] + 2 * input[0] + input[1] +
+                              input[bot - 1] + 2 * input[bot] + input[bot + 1];
+        } else if (cm->seq_params.enable_cfl_ds_filter == 2) {
+          output_q3[j >> 1] = input[0] * 8;
+        } else {
+          output_q3[j >> 1] =
+              (input[0] + input[1] + input[bot] + input[bot + 1]) << 1;
+        }
+#else
 #if CONFIG_IMPROVED_CFL
         output_q3[j >> 1] = input[-1] + 2 * input[0] + input[1] +
                             input[bot - 1] + 2 * input[bot] + input[bot + 1];
@@ -255,6 +279,7 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
         output_q3[j >> 1] = (input[0] + input[1] + input[bot] + input[bot + 1])
                             << 1;
 #endif
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
         input += input_stride * 2;
       }
     } else if (sub_y) {
@@ -387,6 +412,35 @@ void cfl_implicit_fetch_neighbor_chroma(const AV1_COMMON *cm,
   }
 }
 
+#if CONFIG_ADAPTIVE_DS_FILTER
+void cfl_derive_block_implicit_scaling_factor(uint16_t *l, const uint16_t *c,
+                                              const int width, const int height,
+                                              const int stride,
+                                              const int chroma_stride,
+                                              int *alpha) {
+  int count = 0;
+  int sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
+  for (int j = 0; j < height; ++j) {
+    for (int i = 0; i < width; ++i) {
+      sum_x += l[i + j * stride] >> 3;
+      sum_y += c[i + j * chroma_stride];
+      sum_xy += (l[i + j * stride] >> 3) * c[i + j * chroma_stride];
+      sum_xx += (l[i + j * stride] >> 3) * (l[i + j * stride] >> 3);
+    }
+    count += width;
+  }
+
+  if (count > 0) {
+    const int32_t der = sum_xx - (int32_t)((int64_t)sum_x * sum_x / count);
+    const int32_t nor = sum_xy - (int32_t)((int64_t)sum_x * sum_y / count);
+    const int16_t shift = 3 + CFL_ADD_BITS_ALPHA;
+    *alpha = resolve_divisor_32_CfL(nor, der, shift);
+  } else {
+    *alpha = 0;
+  }
+}
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+
 void cfl_derive_implicit_scaling_factor(MACROBLOCKD *const xd, int plane,
                                         int row, int col, TX_SIZE tx_size) {
   CFL_CTX *const cfl = &xd->cfl;
@@ -504,6 +558,20 @@ void cfl_luma_subsampling_420_hbd_121_c(const uint16_t *input, int input_stride,
   }
 }
 #endif
+#if CONFIG_ADAPTIVE_DS_FILTER
+void cfl_luma_subsampling_420_hbd_colocated(const uint16_t *input,
+                                            int input_stride,
+                                            uint16_t *output_q3, int width,
+                                            int height) {
+  for (int j = 0; j < height; j += 2) {
+    for (int i = 0; i < width; i += 2) {
+      output_q3[i >> 1] = input[i] * 8;
+    }
+    input += input_stride << 1;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 
 static void cfl_luma_subsampling_422_hbd_c(const uint16_t *input,
                                            int input_stride,
@@ -547,7 +615,12 @@ static INLINE cfl_subsample_hbd_fn cfl_subsampling_hbd(TX_SIZE tx_size,
 }
 
 static void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint8_t *input,
-                      int input_stride, int row, int col, TX_SIZE tx_size) {
+                      int input_stride, int row, int col, TX_SIZE tx_size
+#if CONFIG_ADAPTIVE_DS_FILTER
+                      ,
+                      int filter_type
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+) {
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
   const int tx_off_log2 = MI_SIZE_LOG2;
@@ -587,6 +660,28 @@ static void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint8_t *input,
   // Store the input into the CfL pixel buffer
   uint16_t *recon_buf_q3 =
       cfl->recon_buf_q3 + (store_row * CFL_BUF_LINE + store_col);
+#if CONFIG_ADAPTIVE_DS_FILTER
+  if (filter_type == 1) {
+    if (sub_x && sub_y)
+      cfl_luma_subsampling_420_hbd_121_c(CONVERT_TO_SHORTPTR(input),
+                                         input_stride, recon_buf_q3, width,
+                                         height);
+    else
+      cfl_subsampling_hbd(tx_size, sub_x, sub_y)(CONVERT_TO_SHORTPTR(input),
+                                                 input_stride, recon_buf_q3);
+  } else if (filter_type == 2) {
+    if (sub_x && sub_y)
+      cfl_luma_subsampling_420_hbd_colocated(CONVERT_TO_SHORTPTR(input),
+                                             input_stride, recon_buf_q3, width,
+                                             height);
+    else
+      cfl_subsampling_hbd(tx_size, sub_x, sub_y)(CONVERT_TO_SHORTPTR(input),
+                                                 input_stride, recon_buf_q3);
+  } else {
+    cfl_subsampling_hbd(tx_size, sub_x, sub_y)(CONVERT_TO_SHORTPTR(input),
+                                               input_stride, recon_buf_q3);
+  }
+#else
 #if CONFIG_IMPROVED_CFL
   if (sub_x && sub_y)
     cfl_luma_subsampling_420_hbd_121_c(CONVERT_TO_SHORTPTR(input), input_stride,
@@ -595,6 +690,7 @@ static void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint8_t *input,
 #endif
     cfl_subsampling_hbd(tx_size, sub_x, sub_y)(CONVERT_TO_SHORTPTR(input),
                                                input_stride, recon_buf_q3);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 }
 
 // Adjust the row and column of blocks smaller than 8X8, as chroma-referenced
@@ -616,7 +712,12 @@ static INLINE void sub8x8_adjust_offset(const CFL_CTX *cfl, int mi_row,
 }
 
 void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size,
-                  BLOCK_SIZE bsize) {
+                  BLOCK_SIZE bsize
+#if CONFIG_ADAPTIVE_DS_FILTER
+                  ,
+                  int filter_type
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+) {
   CFL_CTX *const cfl = &xd->cfl;
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_Y];
   uint8_t *dst = &pd->dst.buf[(row * pd->dst.stride + col) << MI_SIZE_LOG2];
@@ -627,7 +728,11 @@ void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size,
     assert(!((row & 1) && tx_size_high[tx_size] != 4));
     sub8x8_adjust_offset(cfl, xd->mi_row, xd->mi_col, &row, &col);
   }
+#if CONFIG_ADAPTIVE_DS_FILTER
+  cfl_store(xd, cfl, dst, pd->dst.stride, row, col, tx_size, filter_type);
+#else
   cfl_store(xd, cfl, dst, pd->dst.stride, row, col, tx_size);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 }
 
 static INLINE int max_intra_block_width(const MACROBLOCKD *xd,
@@ -646,7 +751,12 @@ static INLINE int max_intra_block_height(const MACROBLOCKD *xd,
   return ALIGN_POWER_OF_TWO(max_blocks_high, tx_size_high_log2[tx_size]);
 }
 
-void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size) {
+void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size
+#if CONFIG_ADAPTIVE_DS_FILTER
+                     ,
+                     int filter_type
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+) {
   CFL_CTX *const cfl = &xd->cfl;
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_Y];
   int row = 0;
@@ -659,5 +769,10 @@ void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size) {
   const int height = max_intra_block_height(xd, bsize, AOM_PLANE_Y, tx_size);
   tx_size = get_tx_size(width, height);
   assert(tx_size != TX_INVALID);
+#if CONFIG_ADAPTIVE_DS_FILTER
+  cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row, col, tx_size,
+            filter_type);
+#else
   cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row, col, tx_size);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 }

@@ -234,6 +234,12 @@ set_aom_config_var(CONFIG_FIX_CDEF_SYNTAX 1
                    "AV2 experiment flag to fix CDEF syntax.")
 set_aom_config_var(CONFIG_IMPROVED_CFL 1
                    "Enable improved CfL mode from CWG-C044")
+
+set_aom_config_var(
+  CONFIG_ADAPTIVE_DS_FILTER
+  1
+  "Enable adaptive downsampling filter: 0: AV1 filter, 1: 121 filter, 2: 1511 filter"
+)
 #
 # Variables in this section control optional features of the build system.
 #

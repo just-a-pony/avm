@@ -41,6 +41,7 @@
 #include "av1/common/idct.h"
 #include "av1/common/reconinter.h"
 #include "av1/common/reconintra.h"
+#include "av1/common/cfl.h"
 #include "av1/common/resize.h"
 #include "av1/common/tile_common.h"
 #if CONFIG_TIP
@@ -486,6 +487,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_FLEX_MVRES
   seq->enable_flex_mvres = tool_cfg->enable_flex_mvres;
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+  seq->enable_cfl_ds_filter = tool_cfg->enable_cfl_ds_filter;
+#endif  // CONFIG_CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
   seq->enable_joint_mvd = tool_cfg->enable_joint_mvd;
 #endif  // CONFIG_JOINT_MVD
@@ -1607,6 +1611,172 @@ static void set_hole_fill_decision(AV1_COMP *cpi, int width, int height,
   }
 }
 #endif  // CONFIG_TIP
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+static void subtract_average_c(uint16_t *src, int16_t *dst, int width,
+                               int height, int round_offset, int num_pel_log2) {
+  int sum = round_offset;
+  const uint16_t *recon = src;
+  for (int j = 0; j < height; ++j) {
+    for (int i = 0; i < width; ++i) {
+      sum += recon[i];
+    }
+    recon += CFL_BUF_LINE;
+  }
+  const int avg = sum / num_pel_log2;
+  for (int j = 0; j < height; ++j) {
+    for (int i = 0; i < width; ++i) {
+      dst[i] = src[i] - avg;
+      src[i] = avg;
+    }
+    src += CFL_BUF_LINE;
+    dst += CFL_BUF_LINE;
+  }
+}
+
+static int compute_sad(const uint16_t *src, uint16_t *src2, int width,
+                       int height, int round_offset, int src2_stride) {
+  int sad = round_offset;
+  for (int j = 0; j < height; ++j) {
+    for (int i = 0; i < width; ++i) {
+      sad += abs(src[i] - src2[i]);
+    }
+    src += CFL_BUF_LINE;
+    src2 += src2_stride;
+  }
+  return (sad / (height * width));
+}
+
+static void cfl_predict_hbd_pre_analysis(const int16_t *ac_buf_q3,
+                                         uint16_t *dst, int dst_stride,
+                                         int alpha_q3, int bit_depth, int width,
+                                         int height) {
+  for (int j = 0; j < height; ++j) {
+    for (int i = 0; i < width; ++i) {
+      dst[i] = clip_pixel_highbd(
+          get_scaled_luma_q0(alpha_q3, ac_buf_q3[i]) + dst[i], bit_depth);
+    }
+    dst += dst_stride;
+    ac_buf_q3 += CFL_BUF_LINE;
+  }
+}
+
+static void cfl_predict_hbd_dc(const uint16_t *src, uint16_t *dst,
+                               int src_stride, int width, int height) {
+  int dc_val = 0;
+  const uint16_t *chroma = src;
+  for (int i = 0; i < width; ++i) {
+    dc_val += src[i];
+  }
+
+  chroma += src_stride;
+  for (int j = 0; j < height; ++j) {
+    dc_val += chroma[-1];
+    chroma += src_stride;
+  }
+
+  dc_val = dc_val / (width + height);
+  for (int j = 0; j < height; ++j) {
+    for (int i = 0; i < width; ++i) {
+      dst[i] = dc_val;
+    }
+    dst += CFL_BUF_LINE;
+  }
+}
+
+static void cfl_luma_subsampling_420_hbd_c(const uint16_t *input,
+                                           int input_stride,
+                                           uint16_t *output_q3, int width,
+                                           int height) {
+  for (int j = 0; j < height; j += 2) {
+    for (int i = 0; i < width; i += 2) {
+      const int bot = i + input_stride;
+      output_q3[i >> 1] =
+          (input[i] + input[i + 1] + input[bot] + input[bot + 1]) << 1;
+    }
+    input += input_stride << 1;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
+void av1_set_downsample_filter_options(AV1_COMP *cpi) {
+  AV1_COMMON *cm = &cpi->common;
+  const uint8_t *src = cpi->unfiltered_source->y_buffer;
+  uint8_t *src_chroma_u = cpi->unfiltered_source->u_buffer;
+  uint8_t *src_chroma_v = cpi->unfiltered_source->v_buffer;
+  assert(src != NULL);
+  const int stride = cpi->unfiltered_source->y_stride;
+  const int width = cpi->unfiltered_source->y_width;
+  const int height = cpi->unfiltered_source->y_height;
+  const int bd = cm->seq_params.bit_depth;
+
+  const int chroma_stride = cpi->unfiltered_source->uv_stride;
+  const int subsampling_x = cpi->unfiltered_source->subsampling_x;
+  const int subsampling_y = cpi->unfiltered_source->subsampling_y;
+
+  const int blk_w = 32;
+  const int blk_h = 32;
+
+  uint16_t recon_buf_q3[CFL_BUF_SQUARE];
+  uint16_t dc_buf_q3[CFL_BUF_SQUARE];
+  // Q3 AC contributions (reconstructed luma pixels - tx block avg)
+  int16_t ac_buf_q3[CFL_BUF_SQUARE];
+  int cost[3] = { 0, 0, 0 };
+  for (int filter_type = 0; filter_type < 3; ++filter_type) {
+    for (int comp = 0; comp < 2; comp++) {
+      for (int r = 2; r + blk_h <= height - 2; r += blk_h) {
+        for (int c = 2; c + blk_w <= width - 2; c += blk_w) {
+          const uint8_t *const this_src = src + r * stride + c;
+          uint8_t *this_src_chroma = src_chroma_u +
+                                     (r >> subsampling_y) * chroma_stride +
+                                     (c >> subsampling_x);
+          if (comp) {
+            this_src_chroma = src_chroma_v +
+                              (r >> subsampling_y) * chroma_stride +
+                              (c >> subsampling_x);
+          }
+
+          int alpha = 0;
+          if (filter_type == 1) {
+            cfl_luma_subsampling_420_hbd_121_c(CONVERT_TO_SHORTPTR(this_src),
+                                               stride, recon_buf_q3, blk_w,
+                                               blk_h);
+          } else if (filter_type == 2) {
+            cfl_luma_subsampling_420_hbd_colocated(
+                CONVERT_TO_SHORTPTR(this_src), stride, recon_buf_q3, blk_w,
+                blk_h);
+          } else {
+            cfl_luma_subsampling_420_hbd_c(CONVERT_TO_SHORTPTR(this_src),
+                                           stride, recon_buf_q3, blk_w, blk_h);
+          }
+          cfl_derive_block_implicit_scaling_factor(
+              recon_buf_q3, CONVERT_TO_SHORTPTR(this_src_chroma), blk_w >> 1,
+              blk_h >> 1, CFL_BUF_LINE, chroma_stride, &alpha);
+          subtract_average_c(recon_buf_q3, ac_buf_q3, blk_w >> 1, blk_h >> 1, 4,
+                             (blk_w >> 1) * (blk_h >> 1));
+          cfl_predict_hbd_dc(
+              CONVERT_TO_SHORTPTR(this_src_chroma - chroma_stride), dc_buf_q3,
+              chroma_stride, blk_w >> 1, blk_h >> 1);
+          cfl_predict_hbd_pre_analysis(ac_buf_q3, dc_buf_q3, CFL_BUF_LINE,
+                                       alpha, bd, blk_w >> 1, blk_h >> 1);
+          int filter_cost =
+              compute_sad(dc_buf_q3, CONVERT_TO_SHORTPTR(this_src_chroma),
+                          blk_w >> 1, blk_h >> 1, 2, chroma_stride);
+          cost[filter_type] = cost[filter_type] + filter_cost;
+        }
+      }
+    }
+  }
+
+  int min_cost = INT_MAX;
+  for (int i = 0; i < 3; ++i) {
+    if (cost[i] < min_cost) {
+      min_cost = cost[i];
+      cm->seq_params.enable_cfl_ds_filter = i;
+    }
+  }
+}
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 
 #if CONFIG_TIP
 void av1_set_screen_content_options(AV1_COMP *cpi, FeatureFlags *features) {
@@ -3045,7 +3215,11 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     cpi->is_screen_content_type = features->allow_screen_content_tools;
   }
 #endif  // CONFIG_IBC_SR_EXT
-
+#if CONFIG_ADAPTIVE_DS_FILTER
+  if (cpi->common.current_frame.absolute_poc == 0) {
+    av1_set_downsample_filter_options(cpi);
+  }
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
   // frame type has been decided outside of this function call
   cm->cur_frame->frame_type = current_frame->frame_type;
 

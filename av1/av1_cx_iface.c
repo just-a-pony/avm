@@ -137,6 +137,11 @@ struct av1_extracfg {
 #if CONFIG_FLEX_MVRES
   int enable_flex_mvres;  // enable flexible MV resolution
 #endif                    // CONFIG_FLEX_MVRES
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+  int enable_cfl_ds_filter;  // enable adaptive downsample filter
+#endif                       // CONFIG_ADAPTIVE_DS_FILTER
+
 #if CONFIG_JOINT_MVD
   int enable_joint_mvd;          // enable joint MVD coding
 #endif                           // CONFIG_ADAPTIVE_MVD
@@ -434,6 +439,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_FLEX_MVRES
   1,    // enable flexible MV precision
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+  1,    // enable adaptive downsample filter
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
   1,    // enable joint mvd coding
 #endif  // CONFIG_JOINT_MVD
@@ -902,6 +910,11 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_FLEX_MVRES
   cfg->enable_flex_mvres = extra_cfg->enable_flex_mvres;
 #endif  // CONFIG_FLEX_MVRES
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+  cfg->enable_cfl_ds_filter = extra_cfg->enable_cfl_ds_filter;
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+
 #if CONFIG_JOINT_MVD
   cfg->enable_joint_mvd = extra_cfg->enable_joint_mvd;
 #endif  // CONFIG_JOINT_MVD
@@ -989,6 +1002,11 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_FLEX_MVRES
   extra_cfg->enable_flex_mvres = cfg->enable_flex_mvres;
 #endif  // CONFIG_FLEX_MVRES
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+  extra_cfg->enable_cfl_ds_filter = cfg->enable_cfl_ds_filter;
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+
 #if CONFIG_JOINT_MVD
   extra_cfg->enable_joint_mvd = cfg->enable_joint_mvd;
 #endif  // CONFIG_JOINT_MVD
@@ -1217,6 +1235,11 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_FLEX_MVRES
   tool_cfg->enable_flex_mvres = extra_cfg->enable_flex_mvres;
 #endif  // CONFIG_FLEX_MVRES
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+  tool_cfg->enable_cfl_ds_filter = extra_cfg->enable_cfl_ds_filter;
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
+
 #if CONFIG_JOINT_MVD
   tool_cfg->enable_joint_mvd = extra_cfg->enable_joint_mvd;
 #endif  // CONFIG_JOINT_MVD
@@ -3614,6 +3637,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               argv, err_string)) {
     extra_cfg.enable_flex_mvres = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_cfl_ds_filter,
+                              argv, err_string)) {
+    extra_cfg.enable_cfl_ds_filter = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_joint_mvd,
                               argv, err_string)) {
@@ -4051,6 +4079,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_FLEX_MVRES
         1,
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+        1,
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
         1,
 #endif  // CONFIG_JOINT_MVD

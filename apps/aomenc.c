@@ -461,6 +461,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_FLEX_MVRES
   &g_av1_codec_arg_defs.enable_flex_mvres,
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+  &g_av1_codec_arg_defs.enable_cfl_ds_filter,
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
   &g_av1_codec_arg_defs.enable_joint_mvd,
 #endif  // CONFIG_JOINT_MVD
@@ -617,6 +620,9 @@ static void init_config(cfg_options_t *config) {
 #if CONFIG_FLEX_MVRES
   config->enable_flex_mvres = 1;
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+  config->enable_cfl_ds_filter = 1;
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
   config->enable_joint_mvd = 1;
 #endif
@@ -1496,6 +1502,12 @@ static void show_stream_config(struct stream_state *stream,
           "                               : Flexible MV precisions: (%d)\n",
           encoder_cfg->enable_flex_mvres);
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_ADAPTIVE_DS_FILTER
+  fprintf(
+      stdout,
+      "                               : Adaptive Down sample filter: (%d)\n",
+      encoder_cfg->enable_cfl_ds_filter);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
 #if CONFIG_JOINT_MVD
   fprintf(stdout, "                               : Joint MVD coding: (%d)\n",
           encoder_cfg->enable_joint_mvd);

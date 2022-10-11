@@ -1085,6 +1085,11 @@ void av1_first_pass(AV1_COMP *cpi, const int64_t ts_duration) {
     av1_set_screen_content_options(cpi, features);
     cpi->is_screen_content_type = features->allow_screen_content_tools;
   }
+#if CONFIG_ADAPTIVE_DS_FILTER
+  if (cpi->common.current_frame.absolute_poc == 0) {
+    av1_set_downsample_filter_options(cpi);
+  }
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
   // First pass coding proceeds in raster scan order with unit size of 16x16.
   const BLOCK_SIZE fp_block_size = BLOCK_16X16;
 

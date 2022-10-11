@@ -478,6 +478,11 @@ typedef struct SequenceHeader {
 #if CONFIG_FLEX_MVRES
   uint8_t enable_flex_mvres;  // enables/disables flexible MV resolution
 #endif                        // CONFIG_FLEX_MVRES
+
+#if CONFIG_ADAPTIVE_DS_FILTER
+  uint8_t enable_cfl_ds_filter;  // enable/disables adaptive downsampling filter
+#endif                           // CONFIG_ADAPTIVE_DS_FILTER
+
 #if CONFIG_JOINT_MVD
   uint8_t enable_joint_mvd;            // enables/disables joint MVD coding
 #endif                                 // CONFIG_JOINT_MVD

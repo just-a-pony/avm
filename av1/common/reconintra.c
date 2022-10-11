@@ -1845,8 +1845,14 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
     if (xd->tree_type == CHROMA_PART) {
       const int luma_tx_size =
           av1_get_max_uv_txsize(mbmi->sb_type[PLANE_TYPE_UV], 0, 0);
+#if CONFIG_ADAPTIVE_DS_FILTER
+      cfl_store_tx(xd, blk_row, blk_col, luma_tx_size,
+                   mbmi->sb_type[PLANE_TYPE_UV],
+                   cm->seq_params.enable_cfl_ds_filter);
+#else
       cfl_store_tx(xd, blk_row, blk_col, luma_tx_size,
                    mbmi->sb_type[PLANE_TYPE_UV]);
+#endif  // CONFIG_ADAPTIVE_DS_FILTER
     }
 #if CONFIG_IMPROVED_CFL
     CFL_CTX *const cfl = &xd->cfl;
@@ -1878,6 +1884,7 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
     }
 #endif
     cfl_predict_block(xd, dst, dst_stride, tx_size, plane);
+
     return;
   }
 
