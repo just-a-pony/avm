@@ -5077,7 +5077,8 @@ const uint8_t *get_class_converter(const RestSearchCtxt *rsc,
   if (rsc->plane != AOM_PLANE_Y)
     qindex_offset =
         (rsc->plane == AOM_PLANE_U ? rsc->cm->quant_params.u_ac_delta_q
-                                   : rsc->cm->quant_params.v_ac_delta_q);
+                                   : rsc->cm->quant_params.v_ac_delta_q) +
+        rsc->cm->seq_params.base_uv_ac_delta_q;
   else
     qindex_offset = 0;
   const int set_index =

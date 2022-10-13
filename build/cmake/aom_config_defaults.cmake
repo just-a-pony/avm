@@ -155,6 +155,7 @@ set_aom_config_var(
   "AV2 non-separable 16-tap Wiener filter with enlarged 9x9 diamond shape")
 set_aom_config_var(CONFIG_IMPROVEIDTX 1
                    "AV2 enable improved identity transform coding.")
+set_aom_config_var(CONFIG_EXT_QUANT_UPD 1 "AV2 updated ext-quant.")
 set_aom_config_var(CONFIG_COEFF_HR_LR1 1
                    "AV2 enable coding 1 LR in coefficient coding.")
 set_aom_config_var(CONFIG_CHROMA_CODING 1

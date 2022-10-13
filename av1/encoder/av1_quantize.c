@@ -444,7 +444,13 @@ void av1_init_quantizer(SequenceHeader *seq_params,
                       quant_params->u_dc_delta_q, quant_params->u_ac_delta_q,
                       quant_params->v_dc_delta_q, quant_params->v_ac_delta_q,
                       seq_params->base_y_dc_delta_q,
-                      seq_params->base_uv_dc_delta_q, 0, quants, dequants
+                      seq_params->base_uv_dc_delta_q,
+#if CONFIG_EXT_QUANT_UPD
+                      seq_params->base_uv_ac_delta_q,
+#else
+                      0,
+#endif  // CONFIG_EXT_QUANT_UPD
+                      quants, dequants
 #if CONFIG_TCQ
                       ,
                       quant_params->tcq_mode
@@ -577,8 +583,10 @@ void set_frame_dc_delta_q(const AV1_COMMON *const cm, int *y_dc_delta_q,
   *v_ac_delta_q = 0;
 
   if (frame_is_intra_only(cm)) {
-    *y_dc_delta_q = 0;
-    *u_dc_delta_q = *v_dc_delta_q = -4;
+#if CONFIG_EXT_QUANT_UPD
+    if (cm->seq_params.uv_dc_delta_q_enabled)
+#endif  // CONFIG_EXT_QUANT_UPD
+      *u_dc_delta_q = *v_dc_delta_q = -4;
   }
 }
 
