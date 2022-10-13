@@ -115,9 +115,8 @@ static int get_minq_index(double maxq, double x3, double x2, double x1,
                           aom_bit_depth_t bit_depth) {
   const double minqtarget = AOMMIN(((x3 * maxq + x2) * maxq + x1) * maxq, maxq);
 
-  // Special case handling to deal with the step from q2.0
-  // down to lossless mode represented by q 1.0.
-  if (minqtarget <= 2.0) return 0;
+  // Special case handling to deal with lossless mode
+  if (minqtarget <= 1.0) return 0;
 
   return av1_find_qindex(minqtarget, bit_depth, 0,
                          bit_depth == AOM_BITS_8    ? QINDEX_RANGE_8_BITS - 1
@@ -136,15 +135,22 @@ static void init_minq_luts(int *kf_low_m, int *kf_high_m, int *arfgf_low,
                                               : QINDEX_RANGE);
        i++) {
     const double maxq = av1_convert_qindex_to_q(i, bit_depth);
-    kf_low_m[i] = get_minq_index(maxq, 0.000001, -0.0004, 0.150, bit_depth);
-    kf_high_m[i] = get_minq_index(maxq, 0.0000021, -0.00125, 0.45, bit_depth);
-    arfgf_low[i] = get_minq_index(maxq, 0.0000015, -0.0009, 0.30, bit_depth);
-    arfgf_high[i] = get_minq_index(maxq, 0.0000021, -0.00125, 0.55, bit_depth);
-    arfgf_ld_low[i] = get_minq_index(maxq, 0.0000015, -0.0009, 0.35, bit_depth);
+    kf_low_m[i] =
+        get_minq_index(maxq, 0.000001 * 4, -0.0004 * 2, 0.15, bit_depth);
+    kf_high_m[i] =
+        get_minq_index(maxq, 0.0000021 * 4, -0.00125 * 2, 0.45, bit_depth);
+    arfgf_low[i] =
+        get_minq_index(maxq, 0.0000015 * 4, -0.0009 * 2, 0.30, bit_depth);
+    arfgf_high[i] =
+        get_minq_index(maxq, 0.0000021 * 4, -0.00125 * 2, 0.55, bit_depth);
+    arfgf_ld_low[i] =
+        get_minq_index(maxq, 0.0000015 * 4, -0.0009 * 2, 0.35, bit_depth);
     arfgf_ld_high[i] =
-        get_minq_index(maxq, 0.0000021, -0.00125, 0.65, bit_depth);
-    inter[i] = get_minq_index(maxq, 0.00000271, -0.00113, 0.90, bit_depth);
-    rtc[i] = get_minq_index(maxq, 0.00000271, -0.00113, 0.70, bit_depth);
+        get_minq_index(maxq, 0.0000021 * 4, -0.00125 * 2, 0.65, bit_depth);
+    inter[i] =
+        get_minq_index(maxq, 0.00000271 * 4, -0.00113 * 2, 0.90, bit_depth);
+    rtc[i] =
+        get_minq_index(maxq, 0.00000271 * 4, -0.00113 * 2, 0.70, bit_depth);
   }
 }
 
@@ -166,18 +172,19 @@ void av1_rc_init_minq_luts(void) {
 // These functions use formulaic calculations to make playing with the
 // quantizer tables easier. If necessary they can be replaced by lookup
 // tables if and when things settle down in the experimental bitstream
+
 double av1_convert_qindex_to_q(int qindex, aom_bit_depth_t bit_depth) {
-  // Convert the index to a real Q value (scaled down to match old Q values)
+  // Convert the index to a real Q value normalized for unitary transforms.
   switch (bit_depth) {
     case AOM_BITS_8:
       return av1_ac_quant_QTX(qindex, 0, bit_depth) /
-             (4.0 * (1 << QUANT_TABLE_BITS));
+             (8.0 * (1 << QUANT_TABLE_BITS));
     case AOM_BITS_10:
       return av1_ac_quant_QTX(qindex, 0, bit_depth) /
-             (16.0 * (1 << QUANT_TABLE_BITS));
+             (32.0 * (1 << QUANT_TABLE_BITS));
     case AOM_BITS_12:
       return av1_ac_quant_QTX(qindex, 0, bit_depth) /
-             (64.0 * (1 << QUANT_TABLE_BITS));
+             (128.0 * (1 << QUANT_TABLE_BITS));
 
     default:
       assert(0 && "bit_depth should be AOM_BITS_8, AOM_BITS_10 or AOM_BITS_12");
@@ -189,9 +196,9 @@ int av1_rc_bits_per_mb(FRAME_TYPE frame_type, int qindex,
                        double correction_factor, aom_bit_depth_t bit_depth,
                        const int is_screen_content_type) {
   const double q = av1_convert_qindex_to_q(qindex, bit_depth);
-  int enumerator = frame_type == KEY_FRAME ? 2000000 : 1500000;
+  int enumerator = frame_type == KEY_FRAME ? 1000000 : 750000;
   if (is_screen_content_type) {
-    enumerator = frame_type == KEY_FRAME ? 1000000 : 750000;
+    enumerator = frame_type == KEY_FRAME ? 500000 : 375000;
   }
 
   assert(correction_factor <= MAX_BPB_FACTOR &&

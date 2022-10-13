@@ -80,9 +80,9 @@ int av1_superres_in_recode_allowed(const AV1_COMP *const cpi) {
          cpi->rc.frames_to_key > 1;
 }
 
-#define SUPERRES_ENERGY_BY_Q2_THRESH_KEYFRAME_SOLO 0.012
-#define SUPERRES_ENERGY_BY_Q2_THRESH_KEYFRAME 0.008
-#define SUPERRES_ENERGY_BY_Q2_THRESH_ARFFRAME 0.008
+#define SUPERRES_ENERGY_BY_Q2_THRESH_KEYFRAME_SOLO 0.048
+#define SUPERRES_ENERGY_BY_Q2_THRESH_KEYFRAME 0.032
+#define SUPERRES_ENERGY_BY_Q2_THRESH_ARFFRAME 0.032
 #define SUPERRES_ENERGY_BY_AC_THRESH 0.2
 
 static double get_energy_by_q2_thresh(const GF_GROUP *gf_group,

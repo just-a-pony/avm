@@ -169,7 +169,7 @@ static void twopass_update_bpm_factor(TWO_PASS *twopass) {
 }
 
 static int qbpm_enumerator(int rate_err_tol) {
-  return 1250000 + ((300000 * AOMMIN(75, AOMMAX(rate_err_tol - 25, 0))) / 75);
+  return 625000 + 150000 * AOMMIN(75, AOMMAX(rate_err_tol - 25, 0)) / 75;
 }
 
 // Similar to find_qindex_by_rate() function in ratectrl.c, but includes
@@ -504,7 +504,7 @@ static double calc_frame_boost(const RATE_CONTROL *rc,
   double frame_boost;
   const double lq = av1_convert_qindex_to_q(rc->avg_frame_qindex[INTER_FRAME],
                                             frame_info->bit_depth);
-  const double boost_q_correction = AOMMIN((0.5 + (lq * 0.015)), 1.5);
+  const double boost_q_correction = AOMMIN((0.5 + (lq * 0.030)), 1.5);
   const double active_area = calculate_active_area(frame_info, this_frame);
   int num_mbs = frame_info->num_mbs;
 
@@ -536,7 +536,7 @@ static double calc_kf_frame_boost(const RATE_CONTROL *rc,
   double frame_boost;
   const double lq = av1_convert_qindex_to_q(rc->avg_frame_qindex[INTER_FRAME],
                                             frame_info->bit_depth);
-  const double boost_q_correction = AOMMIN((0.50 + (lq * 0.015)), 2.00);
+  const double boost_q_correction = AOMMIN((0.50 + (lq * 0.030)), 2.00);
   const double active_area = calculate_active_area(frame_info, this_frame);
   int num_mbs = frame_info->num_mbs;
 

@@ -448,7 +448,7 @@ void av1_cyclic_refresh_setup(AV1_COMP *const cpi) {
     // Distortion threshold, quadratic in Q, scale factor to be adjusted.
     // q will not exceed 457, so (q * q) is within 32bit; see:
     // av1_convert_qindex_to_q(), av1_ac_quant(), ac_qlookup*[].
-    cr->thresh_dist_sb = ((int64_t)(q * q)) << 2;
+    cr->thresh_dist_sb = ((int64_t)(q * q)) << 4;
 
     // Set up segmentation.
     // Clear down the segment map.

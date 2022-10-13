@@ -1071,7 +1071,7 @@ static double get_modeled_qp_offset(int qp, int level, int bit_depth,
 
     const int qp_threshold = (max_q * 7) / 10;
     if (qp < qp_threshold) {
-      factor = AOMMIN((cbrt(q_val * 4) / 8) * 100, 76);
+      factor = AOMMIN((cbrt(q_val * 8) / 8) * 100, 76);
       if (level == 1) {
         factor = (factor * 7) / 8;
       } else if (level == 2) {
@@ -1297,7 +1297,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   q_cfg->deltaq_mode = extra_cfg->deltaq_mode;
   q_cfg->use_fixed_qp_offsets =
       cfg->use_fixed_qp_offsets && (rc_cfg->mode == AOM_Q);
-  q_cfg->q_based_qp_offsets = (q_cfg->use_fixed_qp_offsets == 2) ? 1 : 0;
+  q_cfg->q_based_qp_offsets = (cfg->use_fixed_qp_offsets == 2) ? 1 : 0;
 
   for (int i = 0; i < FIXED_QP_OFFSET_COUNT; ++i) {
     if (q_cfg->use_fixed_qp_offsets) {

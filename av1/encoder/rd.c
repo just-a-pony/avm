@@ -555,7 +555,7 @@ static void init_me_luts_bd(int *bit16lut, int range,
   // to the quantizer tables.
   for (i = 0; i < range; i++) {
     const double q = av1_convert_qindex_to_q(i, bit_depth);
-    bit16lut[i] = (int)(0.0418 * q + 2.4107);
+    bit16lut[i] = (int)(0.0836 * q + 2.4107);
   }
 }
 
