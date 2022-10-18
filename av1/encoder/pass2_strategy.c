@@ -1281,7 +1281,7 @@ static void calculate_gf_length(AV1_COMP *cpi, int max_gop_length,
       // curr_frame_type == KEY_FRAME, which is the only frame in subgop,
       // then gf-interval will account for KEY_FRAME.
       if (is_keyframe_subgop) cut_pos[count_cuts] = cut_pos[count_cuts] - 1;
-      cut_pos[count_cuts] = AOMMIN(i, active_max_gf_interval);
+      cut_pos[count_cuts] = AOMMIN(cut_pos[count_cuts], active_max_gf_interval);
       count_cuts++;
       break;
     }
