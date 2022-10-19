@@ -121,10 +121,9 @@ static AOM_INLINE int get_hist_bin_idx(int dx, int dy) {
 }
 #undef FIX_PREC_BITS
 
-static AOM_INLINE void generate_hog_hbd(const uint8_t *src8, int stride,
+static AOM_INLINE void generate_hog_hbd(const uint16_t *src, int stride,
                                         int rows, int cols, float *hist) {
   float total = 0.1f;
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
   src += stride;
   for (int r = 1; r < rows - 1; ++r) {
     for (int c = 1; c < cols - 1; ++c) {
@@ -169,7 +168,7 @@ static AOM_INLINE void prune_intra_mode_with_hog(
   const int cols =
       (xd->mb_to_right_edge >= 0) ? bw : (xd->mb_to_right_edge >> 3) + bw;
   const int src_stride = x->plane[0].src.stride;
-  const uint8_t *src = x->plane[0].src.buf;
+  const uint16_t *src = x->plane[0].src.buf;
   float hist[BINS] = { 0.0f };
   generate_hog_hbd(src, src_stride, rows, cols, hist);
 

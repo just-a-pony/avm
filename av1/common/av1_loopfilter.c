@@ -918,12 +918,12 @@ void av1_filter_block_plane_vert(const AV1_COMMON *const cm,
 #endif
   const uint32_t scale_horz = plane_ptr->subsampling_x;
   const uint32_t scale_vert = plane_ptr->subsampling_y;
-  uint8_t *const dst_ptr = plane_ptr->dst.buf;
+  uint16_t *const dst_ptr = plane_ptr->dst.buf;
   const int dst_stride = plane_ptr->dst.stride;
   const int y_range = (MAX_MIB_SIZE >> scale_vert);
   const int x_range = (MAX_MIB_SIZE >> scale_horz);
   for (int y = 0; y < y_range; y++) {
-    uint8_t *p = dst_ptr + y * MI_SIZE * dst_stride;
+    uint16_t *p = dst_ptr + y * MI_SIZE * dst_stride;
     for (int x = 0; x < x_range;) {
       // inner loop always filter vertical edges in a MI block. If MI size
       // is 8x8, it will filter the vertical edge aligned with a 8x8 block.
@@ -948,35 +948,31 @@ void av1_filter_block_plane_vert(const AV1_COMMON *const cm,
 #if CONFIG_NEW_DF
 
       if (params.filter_length) {
-        aom_highbd_lpf_vertical_generic_c(
-            CONVERT_TO_SHORTPTR(p), dst_stride, params.filter_length,
-            &params.q_threshold, &params.side_threshold, bit_depth);
+        aom_highbd_lpf_vertical_generic_c(p, dst_stride, params.filter_length,
+                                          &params.q_threshold,
+                                          &params.side_threshold, bit_depth);
       }
 #else
       switch (params.filter_length) {
         // apply 4-tap filtering
         case 4:
-          aom_highbd_lpf_vertical_4(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                    params.mblim, params.lim, params.hev_thr,
-                                    bit_depth);
+          aom_highbd_lpf_vertical_4(p, dst_stride, params.mblim, params.lim,
+                                    params.hev_thr, bit_depth);
           break;
         case 6:  // apply 6-tap filter for chroma plane only
           assert(plane != 0);
-          aom_highbd_lpf_vertical_6(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                    params.mblim, params.lim, params.hev_thr,
-                                    bit_depth);
+          aom_highbd_lpf_vertical_6(p, dst_stride, params.mblim, params.lim,
+                                    params.hev_thr, bit_depth);
           break;
         // apply 8-tap filtering
         case 8:
-          aom_highbd_lpf_vertical_8(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                    params.mblim, params.lim, params.hev_thr,
-                                    bit_depth);
+          aom_highbd_lpf_vertical_8(p, dst_stride, params.mblim, params.lim,
+                                    params.hev_thr, bit_depth);
           break;
         // apply 14-tap filtering
         case 14:
-          aom_highbd_lpf_vertical_14(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                     params.mblim, params.lim, params.hev_thr,
-                                     bit_depth);
+          aom_highbd_lpf_vertical_14(p, dst_stride, params.mblim, params.lim,
+                                     params.hev_thr, bit_depth);
           break;
         // no filtering
         default: break;
@@ -999,12 +995,12 @@ void av1_filter_block_plane_horz(const AV1_COMMON *const cm,
 #endif
   const uint32_t scale_horz = plane_ptr->subsampling_x;
   const uint32_t scale_vert = plane_ptr->subsampling_y;
-  uint8_t *const dst_ptr = plane_ptr->dst.buf;
+  uint16_t *const dst_ptr = plane_ptr->dst.buf;
   const int dst_stride = plane_ptr->dst.stride;
   const int y_range = (MAX_MIB_SIZE >> scale_vert);
   const int x_range = (MAX_MIB_SIZE >> scale_horz);
   for (int x = 0; x < x_range; x++) {
-    uint8_t *p = dst_ptr + x * MI_SIZE;
+    uint16_t *p = dst_ptr + x * MI_SIZE;
     for (int y = 0; y < y_range;) {
       // inner loop always filter vertical edges in a MI block. If MI size
       // is 8x8, it will first filter the vertical edge aligned with a 8x8
@@ -1028,37 +1024,33 @@ void av1_filter_block_plane_horz(const AV1_COMMON *const cm,
 
 #if CONFIG_NEW_DF
       if (params.filter_length) {
-        aom_highbd_lpf_horizontal_generic_c(
-            CONVERT_TO_SHORTPTR(p), dst_stride, params.filter_length,
-            &params.q_threshold, &params.side_threshold, bit_depth);
+        aom_highbd_lpf_horizontal_generic_c(p, dst_stride, params.filter_length,
+                                            &params.q_threshold,
+                                            &params.side_threshold, bit_depth);
       }
 
 #else
       switch (params.filter_length) {
         // apply 4-tap filtering
         case 4:
-          aom_highbd_lpf_horizontal_4(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                      params.mblim, params.lim, params.hev_thr,
-                                      bit_depth);
+          aom_highbd_lpf_horizontal_4(p, dst_stride, params.mblim, params.lim,
+                                      params.hev_thr, bit_depth);
           break;
         // apply 6-tap filtering
         case 6:
           assert(plane != 0);
-          aom_highbd_lpf_horizontal_6(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                      params.mblim, params.lim, params.hev_thr,
-                                      bit_depth);
+          aom_highbd_lpf_horizontal_6(p, dst_stride, params.mblim, params.lim,
+                                      params.hev_thr, bit_depth);
           break;
         // apply 8-tap filtering
         case 8:
-          aom_highbd_lpf_horizontal_8(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                      params.mblim, params.lim, params.hev_thr,
-                                      bit_depth);
+          aom_highbd_lpf_horizontal_8(p, dst_stride, params.mblim, params.lim,
+                                      params.hev_thr, bit_depth);
           break;
         // apply 14-tap filtering
         case 14:
-          aom_highbd_lpf_horizontal_14(CONVERT_TO_SHORTPTR(p), dst_stride,
-                                       params.mblim, params.lim, params.hev_thr,
-                                       bit_depth);
+          aom_highbd_lpf_horizontal_14(p, dst_stride, params.mblim, params.lim,
+                                       params.hev_thr, bit_depth);
           break;
         // no filtering
         default: break;

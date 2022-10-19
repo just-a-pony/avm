@@ -968,18 +968,16 @@ static INLINE void free_tip_ref_frame(AV1_COMMON *const cm) {
 
 #if CONFIG_OPTFLOW_ON_TIP
 static INLINE void init_optflow_bufs(AV1_COMMON *const cm) {
-  cm->dst0_16_tip =
-      CONVERT_TO_BYTEPTR(aom_memalign(32, 8 * 8 * sizeof(uint16_t)));
-  cm->dst1_16_tip =
-      CONVERT_TO_BYTEPTR(aom_memalign(32, 8 * 8 * sizeof(uint16_t)));
+  cm->dst0_16_tip = aom_memalign(32, 8 * 8 * sizeof(uint16_t));
+  cm->dst1_16_tip = aom_memalign(32, 8 * 8 * sizeof(uint16_t));
   cm->gx0 = aom_memalign(32, 2 * 8 * 8 * sizeof(*cm->gx0));
   cm->gx1 = aom_memalign(32, 2 * 8 * 8 * sizeof(*cm->gx1));
   cm->gy0 = cm->gx0 + (8 * 8);
   cm->gy1 = cm->gx1 + (8 * 8);
 }
 static INLINE void free_optflow_bufs(AV1_COMMON *const cm) {
-  aom_free(CONVERT_TO_SHORTPTR(cm->dst0_16_tip));
-  aom_free(CONVERT_TO_SHORTPTR(cm->dst1_16_tip));
+  aom_free(cm->dst0_16_tip);
+  aom_free(cm->dst1_16_tip);
   aom_free(cm->gx0);
   aom_free(cm->gx1);
 }
@@ -1524,30 +1522,29 @@ int av1_set_reference_enc(AV1_COMP *cpi, int idx, YV12_BUFFER_CONFIG *sd) {
 
 #ifdef OUTPUT_YUV_REC
 void aom_write_one_yuv_frame(AV1_COMMON *cm, YV12_BUFFER_CONFIG *s) {
-  uint8_t *src = s->y_buffer;
+  uint16_t *src = s->y_buffer;
   int h = cm->height;
   if (yuv_rec_file == NULL) return;
-  uint16_t *src16 = CONVERT_TO_SHORTPTR(s->y_buffer);
 
   do {
-    fwrite(src16, s->y_width, 2, yuv_rec_file);
-    src16 += s->y_stride;
+    fwrite(src, s->y_width, 2, yuv_rec_file);
+    src += s->y_stride;
   } while (--h);
 
-  src16 = CONVERT_TO_SHORTPTR(s->u_buffer);
+  src = s->u_buffer;
   h = s->uv_height;
 
   do {
-    fwrite(src16, s->uv_width, 2, yuv_rec_file);
-    src16 += s->uv_stride;
+    fwrite(src, s->uv_width, 2, yuv_rec_file);
+    src += s->uv_stride;
   } while (--h);
 
-  src16 = CONVERT_TO_SHORTPTR(s->v_buffer);
+  src = s->v_buffer;
   h = s->uv_height;
 
   do {
-    fwrite(src16, s->uv_width, 2, yuv_rec_file);
-    src16 += s->uv_stride;
+    fwrite(src, s->uv_width, 2, yuv_rec_file);
+    src += s->uv_stride;
   } while (--h);
 
   fflush(yuv_rec_file);
@@ -1701,9 +1698,9 @@ static void cfl_luma_subsampling_420_hbd_c(const uint16_t *input,
 
 void av1_set_downsample_filter_options(AV1_COMP *cpi) {
   AV1_COMMON *cm = &cpi->common;
-  const uint8_t *src = cpi->unfiltered_source->y_buffer;
-  uint8_t *src_chroma_u = cpi->unfiltered_source->u_buffer;
-  uint8_t *src_chroma_v = cpi->unfiltered_source->v_buffer;
+  const uint16_t *src = cpi->unfiltered_source->y_buffer;
+  uint16_t *src_chroma_u = cpi->unfiltered_source->u_buffer;
+  uint16_t *src_chroma_v = cpi->unfiltered_source->v_buffer;
   assert(src != NULL);
   const int stride = cpi->unfiltered_source->y_stride;
   const int width = cpi->unfiltered_source->y_width;
@@ -1726,10 +1723,10 @@ void av1_set_downsample_filter_options(AV1_COMP *cpi) {
     for (int comp = 0; comp < 2; comp++) {
       for (int r = 2; r + blk_h <= height - 2; r += blk_h) {
         for (int c = 2; c + blk_w <= width - 2; c += blk_w) {
-          const uint8_t *const this_src = src + r * stride + c;
-          uint8_t *this_src_chroma = src_chroma_u +
-                                     (r >> subsampling_y) * chroma_stride +
-                                     (c >> subsampling_x);
+          const uint16_t *const this_src = src + r * stride + c;
+          uint16_t *this_src_chroma = src_chroma_u +
+                                      (r >> subsampling_y) * chroma_stride +
+                                      (c >> subsampling_x);
           if (comp) {
             this_src_chroma = src_chroma_v +
                               (r >> subsampling_y) * chroma_stride +
@@ -1738,30 +1735,26 @@ void av1_set_downsample_filter_options(AV1_COMP *cpi) {
 
           int alpha = 0;
           if (filter_type == 1) {
-            cfl_luma_subsampling_420_hbd_121_c(CONVERT_TO_SHORTPTR(this_src),
-                                               stride, recon_buf_q3, blk_w,
-                                               blk_h);
+            cfl_luma_subsampling_420_hbd_121_c(this_src, stride, recon_buf_q3,
+                                               blk_w, blk_h);
           } else if (filter_type == 2) {
-            cfl_luma_subsampling_420_hbd_colocated(
-                CONVERT_TO_SHORTPTR(this_src), stride, recon_buf_q3, blk_w,
-                blk_h);
+            cfl_luma_subsampling_420_hbd_colocated(this_src, stride,
+                                                   recon_buf_q3, blk_w, blk_h);
           } else {
-            cfl_luma_subsampling_420_hbd_c(CONVERT_TO_SHORTPTR(this_src),
-                                           stride, recon_buf_q3, blk_w, blk_h);
+            cfl_luma_subsampling_420_hbd_c(this_src, stride, recon_buf_q3,
+                                           blk_w, blk_h);
           }
           cfl_derive_block_implicit_scaling_factor(
-              recon_buf_q3, CONVERT_TO_SHORTPTR(this_src_chroma), blk_w >> 1,
-              blk_h >> 1, CFL_BUF_LINE, chroma_stride, &alpha);
+              recon_buf_q3, this_src_chroma, blk_w >> 1, blk_h >> 1,
+              CFL_BUF_LINE, chroma_stride, &alpha);
           subtract_average_c(recon_buf_q3, ac_buf_q3, blk_w >> 1, blk_h >> 1, 4,
                              (blk_w >> 1) * (blk_h >> 1));
-          cfl_predict_hbd_dc(
-              CONVERT_TO_SHORTPTR(this_src_chroma - chroma_stride), dc_buf_q3,
-              chroma_stride, blk_w >> 1, blk_h >> 1);
+          cfl_predict_hbd_dc(this_src_chroma - chroma_stride, dc_buf_q3,
+                             chroma_stride, blk_w >> 1, blk_h >> 1);
           cfl_predict_hbd_pre_analysis(ac_buf_q3, dc_buf_q3, CFL_BUF_LINE,
                                        alpha, bd, blk_w >> 1, blk_h >> 1);
-          int filter_cost =
-              compute_sad(dc_buf_q3, CONVERT_TO_SHORTPTR(this_src_chroma),
-                          blk_w >> 1, blk_h >> 1, 2, chroma_stride);
+          int filter_cost = compute_sad(dc_buf_q3, this_src_chroma, blk_w >> 1,
+                                        blk_h >> 1, 2, chroma_stride);
           cost[filter_type] = cost[filter_type] + filter_cost;
         }
       }
@@ -1800,7 +1793,7 @@ void av1_set_screen_content_options(const AV1_COMP *cpi,
 
   // Estimate if the source frame is screen content, based on the portion of
   // blocks that have few luma colors.
-  const uint8_t *src = cpi->unfiltered_source->y_buffer;
+  const uint16_t *src = cpi->unfiltered_source->y_buffer;
   assert(src != NULL);
   const int stride = cpi->unfiltered_source->y_stride;
   const int width = cpi->unfiltered_source->y_width;
@@ -1820,7 +1813,7 @@ void av1_set_screen_content_options(const AV1_COMP *cpi,
   for (int r = 0; r + blk_h <= height; r += blk_h) {
     for (int c = 0; c + blk_w <= width; c += blk_w) {
       int count_buf[1 << 8];  // Maximum (1 << 8) bins for hbd path.
-      const uint8_t *const this_src = src + r * stride + c;
+      const uint16_t *const this_src = src + r * stride + c;
       int n_colors;
       av1_count_colors_highbd(this_src, stride, blk_w, blk_h, bd, NULL,
                               count_buf, &n_colors, NULL);
@@ -1828,7 +1821,7 @@ void av1_set_screen_content_options(const AV1_COMP *cpi,
         ++counts_1;
         struct buf_2d buf;
         buf.stride = stride;
-        buf.buf = (uint8_t *)this_src;
+        buf.buf = (uint16_t *)this_src;
         const unsigned int var =
             av1_high_get_sby_perpixel_variance(cpi, &buf, BLOCK_16X16, bd);
         if (var > var_thresh) ++counts_2;
@@ -2114,7 +2107,7 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
   uint16_t *rec_uv[CCSO_NUM_COMPONENTS];
   uint16_t *org_uv[CCSO_NUM_COMPONENTS];
   uint16_t *ext_rec_y;
-  uint8_t *ref_buffer;
+  uint16_t *ref_buffer;
   const YV12_BUFFER_CONFIG *ref = cpi->source;
   int ref_stride;
   const int use_ccso = !cm->features.coded_lossless && !cm->tiles.large_scale &&
@@ -2144,7 +2137,7 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
           if (pli == 0)
             ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
                       CCSO_PADDING_SIZE] =
-                CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[r * dst_stride + c];
+                xd->plane[pli].dst.buf[r * dst_stride + c];
         }
       }
     }
@@ -2215,9 +2208,8 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
       for (int r = 0; r < pic_height; ++r) {
         for (int c = 0; c < pic_width; ++c) {
           rec_uv[pli][r * ccso_stride + c] =
-              CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[r * dst_stride + c];
-          org_uv[pli][r * ccso_stride + c] =
-              CONVERT_TO_SHORTPTR(ref_buffer)[r * ref_stride + c];
+              xd->plane[pli].dst.buf[r * dst_stride + c];
+          org_uv[pli][r * ccso_stride + c] = ref_buffer[r * ref_stride + c];
         }
       }
     }
@@ -3375,8 +3367,8 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     if (cm->current_frame_id == -1) {
       int lsb, msb;
       /* quasi-random initialization of current_frame_id for a key frame */
-      lsb = CONVERT_TO_SHORTPTR(cpi->source->y_buffer)[0] & 0xff;
-      msb = CONVERT_TO_SHORTPTR(cpi->source->y_buffer)[1] & 0xff;
+      lsb = cpi->source->y_buffer[0] & 0xff;
+      msb = cpi->source->y_buffer[1] & 0xff;
       cm->current_frame_id =
           ((msb << 8) + lsb) % (1 << seq_params->frame_id_length);
 

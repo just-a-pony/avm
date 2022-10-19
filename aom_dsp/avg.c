@@ -15,10 +15,9 @@
 #include "config/aom_dsp_rtcd.h"
 #include "aom_ports/mem.h"
 
-unsigned int aom_highbd_avg_8x8_c(const uint8_t *s8, int p) {
+unsigned int aom_highbd_avg_8x8_c(const uint16_t *s, int p) {
   int i, j;
   int sum = 0;
-  const uint16_t *s = CONVERT_TO_SHORTPTR(s8);
   for (i = 0; i < 8; ++i, s += p)
     for (j = 0; j < 8; sum += s[j], ++j) {
     }
@@ -26,10 +25,9 @@ unsigned int aom_highbd_avg_8x8_c(const uint8_t *s8, int p) {
   return (sum + 32) >> 6;
 }
 
-unsigned int aom_highbd_avg_4x4_c(const uint8_t *s8, int p) {
+unsigned int aom_highbd_avg_4x4_c(const uint16_t *s, int p) {
   int i, j;
   int sum = 0;
-  const uint16_t *s = CONVERT_TO_SHORTPTR(s8);
   for (i = 0; i < 4; ++i, s += p)
     for (j = 0; j < 4; sum += s[j], ++j) {
     }
@@ -37,11 +35,9 @@ unsigned int aom_highbd_avg_4x4_c(const uint8_t *s8, int p) {
   return (sum + 8) >> 4;
 }
 
-void aom_highbd_minmax_8x8_c(const uint8_t *s8, int p, const uint8_t *d8,
+void aom_highbd_minmax_8x8_c(const uint16_t *s, int p, const uint16_t *d,
                              int dp, int *min, int *max) {
   int i, j;
-  const uint16_t *s = CONVERT_TO_SHORTPTR(s8);
-  const uint16_t *d = CONVERT_TO_SHORTPTR(d8);
   *min = 255;
   *max = 0;
   for (i = 0; i < 8; ++i, s += p, d += dp) {
@@ -226,33 +222,6 @@ int aom_satd_lp_c(const int16_t *coeff, int length) {
 
   // satd: 26 bits, dynamic range [-32640 * 1024, 32640 * 1024]
   return satd;
-}
-
-// Integer projection onto row vectors.
-// height: value range {16, 32, 64, 128}.
-void aom_int_pro_row_c(int16_t hbuf[16], const uint8_t *ref,
-                       const int ref_stride, const int height) {
-  assert(height == 16 || height == 32 || height == 64 || height == 128);
-  int idx;
-  const int norm_factor = height >> 1;
-  for (idx = 0; idx < 16; ++idx) {
-    int i;
-    hbuf[idx] = 0;
-    // hbuf[idx]: 14 bit, dynamic range [0, 32640].
-    for (i = 0; i < height; ++i) hbuf[idx] += ref[i * ref_stride];
-    // hbuf[idx]: 9 bit, dynamic range [0, 1020].
-    hbuf[idx] /= norm_factor;
-    ++ref;
-  }
-}
-
-// width: value range {16, 32, 64, 128}.
-int16_t aom_int_pro_col_c(const uint8_t *ref, const int width) {
-  int idx;
-  int16_t sum = 0;
-  // sum: 14 bit, dynamic range [0, 32640]
-  for (idx = 0; idx < width; ++idx) sum += ref[idx];
-  return sum;
 }
 
 // bwl: {2, 3, 4, 5}

@@ -61,12 +61,6 @@ cglobal highbd_sad_skip_%1x%2, 4, %3, 7, src, src_stride, ref, ref_stride, \
   lea         src_stride3q, [src_strideq*3]
   lea         ref_stride3q, [ref_strideq*3]
 %endif ; %3 == 7
-; convert src, ref & second_pred to short ptrs (from byte ptrs)
-  shl                 srcq, 1
-  shl                 refq, 1
-%if %4 == 1
-  shl         second_predq, 1
-%endif
 %endmacro
 
 ; unsigned int aom_highbd_sad64x{16,32,64}_sse2(uint8_t *src, int src_stride,

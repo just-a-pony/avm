@@ -129,14 +129,14 @@ typedef struct {
  * corner). high_bd is a bool indicating the source should be treated
  * as a 16-bit array. bd is the bit depth.
  */
-EdgeInfo av1_edge_exists(const uint8_t *src, int src_stride, int w, int h,
+EdgeInfo av1_edge_exists(const uint16_t *src, int src_stride, int w, int h,
                          int bd);
 
 /** Applies a Gaussian blur with sigma = 1.3. Used by av1_edge_exists and
  * tests.
  */
-void av1_gaussian_blur(const uint8_t *src, int src_stride, int w, int h,
-                       uint8_t *dst, int bd);
+void av1_gaussian_blur(const uint16_t *src, int src_stride, int w, int h,
+                       uint16_t *dst, int bd);
 
 /*!\cond */
 /* Applies standard 3x3 Sobel matrix. */
@@ -146,7 +146,7 @@ typedef struct {
 } sobel_xy;
 /*!\endcond */
 
-sobel_xy av1_sobel(const uint8_t *input, int stride, int i, int j);
+sobel_xy av1_sobel(const uint16_t *input, int stride, int i, int j);
 
 void av1_inter_mode_data_init(struct TileDataEnc *tile_data);
 void av1_inter_mode_data_fit(TileDataEnc *tile_data, int rdmult);

@@ -100,13 +100,11 @@ static double convert_score_db(double _score, double _weight, int16_t pix_max) {
   return 10 * (log10(pix_max * pix_max) - log10(_weight * _score));
 }
 
-static double calc_psnrhvs(const unsigned char *src, int _systride,
-                           const unsigned char *dst, int _dystride, double _par,
+static double calc_psnrhvs(const uint16_t *_src16, int _systride,
+                           const uint16_t *_dst16, int _dystride, double _par,
                            int _w, int _h, int _step, const double _csf[8][8],
                            uint32_t _shift, int16_t pix_max, int luma) {
   double ret;
-  const uint16_t *_src16 = CONVERT_TO_SHORTPTR(src);
-  const uint16_t *_dst16 = CONVERT_TO_SHORTPTR(dst);
   DECLARE_ALIGNED(16, int16_t, dct_s[8 * 8]);
   DECLARE_ALIGNED(16, int16_t, dct_d[8 * 8]);
   DECLARE_ALIGNED(16, tran_low_t, dct_s_coef[8 * 8]);

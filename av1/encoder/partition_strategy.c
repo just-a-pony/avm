@@ -115,8 +115,7 @@ void av1_intra_mode_cnn_partition(const AV1_COMMON *const cm, MACROBLOCK *x,
     const int width = 65, height = 65,
               stride = x->plane[AOM_PLANE_Y].src.stride;
 
-    uint16_t *image[1] = { CONVERT_TO_SHORTPTR(x->plane[AOM_PLANE_Y].src.buf) -
-                           stride - 1 };
+    uint16_t *image[1] = { x->plane[AOM_PLANE_Y].src.buf - stride - 1 };
 
     av1_cnn_predict_img_multi_out_highbd(image, width, height, stride,
                                          cnn_config, &thread_data, bit_depth,
@@ -1158,7 +1157,7 @@ void av1_ml_prune_4_partition(
     av1_setup_src_planes(x, cpi->source, mi_row, mi_col,
                          av1_num_planes(&cpi->common), bsize);
     const int src_stride = x->plane[0].src.stride;
-    uint8_t *src = x->plane[0].src.buf;
+    uint16_t *src = x->plane[0].src.buf;
     const MACROBLOCKD *const xd = &x->e_mbd;
 
     struct buf_2d horz_4_src, vert_4_src;

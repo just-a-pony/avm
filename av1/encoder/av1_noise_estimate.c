@@ -130,9 +130,9 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
     // Loop over sub-sample of 16x16 blocks of frame, and for blocks that have
     // been encoded as zero/small mv at least x consecutive frames, compute
     // the variance to update estimate of noise in the source.
-    const uint8_t *src_y = cpi->source->y_buffer;
+    const uint16_t *src_y = cpi->source->y_buffer;
     const int src_ystride = cpi->source->y_stride;
-    const uint8_t *last_src_y = last_source->y_buffer;
+    const uint16_t *last_src_y = last_source->y_buffer;
     const int last_src_ystride = last_source->y_stride;
     int mi_row, mi_col;
     int num_low_motion = 0;

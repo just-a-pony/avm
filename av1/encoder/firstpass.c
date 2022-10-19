@@ -402,7 +402,7 @@ static int firstpass_intra_prediction(
   }
 
   int level_sample;
-  level_sample = CONVERT_TO_SHORTPTR(x->plane[0].src.buf)[0];
+  level_sample = x->plane[0].src.buf[0];
 
   switch (seq_params->bit_depth) {
     case AOM_BITS_8: break;
@@ -433,7 +433,7 @@ static int firstpass_intra_prediction(
   stats->intra_error += (int64_t)this_intra_error;
 
   const int stride = x->plane[0].src.stride;
-  uint8_t *buf = x->plane[0].src.buf;
+  uint16_t *buf = x->plane[0].src.buf;
   for (int r8 = 0; r8 < 2; ++r8) {
     for (int c8 = 0; c8 < 2; ++c8) {
       stats->frame_avg_wavelet_energy += av1_haar_ac_sad_8x8_uint8_input(

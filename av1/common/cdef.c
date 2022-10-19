@@ -79,11 +79,10 @@ void cdef_copy_rect8_16bit_to_16bit_c(uint16_t *dst, int dstride,
 }
 
 static void copy_sb8_16(AV1_COMMON *cm, uint16_t *dst, int dstride,
-                        const uint8_t *src, int src_voffset, int src_hoffset,
+                        const uint16_t *src, int src_voffset, int src_hoffset,
                         int sstride, int vsize, int hsize) {
   (void)cm;
-  const uint16_t *base =
-      &CONVERT_TO_SHORTPTR(src)[src_voffset * sstride + src_hoffset];
+  const uint16_t *base = &src[src_voffset * sstride + src_hoffset];
   cdef_copy_rect8_16bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
 }
 
@@ -337,11 +336,10 @@ void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
 
         av1_cdef_filter_fb(
             NULL,
-            &CONVERT_TO_SHORTPTR(
-                xd->plane[pli]
-                    .dst.buf)[xd->plane[pli].dst.stride *
-                                  (MI_SIZE_64X64 * fbr << mi_high_l2[pli]) +
-                              (fbc * MI_SIZE_64X64 << mi_wide_l2[pli])],
+            &xd->plane[pli]
+                 .dst.buf[xd->plane[pli].dst.stride *
+                              (MI_SIZE_64X64 * fbr << mi_high_l2[pli]) +
+                          (fbc * MI_SIZE_64X64 << mi_wide_l2[pli])],
             xd->plane[pli].dst.stride,
             &src[CDEF_VBORDER * CDEF_BSTRIDE + CDEF_HBORDER], xdec[pli],
             ydec[pli], dir, NULL, var, pli, dlist, cdef_count, level,

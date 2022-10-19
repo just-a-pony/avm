@@ -84,7 +84,7 @@ typedef struct SubpelParams {
 
 struct build_prediction_ctxt {
   const AV1_COMMON *cm;
-  uint8_t **tmp_buf;
+  uint16_t **tmp_buf;
   int *tmp_width;
   int *tmp_height;
   int *tmp_stride;
@@ -300,7 +300,7 @@ static INLINE void revert_scale_extra_bits(SubpelParams *sp) {
 }
 
 static INLINE void highbd_inter_predictor(
-    const uint8_t *src, int src_stride, uint8_t *dst, int dst_stride,
+    const uint16_t *src, int src_stride, uint16_t *dst, int dst_stride,
     const SubpelParams *subpel_params, int w, int h,
     ConvolveParams *conv_params, const InterpFilterParams *interp_filters[2],
     int bd) {
@@ -357,8 +357,8 @@ static INLINE int av1_is_wedge_used(BLOCK_SIZE sb_type) {
   return av1_wedge_params_lookup[sb_type].wedge_types > 0;
 }
 
-void av1_make_inter_predictor(const uint8_t *src, int src_stride, uint8_t *dst,
-                              int dst_stride,
+void av1_make_inter_predictor(const uint16_t *src, int src_stride,
+                              uint16_t *dst, int dst_stride,
                               InterPredParams *inter_pred_params,
                               const SubpelParams *subpel_params);
 
@@ -369,19 +369,19 @@ typedef void (*CalcSubpelParamsFunc)(const MV *const src_mv,
 #if CONFIG_OPTFLOW_REFINEMENT
                                      int use_optflow_refinement,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-                                     uint8_t **mc_buf, uint8_t **pre,
+                                     uint16_t **mc_buf, uint16_t **pre,
                                      SubpelParams *subpel_params,
                                      int *src_stride);
 
 void av1_build_one_inter_predictor(
-    uint8_t *dst, int dst_stride, const MV *const src_mv,
+    uint16_t *dst, int dst_stride, const MV *const src_mv,
     InterPredParams *inter_pred_params, MACROBLOCKD *xd, int mi_x, int mi_y,
-    int ref, uint8_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func);
+    int ref, uint16_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func);
 
 void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                 int plane, MB_MODE_INFO *mi, int build_for_obmc,
                                 int bw, int bh, int mi_x, int mi_y,
-                                uint8_t **mc_buf,
+                                uint16_t **mc_buf,
                                 CalcSubpelParamsFunc calc_subpel_params_func);
 
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -406,13 +406,6 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
 // Precision of refined MV returned, 0 being integer pel. For now, only 1/8 or
 // 1/16-pel can be used.
 #define MV_REFINE_PREC_BITS 4  // (1/16-pel)
-void av1_opfl_mv_refinement_lowbd(const uint8_t *p0, int pstride0,
-                                  const uint8_t *p1, int pstride1,
-                                  const int16_t *gx0, const int16_t *gy0,
-                                  const int16_t *gx1, const int16_t *gy1,
-                                  int gstride, int bw, int bh, int d0, int d1,
-                                  int grad_prec_bits, int mv_prec_bits,
-                                  int *vx0, int *vy0, int *vx1, int *vy1);
 void av1_opfl_mv_refinement_highbd(const uint16_t *p0, int pstride0,
                                    const uint16_t *p1, int pstride1,
                                    const int16_t *gx0, const int16_t *gy0,
@@ -423,9 +416,9 @@ void av1_opfl_mv_refinement_highbd(const uint16_t *p0, int pstride0,
 
 void av1_opfl_build_inter_predictor(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mi,
-    int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
+    int bw, int bh, int mi_x, int mi_y, uint16_t **mc_buf,
     InterPredParams *inter_pred_params,
-    CalcSubpelParamsFunc calc_subpel_params_func, int ref, uint8_t *pred_dst);
+    CalcSubpelParamsFunc calc_subpel_params_func, int ref, uint16_t *pred_dst);
 
 static INLINE int is_opfl_refine_allowed(const AV1_COMMON *cm,
                                          const MB_MODE_INFO *mbmi) {
@@ -458,7 +451,7 @@ static INLINE int is_opfl_refine_allowed(const AV1_COMMON *cm,
 // Generate refined MVs using optflow refinement
 int av1_get_optflow_based_mv_highbd(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mbmi,
-    int_mv *mv_refined, int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
+    int_mv *mv_refined, int bw, int bh, int mi_x, int mi_y, uint16_t **mc_buf,
     CalcSubpelParamsFunc calc_subpel_params_func, int16_t *gx0, int16_t *gy0,
     int16_t *gx1, int16_t *gy1, int *vx0, int *vy0, int *vx1, int *vy1,
     uint16_t *dst0, uint16_t *dst1
@@ -470,9 +463,9 @@ int av1_get_optflow_based_mv_highbd(
 
 // With the refined MVs, generate the inter prediction for the block.
 void av1_opfl_rebuild_inter_predictor(
-    uint8_t *dst, int dst_stride, int plane, int_mv *const mv_refined,
+    uint16_t *dst, int dst_stride, int plane, int_mv *const mv_refined,
     InterPredParams *inter_pred_params, MACROBLOCKD *xd, int mi_x, int mi_y,
-    int ref, uint8_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func
+    int ref, uint16_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func
 #if CONFIG_OPTFLOW_ON_TIP
     ,
     int use_4x4
@@ -593,7 +586,7 @@ static INLINE int64_t scaled_buffer_offset(int x_offset, int y_offset,
 }
 
 static INLINE void setup_pred_plane(struct buf_2d *dst, BLOCK_SIZE bsize,
-                                    uint8_t *src, int width, int height,
+                                    uint16_t *src, int width, int height,
                                     int stride, int mi_row, int mi_col,
                                     const struct scale_factors *scale,
                                     int subsampling_x, int subsampling_y) {
@@ -660,8 +653,8 @@ static INLINE int av1_is_interp_needed(const AV1_COMMON *const cm,
 
 // Sets up buffers 'dst_buf1' and 'dst_buf2' from relevant buffers in 'xd' for
 // subsequent use in OBMC prediction.
-void av1_setup_obmc_dst_bufs(MACROBLOCKD *xd, uint8_t **dst_buf1,
-                             uint8_t **dst_buf2);
+void av1_setup_obmc_dst_bufs(MACROBLOCKD *xd, uint16_t **dst_buf1,
+                             uint16_t **dst_buf2);
 
 void av1_setup_build_prediction_by_above_pred(
     MACROBLOCKD *xd, int rel_mi_col, uint8_t above_mi_width,
@@ -673,9 +666,9 @@ void av1_setup_build_prediction_by_left_pred(MACROBLOCKD *xd, int rel_mi_row,
                                              struct build_prediction_ctxt *ctxt,
                                              const int num_planes);
 void av1_build_obmc_inter_prediction(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                     uint8_t *above[MAX_MB_PLANE],
+                                     uint16_t *above[MAX_MB_PLANE],
                                      int above_stride[MAX_MB_PLANE],
-                                     uint8_t *left[MAX_MB_PLANE],
+                                     uint16_t *left[MAX_MB_PLANE],
                                      int left_stride[MAX_MB_PLANE]);
 
 const uint8_t *av1_get_obmc_mask(int length);
@@ -697,7 +690,7 @@ const uint8_t *av1_get_compound_type_mask(
 
 // build interintra_predictors for one plane
 void av1_build_interintra_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                    uint8_t *pred, int stride,
+                                    uint16_t *pred, int stride,
                                     const BUFFER_SET *ctx, int plane,
                                     BLOCK_SIZE bsize);
 
@@ -705,11 +698,11 @@ void av1_build_intra_predictors_for_interintra(const AV1_COMMON *cm,
                                                MACROBLOCKD *xd,
                                                BLOCK_SIZE bsize, int plane,
                                                const BUFFER_SET *ctx,
-                                               uint8_t *dst, int dst_stride);
+                                               uint16_t *dst, int dst_stride);
 
 void av1_combine_interintra(MACROBLOCKD *xd, BLOCK_SIZE bsize, int plane,
-                            const uint8_t *inter_pred, int inter_stride,
-                            const uint8_t *intra_pred, int intra_stride);
+                            const uint16_t *inter_pred, int inter_stride,
+                            const uint16_t *intra_pred, int intra_stride);
 
 int av1_allow_warp(const MB_MODE_INFO *const mbmi,
                    const WarpTypesAllowed *const warp_types,

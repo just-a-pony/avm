@@ -52,7 +52,7 @@ void av1_tip_enc_calc_subpel_params(const MV *const src_mv,
 #if CONFIG_OPTFLOW_REFINEMENT
                                     int use_optflow_refinement,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-                                    uint8_t **mc_buf, uint8_t **pre,
+                                    uint16_t **mc_buf, uint16_t **pre,
                                     SubpelParams *subpel_params,
                                     int *src_stride);
 #ifdef __cplusplus

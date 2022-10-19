@@ -134,18 +134,16 @@ static INLINE void dec_free_tip_ref_frame(AV1_COMMON *const cm) {
 
 #if CONFIG_OPTFLOW_ON_TIP
 static INLINE void dec_init_optflow_bufs(AV1_COMMON *const cm) {
-  cm->dst0_16_tip =
-      CONVERT_TO_BYTEPTR(aom_memalign(32, 8 * 8 * sizeof(uint16_t)));
-  cm->dst1_16_tip =
-      CONVERT_TO_BYTEPTR(aom_memalign(32, 8 * 8 * sizeof(uint16_t)));
+  cm->dst0_16_tip = aom_memalign(32, 8 * 8 * sizeof(uint16_t));
+  cm->dst1_16_tip = aom_memalign(32, 8 * 8 * sizeof(uint16_t));
   cm->gx0 = aom_memalign(32, 2 * 8 * 8 * sizeof(*cm->gx0));
   cm->gx1 = aom_memalign(32, 2 * 8 * 8 * sizeof(*cm->gx1));
   cm->gy0 = cm->gx0 + (8 * 8);
   cm->gy1 = cm->gx1 + (8 * 8);
 }
 static INLINE void dec_free_optflow_bufs(AV1_COMMON *const cm) {
-  aom_free(CONVERT_TO_SHORTPTR(cm->dst0_16_tip));
-  aom_free(CONVERT_TO_SHORTPTR(cm->dst1_16_tip));
+  aom_free(cm->dst0_16_tip);
+  aom_free(cm->dst1_16_tip);
   aom_free(cm->gx0);
   aom_free(cm->gx1);
 }

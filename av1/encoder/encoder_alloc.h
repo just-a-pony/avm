@@ -160,14 +160,10 @@ static AOM_INLINE void alloc_obmc_buffers(OBMCBuffer *obmc_buffer,
   CHECK_MEM_ERROR(
       cm, obmc_buffer->mask,
       (int32_t *)aom_memalign(16, MAX_SB_SQUARE * sizeof(*obmc_buffer->mask)));
-  CHECK_MEM_ERROR(
-      cm, obmc_buffer->above_pred,
-      (uint8_t *)aom_memalign(
-          16, MAX_MB_PLANE * MAX_SB_SQUARE * sizeof(*obmc_buffer->above_pred)));
-  CHECK_MEM_ERROR(
-      cm, obmc_buffer->left_pred,
-      (uint8_t *)aom_memalign(
-          16, MAX_MB_PLANE * MAX_SB_SQUARE * sizeof(*obmc_buffer->left_pred)));
+  CHECK_MEM_ERROR(cm, obmc_buffer->above_pred,
+                  (uint16_t *)aom_memalign(16, MAX_MB_PLANE * MAX_SB_SQUARE));
+  CHECK_MEM_ERROR(cm, obmc_buffer->left_pred,
+                  (uint16_t *)aom_memalign(16, MAX_MB_PLANE * MAX_SB_SQUARE));
 }
 
 static AOM_INLINE void release_obmc_buffers(OBMCBuffer *obmc_buffer) {
@@ -186,10 +182,10 @@ static AOM_INLINE void alloc_compound_type_rd_buffers(
     AV1_COMMON *const cm, CompoundTypeRdBuffers *const bufs) {
   CHECK_MEM_ERROR(
       cm, bufs->pred0,
-      (uint8_t *)aom_memalign(16, 2 * MAX_SB_SQUARE * sizeof(*bufs->pred0)));
+      (uint16_t *)aom_memalign(16, MAX_SB_SQUARE * sizeof(*bufs->pred0)));
   CHECK_MEM_ERROR(
       cm, bufs->pred1,
-      (uint8_t *)aom_memalign(16, 2 * MAX_SB_SQUARE * sizeof(*bufs->pred1)));
+      (uint16_t *)aom_memalign(16, MAX_SB_SQUARE * sizeof(*bufs->pred1)));
   CHECK_MEM_ERROR(
       cm, bufs->residual1,
       (int16_t *)aom_memalign(32, MAX_SB_SQUARE * sizeof(*bufs->residual1)));

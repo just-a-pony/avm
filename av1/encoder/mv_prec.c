@@ -584,8 +584,7 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
   const int y_stride = cpi->source->y_stride;
   const int px_row = 4 * mi_row, px_col = 4 * mi_col;
   const int bd = cm->seq_params.bit_depth;
-  uint16_t *source_buf =
-      CONVERT_TO_SHORTPTR(cpi->source->y_buffer) + px_row * y_stride + px_col;
+  uint16_t *source_buf = cpi->source->y_buffer + px_row * y_stride + px_col;
   for (int row = 0; row < num_rows - 1; row++) {
     for (int col = 0; col < num_cols - 1; col++) {
       const int offset = row * y_stride + col;

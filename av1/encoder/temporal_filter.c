@@ -357,7 +357,7 @@ static void tf_build_predictor(const YV12_BUFFER_CONFIG *ref_frame,
                                const BLOCK_SIZE block_size, const int mb_row,
                                const int mb_col, const int num_planes,
                                const struct scale_factors *scale,
-                               const MV *subblock_mvs, uint8_t *pred) {
+                               const MV *subblock_mvs, uint16_t *pred) {
   // Information of the entire block.
   const int mb_height = block_size_high[block_size];  // Height.
   const int mb_width = block_size_wide[block_size];   // Width.
@@ -431,13 +431,12 @@ static void tf_build_predictor(const YV12_BUFFER_CONFIG *ref_frame,
 //   point will be modified.
 void tf_apply_temporal_filter_self(const MACROBLOCKD *mbd,
                                    const BLOCK_SIZE block_size,
-                                   const int num_planes, const uint8_t *pred,
+                                   const int num_planes, const uint16_t *pred,
                                    uint32_t *accum, uint16_t *count) {
   // Block information.
   const int mb_height = block_size_high[block_size];
   const int mb_width = block_size_wide[block_size];
   const int mb_pels = mb_height * mb_width;
-  const uint16_t *pred16 = CONVERT_TO_SHORTPTR(pred);
 
   int plane_offset = 0;
   for (int plane = 0; plane < num_planes; ++plane) {
@@ -450,7 +449,7 @@ void tf_apply_temporal_filter_self(const MACROBLOCKD *mbd,
     for (int i = 0; i < h; ++i) {
       for (int j = 0; j < w; ++j) {
         const int idx = plane_offset + pred_idx;  // Index with plane shift.
-        const int pred_value = pred16[idx];
+        const int pred_value = pred[idx];
         accum[idx] += TF_WEIGHT_SCALE * pred_value;
         count[idx] += TF_WEIGHT_SCALE;
         ++pred_idx;
@@ -474,21 +473,17 @@ void tf_apply_temporal_filter_self(const MACROBLOCKD *mbd,
 // Returns:
 //   Nothing will be returned. But the content to which `square_diff` points
 //   will be modified.
-static INLINE void compute_square_diff(const uint8_t *ref, const int ref_offset,
-                                       const int ref_stride, const uint8_t *tgt,
-                                       const int tgt_offset,
-                                       const int tgt_stride, const int height,
-                                       const int width, uint32_t *square_diff) {
-  const uint16_t *ref16 = CONVERT_TO_SHORTPTR(ref);
-  const uint16_t *tgt16 = CONVERT_TO_SHORTPTR(tgt);
-
+static INLINE void compute_square_diff(
+    const uint16_t *ref, const int ref_offset, const int ref_stride,
+    const uint16_t *tgt, const int tgt_offset, const int tgt_stride,
+    const int height, const int width, uint32_t *square_diff) {
   int ref_idx = 0;
   int tgt_idx = 0;
   int idx = 0;
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
-      const uint16_t ref_value = ref16[ref_offset + ref_idx];
-      const uint16_t tgt_value = tgt16[tgt_offset + tgt_idx];
+      const uint16_t ref_value = ref[ref_offset + ref_idx];
+      const uint16_t tgt_value = tgt[tgt_offset + tgt_idx];
       const uint32_t diff = (ref_value > tgt_value) ? (ref_value - tgt_value)
                                                     : (tgt_value - ref_value);
       square_diff[idx] = diff * diff;
@@ -540,12 +535,11 @@ void av1_highbd_apply_temporal_filter_c(
     const BLOCK_SIZE block_size, const int mb_row, const int mb_col,
     const int num_planes, const double *noise_levels, const MV *subblock_mvs,
     const int *subblock_mses, const int q_factor, const int filter_strength,
-    const uint8_t *pred, uint32_t *accum, uint16_t *count) {
+    const uint16_t *pred, uint32_t *accum, uint16_t *count) {
   // Block information.
   const int mb_height = block_size_high[block_size];
   const int mb_width = block_size_wide[block_size];
   const int mb_pels = mb_height * mb_width;
-  const uint16_t *pred16 = CONVERT_TO_SHORTPTR(pred);
   // Frame information.
   const int frame_height = frame_to_filter->y_crop_height;
   const int frame_width = frame_to_filter->y_crop_width;
@@ -564,7 +558,7 @@ void av1_highbd_apply_temporal_filter_c(
     const int plane_w = mb_width >> mbd->plane[plane].subsampling_x;
     const int frame_stride = frame_to_filter->strides[plane == 0 ? 0 : 1];
     const int frame_offset = mb_row * plane_h * frame_stride + mb_col * plane_w;
-    const uint8_t *ref = frame_to_filter->buffers[plane];
+    const uint16_t *ref = frame_to_filter->buffers[plane];
     compute_square_diff(ref, frame_offset, frame_stride, pred, plane_offset,
                         plane_w, plane_h, plane_w, square_diff + plane_offset);
     plane_offset += mb_pels;
@@ -649,7 +643,7 @@ void av1_highbd_apply_temporal_filter_c(
         const int weight = (int)(exp(-scaled_error) * TF_WEIGHT_SCALE);
 
         const int idx = plane_offset + pred_idx;  // Index with plane shift.
-        const int pred_value = pred16[idx];
+        const int pred_value = pred[idx];
         accum[idx] += weight * pred_value;
         count[idx] += weight;
 
@@ -695,8 +689,7 @@ static void tf_normalize_filtered_frame(
     const int plane_w = mb_width >> mbd->plane[plane].subsampling_x;
     const int frame_stride = result_buffer->strides[plane == 0 ? 0 : 1];
     const int frame_offset = mb_row * plane_h * frame_stride + mb_col * plane_w;
-    uint8_t *const buf = result_buffer->buffers[plane];
-    uint16_t *const buf16 = CONVERT_TO_SHORTPTR(buf);
+    uint16_t *const buf = result_buffer->buffers[plane];
 
     int plane_idx = 0;             // Pixel index on current plane (block-base).
     int frame_idx = frame_offset;  // Pixel index on the entire frame.
@@ -704,7 +697,7 @@ static void tf_normalize_filtered_frame(
       for (int j = 0; j < plane_w; ++j) {
         const int idx = plane_idx + plane_offset;
         const uint16_t rounding = count[idx] >> 1;
-        buf16[frame_idx] = (uint16_t)OD_DIVU(accum[idx] + rounding, count[idx]);
+        buf[frame_idx] = (uint16_t)OD_DIVU(accum[idx] + rounding, count[idx]);
         ++plane_idx;
         ++frame_idx;
       }
@@ -786,7 +779,7 @@ static FRAME_DIFF tf_do_filtering(AV1_COMP *cpi, YV12_BUFFER_CONFIG **frames,
   // Save input state.
   MACROBLOCK *const mb = &cpi->td.mb;
   MACROBLOCKD *const mbd = &mb->e_mbd;
-  uint8_t *input_buffer[MAX_MB_PLANE];
+  uint16_t *input_buffer[MAX_MB_PLANE];
   for (int i = 0; i < num_planes; i++) {
     input_buffer[i] = mbd->plane[i].pre[0].buf;
   }
@@ -812,11 +805,10 @@ static FRAME_DIFF tf_do_filtering(AV1_COMP *cpi, YV12_BUFFER_CONFIG **frames,
   mbd->mi = &tmp_mb_mode_info;
   mbd->mi[0]->motion_mode = SIMPLE_TRANSLATION;
   // Allocate memory for predictor, accumulator and count.
-  uint16_t *pred16 = aom_memalign(32, num_planes * mb_pels * sizeof(uint16_t));
+  uint16_t *pred = aom_memalign(32, num_planes * mb_pels * sizeof(uint16_t));
   uint32_t *accum = aom_memalign(16, num_planes * mb_pels * sizeof(uint32_t));
   uint16_t *count = aom_memalign(16, num_planes * mb_pels * sizeof(uint16_t));
-  memset(pred16, 0, num_planes * mb_pels * sizeof(pred16[0]));
-  uint8_t *const pred = CONVERT_TO_BYTEPTR(pred16);
+  memset(pred, 0, num_planes * mb_pels * sizeof(pred[0]));
 
   // Do filtering.
   FRAME_DIFF diff = { 0, 0 };
@@ -905,7 +897,7 @@ static FRAME_DIFF tf_do_filtering(AV1_COMP *cpi, YV12_BUFFER_CONFIG **frames,
   mbd->mi = input_mb_mode_info;
 
   free(tmp_mb_mode_info);
-  aom_free(pred16);
+  aom_free(pred);
   aom_free(accum);
   aom_free(count);
 
@@ -1051,8 +1043,7 @@ double av1_estimate_noise_from_single_plane(const YV12_BUFFER_CONFIG *frame,
   const int height = frame->crop_heights[is_y_plane ? 0 : 1];
   const int width = frame->crop_widths[is_y_plane ? 0 : 1];
   const int stride = frame->strides[is_y_plane ? 0 : 1];
-  const uint8_t *src = frame->buffers[plane];
-  const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
+  const uint16_t *src16 = frame->buffers[plane];
 
   int64_t accum = 0;
   int count = 0;

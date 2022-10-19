@@ -23,10 +23,6 @@ namespace {
 using std::get;
 using std::tuple;
 
-static int get_pix(uint8_t *buf, int i) {
-  return *CONVERT_TO_SHORTPTR(buf + i);
-}
-
 /** Get the (i, j) value from the input; if i or j is outside of the width
  * or height, the nearest pixel value is returned.
  */
@@ -41,7 +37,7 @@ static int get_nearest_pix(const int *buf, int w, int h, int i, int j) {
  * padded data. Must be freed with free_pad_8tap. The output will be either
  * 8-bit or 16-bit, depending on the high bit-depth (high_bd) field.
  */
-static uint8_t *pad_8tap_convolve(const int *data, int w, int h) {
+static uint16_t *pad_8tap_convolve(const int *data, int w, int h) {
   // SIMD optimizations require the width to be a multiple of 8 and the height
   // to be multiples of 4.
   assert(w % 8 == 0);
@@ -51,8 +47,8 @@ static uint8_t *pad_8tap_convolve(const int *data, int w, int h) {
   const int pad_w = w + 7;
   const int pad_h = h + 7;
 
-  uint8_t *dst;
-  dst = CONVERT_TO_BYTEPTR(aom_memalign(32, sizeof(uint16_t) * pad_w * pad_h));
+  uint16_t *dst =
+      (uint16_t *)aom_memalign(32, sizeof(uint16_t) * pad_w * pad_h);
   if (dst == nullptr) {
     EXPECT_NE(dst, nullptr);
     return nullptr;
@@ -61,7 +57,7 @@ static uint8_t *pad_8tap_convolve(const int *data, int w, int h) {
   for (int j = 0; j < pad_h; ++j) {
     for (int i = 0; i < pad_w; ++i) {
       const int v = get_nearest_pix(data, w, h, i - 3, j - 3);
-      *CONVERT_TO_SHORTPTR(dst + i + j * pad_w) = v;
+      dst[i + j * pad_w] = v;
     }
   }
   return dst + (w + 7) * 3 + 3;
@@ -69,13 +65,13 @@ static uint8_t *pad_8tap_convolve(const int *data, int w, int h) {
 
 static int stride_8tap(int width) { return width + 7; }
 
-static void free_pad_8tap(uint8_t *padded, int width) {
-  aom_free(CONVERT_TO_SHORTPTR(padded - (width + 7) * 3 - 3));
+static void free_pad_8tap(uint16_t *padded, int width) {
+  aom_free(padded - (width + 7) * 3 - 3);
 }
 
 struct Pad8TapConvolveDeleter {
   Pad8TapConvolveDeleter(const int width) : width(width) {}
-  void operator()(uint8_t *p) {
+  void operator()(uint16_t *p) {
     if (p != nullptr) {
       free_pad_8tap(p, width);
     }
@@ -83,18 +79,9 @@ struct Pad8TapConvolveDeleter {
   const int width;
 };
 
-static uint8_t *malloc_bd(int num_entries) {
-  const int bytes_per_entry = sizeof(uint16_t);
-
-  uint8_t *buf = (uint8_t *)aom_memalign(32, bytes_per_entry * num_entries);
-  return CONVERT_TO_BYTEPTR(buf);
-}
-
-static void free_bd(uint8_t *p) { aom_free(CONVERT_TO_SHORTPTR(p)); }
-
 struct MallocBdDeleter {
   explicit MallocBdDeleter(void) {}
-  void operator()(uint8_t *p) { free_bd(p); }
+  void operator()(uint16_t *p) { aom_free(p); }
 };
 
 class EdgeDetectBrightnessTest :
@@ -118,14 +105,14 @@ class EdgeDetectBrightnessTest :
     }
     input_ = pad_8tap_convolve(orig.get(), width, height);
     ASSERT_NE(input_, nullptr);
-    output_ = malloc_bd(width * height);
+    output_ = (uint16_t *)aom_memalign(32, sizeof(uint16_t) * width * height);
     ASSERT_NE(output_, nullptr);
   }
 
   void TearDown() override {
     const int width = GET_PARAM(1);
     free_pad_8tap(input_, width);
-    free_bd(output_);
+    aom_free(output_);
   }
 
   // Skip the tests where brightness exceeds the bit-depth; we run into this
@@ -141,8 +128,8 @@ class EdgeDetectBrightnessTest :
     return false;
   }
 
-  uint8_t *input_;
-  uint8_t *output_;
+  uint16_t *input_;
+  uint16_t *output_;
 };
 
 TEST_P(EdgeDetectBrightnessTest, BlurUniformBrightness) {
@@ -161,7 +148,7 @@ TEST_P(EdgeDetectBrightnessTest, BlurUniformBrightness) {
 
   av1_gaussian_blur(input_, stride_8tap(width), width, height, output_, bd);
   for (int i = 0; i < width * height; ++i) {
-    ASSERT_EQ(brightness, get_pix(output_, i));
+    ASSERT_EQ(brightness, output_[i]);
   }
 }
 
@@ -214,7 +201,7 @@ TEST_P(EdgeDetectImageTest, BlackWhite) {
     }
   }
 
-  std::unique_ptr<uint8_t[], Pad8TapConvolveDeleter> padded(
+  std::unique_ptr<uint16_t[], Pad8TapConvolveDeleter> padded(
       pad_8tap_convolve(orig.get(), width, height),
       Pad8TapConvolveDeleter(width));
   ASSERT_NE(padded, nullptr);
@@ -232,10 +219,10 @@ static const int luma[32] = { 241, 147, 7,   90,  184, 103, 28,  186,
                               2,   248, 49,  242, 114, 146, 127, 22,
                               121, 228, 167, 108, 158, 174, 41,  168,
                               214, 99,  184, 109, 114, 247, 117, 119 };
-static const uint8_t expected[] = { 161, 138, 119, 118, 123, 118, 113, 122,
-                                    143, 140, 134, 133, 134, 126, 116, 114,
-                                    147, 149, 145, 142, 143, 138, 126, 118,
-                                    164, 156, 148, 144, 148, 148, 138, 126 };
+static const uint16_t expected[] = { 161, 138, 119, 118, 123, 118, 113, 122,
+                                     143, 140, 134, 133, 134, 126, 116, 114,
+                                     147, 149, 145, 142, 143, 138, 126, 118,
+                                     164, 156, 148, 144, 148, 148, 138, 126 };
 
 static void hardcoded_blur_test_aux(void) {
   const int w = 8;
@@ -243,15 +230,17 @@ static void hardcoded_blur_test_aux(void) {
   for (int bd = 8; bd <= 12; bd += 2) {
     // Skip the tests where bit depth is greater than 8, but high bit depth
     // representation is not set.
-    std::unique_ptr<uint8_t[], MallocBdDeleter> output(malloc_bd(w * h),
-                                                       MallocBdDeleter());
+    std::unique_ptr<uint16_t[], MallocBdDeleter> output(
+        (uint16_t *)aom_memalign(32, sizeof(uint16_t) * w * h),
+        MallocBdDeleter());
     ASSERT_NE(output, nullptr);
-    std::unique_ptr<uint8_t[], Pad8TapConvolveDeleter> padded(
+    std::unique_ptr<uint16_t[], Pad8TapConvolveDeleter> padded(
         pad_8tap_convolve(luma, w, h), Pad8TapConvolveDeleter(w));
     ASSERT_NE(padded, nullptr);
     av1_gaussian_blur(padded.get(), stride_8tap(w), w, h, output.get(), bd);
     for (int i = 0; i < w * h; ++i) {
-      ASSERT_EQ(expected[i], get_pix(output.get(), i));
+      uint16_t *buf = output.get();
+      ASSERT_EQ(expected[i], buf[i]);
     }
 
     // If we multiply the inputs by a constant factor, the output should not
@@ -265,7 +254,8 @@ static void hardcoded_blur_test_aux(void) {
       ASSERT_NE(padded, nullptr);
       av1_gaussian_blur(padded.get(), stride_8tap(w), w, h, output.get(), bd);
       for (int i = 0; i < w * h; ++i) {
-        ASSERT_GE(c / 2, abs(expected[i] * c - get_pix(output.get(), i)));
+        uint16_t *buf = output.get();
+        ASSERT_GE(c / 2, abs(expected[i] * c - buf[i]));
       }
     }
   }
@@ -277,13 +267,13 @@ TEST(EdgeDetectImageTest, SobelTest) {
   // Randomly generated 3x3. Compute Sobel for middle value.
   const uint16_t buf8_16[9] = { 241, 147, 7, 90, 184, 103, 28, 186, 2 };
   const int stride = 3;
-  sobel_xy result = av1_sobel(CONVERT_TO_BYTEPTR(buf8_16), stride, 1, 1);
+  sobel_xy result = av1_sobel(buf8_16, stride, 1, 1);
   ASSERT_EQ(234, result.x);
   ASSERT_EQ(140, result.y);
 
   // Verify it works for high bit-depth values as well.
   const uint16_t buf16[9] = { 241, 147, 7, 90, 184, 2003, 1028, 186, 2 };
-  result = av1_sobel(CONVERT_TO_BYTEPTR(buf16), stride, 1, 1);
+  result = av1_sobel(buf16, stride, 1, 1);
   ASSERT_EQ(-2566, result.x);
   ASSERT_EQ(-860, result.y);
 }

@@ -502,7 +502,6 @@ static AOM_INLINE void setup_global_motion_info_params(AV1_COMP *cpi) {
   GlobalMotionInfo *const gm_info = &cpi->gm_info;
   YV12_BUFFER_CONFIG *source = cpi->source;
 
-  gm_info->src_buffer = source->y_buffer;
   // The source buffer is 16-bit, so we need to convert to 8 bits for the
   // following code. We cache the result until the source frame is released.
   gm_info->src_buffer =

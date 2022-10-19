@@ -586,30 +586,29 @@ static int64_t highbd_segmented_frame_error(
   return sum_error;
 }
 
-int64_t av1_frame_error(int bd, const uint8_t *ref, int stride, uint8_t *dst,
+int64_t av1_frame_error(int bd, const uint16_t *ref, int stride, uint16_t *dst,
                         int p_width, int p_height, int p_stride) {
-  return av1_calc_highbd_frame_error(CONVERT_TO_SHORTPTR(ref), stride,
-                                     CONVERT_TO_SHORTPTR(dst), p_width,
-                                     p_height, p_stride, bd);
+  return av1_calc_highbd_frame_error(ref, stride, dst, p_width, p_height,
+                                     p_stride, bd);
 }
 
-int64_t av1_segmented_frame_error(int bd, const uint8_t *ref, int stride,
-                                  uint8_t *dst, int p_width, int p_height,
+int64_t av1_segmented_frame_error(int bd, const uint16_t *ref, int stride,
+                                  uint16_t *dst, int p_width, int p_height,
                                   int p_stride, uint8_t *segment_map,
                                   int segment_map_stride) {
-  return highbd_segmented_frame_error(
-      CONVERT_TO_SHORTPTR(ref), stride, CONVERT_TO_SHORTPTR(dst), p_width,
-      p_height, p_stride, bd, segment_map, segment_map_stride);
+  return highbd_segmented_frame_error(ref, stride, dst, p_width, p_height,
+                                      p_stride, bd, segment_map,
+                                      segment_map_stride);
 }
 
-void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint8_t *ref,
-                    int width, int height, int stride, uint8_t *pred, int p_col,
-                    int p_row, int p_width, int p_height, int p_stride,
-                    int subsampling_x, int subsampling_y,
+void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint16_t *ref,
+                    int width, int height, int stride, uint16_t *pred,
+                    int p_col, int p_row, int p_width, int p_height,
+                    int p_stride, int subsampling_x, int subsampling_y,
                     ConvolveParams *conv_params) {
-  highbd_warp_plane(wm, CONVERT_TO_SHORTPTR(ref), width, height, stride,
-                    CONVERT_TO_SHORTPTR(pred), p_col, p_row, p_width, p_height,
-                    p_stride, subsampling_x, subsampling_y, bd, conv_params);
+  highbd_warp_plane(wm, ref, width, height, stride, pred, p_col, p_row, p_width,
+                    p_height, p_stride, subsampling_x, subsampling_y, bd,
+                    conv_params);
 }
 
 #define LS_MV_MAX 256  // max mv in 1/8-pel

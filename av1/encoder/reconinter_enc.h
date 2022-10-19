@@ -37,18 +37,18 @@ void av1_enc_build_inter_predictor_y(MACROBLOCKD *xd, int mi_row, int mi_col);
 // Build one inter predictor. It is called for building predictor for single
 // reference case, or just the 1st or 2nd reference in compound reference case.
 // Can build both regular and masked predictors.
-void av1_enc_build_one_inter_predictor(uint8_t *dst, int dst_stride,
+void av1_enc_build_one_inter_predictor(uint16_t *dst, int dst_stride,
                                        const MV *src_mv,
                                        InterPredParams *inter_pred_params);
 
 void av1_build_prediction_by_above_preds(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                         uint8_t *tmp_buf[MAX_MB_PLANE],
+                                         uint16_t *tmp_buf[MAX_MB_PLANE],
                                          int tmp_width[MAX_MB_PLANE],
                                          int tmp_height[MAX_MB_PLANE],
                                          int tmp_stride[MAX_MB_PLANE]);
 
 void av1_build_prediction_by_left_preds(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                        uint8_t *tmp_buf[MAX_MB_PLANE],
+                                        uint16_t *tmp_buf[MAX_MB_PLANE],
                                         int tmp_width[MAX_MB_PLANE],
                                         int tmp_height[MAX_MB_PLANE],
                                         int tmp_stride[MAX_MB_PLANE]);
@@ -56,12 +56,12 @@ void av1_build_prediction_by_left_preds(const AV1_COMMON *cm, MACROBLOCKD *xd,
 void av1_build_obmc_inter_predictors_sb(const AV1_COMMON *cm, MACROBLOCKD *xd);
 
 void av1_build_inter_predictor_single_buf_y(MACROBLOCKD *xd, BLOCK_SIZE bsize,
-                                            int ref, uint8_t *ext_dst,
+                                            int ref, uint16_t *ext_dst,
                                             int ext_dst_stride);
 
 void av1_build_wedge_inter_predictor_from_buf_y(
-    MACROBLOCKD *xd, BLOCK_SIZE bsize, uint8_t *ext_dst0, int ext_dst_stride0,
-    uint8_t *ext_dst1, int ext_dst_stride1);
+    MACROBLOCKD *xd, BLOCK_SIZE bsize, uint16_t *ext_dst0, int ext_dst_stride0,
+    uint16_t *ext_dst1, int ext_dst_stride1);
 
 #ifdef __cplusplus
 }  // extern "C"

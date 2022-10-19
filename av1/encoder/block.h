@@ -416,12 +416,12 @@ typedef struct {
    *
    * Used to build the obmc predictor.
    */
-  uint8_t *above_pred;
+  uint16_t *above_pred;
   /*! \brief Prediction from the up predictor.
    *
    * \copydetails above_pred
    */
-  uint8_t *left_pred;
+  uint16_t *left_pred;
 } OBMCBuffer;
 
 /*! \brief Contains color maps used in palette mode.
@@ -440,9 +440,9 @@ typedef struct {
  */
 typedef struct {
   //! First prediction.
-  uint8_t *pred0;
+  uint16_t *pred0;
   //! Second prediction.
-  uint8_t *pred1;
+  uint16_t *pred1;
   //! Source - first prediction.
   int16_t *residual1;
   //! Second prediction - first prediction.
@@ -1165,7 +1165,7 @@ typedef struct macroblock {
    * - xd->tmp_obmc_bufs also points to this buffer, and is used in ombc
    *   prediction.
    */
-  uint8_t *tmp_pred_bufs[2];
+  uint16_t *tmp_pred_bufs[2];
   /**@}*/
 
   /*****************************************************************************

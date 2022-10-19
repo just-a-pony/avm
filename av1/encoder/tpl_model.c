@@ -78,8 +78,8 @@ static AOM_INLINE void tpl_fwd_txfm(const int16_t *src_diff, int bw,
 
 static AOM_INLINE int64_t tpl_get_satd_cost(const MACROBLOCK *x,
                                             int16_t *src_diff, int diff_stride,
-                                            const uint8_t *src, int src_stride,
-                                            const uint8_t *dst, int dst_stride,
+                                            const uint16_t *src, int src_stride,
+                                            const uint16_t *dst, int dst_stride,
                                             tran_low_t *coeff, int bw, int bh,
                                             TX_SIZE tx_size) {
   const MACROBLOCKD *xd = &x->e_mbd;
@@ -107,8 +107,8 @@ static int rate_estimator(const tran_low_t *qcoeff, int eob, TX_SIZE tx_size) {
 }
 
 static AOM_INLINE void txfm_quant_rdcost(
-    const MACROBLOCK *x, int16_t *src_diff, int diff_stride, uint8_t *src,
-    int src_stride, uint8_t *dst, int dst_stride, tran_low_t *coeff,
+    const MACROBLOCK *x, int16_t *src_diff, int diff_stride, uint16_t *src,
+    int src_stride, uint16_t *dst, int dst_stride, tran_low_t *coeff,
     tran_low_t *qcoeff, tran_low_t *dqcoeff, int bw, int bh, TX_SIZE tx_size,
     int *rate_cost, int64_t *recon_error, int64_t *sse) {
   const MACROBLOCKD *xd = &x->e_mbd;
@@ -127,8 +127,8 @@ static AOM_INLINE void txfm_quant_rdcost(
 }
 
 static uint32_t motion_estimation(AV1_COMP *cpi, MACROBLOCK *x,
-                                  uint8_t *cur_frame_buf,
-                                  uint8_t *ref_frame_buf, int stride,
+                                  uint16_t *cur_frame_buf,
+                                  uint16_t *ref_frame_buf, int stride,
                                   int stride_ref, BLOCK_SIZE bsize,
                                   MV center_mv, int_mv *best_mv) {
   AV1_COMMON *cm = &cpi->common;
@@ -259,25 +259,24 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   PREDICTION_MODE best_mode = DC_PRED;
 
   int mb_y_offset = mi_row * MI_SIZE * xd->cur_buf->y_stride + mi_col * MI_SIZE;
-  uint8_t *src_mb_buffer = xd->cur_buf->y_buffer + mb_y_offset;
+  uint16_t *src_mb_buffer = xd->cur_buf->y_buffer + mb_y_offset;
   const int src_stride = xd->cur_buf->y_stride;
 
   const int dst_mb_offset =
       mi_row * MI_SIZE * tpl_frame->rec_picture->y_stride + mi_col * MI_SIZE;
-  uint8_t *dst_buffer = tpl_frame->rec_picture->y_buffer + dst_mb_offset;
+  uint16_t *dst_buffer = tpl_frame->rec_picture->y_buffer + dst_mb_offset;
   const int dst_buffer_stride = tpl_frame->rec_picture->y_stride;
 
   // Number of pixels in a tpl block
   const int tpl_block_pels = tpl_data->tpl_bsize_1d * tpl_data->tpl_bsize_1d;
   // Allocate temporary buffers used in motion estimation.
-  uint8_t *predictor8 = aom_memalign(32, tpl_block_pels * 2 * sizeof(uint8_t));
+  uint16_t *predictor = aom_memalign(32, tpl_block_pels * sizeof(uint16_t));
   int16_t *src_diff = aom_memalign(32, tpl_block_pels * sizeof(int16_t));
   tran_low_t *coeff = aom_memalign(32, tpl_block_pels * sizeof(tran_low_t));
   tran_low_t *qcoeff = aom_memalign(32, tpl_block_pels * sizeof(tran_low_t));
   tran_low_t *dqcoeff = aom_memalign(32, tpl_block_pels * sizeof(tran_low_t));
   tran_low_t *best_coeff =
       aom_memalign(32, tpl_block_pels * sizeof(tran_low_t));
-  uint8_t *predictor = CONVERT_TO_BYTEPTR(predictor8);
   int64_t recon_error = 1, sse = 1;
 
   memset(tpl_stats, 0, sizeof(*tpl_stats));
@@ -299,10 +298,9 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   // Pre-load the bottom left line.
   if (xd->left_available &&
       mi_row + tx_size_high_unit[tx_size] < xd->tile.mi_row_end) {
-    uint16_t *dst = CONVERT_TO_SHORTPTR(dst_buffer);
     for (int i = 0; i < bw; ++i)
-      dst[(bw + i) * dst_buffer_stride - 1] =
-          dst[(bw - 1) * dst_buffer_stride - 1];
+      dst_buffer[(bw + i) * dst_buffer_stride - 1] =
+          dst_buffer[(bw - 1) * dst_buffer_stride - 1];
   }
 
   // if cpi->sf.tpl_sf.prune_intra_modes is on, then search only DC_PRED,
@@ -345,7 +343,7 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
     const YV12_BUFFER_CONFIG *ref_frame_ptr = tpl_data->src_ref_frame[rf_idx];
     int ref_mb_offset =
         mi_row * MI_SIZE * ref_frame_ptr->y_stride + mi_col * MI_SIZE;
-    uint8_t *ref_mb = ref_frame_ptr->y_buffer + ref_mb_offset;
+    uint16_t *ref_mb = ref_frame_ptr->y_buffer + ref_mb_offset;
     int ref_stride = ref_frame_ptr->y_stride;
 
     int_mv best_rfidx_mv = { 0 };
@@ -530,7 +528,7 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   }
 
   // Free temporary buffers.
-  aom_free(predictor8);
+  aom_free(predictor);
   aom_free(src_diff);
   aom_free(coeff);
   aom_free(qcoeff);

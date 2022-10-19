@@ -414,10 +414,10 @@ static void blend_a64_mask_b12_sx_sy_w8n_sse4_1(
 //////////////////////////////////////////////////////////////////////////////
 // Dispatch
 //////////////////////////////////////////////////////////////////////////////
-void aom_highbd_blend_a64_mask_sse4_1(uint8_t *dst_8, uint32_t dst_stride,
-                                      const uint8_t *src0_8,
+void aom_highbd_blend_a64_mask_sse4_1(uint16_t *dst, uint32_t dst_stride,
+                                      const uint16_t *src0,
                                       uint32_t src0_stride,
-                                      const uint8_t *src1_8,
+                                      const uint16_t *src1,
                                       uint32_t src1_stride, const uint8_t *mask,
                                       uint32_t mask_stride, int w, int h,
                                       int subw, int subh, int bd) {
@@ -448,8 +448,8 @@ void aom_highbd_blend_a64_mask_sse4_1(uint8_t *dst_8, uint32_t dst_stride,
           blend_a64_mask_b12_sx_sy_w4_sse4_1 } } }
   };
 
-  assert(IMPLIES(src0_8 == dst_8, src0_stride == dst_stride));
-  assert(IMPLIES(src1_8 == dst_8, src1_stride == dst_stride));
+  assert(IMPLIES(src0 == dst, src0_stride == dst_stride));
+  assert(IMPLIES(src1 == dst, src1_stride == dst_stride));
 
   assert(h >= 1);
   assert(w >= 1);
@@ -458,14 +458,10 @@ void aom_highbd_blend_a64_mask_sse4_1(uint8_t *dst_8, uint32_t dst_stride,
 
   assert(bd == 8 || bd == 10 || bd == 12);
   if (UNLIKELY((h | w) & 3)) {  // if (w <= 2 || h <= 2)
-    aom_highbd_blend_a64_mask_c(dst_8, dst_stride, src0_8, src0_stride, src1_8,
+    aom_highbd_blend_a64_mask_c(dst, dst_stride, src0, src0_stride, src1,
                                 src1_stride, mask, mask_stride, w, h, subw,
                                 subh, bd);
   } else {
-    uint16_t *const dst = CONVERT_TO_SHORTPTR(dst_8);
-    const uint16_t *const src0 = CONVERT_TO_SHORTPTR(src0_8);
-    const uint16_t *const src1 = CONVERT_TO_SHORTPTR(src1_8);
-
     blend[bd == 12][(w >> 2) & 1][subw != 0][subh != 0](
         dst, dst_stride, src0, src0_stride, src1, src1_stride, mask,
         mask_stride, w, h);
@@ -841,11 +837,10 @@ static INLINE void highbd_blend_a64_d16_mask_subw1_subh1_w16_sse4_1(
 }
 
 void aom_highbd_blend_a64_d16_mask_sse4_1(
-    uint8_t *dst8, uint32_t dst_stride, const CONV_BUF_TYPE *src0,
+    uint16_t *dst, uint32_t dst_stride, const CONV_BUF_TYPE *src0,
     uint32_t src0_stride, const CONV_BUF_TYPE *src1, uint32_t src1_stride,
     const uint8_t *mask, uint32_t mask_stride, int w, int h, int subw, int subh,
     ConvolveParams *conv_params, const int bd) {
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
   const int round_bits =
       2 * FILTER_BITS - conv_params->round_0 - conv_params->round_1;
   const int32_t round_offset =
@@ -914,7 +909,7 @@ void aom_highbd_blend_a64_d16_mask_sse4_1(
     // Sub-sampling in only one axis doesn't seem to happen very much, so fall
     // back to the vanilla C implementation instead of having all the optimised
     // code for these.
-    aom_highbd_blend_a64_d16_mask_c(dst8, dst_stride, src0, src0_stride, src1,
+    aom_highbd_blend_a64_d16_mask_c(dst, dst_stride, src0, src0_stride, src1,
                                     src1_stride, mask, mask_stride, w, h, subw,
                                     subh, conv_params, bd);
   }

@@ -31,7 +31,7 @@ namespace {
 static const int kIterations = 1000;
 static const int kMaskMax = 64;
 
-typedef unsigned int (*ObmcVarF)(const uint8_t *pre, int pre_stride,
+typedef unsigned int (*ObmcVarF)(const uint16_t *pre, int pre_stride,
                                  const int32_t *wsrc, const int32_t *mask,
                                  unsigned int *sse);
 typedef libaom_test::FuncParam<ObmcVarF> TestFuncs;
@@ -58,12 +58,11 @@ TEST_P(ObmcVarianceHBDTest, RandomValues) {
     }
 
     unsigned int ref_sse, tst_sse;
-    const unsigned int ref_res = params_.ref_func(
-        CONVERT_TO_BYTEPTR(pre), pre_stride, wsrc, mask, &ref_sse);
+    const unsigned int ref_res =
+        params_.ref_func(pre, pre_stride, wsrc, mask, &ref_sse);
     unsigned int tst_res;
-    ASM_REGISTER_STATE_CHECK(tst_res = params_.tst_func(CONVERT_TO_BYTEPTR(pre),
-                                                        pre_stride, wsrc, mask,
-                                                        &tst_sse));
+    ASM_REGISTER_STATE_CHECK(
+        tst_res = params_.tst_func(pre, pre_stride, wsrc, mask, &tst_sse));
 
     ASSERT_EQ(ref_res, tst_res);
     ASSERT_EQ(ref_sse, tst_sse);
@@ -85,12 +84,11 @@ TEST_P(ObmcVarianceHBDTest, ExtremeValues) {
     }
 
     unsigned int ref_sse, tst_sse;
-    const unsigned int ref_res = params_.ref_func(
-        CONVERT_TO_BYTEPTR(pre), pre_stride, wsrc, mask, &ref_sse);
+    const unsigned int ref_res =
+        params_.ref_func(pre, pre_stride, wsrc, mask, &ref_sse);
     unsigned int tst_res;
-    ASM_REGISTER_STATE_CHECK(tst_res = params_.tst_func(CONVERT_TO_BYTEPTR(pre),
-                                                        pre_stride, wsrc, mask,
-                                                        &tst_sse));
+    ASM_REGISTER_STATE_CHECK(
+        tst_res = params_.tst_func(pre, pre_stride, wsrc, mask, &tst_sse));
 
     ASSERT_EQ(ref_res, tst_res);
     ASSERT_EQ(ref_sse, tst_sse);

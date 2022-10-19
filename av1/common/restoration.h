@@ -234,12 +234,12 @@ typedef struct {
   /*!
    * stripe boundary above
    */
-  uint8_t *stripe_boundary_above;
+  uint16_t *stripe_boundary_above;
 
   /*!
    * stripe boundary below
    */
-  uint8_t *stripe_boundary_below;
+  uint16_t *stripe_boundary_below;
 
   /*!
    * strides for stripe boundaries above and below
@@ -342,7 +342,7 @@ typedef struct FilterFrameCtxt {
   int tile_stripe0;
   int ss_x, ss_y;
   int bit_depth;
-  uint8_t *data8, *dst8;
+  uint16_t *data8, *dst8;
   int data_stride, dst_stride;
   AV1PixelRect tile_rect;
 } FilterFrameCtxt;
@@ -363,7 +363,7 @@ void av1_alloc_restoration_struct(struct AV1Common *cm, RestorationInfo *rsi,
                                   int is_uv);
 void av1_free_restoration_struct(RestorationInfo *rst_info);
 
-void av1_extend_frame(uint8_t *data, int width, int height, int stride,
+void av1_extend_frame(uint16_t *data, int width, int height, int stride,
                       int border_horz, int border_vert);
 void av1_decode_xq(const int *xqd, int *xq, const sgr_params_type *params);
 
@@ -385,25 +385,25 @@ void av1_decode_xq(const int *xqd, int *xq, const sgr_params_type *params);
  * \param[in]  ss_x          Horizontal subsampling for plane
  * \param[in]  ss_y          Vertical subsampling for plane
  * \param[in]  bit_depth     Bit-depth of the video
- * \param[in]  data8         Frame data (pointing at the top-left corner of
+ * \param[in]  data          Frame data (pointing at the top-left corner of
  *                           the frame, not the restoration unit).
- * \param[in]  stride        Stride of \c data8
- * \param[out] dst8          Buffer where the results will be written. Like
- *                           \c data8, \c dst8 should point at the top-left
+ * \param[in]  stride        Stride of \c data
+ * \param[out] dst           Buffer where the results will be written. Like
+ *                           \c data, \c dst should point at the top-left
  *                           corner of the frame
- * \param[in]  dst_stride    Stride of \c dst8
+ * \param[in]  dst_stride    Stride of \c dst
  * \param[in]  tmpbuf        Scratch buffer used by the sgrproj filter which
  *                           should be at least SGRPROJ_TMPBUF_SIZE big.
  * \param[in]  optimized_lr  Whether to use fast optimized Loop Restoration
  *
- * Nothing is returned. Instead, the filtered unit is output in \c dst8
+ * Nothing is returned. Instead, the filtered unit is output in \c dst
  * at the proper restoration unit offset.
  */
 void av1_loop_restoration_filter_unit(
     const RestorationTileLimits *limits, const RestorationUnitInfo *rui,
     const RestorationStripeBoundaries *rsb, RestorationLineBuffers *rlbs,
     const AV1PixelRect *tile_rect, int tile_stripe0, int ss_x, int ss_y,
-    int bit_depth, uint8_t *data8, int stride, uint8_t *dst8, int dst_stride,
+    int bit_depth, uint16_t *data, int stride, uint16_t *dst, int dst_stride,
     int32_t *tmpbuf, int optimized_lr);
 
 /*!\brief Function for applying loop restoration filter to a frame

@@ -598,8 +598,8 @@ static AOM_INLINE void save_tx_rd_info(int n4, uint32_t hash,
 #if CONFIG_COLLECT_RD_STATS
 
 static AOM_INLINE void get_energy_distribution_fine(
-    const AV1_COMP *cpi, BLOCK_SIZE bsize, const uint8_t *src, int src_stride,
-    const uint8_t *dst, int dst_stride, int need_4th, double *hordist,
+    const AV1_COMP *cpi, BLOCK_SIZE bsize, const uint16_t *src, int src_stride,
+    const uint16_t *dst, int dst_stride, int need_4th, double *hordist,
     double *verdist) {
   const int bw = block_size_wide[bsize];
   const int bh = block_size_high[bsize];
@@ -613,13 +613,11 @@ static AOM_INLINE void get_energy_distribution_fine(
     assert(bw <= 32);
     assert(bh <= 32);
     assert(((bw - 1) >> w_shift) + (((bh - 1) >> h_shift) << 2) == 15);
-    const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-    const uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
     for (int i = 0; i < bh; ++i)
       for (int j = 0; j < bw; ++j) {
         const int index = (j >> w_shift) + ((i >> h_shift) << 2);
-        esq[index] += (src16[j + i * src_stride] - dst16[j + i * dst_stride]) *
-                      (src16[j + i * src_stride] - dst16[j + i * dst_stride]);
+        esq[index] += (src[j + i * src_stride] - dst[j + i * dst_stride]) *
+                      (src[j + i * src_stride] - dst[j + i * dst_stride]);
       }
   } else {  // Calculate 'esq' values using 'vf' functions on the 16 sub-blocks.
     const int f_index =
@@ -718,8 +716,8 @@ static double get_sad_norm(const int16_t *diff, int stride, int w, int h) {
 }
 
 static AOM_INLINE void get_2x2_normalized_sses_and_sads(
-    const AV1_COMP *const cpi, BLOCK_SIZE tx_bsize, const uint8_t *const src,
-    int src_stride, const uint8_t *const dst, int dst_stride,
+    const AV1_COMP *const cpi, BLOCK_SIZE tx_bsize, const uint16_t *const src,
+    int src_stride, const uint16_t *const dst, int dst_stride,
     const int16_t *const src_diff, int diff_stride, double *const sse_norm_arr,
     double *const sad_norm_arr) {
   const BLOCK_SIZE tx_bsize_half =
@@ -747,9 +745,9 @@ static AOM_INLINE void get_2x2_normalized_sses_and_sads(
     const int num_samples_half = half_width * half_height;
     for (int row = 0; row < 2; ++row) {
       for (int col = 0; col < 2; ++col) {
-        const uint8_t *const this_src =
+        const uint16_t *const this_src =
             src + row * half_height * src_stride + col * half_width;
-        const uint8_t *const this_dst =
+        const uint16_t *const this_dst =
             dst + row * half_height * dst_stride + col * half_width;
 
         if (sse_norm_arr) {
@@ -814,10 +812,10 @@ static AOM_INLINE void PrintTransformUnitStats(
   fprintf(fout, "%g %g", rate_norm, dist_norm);
 
   const int src_stride = p->src.stride;
-  const uint8_t *const src =
+  const uint16_t *const src =
       &p->src.buf[(blk_row * src_stride + blk_col) << MI_SIZE_LOG2];
   const int dst_stride = pd->dst.stride;
-  const uint8_t *const dst =
+  const uint16_t *const dst =
       &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
   unsigned int sse;
   cpi->fn_ptr[tx_bsize].vf(src, src_stride, dst, dst_stride, &sse);
@@ -936,11 +934,9 @@ static int get_est_rate_dist(const TileDataEnc *tile_data, BLOCK_SIZE bsize,
   return 0;
 }
 
-static double get_highbd_diff_mean(const uint8_t *src8, int src_stride,
-                                   const uint8_t *dst8, int dst_stride, int w,
+static double get_highbd_diff_mean(const uint16_t *src, int src_stride,
+                                   const uint16_t *dst, int dst_stride, int w,
                                    int h) {
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
   double sum = 0.0;
   for (int j = 0; j < h; ++j) {
     for (int i = 0; i < w; ++i) {
@@ -999,9 +995,9 @@ static AOM_INLINE void PrintPredictionUnitStats(const AV1_COMP *const cpi,
   fprintf(fout, "%g %g %g", rate_norm, dist_norm, rdcost_norm);
 
   const int src_stride = p->src.stride;
-  const uint8_t *const src = p->src.buf;
+  const uint16_t *const src = p->src.buf;
   const int dst_stride = pd->dst.stride;
-  const uint8_t *const dst = pd->dst.buf;
+  const uint16_t *const dst = pd->dst.buf;
   const int16_t *const src_diff = p->src_diff;
 
   int64_t sse = calculate_sse(xd, p, pd, bw, bh);
@@ -1094,7 +1090,8 @@ static AOM_INLINE void inverse_transform_block_facade(MACROBLOCK *const x,
 
   struct macroblockd_plane *const pd = &xd->plane[plane];
   const int dst_stride = pd->dst.stride;
-  uint8_t *dst = &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
+  uint16_t *dst =
+      &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
   av1_inverse_transform_block(xd, dqcoeff, plane, tx_type, tx_size, dst,
                               dst_stride, eob, reduced_tx_set);
 }
@@ -1157,8 +1154,8 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 }
 
 static unsigned pixel_dist_visible_only(
-    const AV1_COMP *const cpi, const MACROBLOCK *x, const uint8_t *src,
-    const int src_stride, const uint8_t *dst, const int dst_stride,
+    const AV1_COMP *const cpi, const MACROBLOCK *x, const uint16_t *src,
+    const int src_stride, const uint16_t *dst, const int dst_stride,
     const BLOCK_SIZE tx_bsize, int txb_rows, int txb_cols, int visible_rows,
     int visible_cols) {
   unsigned sse;
@@ -1180,8 +1177,8 @@ static unsigned pixel_dist_visible_only(
 // the
 // transform block.
 static unsigned pixel_dist(const AV1_COMP *const cpi, const MACROBLOCK *x,
-                           int plane, const uint8_t *src, const int src_stride,
-                           const uint8_t *dst, const int dst_stride,
+                           int plane, const uint16_t *src, const int src_stride,
+                           const uint16_t *dst, const int dst_stride,
                            int blk_row, int blk_col,
                            const BLOCK_SIZE plane_bsize,
                            const BLOCK_SIZE tx_bsize) {
@@ -1215,8 +1212,8 @@ static INLINE int64_t dist_block_px_domain(const AV1_COMP *cpi, MACROBLOCK *x,
   // Scale the transform block index to pixel unit.
   const int src_idx = (blk_row * src_stride + blk_col) << MI_SIZE_LOG2;
   const int dst_idx = (blk_row * dst_stride + blk_col) << MI_SIZE_LOG2;
-  const uint8_t *src = &x->plane[plane].src.buf[src_idx];
-  const uint8_t *dst = &xd->plane[plane].dst.buf[dst_idx];
+  const uint16_t *src = &x->plane[plane].src.buf[src_idx];
+  const uint16_t *dst = &xd->plane[plane].dst.buf[dst_idx];
 #if CONFIG_IST
   tran_low_t *dqcoeff = p->dqcoeff + BLOCK_OFFSET(block);
 #else
@@ -1226,12 +1223,9 @@ static INLINE int64_t dist_block_px_domain(const AV1_COMP *cpi, MACROBLOCK *x,
   assert(cpi != NULL);
   assert(tx_size_wide_log2[0] == tx_size_high_log2[0]);
 
-  uint8_t *recon;
-  DECLARE_ALIGNED(16, uint16_t, recon16[MAX_TX_SQUARE]);
+  DECLARE_ALIGNED(16, uint16_t, recon[MAX_TX_SQUARE]);
 
-  recon = CONVERT_TO_BYTEPTR(recon16);
-  aom_highbd_convolve_copy(CONVERT_TO_SHORTPTR(dst), dst_stride,
-                           CONVERT_TO_SHORTPTR(recon), MAX_TX_SIZE, bsw, bsh);
+  aom_highbd_convolve_copy(dst, dst_stride, recon, MAX_TX_SIZE, bsw, bsh);
 
   const PLANE_TYPE plane_type = get_plane_type(plane);
   TX_TYPE tx_type = av1_get_tx_type(xd, plane_type, blk_row, blk_col, tx_size,

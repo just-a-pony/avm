@@ -161,19 +161,15 @@ static void copy_tile_highbd(int width, int height, const uint16_t *src,
     memcpy(dst + i * dst_stride, src + i * src_stride, width * sizeof(*dst));
 }
 
-void av1_extend_frame(uint8_t *data, int width, int height, int stride,
+void av1_extend_frame(uint16_t *data, int width, int height, int stride,
                       int border_horz, int border_vert) {
-  extend_frame_highbd(CONVERT_TO_SHORTPTR(data), width, height, stride,
-                      border_horz, border_vert);
+  extend_frame_highbd(data, width, height, stride, border_horz, border_vert);
 }
 
-static void copy_tile(int width, int height, const uint8_t *src, int src_stride,
-                      uint8_t *dst, int dst_stride) {
-  copy_tile_highbd(width, height, CONVERT_TO_SHORTPTR(src), src_stride,
-                   CONVERT_TO_SHORTPTR(dst), dst_stride);
+static void copy_tile(int width, int height, const uint16_t *src,
+                      int src_stride, uint16_t *dst, int dst_stride) {
+  copy_tile_highbd(width, height, src, src_stride, dst, dst_stride);
 }
-
-#define REAL_PTR(d) ((uint8_t *)CONVERT_TO_SHORTPTR(d))
 
 // With striped loop restoration, the filtering for each 64-pixel stripe gets
 // most of its input from the output of CDEF (stored in data8), but we need to
@@ -242,7 +238,7 @@ static void get_stripe_boundary_info(const RestorationTileLimits *limits,
 // index we get from limits into something we can look up in rsb).
 static void setup_processing_stripe_boundary(
     const RestorationTileLimits *limits, const RestorationStripeBoundaries *rsb,
-    int rsb_row, int h, uint8_t *data8, int data_stride,
+    int rsb_row, int h, uint16_t *data, int data_stride,
     RestorationLineBuffers *rlbs, int copy_above, int copy_below, int opt) {
   // Offsets within the line buffers. The buffer logically starts at column
   // -RESTORATION_EXTRA_HORZ so the 1st column (at x0 - RESTORATION_EXTRA_HORZ)
@@ -268,17 +264,16 @@ static void setup_processing_stripe_boundary(
   // we want to leave the boundary alone!
   if (!opt) {
     if (copy_above) {
-      uint8_t *data8_tl = data8 + data_x0 + limits->v_start * data_stride;
+      uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
 
       for (int i = -RESTORATION_BORDER; i < 0; ++i) {
         const int buf_row = rsb_row + AOMMAX(i + RESTORATION_CTX_VERT, 0);
         const int buf_off = buf_x0_off + buf_row * buf_stride;
-        const uint8_t *buf = rsb->stripe_boundary_above + (buf_off << 1);
-        uint8_t *dst8 = data8_tl + i * data_stride;
+        const uint16_t *buf = rsb->stripe_boundary_above + buf_off;
+        uint16_t *dst = data_tl + i * data_stride;
         // Save old pixels, then replace with data from stripe_boundary_above
-        memcpy(rlbs->tmp_save_above[i + RESTORATION_BORDER], REAL_PTR(dst8),
-               line_size);
-        memcpy(REAL_PTR(dst8), buf, line_size);
+        memcpy(rlbs->tmp_save_above[i + RESTORATION_BORDER], dst, line_size);
+        memcpy(dst, buf, line_size);
       }
     }
 
@@ -287,42 +282,39 @@ static void setup_processing_stripe_boundary(
     // for i = 0, 1, 2.
     if (copy_below) {
       const int stripe_end = limits->v_start + h;
-      uint8_t *data8_bl = data8 + data_x0 + stripe_end * data_stride;
+      uint16_t *data_bl = data + data_x0 + stripe_end * data_stride;
 
       for (int i = 0; i < RESTORATION_BORDER; ++i) {
         const int buf_row = rsb_row + AOMMIN(i, RESTORATION_CTX_VERT - 1);
         const int buf_off = buf_x0_off + buf_row * buf_stride;
-        const uint8_t *src = rsb->stripe_boundary_below + (buf_off << 1);
+        const uint16_t *src = rsb->stripe_boundary_below + buf_off;
 
-        uint8_t *dst8 = data8_bl + i * data_stride;
+        uint16_t *dst = data_bl + i * data_stride;
         // Save old pixels, then replace with data from stripe_boundary_below
-        memcpy(rlbs->tmp_save_below[i], REAL_PTR(dst8), line_size);
-        memcpy(REAL_PTR(dst8), src, line_size);
+        memcpy(rlbs->tmp_save_below[i], dst, line_size);
+        memcpy(dst, src, line_size);
       }
     }
   } else {
     if (copy_above) {
-      uint8_t *data8_tl = data8 + data_x0 + limits->v_start * data_stride;
+      uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
 
       // Only save and overwrite i=-RESTORATION_BORDER line.
-      uint8_t *dst8 = data8_tl + (-RESTORATION_BORDER) * data_stride;
+      uint16_t *dst = data_tl + (-RESTORATION_BORDER) * data_stride;
       // Save old pixels, then replace with data from stripe_boundary_above
-      memcpy(rlbs->tmp_save_above[0], REAL_PTR(dst8), line_size);
-      memcpy(REAL_PTR(dst8),
-             REAL_PTR(data8_tl + (-RESTORATION_BORDER + 1) * data_stride),
-             line_size);
+      memcpy(rlbs->tmp_save_above[0], dst, line_size);
+      memcpy(dst, data_tl + (-RESTORATION_BORDER + 1) * data_stride, line_size);
     }
 
     if (copy_below) {
       const int stripe_end = limits->v_start + h;
-      uint8_t *data8_bl = data8 + data_x0 + stripe_end * data_stride;
+      uint16_t *data_bl = data + data_x0 + stripe_end * data_stride;
 
       // Only save and overwrite i=2 line.
-      uint8_t *dst8 = data8_bl + 2 * data_stride;
+      uint16_t *dst = data_bl + 2 * data_stride;
       // Save old pixels, then replace with data from stripe_boundary_below
-      memcpy(rlbs->tmp_save_below[2], REAL_PTR(dst8), line_size);
-      memcpy(REAL_PTR(dst8), REAL_PTR(data8_bl + (2 - 1) * data_stride),
-             line_size);
+      memcpy(rlbs->tmp_save_below[2], dst, line_size);
+      memcpy(dst, data_bl + (2 - 1) * data_stride, line_size);
     }
   }
 }
@@ -342,7 +334,7 @@ static void setup_processing_stripe_boundary(
 // by the top/bottom borders.
 static void restore_processing_stripe_boundary(
     const RestorationTileLimits *limits, const RestorationLineBuffers *rlbs,
-    int h, uint8_t *data8, int data_stride, int copy_above, int copy_below,
+    int h, uint16_t *data, int data_stride, int copy_above, int copy_below,
     int opt) {
   const int line_width =
       (limits->h_end - limits->h_start) + 2 * RESTORATION_EXTRA_HORZ;
@@ -352,42 +344,41 @@ static void restore_processing_stripe_boundary(
 
   if (!opt) {
     if (copy_above) {
-      uint8_t *data8_tl = data8 + data_x0 + limits->v_start * data_stride;
+      uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
       for (int i = -RESTORATION_BORDER; i < 0; ++i) {
-        uint8_t *dst8 = data8_tl + i * data_stride;
-        memcpy(REAL_PTR(dst8), rlbs->tmp_save_above[i + RESTORATION_BORDER],
-               line_size);
+        uint16_t *dst = data_tl + i * data_stride;
+        memcpy(dst, rlbs->tmp_save_above[i + RESTORATION_BORDER], line_size);
       }
     }
 
     if (copy_below) {
       const int stripe_bottom = limits->v_start + h;
-      uint8_t *data8_bl = data8 + data_x0 + stripe_bottom * data_stride;
+      uint16_t *data_bl = data + data_x0 + stripe_bottom * data_stride;
 
       for (int i = 0; i < RESTORATION_BORDER; ++i) {
         if (stripe_bottom + i >= limits->v_end + RESTORATION_BORDER) break;
 
-        uint8_t *dst8 = data8_bl + i * data_stride;
-        memcpy(REAL_PTR(dst8), rlbs->tmp_save_below[i], line_size);
+        uint16_t *dst = data_bl + i * data_stride;
+        memcpy(dst, rlbs->tmp_save_below[i], line_size);
       }
     }
   } else {
     if (copy_above) {
-      uint8_t *data8_tl = data8 + data_x0 + limits->v_start * data_stride;
+      uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
 
       // Only restore i=-RESTORATION_BORDER line.
-      uint8_t *dst8 = data8_tl + (-RESTORATION_BORDER) * data_stride;
-      memcpy(REAL_PTR(dst8), rlbs->tmp_save_above[0], line_size);
+      uint16_t *dst = data_tl + (-RESTORATION_BORDER) * data_stride;
+      memcpy(dst, rlbs->tmp_save_above[0], line_size);
     }
 
     if (copy_below) {
       const int stripe_bottom = limits->v_start + h;
-      uint8_t *data8_bl = data8 + data_x0 + stripe_bottom * data_stride;
+      uint16_t *data_bl = data + data_x0 + stripe_bottom * data_stride;
 
       // Only restore i=2 line.
       if (stripe_bottom + 2 < limits->v_end + RESTORATION_BORDER) {
-        uint8_t *dst8 = data8_bl + 2 * data_stride;
-        memcpy(REAL_PTR(dst8), rlbs->tmp_save_below[2], line_size);
+        uint16_t *dst = data_bl + 2 * data_stride;
+        memcpy(dst, rlbs->tmp_save_below[2], line_size);
       }
     }
   }
@@ -805,7 +796,7 @@ static void selfguided_restoration_internal(int32_t *dgd, int width, int height,
   }
 }
 
-int av1_selfguided_restoration_c(const uint8_t *dgd8, int width, int height,
+int av1_selfguided_restoration_c(const uint16_t *dgd, int width, int height,
                                  int dgd_stride, int32_t *flt0, int32_t *flt1,
                                  int flt_stride, int sgr_params_idx,
                                  int bit_depth) {
@@ -814,10 +805,9 @@ int av1_selfguided_restoration_c(const uint8_t *dgd8, int width, int height,
   int32_t *dgd32 =
       dgd32_ + dgd32_stride * SGRPROJ_BORDER_VERT + SGRPROJ_BORDER_HORZ;
 
-  const uint16_t *dgd16 = CONVERT_TO_SHORTPTR(dgd8);
   for (int i = -SGRPROJ_BORDER_VERT; i < height + SGRPROJ_BORDER_VERT; ++i) {
     for (int j = -SGRPROJ_BORDER_HORZ; j < width + SGRPROJ_BORDER_HORZ; ++j) {
-      dgd32[i * dgd32_stride + j] = dgd16[i * dgd_stride + j];
+      dgd32[i * dgd32_stride + j] = dgd[i * dgd_stride + j];
     }
   }
 
@@ -837,17 +827,17 @@ int av1_selfguided_restoration_c(const uint8_t *dgd8, int width, int height,
   return 0;
 }
 
-void av1_apply_selfguided_restoration_c(const uint8_t *dat8, int width,
+void av1_apply_selfguided_restoration_c(const uint16_t *dat, int width,
                                         int height, int stride, int eps,
-                                        const int *xqd, uint8_t *dst8,
+                                        const int *xqd, uint16_t *dst,
                                         int dst_stride, int32_t *tmpbuf,
                                         int bit_depth) {
   int32_t *flt0 = tmpbuf;
   int32_t *flt1 = flt0 + RESTORATION_UNITPELS_MAX;
   assert(width * height <= RESTORATION_UNITPELS_MAX);
 
-  const int ret = av1_selfguided_restoration_c(
-      dat8, width, height, stride, flt0, flt1, width, eps, bit_depth);
+  const int ret = av1_selfguided_restoration_c(dat, width, height, stride, flt0,
+                                               flt1, width, eps, bit_depth);
   (void)ret;
   assert(!ret);
   const sgr_params_type *const params = &av1_sgr_params[eps];
@@ -856,10 +846,10 @@ void av1_apply_selfguided_restoration_c(const uint8_t *dat8, int width,
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
       const int k = i * width + j;
-      uint8_t *dst8ij = dst8 + i * dst_stride + j;
-      const uint8_t *dat8ij = dat8 + i * stride + j;
+      uint16_t *dstij = dst + i * dst_stride + j;
+      const uint16_t *datij = dat + i * stride + j;
 
-      const uint16_t pre_u = *CONVERT_TO_SHORTPTR(dat8ij);
+      const uint16_t pre_u = *datij;
       const int32_t u = (int32_t)pre_u << SGRPROJ_RST_BITS;
       int32_t v = u << SGRPROJ_PRJ_BITS;
       // If params->r == 0 then we skipped the filtering in
@@ -870,15 +860,15 @@ void av1_apply_selfguided_restoration_c(const uint8_t *dat8, int width,
           (int16_t)ROUND_POWER_OF_TWO(v, SGRPROJ_PRJ_BITS + SGRPROJ_RST_BITS);
 
       const uint16_t out = clip_pixel_highbd(w, bit_depth);
-      *CONVERT_TO_SHORTPTR(dst8ij) = out;
+      *dstij = out;
     }
   }
 }
 
 static void wiener_filter_stripe_highbd(const RestorationUnitInfo *rui,
                                         int stripe_width, int stripe_height,
-                                        int procunit_width, const uint8_t *src8,
-                                        int src_stride, uint8_t *dst8,
+                                        int procunit_width, const uint16_t *src,
+                                        int src_stride, uint16_t *dst,
                                         int dst_stride, int32_t *tmpbuf,
                                         int bit_depth) {
   (void)tmpbuf;
@@ -886,9 +876,9 @@ static void wiener_filter_stripe_highbd(const RestorationUnitInfo *rui,
 
   for (int j = 0; j < stripe_width; j += procunit_width) {
     int w = AOMMIN(procunit_width, (stripe_width - j + 15) & ~15);
-    const uint8_t *src8_p = src8 + j;
-    uint8_t *dst8_p = dst8 + j;
-    av1_highbd_wiener_convolve_add_src(src8_p, src_stride, dst8_p, dst_stride,
+    const uint16_t *src_p = src + j;
+    uint16_t *dst_p = dst + j;
+    av1_highbd_wiener_convolve_add_src(src_p, src_stride, dst_p, dst_stride,
                                        rui->wiener_info.hfilter, 16,
                                        rui->wiener_info.vfilter, 16, w,
                                        stripe_height, &conv_params, bit_depth);
@@ -898,21 +888,21 @@ static void wiener_filter_stripe_highbd(const RestorationUnitInfo *rui,
 static void sgrproj_filter_stripe_highbd(const RestorationUnitInfo *rui,
                                          int stripe_width, int stripe_height,
                                          int procunit_width,
-                                         const uint8_t *src8, int src_stride,
-                                         uint8_t *dst8, int dst_stride,
+                                         const uint16_t *src, int src_stride,
+                                         uint16_t *dst, int dst_stride,
                                          int32_t *tmpbuf, int bit_depth) {
   for (int j = 0; j < stripe_width; j += procunit_width) {
     int w = AOMMIN(procunit_width, stripe_width - j);
     av1_apply_selfguided_restoration(
-        src8 + j, w, stripe_height, src_stride, rui->sgrproj_info.ep,
-        rui->sgrproj_info.xqd, dst8 + j, dst_stride, tmpbuf, bit_depth);
+        src + j, w, stripe_height, src_stride, rui->sgrproj_info.ep,
+        rui->sgrproj_info.xqd, dst + j, dst_stride, tmpbuf, bit_depth);
   }
 }
 
 typedef void (*stripe_filter_fun)(const RestorationUnitInfo *rui,
                                   int stripe_width, int stripe_height,
-                                  int procunit_width, const uint8_t *src,
-                                  int src_stride, uint8_t *dst, int dst_stride,
+                                  int procunit_width, const uint16_t *src,
+                                  int src_stride, uint16_t *dst, int dst_stride,
                                   int32_t *tmpbuf, int bit_depth);
 
 #define NUM_STRIPE_FILTERS 2
@@ -925,17 +915,17 @@ void av1_loop_restoration_filter_unit(
     const RestorationTileLimits *limits, const RestorationUnitInfo *rui,
     const RestorationStripeBoundaries *rsb, RestorationLineBuffers *rlbs,
     const AV1PixelRect *tile_rect, int tile_stripe0, int ss_x, int ss_y,
-    int bit_depth, uint8_t *data8, int stride, uint8_t *dst8, int dst_stride,
+    int bit_depth, uint16_t *data, int stride, uint16_t *dst, int dst_stride,
     int32_t *tmpbuf, int optimized_lr) {
   RestorationType unit_rtype = rui->restoration_type;
 
   int unit_h = limits->v_end - limits->v_start;
   int unit_w = limits->h_end - limits->h_start;
-  uint8_t *data8_tl = data8 + limits->v_start * stride + limits->h_start;
-  uint8_t *dst8_tl = dst8 + limits->v_start * dst_stride + limits->h_start;
+  uint16_t *data_tl = data + limits->v_start * stride + limits->h_start;
+  uint16_t *dst_tl = dst + limits->v_start * dst_stride + limits->h_start;
 
   if (unit_rtype == RESTORE_NONE) {
-    copy_tile(unit_w, unit_h, data8_tl, stride, dst8_tl, dst_stride);
+    copy_tile(unit_w, unit_h, data_tl, stride, dst_tl, dst_stride);
     return;
   }
 
@@ -974,14 +964,14 @@ void av1_loop_restoration_filter_unit(
     const int h = AOMMIN(nominal_stripe_height,
                          remaining_stripes.v_end - remaining_stripes.v_start);
 
-    setup_processing_stripe_boundary(&remaining_stripes, rsb, rsb_row, h, data8,
+    setup_processing_stripe_boundary(&remaining_stripes, rsb, rsb_row, h, data,
                                      stride, rlbs, copy_above, copy_below,
                                      optimized_lr);
 
-    stripe_filter(rui, unit_w, h, procunit_width, data8_tl + i * stride, stride,
-                  dst8_tl + i * dst_stride, dst_stride, tmpbuf, bit_depth);
+    stripe_filter(rui, unit_w, h, procunit_width, data_tl + i * stride, stride,
+                  dst_tl + i * dst_stride, dst_stride, tmpbuf, bit_depth);
 
-    restore_processing_stripe_boundary(&remaining_stripes, rlbs, h, data8,
+    restore_processing_stripe_boundary(&remaining_stripes, rlbs, h, data,
                                        stride, copy_above, copy_below,
                                        optimized_lr);
 
@@ -1283,12 +1273,11 @@ int av1_loop_restoration_corners_in_sb(const struct AV1Common *cm, int plane,
 }
 
 // Extend to left and right
-static void extend_lines(uint8_t *buf, int width, int height, int stride,
+static void extend_lines(uint16_t *buf, int width, int height, int stride,
                          int extend) {
   for (int i = 0; i < height; ++i) {
-    uint16_t *buf16 = (uint16_t *)buf;
-    aom_memset16(buf16 - extend, buf16[0], extend);
-    aom_memset16(buf16 + width, buf16[width - 1], extend);
+    aom_memset16(buf - extend, buf[0], extend);
+    aom_memset16(buf + width, buf[width - 1], extend);
     buf += stride;
   }
 }
@@ -1297,15 +1286,16 @@ static void save_deblock_boundary_lines(
     const YV12_BUFFER_CONFIG *frame, const AV1_COMMON *cm, int plane, int row,
     int stripe, int is_above, RestorationStripeBoundaries *boundaries) {
   const int is_uv = plane > 0;
-  const uint8_t *src_buf = REAL_PTR(frame->buffers[plane]);
-  const int src_stride = frame->strides[is_uv] << 1;
-  const uint8_t *src_rows = src_buf + row * src_stride;
+  const uint16_t *src_buf = frame->buffers[plane];
+  const int src_stride = frame->strides[is_uv];
+  const uint16_t *src_rows = src_buf + row * src_stride;
 
-  uint8_t *bdry_buf = is_above ? boundaries->stripe_boundary_above
-                               : boundaries->stripe_boundary_below;
-  uint8_t *bdry_start = bdry_buf + (RESTORATION_EXTRA_HORZ << 1);
-  const int bdry_stride = boundaries->stripe_boundary_stride << 1;
-  uint8_t *bdry_rows = bdry_start + RESTORATION_CTX_VERT * stripe * bdry_stride;
+  uint16_t *bdry_buf = is_above ? boundaries->stripe_boundary_above
+                                : boundaries->stripe_boundary_below;
+  uint16_t *bdry_start = bdry_buf + (RESTORATION_EXTRA_HORZ);
+  const int bdry_stride = boundaries->stripe_boundary_stride;
+  uint16_t *bdry_rows =
+      bdry_start + RESTORATION_CTX_VERT * stripe * bdry_stride;
 
   // There is a rare case in which a processing stripe can end 1px above the
   // crop border. In this case, we do want to use deblocked pixels from below
@@ -1322,10 +1312,9 @@ static void save_deblock_boundary_lines(
     const int ss_x = is_uv && cm->seq_params.subsampling_x;
     upscaled_width = (cm->superres_upscaled_width + ss_x) >> ss_x;
     line_bytes = upscaled_width << 1;
-    av1_upscale_normative_rows(
-        cm, CONVERT_TO_BYTEPTR(src_rows), frame->strides[is_uv],
-        CONVERT_TO_BYTEPTR(bdry_rows), boundaries->stripe_boundary_stride,
-        plane, lines_to_save);
+    av1_upscale_normative_rows(cm, src_rows, frame->strides[is_uv], bdry_rows,
+                               boundaries->stripe_boundary_stride, plane,
+                               lines_to_save);
   } else {
     upscaled_width = frame->crop_widths[is_uv];
     line_bytes = upscaled_width << 1;
@@ -1347,15 +1336,16 @@ static void save_cdef_boundary_lines(const YV12_BUFFER_CONFIG *frame,
                                      int stripe, int is_above,
                                      RestorationStripeBoundaries *boundaries) {
   const int is_uv = plane > 0;
-  const uint8_t *src_buf = REAL_PTR(frame->buffers[plane]);
-  const int src_stride = frame->strides[is_uv] << 1;
-  const uint8_t *src_rows = src_buf + row * src_stride;
+  const uint16_t *src_buf = frame->buffers[plane];
+  const int src_stride = frame->strides[is_uv];
+  const uint16_t *src_rows = src_buf + row * src_stride;
 
-  uint8_t *bdry_buf = is_above ? boundaries->stripe_boundary_above
-                               : boundaries->stripe_boundary_below;
-  uint8_t *bdry_start = bdry_buf + (RESTORATION_EXTRA_HORZ << 1);
-  const int bdry_stride = boundaries->stripe_boundary_stride << 1;
-  uint8_t *bdry_rows = bdry_start + RESTORATION_CTX_VERT * stripe * bdry_stride;
+  uint16_t *bdry_buf = is_above ? boundaries->stripe_boundary_above
+                                : boundaries->stripe_boundary_below;
+  uint16_t *bdry_start = bdry_buf + RESTORATION_EXTRA_HORZ;
+  const int bdry_stride = boundaries->stripe_boundary_stride;
+  uint16_t *bdry_rows =
+      bdry_start + RESTORATION_CTX_VERT * stripe * bdry_stride;
   const int src_width = frame->crop_widths[is_uv];
 
   // At the point where this function is called, we've already applied

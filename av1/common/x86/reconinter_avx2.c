@@ -400,12 +400,12 @@ void av1_build_compound_diffwtd_mask_d16_avx2(
 }
 
 void av1_build_compound_diffwtd_mask_highbd_avx2(
-    uint8_t *mask, DIFFWTD_MASK_TYPE mask_type, const uint8_t *src0,
-    int src0_stride, const uint8_t *src1, int src1_stride, int h, int w,
+    uint8_t *mask, DIFFWTD_MASK_TYPE mask_type, const uint16_t *ssrc0,
+    int src0_stride, const uint16_t *ssrc1, int src1_stride, int h, int w,
     int bd) {
   if (w < 16) {
     av1_build_compound_diffwtd_mask_highbd_ssse3(
-        mask, mask_type, src0, src0_stride, src1, src1_stride, h, w, bd);
+        mask, mask_type, ssrc0, src0_stride, ssrc1, src1_stride, h, w, bd);
   } else {
     assert(mask_type == DIFFWTD_38 || mask_type == DIFFWTD_38_INV);
     assert(bd >= 8);
@@ -415,8 +415,6 @@ void av1_build_compound_diffwtd_mask_highbd_avx2(
         _mm256_set1_epi16(AOM_BLEND_A64_MAX_ALPHA);
     const int mask_base = 38;
     const __m256i ymask_base = _mm256_set1_epi16(mask_base);
-    const uint16_t *ssrc0 = CONVERT_TO_SHORTPTR(src0);
-    const uint16_t *ssrc1 = CONVERT_TO_SHORTPTR(src1);
     if (bd == 8) {
       if (mask_type == DIFFWTD_38_INV) {
         for (int i = 0; i < h; ++i) {

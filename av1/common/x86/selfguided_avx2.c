@@ -273,19 +273,18 @@ static INLINE __m256i cross_sum(const int32_t *buf, int stride) {
 // The final filter for self-guided restoration. Computes a weighted average
 // across A, B with "cross sums" (see cross_sum implementation above).
 static void final_filter(int32_t *dst, int dst_stride, const int32_t *A,
-                         const int32_t *B, int buf_stride, const void *dgd8,
+                         const int32_t *B, int buf_stride, const uint16_t *dgd,
                          int dgd_stride, int width, int height) {
   const int nb = 5;
   const __m256i rounding =
       round_for_shift(SGRPROJ_SGR_BITS + nb - SGRPROJ_RST_BITS);
-  const uint8_t *dgd_real = (const uint8_t *)CONVERT_TO_SHORTPTR(dgd8);
 
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; j += 8) {
       const __m256i a = cross_sum(A + i * buf_stride + j, buf_stride);
       const __m256i b = cross_sum(B + i * buf_stride + j, buf_stride);
 
-      const __m128i raw = xx_loadu_128(dgd_real + ((i * dgd_stride + j) << 1));
+      const __m128i raw = xx_loadu_128(dgd + (i * dgd_stride + j));
       const __m256i src = _mm256_cvtepu16_epi32(raw);
 
       __m256i v = _mm256_add_epi32(_mm256_madd_epi16(a, src), b);
@@ -440,7 +439,7 @@ static INLINE __m256i cross_sum_fast_odd_row(const int32_t *buf) {
 // implementations above).
 static void final_filter_fast(int32_t *dst, int dst_stride, const int32_t *A,
                               const int32_t *B, int buf_stride,
-                              const void *dgd8, int dgd_stride, int width,
+                              const uint16_t *dgd, int dgd_stride, int width,
                               int height) {
   const int nb0 = 5;
   const int nb1 = 4;
@@ -450,8 +449,6 @@ static void final_filter_fast(int32_t *dst, int dst_stride, const int32_t *A,
   const __m256i rounding1 =
       round_for_shift(SGRPROJ_SGR_BITS + nb1 - SGRPROJ_RST_BITS);
 
-  const uint8_t *dgd_real = (const uint8_t *)CONVERT_TO_SHORTPTR(dgd8);
-
   for (int i = 0; i < height; ++i) {
     if (!(i & 1)) {  // even row
       for (int j = 0; j < width; j += 8) {
@@ -460,8 +457,7 @@ static void final_filter_fast(int32_t *dst, int dst_stride, const int32_t *A,
         const __m256i b =
             cross_sum_fast_even_row(B + i * buf_stride + j, buf_stride);
 
-        const __m128i raw =
-            xx_loadu_128(dgd_real + ((i * dgd_stride + j) << 1));
+        const __m128i raw = xx_loadu_128(dgd + (i * dgd_stride + j));
         const __m256i src = _mm256_cvtepu16_epi32(raw);
 
         __m256i v = _mm256_add_epi32(_mm256_madd_epi16(a, src), b);
@@ -476,8 +472,7 @@ static void final_filter_fast(int32_t *dst, int dst_stride, const int32_t *A,
         const __m256i a = cross_sum_fast_odd_row(A + i * buf_stride + j);
         const __m256i b = cross_sum_fast_odd_row(B + i * buf_stride + j);
 
-        const __m128i raw =
-            xx_loadu_128(dgd_real + ((i * dgd_stride + j) << 1));
+        const __m128i raw = xx_loadu_128(dgd + (i * dgd_stride + j));
         const __m256i src = _mm256_cvtepu16_epi32(raw);
 
         __m256i v = _mm256_add_epi32(_mm256_madd_epi16(a, src), b);
@@ -491,7 +486,7 @@ static void final_filter_fast(int32_t *dst, int dst_stride, const int32_t *A,
   }
 }
 
-int av1_selfguided_restoration_avx2(const uint8_t *dgd8, int width, int height,
+int av1_selfguided_restoration_avx2(const uint16_t *dgd, int width, int height,
                                     int dgd_stride, int32_t *flt0,
                                     int32_t *flt1, int flt_stride,
                                     int sgr_params_idx, int bit_depth) {
@@ -537,12 +532,12 @@ int av1_selfguided_restoration_avx2(const uint8_t *dgd8, int width, int height,
 
   const int dgd_diag_border =
       SGRPROJ_BORDER_HORZ + dgd_stride * SGRPROJ_BORDER_VERT;
-  const uint8_t *dgd0 = dgd8 - dgd_diag_border;
+  const uint16_t *dgd0 = dgd - dgd_diag_border;
 
   // Generate integral images from the input. C will contain sums of squares; D
   // will contain just sums
-  integral_images_highbd(CONVERT_TO_SHORTPTR(dgd0), dgd_stride, width_ext,
-                         height_ext, Ctl, Dtl, buf_stride);
+  integral_images_highbd(dgd0, dgd_stride, width_ext, height_ext, Ctl, Dtl,
+                         buf_stride);
 
   const sgr_params_type *const params = &av1_sgr_params[sgr_params_idx];
   // Write to flt0 and flt1
@@ -556,30 +551,30 @@ int av1_selfguided_restoration_avx2(const uint8_t *dgd8, int width, int height,
   if (params->r[0] > 0) {
     calc_ab_fast(A, B, C, D, width, height, buf_stride, bit_depth,
                  sgr_params_idx, 0);
-    final_filter_fast(flt0, flt_stride, A, B, buf_stride, dgd8, dgd_stride,
+    final_filter_fast(flt0, flt_stride, A, B, buf_stride, dgd, dgd_stride,
                       width, height);
   }
 
   if (params->r[1] > 0) {
     calc_ab(A, B, C, D, width, height, buf_stride, bit_depth, sgr_params_idx,
             1);
-    final_filter(flt1, flt_stride, A, B, buf_stride, dgd8, dgd_stride, width,
+    final_filter(flt1, flt_stride, A, B, buf_stride, dgd, dgd_stride, width,
                  height);
   }
   aom_free(buf);
   return 0;
 }
 
-void av1_apply_selfguided_restoration_avx2(const uint8_t *dat8, int width,
+void av1_apply_selfguided_restoration_avx2(const uint16_t *dat, int width,
                                            int height, int stride, int eps,
-                                           const int *xqd, uint8_t *dst8,
+                                           const int *xqd, uint16_t *dst,
                                            int dst_stride, int32_t *tmpbuf,
                                            int bit_depth) {
   int32_t *flt0 = tmpbuf;
   int32_t *flt1 = flt0 + RESTORATION_UNITPELS_MAX;
   assert(width * height <= RESTORATION_UNITPELS_MAX);
   const int ret = av1_selfguided_restoration_avx2(
-      dat8, width, height, stride, flt0, flt1, width, eps, bit_depth);
+      dat, width, height, stride, flt0, flt1, width, eps, bit_depth);
   (void)ret;
   assert(!ret);
   const sgr_params_type *const params = &av1_sgr_params[eps];
@@ -595,11 +590,11 @@ void av1_apply_selfguided_restoration_avx2(const uint8_t *dat8, int width,
       const int k = i * width + j;
       const int m = i * dst_stride + j;
 
-      const uint8_t *dat8ij = dat8 + i * stride + j;
+      const uint16_t *datij = dat + i * stride + j;
       __m256i ep_0, ep_1;
       __m128i src_0, src_1;
-      src_0 = xx_loadu_128(CONVERT_TO_SHORTPTR(dat8ij));
-      src_1 = xx_loadu_128(CONVERT_TO_SHORTPTR(dat8ij + 8));
+      src_0 = xx_loadu_128(datij);
+      src_1 = xx_loadu_128(datij + 8);
       ep_0 = _mm256_cvtepu16_epi32(src_0);
       ep_1 = _mm256_cvtepu16_epi32(src_1);
 
@@ -639,7 +634,7 @@ void av1_apply_selfguided_restoration_avx2(const uint8_t *dat8, int width,
       const __m256i tmp2 = _mm256_permute4x64_epi64(tmp, 0xd8);
       const __m256i max = _mm256_set1_epi16((1 << bit_depth) - 1);
       const __m256i res = _mm256_min_epi16(tmp2, max);
-      yy_storeu_256(CONVERT_TO_SHORTPTR(dst8 + m), res);
+      yy_storeu_256(dst + m, res);
     }
   }
 }

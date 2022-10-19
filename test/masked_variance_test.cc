@@ -35,8 +35,8 @@ namespace {
 const int number_of_iterations = 200;
 
 typedef unsigned int (*MaskedSubPixelVarianceFunc)(
-    const uint8_t *src, int src_stride, int xoffset, int yoffset,
-    const uint8_t *ref, int ref_stride, const uint8_t *second_pred,
+    const uint16_t *src, int src_stride, int xoffset, int yoffset,
+    const uint16_t *ref, int ref_stride, const uint16_t *second_pred,
     const uint8_t *msk, int msk_stride, int invert_mask, unsigned int *sse);
 
 typedef std::tuple<MaskedSubPixelVarianceFunc, MaskedSubPixelVarianceFunc,
@@ -71,9 +71,6 @@ TEST_P(HighbdMaskedSubPixelVarianceTest, OperationCheck) {
   DECLARE_ALIGNED(16, uint16_t,
                   second_pred_ptr[(MAX_SB_SIZE + 1) * (MAX_SB_SIZE + 8)]);
   DECLARE_ALIGNED(16, uint8_t, msk_ptr[(MAX_SB_SIZE + 1) * (MAX_SB_SIZE + 8)]);
-  uint8_t *src8_ptr = CONVERT_TO_BYTEPTR(src_ptr);
-  uint8_t *ref8_ptr = CONVERT_TO_BYTEPTR(ref_ptr);
-  uint8_t *second_pred8_ptr = CONVERT_TO_BYTEPTR(second_pred_ptr);
   int err_count = 0;
   int first_failure = -1;
   int first_failure_x = -1;
@@ -93,13 +90,13 @@ TEST_P(HighbdMaskedSubPixelVarianceTest, OperationCheck) {
     for (xoffset = 0; xoffset < BIL_SUBPEL_SHIFTS; xoffset++) {
       for (yoffset = 0; yoffset < BIL_SUBPEL_SHIFTS; yoffset++) {
         for (int invert_mask = 0; invert_mask < 2; ++invert_mask) {
-          ref_ret = ref_func_(src8_ptr, src_stride, xoffset, yoffset, ref8_ptr,
-                              ref_stride, second_pred8_ptr, msk_ptr, msk_stride,
+          ref_ret = ref_func_(src_ptr, src_stride, xoffset, yoffset, ref_ptr,
+                              ref_stride, second_pred_ptr, msk_ptr, msk_stride,
                               invert_mask, &ref_sse);
           ASM_REGISTER_STATE_CHECK(
-              opt_ret = opt_func_(src8_ptr, src_stride, xoffset, yoffset,
-                                  ref8_ptr, ref_stride, second_pred8_ptr,
-                                  msk_ptr, msk_stride, invert_mask, &opt_sse));
+              opt_ret = opt_func_(src_ptr, src_stride, xoffset, yoffset,
+                                  ref_ptr, ref_stride, second_pred_ptr, msk_ptr,
+                                  msk_stride, invert_mask, &opt_sse));
 
           if (opt_ret != ref_ret || opt_sse != ref_sse) {
             err_count++;
@@ -130,9 +127,6 @@ TEST_P(HighbdMaskedSubPixelVarianceTest, ExtremeValues) {
   DECLARE_ALIGNED(16, uint8_t, msk_ptr[(MAX_SB_SIZE + 1) * (MAX_SB_SIZE + 8)]);
   DECLARE_ALIGNED(16, uint16_t,
                   second_pred_ptr[(MAX_SB_SIZE + 1) * (MAX_SB_SIZE + 8)]);
-  uint8_t *src8_ptr = CONVERT_TO_BYTEPTR(src_ptr);
-  uint8_t *ref8_ptr = CONVERT_TO_BYTEPTR(ref_ptr);
-  uint8_t *second_pred8_ptr = CONVERT_TO_BYTEPTR(second_pred_ptr);
   int first_failure_x = -1;
   int first_failure_y = -1;
   int err_count = 0;
@@ -154,13 +148,13 @@ TEST_P(HighbdMaskedSubPixelVarianceTest, ExtremeValues) {
                (MAX_SB_SIZE + 1) * (MAX_SB_SIZE + 8));
 
         for (int invert_mask = 0; invert_mask < 2; ++invert_mask) {
-          ref_ret = ref_func_(src8_ptr, src_stride, xoffset, yoffset, ref8_ptr,
-                              ref_stride, second_pred8_ptr, msk_ptr, msk_stride,
+          ref_ret = ref_func_(src_ptr, src_stride, xoffset, yoffset, ref_ptr,
+                              ref_stride, second_pred_ptr, msk_ptr, msk_stride,
                               invert_mask, &ref_sse);
           ASM_REGISTER_STATE_CHECK(
-              opt_ret = opt_func_(src8_ptr, src_stride, xoffset, yoffset,
-                                  ref8_ptr, ref_stride, second_pred8_ptr,
-                                  msk_ptr, msk_stride, invert_mask, &opt_sse));
+              opt_ret = opt_func_(src_ptr, src_stride, xoffset, yoffset,
+                                  ref_ptr, ref_stride, second_pred_ptr, msk_ptr,
+                                  msk_stride, invert_mask, &opt_sse));
 
           if (opt_ret != ref_ret || opt_sse != ref_sse) {
             err_count++;

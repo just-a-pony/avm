@@ -17,13 +17,11 @@
 #include "av1/common/common.h"
 #include "av1/encoder/extend.h"
 
-static void highbd_copy_and_extend_plane(const uint8_t *src8, int src_pitch,
-                                         uint8_t *dst8, int dst_pitch, int w,
+static void highbd_copy_and_extend_plane(const uint16_t *src, int src_pitch,
+                                         uint16_t *dst, int dst_pitch, int w,
                                          int h, int extend_top, int extend_left,
                                          int extend_bottom, int extend_right) {
   int i, linesize;
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
 
   // copy the left and right most columns out
   const uint16_t *src_ptr1 = src;

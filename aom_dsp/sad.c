@@ -19,13 +19,11 @@
 #include "aom_ports/mem.h"
 #include "aom_dsp/blend.h"
 
-static INLINE unsigned int highbd_sad(const uint8_t *a8, int a_stride,
-                                      const uint8_t *b8, int b_stride,
+static INLINE unsigned int highbd_sad(const uint16_t *a, int a_stride,
+                                      const uint16_t *b, int b_stride,
                                       int width, int height) {
   int y, x;
   unsigned int sad = 0;
-  const uint16_t *a = CONVERT_TO_SHORTPTR(a8);
-  const uint16_t *b = CONVERT_TO_SHORTPTR(b8);
   for (y = 0; y < height; y++) {
     for (x = 0; x < width; x++) {
       sad += abs(a[x] - b[x]);
@@ -37,11 +35,11 @@ static INLINE unsigned int highbd_sad(const uint8_t *a8, int a_stride,
   return sad;
 }
 
-#define highbd_sadMxN(m, n)                                                    \
-  unsigned int aom_highbd_sad##m##x##n##_c(const uint8_t *src, int src_stride, \
-                                           const uint8_t *ref,                 \
-                                           int ref_stride) {                   \
-    return highbd_sad(src, src_stride, ref, ref_stride, m, n);                 \
+#define highbd_sadMxN(m, n)                                     \
+  unsigned int aom_highbd_sad##m##x##n##_c(                     \
+      const uint16_t *src, int src_stride, const uint16_t *ref, \
+      int ref_stride) {                                         \
+    return highbd_sad(src, src_stride, ref, ref_stride, m, n);  \
   }
 
 // 128x128

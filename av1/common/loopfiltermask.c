@@ -764,7 +764,7 @@ void av1_filter_block_plane_bitmask_vert(
     AV1_COMMON *const cm, struct macroblockd_plane *const plane_ptr, int pl,
     int mi_row, int mi_col) {
   struct buf_2d *const dst = &plane_ptr->dst;
-  uint8_t *const buf0 = dst->buf;
+  uint16_t *const buf0 = dst->buf;
   const int ssx = plane_ptr->subsampling_x;
   const int ssy = plane_ptr->subsampling_y;
   const int mask_cutoff = 0xffff;
@@ -829,9 +829,9 @@ void av1_filter_block_plane_bitmask_vert(
     }
 
     highbd_filter_selectively_vert_row2(
-        ssx, CONVERT_TO_SHORTPTR(dst->buf), dst->stride, pl, mask_16x16_0,
-        mask_8x8_0, mask_4x4_0, mask_16x16_1, mask_8x8_1, mask_4x4_1,
-        &cm->lf_info, lfl, lfl2, (int)cm->seq_params.bit_depth);
+        ssx, dst->buf, dst->stride, pl, mask_16x16_0, mask_8x8_0, mask_4x4_0,
+        mask_16x16_1, mask_8x8_1, mask_4x4_1, &cm->lf_info, lfl, lfl2,
+        (int)cm->seq_params.bit_depth);
 
     dst->buf += two_row_stride;
   }
@@ -843,7 +843,7 @@ void av1_filter_block_plane_bitmask_horz(
     AV1_COMMON *const cm, struct macroblockd_plane *const plane_ptr, int pl,
     int mi_row, int mi_col) {
   struct buf_2d *const dst = &plane_ptr->dst;
-  uint8_t *const buf0 = dst->buf;
+  uint16_t *const buf0 = dst->buf;
   const int ssx = plane_ptr->subsampling_x;
   const int ssy = plane_ptr->subsampling_y;
   const int mask_cutoff = 0xffff;
@@ -891,9 +891,9 @@ void av1_filter_block_plane_bitmask_horz(
     mask_8x8 = (mask_8x8 >> shift) & mask_cutoff;
     mask_4x4 = (mask_4x4 >> shift) & mask_cutoff;
 
-    highbd_filter_selectively_horiz(
-        CONVERT_TO_SHORTPTR(dst->buf), dst->stride, pl, ssx, mask_16x16,
-        mask_8x8, mask_4x4, &cm->lf_info, lfl, (int)cm->seq_params.bit_depth);
+    highbd_filter_selectively_horiz(dst->buf, dst->stride, pl, ssx, mask_16x16,
+                                    mask_8x8, mask_4x4, &cm->lf_info, lfl,
+                                    (int)cm->seq_params.bit_depth);
 
     dst->buf += row_stride;
   }
@@ -968,9 +968,9 @@ void av1_filter_block_plane_ver(AV1_COMMON *const cm,
       uint64_t mask_4x4_1 = (mask_4x4 >> shift_next) & mask_cutoff;
 
       highbd_filter_selectively_vert_row2(
-          ssx, CONVERT_TO_SHORTPTR(dst->buf), dst->stride, pl, mask_16x16_0,
-          mask_8x8_0, mask_4x4_0, mask_16x16_1, mask_8x8_1, mask_4x4_1,
-          &cm->lf_info, lfl, lfl2, (int)cm->seq_params.bit_depth);
+          ssx, dst->buf, dst->stride, pl, mask_16x16_0, mask_8x8_0, mask_4x4_0,
+          mask_16x16_1, mask_8x8_1, mask_4x4_1, &cm->lf_info, lfl, lfl2,
+          (int)cm->seq_params.bit_depth);
 
       dst->buf -= ((c << MI_SIZE_LOG2) >> ssx);
     }
@@ -1033,8 +1033,8 @@ void av1_filter_block_plane_hor(AV1_COMMON *const cm,
       mask_4x4 = (mask_4x4 >> shift) & mask_cutoff;
 
       highbd_filter_selectively_horiz(
-          CONVERT_TO_SHORTPTR(dst->buf), dst->stride, pl, ssx, mask_16x16,
-          mask_8x8, mask_4x4, &cm->lf_info, lfl, (int)cm->seq_params.bit_depth);
+          dst->buf, dst->stride, pl, ssx, mask_16x16, mask_8x8, mask_4x4,
+          &cm->lf_info, lfl, (int)cm->seq_params.bit_depth);
 
       dst->buf -= ((c << MI_SIZE_LOG2) >> ssx);
     }

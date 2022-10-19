@@ -431,7 +431,7 @@ void av1_rd_pick_palette_intra_sby(
   mbmi->angle_delta[PLANE_TYPE_Y] = 0;
 
   const int src_stride = x->plane[0].src.stride;
-  const uint8_t *const src = x->plane[0].src.buf;
+  uint16_t *src = x->plane[0].src.buf;
   int block_width, block_height, rows, cols;
   av1_get_block_dimensions(bsize, 0, xd, &block_width, &block_height, &rows,
                            &cols);
@@ -451,16 +451,15 @@ void av1_rd_pick_palette_intra_sby(
     int centroids[PALETTE_MAX_SIZE];
     int lb, ub;
     int *data_pt = data;
-    const uint16_t *src_pt = CONVERT_TO_SHORTPTR(src);
-    lb = ub = src_pt[0];
+    lb = ub = src[0];
     for (int r = 0; r < rows; ++r) {
       for (int c = 0; c < cols; ++c) {
-        const int val = src_pt[c];
+        const int val = src[c];
         data_pt[c] = val;
         lb = AOMMIN(lb, val);
         ub = AOMMAX(ub, val);
       }
-      src_pt += src_stride;
+      src += src_stride;
       data_pt += cols;
     }
 
@@ -648,8 +647,8 @@ void av1_rd_pick_palette_intra_sbuv(const AV1_COMP *cpi, MACROBLOCK *x,
   int colors_u, colors_v, colors;
   int colors_threshold_u = 0, colors_threshold_v = 0, colors_threshold = 0;
   const int src_stride = x->plane[1].src.stride;
-  const uint8_t *const src_u = x->plane[1].src.buf;
-  const uint8_t *const src_v = x->plane[2].src.buf;
+  const uint16_t *const src_u = x->plane[1].src.buf;
+  const uint16_t *const src_v = x->plane[2].src.buf;
   uint8_t *const color_map = xd->plane[1].color_index_map;
   RD_STATS tokenonly_rd_stats;
   int plane_block_width, plane_block_height, rows, cols;
@@ -690,17 +689,15 @@ void av1_rd_pick_palette_intra_sbuv(const AV1_COMP *cpi, MACROBLOCK *x,
     int *const data = x->palette_buffer->kmeans_data_buf;
     int centroids[2 * PALETTE_MAX_SIZE];
 
-    uint16_t *src_u16 = CONVERT_TO_SHORTPTR(src_u);
-    uint16_t *src_v16 = CONVERT_TO_SHORTPTR(src_v);
-    lb_u = src_u16[0];
-    ub_u = src_u16[0];
-    lb_v = src_v16[0];
-    ub_v = src_v16[0];
+    lb_u = src_u[0];
+    ub_u = src_u[0];
+    lb_v = src_v[0];
+    ub_v = src_v[0];
 
     for (r = 0; r < rows; ++r) {
       for (c = 0; c < cols; ++c) {
-        val_u = src_u16[r * src_stride + c];
-        val_v = src_v16[r * src_stride + c];
+        val_u = src_u[r * src_stride + c];
+        val_v = src_v[r * src_stride + c];
         data[(r * cols + c) * 2] = val_u;
         data[(r * cols + c) * 2 + 1] = val_v;
         if (val_u < lb_u)
@@ -779,14 +776,12 @@ void av1_restore_uv_color_map(const AV1_COMP *cpi, MACROBLOCK *x) {
   assert(xd->tree_type != LUMA_PART);
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_UV];
   int src_stride = x->plane[1].src.stride;
-  const uint8_t *const src_u = x->plane[1].src.buf;
-  const uint8_t *const src_v = x->plane[2].src.buf;
+  const uint16_t *const src_u = x->plane[1].src.buf;
+  const uint16_t *const src_v = x->plane[2].src.buf;
   int *const data = x->palette_buffer->kmeans_data_buf;
   int centroids[2 * PALETTE_MAX_SIZE];
   uint8_t *const color_map = xd->plane[1].color_index_map;
   int r, c;
-  const uint16_t *const src_u16 = CONVERT_TO_SHORTPTR(src_u);
-  const uint16_t *const src_v16 = CONVERT_TO_SHORTPTR(src_v);
   int plane_block_width, plane_block_height, rows, cols;
   (void)cpi;
   av1_get_block_dimensions(bsize, 1, xd, &plane_block_width,
@@ -794,8 +789,8 @@ void av1_restore_uv_color_map(const AV1_COMP *cpi, MACROBLOCK *x) {
 
   for (r = 0; r < rows; ++r) {
     for (c = 0; c < cols; ++c) {
-      data[(r * cols + c) * 2] = src_u16[r * src_stride + c];
-      data[(r * cols + c) * 2 + 1] = src_v16[r * src_stride + c];
+      data[(r * cols + c) * 2] = src_u[r * src_stride + c];
+      data[(r * cols + c) * 2 + 1] = src_v[r * src_stride + c];
     }
   }
 

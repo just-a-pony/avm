@@ -554,8 +554,8 @@ static void highbd_convolve_2d_facade_single(
   }
 }
 
-void av1_highbd_convolve_2d_facade(const uint8_t *src8, int src_stride,
-                                   uint8_t *dst8, int dst_stride, int w, int h,
+void av1_highbd_convolve_2d_facade(const uint16_t *src, int src_stride,
+                                   uint16_t *dst, int dst_stride, int w, int h,
                                    const InterpFilterParams *interp_filters[2],
                                    const int subpel_x_qn, int x_step_q4,
                                    const int subpel_y_qn, int y_step_q4,
@@ -564,7 +564,6 @@ void av1_highbd_convolve_2d_facade(const uint8_t *src8, int src_stride,
   (void)x_step_q4;
   (void)y_step_q4;
   (void)dst_stride;
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
 
   const int need_filter_params_x = (subpel_x_qn != 0) | scaled;
   const int need_filter_params_y = (subpel_y_qn != 0) | scaled;
@@ -573,7 +572,6 @@ void av1_highbd_convolve_2d_facade(const uint8_t *src8, int src_stride,
   const InterpFilterParams *filter_params_y =
       need_filter_params_y ? interp_filters[1] : NULL;
 
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
   if (scaled) {
     if (conv_params->is_compound) {
       assert(conv_params->dst != NULL);
@@ -633,11 +631,10 @@ static int get_filter_offset(const int16_t *f, const InterpKernel *base) {
 }
 
 static void highbd_convolve_add_src_horiz_hip(
-    const uint8_t *src8, ptrdiff_t src_stride, uint16_t *dst,
+    const uint16_t *src, ptrdiff_t src_stride, uint16_t *dst,
     ptrdiff_t dst_stride, const InterpKernel *x_filters, int x0_q4,
     int x_step_q4, int w, int h, int round0_bits, int bd) {
   const int extraprec_clamp_limit = WIENER_CLAMP_LIMIT(round0_bits, bd);
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
   src -= SUBPEL_TAPS / 2 - 1;
   for (int y = 0; y < h; ++y) {
     int x_q4 = x0_q4;
@@ -657,10 +654,9 @@ static void highbd_convolve_add_src_horiz_hip(
 }
 
 static void highbd_convolve_add_src_vert_hip(
-    const uint16_t *src, ptrdiff_t src_stride, uint8_t *dst8,
+    const uint16_t *src, ptrdiff_t src_stride, uint16_t *dst,
     ptrdiff_t dst_stride, const InterpKernel *y_filters, int y0_q4,
     int y_step_q4, int w, int h, int round1_bits, int bd) {
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
   src -= src_stride * (SUBPEL_TAPS / 2 - 1);
   for (int x = 0; x < w; ++x) {
     int y_q4 = y0_q4;
@@ -682,7 +678,7 @@ static void highbd_convolve_add_src_vert_hip(
 }
 
 void av1_highbd_wiener_convolve_add_src_c(
-    const uint8_t *src, ptrdiff_t src_stride, uint8_t *dst,
+    const uint16_t *src, ptrdiff_t src_stride, uint16_t *dst,
     ptrdiff_t dst_stride, const int16_t *filter_x, int x_step_q4,
     const int16_t *filter_y, int y_step_q4, int w, int h,
     const ConvolveParams *conv_params, int bd) {

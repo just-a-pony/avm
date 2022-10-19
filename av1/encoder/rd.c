@@ -1468,7 +1468,7 @@ void av1_get_entropy_contexts(BLOCK_SIZE plane_bsize,
   get_entropy_contexts_plane(plane_bsize, pd, t_above, t_left);
 }
 
-void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint8_t *ref_y_buffer,
+void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint16_t *ref_y_buffer,
                  int ref_y_stride, int ref_frame, BLOCK_SIZE block_size) {
 #if CONFIG_TIP
   // When the tip buffer is invalid, for example for frames that
@@ -1497,7 +1497,7 @@ void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint8_t *ref_y_buffer,
 
   assert(num_mv_refs <= (int)(sizeof(pred_mv) / sizeof(pred_mv[0])));
 
-  const uint8_t *const src_y_ptr = x->plane[0].src.buf;
+  const uint16_t *const src_y_ptr = x->plane[0].src.buf;
   int zero_seen = 0;
   int best_sad = INT_MAX;
   int max_mv = 0;
@@ -1511,7 +1511,7 @@ void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint8_t *ref_y_buffer,
     if (fp_row == 0 && fp_col == 0 && zero_seen) continue;
     zero_seen |= (fp_row == 0 && fp_col == 0);
 
-    const uint8_t *const ref_y_ptr =
+    const uint16_t *const ref_y_ptr =
         &ref_y_buffer[ref_y_stride * fp_row + fp_col];
     // Find sad for current vector.
     const int this_sad = cpi->fn_ptr[block_size].sdf(

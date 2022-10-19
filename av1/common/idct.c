@@ -35,7 +35,7 @@ int av1_get_tx_scale(const TX_SIZE tx_size) {
 // that input and output could be the same buffer.
 
 // idct
-void av1_highbd_iwht4x4_add(const tran_low_t *input, uint8_t *dest, int stride,
+void av1_highbd_iwht4x4_add(const tran_low_t *input, uint16_t *dest, int stride,
                             int eob, int bd) {
   if (eob > 1)
     av1_highbd_iwht4x4_16_add(input, dest, stride, bd);
@@ -43,7 +43,7 @@ void av1_highbd_iwht4x4_add(const tran_low_t *input, uint8_t *dest, int stride,
     av1_highbd_iwht4x4_1_add(input, dest, stride, bd);
 }
 
-void av1_highbd_inv_txfm_add_4x4_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_4x4_c(const tran_low_t *input, uint16_t *dest,
                                    int stride, const TxfmParam *txfm_param) {
   assert(av1_ext_tx_used[txfm_param->tx_set_type][txfm_param->tx_type]);
   int eob = txfm_param->eob;
@@ -57,146 +57,143 @@ void av1_highbd_inv_txfm_add_4x4_c(const tran_low_t *input, uint8_t *dest,
     return;
   }
 
-  av1_inv_txfm2d_add_4x4_c(src, CONVERT_TO_SHORTPTR(dest), stride, tx_type, bd);
+  av1_inv_txfm2d_add_4x4_c(src, dest, stride, tx_type, bd);
 }
 
-void av1_highbd_inv_txfm_add_4x8_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_4x8_c(const tran_low_t *input, uint16_t *dest,
                                    int stride, const TxfmParam *txfm_param) {
   assert(av1_ext_tx_used[txfm_param->tx_set_type][txfm_param->tx_type]);
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_4x8_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                           txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_4x8_c(src, dest, stride, txfm_param->tx_type,
+                           txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_8x4_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_8x4_c(const tran_low_t *input, uint16_t *dest,
                                    int stride, const TxfmParam *txfm_param) {
   assert(av1_ext_tx_used[txfm_param->tx_set_type][txfm_param->tx_type]);
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_8x4_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                           txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_8x4_c(src, dest, stride, txfm_param->tx_type,
+                           txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_16x32_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_16x32_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_16x32_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                             txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_16x32_c(src, dest, stride, txfm_param->tx_type,
+                             txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_32x16_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_32x16_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_32x16_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                             txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_32x16_c(src, dest, stride, txfm_param->tx_type,
+                             txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_16x4_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_16x4_c(const tran_low_t *input, uint16_t *dest,
                                     int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_16x4_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                            txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_16x4_c(src, dest, stride, txfm_param->tx_type,
+                            txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_4x16_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_4x16_c(const tran_low_t *input, uint16_t *dest,
                                     int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_4x16_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                            txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_4x16_c(src, dest, stride, txfm_param->tx_type,
+                            txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_32x8_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_32x8_c(const tran_low_t *input, uint16_t *dest,
                                     int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_32x8_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                            txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_32x8_c(src, dest, stride, txfm_param->tx_type,
+                            txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_8x32_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_8x32_c(const tran_low_t *input, uint16_t *dest,
                                     int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_8x32_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                            txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_8x32_c(src, dest, stride, txfm_param->tx_type,
+                            txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_32x64_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_32x64_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_32x64_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                             txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_32x64_c(src, dest, stride, txfm_param->tx_type,
+                             txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_64x32_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_64x32_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_64x32_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                             txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_64x32_c(src, dest, stride, txfm_param->tx_type,
+                             txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_16x64_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_16x64_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_16x64_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                             txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_16x64_c(src, dest, stride, txfm_param->tx_type,
+                             txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_64x16_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_64x16_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_64x16_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                             txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_64x16_c(src, dest, stride, txfm_param->tx_type,
+                             txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_8x8_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_8x8_c(const tran_low_t *input, uint16_t *dest,
                                    int stride, const TxfmParam *txfm_param) {
   int bd = txfm_param->bd;
   const TX_TYPE tx_type = txfm_param->tx_type;
   const int32_t *src = cast_to_int32(input);
 
-  av1_inv_txfm2d_add_8x8_c(src, CONVERT_TO_SHORTPTR(dest), stride, tx_type, bd);
+  av1_inv_txfm2d_add_8x8_c(src, dest, stride, tx_type, bd);
 }
 
-void av1_highbd_inv_txfm_add_16x16_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_16x16_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   int bd = txfm_param->bd;
   const TX_TYPE tx_type = txfm_param->tx_type;
   const int32_t *src = cast_to_int32(input);
 
-  av1_inv_txfm2d_add_16x16_c(src, CONVERT_TO_SHORTPTR(dest), stride, tx_type,
-                             bd);
+  av1_inv_txfm2d_add_16x16_c(src, dest, stride, tx_type, bd);
 }
 
-void av1_highbd_inv_txfm_add_8x16_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_8x16_c(const tran_low_t *input, uint16_t *dest,
                                     int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_8x16_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                            txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_8x16_c(src, dest, stride, txfm_param->tx_type,
+                            txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_16x8_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_16x8_c(const tran_low_t *input, uint16_t *dest,
                                     int stride, const TxfmParam *txfm_param) {
   const int32_t *src = cast_to_int32(input);
-  av1_inv_txfm2d_add_16x8_c(src, CONVERT_TO_SHORTPTR(dest), stride,
-                            txfm_param->tx_type, txfm_param->bd);
+  av1_inv_txfm2d_add_16x8_c(src, dest, stride, txfm_param->tx_type,
+                            txfm_param->bd);
 }
 
-void av1_highbd_inv_txfm_add_32x32_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_32x32_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int bd = txfm_param->bd;
   const TX_TYPE tx_type = txfm_param->tx_type;
   const int32_t *src = cast_to_int32(input);
 
-  av1_inv_txfm2d_add_32x32_c(src, CONVERT_TO_SHORTPTR(dest), stride, tx_type,
-                             bd);
+  av1_inv_txfm2d_add_32x32_c(src, dest, stride, tx_type, bd);
 }
 
-void av1_highbd_inv_txfm_add_64x64_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_64x64_c(const tran_low_t *input, uint16_t *dest,
                                      int stride, const TxfmParam *txfm_param) {
   const int bd = txfm_param->bd;
   const TX_TYPE tx_type = txfm_param->tx_type;
   const int32_t *src = cast_to_int32(input);
   assert(tx_type == DCT_DCT);
-  av1_inv_txfm2d_add_64x64_c(src, CONVERT_TO_SHORTPTR(dest), stride, tx_type,
-                             bd);
+  av1_inv_txfm2d_add_64x64_c(src, dest, stride, tx_type, bd);
 }
 
 static void init_txfm_param(const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
@@ -251,7 +248,7 @@ static void init_txfm_param(const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
       reduced_tx_set);
 }
 
-void av1_highbd_inv_txfm_add_c(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_c(const tran_low_t *input, uint16_t *dest,
                                int stride, const TxfmParam *txfm_param) {
   assert(av1_ext_tx_used[txfm_param->tx_set_type][txfm_param->tx_type]);
   const TX_SIZE tx_size = txfm_param->tx_size;
@@ -327,7 +324,7 @@ void av1_inverse_transform_block(const MACROBLOCKD *xd,
                                  const tran_low_t *dqcoeff,
 #endif
                                  int plane, TX_TYPE tx_type, TX_SIZE tx_size,
-                                 uint8_t *dst, int stride, int eob,
+                                 uint16_t *dst, int stride, int eob,
                                  int reduced_tx_set) {
   if (!eob) return;
 

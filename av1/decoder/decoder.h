@@ -56,7 +56,7 @@ typedef struct DecoderCodingBlock {
    * Pointer to 'mc_buf' inside 'pbi->td' (single-threaded decoding) or
    * 'pbi->thread_data[i].td' (multi-threaded decoding).
    */
-  uint8_t *mc_buf[2];
+  uint16_t *mc_buf[2];
   /*!
    * Pointer to 'dqcoeff' inside 'td->cb_buffer_base' or 'pbi->cb_buffer_base'
    * with appropriate offset for the current superblock, for each plane.
@@ -112,15 +112,12 @@ typedef struct ThreadData {
 
   // Motion compensation buffer used to get a prediction buffer with extended
   // borders. One buffer for each of the two possible references.
-  uint8_t *mc_buf[2];
+  uint16_t *mc_buf[2];
   // Allocated size of 'mc_buf'.
   int32_t mc_buf_size;
-  // If true, the pointers in 'mc_buf' were converted from highbd pointers.
-  int mc_buf_use_highbd;  // Boolean: whether the byte pointers stored in
-                          // mc_buf were converted from highbd pointers.
 
   CONV_BUF_TYPE *tmp_conv_dst;
-  uint8_t *tmp_obmc_bufs[2];
+  uint16_t *tmp_obmc_bufs[2];
 
   decode_block_visitor_fn_t read_coeffs_tx_intra_block_visit;
   decode_block_visitor_fn_t predict_and_recon_intra_block_visit;

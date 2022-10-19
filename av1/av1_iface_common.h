@@ -77,20 +77,14 @@ static void yuvconfig2image(aom_image_t *img, const YV12_BUFFER_CONFIG *yv12,
   img->r_h = yv12->render_height;
   img->x_chroma_shift = yv12->subsampling_x;
   img->y_chroma_shift = yv12->subsampling_y;
-  img->planes[AOM_PLANE_Y] = yv12->y_buffer;
-  img->planes[AOM_PLANE_U] = yv12->u_buffer;
-  img->planes[AOM_PLANE_V] = yv12->v_buffer;
-  img->stride[AOM_PLANE_Y] = yv12->y_stride;
-  img->stride[AOM_PLANE_U] = yv12->uv_stride;
-  img->stride[AOM_PLANE_V] = yv12->uv_stride;
   bps *= 2;
   // aom_image_t uses byte strides and a pointer to the first byte
   // of the image.
   img->fmt = (aom_img_fmt_t)(img->fmt | AOM_IMG_FMT_HIGHBITDEPTH);
   img->bit_depth = yv12->bit_depth;
-  img->planes[AOM_PLANE_Y] = (uint8_t *)CONVERT_TO_SHORTPTR(yv12->y_buffer);
-  img->planes[AOM_PLANE_U] = (uint8_t *)CONVERT_TO_SHORTPTR(yv12->u_buffer);
-  img->planes[AOM_PLANE_V] = (uint8_t *)CONVERT_TO_SHORTPTR(yv12->v_buffer);
+  img->planes[AOM_PLANE_Y] = (uint8_t *)yv12->y_buffer;
+  img->planes[AOM_PLANE_U] = (uint8_t *)yv12->u_buffer;
+  img->planes[AOM_PLANE_V] = (uint8_t *)yv12->v_buffer;
   img->stride[AOM_PLANE_Y] = 2 * yv12->y_stride;
   img->stride[AOM_PLANE_U] = 2 * yv12->uv_stride;
   img->stride[AOM_PLANE_V] = 2 * yv12->uv_stride;
@@ -106,9 +100,9 @@ static void yuvconfig2image(aom_image_t *img, const YV12_BUFFER_CONFIG *yv12,
 
 static aom_codec_err_t image2yuvconfig(const aom_image_t *img,
                                        YV12_BUFFER_CONFIG *yv12) {
-  yv12->y_buffer = img->planes[AOM_PLANE_Y];
-  yv12->u_buffer = img->planes[AOM_PLANE_U];
-  yv12->v_buffer = img->planes[AOM_PLANE_V];
+  yv12->y_buffer = (uint16_t *)img->planes[AOM_PLANE_Y];
+  yv12->u_buffer = (uint16_t *)img->planes[AOM_PLANE_U];
+  yv12->v_buffer = (uint16_t *)img->planes[AOM_PLANE_V];
 
   yv12->y_crop_width = img->d_w;
   yv12->y_crop_height = img->d_h;
@@ -143,9 +137,6 @@ static aom_codec_err_t image2yuvconfig(const aom_image_t *img,
   // should work correctly.
   // However, before we do any pixel operations we need to cast the address
   // to a uint16 ponter and double its value.
-  yv12->y_buffer = CONVERT_TO_BYTEPTR(yv12->y_buffer);
-  yv12->u_buffer = CONVERT_TO_BYTEPTR(yv12->u_buffer);
-  yv12->v_buffer = CONVERT_TO_BYTEPTR(yv12->v_buffer);
   yv12->y_stride >>= 1;
   yv12->uv_stride >>= 1;
 

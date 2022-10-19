@@ -157,9 +157,8 @@ unsigned int av1_high_get_sby_perpixel_variance(const AV1_COMP *cpi,
   const uint16_t *high_var_offs[3] = { AV1_HIGH_VAR_OFFS_8,
                                        AV1_HIGH_VAR_OFFS_10,
                                        AV1_HIGH_VAR_OFFS_12 };
-  var =
-      cpi->fn_ptr[bs].vf(ref->buf, ref->stride,
-                         CONVERT_TO_BYTEPTR(high_var_offs[off_index]), 0, &sse);
+  var = cpi->fn_ptr[bs].vf(ref->buf, ref->stride, high_var_offs[off_index], 0,
+                           &sse);
   return ROUND_POWER_OF_TWO(var, num_pels_log2_lookup[bs]);
 }
 
@@ -168,7 +167,7 @@ static unsigned int get_sby_perpixel_diff_variance(const AV1_COMP *const cpi,
                                                    int mi_row, int mi_col,
                                                    BLOCK_SIZE bs) {
   unsigned int sse, var;
-  uint8_t *last_y;
+  uint16_t *last_y;
   const YV12_BUFFER_CONFIG *last =
 #if CONFIG_NEW_REF_SIGNALING
       get_ref_frame_yv12_buf(&cpi->common,
@@ -1206,7 +1205,7 @@ AOM_INLINE void av1_tip_enc_calc_subpel_params(
 #if CONFIG_OPTFLOW_REFINEMENT
     int use_optflow_refinement,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-    uint8_t **mc_buf, uint8_t **pre, SubpelParams *subpel_params,
+    uint16_t **mc_buf, uint16_t **pre, SubpelParams *subpel_params,
     int *src_stride) {
   // These are part of the function signature to use this function through a
   // function pointer. See typedef of 'CalcSubpelParamsFunc'.

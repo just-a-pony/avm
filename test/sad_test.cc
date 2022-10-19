@@ -28,51 +28,53 @@
 #include "aom_mem/aom_mem.h"
 #include "aom_ports/mem.h"
 
-typedef unsigned int (*SadMxNFunc)(const uint8_t *src_ptr, int src_stride,
-                                   const uint8_t *ref_ptr, int ref_stride);
+typedef unsigned int (*SadMxNFunc)(const uint16_t *src_ptr, int src_stride,
+                                   const uint16_t *ref_ptr, int ref_stride);
 typedef std::tuple<int, int, SadMxNFunc, int> SadMxNParam;
 
-typedef unsigned int (*SadSkipMxNFunc)(const uint8_t *src_ptr, int src_stride,
-                                       const uint8_t *ref_ptr, int ref_stride);
+typedef unsigned int (*SadSkipMxNFunc)(const uint16_t *src_ptr, int src_stride,
+                                       const uint16_t *ref_ptr, int ref_stride);
 typedef std::tuple<int, int, SadSkipMxNFunc, int> SadSkipMxNParam;
 
-typedef uint32_t (*SadMxNAvgFunc)(const uint8_t *src_ptr, int src_stride,
-                                  const uint8_t *ref_ptr, int ref_stride,
-                                  const uint8_t *second_pred);
+typedef uint32_t (*SadMxNAvgFunc)(const uint16_t *src_ptr, int src_stride,
+                                  const uint16_t *ref_ptr, int ref_stride,
+                                  const uint16_t *second_pred);
 typedef std::tuple<int, int, SadMxNAvgFunc, int> SadMxNAvgParam;
 
-typedef void (*DistWtdCompAvgFunc)(uint8_t *comp_pred, const uint8_t *pred,
-                                   int width, int height, const uint8_t *ref,
+typedef void (*DistWtdCompAvgFunc)(uint16_t *comp_pred, const uint16_t *pred,
+                                   int width, int height, const uint16_t *ref,
                                    int ref_stride,
                                    const DIST_WTD_COMP_PARAMS *jcp_param);
 typedef std::tuple<int, int, DistWtdCompAvgFunc, int> DistWtdCompAvgParam;
 
-typedef unsigned int (*DistWtdSadMxhFunc)(const uint8_t *src_ptr,
+typedef unsigned int (*DistWtdSadMxhFunc)(const uint16_t *src_ptr,
                                           int src_stride,
-                                          const uint8_t *ref_ptr,
+                                          const uint16_t *ref_ptr,
                                           int ref_stride, int width,
                                           int height);
 typedef std::tuple<int, int, DistWtdSadMxhFunc, int> DistWtdSadMxhParam;
 
-typedef uint32_t (*DistWtdSadMxNAvgFunc)(const uint8_t *src_ptr, int src_stride,
-                                         const uint8_t *ref_ptr, int ref_stride,
-                                         const uint8_t *second_pred,
+typedef uint32_t (*DistWtdSadMxNAvgFunc)(const uint16_t *src_ptr,
+                                         int src_stride,
+                                         const uint16_t *ref_ptr,
+                                         int ref_stride,
+                                         const uint16_t *second_pred,
                                          const DIST_WTD_COMP_PARAMS *jcp_param);
 typedef std::tuple<int, int, DistWtdSadMxNAvgFunc, int> DistWtdSadMxNAvgParam;
 
-typedef void (*SadMxNx4Func)(const uint8_t *src_ptr, int src_stride,
-                             const uint8_t *const ref_ptr[], int ref_stride,
+typedef void (*SadMxNx4Func)(const uint16_t *src_ptr, int src_stride,
+                             const uint16_t *const ref_ptr[], int ref_stride,
                              uint32_t *sad_array);
 typedef std::tuple<int, int, SadMxNx4Func, int> SadMxNx4Param;
 
-typedef void (*SadSkipMxNx4Func)(const uint8_t *src_ptr, int src_stride,
-                                 const uint8_t *const ref_ptr[], int ref_stride,
-                                 uint32_t *sad_array);
+typedef void (*SadSkipMxNx4Func)(const uint16_t *src_ptr, int src_stride,
+                                 const uint16_t *const ref_ptr[],
+                                 int ref_stride, uint32_t *sad_array);
 typedef std::tuple<int, int, SadSkipMxNx4Func, int> SadSkipMxNx4Param;
 
-typedef void (*SadMxNx4AvgFunc)(const uint8_t *src_ptr, int src_stride,
-                                const uint8_t *const ref_ptr[], int ref_stride,
-                                const uint8_t *second_pred,
+typedef void (*SadMxNx4AvgFunc)(const uint16_t *src_ptr, int src_stride,
+                                const uint16_t *const ref_ptr[], int ref_stride,
+                                const uint16_t *second_pred,
                                 uint32_t *sad_array);
 typedef std::tuple<int, int, SadMxNx4AvgFunc, int> SadMxNx4AvgParam;
 
@@ -85,16 +87,6 @@ class SADTestBase : public ::testing::Test {
       : width_(width), height_(height), bd_(bit_depth) {}
 
   static void SetUpTestSuite() {
-    source_data8_ = reinterpret_cast<uint8_t *>(
-        aom_memalign(kDataAlignment, kDataBlockSize));
-    reference_data8_ = reinterpret_cast<uint8_t *>(
-        aom_memalign(kDataAlignment, kDataBufferSize));
-    second_pred8_ =
-        reinterpret_cast<uint8_t *>(aom_memalign(kDataAlignment, 128 * 128));
-    comp_pred8_ =
-        reinterpret_cast<uint8_t *>(aom_memalign(kDataAlignment, 128 * 128));
-    comp_pred8_test_ =
-        reinterpret_cast<uint8_t *>(aom_memalign(kDataAlignment, 128 * 128));
     source_data16_ = reinterpret_cast<uint16_t *>(
         aom_memalign(kDataAlignment, kDataBlockSize * sizeof(uint16_t)));
     reference_data16_ = reinterpret_cast<uint16_t *>(
@@ -108,16 +100,6 @@ class SADTestBase : public ::testing::Test {
   }
 
   static void TearDownTestSuite() {
-    aom_free(source_data8_);
-    source_data8_ = NULL;
-    aom_free(reference_data8_);
-    reference_data8_ = NULL;
-    aom_free(second_pred8_);
-    second_pred8_ = NULL;
-    aom_free(comp_pred8_);
-    comp_pred8_ = NULL;
-    aom_free(comp_pred8_test_);
-    comp_pred8_test_ = NULL;
     aom_free(source_data16_);
     source_data16_ = NULL;
     aom_free(reference_data16_);
@@ -139,33 +121,19 @@ class SADTestBase : public ::testing::Test {
   static const int kDataBufferSize = 4 * kDataBlockSize;
 
   virtual void SetUp() {
-    if (bd_ == -1) {
-      use_high_bit_depth_ = false;
-      bit_depth_ = AOM_BITS_8;
-      source_data_ = source_data8_;
-      reference_data_ = reference_data8_;
-      second_pred_ = second_pred8_;
-      comp_pred_ = comp_pred8_;
-      comp_pred_test_ = comp_pred8_test_;
-    } else {
-      use_high_bit_depth_ = true;
-      bit_depth_ = static_cast<aom_bit_depth_t>(bd_);
-      source_data_ = CONVERT_TO_BYTEPTR(source_data16_);
-      reference_data_ = CONVERT_TO_BYTEPTR(reference_data16_);
-      second_pred_ = CONVERT_TO_BYTEPTR(second_pred16_);
-      comp_pred_ = CONVERT_TO_BYTEPTR(comp_pred16_);
-      comp_pred_test_ = CONVERT_TO_BYTEPTR(comp_pred16_test_);
-    }
+    bit_depth_ = static_cast<aom_bit_depth_t>(bd_);
+    source_data_ = source_data16_;
+    reference_data_ = reference_data16_;
+    second_pred_ = second_pred16_;
+    comp_pred_ = comp_pred16_;
+    comp_pred_test_ = comp_pred16_test_;
     mask_ = (1 << bit_depth_) - 1;
     source_stride_ = (width_ + 31) & ~31;
     reference_stride_ = width_ * 2;
     rnd_.Reset(ACMRandom::DeterministicSeed());
   }
 
-  virtual uint8_t *GetReference(int block_idx) {
-    if (use_high_bit_depth_)
-      return CONVERT_TO_BYTEPTR(CONVERT_TO_SHORTPTR(reference_data_) +
-                                block_idx * kDataBlockSize);
+  virtual uint16_t *GetReference(int block_idx) {
     return reference_data_ + block_idx * kDataBlockSize;
   }
 
@@ -173,20 +141,12 @@ class SADTestBase : public ::testing::Test {
   // difference between two pixels in the same relative location; accumulate.
   unsigned int ReferenceSAD(int block_idx) {
     unsigned int sad = 0;
-    const uint8_t *const reference8 = GetReference(block_idx);
-    const uint8_t *const source8 = source_data_;
-    const uint16_t *const reference16 =
-        CONVERT_TO_SHORTPTR(GetReference(block_idx));
-    const uint16_t *const source16 = CONVERT_TO_SHORTPTR(source_data_);
+    const uint16_t *const reference16 = GetReference(block_idx);
+    const uint16_t *const source16 = source_data_;
     for (int h = 0; h < height_; ++h) {
       for (int w = 0; w < width_; ++w) {
-        if (!use_high_bit_depth_) {
-          sad += abs(source8[h * source_stride_ + w] -
-                     reference8[h * reference_stride_ + w]);
-        } else {
-          sad += abs(source16[h * source_stride_ + w] -
-                     reference16[h * reference_stride_ + w]);
-        }
+        sad += abs(source16[h * source_stride_ + w] -
+                   reference16[h * reference_stride_ + w]);
       }
     }
     return sad;
@@ -198,20 +158,12 @@ class SADTestBase : public ::testing::Test {
   // end.
   unsigned int ReferenceSADSkip(int block_idx) {
     unsigned int sad = 0;
-    const uint8_t *const reference8 = GetReference(block_idx);
-    const uint8_t *const source8 = source_data_;
-    const uint16_t *const reference16 =
-        CONVERT_TO_SHORTPTR(GetReference(block_idx));
-    const uint16_t *const source16 = CONVERT_TO_SHORTPTR(source_data_);
+    const uint16_t *const reference16 = GetReference(block_idx);
+    const uint16_t *const source16 = source_data_;
     for (int h = 0; h < height_; h += 2) {
       for (int w = 0; w < width_; ++w) {
-        if (!use_high_bit_depth_) {
-          sad += abs(source8[h * source_stride_ + w] -
-                     reference8[h * reference_stride_ + w]);
-        } else {
-          sad += abs(source16[h * source_stride_ + w] -
-                     reference16[h * reference_stride_ + w]);
-        }
+        sad += abs(source16[h * source_stride_ + w] -
+                   reference16[h * reference_stride_ + w]);
       }
     }
     return sad * 2;
@@ -222,132 +174,82 @@ class SADTestBase : public ::testing::Test {
   // corresponding and predicted pixels; accumulate.
   unsigned int ReferenceSADavg(int block_idx) {
     unsigned int sad = 0;
-    const uint8_t *const reference8 = GetReference(block_idx);
-    const uint8_t *const source8 = source_data_;
-    const uint8_t *const second_pred8 = second_pred_;
-    const uint16_t *const reference16 =
-        CONVERT_TO_SHORTPTR(GetReference(block_idx));
-    const uint16_t *const source16 = CONVERT_TO_SHORTPTR(source_data_);
-    const uint16_t *const second_pred16 = CONVERT_TO_SHORTPTR(second_pred_);
+    const uint16_t *const reference16 = GetReference(block_idx);
+    const uint16_t *const source16 = source_data_;
+    const uint16_t *const second_pred16 = second_pred_;
     for (int h = 0; h < height_; ++h) {
       for (int w = 0; w < width_; ++w) {
-        if (!use_high_bit_depth_) {
-          const int tmp = second_pred8[h * width_ + w] +
-                          reference8[h * reference_stride_ + w];
-          const uint8_t comp_pred = ROUND_POWER_OF_TWO(tmp, 1);
-          sad += abs(source8[h * source_stride_ + w] - comp_pred);
-        } else {
-          const int tmp = second_pred16[h * width_ + w] +
-                          reference16[h * reference_stride_ + w];
-          const uint16_t comp_pred = ROUND_POWER_OF_TWO(tmp, 1);
-          sad += abs(source16[h * source_stride_ + w] - comp_pred);
-        }
+        const int tmp = second_pred16[h * width_ + w] +
+                        reference16[h * reference_stride_ + w];
+        const uint16_t comp_pred = ROUND_POWER_OF_TWO(tmp, 1);
+        sad += abs(source16[h * source_stride_ + w] - comp_pred);
       }
     }
     return sad;
   }
 
   void ReferenceDistWtdCompAvg(int block_idx) {
-    const uint8_t *const reference8 = GetReference(block_idx);
-    const uint8_t *const second_pred8 = second_pred_;
-    uint8_t *const comp_pred8 = comp_pred_;
-    const uint16_t *const reference16 =
-        CONVERT_TO_SHORTPTR(GetReference(block_idx));
-    const uint16_t *const second_pred16 = CONVERT_TO_SHORTPTR(second_pred_);
-    uint16_t *const comp_pred16 = CONVERT_TO_SHORTPTR(comp_pred_);
+    const uint16_t *const reference16 = GetReference(block_idx);
+    const uint16_t *const second_pred16 = second_pred_;
+    uint16_t *const comp_pred16 = comp_pred_;
     for (int h = 0; h < height_; ++h) {
       for (int w = 0; w < width_; ++w) {
-        if (!use_high_bit_depth_) {
-          const int tmp =
-              second_pred8[h * width_ + w] * jcp_param_.bck_offset +
-              reference8[h * reference_stride_ + w] * jcp_param_.fwd_offset;
-          comp_pred8[h * width_ + w] = ROUND_POWER_OF_TWO(tmp, 4);
-        } else {
-          const int tmp =
-              second_pred16[h * width_ + w] * jcp_param_.bck_offset +
-              reference16[h * reference_stride_ + w] * jcp_param_.fwd_offset;
-          comp_pred16[h * width_ + w] = ROUND_POWER_OF_TWO(tmp, 4);
-        }
+        const int tmp =
+            second_pred16[h * width_ + w] * jcp_param_.bck_offset +
+            reference16[h * reference_stride_ + w] * jcp_param_.fwd_offset;
+        comp_pred16[h * width_ + w] = ROUND_POWER_OF_TWO(tmp, 4);
       }
     }
   }
 
   unsigned int ReferenceDistWtdSADavg(int block_idx) {
     unsigned int sad = 0;
-    const uint8_t *const reference8 = GetReference(block_idx);
-    const uint8_t *const source8 = source_data_;
-    const uint8_t *const second_pred8 = second_pred_;
-    const uint16_t *const reference16 =
-        CONVERT_TO_SHORTPTR(GetReference(block_idx));
-    const uint16_t *const source16 = CONVERT_TO_SHORTPTR(source_data_);
-    const uint16_t *const second_pred16 = CONVERT_TO_SHORTPTR(second_pred_);
+    const uint16_t *const reference16 = GetReference(block_idx);
+    const uint16_t *const source16 = source_data_;
+    const uint16_t *const second_pred16 = second_pred_;
     for (int h = 0; h < height_; ++h) {
       for (int w = 0; w < width_; ++w) {
-        if (!use_high_bit_depth_) {
-          const int tmp =
-              second_pred8[h * width_ + w] * jcp_param_.bck_offset +
-              reference8[h * reference_stride_ + w] * jcp_param_.fwd_offset;
-          const uint8_t comp_pred = ROUND_POWER_OF_TWO(tmp, 4);
-          sad += abs(source8[h * source_stride_ + w] - comp_pred);
-        } else {
-          const int tmp =
-              second_pred16[h * width_ + w] * jcp_param_.bck_offset +
-              reference16[h * reference_stride_ + w] * jcp_param_.fwd_offset;
-          const uint16_t comp_pred = ROUND_POWER_OF_TWO(tmp, 4);
-          sad += abs(source16[h * source_stride_ + w] - comp_pred);
-        }
+        const int tmp =
+            second_pred16[h * width_ + w] * jcp_param_.bck_offset +
+            reference16[h * reference_stride_ + w] * jcp_param_.fwd_offset;
+        const uint16_t comp_pred = ROUND_POWER_OF_TWO(tmp, 4);
+        sad += abs(source16[h * source_stride_ + w] - comp_pred);
       }
     }
     return sad;
   }
 
-  void FillConstant(uint8_t *data, int stride, uint16_t fill_constant) {
-    uint8_t *data8 = data;
-    uint16_t *data16 = CONVERT_TO_SHORTPTR(data);
+  void FillConstant(uint16_t *data, int stride, uint16_t fill_constant) {
+    uint16_t *data16 = data;
     for (int h = 0; h < height_; ++h) {
       for (int w = 0; w < width_; ++w) {
-        if (!use_high_bit_depth_) {
-          data8[h * stride + w] = static_cast<uint8_t>(fill_constant);
-        } else {
-          data16[h * stride + w] = fill_constant;
-        }
+        data16[h * stride + w] = fill_constant;
       }
     }
   }
 
-  void FillRandom(uint8_t *data, int stride) {
-    uint8_t *data8 = data;
-    uint16_t *data16 = CONVERT_TO_SHORTPTR(data);
+  void FillRandom(uint16_t *data, int stride) {
+    uint16_t *data16 = data;
     for (int h = 0; h < height_; ++h) {
       for (int w = 0; w < width_; ++w) {
-        if (!use_high_bit_depth_) {
-          data8[h * stride + w] = rnd_.Rand8();
-        } else {
-          data16[h * stride + w] = rnd_.Rand16() & mask_;
-        }
+        data16[h * stride + w] = rnd_.Rand16() & mask_;
       }
     }
   }
 
   int width_, height_, mask_, bd_;
   aom_bit_depth_t bit_depth_;
-  static uint8_t *source_data_;
-  static uint8_t *reference_data_;
-  static uint8_t *second_pred_;
+  static uint16_t *source_data_;
+  static uint16_t *reference_data_;
+  static uint16_t *second_pred_;
   int source_stride_;
-  bool use_high_bit_depth_;
-  static uint8_t *source_data8_;
-  static uint8_t *reference_data8_;
-  static uint8_t *second_pred8_;
   static uint16_t *source_data16_;
   static uint16_t *reference_data16_;
   static uint16_t *second_pred16_;
   int reference_stride_;
-  static uint8_t *comp_pred_;
-  static uint8_t *comp_pred8_;
+  static uint16_t *comp_pred_;
   static uint16_t *comp_pred16_;
-  static uint8_t *comp_pred_test_;
-  static uint8_t *comp_pred8_test_;
+  static uint16_t *comp_pred_test_;
   static uint16_t *comp_pred16_test_;
   DIST_WTD_COMP_PARAMS jcp_param_;
 
@@ -361,8 +263,8 @@ class SADx4Test : public ::testing::WithParamInterface<SadMxNx4Param>,
 
  protected:
   void SADs(unsigned int *results) {
-    const uint8_t *references[] = { GetReference(0), GetReference(1),
-                                    GetReference(2), GetReference(3) };
+    const uint16_t *references[] = { GetReference(0), GetReference(1),
+                                     GetReference(2), GetReference(3) };
 
     ASM_REGISTER_STATE_CHECK(GET_PARAM(2)(
         source_data_, source_stride_, references, reference_stride_, results));
@@ -396,8 +298,8 @@ class SADSkipx4Test : public ::testing::WithParamInterface<SadMxNx4Param>,
 
  protected:
   void SADs(unsigned int *results) {
-    const uint8_t *references[] = { GetReference(0), GetReference(1),
-                                    GetReference(2), GetReference(3) };
+    const uint16_t *references[] = { GetReference(0), GetReference(1),
+                                     GetReference(2), GetReference(3) };
 
     ASM_REGISTER_STATE_CHECK(GET_PARAM(2)(
         source_data_, source_stride_, references, reference_stride_, results));
@@ -431,8 +333,8 @@ class SADx4AvgTest : public ::testing::WithParamInterface<SadMxNx4AvgParam>,
 
  protected:
   void SADs(unsigned int *results) {
-    const uint8_t *references[] = { GetReference(0), GetReference(1),
-                                    GetReference(2), GetReference(3) };
+    const uint16_t *references[] = { GetReference(0), GetReference(1),
+                                     GetReference(2), GetReference(3) };
 
     ASM_REGISTER_STATE_CHECK(GET_PARAM(2)(source_data_, source_stride_,
                                           references, reference_stride_,
@@ -469,7 +371,7 @@ class SADTest : public ::testing::WithParamInterface<SadMxNParam>,
  protected:
   unsigned int SAD(int block_idx) {
     unsigned int ret;
-    const uint8_t *const reference = GetReference(block_idx);
+    const uint16_t *const reference = GetReference(block_idx);
 
     ASM_REGISTER_STATE_CHECK(ret = GET_PARAM(2)(source_data_, source_stride_,
                                                 reference, reference_stride_));
@@ -500,7 +402,7 @@ class SADSkipTest : public ::testing::WithParamInterface<SadMxNParam>,
  protected:
   unsigned int SAD(int block_idx) {
     unsigned int ret;
-    const uint8_t *const reference = GetReference(block_idx);
+    const uint16_t *const reference = GetReference(block_idx);
 
     ASM_REGISTER_STATE_CHECK(ret = GET_PARAM(2)(source_data_, source_stride_,
                                                 reference, reference_stride_));
@@ -531,7 +433,7 @@ class SADavgTest : public ::testing::WithParamInterface<SadMxNAvgParam>,
  protected:
   unsigned int SAD_avg(int block_idx) {
     unsigned int ret;
-    const uint8_t *const reference = GetReference(block_idx);
+    const uint16_t *const reference = GetReference(block_idx);
 
     ASM_REGISTER_STATE_CHECK(ret = GET_PARAM(2)(source_data_, source_stride_,
                                                 reference, reference_stride_,
@@ -556,7 +458,7 @@ class DistWtdCompAvgTest
 
  protected:
   void dist_wtd_comp_avg(int block_idx) {
-    const uint8_t *const reference = GetReference(block_idx);
+    const uint16_t *const reference = GetReference(block_idx);
 
     ASM_REGISTER_STATE_CHECK(GET_PARAM(2)(comp_pred_test_, second_pred_, width_,
                                           height_, reference, reference_stride_,
@@ -590,7 +492,7 @@ class DistWtdSADTest : public ::testing::WithParamInterface<DistWtdSadMxhParam>,
  protected:
   unsigned int SAD(int block_idx) {
     unsigned int ret;
-    const uint8_t *const reference = GetReference(block_idx);
+    const uint16_t *const reference = GetReference(block_idx);
 
     ASM_REGISTER_STATE_CHECK(ret = GET_PARAM(2)(source_data_, source_stride_,
                                                 reference, reference_stride_,
@@ -624,7 +526,7 @@ class DistWtdSADavgTest
  protected:
   unsigned int dist_wtd_SAD_avg(int block_idx) {
     unsigned int ret;
-    const uint8_t *const reference = GetReference(block_idx);
+    const uint16_t *const reference = GetReference(block_idx);
 
     ASM_REGISTER_STATE_CHECK(ret = GET_PARAM(2)(source_data_, source_stride_,
                                                 reference, reference_stride_,
@@ -648,16 +550,11 @@ class DistWtdSADavgTest
 };
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(DistWtdSADavgTest);
 
-uint8_t *SADTestBase::source_data_ = NULL;
-uint8_t *SADTestBase::reference_data_ = NULL;
-uint8_t *SADTestBase::second_pred_ = NULL;
-uint8_t *SADTestBase::comp_pred_ = NULL;
-uint8_t *SADTestBase::comp_pred_test_ = NULL;
-uint8_t *SADTestBase::source_data8_ = NULL;
-uint8_t *SADTestBase::reference_data8_ = NULL;
-uint8_t *SADTestBase::second_pred8_ = NULL;
-uint8_t *SADTestBase::comp_pred8_ = NULL;
-uint8_t *SADTestBase::comp_pred8_test_ = NULL;
+uint16_t *SADTestBase::source_data_ = NULL;
+uint16_t *SADTestBase::reference_data_ = NULL;
+uint16_t *SADTestBase::second_pred_ = NULL;
+uint16_t *SADTestBase::comp_pred_ = NULL;
+uint16_t *SADTestBase::comp_pred_test_ = NULL;
 uint16_t *SADTestBase::source_data16_ = NULL;
 uint16_t *SADTestBase::reference_data16_ = NULL;
 uint16_t *SADTestBase::second_pred16_ = NULL;
@@ -1008,7 +905,7 @@ TEST_P(SADx4Test, ShortSrc) {
 }
 
 TEST_P(SADx4Test, SrcAlignedByWidth) {
-  uint8_t *tmp_source_data = source_data_;
+  uint16_t *tmp_source_data = source_data_;
   source_data_ += width_;
   FillRandom(source_data_, source_stride_);
   FillRandom(GetReference(0), reference_stride_);
@@ -1090,7 +987,7 @@ TEST_P(SADSkipx4Test, ShortSrc) {
 }
 
 TEST_P(SADSkipx4Test, SrcAlignedByWidth) {
-  uint8_t *tmp_source_data = source_data_;
+  uint16_t *tmp_source_data = source_data_;
   source_data_ += width_;
   FillRandom(source_data_, source_stride_);
   FillRandom(GetReference(0), reference_stride_);

@@ -1383,7 +1383,7 @@ static INLINE void src_convert_hbd_copy(const uint16_t *src, int src_stride,
     memset(dst + x * dst_stride, 0, (width + 2) * sizeof(*dst));
 }
 
-int av1_selfguided_restoration_neon(const uint8_t *dat8, int width, int height,
+int av1_selfguided_restoration_neon(const uint16_t *dat, int width, int height,
                                     int stride, int32_t *flt0, int32_t *flt1,
                                     int flt_stride, int sgr_params_idx,
                                     int bit_depth) {
@@ -1398,10 +1398,8 @@ int av1_selfguided_restoration_neon(const uint8_t *dat8, int width, int height,
   const int height_ext = height + 2 * SGRPROJ_BORDER_VERT;
   const int dgd_stride = stride;
 
-  const uint16_t *dgd16_tmp = CONVERT_TO_SHORTPTR(dat8);
   src_convert_hbd_copy(
-      dgd16_tmp - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
-      dgd_stride,
+      dat - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ, dgd_stride,
       dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
       dgd16_stride, width_ext, height_ext);
 
@@ -1414,9 +1412,9 @@ int av1_selfguided_restoration_neon(const uint8_t *dat8, int width, int height,
   return 0;
 }
 
-void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
+void av1_apply_selfguided_restoration_neon(const uint16_t *dat, int width,
                                            int height, int stride, int eps,
-                                           const int *xqd, uint8_t *dst8,
+                                           const int *xqd, uint16_t *dst16,
                                            int dst_stride, int32_t *tmpbuf,
                                            int bit_depth) {
   int32_t *flt0 = tmpbuf;
@@ -1434,10 +1432,8 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
 
   assert(!(params->r[0] == 0 && params->r[1] == 0));
 
-  const uint16_t *dgd16_tmp = CONVERT_TO_SHORTPTR(dat8);
   src_convert_hbd_copy(
-      dgd16_tmp - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ,
-      dgd_stride,
+      dat - SGRPROJ_BORDER_VERT * dgd_stride - SGRPROJ_BORDER_HORZ, dgd_stride,
       dgd16 - SGRPROJ_BORDER_VERT * dgd16_stride - SGRPROJ_BORDER_HORZ,
       dgd16_stride, width_ext, height_ext);
 
@@ -1452,7 +1448,6 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
 
   {
     int16_t *src_ptr;
-    uint8_t *dst_ptr;
     uint16_t *dst16_ptr;
     int16x4_t d0, d4;
     int16x8_t r0, s0;
@@ -1464,13 +1459,10 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
     const int32x4_t xq1_vec = vdupq_n_s32(xq[1]);
     const int16x8_t zero = vdupq_n_s16(0);
     const uint16x8_t max = vdupq_n_u16((1 << bit_depth) - 1);
-    uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst8);
-    dst_ptr = dst8;
     src_ptr = (int16_t *)dgd16;
     do {
       w = width;
       count = 0;
-      dst_ptr = dst8 + rc * dst_stride;
       dst16_ptr = dst16 + rc * dst_stride;
       do {
         s0 = vld1q_s16(src_ptr + count);
@@ -1515,7 +1507,6 @@ void av1_apply_selfguided_restoration_neon(const uint8_t *dat8, int width,
 
         w -= 8;
         count += 8;
-        dst_ptr += 8;
         dst16_ptr += 8;
       } while (w > 0);
 

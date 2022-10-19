@@ -98,7 +98,7 @@ static unsigned int residual_variance(const AV1_COMP *cpi,
 
 static double frame_average_variance(const AV1_COMP *const cpi,
                                      const YV12_BUFFER_CONFIG *const frame) {
-  const uint8_t *const y_buffer = frame->y_buffer;
+  const uint16_t *const y_buffer = frame->y_buffer;
   const int y_stride = frame->y_stride;
   const BLOCK_SIZE block_size = BLOCK_64X64;
 
@@ -115,7 +115,7 @@ static double frame_average_variance(const AV1_COMP *const cpi,
       const int row_offset_y = row * block_h;
       const int col_offset_y = col * block_w;
 
-      buf.buf = (uint8_t *)y_buffer + row_offset_y * y_stride + col_offset_y;
+      buf.buf = y_buffer + row_offset_y * y_stride + col_offset_y;
       buf.stride = y_stride;
 
       var +=
@@ -147,7 +147,7 @@ static double residual_frame_average_variance(AV1_COMP *cpi,
   // Save input state.
   MACROBLOCK *const mb = &cpi->td.mb;
   MACROBLOCKD *const mbd = &mb->e_mbd;
-  uint8_t *input_buffer[MAX_MB_PLANE];
+  uint16_t *input_buffer[MAX_MB_PLANE];
   for (int i = 0; i < num_planes; i++) {
     input_buffer[i] = mbd->plane[i].pre[0].buf;
   }
@@ -214,9 +214,8 @@ static AOM_INLINE void unsharp(const AV1_COMP *const cpi,
                                const YV12_BUFFER_CONFIG *blurred,
                                const YV12_BUFFER_CONFIG *dst, double amount) {
   const int bit_depth = cpi->td.mb.e_mbd.bd;
-  highbd_unsharp_rect(CONVERT_TO_SHORTPTR(source->y_buffer), source->y_stride,
-                      CONVERT_TO_SHORTPTR(blurred->y_buffer), blurred->y_stride,
-                      CONVERT_TO_SHORTPTR(dst->y_buffer), dst->y_stride,
+  highbd_unsharp_rect(source->y_buffer, source->y_stride, blurred->y_buffer,
+                      blurred->y_stride, dst->y_buffer, dst->y_stride,
                       source->y_width, source->y_height, amount, bit_depth);
 }
 
@@ -244,15 +243,14 @@ static AOM_INLINE void gaussian_blur(const int bit_depth,
       const int row_offset_y = row * block_h;
       const int col_offset_y = col * block_w;
 
-      uint8_t *src_buf =
+      uint16_t *src_buf =
           source->y_buffer + row_offset_y * source->y_stride + col_offset_y;
-      uint8_t *dst_buf =
+      uint16_t *dst_buf =
           dst->y_buffer + row_offset_y * dst->y_stride + col_offset_y;
 
-      av1_highbd_convolve_2d_sr(CONVERT_TO_SHORTPTR(src_buf), source->y_stride,
-                                CONVERT_TO_SHORTPTR(dst_buf), dst->y_stride,
-                                block_w, block_h, &filter, &filter, 0, 0,
-                                &conv_params, bit_depth);
+      av1_highbd_convolve_2d_sr(src_buf, source->y_stride, dst_buf,
+                                dst->y_stride, block_w, block_h, &filter,
+                                &filter, 0, 0, &conv_params, bit_depth);
     }
   }
 }
@@ -519,13 +517,12 @@ void av1_vmaf_blk_preprocessing(AV1_COMP *const cpi,
       const int block_height = AOMMIN(height - row_offset_y, block_h);
       const int index = col + row * num_cols;
 
-      uint16_t *frame_src_buf = CONVERT_TO_SHORTPTR(source->y_buffer) +
-                                row_offset_y * source->y_stride + col_offset_y;
-      uint16_t *frame_blurred_buf = CONVERT_TO_SHORTPTR(blurred.y_buffer) +
-                                    row_offset_y * blurred.y_stride +
-                                    col_offset_y;
-      uint16_t *blurred_dst = CONVERT_TO_SHORTPTR(blurred_block.y_buffer);
-      uint16_t *src_dst = CONVERT_TO_SHORTPTR(source_block.y_buffer);
+      uint16_t *frame_src_buf =
+          source->y_buffer + row_offset_y * source->y_stride + col_offset_y;
+      uint16_t *frame_blurred_buf =
+          blurred.y_buffer + row_offset_y * blurred.y_stride + col_offset_y;
+      uint16_t *blurred_dst = blurred_block.y_buffer;
+      uint16_t *src_dst = source_block.y_buffer;
 
       // Copy block from source frame.
       for (int i = 0; i < block_h; ++i) {
@@ -559,10 +556,10 @@ void av1_vmaf_blk_preprocessing(AV1_COMP *const cpi,
       const int block_height = AOMMIN(source->y_height - row_offset_y, block_h);
       const int index = col + row * num_cols;
 
-      uint16_t *src_buf = CONVERT_TO_SHORTPTR(source->y_buffer) +
-                          row_offset_y * source->y_stride + col_offset_y;
-      uint16_t *blurred_buf = CONVERT_TO_SHORTPTR(blurred.y_buffer) +
-                              row_offset_y * blurred.y_stride + col_offset_y;
+      uint16_t *src_buf =
+          source->y_buffer + row_offset_y * source->y_stride + col_offset_y;
+      uint16_t *blurred_buf =
+          blurred.y_buffer + row_offset_y * blurred.y_stride + col_offset_y;
       highbd_unsharp_rect(src_buf, source->y_stride, blurred_buf,
                           blurred.y_stride, src_buf, source->y_stride,
                           block_width, block_height,
@@ -608,8 +605,7 @@ static int update_frame(float *ref_data, float *main_data, float *temp_data,
     float *ref, *main;
     ref = ref_data + i * stride;
     main = main_data + i * stride;
-    uint16_t *src;
-    src = CONVERT_TO_SHORTPTR(source->y_buffer) + i * source->y_stride;
+    uint16_t *src = source->y_buffer + i * source->y_stride;
     for (int j = 0; j < width; ++j) {
       ref[j] = main[j] = scale_factor * (float)src[j];
     }
@@ -622,8 +618,8 @@ static int update_frame(float *ref_data, float *main_data, float *temp_data,
     const int block_height = AOMMIN(height - row_offset, block_h);
 
     float *main_buf = main_data + col_offset + row_offset * stride;
-    uint16_t *blurred_buf = CONVERT_TO_SHORTPTR(blurred->y_buffer) +
-                            row_offset * blurred->y_stride + col_offset;
+    uint16_t *blurred_buf =
+        blurred->y_buffer + row_offset * blurred->y_stride + col_offset;
     for (int i = 0; i < block_height; ++i) {
       for (int j = 0; j < block_width; ++j) {
         main_buf[j] = scale_factor * (float)blurred_buf[j];
@@ -714,10 +710,10 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
       const int row_offset_y = row * resized_block_h;
       const int col_offset_y = col * resized_block_w;
 
-      uint8_t *const orig_buf = resized_source.y_buffer +
-                                row_offset_y * resized_source.y_stride +
-                                col_offset_y;
-      uint8_t *const blurred_buf =
+      uint16_t *const orig_buf = resized_source.y_buffer +
+                                 row_offset_y * resized_source.y_stride +
+                                 col_offset_y;
+      uint16_t *const blurred_buf =
           blurred.y_buffer + row_offset_y * blurred.y_stride + col_offset_y;
 
       unsigned int sse;
@@ -725,12 +721,11 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
                                          blurred_buf, blurred.y_stride, &sse);
 
 #if CONFIG_USE_VMAF_RC
-      uint8_t *const recon_buf =
+      uint16_t *const recon_buf =
           recon.y_buffer + row_offset_y * recon.y_stride + col_offset_y;
       // Set recon buf
-      highbd_unsharp_rect(CONVERT_TO_SHORTPTR(blurred_buf), blurred.y_stride,
-                          CONVERT_TO_SHORTPTR(blurred_buf), blurred.y_stride,
-                          CONVERT_TO_SHORTPTR(recon_buf), recon.y_stride,
+      highbd_unsharp_rect(blurred_buf, blurred.y_stride, blurred_buf,
+                          blurred.y_stride, recon_buf, recon.y_stride,
                           resized_block_w, resized_block_h, 0.0, bit_depth);
 
       double vmaf;
@@ -739,11 +734,9 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
                                 &vmaf);
 
       // Restore recon buf
-      highbd_unsharp_rect(
-          CONVERT_TO_SHORTPTR(orig_buf), resized_source.y_stride,
-          CONVERT_TO_SHORTPTR(orig_buf), resized_source.y_stride,
-          CONVERT_TO_SHORTPTR(recon_buf), recon.y_stride, resized_block_w,
-          resized_block_h, 0.0, bit_depth);
+      highbd_unsharp_rect(orig_buf, resized_source.y_stride, orig_buf,
+                          resized_source.y_stride, recon_buf, recon.y_stride,
+                          resized_block_w, resized_block_h, 0.0, bit_depth);
 #else
       const double vmaf = scores[index];
 #endif
@@ -828,24 +821,6 @@ static AOM_INLINE double highbd_image_sad_c(const uint16_t *src, int src_stride,
   return accum / (double)(h * w);
 }
 
-static AOM_INLINE double image_sad_c(const uint8_t *src, int src_stride,
-                                     const uint8_t *ref, int ref_stride, int w,
-                                     int h) {
-  double accum = 0.0;
-  int i, j;
-
-  for (i = 0; i < h; ++i) {
-    for (j = 0; j < w; ++j) {
-      double img1px = src[i * src_stride + j];
-      double img2px = ref[i * ref_stride + j];
-
-      accum += fabs(img1px - img2px);
-    }
-  }
-
-  return accum / (double)(h * w);
-}
-
 static double calc_vmaf_motion_score(const AV1_COMP *const cpi,
                                      const AV1_COMMON *const cm,
                                      const YV12_BUFFER_CONFIG *const cur,
@@ -876,16 +851,14 @@ static double calc_vmaf_motion_score(const AV1_COMP *const cpi,
 
   double motion1, motion2 = 65536.0;
   const float scale_factor = 1.0f / (float)(1 << (bit_depth - 8));
-  motion1 = highbd_image_sad_c(CONVERT_TO_SHORTPTR(blurred_cur.y_buffer),
-                               blurred_cur.y_stride,
-                               CONVERT_TO_SHORTPTR(blurred_last.y_buffer),
-                               blurred_last.y_stride, y_width, y_height) *
+  motion1 = highbd_image_sad_c(blurred_cur.y_buffer, blurred_cur.y_stride,
+                               blurred_last.y_buffer, blurred_last.y_stride,
+                               y_width, y_height) *
             scale_factor;
   if (next) {
-    motion2 = highbd_image_sad_c(CONVERT_TO_SHORTPTR(blurred_cur.y_buffer),
-                                 blurred_cur.y_stride,
-                                 CONVERT_TO_SHORTPTR(blurred_next.y_buffer),
-                                 blurred_next.y_stride, y_width, y_height) *
+    motion2 = highbd_image_sad_c(blurred_cur.y_buffer, blurred_cur.y_stride,
+                                 blurred_next.y_buffer, blurred_next.y_stride,
+                                 y_width, y_height) *
               scale_factor;
   }
 

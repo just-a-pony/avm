@@ -30,8 +30,8 @@ const int kMaxSize = 128 + 32;  // padding
 
 namespace AV1DISTWTDCOMPAVG {
 
-typedef void (*distwtdcompavg_func)(uint8_t *comp_pred, const uint8_t *pred,
-                                    int width, int height, const uint8_t *ref,
+typedef void (*distwtdcompavg_func)(uint16_t *comp_pred, const uint16_t *pred,
+                                    int width, int height, const uint16_t *ref,
                                     int ref_stride,
                                     const DIST_WTD_COMP_PARAMS *jcp_param);
 
@@ -48,8 +48,8 @@ typedef std::tuple<distwtdcompavgupsampled_func, BLOCK_SIZE>
 
 typedef void (*highbddistwtdcompavgupsampled_func)(
     MACROBLOCKD *xd, const struct AV1Common *const cm, int mi_row, int mi_col,
-    const MV *const mv, uint8_t *comp_pred8, const uint8_t *pred8, int width,
-    int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref8,
+    const MV *const mv, uint16_t *comp_pred8, const uint16_t *pred8, int width,
+    int height, int subpel_x_q3, int subpel_y_q3, const uint16_t *ref8,
     int ref_stride, int bd, const DIST_WTD_COMP_PARAMS *jcp_param,
     int subpel_search);
 
@@ -122,14 +122,10 @@ class AV1HighBDDISTWTDCOMPAVGTest
         const int offset_r = 3 + rnd_.PseudoUniform(h - in_h - 7);
         const int offset_c = 3 + rnd_.PseudoUniform(w - in_w - 7);
         aom_highbd_dist_wtd_comp_avg_pred_c(
-            CONVERT_TO_BYTEPTR(output),
-            CONVERT_TO_BYTEPTR(pred8) + offset_r * w + offset_c, in_w, in_h,
-            CONVERT_TO_BYTEPTR(ref8) + offset_r * w + offset_c, in_w,
-            &dist_wtd_comp_params);
-        test_impl(CONVERT_TO_BYTEPTR(output2),
-                  CONVERT_TO_BYTEPTR(pred8) + offset_r * w + offset_c, in_w,
-                  in_h, CONVERT_TO_BYTEPTR(ref8) + offset_r * w + offset_c,
-                  in_w, &dist_wtd_comp_params);
+            output, pred8 + offset_r * w + offset_c, in_w, in_h,
+            ref8 + offset_r * w + offset_c, in_w, &dist_wtd_comp_params);
+        test_impl(output2, pred8 + offset_r * w + offset_c, in_w, in_h,
+                  ref8 + offset_r * w + offset_c, in_w, &dist_wtd_comp_params);
 
         for (int i = 0; i < in_h; ++i) {
           for (int j = 0; j < in_w; ++j) {
@@ -170,9 +166,8 @@ class AV1HighBDDISTWTDCOMPAVGTest
     aom_usec_timer_start(&timer);
 
     for (int i = 0; i < num_loops; ++i)
-      aom_highbd_dist_wtd_comp_avg_pred_c(
-          CONVERT_TO_BYTEPTR(output), CONVERT_TO_BYTEPTR(pred8), in_w, in_h,
-          CONVERT_TO_BYTEPTR(ref8), in_w, &dist_wtd_comp_params);
+      aom_highbd_dist_wtd_comp_avg_pred_c(output, pred8, in_w, in_h, ref8, in_w,
+                                          &dist_wtd_comp_params);
 
     aom_usec_timer_mark(&timer);
     const int elapsed_time = static_cast<int>(aom_usec_timer_elapsed(&timer));
@@ -183,8 +178,7 @@ class AV1HighBDDISTWTDCOMPAVGTest
     aom_usec_timer_start(&timer1);
 
     for (int i = 0; i < num_loops; ++i)
-      test_impl(CONVERT_TO_BYTEPTR(output2), CONVERT_TO_BYTEPTR(pred8), in_w,
-                in_h, CONVERT_TO_BYTEPTR(ref8), in_w, &dist_wtd_comp_params);
+      test_impl(output2, pred8, in_w, in_h, ref8, in_w, &dist_wtd_comp_params);
 
     aom_usec_timer_mark(&timer1);
     const int elapsed_time1 = static_cast<int>(aom_usec_timer_elapsed(&timer1));
@@ -237,16 +231,14 @@ class AV1HighBDDISTWTDCOMPAVGUPSAMPLEDTest
               const int offset_c = 3 + rnd_.PseudoUniform(w - in_w - 7);
 
               aom_highbd_dist_wtd_comp_avg_upsampled_pred_c(
-                  NULL, NULL, 0, 0, NULL, CONVERT_TO_BYTEPTR(output),
-                  CONVERT_TO_BYTEPTR(pred8) + offset_r * w + offset_c, in_w,
-                  in_h, sub_x_q3, sub_y_q3,
-                  CONVERT_TO_BYTEPTR(ref8) + offset_r * w + offset_c, in_w, bd,
+                  NULL, NULL, 0, 0, NULL, output,
+                  pred8 + offset_r * w + offset_c, in_w, in_h, sub_x_q3,
+                  sub_y_q3, ref8 + offset_r * w + offset_c, in_w, bd,
                   &dist_wtd_comp_params, subpel_search);
-              test_impl(NULL, NULL, 0, 0, NULL, CONVERT_TO_BYTEPTR(output2),
-                        CONVERT_TO_BYTEPTR(pred8) + offset_r * w + offset_c,
-                        in_w, in_h, sub_x_q3, sub_y_q3,
-                        CONVERT_TO_BYTEPTR(ref8) + offset_r * w + offset_c,
-                        in_w, bd, &dist_wtd_comp_params, subpel_search);
+              test_impl(NULL, NULL, 0, 0, NULL, output2,
+                        pred8 + offset_r * w + offset_c, in_w, in_h, sub_x_q3,
+                        sub_y_q3, ref8 + offset_r * w + offset_c, in_w, bd,
+                        &dist_wtd_comp_params, subpel_search);
 
               for (int i = 0; i < in_h; ++i) {
                 for (int j = 0; j < in_w; ++j) {
@@ -295,10 +287,8 @@ class AV1HighBDDISTWTDCOMPAVGUPSAMPLEDTest
     int subpel_search = USE_8_TAPS;  // set to USE_4_TAPS to test 4-tap filter.
     for (int i = 0; i < num_loops; ++i)
       aom_highbd_dist_wtd_comp_avg_upsampled_pred_c(
-          NULL, NULL, 0, 0, NULL, CONVERT_TO_BYTEPTR(output),
-          CONVERT_TO_BYTEPTR(pred8), in_w, in_h, sub_x_q3, sub_y_q3,
-          CONVERT_TO_BYTEPTR(ref8), in_w, bd, &dist_wtd_comp_params,
-          subpel_search);
+          NULL, NULL, 0, 0, NULL, output, pred8, in_w, in_h, sub_x_q3, sub_y_q3,
+          ref8, in_w, bd, &dist_wtd_comp_params, subpel_search);
 
     aom_usec_timer_mark(&timer);
     const int elapsed_time = static_cast<int>(aom_usec_timer_elapsed(&timer));
@@ -309,10 +299,8 @@ class AV1HighBDDISTWTDCOMPAVGUPSAMPLEDTest
     aom_usec_timer_start(&timer1);
 
     for (int i = 0; i < num_loops; ++i)
-      test_impl(NULL, NULL, 0, 0, NULL, CONVERT_TO_BYTEPTR(output2),
-                CONVERT_TO_BYTEPTR(pred8), in_w, in_h, sub_x_q3, sub_y_q3,
-                CONVERT_TO_BYTEPTR(ref8), in_w, bd, &dist_wtd_comp_params,
-                subpel_search);
+      test_impl(NULL, NULL, 0, 0, NULL, output2, pred8, in_w, in_h, sub_x_q3,
+                sub_y_q3, ref8, in_w, bd, &dist_wtd_comp_params, subpel_search);
 
     aom_usec_timer_mark(&timer1);
     const int elapsed_time1 = static_cast<int>(aom_usec_timer_elapsed(&timer1));

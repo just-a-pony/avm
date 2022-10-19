@@ -19,13 +19,11 @@
 #include "aom_ports/mem.h"
 #include "aom_dsp/blend.h"
 
-static INLINE unsigned int highbd_sad(const uint8_t *a8, int a_stride,
-                                      const uint8_t *b8, int b_stride,
+static INLINE unsigned int highbd_sad(const uint16_t *a, int a_stride,
+                                      const uint16_t *b, int b_stride,
                                       int width, int height) {
   int y, x;
   unsigned int sad = 0;
-  const uint16_t *a = CONVERT_TO_SHORTPTR(a8);
-  const uint16_t *b = CONVERT_TO_SHORTPTR(b8);
   for (y = 0; y < height; y++) {
     for (x = 0; x < width; x++) {
       sad += abs(a[x] - b[x]);
@@ -37,13 +35,11 @@ static INLINE unsigned int highbd_sad(const uint8_t *a8, int a_stride,
   return sad;
 }
 
-static INLINE unsigned int highbd_sadb(const uint8_t *a8, int a_stride,
-                                       const uint8_t *b8, int b_stride,
+static INLINE unsigned int highbd_sadb(const uint16_t *a, int a_stride,
+                                       const uint16_t *b, int b_stride,
                                        int width, int height) {
   int y, x;
   unsigned int sad = 0;
-  const uint16_t *a = CONVERT_TO_SHORTPTR(a8);
-  const uint16_t *b = CONVERT_TO_SHORTPTR(b8);
   for (y = 0; y < height; y++) {
     for (x = 0; x < width; x++) {
       sad += abs(a[x] - b[x]);
@@ -57,47 +53,46 @@ static INLINE unsigned int highbd_sadb(const uint8_t *a8, int a_stride,
 
 #define highbd_avg_skip_sadMxN(m, n)                                           \
   unsigned int aom_highbd_sad##m##x##n##_avg_c(                                \
-      const uint8_t *src, int src_stride, const uint8_t *ref, int ref_stride,  \
-      const uint8_t *second_pred) {                                            \
+      const uint16_t *src, int src_stride, const uint16_t *ref,                \
+      int ref_stride, const uint16_t *second_pred) {                           \
     uint16_t comp_pred[m * n];                                                 \
-    uint8_t *const comp_pred8 = CONVERT_TO_BYTEPTR(comp_pred);                 \
-    aom_highbd_comp_avg_pred(comp_pred8, second_pred, m, n, ref, ref_stride);  \
-    return highbd_sadb(src, src_stride, comp_pred8, m, m, n);                  \
+    aom_highbd_comp_avg_pred(comp_pred, second_pred, m, n, ref, ref_stride);   \
+    return highbd_sadb(src, src_stride, comp_pred, m, m, n);                   \
   }                                                                            \
   unsigned int aom_highbd_dist_wtd_sad##m##x##n##_avg_c(                       \
-      const uint8_t *src, int src_stride, const uint8_t *ref, int ref_stride,  \
-      const uint8_t *second_pred, const DIST_WTD_COMP_PARAMS *jcp_param) {     \
+      const uint16_t *src, int src_stride, const uint16_t *ref,                \
+      int ref_stride, const uint16_t *second_pred,                             \
+      const DIST_WTD_COMP_PARAMS *jcp_param) {                                 \
     uint16_t comp_pred[m * n];                                                 \
-    uint8_t *const comp_pred8 = CONVERT_TO_BYTEPTR(comp_pred);                 \
-    aom_highbd_dist_wtd_comp_avg_pred(comp_pred8, second_pred, m, n, ref,      \
+    aom_highbd_dist_wtd_comp_avg_pred(comp_pred, second_pred, m, n, ref,       \
                                       ref_stride, jcp_param);                  \
-    return highbd_sadb(src, src_stride, comp_pred8, m, m, n);                  \
+    return highbd_sadb(src, src_stride, comp_pred, m, m, n);                   \
   }                                                                            \
   unsigned int aom_highbd_sad_skip_##m##x##n##_c(                              \
-      const uint8_t *src, int src_stride, const uint8_t *ref,                  \
+      const uint16_t *src, int src_stride, const uint16_t *ref,                \
       int ref_stride) {                                                        \
     return 2 *                                                                 \
            highbd_sad(src, 2 * src_stride, ref, 2 * ref_stride, (m), (n / 2)); \
   }
 
-#define highbd_sadMxNx4D(m, n)                                               \
-  void aom_highbd_sad##m##x##n##x4d_c(const uint8_t *src, int src_stride,    \
-                                      const uint8_t *const ref_array[],      \
-                                      int ref_stride, uint32_t *sad_array) { \
-    int i;                                                                   \
-    for (i = 0; i < 4; ++i) {                                                \
-      sad_array[i] = aom_highbd_sad##m##x##n##_c(src, src_stride,            \
-                                                 ref_array[i], ref_stride);  \
-    }                                                                        \
-  }                                                                          \
-  void aom_highbd_sad_skip_##m##x##n##x4d_c(                                 \
-      const uint8_t *src, int src_stride, const uint8_t *const ref_array[],  \
-      int ref_stride, uint32_t *sad_array) {                                 \
-    int i;                                                                   \
-    for (i = 0; i < 4; ++i) {                                                \
-      sad_array[i] = 2 * highbd_sad(src, 2 * src_stride, ref_array[i],       \
-                                    2 * ref_stride, (m), (n / 2));           \
-    }                                                                        \
+#define highbd_sadMxNx4D(m, n)                                                \
+  void aom_highbd_sad##m##x##n##x4d_c(const uint16_t *src, int src_stride,    \
+                                      const uint16_t *const ref_array[],      \
+                                      int ref_stride, uint32_t *sad_array) {  \
+    int i;                                                                    \
+    for (i = 0; i < 4; ++i) {                                                 \
+      sad_array[i] = aom_highbd_sad##m##x##n##_c(src, src_stride,             \
+                                                 ref_array[i], ref_stride);   \
+    }                                                                         \
+  }                                                                           \
+  void aom_highbd_sad_skip_##m##x##n##x4d_c(                                  \
+      const uint16_t *src, int src_stride, const uint16_t *const ref_array[], \
+      int ref_stride, uint32_t *sad_array) {                                  \
+    int i;                                                                    \
+    for (i = 0; i < 4; ++i) {                                                 \
+      sad_array[i] = 2 * highbd_sad(src, 2 * src_stride, ref_array[i],        \
+                                    2 * ref_stride, (m), (n / 2));            \
+    }                                                                         \
   }
 
 // 128x128

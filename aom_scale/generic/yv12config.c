@@ -56,7 +56,7 @@ static int realloc_frame_buffer_aligned(
     const int aom_byte_align = (byte_alignment == 0) ? 1 : byte_alignment;
     const uint64_t frame_size = 2 * (yplane_size + 2 * uvplane_size);
 
-    uint8_t *buf = NULL;
+    uint16_t *buf = NULL;
 
 #if defined AOM_MAX_ALLOCABLE_MEMORY
     // The size of ybf->buffer_alloc.
@@ -133,17 +133,17 @@ static int realloc_frame_buffer_aligned(
     ybf->subsampling_y = ss_y;
 
     // Store uint16 addresses when using 16bit framebuffers
-    buf = CONVERT_TO_BYTEPTR(ybf->buffer_alloc);
+    buf = (uint16_t *)ybf->buffer_alloc;
 
-    ybf->y_buffer = (uint8_t *)aom_align_addr(
+    ybf->y_buffer = (uint16_t *)aom_align_addr(
         buf + (border * y_stride) + border, aom_byte_align);
-    ybf->u_buffer = (uint8_t *)aom_align_addr(
+    ybf->u_buffer = (uint16_t *)aom_align_addr(
         buf + yplane_size + (uv_border_h * uv_stride) + uv_border_w,
         aom_byte_align);
     ybf->v_buffer =
-        (uint8_t *)aom_align_addr(buf + yplane_size + uvplane_size +
-                                      (uv_border_h * uv_stride) + uv_border_w,
-                                  aom_byte_align);
+        (uint16_t *)aom_align_addr(buf + yplane_size + uvplane_size +
+                                       (uv_border_h * uv_stride) + uv_border_w,
+                                   aom_byte_align);
 
     ybf->use_external_reference_buffers = 0;
 

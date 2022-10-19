@@ -30,8 +30,8 @@ namespace {
 using libaom_test::ACMRandom;
 
 typedef void (*HBDSubtractFunc)(int rows, int cols, int16_t *diff_ptr,
-                                ptrdiff_t diff_stride, const uint8_t *src_ptr,
-                                ptrdiff_t src_stride, const uint8_t *pred_ptr,
+                                ptrdiff_t diff_stride, const uint16_t *src_ptr,
+                                ptrdiff_t src_stride, const uint16_t *pred_ptr,
                                 ptrdiff_t pred_stride, int bd);
 
 using std::get;
@@ -53,17 +53,17 @@ class AV1HBDSubtractBlockTest : public ::testing::TestWithParam<Params> {
 
     const size_t max_width = 128;
     const size_t max_block_size = max_width * max_width;
-    src_ = CONVERT_TO_BYTEPTR(reinterpret_cast<uint16_t *>(
-        aom_memalign(16, max_block_size * sizeof(uint16_t))));
-    pred_ = CONVERT_TO_BYTEPTR(reinterpret_cast<uint16_t *>(
-        aom_memalign(16, max_block_size * sizeof(uint16_t))));
+    src_ = reinterpret_cast<uint16_t *>(
+        aom_memalign(16, max_block_size * sizeof(uint16_t)));
+    pred_ = reinterpret_cast<uint16_t *>(
+        aom_memalign(16, max_block_size * sizeof(uint16_t)));
     diff_ = reinterpret_cast<int16_t *>(
         aom_memalign(16, max_block_size * sizeof(int16_t)));
   }
 
   virtual void TearDown() {
-    aom_free(CONVERT_TO_SHORTPTR(src_));
-    aom_free(CONVERT_TO_SHORTPTR(pred_));
+    aom_free(src_);
+    aom_free(pred_);
     aom_free(diff_);
   }
 
@@ -77,8 +77,8 @@ class AV1HBDSubtractBlockTest : public ::testing::TestWithParam<Params> {
   int block_width_;
   aom_bit_depth_t bit_depth_;
   HBDSubtractFunc func_;
-  uint8_t *src_;
-  uint8_t *pred_;
+  uint16_t *src_;
+  uint16_t *pred_;
   int16_t *diff_;
 };
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AV1HBDSubtractBlockTest);
@@ -92,8 +92,8 @@ void AV1HBDSubtractBlockTest::CheckResult() {
 
   for (i = 0; i < test_num; ++i) {
     for (j = 0; j < max_block_size; ++j) {
-      CONVERT_TO_SHORTPTR(src_)[j] = rnd_.Rand16() & mask;
-      CONVERT_TO_SHORTPTR(pred_)[j] = rnd_.Rand16() & mask;
+      src_[j] = rnd_.Rand16() & mask;
+      pred_[j] = rnd_.Rand16() & mask;
     }
 
     func_(block_height_, block_width_, diff_, block_width_, src_, block_width_,
@@ -102,8 +102,7 @@ void AV1HBDSubtractBlockTest::CheckResult() {
     for (int r = 0; r < block_height_; ++r) {
       for (int c = 0; c < block_width_; ++c) {
         EXPECT_EQ(diff_[r * block_width_ + c],
-                  (CONVERT_TO_SHORTPTR(src_)[r * block_width_ + c] -
-                   CONVERT_TO_SHORTPTR(pred_)[r * block_width_ + c]))
+                  (src_[r * block_width_ + c] - pred_[r * block_width_ + c]))
             << "r = " << r << ", c = " << c << ", test: " << i;
       }
     }
@@ -120,8 +119,8 @@ void AV1HBDSubtractBlockTest::RunForSpeed() {
   int i, j;
 
   for (j = 0; j < max_block_size; ++j) {
-    CONVERT_TO_SHORTPTR(src_)[j] = rnd_.Rand16() & mask;
-    CONVERT_TO_SHORTPTR(pred_)[j] = rnd_.Rand16() & mask;
+    src_[j] = rnd_.Rand16() & mask;
+    pred_[j] = rnd_.Rand16() & mask;
   }
 
   for (i = 0; i < test_num; ++i) {

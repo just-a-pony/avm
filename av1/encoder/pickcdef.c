@@ -231,7 +231,7 @@ static void copy_sb16_16_highbd(uint16_t *dst, int dstride, const void *src,
                                 int src_voffset, int src_hoffset, int sstride,
                                 int vsize, int hsize) {
   int r;
-  const uint16_t *src16 = CONVERT_TO_SHORTPTR((uint8_t *)src);
+  const uint16_t *src16 = (uint16_t *)src;
   const uint16_t *base = &src16[src_voffset * sstride + src_hoffset];
   for (r = 0; r < vsize; r++)
     memcpy(dst + r * dstride, base + r * sstride, hsize * sizeof(*base));
@@ -256,7 +256,7 @@ static uint64_t compute_cdef_dist_highbd(void *dst, int dstride, uint16_t *src,
          bsize == BLOCK_8X8);
   uint64_t sum = 0;
   int bi, bx, by;
-  uint16_t *dst16 = CONVERT_TO_SHORTPTR((uint8_t *)dst);
+  uint16_t *dst16 = (uint16_t *)dst;
   uint16_t *dst_buff = &dst16[row * dstride + col];
   int src_stride, width, height, width_log2, height_log2;
   init_src_params(&src_stride, &width, &height, &width_log2, &height_log2,
@@ -392,7 +392,7 @@ void av1_cdef_search(const YV12_BUFFER_CONFIG *frame,
   int mi_high_l2[3];
   int xdec[3];
   int ydec[3];
-  uint8_t *ref_buffer[3] = { ref->y_buffer, ref->u_buffer, ref->v_buffer };
+  uint16_t *ref_buffer[3] = { ref->y_buffer, ref->u_buffer, ref->v_buffer };
   int ref_stride[3] = { ref->y_stride, ref->uv_stride, ref->uv_stride };
 
   for (int pli = 0; pli < num_planes; pli++) {

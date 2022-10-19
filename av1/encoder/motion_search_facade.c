@@ -629,8 +629,7 @@ void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
   };
 
   // Prediction buffer from second frame.
-  DECLARE_ALIGNED(16, uint8_t, second_pred16[MAX_SB_SQUARE * sizeof(uint16_t)]);
-  uint8_t *second_pred = CONVERT_TO_BYTEPTR(second_pred16);
+  DECLARE_ALIGNED(16, uint16_t, second_pred[MAX_SB_SQUARE]);
   int_mv best_mv;
 
   // Allow joint search multiple times iteratively for each reference frame
@@ -890,9 +889,9 @@ void av1_amvd_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
                                        BLOCK_SIZE bsize, MV *this_mv,
 #if CONFIG_JOINT_MVD
-                                       MV *other_mv, uint8_t *second_pred,
+                                       MV *other_mv, uint16_t *second_pred,
 #else
-                                       const uint8_t *second_pred,
+                                       const uint16_t *second_pred,
 #endif  // CONFIG_JOINT_MVD
                                        const uint8_t *mask, int mask_stride,
                                        int *rate_mv, int ref_idx) {
@@ -1173,7 +1172,7 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 static AOM_INLINE void build_second_inter_pred(const AV1_COMP *cpi,
                                                MACROBLOCK *x, BLOCK_SIZE bsize,
                                                const MV *other_mv, int ref_idx,
-                                               uint8_t *second_pred) {
+                                               uint16_t *second_pred) {
   const AV1_COMMON *const cm = &cpi->common;
   const int pw = block_size_wide[bsize];
   const int ph = block_size_high[bsize];
@@ -1219,8 +1218,7 @@ void av1_compound_single_motion_search_interinter(
 
   // Prediction buffer from second frame.
   DECLARE_ALIGNED(16, uint16_t, second_pred_alloc_16[MAX_SB_SQUARE]);
-  uint8_t *second_pred;
-  second_pred = CONVERT_TO_BYTEPTR(second_pred_alloc_16);
+  uint16_t *second_pred = (uint16_t *)second_pred_alloc_16;
 
   MV *this_mv = &cur_mv[ref_idx].as_mv;
 
@@ -1457,9 +1455,9 @@ int_mv av1_simple_motion_sse_var(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   int_mv best_mv = av1_simple_motion_search(cpi, x, mi_row, mi_col, bsize, ref,
                                             start_mv, 1, use_subpixel);
 
-  const uint8_t *src = x->plane[0].src.buf;
+  const uint16_t *src = x->plane[0].src.buf;
   const int src_stride = x->plane[0].src.stride;
-  const uint8_t *dst = xd->plane[0].dst.buf;
+  const uint16_t *dst = xd->plane[0].dst.buf;
   const int dst_stride = xd->plane[0].dst.stride;
 
   *var = cpi->fn_ptr[bsize].vf(src, src_stride, dst, dst_stride, sse);

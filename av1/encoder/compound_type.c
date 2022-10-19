@@ -21,7 +21,7 @@
 
 typedef int64_t (*pick_interinter_mask_type)(
     const AV1_COMP *const cpi, MACROBLOCK *x, const BLOCK_SIZE bsize,
-    const uint8_t *const p0, const uint8_t *const p1,
+    const uint16_t *const p0, const uint16_t *const p1,
     const int16_t *const residual1, const int16_t *const diff10,
     uint64_t *best_sse);
 
@@ -120,8 +120,8 @@ static INLINE bool enable_wedge_interintra_search(MACROBLOCK *const x,
 }
 
 static int8_t estimate_wedge_sign(const AV1_COMP *cpi, const MACROBLOCK *x,
-                                  const BLOCK_SIZE bsize, const uint8_t *pred0,
-                                  int stride0, const uint8_t *pred1,
+                                  const BLOCK_SIZE bsize, const uint16_t *pred0,
+                                  int stride0, const uint16_t *pred1,
                                   int stride1) {
   static const BLOCK_SIZE split_qtr[BLOCK_SIZES_ALL] = {
     //                            4X4
@@ -142,7 +142,7 @@ static int8_t estimate_wedge_sign(const AV1_COMP *cpi, const MACROBLOCK *x,
     BLOCK_16X4, BLOCK_8X32, BLOCK_32X8
   };
   const struct macroblock_plane *const p = &x->plane[0];
-  const uint8_t *src = p->src.buf;
+  const uint16_t *src = p->src.buf;
   int src_stride = p->src.stride;
   const int bw = block_size_wide[bsize];
   const int bh = block_size_high[bsize];
@@ -153,9 +153,6 @@ static int8_t estimate_wedge_sign(const AV1_COMP *cpi, const MACROBLOCK *x,
 
   const BLOCK_SIZE f_index = split_qtr[bsize];
   assert(f_index != BLOCK_INVALID);
-
-  pred0 = CONVERT_TO_BYTEPTR(pred0);
-  pred1 = CONVERT_TO_BYTEPTR(pred1);
 
   // Residual variance computation over relevant quandrants in order to
   // find TL + BR, TL = sum(1st,2nd,3rd) quadrants of (pred0 - pred1),
@@ -181,7 +178,7 @@ static int8_t estimate_wedge_sign(const AV1_COMP *cpi, const MACROBLOCK *x,
 
 // Choose the best wedge index and sign
 static int64_t pick_wedge(const AV1_COMP *const cpi, const MACROBLOCK *const x,
-                          const BLOCK_SIZE bsize, const uint8_t *const p0,
+                          const BLOCK_SIZE bsize, const uint16_t *const p0,
                           const int16_t *const residual1,
                           const int16_t *const diff10,
                           int8_t *const best_wedge_sign,
@@ -204,8 +201,8 @@ static int64_t pick_wedge(const AV1_COMP *const cpi, const MACROBLOCK *const x,
 
   DECLARE_ALIGNED(32, int16_t, residual0[MAX_SB_SQUARE]);  // src - pred0
 
-  aom_highbd_subtract_block(bh, bw, residual0, bw, src->buf, src->stride,
-                            CONVERT_TO_BYTEPTR(p0), bw, xd->bd);
+  aom_highbd_subtract_block(bh, bw, residual0, bw, src->buf, src->stride, p0,
+                            bw, xd->bd);
 
   int64_t sign_limit = ((int64_t)aom_sum_squares_i16(residual0, N) -
                         (int64_t)aom_sum_squares_i16(residual1, N)) *
@@ -291,7 +288,7 @@ static int64_t pick_wedge_fixed_sign(
 
 static int64_t pick_interinter_wedge(
     const AV1_COMP *const cpi, MACROBLOCK *const x, const BLOCK_SIZE bsize,
-    const uint8_t *const p0, const uint8_t *const p1,
+    const uint16_t *const p0, const uint16_t *const p1,
     const int16_t *const residual1, const int16_t *const diff10,
     uint64_t *best_sse) {
   MACROBLOCKD *const xd = &x->e_mbd;
@@ -321,8 +318,8 @@ static int64_t pick_interinter_wedge(
 
 static int64_t pick_interinter_seg(const AV1_COMP *const cpi,
                                    MACROBLOCK *const x, const BLOCK_SIZE bsize,
-                                   const uint8_t *const p0,
-                                   const uint8_t *const p1,
+                                   const uint16_t *const p0,
+                                   const uint16_t *const p1,
                                    const int16_t *const residual1,
                                    const int16_t *const diff10,
                                    uint64_t *best_sse) {
@@ -343,8 +340,7 @@ static int64_t pick_interinter_seg(const AV1_COMP *const cpi,
   for (cur_mask_type = 0; cur_mask_type < DIFFWTD_MASK_TYPES; cur_mask_type++) {
     // build mask and inverse
     av1_build_compound_diffwtd_mask_highbd(
-        tmp_mask[cur_mask_type], cur_mask_type, CONVERT_TO_BYTEPTR(p0), bw,
-        CONVERT_TO_BYTEPTR(p1), bw, bh, bw, xd->bd);
+        tmp_mask[cur_mask_type], cur_mask_type, p0, bw, p1, bw, bh, bw, xd->bd);
 
     // compute rd for mask
     uint64_t sse = av1_wedge_sse_from_residuals(residual1, diff10,
@@ -371,8 +367,8 @@ static int64_t pick_interinter_seg(const AV1_COMP *const cpi,
 static int64_t pick_interintra_wedge(const AV1_COMP *const cpi,
                                      const MACROBLOCK *const x,
                                      const BLOCK_SIZE bsize,
-                                     const uint8_t *const p0,
-                                     const uint8_t *const p1) {
+                                     const uint16_t *const p0,
+                                     const uint16_t *const p1) {
   const MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   assert(av1_is_wedge_used(bsize));
@@ -384,10 +380,9 @@ static int64_t pick_interintra_wedge(const AV1_COMP *const cpi,
   DECLARE_ALIGNED(32, int16_t, residual1[MAX_SB_SQUARE]);  // src - pred1
   DECLARE_ALIGNED(32, int16_t, diff10[MAX_SB_SQUARE]);     // pred1 - pred0
 
-  aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride,
-                            CONVERT_TO_BYTEPTR(p1), bw, xd->bd);
-  aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(p1), bw,
-                            CONVERT_TO_BYTEPTR(p0), bw, xd->bd);
+  aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride, p1,
+                            bw, xd->bd);
+  aom_highbd_subtract_block(bh, bw, diff10, bw, p1, bw, p0, bw, xd->bd);
 
   int8_t wedge_index = -1;
   uint64_t sse;
@@ -399,7 +394,7 @@ static int64_t pick_interintra_wedge(const AV1_COMP *const cpi,
 }
 
 static AOM_INLINE void get_inter_predictor_masked_compound_y(
-    MACROBLOCK *x, const BLOCK_SIZE bsize, uint8_t *pred0, uint8_t *pred1,
+    MACROBLOCK *x, const BLOCK_SIZE bsize, uint16_t *pred0, uint16_t *pred1,
     int16_t *residual1, int16_t *diff10, int stride) {
   MACROBLOCKD *xd = &x->e_mbd;
   const int bw = block_size_wide[bsize];
@@ -409,17 +404,16 @@ static AOM_INLINE void get_inter_predictor_masked_compound_y(
   av1_build_inter_predictor_single_buf_y(xd, bsize, 1, pred1, stride);
   const struct buf_2d *const src = &x->plane[0].src;
 
-  aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride,
-                            CONVERT_TO_BYTEPTR(pred1), bw, xd->bd);
-  aom_highbd_subtract_block(bh, bw, diff10, bw, CONVERT_TO_BYTEPTR(pred1), bw,
-                            CONVERT_TO_BYTEPTR(pred0), bw, xd->bd);
+  aom_highbd_subtract_block(bh, bw, residual1, bw, src->buf, src->stride, pred1,
+                            bw, xd->bd);
+  aom_highbd_subtract_block(bh, bw, diff10, bw, pred1, bw, pred0, bw, xd->bd);
 }
 
 // Computes the rd cost for the given interintra mode and updates the best
 static INLINE void compute_best_interintra_mode(
     const AV1_COMP *const cpi, MB_MODE_INFO *mbmi, MACROBLOCKD *xd,
     MACROBLOCK *const x, const int *const interintra_mode_cost,
-    const BUFFER_SET *orig_dst, uint8_t *intrapred, const uint8_t *tmp_buf,
+    const BUFFER_SET *orig_dst, uint16_t *intrapred, const uint16_t *tmp_buf,
     INTERINTRA_MODE *best_interintra_mode, int64_t *best_interintra_rd,
     INTERINTRA_MODE interintra_mode, BLOCK_SIZE bsize) {
   const AV1_COMMON *const cm = &cpi->common;
@@ -482,18 +476,17 @@ static AOM_INLINE int64_t compute_rd_thresh(MACROBLOCK *const x,
 static AOM_INLINE int64_t compute_best_wedge_interintra(
     const AV1_COMP *const cpi, MB_MODE_INFO *mbmi, MACROBLOCKD *xd,
     MACROBLOCK *const x, const int *const interintra_mode_cost,
-    const BUFFER_SET *orig_dst, uint8_t *intrapred_, uint8_t *tmp_buf_,
+    const BUFFER_SET *orig_dst, uint16_t *intrapred, uint16_t *tmp_buf_,
     int *best_mode, int *best_wedge_index, BLOCK_SIZE bsize) {
   const AV1_COMMON *const cm = &cpi->common;
   const int bw = block_size_wide[bsize];
   int64_t best_interintra_rd_wedge = INT64_MAX;
   int64_t best_total_rd = INT64_MAX;
-  uint8_t *intrapred = CONVERT_TO_BYTEPTR(intrapred_);
   for (INTERINTRA_MODE mode = 0; mode < INTERINTRA_MODES; ++mode) {
     mbmi->interintra_mode = mode;
     av1_build_intra_predictors_for_interintra(cm, xd, bsize, 0, orig_dst,
                                               intrapred, bw);
-    int64_t rd = pick_interintra_wedge(cpi, x, bsize, intrapred_, tmp_buf_);
+    int64_t rd = pick_interintra_wedge(cpi, x, bsize, intrapred, tmp_buf_);
     const int rate_overhead =
         interintra_mode_cost[mode] +
         x->mode_costs.wedge_idx_cost[bsize][mbmi->interintra_wedge_index];
@@ -512,8 +505,8 @@ static int handle_smooth_inter_intra_mode(
     const AV1_COMP *const cpi, MACROBLOCK *const x, BLOCK_SIZE bsize,
     MB_MODE_INFO *mbmi, int64_t ref_best_rd, int *rate_mv,
     INTERINTRA_MODE *best_interintra_mode, int64_t *best_rd,
-    int *best_mode_rate, const BUFFER_SET *orig_dst, uint8_t *tmp_buf,
-    uint8_t *intrapred, HandleInterModeArgs *args) {
+    int *best_mode_rate, const BUFFER_SET *orig_dst, uint16_t *tmp_buf,
+    uint16_t *intrapred, HandleInterModeArgs *args) {
   MACROBLOCKD *xd = &x->e_mbd;
   const ModeCosts *mode_costs = &x->mode_costs;
   const int *const interintra_mode_cost =
@@ -579,8 +572,8 @@ static int handle_smooth_inter_intra_mode(
 static int handle_wedge_inter_intra_mode(
     const AV1_COMP *const cpi, MACROBLOCK *const x, BLOCK_SIZE bsize,
     MB_MODE_INFO *mbmi, int *rate_mv, INTERINTRA_MODE *best_interintra_mode,
-    int64_t *best_rd, const BUFFER_SET *orig_dst, uint8_t *tmp_buf_,
-    uint8_t *tmp_buf, uint8_t *intrapred_, uint8_t *intrapred,
+    int64_t *best_rd, const BUFFER_SET *orig_dst, uint16_t *tmp_buf_,
+    uint16_t *tmp_buf, uint16_t *intrapred_, uint16_t *intrapred,
     HandleInterModeArgs *args, int *tmp_rate_mv, int *rate_overhead,
     int_mv *tmp_mv, int64_t best_rd_no_wedge) {
   MACROBLOCKD *xd = &x->e_mbd;
@@ -718,10 +711,8 @@ int av1_handle_inter_intra_mode(const AV1_COMP *const cpi, MACROBLOCK *const x,
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCKD *xd = &x->e_mbd;
   const int bw = block_size_wide[bsize];
-  DECLARE_ALIGNED(16, uint8_t, tmp_buf_[2 * MAX_INTERINTRA_SB_SQUARE]);
-  DECLARE_ALIGNED(16, uint8_t, intrapred_[2 * MAX_INTERINTRA_SB_SQUARE]);
-  uint8_t *tmp_buf = CONVERT_TO_BYTEPTR(tmp_buf_);
-  uint8_t *intrapred = CONVERT_TO_BYTEPTR(intrapred_);
+  DECLARE_ALIGNED(16, uint16_t, tmp_buf[MAX_INTERINTRA_SB_SQUARE]);
+  DECLARE_ALIGNED(16, uint16_t, intrapred[MAX_INTERINTRA_SB_SQUARE]);
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
 
@@ -761,7 +752,7 @@ int av1_handle_inter_intra_mode(const AV1_COMP *const cpi, MACROBLOCK *const x,
   if (try_wedge_interintra) {
     int ret = handle_wedge_inter_intra_mode(
         cpi, x, bsize, mbmi, rate_mv, &best_interintra_mode,
-        &best_interintra_rd_wedge, orig_dst, tmp_buf_, tmp_buf, intrapred_,
+        &best_interintra_rd_wedge, orig_dst, tmp_buf, tmp_buf, intrapred,
         intrapred, args, &tmp_rate_mv, &rate_overhead, &tmp_mv,
         best_interintra_rd_nowedge);
     if (ret == IGNORE_MODE) {
@@ -799,9 +790,9 @@ int av1_handle_inter_intra_mode(const AV1_COMP *const cpi, MACROBLOCK *const x,
 static void alloc_compound_type_rd_buffers_no_check(
     CompoundTypeRdBuffers *const bufs) {
   bufs->pred0 =
-      (uint8_t *)aom_memalign(16, 2 * MAX_SB_SQUARE * sizeof(*bufs->pred0));
+      (uint16_t *)aom_memalign(16, MAX_SB_SQUARE * sizeof(*bufs->pred0));
   bufs->pred1 =
-      (uint8_t *)aom_memalign(16, 2 * MAX_SB_SQUARE * sizeof(*bufs->pred1));
+      (uint16_t *)aom_memalign(16, MAX_SB_SQUARE * sizeof(*bufs->pred1));
   bufs->residual1 =
       (int16_t *)aom_memalign(32, MAX_SB_SQUARE * sizeof(*bufs->residual1));
   bufs->diff10 =
@@ -1005,8 +996,8 @@ static INLINE void backup_stats(COMPOUND_TYPE cur_type, int32_t *comp_rate,
 static int64_t masked_compound_type_rd(
     const AV1_COMP *const cpi, MACROBLOCK *x, const int_mv *const cur_mv,
     const BLOCK_SIZE bsize, const PREDICTION_MODE this_mode, int *rs2,
-    int rate_mv, const BUFFER_SET *ctx, int *out_rate_mv, uint8_t *pred0,
-    uint8_t *pred1, int16_t *residual1, int16_t *diff10, int stride,
+    int rate_mv, const BUFFER_SET *ctx, int *out_rate_mv, uint16_t *pred0,
+    uint16_t *pred1, int16_t *residual1, int16_t *diff10, int stride,
     int mode_rate, int64_t rd_thresh, int *calc_pred_masked_compound,
     int32_t *comp_rate, int64_t *comp_dist, int32_t *comp_model_rate,
     int64_t *comp_model_dist, const int64_t comp_best_model_rd,
@@ -1035,8 +1026,7 @@ static int64_t masked_compound_type_rd(
   if (cpi->sf.inter_sf.prune_wedge_pred_diff_based &&
       compound_type == COMPOUND_WEDGE) {
     unsigned int sse;
-    (void)cpi->fn_ptr[bsize].vf(CONVERT_TO_BYTEPTR(pred0), stride,
-                                CONVERT_TO_BYTEPTR(pred1), stride, &sse);
+    (void)cpi->fn_ptr[bsize].vf(pred0, stride, pred1, stride, &sse);
     const unsigned int mse =
         ROUND_POWER_OF_TWO(sse, num_pels_log2_lookup[bsize]);
     // If two predictors are very similar, skip wedge compound mode search

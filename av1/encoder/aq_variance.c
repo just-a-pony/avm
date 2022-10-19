@@ -129,11 +129,11 @@ int av1_log_block_var(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bs) {
 
   for (i = 0; i < bh; i += 4) {
     for (j = 0; j < bw; j += 4) {
-      var += log(1.0 + cpi->fn_ptr[BLOCK_4X4].vf(
-                           x->plane[0].src.buf + i * x->plane[0].src.stride + j,
-                           x->plane[0].src.stride,
-                           CONVERT_TO_BYTEPTR(av1_highbd_all_zeros), 0, &sse) /
-                           16);
+      var +=
+          log(1.0 + cpi->fn_ptr[BLOCK_4X4].vf(
+                        x->plane[0].src.buf + i * x->plane[0].src.stride + j,
+                        x->plane[0].src.stride, av1_highbd_all_zeros, 0, &sse) /
+                        16);
     }
   }
   // Use average of 4x4 log variance. The range for 8 bit 0 - 9.704121561.
@@ -148,7 +148,7 @@ int av1_log_block_var(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bs) {
 
 static unsigned int haar_ac_energy(MACROBLOCK *x, BLOCK_SIZE bs) {
   int stride = x->plane[0].src.stride;
-  uint8_t *buf = x->plane[0].src.buf;
+  uint16_t *buf = x->plane[0].src.buf;
   const int bw = MI_SIZE * mi_size_wide[bs];
   const int bh = MI_SIZE * mi_size_high[bs];
 

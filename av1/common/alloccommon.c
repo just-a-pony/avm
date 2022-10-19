@@ -102,9 +102,9 @@ void av1_alloc_restoration_buffers(AV1_COMMON *cm) {
       aom_free(boundaries->stripe_boundary_below);
 
       CHECK_MEM_ERROR(cm, boundaries->stripe_boundary_above,
-                      (uint8_t *)aom_memalign(32, buf_size));
+                      aom_memalign(32, buf_size));
       CHECK_MEM_ERROR(cm, boundaries->stripe_boundary_below,
-                      (uint8_t *)aom_memalign(32, buf_size));
+                      aom_memalign(32, buf_size));
 
       boundaries->stripe_boundary_size = buf_size;
     }

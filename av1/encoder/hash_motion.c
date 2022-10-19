@@ -169,8 +169,7 @@ void av1_generate_block_2x2_hash_value(IntraBCHashInfo *intrabc_hash_info,
   for (int y_pos = 0; y_pos < y_end; y_pos++) {
     for (int x_pos = 0; x_pos < x_end; x_pos++) {
       get_pixels_in_1D_short_array_by_block_2x2(
-          CONVERT_TO_SHORTPTR(picture->y_buffer) + y_pos * picture->y_stride +
-              x_pos,
+          picture->y_buffer + y_pos * picture->y_stride + x_pos,
           picture->y_stride, p);
       pic_block_same_info[0][pos] = is_block16_2x2_row_same_value(p);
       pic_block_same_info[1][pos] = is_block16_2x2_col_same_value(p);
@@ -295,16 +294,15 @@ void av1_add_to_hash_map_by_row_with_precal_data(hash_table *p_hash_table,
 int av1_hash_is_horizontal_perfect(const YV12_BUFFER_CONFIG *picture,
                                    int block_size, int x_start, int y_start) {
   const int stride = picture->y_stride;
-  const uint8_t *p = picture->y_buffer + y_start * stride + x_start;
+  const uint16_t *p = picture->y_buffer + y_start * stride + x_start;
 
-  const uint16_t *p16 = CONVERT_TO_SHORTPTR(p);
   for (int i = 0; i < block_size; i++) {
     for (int j = 1; j < block_size; j++) {
-      if (p16[j] != p16[0]) {
+      if (p[j] != p[0]) {
         return 0;
       }
     }
-    p16 += stride;
+    p += stride;
   }
 
   return 1;
@@ -313,12 +311,11 @@ int av1_hash_is_horizontal_perfect(const YV12_BUFFER_CONFIG *picture,
 int av1_hash_is_vertical_perfect(const YV12_BUFFER_CONFIG *picture,
                                  int block_size, int x_start, int y_start) {
   const int stride = picture->y_stride;
-  const uint8_t *p = picture->y_buffer + y_start * stride + x_start;
+  const uint16_t *p = picture->y_buffer + y_start * stride + x_start;
 
-  const uint16_t *p16 = CONVERT_TO_SHORTPTR(p);
   for (int i = 0; i < block_size; i++) {
     for (int j = 1; j < block_size; j++) {
-      if (p16[j * stride + i] != p16[i]) {
+      if (p[j * stride + i] != p[i]) {
         return 0;
       }
     }
@@ -327,7 +324,7 @@ int av1_hash_is_vertical_perfect(const YV12_BUFFER_CONFIG *picture,
 }
 
 void av1_get_block_hash_value(IntraBCHashInfo *intrabc_hash_info,
-                              const uint8_t *y_src, int stride, int block_size,
+                              const uint16_t *y_src, int stride, int block_size,
                               uint32_t *hash_value1, uint32_t *hash_value2) {
   int add_value = hash_block_size_to_index(block_size);
   assert(add_value >= 0);
@@ -342,12 +339,11 @@ void av1_get_block_hash_value(IntraBCHashInfo *intrabc_hash_info,
   // 2x2 subblock hash values in current CU
   int sub_block_in_width = (block_size >> 1);
   uint16_t pixel_to_hash[4];
-  uint16_t *y16_src = CONVERT_TO_SHORTPTR(y_src);
   for (int y_pos = 0; y_pos < block_size; y_pos += 2) {
     for (int x_pos = 0; x_pos < block_size; x_pos += 2) {
       int pos = (y_pos >> 1) * sub_block_in_width + (x_pos >> 1);
-      get_pixels_in_1D_short_array_by_block_2x2(
-          y16_src + y_pos * stride + x_pos, stride, pixel_to_hash);
+      get_pixels_in_1D_short_array_by_block_2x2(y_src + y_pos * stride + x_pos,
+                                                stride, pixel_to_hash);
       assert(pos < AOM_BUFFER_SIZE_FOR_BLOCK_HASH);
       buf_1[0][pos] = av1_get_crc_value(calc_1, (uint8_t *)pixel_to_hash,
                                         sizeof(pixel_to_hash));

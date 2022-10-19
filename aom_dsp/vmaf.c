@@ -54,8 +54,8 @@ static int read_frame(float *ref_data, float *main_data, float *temp_data,
     assert(height == frames->distorted->y_height);
 
     const float scale_factor = 1.0f / (float)(1 << (frames->bit_depth - 8));
-    uint16_t *ref_ptr = CONVERT_TO_SHORTPTR(frames->source->y_buffer);
-    uint16_t *main_ptr = CONVERT_TO_SHORTPTR(frames->distorted->y_buffer);
+    uint16_t *ref_ptr = frames->source->y_buffer;
+    uint16_t *main_ptr = frames->distorted->y_buffer;
 
     for (int row = 0; row < height; ++row) {
       for (int col = 0; col < width; ++col) {
@@ -171,7 +171,7 @@ static void copy_picture(const int bit_depth, const YV12_BUFFER_CONFIG *src,
   const int height = src->y_height;
 
   if (bit_depth > 8) {
-    uint16_t *src_ptr = CONVERT_TO_SHORTPTR(src->y_buffer);
+    uint16_t *src_ptr = src->y_buffer;
     uint16_t *dst_ptr = dst->data[0];
 
     for (int row = 0; row < height; ++row) {

@@ -139,8 +139,8 @@ static void fs_downsample_level(fs_ctx *_ctx, int _l) {
   }
 }
 
-static void fs_downsample_level0(fs_ctx *_ctx, const uint8_t *_src1,
-                                 int _s1ystride, const uint8_t *_src2,
+static void fs_downsample_level0(fs_ctx *_ctx, const uint16_t *src1s,
+                                 int _s1ystride, const uint16_t *src2s,
                                  int _s2ystride, int _w, int _h,
                                  uint32_t shift) {
   uint32_t *dst1;
@@ -163,8 +163,6 @@ static void fs_downsample_level0(fs_ctx *_ctx, const uint8_t *_src1,
       int i1;
       i0 = 2 * i;
       i1 = FS_MINI(i0 + 1, _w);
-      uint16_t *src1s = CONVERT_TO_SHORTPTR(_src1);
-      uint16_t *src2s = CONVERT_TO_SHORTPTR(_src2);
       dst1[j * w + i] = (src1s[j0 * _s1ystride + i0] >> shift) +
                         (src1s[j0 * _s1ystride + i1] >> shift) +
                         (src1s[j1 * _s1ystride + i0] >> shift) +
@@ -431,9 +429,9 @@ static double convert_ssim_db(double _ssim, double _weight) {
   return 10 * (log10(_weight) - log10(_weight - _ssim));
 }
 
-static double calc_ssim(const uint8_t *_src, int _systride, const uint8_t *_dst,
-                        int _dystride, int _w, int _h, uint32_t _bd,
-                        uint32_t _shift) {
+static double calc_ssim(const uint16_t *_src, int _systride,
+                        const uint16_t *_dst, int _dystride, int _w, int _h,
+                        uint32_t _bd, uint32_t _shift) {
   fs_ctx ctx;
   double ret;
   int l;

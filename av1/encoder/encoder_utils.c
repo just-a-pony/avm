@@ -939,23 +939,21 @@ int av1_is_integer_mv(const YV12_BUFFER_CONFIG *cur_picture,
       T++;
 
       // check whether collocated block match with current
-      uint8_t *p_cur = cur_picture->y_buffer;
-      uint8_t *p_ref = last_picture->y_buffer;
+      uint16_t *p_cur = cur_picture->y_buffer;
+      uint16_t *p_ref = last_picture->y_buffer;
       int stride_cur = cur_picture->y_stride;
       int stride_ref = last_picture->y_stride;
       p_cur += (y_pos * stride_cur + x_pos);
       p_ref += (y_pos * stride_ref + x_pos);
 
-      uint16_t *p16_cur = CONVERT_TO_SHORTPTR(p_cur);
-      uint16_t *p16_ref = CONVERT_TO_SHORTPTR(p_ref);
       for (int tmpY = 0; tmpY < block_size && match; tmpY++) {
         for (int tmpX = 0; tmpX < block_size && match; tmpX++) {
-          if (p16_cur[tmpX] != p16_ref[tmpX]) {
+          if (p_cur[tmpX] != p_ref[tmpX]) {
             match = 0;
           }
         }
-        p16_cur += stride_cur;
-        p16_ref += stride_ref;
+        p_cur += stride_cur;
+        p_ref += stride_ref;
       }
 
       if (match) {
@@ -1018,7 +1016,7 @@ void av1_set_mb_ssim_rdmult_scaling(AV1_COMP *cpi) {
   ThreadData *td = &cpi->td;
   MACROBLOCK *x = &td->mb;
   MACROBLOCKD *xd = &x->e_mbd;
-  uint8_t *y_buffer = cpi->source->y_buffer;
+  uint16_t *y_buffer = cpi->source->y_buffer;
   const int y_stride = cpi->source->y_stride;
   const int block_size = BLOCK_16X16;
 

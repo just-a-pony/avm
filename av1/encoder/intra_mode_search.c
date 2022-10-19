@@ -130,14 +130,13 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
   }
 }
 
-void av1_count_colors_highbd(const uint8_t *src8, int stride, int rows,
+void av1_count_colors_highbd(const uint16_t *src, int stride, int rows,
                              int cols, int bit_depth, int *val_count,
                              int *bin_val_count, int *num_color_bins,
                              int *num_colors) {
   assert(bit_depth <= 12);
   const int max_bin_val = 1 << 8;
   const int max_pix_val = 1 << bit_depth;
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
   memset(bin_val_count, 0, max_bin_val * sizeof(val_count[0]));
   if (val_count != NULL)
     memset(val_count, 0, max_pix_val * sizeof(val_count[0]));

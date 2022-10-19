@@ -20,12 +20,11 @@
 #include "aom_ports/mem.h"
 #include "aom_scale/yv12config.h"
 
-static void extend_plane_high(uint8_t *const src8, int src_stride, int width,
+static void extend_plane_high(uint16_t *const src, int src_stride, int width,
                               int height, int extend_top, int extend_left,
                               int extend_bottom, int extend_right) {
   int i;
   const int linesize = extend_left + extend_right + width;
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
 
   /* copy the left and right most columns out */
   uint16_t *src_ptr1 = src;
@@ -127,12 +126,6 @@ void aom_extend_frame_borders_y_c(YV12_BUFFER_CONFIG *ybf) {
                     ext_size + ybf->y_width - ybf->y_crop_width);
 }
 
-static void memcpy_short_addr(uint8_t *dst8, const uint8_t *src8, int num) {
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  memcpy(dst, src, num * sizeof(uint16_t));
-}
-
 // Copies the source image into the destination image and updates the
 // destination's UMV borders.
 // Note: The frames are assumed to be identical in size.
@@ -142,12 +135,12 @@ void aom_yv12_copy_frame_c(const YV12_BUFFER_CONFIG *src_bc,
   assert(src_bc->y_height == dst_bc->y_height);
 
   for (int plane = 0; plane < num_planes; ++plane) {
-    const uint8_t *plane_src = src_bc->buffers[plane];
-    uint8_t *plane_dst = dst_bc->buffers[plane];
+    const uint16_t *plane_src = src_bc->buffers[plane];
+    uint16_t *plane_dst = dst_bc->buffers[plane];
     const int is_uv = plane > 0;
 
     for (int row = 0; row < src_bc->heights[is_uv]; ++row) {
-      memcpy_short_addr(plane_dst, plane_src, src_bc->widths[is_uv]);
+      memcpy(plane_dst, plane_src, src_bc->widths[is_uv] * sizeof(*plane_dst));
       plane_src += src_bc->strides[is_uv];
       plane_dst += dst_bc->strides[is_uv];
     }
@@ -158,45 +151,39 @@ void aom_yv12_copy_frame_c(const YV12_BUFFER_CONFIG *src_bc,
 void aom_yv12_copy_y_c(const YV12_BUFFER_CONFIG *src_ybc,
                        YV12_BUFFER_CONFIG *dst_ybc) {
   int row;
-  const uint8_t *src = src_ybc->y_buffer;
-  uint8_t *dst = dst_ybc->y_buffer;
+  const uint16_t *src = src_ybc->y_buffer;
+  uint16_t *dst = dst_ybc->y_buffer;
 
-  const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-  uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
   for (row = 0; row < src_ybc->y_height; ++row) {
-    memcpy(dst16, src16, src_ybc->y_width * sizeof(uint16_t));
-    src16 += src_ybc->y_stride;
-    dst16 += dst_ybc->y_stride;
+    memcpy(dst, src, src_ybc->y_width * sizeof(*dst));
+    src += src_ybc->y_stride;
+    dst += dst_ybc->y_stride;
   }
 }
 
 void aom_yv12_copy_u_c(const YV12_BUFFER_CONFIG *src_bc,
                        YV12_BUFFER_CONFIG *dst_bc) {
   int row;
-  const uint8_t *src = src_bc->u_buffer;
-  uint8_t *dst = dst_bc->u_buffer;
+  const uint16_t *src = src_bc->u_buffer;
+  uint16_t *dst = dst_bc->u_buffer;
 
-  const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-  uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
   for (row = 0; row < src_bc->uv_height; ++row) {
-    memcpy(dst16, src16, src_bc->uv_width * sizeof(uint16_t));
-    src16 += src_bc->uv_stride;
-    dst16 += dst_bc->uv_stride;
+    memcpy(dst, src, src_bc->uv_width * sizeof(*dst));
+    src += src_bc->uv_stride;
+    dst += dst_bc->uv_stride;
   }
 }
 
 void aom_yv12_copy_v_c(const YV12_BUFFER_CONFIG *src_bc,
                        YV12_BUFFER_CONFIG *dst_bc) {
   int row;
-  const uint8_t *src = src_bc->v_buffer;
-  uint8_t *dst = dst_bc->v_buffer;
+  const uint16_t *src = src_bc->v_buffer;
+  uint16_t *dst = dst_bc->v_buffer;
 
-  const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-  uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
   for (row = 0; row < src_bc->uv_height; ++row) {
-    memcpy(dst16, src16, src_bc->uv_width * sizeof(uint16_t));
-    src16 += src_bc->uv_stride;
-    dst16 += dst_bc->uv_stride;
+    memcpy(dst, src, src_bc->uv_width * sizeof(*dst));
+    src += src_bc->uv_stride;
+    dst += dst_bc->uv_stride;
   }
 }
 
@@ -205,18 +192,14 @@ void aom_yv12_partial_copy_y_c(const YV12_BUFFER_CONFIG *src_ybc, int hstart1,
                                YV12_BUFFER_CONFIG *dst_ybc, int hstart2,
                                int vstart2) {
   int row;
-  const uint8_t *src = src_ybc->y_buffer;
-  uint8_t *dst = dst_ybc->y_buffer;
-
-  const uint16_t *src16 =
-      CONVERT_TO_SHORTPTR(src + vstart1 * src_ybc->y_stride + hstart1);
-  uint16_t *dst16 =
-      CONVERT_TO_SHORTPTR(dst + vstart2 * dst_ybc->y_stride + hstart2);
+  const uint16_t *src =
+      src_ybc->y_buffer + vstart1 * src_ybc->y_stride + hstart1;
+  uint16_t *dst = dst_ybc->y_buffer + vstart2 * dst_ybc->y_stride + hstart2;
 
   for (row = vstart1; row < vend1; ++row) {
-    memcpy(dst16, src16, (hend1 - hstart1) * sizeof(uint16_t));
-    src16 += src_ybc->y_stride;
-    dst16 += dst_ybc->y_stride;
+    memcpy(dst, src, (hend1 - hstart1) * sizeof(*dst));
+    src += src_ybc->y_stride;
+    dst += dst_ybc->y_stride;
   }
 }
 
@@ -232,17 +215,14 @@ void aom_yv12_partial_copy_u_c(const YV12_BUFFER_CONFIG *src_bc, int hstart1,
                                YV12_BUFFER_CONFIG *dst_bc, int hstart2,
                                int vstart2) {
   int row;
-  const uint8_t *src = src_bc->u_buffer;
-  uint8_t *dst = dst_bc->u_buffer;
+  const uint16_t *src =
+      src_bc->u_buffer + vstart1 * src_bc->uv_stride + hstart1;
+  uint16_t *dst = dst_bc->u_buffer + vstart2 * dst_bc->uv_stride + hstart2;
 
-  const uint16_t *src16 =
-      CONVERT_TO_SHORTPTR(src + vstart1 * src_bc->uv_stride + hstart1);
-  uint16_t *dst16 =
-      CONVERT_TO_SHORTPTR(dst + vstart2 * dst_bc->uv_stride + hstart2);
   for (row = vstart1; row < vend1; ++row) {
-    memcpy(dst16, src16, (hend1 - hstart1) * sizeof(uint16_t));
-    src16 += src_bc->uv_stride;
-    dst16 += dst_bc->uv_stride;
+    memcpy(dst, src, (hend1 - hstart1) * sizeof(*dst));
+    src += src_bc->uv_stride;
+    dst += dst_bc->uv_stride;
   }
 }
 
@@ -258,17 +238,14 @@ void aom_yv12_partial_copy_v_c(const YV12_BUFFER_CONFIG *src_bc, int hstart1,
                                YV12_BUFFER_CONFIG *dst_bc, int hstart2,
                                int vstart2) {
   int row;
-  const uint8_t *src = src_bc->v_buffer;
-  uint8_t *dst = dst_bc->v_buffer;
+  const uint16_t *src =
+      src_bc->v_buffer + vstart1 * src_bc->uv_stride + hstart1;
+  uint16_t *dst = dst_bc->v_buffer + vstart2 * dst_bc->uv_stride + hstart2;
 
-  const uint16_t *src16 =
-      CONVERT_TO_SHORTPTR(src + vstart1 * src_bc->uv_stride + hstart1);
-  uint16_t *dst16 =
-      CONVERT_TO_SHORTPTR(dst + vstart2 * dst_bc->uv_stride + hstart2);
   for (row = vstart1; row < vend1; ++row) {
-    memcpy(dst16, src16, (hend1 - hstart1) * sizeof(uint16_t));
-    src16 += src_bc->uv_stride;
-    dst16 += dst_bc->uv_stride;
+    memcpy(dst, src, (hend1 - hstart1) * sizeof(*dst));
+    src += src_bc->uv_stride;
+    dst += dst_bc->uv_stride;
   }
 }
 

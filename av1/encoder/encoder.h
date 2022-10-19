@@ -1579,7 +1579,7 @@ typedef struct ThreadData {
   PALETTE_BUFFER *palette_buffer;
   CompoundTypeRdBuffers comp_rd_buffer;
   CONV_BUF_TYPE *tmp_conv_dst;
-  uint8_t *tmp_pred_bufs[2];
+  uint16_t *tmp_pred_bufs[2];
   int intrabc_used;
   int deltaq_used;
   FRAME_CONTEXT *tctx;

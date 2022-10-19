@@ -1621,11 +1621,11 @@ typedef struct AV1Common {
   /*!
    * Blk buffer of the first reference for tip optflow
    */
-  uint8_t *dst0_16_tip;
+  uint16_t *dst0_16_tip;
   /*!
    * Blk buffer of the second reference for tip optflow
    */
-  uint8_t *dst1_16_tip;
+  uint16_t *dst1_16_tip;
   /*!
    * Buffer of horizontal gradient in buffer 0
    */

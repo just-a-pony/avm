@@ -76,7 +76,7 @@ static INLINE CFL_PRED_TYPE get_cfl_pred_type(PLANE_TYPE plane) {
   return (CFL_PRED_TYPE)(plane - 1);
 }
 
-void cfl_predict_block(MACROBLOCKD *const xd, uint8_t *dst, int dst_stride,
+void cfl_predict_block(MACROBLOCKD *const xd, uint16_t *dst, int dst_stride,
                        TX_SIZE tx_size, int plane);
 
 void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size
@@ -133,10 +133,10 @@ void cfl_derive_block_implicit_scaling_factor(uint16_t *l, const uint16_t *c,
                                               int *alpha);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
 
-void cfl_store_dc_pred(MACROBLOCKD *const xd, const uint8_t *input,
+void cfl_store_dc_pred(MACROBLOCKD *const xd, const uint16_t *input,
                        CFL_PRED_TYPE pred_plane, int width);
 
-void cfl_load_dc_pred(MACROBLOCKD *const xd, uint8_t *dst, int dst_stride,
+void cfl_load_dc_pred(MACROBLOCKD *const xd, uint16_t *dst, int dst_stride,
                       TX_SIZE tx_size, CFL_PRED_TYPE pred_plane);
 
 // Allows the CFL_SUBSAMPLE function to switch types depending on the bitdepth.

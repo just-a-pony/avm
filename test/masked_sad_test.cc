@@ -30,9 +30,9 @@ using libaom_test::ACMRandom;
 namespace {
 const int number_of_iterations = 200;
 
-typedef unsigned int (*HighbdMaskedSADFunc)(const uint8_t *src, int src_stride,
-                                            const uint8_t *ref, int ref_stride,
-                                            const uint8_t *second_pred,
+typedef unsigned int (*HighbdMaskedSADFunc)(const uint16_t *src, int src_stride,
+                                            const uint16_t *ref, int ref_stride,
+                                            const uint16_t *second_pred,
                                             const uint8_t *msk, int msk_stride,
                                             int invert_mask);
 typedef std::tuple<HighbdMaskedSADFunc, HighbdMaskedSADFunc>
@@ -63,9 +63,6 @@ void HighbdMaskedSADTest::runHighbdMaskedSADTest(int run_times) {
   DECLARE_ALIGNED(16, uint16_t, ref_ptr[MAX_SB_SIZE * MAX_SB_SIZE]);
   DECLARE_ALIGNED(16, uint16_t, second_pred_ptr[MAX_SB_SIZE * MAX_SB_SIZE]);
   DECLARE_ALIGNED(16, uint8_t, msk_ptr[MAX_SB_SIZE * MAX_SB_SIZE]);
-  uint8_t *src8_ptr = CONVERT_TO_BYTEPTR(src_ptr);
-  uint8_t *ref8_ptr = CONVERT_TO_BYTEPTR(ref_ptr);
-  uint8_t *second_pred8_ptr = CONVERT_TO_BYTEPTR(second_pred_ptr);
   int err_count = 0;
   int first_failure = -1;
   int src_stride = MAX_SB_SIZE;
@@ -84,23 +81,23 @@ void HighbdMaskedSADTest::runHighbdMaskedSADTest(int run_times) {
       aom_usec_timer timer;
       aom_usec_timer_start(&timer);
       for (int repeat = 0; repeat < run_times; ++repeat) {
-        ref_ret = ref_maskedSAD_op_(src8_ptr, src_stride, ref8_ptr, ref_stride,
-                                    second_pred8_ptr, msk_ptr, msk_stride,
+        ref_ret = ref_maskedSAD_op_(src_ptr, src_stride, ref_ptr, ref_stride,
+                                    second_pred_ptr, msk_ptr, msk_stride,
                                     invert_mask);
       }
       aom_usec_timer_mark(&timer);
       const double time1 = static_cast<double>(aom_usec_timer_elapsed(&timer));
       aom_usec_timer_start(&timer);
       if (run_times == 1) {
-        ASM_REGISTER_STATE_CHECK(ret = maskedSAD_op_(src8_ptr, src_stride,
-                                                     ref8_ptr, ref_stride,
-                                                     second_pred8_ptr, msk_ptr,
+        ASM_REGISTER_STATE_CHECK(ret = maskedSAD_op_(src_ptr, src_stride,
+                                                     ref_ptr, ref_stride,
+                                                     second_pred_ptr, msk_ptr,
                                                      msk_stride, invert_mask));
       } else {
         for (int repeat = 0; repeat < run_times; ++repeat) {
           ret =
-              maskedSAD_op_(src8_ptr, src_stride, ref8_ptr, ref_stride,
-                            second_pred8_ptr, msk_ptr, msk_stride, invert_mask);
+              maskedSAD_op_(src_ptr, src_stride, ref_ptr, ref_stride,
+                            second_pred_ptr, msk_ptr, msk_stride, invert_mask);
         }
       }
       aom_usec_timer_mark(&timer);

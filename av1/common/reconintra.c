@@ -456,9 +456,6 @@ static int has_bottom_left(const AV1_COMMON *cm, BLOCK_SIZE bsize, int mi_row,
   }
 }
 
-typedef void (*intra_pred_fn)(uint8_t *dst, ptrdiff_t stride,
-                              const uint8_t *above, const uint8_t *left);
-
 typedef void (*intra_high_pred_fn)(uint16_t *dst, ptrdiff_t stride,
                                    const uint16_t *above, const uint16_t *left,
                                    int bd);
@@ -680,113 +677,6 @@ void get_uv_intra_mode_set(MB_MODE_INFO *mi) {
   is_mode_selected_list[UV_CFL_PRED] = 1;
 }
 #endif  // CONFIG_AIMC
-
-// Directional prediction, zone 1: 0 < angle < 90
-void av1_dr_prediction_z1_c(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                            const uint8_t *above, const uint8_t *left,
-                            int upsample_above, int dx, int dy, int mrl_index) {
-  int r, c, x, base, shift, val;
-
-  (void)left;
-  (void)dy;
-  assert(dy == 1);
-  assert(dx > 0);
-
-  const int max_base_x = ((bw + bh) - 1 + (mrl_index << 1)) << upsample_above;
-  const int frac_bits = 6 - upsample_above;
-  const int base_inc = 1 << upsample_above;
-  x = dx * (1 + mrl_index);
-  for (r = 0; r < bh; ++r, dst += stride, x += dx) {
-    base = x >> frac_bits;
-    shift = ((x << upsample_above) & 0x3F) >> 1;
-
-    if (base >= max_base_x) {
-      for (int i = r; i < bh; ++i) {
-        memset(dst, above[max_base_x], bw * sizeof(dst[0]));
-        dst += stride;
-      }
-      return;
-    }
-
-    for (c = 0; c < bw; ++c, base += base_inc) {
-      if (base < max_base_x) {
-        val = above[base] * (32 - shift) + above[base + 1] * shift;
-        dst[c] = ROUND_POWER_OF_TWO(val, 5);
-      } else {
-        dst[c] = above[max_base_x];
-      }
-    }
-  }
-}
-
-// Directional prediction, zone 2: 90 < angle < 180
-void av1_dr_prediction_z2_c(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                            const uint8_t *above, const uint8_t *left,
-                            int upsample_above, int upsample_left, int dx,
-                            int dy, int mrl_index) {
-  assert(dx > 0);
-  assert(dy > 0);
-
-  const int min_base_x = -((1 + mrl_index) << upsample_above);
-  const int min_base_y = -((1 + mrl_index) << upsample_left);
-  (void)min_base_y;
-  const int frac_bits_x = 6 - upsample_above;
-  const int frac_bits_y = 6 - upsample_left;
-
-  for (int r = 0; r < bh; ++r) {
-    for (int c = 0; c < bw; ++c) {
-      int val;
-      int y = r + 1;
-      int x = (c << 6) - (y + mrl_index) * dx;
-      const int base_x = x >> frac_bits_x;
-      if (base_x >= min_base_x) {
-        const int shift = ((x * (1 << upsample_above)) & 0x3F) >> 1;
-        val = above[base_x] * (32 - shift) + above[base_x + 1] * shift;
-        val = ROUND_POWER_OF_TWO(val, 5);
-      } else {
-        x = c + 1;
-        y = (r << 6) - (x + mrl_index) * dy;
-        const int base_y = y >> frac_bits_y;
-        assert(base_y >= min_base_y);
-        const int shift = ((y * (1 << upsample_left)) & 0x3F) >> 1;
-        val = left[base_y] * (32 - shift) + left[base_y + 1] * shift;
-        val = ROUND_POWER_OF_TWO(val, 5);
-      }
-      dst[c] = val;
-    }
-    dst += stride;
-  }
-}
-
-// Directional prediction, zone 3: 180 < angle < 270
-void av1_dr_prediction_z3_c(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                            const uint8_t *above, const uint8_t *left,
-                            int upsample_left, int dx, int dy, int mrl_index) {
-  (void)above;
-  (void)dx;
-
-  assert(dx == 1);
-  assert(dy > 0);
-
-  const int max_base_y = (bw + bh - 1 + (mrl_index << 1)) << upsample_left;
-  const int frac_bits = 6 - upsample_left;
-  const int base_inc = 1 << upsample_left;
-  int y = dy * (1 + mrl_index);
-  for (int c = 0; c < bw; ++c, y += dy) {
-    int base = y >> frac_bits;
-    const int shift = ((y << upsample_left) & 0x3F) >> 1;
-
-    for (int r = 0; r < bh; ++r, base += base_inc) {
-      if (base < max_base_y) {
-        const int val = left[base] * (32 - shift) + left[base + 1] * shift;
-        dst[r * stride + c] = ROUND_POWER_OF_TWO(val, 5);
-      } else {
-        for (; r < bh; ++r) dst[r * stride + c] = left[max_base_y];
-        break;
-      }
-    }
-  }
-}
 
 // Directional prediction, zone 1: 0 < angle < 90
 void av1_highbd_dr_prediction_z1_c(uint16_t *dst, ptrdiff_t stride, int bw,
@@ -1270,44 +1160,9 @@ void av1_highbd_ibp_dr_prediction_z3_c(uint8_t *weights, uint16_t *dst,
     weights += bh;
   }
 }
-
-void av1_ibp_dr_prediction_z1_c(uint8_t *weights, uint8_t *dst,
-                                ptrdiff_t stride, uint8_t *second_pred,
-                                ptrdiff_t second_stride, int bw, int bh) {
-  int r, c;
-  for (r = 0; r < bh; ++r) {
-    for (c = 0; c < bw; ++c) {
-      dst[c] = ROUND_POWER_OF_TWO(
-          dst[c] * weights[c] + second_pred[c] * (IBP_WEIGHT_MAX - weights[c]),
-          IBP_WEIGHT_SHIFT);
-    }
-    weights += bw;
-    dst += stride;
-    second_pred += second_stride;
-  }
-}
-
-void av1_ibp_dr_prediction_z3_c(uint8_t *weights, uint8_t *dst,
-                                ptrdiff_t stride, uint8_t *second_pred,
-                                ptrdiff_t second_stride, int bw, int bh) {
-  int r, c;
-  for (c = 0; c < bw; ++c) {
-    uint8_t *tmp_dst = dst + c;
-    uint8_t *tmp_second = second_pred + c;
-    for (r = 0; r < bh; ++r) {
-      tmp_dst[0] =
-          ROUND_POWER_OF_TWO(tmp_dst[0] * weights[r] +
-                                 tmp_second[0] * (IBP_WEIGHT_MAX - weights[r]),
-                             IBP_WEIGHT_SHIFT);
-      tmp_dst += stride;
-      tmp_second += second_stride;
-    }
-    weights += bh;
-  }
-}
 #endif
 static void build_intra_predictors_high(
-    const MACROBLOCKD *xd, const uint8_t *ref8, int ref_stride, uint8_t *dst8,
+    const MACROBLOCKD *xd, const uint16_t *ref, int ref_stride, uint16_t *dst,
     int dst_stride, PREDICTION_MODE mode, int angle_delta,
     FILTER_INTRA_MODE filter_intra_mode, TX_SIZE tx_size,
     int disable_edge_filter, int n_top_px, int n_topright_px, int n_left_px,
@@ -1326,8 +1181,6 @@ static void build_intra_predictors_high(
 #endif
 ) {
   int i;
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
-  uint16_t *ref = CONVERT_TO_SHORTPTR(ref8);
   DECLARE_ALIGNED(16, uint16_t, left_data[NUM_INTRA_NEIGHBOUR_PIXELS]);
   DECLARE_ALIGNED(16, uint16_t, above_data[NUM_INTRA_NEIGHBOUR_PIXELS]);
 #if CONFIG_IBP_DIR
@@ -1707,8 +1560,8 @@ static INLINE BLOCK_SIZE scale_chroma_bsize(BLOCK_SIZE bsize, int subsampling_x,
 void av1_predict_intra_block(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, int wpx, int hpx,
     TX_SIZE tx_size, PREDICTION_MODE mode, int angle_delta, int use_palette,
-    FILTER_INTRA_MODE filter_intra_mode, const uint8_t *ref, int ref_stride,
-    uint8_t *dst, int dst_stride, int col_off, int row_off, int plane) {
+    FILTER_INTRA_MODE filter_intra_mode, const uint16_t *ref, int ref_stride,
+    uint16_t *dst, int dst_stride, int col_off, int row_off, int plane) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const int txwpx = tx_size_wide[tx_size];
   const int txhpx = tx_size_high[tx_size];
@@ -1721,10 +1574,9 @@ void av1_predict_intra_block(
                                xd->color_index_map_offset[plane != 0];
     const uint16_t *const palette =
         mbmi->palette_mode_info.palette_colors + plane * PALETTE_MAX_SIZE;
-    uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
     for (r = 0; r < txhpx; ++r) {
       for (c = 0; c < txwpx; ++c) {
-        dst16[r * dst_stride + c] = palette[map[(r + y) * wpx + c + x]];
+        dst[r * dst_stride + c] = palette[map[(r + y) * wpx + c + x]];
       }
     }
     return;
@@ -1800,7 +1652,8 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   struct macroblockd_plane *const pd = &xd->plane[plane];
   const int dst_stride = pd->dst.stride;
-  uint8_t *dst = &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
+  uint16_t *dst =
+      &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
   const PREDICTION_MODE mode =
       (plane == AOM_PLANE_Y) ? mbmi->mode : get_uv_mode(mbmi->uv_mode);
   const int use_palette = mbmi->palette_mode_info.palette_size[plane != 0] > 0;
@@ -1913,105 +1766,6 @@ DECLARE_ALIGNED(16, const int8_t,
   { 0, 0, 1, 0, 0, 0, 2, 4, 16 },  { 0, 0, 0, 1, 0, 0, 1, 2, 8 },
   { 0, 0, 1, 2, 1, 0, 0, 1, 4 },   { 0, 0, 0, 1, 2, 0, 0, 1, 2 },
 };
-
-void av1_apply_orip_4x4subblock(uint8_t *dst, ptrdiff_t stride, TX_SIZE tx_size,
-                                const uint8_t *above, const uint8_t *left,
-                                PREDICTION_MODE mode) {
-  // initialize references for the first row
-  uint8_t ref_samples_sb_row[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-  uint8_t left_ref_tmp_for_next_sb[5] = { 0, 0, 0, 0, 0 };
-  uint8_t ref_samples_sb_col[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-  uint8_t top_ref_tmp_for_next_sb[5] = { 0, 0, 0, 0, 0 };
-
-  const int bw = tx_size_wide[tx_size];
-  const int bh = tx_size_high[tx_size];
-  const int num_vertical_sb = (bh >> 2);
-  const int num_top_ref = 5;
-  const int num_left_ref = 4;
-
-  uint8_t widthThreshold = (mode == H_PRED) ? 0 : AOMMIN((bw >> 2), 4);
-  uint8_t heightThreshold = (mode == V_PRED) ? 0 : AOMMIN((bh >> 2), 4);
-
-  memcpy(&ref_samples_sb_row[0], &above[-1],
-         num_top_ref * sizeof(uint8_t));  // copy top reference
-  memcpy(&ref_samples_sb_row[num_top_ref], &left[0],
-         num_left_ref * sizeof(uint8_t));  // copy left reference
-  // initialize references for the column
-  if (num_vertical_sb > 1) {
-    ref_samples_sb_col[0] = left[3];
-    memcpy(&ref_samples_sb_col[1], &dst[3 * stride],
-           (num_top_ref - 1) * sizeof(uint8_t));  // copy top reference
-    memcpy(&ref_samples_sb_col[5], &left[4],
-           num_left_ref * sizeof(uint8_t));  // copy left reference
-  }
-
-  // loop to process first row of sub-blocks
-  for (int n = 0; n < (bw >> 2); n++) {
-    int r_sb = 0;
-    int c_sb = (n << 2);
-
-    memcpy(&ref_samples_sb_row[0], &above[c_sb - 1],
-           num_top_ref * sizeof(uint8_t));  // copy top reference
-
-    // copy left reference for the next sub-blocks
-    for (int q = 0; q < 4; q++)
-      left_ref_tmp_for_next_sb[q] = dst[(r_sb + q) * stride + c_sb + 3];
-    for (int k = 0; k < 16; ++k) {
-      int r_pos = r_sb + (k >> 2);
-      int c_pos = c_sb + (k & 0x03);
-      if (!(c_pos >= widthThreshold && r_pos >= heightThreshold)) {
-        int predvalue = (int)dst[stride * r_pos + c_pos];
-        int offset = 0;
-        for (int tap = 0; tap < 9; tap++) {
-          int diff = (int)ref_samples_sb_row[tap] - predvalue;
-          offset += av1_sub_block_filter_intra_taps_4x4[k][tap] * diff;
-        }
-        offset = (offset + 32) >> 6;
-        int filteredpixelValue = predvalue + offset;
-        dst[stride * r_pos + c_pos] = clip_pixel(filteredpixelValue);
-      }
-    }  // End of the subblock
-
-    memcpy(&ref_samples_sb_row[num_top_ref], &left_ref_tmp_for_next_sb[0],
-           num_left_ref *
-               sizeof(uint8_t));  // copy left reference for the next sub-block
-  }
-
-  // process first column
-  // loop to process first column of sub-blocks
-  if (num_vertical_sb > 1) {
-    for (int m = 1; m < num_vertical_sb; m++) {
-      int r_sb = (m << 2);
-      int c_sb = 0;
-
-      ref_samples_sb_col[0] = left[r_sb - 1];
-
-      memcpy(&ref_samples_sb_col[5], &left[r_sb],
-             (num_top_ref - 1) * sizeof(uint8_t));  // copy left reference
-      memcpy(&top_ref_tmp_for_next_sb[0], &dst[(r_sb + 3) * stride],
-             num_left_ref * sizeof(uint8_t));  // copy top reference
-
-      for (int k = 0; k < 16; ++k) {
-        int r_pos = r_sb + (k >> 2);
-        int c_pos = c_sb + (k & 0x03);
-        if (!(c_pos >= widthThreshold && r_pos >= heightThreshold)) {
-          int predvalue = (int)dst[stride * r_pos + c_pos];
-          int offset = 0;
-          for (int tap = 0; tap < 9; tap++) {
-            int diff = (int)ref_samples_sb_col[tap] - predvalue;
-            offset += av1_sub_block_filter_intra_taps_4x4[k][tap] * diff;
-          }
-          offset = (offset + 32) >> 6;
-          int filteredpixelValue = predvalue + offset;
-          dst[stride * r_pos + c_pos] = clip_pixel(filteredpixelValue);
-        }
-      }  // End of the subblock
-      memcpy(&ref_samples_sb_col[1], &top_ref_tmp_for_next_sb[0],
-             (num_top_ref - 1) *
-                 sizeof(uint8_t));  // copy top reference for the next sub-block
-    }
-  }
-}
 
 void av1_apply_orip_4x4subblock_hbd(uint16_t *dst, ptrdiff_t stride,
                                     TX_SIZE tx_size, const uint16_t *above,

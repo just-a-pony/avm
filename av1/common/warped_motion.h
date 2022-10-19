@@ -251,11 +251,11 @@ void av1_set_warp_translation(int mi_row, int mi_col, BLOCK_SIZE bsize, MV mv,
 
 // Returns the error between the frame described by 'ref' and the frame
 // described by 'dst'.
-int64_t av1_frame_error(int bd, const uint8_t *ref, int stride, uint8_t *dst,
+int64_t av1_frame_error(int bd, const uint16_t *ref, int stride, uint16_t *dst,
                         int p_width, int p_height, int p_stride);
 
-int64_t av1_segmented_frame_error(int bd, const uint8_t *ref, int stride,
-                                  uint8_t *dst, int p_width, int p_height,
+int64_t av1_segmented_frame_error(int bd, const uint16_t *ref, int stride,
+                                  uint16_t *dst, int p_width, int p_height,
                                   int p_stride, uint8_t *segment_map,
                                   int segment_map_stride);
 
@@ -274,10 +274,10 @@ void warp_plane(WarpedMotionParams *wm, const uint8_t *const ref, int width,
                 int p_width, int p_height, int p_stride, int subsampling_x,
                 int subsampling_y, ConvolveParams *conv_params);
 
-void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint8_t *ref,
-                    int width, int height, int stride, uint8_t *pred, int p_col,
-                    int p_row, int p_width, int p_height, int p_stride,
-                    int subsampling_x, int subsampling_y,
+void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint16_t *ref,
+                    int width, int height, int stride, uint16_t *pred,
+                    int p_col, int p_row, int p_width, int p_height,
+                    int p_stride, int subsampling_x, int subsampling_y,
                     ConvolveParams *conv_params);
 
 int av1_find_projection(int np, const int *pts1, const int *pts2,

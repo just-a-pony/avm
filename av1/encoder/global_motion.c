@@ -194,8 +194,8 @@ static int64_t highbd_warp_error(
   return gm_sumerr;
 }
 
-int64_t av1_warp_error(WarpedMotionParams *wm, int bd, const uint8_t *ref,
-                       int width, int height, int stride, uint8_t *dst,
+int64_t av1_warp_error(WarpedMotionParams *wm, int bd, const uint16_t *ref,
+                       int width, int height, int stride, uint16_t *dst,
                        int p_col, int p_row, int p_width, int p_height,
                        int p_stride, int subsampling_x, int subsampling_y,
                        int64_t best_error, uint8_t *segment_map,
@@ -203,10 +203,10 @@ int64_t av1_warp_error(WarpedMotionParams *wm, int bd, const uint8_t *ref,
   if (wm->wmtype <= AFFINE)
     if (!av1_get_shear_params(wm)) return INT64_MAX;
 
-  return highbd_warp_error(wm, CONVERT_TO_SHORTPTR(ref), width, height, stride,
-                           CONVERT_TO_SHORTPTR(dst), p_col, p_row, p_width,
-                           p_height, p_stride, subsampling_x, subsampling_y, bd,
-                           best_error, segment_map, segment_map_stride);
+  return highbd_warp_error(wm, ref, width, height, stride, dst, p_col, p_row,
+                           p_width, p_height, p_stride, subsampling_x,
+                           subsampling_y, bd, best_error, segment_map,
+                           segment_map_stride);
 }
 
 // Factors used to calculate the thresholds for av1_warp_error
@@ -222,8 +222,8 @@ static INLINE int64_t calc_approx_erroradv_threshold(
 }
 
 int64_t av1_refine_integerized_param(
-    WarpedMotionParams *wm, TransformationType wmtype, int bd, uint8_t *ref,
-    int r_width, int r_height, int r_stride, uint8_t *dst, int d_width,
+    WarpedMotionParams *wm, TransformationType wmtype, int bd, uint16_t *ref,
+    int r_width, int r_height, int r_stride, uint16_t *dst, int d_width,
     int d_height, int d_stride, int n_refinements, int64_t best_frame_error,
     uint8_t *segment_map, int segment_map_stride, int64_t erroradv_threshold) {
   static const int max_trans_model_params[TRANS_TYPES] = { 0, 2, 4, 6 };
@@ -310,7 +310,7 @@ int64_t av1_refine_integerized_param(
 
 unsigned char *av1_downconvert_frame(YV12_BUFFER_CONFIG *frm, int bit_depth) {
   int i, j;
-  uint16_t *orig_buf = CONVERT_TO_SHORTPTR(frm->y_buffer);
+  uint16_t *orig_buf = frm->y_buffer;
   uint8_t *buf_8bit = frm->y_buffer_8bit;
   assert(buf_8bit);
   if (!frm->buf_8bit_valid) {

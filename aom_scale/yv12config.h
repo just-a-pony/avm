@@ -75,11 +75,11 @@ typedef struct yv12_buffer_config {
   };
   union {
     struct {
-      uint8_t *y_buffer;
-      uint8_t *u_buffer;
-      uint8_t *v_buffer;
+      uint16_t *y_buffer;
+      uint16_t *u_buffer;
+      uint16_t *v_buffer;
     };
-    uint8_t *buffers[3];
+    uint16_t *buffers[3];
   };
 
   // Indicate whether y_buffer, u_buffer, and v_buffer points to the internally
@@ -88,7 +88,7 @@ typedef struct yv12_buffer_config {
   // This is needed to store y_buffer, u_buffer, and v_buffer when set reference
   // uses an external refernece, and restore those buffer pointers after the
   // external reference frame is no longer used.
-  uint8_t *store_buf_adr[3];
+  uint16_t *store_buf_adr[3];
 
   // If the frame is stored in a 16-bit buffer, this stores an 8-bit version
   // for use in global motion detection. It is allocated on-demand.

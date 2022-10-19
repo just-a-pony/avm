@@ -560,33 +560,31 @@ static AOM_INLINE void tip_highbd_convolve_2d_facade_compound(
 }
 
 static AOM_INLINE void tip_highbd_inter_predictor(
-    const uint8_t *src, int src_stride, uint8_t *dst, int dst_stride,
+    const uint16_t *src, int src_stride, uint16_t *dst, int dst_stride,
     SubpelParams *subpel_params, int w, int h, ConvolveParams *conv_params,
     const InterpFilterParams *interp_filters[2], int bd) {
   assert(conv_params->do_average == 0 || conv_params->do_average == 1);
   const int is_scaled = has_scale(subpel_params->xs, subpel_params->ys);
-  const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-  uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
   assert(conv_params->dst != NULL);
   if (is_scaled) {
     av1_highbd_convolve_2d_scale(
-        src16, src_stride, dst16, dst_stride, w, h, interp_filters[0],
+        src, src_stride, dst, dst_stride, w, h, interp_filters[0],
         interp_filters[1], subpel_params->subpel_x, subpel_params->xs,
         subpel_params->subpel_y, subpel_params->ys, conv_params, bd);
   } else {
     revert_scale_extra_bits(subpel_params);
-    tip_highbd_convolve_2d_facade_compound(src16, src_stride, dst16, dst_stride,
-                                           w, h, interp_filters, subpel_params,
+    tip_highbd_convolve_2d_facade_compound(src, src_stride, dst, dst_stride, w,
+                                           h, interp_filters, subpel_params,
                                            conv_params, bd);
   }
 }
 
 static AOM_INLINE void tip_build_one_inter_predictor(
-    uint8_t *dst, int dst_stride, const MV *const src_mv,
+    uint16_t *dst, int dst_stride, const MV *const src_mv,
     InterPredParams *inter_pred_params, MACROBLOCKD *xd, int mi_x, int mi_y,
-    int ref, uint8_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func) {
+    int ref, uint16_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func) {
   SubpelParams subpel_params;
-  uint8_t *src;
+  uint16_t *src;
   int src_stride;
   calc_subpel_params_func(src_mv, inter_pred_params, xd, mi_x, mi_y, ref,
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -602,26 +600,26 @@ static AOM_INLINE void tip_build_one_inter_predictor(
 }
 
 #if CONFIG_OPTFLOW_ON_TIP
-#define MAKE_BFP_SAD_WRAPPER_COMMON(fnname)                                  \
-  static unsigned int fnname##_8(const uint8_t *src_ptr, int source_stride,  \
-                                 const uint8_t *ref_ptr, int ref_stride) {   \
-    return fnname(src_ptr, source_stride, ref_ptr, ref_stride);              \
-  }                                                                          \
-  static unsigned int fnname##_10(const uint8_t *src_ptr, int source_stride, \
-                                  const uint8_t *ref_ptr, int ref_stride) {  \
-    return fnname(src_ptr, source_stride, ref_ptr, ref_stride) >> 2;         \
-  }                                                                          \
-  static unsigned int fnname##_12(const uint8_t *src_ptr, int source_stride, \
-                                  const uint8_t *ref_ptr, int ref_stride) {  \
-    return fnname(src_ptr, source_stride, ref_ptr, ref_stride) >> 4;         \
+#define MAKE_BFP_SAD_WRAPPER_COMMON(fnname)                                   \
+  static unsigned int fnname##_8(const uint16_t *src_ptr, int source_stride,  \
+                                 const uint16_t *ref_ptr, int ref_stride) {   \
+    return fnname(src_ptr, source_stride, ref_ptr, ref_stride);               \
+  }                                                                           \
+  static unsigned int fnname##_10(const uint16_t *src_ptr, int source_stride, \
+                                  const uint16_t *ref_ptr, int ref_stride) {  \
+    return fnname(src_ptr, source_stride, ref_ptr, ref_stride) >> 2;          \
+  }                                                                           \
+  static unsigned int fnname##_12(const uint16_t *src_ptr, int source_stride, \
+                                  const uint16_t *ref_ptr, int ref_stride) {  \
+    return fnname(src_ptr, source_stride, ref_ptr, ref_stride) >> 4;          \
   }
 
 MAKE_BFP_SAD_WRAPPER_COMMON(aom_highbd_sad8x8)
 
 // Get the proper sad calculation function for an 8x8 block
-static unsigned int get_highbd_sad_8X8(const uint8_t *src_ptr,
+static unsigned int get_highbd_sad_8X8(const uint16_t *src_ptr,
                                        int source_stride,
-                                       const uint8_t *ref_ptr, int ref_stride,
+                                       const uint16_t *ref_ptr, int ref_stride,
                                        int bd) {
   if (bd == 8) {
     return aom_highbd_sad8x8_8(src_ptr, source_stride, ref_ptr, ref_stride);
@@ -638,9 +636,9 @@ static unsigned int get_highbd_sad_8X8(const uint8_t *src_ptr,
 // Build an 8x8 block in the TIP frame
 static AOM_INLINE void tip_build_inter_predictors_8x8(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, TIP_PLANE *tip_plane,
-    const MV mv[2], int mi_x, int mi_y, uint8_t **mc_buf,
+    const MV mv[2], int mi_x, int mi_y, uint16_t **mc_buf,
     CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func,
-    uint8_t *dst, int dst_stride) {
+    uint16_t *dst, int dst_stride) {
   // TODO(any): currently this only works for y plane
   assert(plane == 0);
 
@@ -684,7 +682,7 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
 
   // Pointers to gradient and dst buffers
   int16_t *gx0 = cm->gx0, *gy0 = cm->gy0, *gx1 = cm->gx1, *gy1 = cm->gy1;
-  uint8_t *dst0 = NULL, *dst1 = NULL;
+  uint16_t *dst0 = NULL, *dst1 = NULL;
 
   dst0 = cm->dst0_16_tip;
   dst1 = cm->dst1_16_tip;
@@ -720,10 +718,10 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
     }
     // Refine MV using optical flow. The final output MV will be in 1/16
     // precision.
-    av1_get_optflow_based_mv_highbd(
-        cm, xd, plane, mbmi, mv_refined, bw, bh, mi_x, mi_y, mc_buf,
-        calc_subpel_params_func, gx0, gy0, gx1, gy1, vx0, vy0, vx1, vy1,
-        CONVERT_TO_SHORTPTR(dst0), CONVERT_TO_SHORTPTR(dst1), 0, use_4x4);
+    av1_get_optflow_based_mv_highbd(cm, xd, plane, mbmi, mv_refined, bw, bh,
+                                    mi_x, mi_y, mc_buf, calc_subpel_params_func,
+                                    gx0, gy0, gx1, gy1, vx0, vy0, vx1, vy1,
+                                    dst0, dst1, 0, use_4x4);
   }
 
   for (int ref = 0; ref < 2; ++ref) {
@@ -765,11 +763,11 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
 
 static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, TIP_PLANE *tip_plane,
-    const MV mv[2], int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
+    const MV mv[2], int bw, int bh, int mi_x, int mi_y, uint16_t **mc_buf,
     CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func) {
   TIP_PLANE *const tip = &tip_plane[plane];
   struct buf_2d *const dst_buf = &tip->dst;
-  uint8_t *const dst = dst_buf->buf;
+  uint16_t *const dst = dst_buf->buf;
 
 #if CONFIG_OPTFLOW_ON_TIP
   int dst_stride = dst_buf->stride;
@@ -830,14 +828,14 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
 
 static AOM_INLINE void tip_component_build_inter_predictors(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, TIP_PLANE *tip_plane,
-    const MV mv[2], int bw, int bh, int mi_x, int mi_y, uint8_t **mc_buf,
+    const MV mv[2], int bw, int bh, int mi_x, int mi_y, uint16_t **mc_buf,
     CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func) {
   tip_build_inter_predictors_8x8_and_bigger(
       cm, xd, plane, tip_plane, mv, bw, bh, mi_x, mi_y, mc_buf, tmp_conv_dst,
       calc_subpel_params_func);
 }
 
-static INLINE void tip_setup_pred_plane(struct buf_2d *dst, uint8_t *src,
+static INLINE void tip_setup_pred_plane(struct buf_2d *dst, uint16_t *src,
                                         int width, int height, int stride,
                                         int tpl_row, int tpl_col,
                                         const struct scale_factors *scale,
@@ -896,7 +894,7 @@ static AOM_INLINE void tip_component_setup_dst_planes(AV1_COMMON *const cm,
 static void tip_setup_tip_frame_plane(
     AV1_COMMON *cm, MACROBLOCKD *xd, int plane, int blk_row_start,
     int blk_col_start, int blk_row_end, int blk_col_end, int mvs_stride,
-    int unit_blk_size, int max_allow_blk_size, uint8_t **mc_buf,
+    int unit_blk_size, int max_allow_blk_size, uint16_t **mc_buf,
     CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func) {
   TIP *tip_ref = &cm->tip_ref;
   const TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
@@ -947,7 +945,7 @@ static void tip_setup_tip_frame_plane(
 
 static AOM_INLINE void tip_setup_tip_frame_planes(
     AV1_COMMON *cm, MACROBLOCKD *xd, int blk_row_start, int blk_col_start,
-    int blk_row_end, int blk_col_end, int mvs_stride, uint8_t **mc_buf,
+    int blk_row_end, int blk_col_end, int mvs_stride, uint16_t **mc_buf,
     CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func) {
   const int num_planes = av1_num_planes(cm);
   for (int plane = 0; plane < num_planes; ++plane) {
@@ -969,7 +967,7 @@ static AOM_INLINE void tip_setup_tip_frame_planes(
   aom_extend_frame_borders(&cm->tip_ref.tip_frame->buf, av1_num_planes(cm));
 }
 
-void av1_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd, uint8_t **mc_buf,
+void av1_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd, uint16_t **mc_buf,
                          CONV_BUF_TYPE *tmp_conv_dst,
                          CalcSubpelParamsFunc calc_subpel_params_func) {
   const int mvs_rows =
@@ -981,11 +979,10 @@ void av1_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd, uint8_t **mc_buf,
 }
 
 static void tip_extend_plane_block_based_highbd(
-    uint8_t *const src8, int src_stride, int width, int height, int extend_top,
+    uint16_t *const src, int src_stride, int width, int height, int extend_top,
     int extend_left, int extend_bottom, int extend_right, int start_w,
     int start_h, int blk_w, int blk_h) {
-  assert(src8 != NULL);
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
+  assert(src != NULL);
   int i = 0;
 
   if (extend_left) {
@@ -1072,9 +1069,9 @@ static void tip_extend_plane_border(AV1_COMMON *cm, int blk_row_start,
     const int y_height = tip_buf->y_crop_height;
     const int uv_width = y_width >> subsampling_x;
     const int uv_heigh = y_height >> subsampling_y;
-    uint8_t *y_dst = tip_buf->y_buffer;
-    uint8_t *u_dst = tip_buf->u_buffer;
-    uint8_t *v_dst = tip_buf->v_buffer;
+    uint16_t *y_dst = tip_buf->y_buffer;
+    uint16_t *u_dst = tip_buf->u_buffer;
+    uint16_t *v_dst = tip_buf->v_buffer;
 
     const int extend_top = top_border ? extend_border : 0;
     const int extend_bottom = bottom_border ? extend_border : 0;
@@ -1109,7 +1106,7 @@ static void tip_extend_plane_border(AV1_COMMON *cm, int blk_row_start,
 static void tip_setup_tip_plane_blocks(
     AV1_COMMON *cm, MACROBLOCKD *xd, int plane, int blk_row_start,
     int blk_col_start, int blk_row_end, int blk_col_end, int mvs_stride,
-    int unit_blk_size, int max_allow_blk_size, uint8_t **mc_buf,
+    int unit_blk_size, int max_allow_blk_size, uint16_t **mc_buf,
     CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func) {
   TIP *tip_ref = &cm->tip_ref;
   const TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
@@ -1162,7 +1159,7 @@ static void tip_setup_tip_plane_blocks(
 
 static AOM_INLINE void tip_setup_tip_planes_blocks(
     AV1_COMMON *cm, MACROBLOCKD *xd, int blk_row_start, int blk_col_start,
-    int blk_row_end, int blk_col_end, int mvs_stride, uint8_t **mc_buf,
+    int blk_row_end, int blk_col_end, int mvs_stride, uint16_t **mc_buf,
     CONV_BUF_TYPE *tmp_conv_dst, CalcSubpelParamsFunc calc_subpel_params_func) {
   const int num_planes = av1_num_planes(cm);
   for (int plane = 0; plane < num_planes; ++plane) {
@@ -1193,7 +1190,7 @@ static AOM_INLINE void tip_setup_tip_planes_blocks(
 void av1_setup_tip_on_the_fly(AV1_COMMON *cm, MACROBLOCKD *xd,
                               int blk_row_start, int blk_col_start,
                               int blk_row_end, int blk_col_end, int mvs_stride,
-                              uint8_t **mc_buf, CONV_BUF_TYPE *tmp_conv_dst,
+                              uint16_t **mc_buf, CONV_BUF_TYPE *tmp_conv_dst,
                               CalcSubpelParamsFunc calc_subpel_params_func) {
   tip_setup_tip_planes_blocks(cm, xd, blk_row_start, blk_col_start, blk_row_end,
                               blk_col_end, mvs_stride, mc_buf, tmp_conv_dst,

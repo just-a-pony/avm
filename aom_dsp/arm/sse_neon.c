@@ -39,12 +39,10 @@ static INLINE uint32_t highbd_sse_W8x1_neon(uint16x8_t q2, uint16x8_t q3) {
   return sse;
 }
 
-int64_t aom_highbd_sse_neon(const uint8_t *a8, int a_stride, const uint8_t *b8,
+int64_t aom_highbd_sse_neon(const uint16_t *a, int a_stride, const uint16_t *b,
                             int b_stride, int width, int height) {
   const uint16x8_t q0 = { 0, 1, 2, 3, 4, 5, 6, 7 };
   int64_t sse = 0;
-  uint16_t *a = CONVERT_TO_SHORTPTR(a8);
-  uint16_t *b = CONVERT_TO_SHORTPTR(b8);
   int x, y;
   int addinc;
   uint16x4_t d0, d1, d2, d3;

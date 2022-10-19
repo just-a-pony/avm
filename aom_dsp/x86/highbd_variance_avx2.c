@@ -22,9 +22,9 @@ typedef void (*high_variance_fn_t)(const uint16_t *src, int src_stride,
                                    uint32_t *sse, int *sum);
 
 static uint32_t aom_highbd_var_filter_block2d_bil_avx2(
-    const uint8_t *src_ptr8, unsigned int src_pixels_per_line, int pixel_step,
+    const uint16_t *src_ptr, unsigned int src_pixels_per_line, int pixel_step,
     unsigned int output_height, unsigned int output_width,
-    const uint32_t xoffset, const uint32_t yoffset, const uint8_t *dst_ptr8,
+    const uint32_t xoffset, const uint32_t yoffset, const uint16_t *dst_ptr,
     int dst_stride, uint32_t *sse) {
   const __m256i filter1 =
       _mm256_set1_epi32((uint32_t)(bilinear_filters_2t[xoffset][1] << 16) |
@@ -36,10 +36,8 @@ static uint32_t aom_highbd_var_filter_block2d_bil_avx2(
   const uint32_t bitshift = (uint32_t)0x40;
   (void)pixel_step;
   unsigned int i, j, prev = 0, curr = 2;
-  uint16_t *src_ptr = CONVERT_TO_SHORTPTR(src_ptr8);
-  uint16_t *dst_ptr = CONVERT_TO_SHORTPTR(dst_ptr8);
-  uint16_t *src_ptr_ref = src_ptr;
-  uint16_t *dst_ptr_ref = dst_ptr;
+  uint16_t *src_ptr_ref = (uint16_t *)src_ptr;
+  uint16_t *dst_ptr_ref = (uint16_t *)dst_ptr;
   int64_t sum_long = 0;
   uint64_t sse_long = 0;
   unsigned int rshift = 0, inc = 1;
@@ -706,12 +704,10 @@ static void highbd_10_variance_avx2(const uint16_t *src, int src_stride,
 
 #define VAR_FN(w, h, block_size, shift)                                    \
   uint32_t aom_highbd_10_variance##w##x##h##_avx2(                         \
-      const uint8_t *src8, int src_stride, const uint8_t *ref8,            \
+      const uint16_t *src, int src_stride, const uint16_t *ref,            \
       int ref_stride, uint32_t *sse) {                                     \
     int sum;                                                               \
     int64_t var;                                                           \
-    uint16_t *src = CONVERT_TO_SHORTPTR(src8);                             \
-    uint16_t *ref = CONVERT_TO_SHORTPTR(ref8);                             \
     highbd_10_variance_avx2(                                               \
         src, src_stride, ref, ref_stride, w, h, sse, &sum,                 \
         aom_highbd_calc##block_size##x##block_size##var_avx2, block_size); \
@@ -742,8 +738,8 @@ VAR_FN(8, 8, 8, 6);
 
 #define SSE2_Height(H)                                                 \
   uint32_t aom_highbd_10_sub_pixel_variance8x##H##_sse2(               \
-      const uint8_t *src8, int src_stride, int x_offset, int y_offset, \
-      const uint8_t *dst8, int dst_stride, uint32_t *sse_ptr);
+      const uint16_t *src, int src_stride, int x_offset, int y_offset, \
+      const uint16_t *dst, int dst_stride, uint32_t *sse_ptr);
 
 SSE2_Height(8);
 SSE2_Height(16);
@@ -751,8 +747,8 @@ SSE2_Height(16);
 
 #define HIGHBD_SUBPIX_VAR(W, H)                                              \
   uint32_t aom_highbd_10_sub_pixel_variance##W##x##H##_avx2(                 \
-      const uint8_t *src, int src_stride, int xoffset, int yoffset,          \
-      const uint8_t *dst, int dst_stride, uint32_t *sse) {                   \
+      const uint16_t *src, int src_stride, int xoffset, int yoffset,         \
+      const uint16_t *dst, int dst_stride, uint32_t *sse) {                  \
     if (W == 8 && H == 16)                                                   \
       return aom_highbd_10_sub_pixel_variance8x16_sse2(                      \
           src, src_stride, xoffset, yoffset, dst, dst_stride, sse);          \

@@ -26,12 +26,11 @@
 // High bit-depth
 ////////////////////////////////////////////////////////////////////////////////
 
-static INLINE unsigned int hbd_obmc_sad_w4_avx2(const uint8_t *pre8,
+static INLINE unsigned int hbd_obmc_sad_w4_avx2(const uint16_t *pre,
                                                 const int pre_stride,
                                                 const int32_t *wsrc,
                                                 const int32_t *mask,
                                                 const int height) {
-  const uint16_t *pre = CONVERT_TO_SHORTPTR(pre8);
   int n = 0;
   __m256i v_sad_d = _mm256_setzero_si256();
   const __m256i v_bias_d = _mm256_set1_epi32((1 << 12) >> 1);
@@ -71,9 +70,8 @@ static INLINE unsigned int hbd_obmc_sad_w4_avx2(const uint8_t *pre8,
 }
 
 static INLINE unsigned int hbd_obmc_sad_w8n_avx2(
-    const uint8_t *pre8, const int pre_stride, const int32_t *wsrc,
+    const uint16_t *pre, const int pre_stride, const int32_t *wsrc,
     const int32_t *mask, const int width, const int height) {
-  const uint16_t *pre = CONVERT_TO_SHORTPTR(pre8);
   const int pre_step = pre_stride - width;
   int n = 0;
   __m256i v_sad_d = _mm256_setzero_si256();
@@ -116,7 +114,7 @@ static INLINE unsigned int hbd_obmc_sad_w8n_avx2(
 
 #define HBD_OBMCSADWXH(w, h)                                           \
   unsigned int aom_highbd_obmc_sad##w##x##h##_avx2(                    \
-      const uint8_t *pre, int pre_stride, const int32_t *wsrc,         \
+      const uint16_t *pre, int pre_stride, const int32_t *wsrc,        \
       const int32_t *mask) {                                           \
     if (w == 4) {                                                      \
       return hbd_obmc_sad_w4_avx2(pre, pre_stride, wsrc, mask, h);     \

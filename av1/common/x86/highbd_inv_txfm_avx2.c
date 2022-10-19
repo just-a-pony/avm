@@ -4189,7 +4189,7 @@ static void highbd_inv_txfm2d_add_no_identity_avx2(const int32_t *input,
 }
 
 void av1_highbd_inv_txfm2d_add_universe_avx2(const int32_t *input,
-                                             uint8_t *output, int stride,
+                                             uint16_t *output, int stride,
                                              TX_TYPE tx_type, TX_SIZE tx_size,
                                              int eob, const int bd) {
   switch (tx_type) {
@@ -4202,8 +4202,8 @@ void av1_highbd_inv_txfm2d_add_universe_avx2(const int32_t *input,
     case FLIPADST_FLIPADST:
     case ADST_FLIPADST:
     case FLIPADST_ADST:
-      highbd_inv_txfm2d_add_no_identity_avx2(input, CONVERT_TO_SHORTPTR(output),
-                                             stride, tx_type, tx_size, eob, bd);
+      highbd_inv_txfm2d_add_no_identity_avx2(input, output, stride, tx_type,
+                                             tx_size, eob, bd);
       break;
     case IDTX:
     case H_DCT:
@@ -4218,7 +4218,7 @@ void av1_highbd_inv_txfm2d_add_universe_avx2(const int32_t *input,
     default: assert(0); break;
   }
 }
-void av1_highbd_inv_txfm_add_avx2(const tran_low_t *input, uint8_t *dest,
+void av1_highbd_inv_txfm_add_avx2(const tran_low_t *input, uint16_t *dest,
                                   int stride, const TxfmParam *txfm_param) {
   assert(av1_ext_tx_used[txfm_param->tx_set_type][txfm_param->tx_type]);
   const TX_SIZE tx_size = txfm_param->tx_size;

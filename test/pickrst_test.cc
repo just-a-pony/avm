@@ -31,8 +31,8 @@ namespace pickrst_test_highbd {
 static const int kIterations = 100;
 
 typedef int64_t (*highbd_pixel_proj_error_func)(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
+    const uint16_t *src_, int width, int height, int src_stride,
+    const uint16_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
     int32_t *flt1, int flt1_stride, int xq[2], const sgr_params_type *params);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,14 +102,12 @@ void PixelProjHighbdErrorTest::RunPixelProjErrorTest(int32_t run_times) {
     params.r[1] = run_times == 1 ? (rng_.Rand8() % MAX_RADIUS) : (iter / 2);
     params.s[0] = run_times == 1 ? (rng_.Rand8() % MAX_RADIUS) : (iter % 2);
     params.s[1] = run_times == 1 ? (rng_.Rand8() % MAX_RADIUS) : (iter / 2);
-    uint8_t *dgd8 = CONVERT_TO_BYTEPTR(dgd_);
-    uint8_t *src8 = CONVERT_TO_BYTEPTR(src_);
 
     aom_usec_timer timer;
     aom_usec_timer_start(&timer);
     for (int i = 0; i < run_times; ++i) {
       err_ref = av1_highbd_pixel_proj_error_c(
-          src8, h_end, v_end, src_stride, dgd8, dgd_stride, flt0_, flt0_stride,
+          src_, h_end, v_end, src_stride, dgd_, dgd_stride, flt0_, flt0_stride,
           flt1_, flt1_stride, xq, &params);
     }
     aom_usec_timer_mark(&timer);
@@ -117,7 +115,7 @@ void PixelProjHighbdErrorTest::RunPixelProjErrorTest(int32_t run_times) {
     aom_usec_timer_start(&timer);
     for (int i = 0; i < run_times; ++i) {
       err_test =
-          target_func_(src8, h_end, v_end, src_stride, dgd8, dgd_stride, flt0_,
+          target_func_(src_, h_end, v_end, src_stride, dgd_, dgd_stride, flt0_,
                        flt0_stride, flt1_, flt1_stride, xq, &params);
     }
     aom_usec_timer_mark(&timer);
@@ -156,15 +154,13 @@ void PixelProjHighbdErrorTest::RunPixelProjErrorTest_ExtremeValues() {
     params.r[1] = rng_.Rand8() % MAX_RADIUS;
     params.s[0] = rng_.Rand8() % MAX_RADIUS;
     params.s[1] = rng_.Rand8() % MAX_RADIUS;
-    uint8_t *dgd8 = CONVERT_TO_BYTEPTR(dgd_);
-    uint8_t *src8 = CONVERT_TO_BYTEPTR(src_);
 
     err_ref = av1_highbd_pixel_proj_error_c(
-        src8, h_end - h_start, v_end - v_start, src_stride, dgd8, dgd_stride,
+        src_, h_end - h_start, v_end - v_start, src_stride, dgd_, dgd_stride,
         flt0_, flt0_stride, flt1_, flt1_stride, xq, &params);
 
-    err_test = target_func_(src8, h_end - h_start, v_end - v_start, src_stride,
-                            dgd8, dgd_stride, flt0_, flt0_stride, flt1_,
+    err_test = target_func_(src_, h_end - h_start, v_end - v_start, src_stride,
+                            dgd_, dgd_stride, flt0_, flt0_stride, flt1_,
                             flt1_stride, xq, &params);
 
     ASSERT_EQ(err_ref, err_test);

@@ -84,7 +84,7 @@ static double highbd_ssim_8x8(const uint16_t *s, int sp, const uint16_t *r,
 // We are using a 8x8 moving window with starting location of each 8x8 window
 // on the 4x4 pixel grid. Such arrangement allows the windows to overlap
 // block boundaries to penalize blocking artifacts.
-static double aom_highbd_ssim2(const uint8_t *img1, const uint8_t *img2,
+static double aom_highbd_ssim2(const uint16_t *img1, const uint16_t *img2,
                                int stride_img1, int stride_img2, int width,
                                int height, uint32_t bd, uint32_t shift) {
   int i, j;
@@ -95,9 +95,8 @@ static double aom_highbd_ssim2(const uint8_t *img1, const uint8_t *img2,
   for (i = 0; i <= height - 8;
        i += 4, img1 += stride_img1 * 4, img2 += stride_img2 * 4) {
     for (j = 0; j <= width - 8; j += 4) {
-      double v = highbd_ssim_8x8(CONVERT_TO_SHORTPTR(img1 + j), stride_img1,
-                                 CONVERT_TO_SHORTPTR(img2 + j), stride_img2, bd,
-                                 shift);
+      double v = highbd_ssim_8x8(img1 + j, stride_img1, img2 + j, stride_img2,
+                                 bd, shift);
       ssim_total += v;
       samples++;
     }

@@ -442,11 +442,10 @@ void ccso_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd,
                            : ccso_apply_luma_mb_filter)
               : (plane > 0 ? ccso_apply_chroma_sb_filter
                            : ccso_apply_luma_sb_filter);
-      apply_ccso_filter_func(cm, xd, plane, ext_rec_y,
-                             &CONVERT_TO_SHORTPTR(xd->plane[plane].dst.buf)[0],
-                             dst_stride, quant_step_size,
-                             cm->ccso_info.ext_filter_support[plane],
-                             cm->ccso_info.max_band_log2[plane]);
+      apply_ccso_filter_func(
+          cm, xd, plane, ext_rec_y, &(xd->plane[plane].dst.buf)[0], dst_stride,
+          quant_step_size, cm->ccso_info.ext_filter_support[plane],
+          cm->ccso_info.max_band_log2[plane]);
     }
 #else
   for (int plane = 1; plane < 3; plane++) {
@@ -454,10 +453,9 @@ void ccso_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd,
     const uint8_t quant_step_size =
         quant_sz[cm->ccso_info.quant_idx[plane - 1]];
     if (cm->ccso_info.ccso_enable[plane - 1]) {
-      apply_ccso_filter_hbd(cm, xd, plane, ext_rec_y,
-                            &CONVERT_TO_SHORTPTR(xd->plane[plane].dst.buf)[0],
-                            dst_stride, NULL, quant_step_size,
-                            cm->ccso_info.ext_filter_support[plane - 1]);
+      apply_ccso_filter_hbd(
+          cm, xd, plane, ext_rec_y, &(xd->plane[plane].dst.buf)[0], dst_stride,
+          NULL, quant_step_size, cm->ccso_info.ext_filter_support[plane - 1]);
     }
 #endif
   }

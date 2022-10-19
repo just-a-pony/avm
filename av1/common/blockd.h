@@ -67,7 +67,7 @@ static INLINE int is_inter_mode(PREDICTION_MODE mode) {
 }
 
 typedef struct {
-  uint8_t *plane[MAX_MB_PLANE];
+  uint16_t *plane[MAX_MB_PLANE];
   int stride[MAX_MB_PLANE];
 } BUFFER_SET;
 
@@ -714,8 +714,8 @@ static INLINE void mi_to_pixel_loc(int *pixel_c, int *pixel_r, int mi_col,
 enum { MV_PRECISION_Q3, MV_PRECISION_Q4 } UENUM1BYTE(mv_precision);
 
 struct buf_2d {
-  uint8_t *buf;
-  uint8_t *buf0;
+  uint16_t *buf;
+  uint16_t *buf0;
   int width;
   int height;
   int stride;
@@ -1363,7 +1363,7 @@ typedef struct macroblockd {
    * -In encoder, 'x->tmp_pred_bufs' or
    * 'cpi->tile_thr_data[t].td->mb.tmp_pred_bufs'.
    */
-  uint8_t *tmp_obmc_bufs[2];
+  uint16_t *tmp_obmc_bufs[2];
 #if CONFIG_IST
   /*!
    * Enable IST for current coding block.

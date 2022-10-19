@@ -118,8 +118,8 @@ static void blend_a64_vmask_b12_w8n_sse4_1(uint16_t *dst, uint32_t dst_stride,
 //////////////////////////////////////////////////////////////////////////////
 
 void aom_highbd_blend_a64_vmask_sse4_1(
-    uint8_t *dst_8, uint32_t dst_stride, const uint8_t *src0_8,
-    uint32_t src0_stride, const uint8_t *src1_8, uint32_t src1_stride,
+    uint16_t *dst, uint32_t dst_stride, const uint16_t *src0,
+    uint32_t src0_stride, const uint16_t *src1, uint32_t src1_stride,
     const uint8_t *mask, int w, int h, int bd) {
   typedef void (*blend_fn)(uint16_t * dst, uint32_t dst_stride,
                            const uint16_t *src0, uint32_t src0_stride,
@@ -140,8 +140,8 @@ void aom_highbd_blend_a64_vmask_sse4_1(
     }
   };
 
-  assert(IMPLIES(src0_8 == dst_8, src0_stride == dst_stride));
-  assert(IMPLIES(src1_8 == dst_8, src1_stride == dst_stride));
+  assert(IMPLIES(src0 == dst, src0_stride == dst_stride));
+  assert(IMPLIES(src1 == dst, src1_stride == dst_stride));
 
   assert(h >= 1);
   assert(w >= 1);
@@ -151,13 +151,9 @@ void aom_highbd_blend_a64_vmask_sse4_1(
   assert(bd == 8 || bd == 10 || bd == 12);
 
   if (UNLIKELY((h | w) & 3)) {  // if (w <= 2 || h <= 2)
-    aom_highbd_blend_a64_vmask_c(dst_8, dst_stride, src0_8, src0_stride, src1_8,
+    aom_highbd_blend_a64_vmask_c(dst, dst_stride, src0, src0_stride, src1,
                                  src1_stride, mask, w, h, bd);
   } else {
-    uint16_t *const dst = CONVERT_TO_SHORTPTR(dst_8);
-    const uint16_t *const src0 = CONVERT_TO_SHORTPTR(src0_8);
-    const uint16_t *const src1 = CONVERT_TO_SHORTPTR(src1_8);
-
     blend[bd == 12][(w >> 2) & 1](dst, dst_stride, src0, src0_stride, src1,
                                   src1_stride, mask, w, h);
   }

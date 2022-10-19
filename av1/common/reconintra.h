@@ -69,17 +69,14 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
 void av1_predict_intra_block(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, int wpx, int hpx,
     TX_SIZE tx_size, PREDICTION_MODE mode, int angle_delta, int use_palette,
-    FILTER_INTRA_MODE filter_intra_mode, const uint8_t *ref, int ref_stride,
-    uint8_t *dst, int dst_stride, int col_off, int row_off, int plane);
+    FILTER_INTRA_MODE filter_intra_mode, const uint16_t *ref, int ref_stride,
+    uint16_t *dst, int dst_stride, int col_off, int row_off, int plane);
 
 #if CONFIG_ORIP
 void av1_apply_orip_4x4subblock_hbd(uint16_t *dst, ptrdiff_t stride,
                                     TX_SIZE tx_size, const uint16_t *above,
                                     const uint16_t *left, PREDICTION_MODE mode,
                                     int bd);
-void av1_apply_orip_4x4subblock(uint8_t *dst, ptrdiff_t stride, TX_SIZE tx_size,
-                                const uint8_t *above, const uint8_t *left,
-                                PREDICTION_MODE mode);
 #endif
 
 // Mapping of interintra to intra mode for use in the intra component

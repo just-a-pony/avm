@@ -129,13 +129,11 @@ void aom_convolve_copy_c(const uint8_t *src, ptrdiff_t src_stride, uint8_t *dst,
   }
 }
 
-void aom_highbd_convolve8_horiz_c(const uint8_t *src8, ptrdiff_t src_stride,
-                                  uint8_t *dst8, ptrdiff_t dst_stride,
+void aom_highbd_convolve8_horiz_c(const uint16_t *src, ptrdiff_t src_stride,
+                                  uint16_t *dst, ptrdiff_t dst_stride,
                                   const int16_t *filter_x, int x_step_q4,
                                   const int16_t *filter_y, int y_step_q4, int w,
                                   int h, int bd) {
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
   const InterpKernel *const filters_x = get_filter_base(filter_x);
   const int x0_q4 = get_filter_offset(filter_x, filters_x);
   (void)filter_y;
@@ -145,13 +143,11 @@ void aom_highbd_convolve8_horiz_c(const uint8_t *src8, ptrdiff_t src_stride,
                         x_step_q4, w, h, bd);
 }
 
-void aom_highbd_convolve8_vert_c(const uint8_t *src8, ptrdiff_t src_stride,
-                                 uint8_t *dst8, ptrdiff_t dst_stride,
+void aom_highbd_convolve8_vert_c(const uint16_t *src, ptrdiff_t src_stride,
+                                 uint16_t *dst, ptrdiff_t dst_stride,
                                  const int16_t *filter_x, int x_step_q4,
                                  const int16_t *filter_y, int y_step_q4, int w,
                                  int h, int bd) {
-  uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
   const InterpKernel *const filters_y = get_filter_base(filter_y);
   const int y0_q4 = get_filter_offset(filter_y, filters_y);
   (void)filter_x;

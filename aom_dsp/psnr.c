@@ -27,11 +27,9 @@ double aom_sse_to_psnr(double samples, double peak, double sse) {
   }
 }
 
-static void encoder_highbd_variance64(const uint8_t *a8, int a_stride,
-                                      const uint8_t *b8, int b_stride, int w,
+static void encoder_highbd_variance64(const uint16_t *a, int a_stride,
+                                      const uint16_t *b, int b_stride, int w,
                                       int h, uint64_t *sse, int64_t *sum) {
-  const uint16_t *a = CONVERT_TO_SHORTPTR(a8);
-  const uint16_t *b = CONVERT_TO_SHORTPTR(b8);
   int64_t tsum = 0;
   uint64_t tsse = 0;
   for (int i = 0; i < h; ++i) {
@@ -49,8 +47,8 @@ static void encoder_highbd_variance64(const uint8_t *a8, int a_stride,
   *sse = tsse;
 }
 
-static void encoder_highbd_8_variance(const uint8_t *a8, int a_stride,
-                                      const uint8_t *b8, int b_stride, int w,
+static void encoder_highbd_8_variance(const uint16_t *a8, int a_stride,
+                                      const uint16_t *b8, int b_stride, int w,
                                       int h, unsigned int *sse, int *sum) {
   uint64_t sse_long = 0;
   int64_t sum_long = 0;
@@ -60,11 +58,9 @@ static void encoder_highbd_8_variance(const uint8_t *a8, int a_stride,
   *sum = (int)sum_long;
 }
 
-static int64_t highbd_get_sse_shift(const uint8_t *a8, int a_stride,
-                                    const uint8_t *b8, int b_stride, int width,
+static int64_t highbd_get_sse_shift(const uint16_t *a, int a_stride,
+                                    const uint16_t *b, int b_stride, int width,
                                     int height, unsigned int input_shift) {
-  const uint16_t *a = CONVERT_TO_SHORTPTR(a8);
-  const uint16_t *b = CONVERT_TO_SHORTPTR(b8);
   int64_t total_sse = 0;
   int x, y;
   for (y = 0; y < height; ++y) {
@@ -79,8 +75,9 @@ static int64_t highbd_get_sse_shift(const uint8_t *a8, int a_stride,
   return total_sse;
 }
 
-static int64_t highbd_get_sse(const uint8_t *a, int a_stride, const uint8_t *b,
-                              int b_stride, int width, int height) {
+static int64_t highbd_get_sse(const uint16_t *a, int a_stride,
+                              const uint16_t *b, int b_stride, int width,
+                              int height) {
   int64_t total_sse = 0;
   int x, y;
   const int dw = width % 16;
@@ -99,8 +96,8 @@ static int64_t highbd_get_sse(const uint8_t *a, int a_stride, const uint8_t *b,
     total_sse += sse;
   }
   for (y = 0; y < height / 16; ++y) {
-    const uint8_t *pa = a;
-    const uint8_t *pb = b;
+    const uint16_t *pa = a;
+    const uint16_t *pb = b;
     for (x = 0; x < width / 16; ++x) {
       aom_highbd_8_mse16x16(pa, a_stride, pb, b_stride, &sse);
       total_sse += sse;

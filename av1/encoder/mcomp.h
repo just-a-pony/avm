@@ -125,13 +125,11 @@ int av1_get_mvpred_sse(const MV_COST_PARAMS *mv_cost_params,
                        const FULLPEL_MV best_mv,
                        const aom_variance_fn_ptr_t *vfp,
                        const struct buf_2d *src, const struct buf_2d *pre);
-int av1_get_mvpred_compound_var(const MV_COST_PARAMS *ms_params,
-                                const FULLPEL_MV best_mv,
-                                const uint8_t *second_pred, const uint8_t *mask,
-                                int mask_stride, int invert_mask,
-                                const aom_variance_fn_ptr_t *vfp,
-                                const struct buf_2d *src,
-                                const struct buf_2d *pre);
+int av1_get_mvpred_compound_var(
+    const MV_COST_PARAMS *ms_params, const FULLPEL_MV best_mv,
+    const uint16_t *second_pred, const uint8_t *mask, int mask_stride,
+    int invert_mask, const aom_variance_fn_ptr_t *vfp, const struct buf_2d *src,
+    const struct buf_2d *pre);
 
 // =============================================================================
 //  Motion Search
@@ -142,7 +140,7 @@ typedef struct {
 
   // The source and predictors/mask used by translational search
   const struct buf_2d *src;
-  const uint8_t *second_pred;
+  const uint16_t *second_pred;
   const uint8_t *mask;
   int mask_stride;
   int inv_mask;
@@ -153,7 +151,7 @@ typedef struct {
 } MSBuffers;
 
 static INLINE void av1_set_ms_compound_refs(MSBuffers *ms_buffers,
-                                            const uint8_t *second_pred,
+                                            const uint16_t *second_pred,
                                             const uint8_t *mask,
                                             int mask_stride, int invert_mask) {
   ms_buffers->second_pred = second_pred;
@@ -343,11 +341,6 @@ void av1_set_tip_mv_search_range(FullMvLimits *mv_limits);
 
 int av1_init_search_range(int size);
 
-unsigned int av1_int_pro_motion_estimation(const struct AV1_COMP *cpi,
-                                           MACROBLOCK *x, BLOCK_SIZE bsize,
-                                           int mi_row, int mi_col,
-                                           const MV *ref_mv);
-
 int av1_refining_search_8p_c(const FULLPEL_MOTION_SEARCH_PARAMS *ms_params,
                              const FULLPEL_MV start_mv, FULLPEL_MV *best_mv);
 #if CONFIG_FLEX_MVRES
@@ -433,7 +426,7 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                      SUBPEL_MOTION_SEARCH_PARAMS *ms_params, MV ref_mv,
                      MV *start_mv, MV *bestmv, int *distortion,
                      unsigned int *sse1, int ref_idx, MV *other_mv,
-                     MV *best_other_mv, uint8_t *second_pred,
+                     MV *best_other_mv, uint16_t *second_pred,
                      InterPredParams *inter_pred_params,
                      int_mv *last_mv_search_list);
 #if CONFIG_FLEX_MVRES
@@ -443,7 +436,7 @@ int low_precision_joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                                    MV ref_mv, MV *start_mv, MV *bestmv,
                                    int *distortion, unsigned int *sse1,
                                    int ref_idx, MV *other_mv, MV *best_other_mv,
-                                   uint8_t *second_pred,
+                                   uint16_t *second_pred,
                                    InterPredParams *inter_pred_params);
 #endif
 
@@ -461,7 +454,7 @@ int av1_joint_amvd_motion_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                                  const MV *start_mv, MV *bestmv,
                                  int *distortion, unsigned int *sse1,
                                  int ref_idx, MV *other_mv, MV *best_other_mv,
-                                 uint8_t *second_pred,
+                                 uint16_t *second_pred,
                                  InterPredParams *inter_pred_params);
 #endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
 

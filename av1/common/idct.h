@@ -40,9 +40,9 @@ void av1_inverse_transform_block(const MACROBLOCKD *xd,
                                  const tran_low_t *dqcoeff,
 #endif
                                  int plane, TX_TYPE tx_type, TX_SIZE tx_size,
-                                 uint8_t *dst, int stride, int eob,
+                                 uint16_t *dst, int stride, int eob,
                                  int reduced_tx_set);
-void av1_highbd_iwht4x4_add(const tran_low_t *input, uint8_t *dest, int stride,
+void av1_highbd_iwht4x4_add(const tran_low_t *input, uint16_t *dest, int stride,
                             int eob, int bd);
 
 static INLINE const int32_t *cast_to_int32(const tran_low_t *input) {

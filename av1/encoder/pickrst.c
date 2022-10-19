@@ -127,9 +127,9 @@ typedef struct {
   // Speed features
   const LOOP_FILTER_SPEED_FEATURES *lpf_sf;
 
-  uint8_t *dgd_buffer;
+  uint16_t *dgd_buffer;
   int dgd_stride;
-  const uint8_t *src_buffer;
+  const uint16_t *src_buffer;
   int src_stride;
 
   // sse and bits are initialised by reset_rsc in search_rest_type
@@ -208,14 +208,12 @@ static int64_t try_restoration_unit(const RestSearchCtxt *rsc,
   return sse_restoration_unit(limits, rsc->src, rsc->dst, plane);
 }
 
-int64_t av1_highbd_pixel_proj_error_c(const uint8_t *src8, int width,
+int64_t av1_highbd_pixel_proj_error_c(const uint16_t *src, int width,
                                       int height, int src_stride,
-                                      const uint8_t *dat8, int dat_stride,
+                                      const uint16_t *dat, int dat_stride,
                                       int32_t *flt0, int flt0_stride,
                                       int32_t *flt1, int flt1_stride, int xq[2],
                                       const sgr_params_type *params) {
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dat = CONVERT_TO_SHORTPTR(dat8);
   int i, j;
   int64_t err = 0;
   const int32_t half = 1 << (SGRPROJ_RST_BITS + SGRPROJ_PRJ_BITS - 1);
@@ -282,8 +280,8 @@ int64_t av1_highbd_pixel_proj_error_c(const uint8_t *src8, int width,
   return err;
 }
 
-static int64_t get_pixel_proj_error(const uint8_t *src8, int width, int height,
-                                    int src_stride, const uint8_t *dat8,
+static int64_t get_pixel_proj_error(const uint16_t *src, int width, int height,
+                                    int src_stride, const uint16_t *dat,
                                     int dat_stride, int32_t *flt0,
                                     int flt0_stride, int32_t *flt1,
                                     int flt1_stride, int *xqd,
@@ -291,19 +289,19 @@ static int64_t get_pixel_proj_error(const uint8_t *src8, int width, int height,
   int xq[2];
   av1_decode_xq(xqd, xq, params);
 
-  return av1_highbd_pixel_proj_error(src8, width, height, src_stride, dat8,
+  return av1_highbd_pixel_proj_error(src, width, height, src_stride, dat,
                                      dat_stride, flt0, flt0_stride, flt1,
                                      flt1_stride, xq, params);
 }
 
 #define USE_SGRPROJ_REFINEMENT_SEARCH 1
 static int64_t finer_search_pixel_proj_error(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
+    const uint16_t *src, int width, int height, int src_stride,
+    const uint16_t *dat, int dat_stride, int32_t *flt0, int flt0_stride,
     int32_t *flt1, int flt1_stride, int start_step, int *xqd,
     const sgr_params_type *params) {
   int64_t err =
-      get_pixel_proj_error(src8, width, height, src_stride, dat8, dat_stride,
+      get_pixel_proj_error(src, width, height, src_stride, dat, dat_stride,
                            flt0, flt0_stride, flt1, flt1_stride, xqd, params);
   (void)start_step;
 #if USE_SGRPROJ_REFINEMENT_SEARCH
@@ -319,7 +317,7 @@ static int64_t finer_search_pixel_proj_error(
       do {
         if (xqd[p] - s >= tap_min[p]) {
           xqd[p] -= s;
-          err2 = get_pixel_proj_error(src8, width, height, src_stride, dat8,
+          err2 = get_pixel_proj_error(src, width, height, src_stride, dat,
                                       dat_stride, flt0, flt0_stride, flt1,
                                       flt1_stride, xqd, params);
           if (err2 > err) {
@@ -337,7 +335,7 @@ static int64_t finer_search_pixel_proj_error(
       do {
         if (xqd[p] + s <= tap_max[p]) {
           xqd[p] += s;
-          err2 = get_pixel_proj_error(src8, width, height, src_stride, dat8,
+          err2 = get_pixel_proj_error(src, width, height, src_stride, dat,
                                       dat_stride, flt0, flt0_stride, flt1,
                                       flt1_stride, xqd, params);
           if (err2 > err) {
@@ -364,12 +362,10 @@ static int64_t signed_rounded_divide(int64_t dividend, int64_t divisor) {
 }
 
 static AOM_INLINE void calc_proj_params_r0_r1_high_bd_c(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
+    const uint16_t *src, int width, int height, int src_stride,
+    const uint16_t *dat, int dat_stride, int32_t *flt0, int flt0_stride,
     int32_t *flt1, int flt1_stride, int64_t H[2][2], int64_t C[2]) {
   const int size = width * height;
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dat = CONVERT_TO_SHORTPTR(dat8);
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
       const int32_t u = (int32_t)(dat[i * dat_stride + j] << SGRPROJ_RST_BITS);
@@ -393,12 +389,10 @@ static AOM_INLINE void calc_proj_params_r0_r1_high_bd_c(
 }
 
 static AOM_INLINE void calc_proj_params_r0_high_bd_c(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
+    const uint16_t *src, int width, int height, int src_stride,
+    const uint16_t *dat, int dat_stride, int32_t *flt0, int flt0_stride,
     int64_t H[2][2], int64_t C[2]) {
   const int size = width * height;
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dat = CONVERT_TO_SHORTPTR(dat8);
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
       const int32_t u = (int32_t)(dat[i * dat_stride + j] << SGRPROJ_RST_BITS);
@@ -414,12 +408,10 @@ static AOM_INLINE void calc_proj_params_r0_high_bd_c(
 }
 
 static AOM_INLINE void calc_proj_params_r1_high_bd_c(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt1, int flt1_stride,
+    const uint16_t *src, int width, int height, int src_stride,
+    const uint16_t *dat, int dat_stride, int32_t *flt1, int flt1_stride,
     int64_t H[2][2], int64_t C[2]) {
   const int size = width * height;
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dat = CONVERT_TO_SHORTPTR(dat8);
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
       const int32_t u = (int32_t)(dat[i * dat_stride + j] << SGRPROJ_RST_BITS);
@@ -442,26 +434,26 @@ static AOM_INLINE void calc_proj_params_r1_high_bd_c(
 // 3) When only params->r[1] > 0. In this case only H[1][1] and C[1] are
 // non-zero and need to be computed.
 static AOM_INLINE void av1_calc_proj_params_high_bd_c(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
+    const uint16_t *src, int width, int height, int src_stride,
+    const uint16_t *dat, int dat_stride, int32_t *flt0, int flt0_stride,
     int32_t *flt1, int flt1_stride, int64_t H[2][2], int64_t C[2],
     const sgr_params_type *params) {
   if ((params->r[0] > 0) && (params->r[1] > 0)) {
-    calc_proj_params_r0_r1_high_bd_c(src8, width, height, src_stride, dat8,
+    calc_proj_params_r0_r1_high_bd_c(src, width, height, src_stride, dat,
                                      dat_stride, flt0, flt0_stride, flt1,
                                      flt1_stride, H, C);
   } else if (params->r[0] > 0) {
-    calc_proj_params_r0_high_bd_c(src8, width, height, src_stride, dat8,
+    calc_proj_params_r0_high_bd_c(src, width, height, src_stride, dat,
                                   dat_stride, flt0, flt0_stride, H, C);
   } else if (params->r[1] > 0) {
-    calc_proj_params_r1_high_bd_c(src8, width, height, src_stride, dat8,
+    calc_proj_params_r1_high_bd_c(src, width, height, src_stride, dat,
                                   dat_stride, flt1, flt1_stride, H, C);
   }
 }
 
 static AOM_INLINE void get_proj_subspace(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
+    const uint16_t *src, int width, int height, int src_stride,
+    const uint16_t *dat, int dat_stride, int32_t *flt0, int flt0_stride,
     int32_t *flt1, int flt1_stride, int *xq, const sgr_params_type *params) {
   int64_t H[2][2] = { { 0, 0 }, { 0, 0 } };
   int64_t C[2] = { 0, 0 };
@@ -470,7 +462,7 @@ static AOM_INLINE void get_proj_subspace(
   xq[0] = 0;
   xq[1] = 0;
 
-  av1_calc_proj_params_high_bd_c(src8, width, height, src_stride, dat8,
+  av1_calc_proj_params_high_bd_c(src, width, height, src_stride, dat,
                                  dat_stride, flt0, flt0_stride, flt1,
                                  flt1_stride, H, C, params);
 
@@ -527,7 +519,7 @@ static AOM_INLINE void encode_xq(int *xq, int *xqd,
 }
 
 // Apply the self-guided filter across an entire restoration unit.
-static AOM_INLINE void apply_sgr(int sgr_params_idx, const uint8_t *dat8,
+static AOM_INLINE void apply_sgr(int sgr_params_idx, const uint16_t *dat,
                                  int width, int height, int dat_stride,
                                  int bit_depth, int pu_width, int pu_height,
                                  int32_t *flt0, int32_t *flt1, int flt_stride) {
@@ -535,14 +527,14 @@ static AOM_INLINE void apply_sgr(int sgr_params_idx, const uint8_t *dat8,
     const int h = AOMMIN(pu_height, height - i);
     int32_t *flt0_row = flt0 + i * flt_stride;
     int32_t *flt1_row = flt1 + i * flt_stride;
-    const uint8_t *dat8_row = dat8 + i * dat_stride;
+    const uint16_t *dat_row = dat + i * dat_stride;
 
     // Iterate over the stripe in blocks of width pu_width
     for (int j = 0; j < width; j += pu_width) {
       const int w = AOMMIN(pu_width, width - j);
       const int ret = av1_selfguided_restoration(
-          dat8_row + j, w, h, dat_stride, flt0_row + j, flt1_row + j,
-          flt_stride, sgr_params_idx, bit_depth);
+          dat_row + j, w, h, dat_stride, flt0_row + j, flt1_row + j, flt_stride,
+          sgr_params_idx, bit_depth);
       (void)ret;
       assert(!ret);
     }
@@ -550,21 +542,21 @@ static AOM_INLINE void apply_sgr(int sgr_params_idx, const uint8_t *dat8,
 }
 
 static AOM_INLINE void compute_sgrproj_err(
-    const uint8_t *dat8, const int width, const int height,
-    const int dat_stride, const uint8_t *src8, const int src_stride,
+    const uint16_t *dat, const int width, const int height,
+    const int dat_stride, const uint16_t *src, const int src_stride,
     const int bit_depth, const int pu_width, const int pu_height, const int ep,
     int32_t *flt0, int32_t *flt1, const int flt_stride, int *exqd,
     int64_t *err) {
   int exq[2];
-  apply_sgr(ep, dat8, width, height, dat_stride, bit_depth, pu_width, pu_height,
+  apply_sgr(ep, dat, width, height, dat_stride, bit_depth, pu_width, pu_height,
             flt0, flt1, flt_stride);
   aom_clear_system_state();
   const sgr_params_type *const params = &av1_sgr_params[ep];
-  get_proj_subspace(src8, width, height, src_stride, dat8, dat_stride, flt0,
+  get_proj_subspace(src, width, height, src_stride, dat, dat_stride, flt0,
                     flt_stride, flt1, flt_stride, exq, params);
   aom_clear_system_state();
   encode_xq(exq, exqd, params);
-  *err = finer_search_pixel_proj_error(src8, width, height, src_stride, dat8,
+  *err = finer_search_pixel_proj_error(src, width, height, src_stride, dat,
                                        dat_stride, flt0, flt_stride, flt1,
                                        flt_stride, 2, exqd, params);
 }
@@ -581,8 +573,8 @@ static AOM_INLINE void get_best_error(int64_t *besterr, const int64_t err,
 }
 
 static SgrprojInfo search_selfguided_restoration(
-    const uint8_t *dat8, int width, int height, int dat_stride,
-    const uint8_t *src8, int src_stride, int bit_depth, int pu_width,
+    const uint16_t *dat, int width, int height, int dat_stride,
+    const uint16_t *src, int src_stride, int bit_depth, int pu_width,
     int pu_height, int32_t *rstbuf, int enable_sgr_ep_pruning) {
   int32_t *flt0 = rstbuf;
   int32_t *flt1 = flt0 + RESTORATION_UNITPELS_MAX;
@@ -597,7 +589,7 @@ static SgrprojInfo search_selfguided_restoration(
   if (!enable_sgr_ep_pruning) {
     for (ep = 0; ep < SGRPROJ_PARAMS; ep++) {
       int64_t err;
-      compute_sgrproj_err(dat8, width, height, dat_stride, src8, src_stride,
+      compute_sgrproj_err(dat, width, height, dat_stride, src, src_stride,
                           bit_depth, pu_width, pu_height, ep, flt0, flt1,
                           flt_stride, exqd, &err);
       get_best_error(&besterr, err, exqd, bestxqd, &bestep, ep);
@@ -607,7 +599,7 @@ static SgrprojInfo search_selfguided_restoration(
     for (idx = 0; idx < SGRPROJ_EP_GRP1_SEARCH_COUNT; idx++) {
       ep = sgproj_ep_grp1_seed[idx];
       int64_t err;
-      compute_sgrproj_err(dat8, width, height, dat_stride, src8, src_stride,
+      compute_sgrproj_err(dat, width, height, dat_stride, src, src_stride,
                           bit_depth, pu_width, pu_height, ep, flt0, flt1,
                           flt_stride, exqd, &err);
       get_best_error(&besterr, err, exqd, bestxqd, &bestep, ep);
@@ -618,7 +610,7 @@ static SgrprojInfo search_selfguided_restoration(
       if (ep < SGRPROJ_EP_GRP1_START_IDX || ep > SGRPROJ_EP_GRP1_END_IDX)
         continue;
       int64_t err;
-      compute_sgrproj_err(dat8, width, height, dat_stride, src8, src_stride,
+      compute_sgrproj_err(dat, width, height, dat_stride, src, src_stride,
                           bit_depth, pu_width, pu_height, ep, flt0, flt1,
                           flt_stride, exqd, &err);
       get_best_error(&besterr, err, exqd, bestxqd, &bestep, ep);
@@ -627,7 +619,7 @@ static SgrprojInfo search_selfguided_restoration(
     for (idx = 0; idx < SGRPROJ_EP_GRP2_3_SEARCH_COUNT; idx++) {
       ep = sgproj_ep_grp2_3[idx][bestep];
       int64_t err;
-      compute_sgrproj_err(dat8, width, height, dat_stride, src8, src_stride,
+      compute_sgrproj_err(dat, width, height, dat_stride, src, src_stride,
                           bit_depth, pu_width, pu_height, ep, flt0, flt1,
                           flt_stride, exqd, &err);
       get_best_error(&besterr, err, exqd, bestxqd, &bestep, ep);
@@ -681,9 +673,9 @@ static AOM_INLINE void search_sgrproj(const RestorationTileLimits *limits,
     return;
   }
 
-  uint8_t *dgd_start =
+  uint16_t *dgd_start =
       rsc->dgd_buffer + limits->v_start * rsc->dgd_stride + limits->h_start;
-  const uint8_t *src_start =
+  const uint16_t *src_start =
       rsc->src_buffer + limits->v_start * rsc->src_stride + limits->h_start;
 
   const int is_uv = rsc->plane > 0;
@@ -724,8 +716,8 @@ static AOM_INLINE void search_sgrproj(const RestorationTileLimits *limits,
   if (cost_sgr < cost_none) rsc->sgrproj = rusi->sgrproj;
 }
 
-void av1_compute_stats_highbd_c(int wiener_win, const uint8_t *dgd8,
-                                const uint8_t *src8, int h_start, int h_end,
+void av1_compute_stats_highbd_c(int wiener_win, const uint16_t *dgd,
+                                const uint16_t *src, int h_start, int h_end,
                                 int v_start, int v_end, int dgd_stride,
                                 int src_stride, int64_t *M, int64_t *H,
                                 aom_bit_depth_t bit_depth) {
@@ -733,8 +725,6 @@ void av1_compute_stats_highbd_c(int wiener_win, const uint8_t *dgd8,
   int32_t Y[WIENER_WIN2];
   const int wiener_win2 = wiener_win * wiener_win;
   const int wiener_halfwin = (wiener_win >> 1);
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dgd = CONVERT_TO_SHORTPTR(dgd8);
   uint16_t avg =
       find_average_highbd(dgd, h_start, h_end, v_start, v_end, dgd_stride);
 

@@ -38,11 +38,11 @@
 
 void av1_subtract_block(const MACROBLOCKD *xd, int rows, int cols,
                         int16_t *diff, ptrdiff_t diff_stride,
-                        const uint8_t *src8, ptrdiff_t src_stride,
-                        const uint8_t *pred8, ptrdiff_t pred_stride) {
+                        const uint16_t *src, ptrdiff_t src_stride,
+                        const uint16_t *pred, ptrdiff_t pred_stride) {
   assert(rows >= 4 && cols >= 4);
-  aom_highbd_subtract_block(rows, cols, diff, diff_stride, src8, src_stride,
-                            pred8, pred_stride, xd->bd);
+  aom_highbd_subtract_block(rows, cols, diff, diff_stride, src, src_stride,
+                            pred, pred_stride, xd->bd);
 }
 
 void av1_subtract_txb(MACROBLOCK *x, int plane, BLOCK_SIZE plane_bsize,
@@ -55,8 +55,9 @@ void av1_subtract_txb(MACROBLOCK *x, int plane, BLOCK_SIZE plane_bsize,
   const int dst_stride = pd->dst.stride;
   const int tx1d_width = tx_size_wide[tx_size];
   const int tx1d_height = tx_size_high[tx_size];
-  uint8_t *dst = &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
-  uint8_t *src = &p->src.buf[(blk_row * src_stride + blk_col) << MI_SIZE_LOG2];
+  uint16_t *dst =
+      &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
+  uint16_t *src = &p->src.buf[(blk_row * src_stride + blk_col) << MI_SIZE_LOG2];
   int16_t *src_diff =
       &p->src_diff[(blk_row * diff_stride + blk_col) << MI_SIZE_LOG2];
   av1_subtract_block(xd, tx1d_height, tx1d_width, src_diff, diff_stride, src,
@@ -488,7 +489,7 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
 #else
   tran_low_t *const dqcoeff = p->dqcoeff + BLOCK_OFFSET(block);
 #endif
-  uint8_t *dst;
+  uint16_t *dst;
   ENTROPY_CONTEXT *a, *l;
   int dummy_rate_cost = 0;
 
@@ -750,7 +751,7 @@ static void encode_block_pass1(int plane, int block, int blk_row, int blk_col,
   struct macroblockd_plane *const pd = &xd->plane[plane];
   tran_low_t *const dqcoeff = p->dqcoeff + BLOCK_OFFSET(block);
 
-  uint8_t *dst;
+  uint16_t *dst;
   dst = &pd->dst.buf[(blk_row * pd->dst.stride + blk_col) << MI_SIZE_LOG2];
 
   TxfmParam txfm_param;
@@ -893,7 +894,8 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
   PLANE_TYPE plane_type = get_plane_type(plane);
   uint16_t *eob = &p->eobs[block];
   const int dst_stride = pd->dst.stride;
-  uint8_t *dst = &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
+  uint16_t *dst =
+      &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
   int dummy_rate_cost = 0;
 
   av1_predict_intra_block_facade(cm, xd, plane, blk_col, blk_row, tx_size);

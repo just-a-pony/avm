@@ -26,10 +26,10 @@ static void analyze_hor_freq(const AV1_COMP *cpi, double *energy) {
   DECLARE_ALIGNED(16, int32_t, coeff[16 * 4]);
   int n = 0;
   memset(freq_energy, 0, sizeof(freq_energy));
-  const int16_t *src16 = (const int16_t *)CONVERT_TO_SHORTPTR(buf->y_buffer);
+  const int16_t *src = (const int16_t *)buf->y_buffer;
   for (int i = 0; i < height - 4; i += 4) {
     for (int j = 0; j < width - 16; j += 16) {
-      av1_fwd_txfm2d_16x4(src16 + i * buf->y_stride + j, coeff, buf->y_stride,
+      av1_fwd_txfm2d_16x4(src + i * buf->y_stride + j, coeff, buf->y_stride,
                           H_DCT, bd);
       for (int k = 1; k < 16; ++k) {
         const uint64_t this_energy = ((int64_t)coeff[k] * coeff[k]) +

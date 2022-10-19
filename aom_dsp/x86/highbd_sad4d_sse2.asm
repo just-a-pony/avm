@@ -256,13 +256,6 @@ cglobal highbd_sad_skip_%1x%2x4d, 4, 7, 8, src, src_stride, ref1, ref_stride, \
   mov                ref4q, [ref1q+gprsize*3]
   mov                ref1q, [ref1q+gprsize*0]
 
-; convert byte pointers to short pointers
-  shl                 srcq, 1
-  shl                ref2q, 1
-  shl                ref3q, 1
-  shl                ref4q, 1
-  shl                ref1q, 1
-
   HIGH_PROCESS_%1x2x4 1, 0, 0, src_strideq, ref_strideq, 1
 %if %3 == 2  ;  Downsampling by two
 %define num_rep (%2-8)/4

@@ -31,28 +31,28 @@
 
 namespace {
 
-typedef uint64_t (*MseWxH16bitFunc)(uint8_t *dst, int dstride, uint16_t *src,
+typedef uint64_t (*MseWxH16bitFunc)(uint16_t *dst, int dstride, uint16_t *src,
                                     int sstride, int w, int h);
-typedef unsigned int (*VarianceMxNFunc)(const uint8_t *a, int a_stride,
-                                        const uint8_t *b, int b_stride,
+typedef unsigned int (*VarianceMxNFunc)(const uint16_t *a, int a_stride,
+                                        const uint16_t *b, int b_stride,
                                         unsigned int *sse);
-typedef unsigned int (*SubpixVarMxNFunc)(const uint8_t *a, int a_stride,
+typedef unsigned int (*SubpixVarMxNFunc)(const uint16_t *a, int a_stride,
                                          int xoffset, int yoffset,
-                                         const uint8_t *b, int b_stride,
+                                         const uint16_t *b, int b_stride,
                                          unsigned int *sse);
-typedef unsigned int (*SubpixAvgVarMxNFunc)(const uint8_t *a, int a_stride,
+typedef unsigned int (*SubpixAvgVarMxNFunc)(const uint16_t *a, int a_stride,
                                             int xoffset, int yoffset,
-                                            const uint8_t *b, int b_stride,
+                                            const uint16_t *b, int b_stride,
                                             uint32_t *sse,
-                                            const uint8_t *second_pred);
-typedef unsigned int (*Get4x4SseFunc)(const uint8_t *a, int a_stride,
-                                      const uint8_t *b, int b_stride);
+                                            const uint16_t *second_pred);
+typedef unsigned int (*Get4x4SseFunc)(const uint16_t *a, int a_stride,
+                                      const uint16_t *b, int b_stride);
 typedef unsigned int (*SumOfSquaresFunction)(const int16_t *src);
 typedef unsigned int (*DistWtdSubpixAvgVarMxNFunc)(
-    const uint8_t *a, int a_stride, int xoffset, int yoffset, const uint8_t *b,
-    int b_stride, uint32_t *sse, const uint8_t *second_pred,
+    const uint16_t *a, int a_stride, int xoffset, int yoffset,
+    const uint16_t *b, int b_stride, uint32_t *sse, const uint16_t *second_pred,
     const DIST_WTD_COMP_PARAMS *jcp_param);
-typedef uint32_t (*ObmcSubpelVarFunc)(const uint8_t *pre, int pre_stride,
+typedef uint32_t (*ObmcSubpelVarFunc)(const uint16_t *pre, int pre_stride,
                                       int xoffset, int yoffset,
                                       const int32_t *wsrc, const int32_t *mask,
                                       unsigned int *sse);
@@ -89,10 +89,9 @@ static unsigned int mb_ss_ref(const int16_t *src) {
  *  Our codebase calculates the "diff" value in the variance algorithm by
  *  (src - ref).
  */
-static uint32_t variance_ref(const uint8_t *src, const uint8_t *ref, int l2w,
+static uint32_t variance_ref(const uint16_t *src, const uint16_t *ref, int l2w,
                              int l2h, int src_stride, int ref_stride,
-                             uint32_t *sse_ptr, bool use_high_bit_depth_,
-                             aom_bit_depth_t bit_depth) {
+                             uint32_t *sse_ptr, aom_bit_depth_t bit_depth) {
   int64_t se = 0;
   uint64_t sse = 0;
   const int w = 1 << l2w;
@@ -100,16 +99,9 @@ static uint32_t variance_ref(const uint8_t *src, const uint8_t *ref, int l2w,
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       int diff;
-      if (!use_high_bit_depth_) {
-        diff = src[y * src_stride + x] - ref[y * ref_stride + x];
-        se += diff;
-        sse += diff * diff;
-      } else {
-        diff = CONVERT_TO_SHORTPTR(src)[y * src_stride + x] -
-               CONVERT_TO_SHORTPTR(ref)[y * ref_stride + x];
-        se += diff;
-        sse += diff * diff;
-      }
+      diff = src[y * src_stride + x] - ref[y * ref_stride + x];
+      se += diff;
+      sse += diff * diff;
     }
   }
   RoundHighBitDepth(bit_depth, &se, &sse);
@@ -122,9 +114,9 @@ static uint32_t variance_ref(const uint8_t *src, const uint8_t *ref, int l2w,
  * and therefore upshift xoff and yoff by 1. Only every other calculated value
  * is used so the codec version shrinks the table to save space.
  */
-static uint32_t subpel_variance_ref(const uint8_t *ref, const uint8_t *src,
+static uint32_t subpel_variance_ref(const uint16_t *ref, const uint16_t *src,
                                     int l2w, int l2h, int xoff, int yoff,
-                                    uint32_t *sse_ptr, bool use_high_bit_depth_,
+                                    uint32_t *sse_ptr,
                                     aom_bit_depth_t bit_depth) {
   int64_t se = 0;
   uint64_t sse = 0;
@@ -137,31 +129,18 @@ static uint32_t subpel_variance_ref(const uint8_t *ref, const uint8_t *src,
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       // Bilinear interpolation at a 16th pel step.
-      if (!use_high_bit_depth_) {
-        const int a1 = ref[(w + 1) * (y + 0) + x + 0];
-        const int a2 = ref[(w + 1) * (y + 0) + x + 1];
-        const int b1 = ref[(w + 1) * (y + 1) + x + 0];
-        const int b2 = ref[(w + 1) * (y + 1) + x + 1];
-        const int a = a1 + (((a2 - a1) * xoff + 8) >> 4);
-        const int b = b1 + (((b2 - b1) * xoff + 8) >> 4);
-        const int r = a + (((b - a) * yoff + 8) >> 4);
-        const int diff = r - src[w * y + x];
-        se += diff;
-        sse += diff * diff;
-      } else {
-        uint16_t *ref16 = CONVERT_TO_SHORTPTR(ref);
-        uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-        const int a1 = ref16[(w + 1) * (y + 0) + x + 0];
-        const int a2 = ref16[(w + 1) * (y + 0) + x + 1];
-        const int b1 = ref16[(w + 1) * (y + 1) + x + 0];
-        const int b2 = ref16[(w + 1) * (y + 1) + x + 1];
-        const int a = a1 + (((a2 - a1) * xoff + 8) >> 4);
-        const int b = b1 + (((b2 - b1) * xoff + 8) >> 4);
-        const int r = a + (((b - a) * yoff + 8) >> 4);
-        const int diff = r - src16[w * y + x];
-        se += diff;
-        sse += diff * diff;
-      }
+      uint16_t *ref16 = (uint16_t *)ref;
+      uint16_t *src16 = (uint16_t *)src;
+      const int a1 = ref16[(w + 1) * (y + 0) + x + 0];
+      const int a2 = ref16[(w + 1) * (y + 0) + x + 1];
+      const int b1 = ref16[(w + 1) * (y + 1) + x + 0];
+      const int b2 = ref16[(w + 1) * (y + 1) + x + 1];
+      const int a = a1 + (((a2 - a1) * xoff + 8) >> 4);
+      const int b = b1 + (((b2 - b1) * xoff + 8) >> 4);
+      const int r = a + (((b - a) * yoff + 8) >> 4);
+      const int diff = r - src16[w * y + x];
+      se += diff;
+      sse += diff * diff;
     }
   }
   RoundHighBitDepth(bit_depth, &se, &sse);
@@ -169,11 +148,11 @@ static uint32_t subpel_variance_ref(const uint8_t *ref, const uint8_t *src,
   return static_cast<uint32_t>(sse - ((se * se) >> (l2w + l2h)));
 }
 
-static uint32_t subpel_avg_variance_ref(const uint8_t *ref, const uint8_t *src,
-                                        const uint8_t *second_pred, int l2w,
+static uint32_t subpel_avg_variance_ref(const uint16_t *ref,
+                                        const uint16_t *src,
+                                        const uint16_t *second_pred, int l2w,
                                         int l2h, int xoff, int yoff,
                                         uint32_t *sse_ptr,
-                                        bool use_high_bit_depth,
                                         aom_bit_depth_t bit_depth) {
   int64_t se = 0;
   uint64_t sse = 0;
@@ -186,33 +165,19 @@ static uint32_t subpel_avg_variance_ref(const uint8_t *ref, const uint8_t *src,
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       // bilinear interpolation at a 16th pel step
-      if (!use_high_bit_depth) {
-        const int a1 = ref[(w + 1) * (y + 0) + x + 0];
-        const int a2 = ref[(w + 1) * (y + 0) + x + 1];
-        const int b1 = ref[(w + 1) * (y + 1) + x + 0];
-        const int b2 = ref[(w + 1) * (y + 1) + x + 1];
-        const int a = a1 + (((a2 - a1) * xoff + 8) >> 4);
-        const int b = b1 + (((b2 - b1) * xoff + 8) >> 4);
-        const int r = a + (((b - a) * yoff + 8) >> 4);
-        const int diff =
-            ((r + second_pred[w * y + x] + 1) >> 1) - src[w * y + x];
-        se += diff;
-        sse += diff * diff;
-      } else {
-        const uint16_t *ref16 = CONVERT_TO_SHORTPTR(ref);
-        const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
-        const uint16_t *sec16 = CONVERT_TO_SHORTPTR(second_pred);
-        const int a1 = ref16[(w + 1) * (y + 0) + x + 0];
-        const int a2 = ref16[(w + 1) * (y + 0) + x + 1];
-        const int b1 = ref16[(w + 1) * (y + 1) + x + 0];
-        const int b2 = ref16[(w + 1) * (y + 1) + x + 1];
-        const int a = a1 + (((a2 - a1) * xoff + 8) >> 4);
-        const int b = b1 + (((b2 - b1) * xoff + 8) >> 4);
-        const int r = a + (((b - a) * yoff + 8) >> 4);
-        const int diff = ((r + sec16[w * y + x] + 1) >> 1) - src16[w * y + x];
-        se += diff;
-        sse += diff * diff;
-      }
+      const uint16_t *ref16 = ref;
+      const uint16_t *src16 = src;
+      const uint16_t *sec16 = second_pred;
+      const int a1 = ref16[(w + 1) * (y + 0) + x + 0];
+      const int a2 = ref16[(w + 1) * (y + 0) + x + 1];
+      const int b1 = ref16[(w + 1) * (y + 1) + x + 0];
+      const int b2 = ref16[(w + 1) * (y + 1) + x + 1];
+      const int a = a1 + (((a2 - a1) * xoff + 8) >> 4);
+      const int b = b1 + (((b2 - b1) * xoff + 8) >> 4);
+      const int r = a + (((b - a) * yoff + 8) >> 4);
+      const int diff = ((r + sec16[w * y + x] + 1) >> 1) - src16[w * y + x];
+      se += diff;
+      sse += diff * diff;
     }
   }
   RoundHighBitDepth(bit_depth, &se, &sse);
@@ -272,12 +237,7 @@ struct TestParams {
   TestParams(int log2w = 0, int log2h = 0, Func function = NULL,
              int bit_depth_value = 0)
       : log2width(log2w), log2height(log2h), func(function) {
-    use_high_bit_depth = (bit_depth_value > 0);
-    if (use_high_bit_depth) {
-      bit_depth = static_cast<aom_bit_depth_t>(bit_depth_value);
-    } else {
-      bit_depth = AOM_BITS_8;
-    }
+    bit_depth = static_cast<aom_bit_depth_t>(bit_depth_value);
     width = 1 << log2width;
     height = 1 << log2height;
     block_size = width * height;
@@ -289,7 +249,6 @@ struct TestParams {
   int block_size;
   Func func;
   aom_bit_depth_t bit_depth;
-  bool use_high_bit_depth;
   uint32_t mask;
 };
 
@@ -309,26 +268,14 @@ class MainTestClass
     params_ = this->GetParam();
 
     rnd_.Reset(ACMRandom::DeterministicSeed());
-    const size_t unit =
-        use_high_bit_depth() ? sizeof(uint16_t) : sizeof(uint8_t);
-    src_ = reinterpret_cast<uint8_t *>(aom_memalign(16, block_size() * unit));
-    ref_ = new uint8_t[block_size() * unit];
+    const size_t unit = sizeof(uint16_t);
+    src_ = reinterpret_cast<uint16_t *>(aom_memalign(16, block_size() * unit));
+    ref_ = new uint16_t[block_size() * unit];
     ASSERT_TRUE(src_ != NULL);
     ASSERT_TRUE(ref_ != NULL);
-    if (use_high_bit_depth()) {
-      // TODO(skal): remove!
-      src_ = CONVERT_TO_BYTEPTR(src_);
-      ref_ = CONVERT_TO_BYTEPTR(ref_);
-    }
   }
 
   virtual void TearDown() {
-    if (use_high_bit_depth()) {
-      // TODO(skal): remove!
-      src_ = reinterpret_cast<uint8_t *>(CONVERT_TO_SHORTPTR(src_));
-      ref_ = reinterpret_cast<uint8_t *>(CONVERT_TO_SHORTPTR(ref_));
-    }
-
     aom_free(src_);
     delete[] ref_;
     src_ = NULL;
@@ -357,12 +304,11 @@ class MainTestClass
 
  protected:
   ACMRandom rnd_;
-  uint8_t *src_;
-  uint8_t *ref_;
+  uint16_t *src_;
+  uint16_t *ref_;
   TestParams<FunctionType> params_;
 
   // some relay helpers
-  bool use_high_bit_depth() const { return params_.use_high_bit_depth; }
   int byte_shift() const { return params_.bit_depth - 8; }
   int block_size() const { return params_.block_size; }
   int width() const { return params_.width; }
@@ -376,19 +322,11 @@ class MainTestClass
 template <typename VarianceFunctionType>
 void MainTestClass<VarianceFunctionType>::ZeroTest() {
   for (int i = 0; i <= 255; ++i) {
-    if (!use_high_bit_depth()) {
-      memset(src_, i, block_size());
-    } else {
-      uint16_t *const src16 = CONVERT_TO_SHORTPTR(src_);
-      for (int k = 0; k < block_size(); ++k) src16[k] = i << byte_shift();
-    }
+    uint16_t *const src16 = src_;
+    for (int k = 0; k < block_size(); ++k) src16[k] = i << byte_shift();
     for (int j = 0; j <= 255; ++j) {
-      if (!use_high_bit_depth()) {
-        memset(ref_, j, block_size());
-      } else {
-        uint16_t *const ref16 = CONVERT_TO_SHORTPTR(ref_);
-        for (int k = 0; k < block_size(); ++k) ref16[k] = j << byte_shift();
-      }
+      uint16_t *const ref16 = ref_;
+      for (int k = 0; k < block_size(); ++k) ref16[k] = j << byte_shift();
       unsigned int sse, var;
       ASM_REGISTER_STATE_CHECK(
           var = params_.func(src_, width(), ref_, width(), &sse));
@@ -401,21 +339,15 @@ template <typename VarianceFunctionType>
 void MainTestClass<VarianceFunctionType>::RefTest() {
   for (int i = 0; i < 10; ++i) {
     for (int j = 0; j < block_size(); j++) {
-      if (!use_high_bit_depth()) {
-        src_[j] = rnd_.Rand8();
-        ref_[j] = rnd_.Rand8();
-      } else {
-        CONVERT_TO_SHORTPTR(src_)[j] = rnd_.Rand16() & mask();
-        CONVERT_TO_SHORTPTR(ref_)[j] = rnd_.Rand16() & mask();
-      }
+      src_[j] = rnd_.Rand16() & mask();
+      ref_[j] = rnd_.Rand16() & mask();
     }
     unsigned int sse1, sse2, var1, var2;
     const int stride = width();
     ASM_REGISTER_STATE_CHECK(
         var1 = params_.func(src_, stride, ref_, stride, &sse1));
-    var2 =
-        variance_ref(src_, ref_, params_.log2width, params_.log2height, stride,
-                     stride, &sse2, use_high_bit_depth(), params_.bit_depth);
+    var2 = variance_ref(src_, ref_, params_.log2width, params_.log2height,
+                        stride, stride, &sse2, params_.bit_depth);
     EXPECT_EQ(sse1, sse2) << "Error at test index: " << i;
     EXPECT_EQ(var1, var2) << "Error at test index: " << i;
   }
@@ -429,13 +361,8 @@ void MainTestClass<VarianceFunctionType>::RefStrideTest() {
     for (int j = 0; j < block_size(); j++) {
       const int ref_ind = (j / width()) * ref_stride + j % width();
       const int src_ind = (j / width()) * src_stride + j % width();
-      if (!use_high_bit_depth()) {
-        src_[src_ind] = rnd_.Rand8();
-        ref_[ref_ind] = rnd_.Rand8();
-      } else {
-        CONVERT_TO_SHORTPTR(src_)[src_ind] = rnd_.Rand16() & mask();
-        CONVERT_TO_SHORTPTR(ref_)[ref_ind] = rnd_.Rand16() & mask();
-      }
+      src_[src_ind] = rnd_.Rand16() & mask();
+      ref_[ref_ind] = rnd_.Rand16() & mask();
     }
     unsigned int sse1, sse2;
     unsigned int var1, var2;
@@ -443,8 +370,7 @@ void MainTestClass<VarianceFunctionType>::RefStrideTest() {
     ASM_REGISTER_STATE_CHECK(
         var1 = params_.func(src_, src_stride, ref_, ref_stride, &sse1));
     var2 = variance_ref(src_, ref_, params_.log2width, params_.log2height,
-                        src_stride, ref_stride, &sse2, use_high_bit_depth(),
-                        params_.bit_depth);
+                        src_stride, ref_stride, &sse2, params_.bit_depth);
     EXPECT_EQ(sse1, sse2) << "Error at test index: " << i;
     EXPECT_EQ(var1, var2) << "Error at test index: " << i;
   }
@@ -453,15 +379,9 @@ void MainTestClass<VarianceFunctionType>::RefStrideTest() {
 template <typename VarianceFunctionType>
 void MainTestClass<VarianceFunctionType>::OneQuarterTest() {
   const int half = block_size() / 2;
-  if (!use_high_bit_depth()) {
-    memset(src_, 255, block_size());
-    memset(ref_, 255, half);
-    memset(ref_ + half, 0, half);
-  } else {
-    aom_memset16(CONVERT_TO_SHORTPTR(src_), 255 << byte_shift(), block_size());
-    aom_memset16(CONVERT_TO_SHORTPTR(ref_), 255 << byte_shift(), half);
-    aom_memset16(CONVERT_TO_SHORTPTR(ref_) + half, 0, half);
-  }
+  aom_memset16(src_, 255 << byte_shift(), block_size());
+  aom_memset16(ref_, 255 << byte_shift(), half);
+  aom_memset16(ref_ + half, 0, half);
   unsigned int sse, var, expected;
   ASM_REGISTER_STATE_CHECK(
       var = params_.func(src_, width(), ref_, width(), &sse));
@@ -472,13 +392,8 @@ void MainTestClass<VarianceFunctionType>::OneQuarterTest() {
 template <typename VarianceFunctionType>
 void MainTestClass<VarianceFunctionType>::SpeedTest() {
   for (int j = 0; j < block_size(); j++) {
-    if (!use_high_bit_depth()) {
-      src_[j] = rnd_.Rand8();
-      ref_[j] = rnd_.Rand8();
-    } else {
-      CONVERT_TO_SHORTPTR(src_)[j] = rnd_.Rand16() & mask();
-      CONVERT_TO_SHORTPTR(ref_)[j] = rnd_.Rand16() & mask();
-    }
+    src_[j] = rnd_.Rand16() & mask();
+    ref_[j] = rnd_.Rand16() & mask();
   }
   unsigned int sse;
   const int stride = width();
@@ -509,7 +424,7 @@ void MainTestClass<FunctionType>::RefTestMse() {
     const int stride = width();
     ASM_REGISTER_STATE_CHECK(params_.func(src_, stride, ref_, stride, &sse1));
     variance_ref(src_, ref_, params_.log2width, params_.log2height, stride,
-                 stride, &sse2, false, AOM_BITS_8);
+                 stride, &sse2, AOM_BITS_8);
     EXPECT_EQ(sse1, sse2);
   }
 }
@@ -526,7 +441,7 @@ void MainTestClass<FunctionType>::RefTestSse() {
     const int stride = width();
     ASM_REGISTER_STATE_CHECK(var1 = params_.func(src_, stride, ref_, stride));
     variance_ref(src_, ref_, params_.log2width, params_.log2height, stride,
-                 stride, &sse2, false, AOM_BITS_8);
+                 stride, &sse2, AOM_BITS_8);
     EXPECT_EQ(var1, sse2);
   }
 }
@@ -565,34 +480,21 @@ class SubpelVarianceTest
     params_ = this->GetParam();
 
     rnd_.Reset(ACMRandom::DeterministicSeed());
-    if (!use_high_bit_depth()) {
-      src_ = reinterpret_cast<uint8_t *>(aom_memalign(32, block_size()));
-      sec_ = reinterpret_cast<uint8_t *>(aom_memalign(32, block_size()));
-      ref_ = reinterpret_cast<uint8_t *>(
-          aom_memalign(32, block_size() + width() + height() + 1));
-    } else {
-      src_ = CONVERT_TO_BYTEPTR(reinterpret_cast<uint16_t *>(
-          aom_memalign(32, block_size() * sizeof(uint16_t))));
-      sec_ = CONVERT_TO_BYTEPTR(reinterpret_cast<uint16_t *>(
-          aom_memalign(32, block_size() * sizeof(uint16_t))));
-      ref_ = CONVERT_TO_BYTEPTR(aom_memalign(
-          32, (block_size() + width() + height() + 1) * sizeof(uint16_t)));
-    }
+    src_ = reinterpret_cast<uint16_t *>(
+        aom_memalign(32, block_size() * sizeof(uint16_t)));
+    sec_ = reinterpret_cast<uint16_t *>(
+        aom_memalign(32, block_size() * sizeof(uint16_t)));
+    ref_ = reinterpret_cast<uint16_t *>(aom_memalign(
+        32, (block_size() + width() + height() + 1) * sizeof(uint16_t)));
     ASSERT_TRUE(src_ != NULL);
     ASSERT_TRUE(sec_ != NULL);
     ASSERT_TRUE(ref_ != NULL);
   }
 
   virtual void TearDown() {
-    if (!use_high_bit_depth()) {
-      aom_free(src_);
-      aom_free(ref_);
-      aom_free(sec_);
-    } else {
-      aom_free(CONVERT_TO_SHORTPTR(src_));
-      aom_free(CONVERT_TO_SHORTPTR(ref_));
-      aom_free(CONVERT_TO_SHORTPTR(sec_));
-    }
+    aom_free(src_);
+    aom_free(ref_);
+    aom_free(sec_);
     libaom_test::ClearSystemState();
   }
 
@@ -602,14 +504,13 @@ class SubpelVarianceTest
   void SpeedTest();
 
   ACMRandom rnd_;
-  uint8_t *src_;
-  uint8_t *ref_;
-  uint8_t *sec_;
+  uint16_t *src_;
+  uint16_t *ref_;
+  uint16_t *sec_;
   TestParams<FunctionType> params_;
   DIST_WTD_COMP_PARAMS jcp_param_;
 
   // some relay helpers
-  bool use_high_bit_depth() const { return params_.use_high_bit_depth; }
   int byte_shift() const { return params_.bit_depth - 8; }
   int block_size() const { return params_.block_size; }
   int width() const { return params_.width; }
@@ -621,28 +522,19 @@ template <typename SubpelVarianceFunctionType>
 void SubpelVarianceTest<SubpelVarianceFunctionType>::RefTest() {
   for (int x = 0; x < 8; ++x) {
     for (int y = 0; y < 8; ++y) {
-      if (!use_high_bit_depth()) {
-        for (int j = 0; j < block_size(); j++) {
-          src_[j] = rnd_.Rand8();
-        }
-        for (int j = 0; j < block_size() + width() + height() + 1; j++) {
-          ref_[j] = rnd_.Rand8();
-        }
-      } else {
-        for (int j = 0; j < block_size(); j++) {
-          CONVERT_TO_SHORTPTR(src_)[j] = rnd_.Rand16() & mask();
-        }
-        for (int j = 0; j < block_size() + width() + height() + 1; j++) {
-          CONVERT_TO_SHORTPTR(ref_)[j] = rnd_.Rand16() & mask();
-        }
+      for (int j = 0; j < block_size(); j++) {
+        src_[j] = rnd_.Rand16() & mask();
+      }
+      for (int j = 0; j < block_size() + width() + height() + 1; j++) {
+        ref_[j] = rnd_.Rand16() & mask();
       }
       unsigned int sse1, sse2;
       unsigned int var1;
       ASM_REGISTER_STATE_CHECK(
           var1 = params_.func(ref_, width() + 1, x, y, src_, width(), &sse1));
-      const unsigned int var2 = subpel_variance_ref(
-          ref_, src_, params_.log2width, params_.log2height, x, y, &sse2,
-          use_high_bit_depth(), params_.bit_depth);
+      const unsigned int var2 =
+          subpel_variance_ref(ref_, src_, params_.log2width, params_.log2height,
+                              x, y, &sse2, params_.bit_depth);
       EXPECT_EQ(sse1, sse2) << "at position " << x << ", " << y;
       EXPECT_EQ(var1, var2) << "at position " << x << ", " << y;
     }
@@ -657,25 +549,17 @@ void SubpelVarianceTest<SubpelVarianceFunctionType>::ExtremeRefTest() {
   for (int x = 0; x < 8; ++x) {
     for (int y = 0; y < 8; ++y) {
       const int half = block_size() / 2;
-      if (!use_high_bit_depth()) {
-        memset(src_, 0, half);
-        memset(src_ + half, 255, half);
-        memset(ref_, 255, half);
-        memset(ref_ + half, 0, half + width() + height() + 1);
-      } else {
-        aom_memset16(CONVERT_TO_SHORTPTR(src_), mask(), half);
-        aom_memset16(CONVERT_TO_SHORTPTR(src_) + half, 0, half);
-        aom_memset16(CONVERT_TO_SHORTPTR(ref_), 0, half);
-        aom_memset16(CONVERT_TO_SHORTPTR(ref_) + half, mask(),
-                     half + width() + height() + 1);
-      }
+      aom_memset16(src_, mask(), half);
+      aom_memset16(src_ + half, 0, half);
+      aom_memset16(ref_, 0, half);
+      aom_memset16(ref_ + half, mask(), half + width() + height() + 1);
       unsigned int sse1, sse2;
       unsigned int var1;
       ASM_REGISTER_STATE_CHECK(
           var1 = params_.func(ref_, width() + 1, x, y, src_, width(), &sse1));
-      const unsigned int var2 = subpel_variance_ref(
-          ref_, src_, params_.log2width, params_.log2height, x, y, &sse2,
-          use_high_bit_depth(), params_.bit_depth);
+      const unsigned int var2 =
+          subpel_variance_ref(ref_, src_, params_.log2width, params_.log2height,
+                              x, y, &sse2, params_.bit_depth);
       EXPECT_EQ(sse1, sse2) << "for xoffset " << x << " and yoffset " << y;
       EXPECT_EQ(var1, var2) << "for xoffset " << x << " and yoffset " << y;
     }
@@ -684,20 +568,11 @@ void SubpelVarianceTest<SubpelVarianceFunctionType>::ExtremeRefTest() {
 
 template <typename SubpelVarianceFunctionType>
 void SubpelVarianceTest<SubpelVarianceFunctionType>::SpeedTest() {
-  if (!use_high_bit_depth()) {
-    for (int j = 0; j < block_size(); j++) {
-      src_[j] = rnd_.Rand8();
-    }
-    for (int j = 0; j < block_size() + width() + height() + 1; j++) {
-      ref_[j] = rnd_.Rand8();
-    }
-  } else {
-    for (int j = 0; j < block_size(); j++) {
-      CONVERT_TO_SHORTPTR(src_)[j] = rnd_.Rand16() & mask();
-    }
-    for (int j = 0; j < block_size() + width() + height() + 1; j++) {
-      CONVERT_TO_SHORTPTR(ref_)[j] = rnd_.Rand16() & mask();
-    }
+  for (int j = 0; j < block_size(); j++) {
+    src_[j] = rnd_.Rand16() & mask();
+  }
+  for (int j = 0; j < block_size() + width() + height() + 1; j++) {
+    ref_[j] = rnd_.Rand16() & mask();
   }
 
   unsigned int sse1, sse2;
@@ -721,7 +596,7 @@ void SubpelVarianceTest<SubpelVarianceFunctionType>::SpeedTest() {
     int x = rnd_(8);
     int y = rnd_(8);
     subpel_variance_ref(ref_, src_, params_.log2width, params_.log2height, x, y,
-                        &sse2, use_high_bit_depth(), params_.bit_depth);
+                        &sse2, params_.bit_depth);
   }
   aom_usec_timer_mark(&timer_c);
 
@@ -737,22 +612,12 @@ template <>
 void SubpelVarianceTest<SubpixAvgVarMxNFunc>::RefTest() {
   for (int x = 0; x < 8; ++x) {
     for (int y = 0; y < 8; ++y) {
-      if (!use_high_bit_depth()) {
-        for (int j = 0; j < block_size(); j++) {
-          src_[j] = rnd_.Rand8();
-          sec_[j] = rnd_.Rand8();
-        }
-        for (int j = 0; j < block_size() + width() + height() + 1; j++) {
-          ref_[j] = rnd_.Rand8();
-        }
-      } else {
-        for (int j = 0; j < block_size(); j++) {
-          CONVERT_TO_SHORTPTR(src_)[j] = rnd_.Rand16() & mask();
-          CONVERT_TO_SHORTPTR(sec_)[j] = rnd_.Rand16() & mask();
-        }
-        for (int j = 0; j < block_size() + width() + height() + 1; j++) {
-          CONVERT_TO_SHORTPTR(ref_)[j] = rnd_.Rand16() & mask();
-        }
+      for (int j = 0; j < block_size(); j++) {
+        src_[j] = rnd_.Rand16() & mask();
+        sec_[j] = rnd_.Rand16() & mask();
+      }
+      for (int j = 0; j < block_size() + width() + height() + 1; j++) {
+        ref_[j] = rnd_.Rand16() & mask();
       }
       uint32_t sse1, sse2;
       uint32_t var1, var2;
@@ -760,7 +625,7 @@ void SubpelVarianceTest<SubpixAvgVarMxNFunc>::RefTest() {
                                                    src_, width(), &sse1, sec_));
       var2 = subpel_avg_variance_ref(ref_, src_, sec_, params_.log2width,
                                      params_.log2height, x, y, &sse2,
-                                     use_high_bit_depth(), params_.bit_depth);
+                                     params_.bit_depth);
       EXPECT_EQ(sse1, sse2) << "at position " << x << ", " << y;
       EXPECT_EQ(var1, var2) << "at position " << x << ", " << y;
     }
@@ -779,13 +644,8 @@ class ObmcVarianceTest
     params_ = this->GetParam();
 
     rnd_.Reset(ACMRandom::DeterministicSeed());
-    if (!use_high_bit_depth()) {
-      pre_ = reinterpret_cast<uint8_t *>(
-          aom_memalign(32, block_size() + width() + height() + 1));
-    } else {
-      pre_ = CONVERT_TO_BYTEPTR(reinterpret_cast<uint16_t *>(aom_memalign(
-          32, block_size() + width() + height() + 1 * sizeof(uint16_t))));
-    }
+    pre_ = reinterpret_cast<uint16_t *>(aom_memalign(
+        32, block_size() + width() + height() + 1 * sizeof(uint16_t)));
     wsrc_ = reinterpret_cast<int32_t *>(
         aom_memalign(32, block_size() * sizeof(uint32_t)));
     mask_ = reinterpret_cast<int32_t *>(
@@ -796,11 +656,7 @@ class ObmcVarianceTest
   }
 
   virtual void TearDown() {
-    if (!use_high_bit_depth()) {
-      aom_free(pre_);
-    } else {
-      aom_free(CONVERT_TO_SHORTPTR(pre_));
-    }
+    aom_free(pre_);
     aom_free(wsrc_);
     aom_free(mask_);
     libaom_test::ClearSystemState();
@@ -812,13 +668,12 @@ class ObmcVarianceTest
   void SpeedTest();
 
   ACMRandom rnd_;
-  uint8_t *pre_;
+  uint16_t *pre_;
   int32_t *wsrc_;
   int32_t *mask_;
   TestParams<FunctionType> params_;
 
   // some relay helpers
-  bool use_high_bit_depth() const { return params_.use_high_bit_depth; }
   int byte_shift() const { return params_.bit_depth - 8; }
   int block_size() const { return params_.block_size; }
   int width() const { return params_.width; }

@@ -111,7 +111,7 @@ static AOM_INLINE void set_planes_to_neutral_grey(
   const int val = 1 << (seq_params->bit_depth - 1);
   for (int plane = only_chroma; plane < MAX_MB_PLANE; plane++) {
     const int is_uv = plane > 0;
-    uint16_t *const base = CONVERT_TO_SHORTPTR(buf->buffers[plane]);
+    uint16_t *const base = buf->buffers[plane];
     // Set the first row to neutral grey. Then copy the first row to all
     // subsequent rows.
     if (buf->crop_heights[is_uv] > 0) {
@@ -150,7 +150,7 @@ static REFERENCE_MODE read_frame_reference_mode(
 static AOM_INLINE void inverse_transform_block(DecoderCodingBlock *dcb,
                                                int plane, const TX_TYPE tx_type,
                                                const TX_SIZE tx_size,
-                                               uint8_t *dst, int stride,
+                                               uint16_t *dst, int stride,
                                                int reduced_tx_set) {
 #if CONFIG_IST
   tran_low_t *dqcoeff = dcb->dqcoeff_block[plane] + dcb->cb_offset[plane];
@@ -238,7 +238,8 @@ static AOM_INLINE void predict_and_reconstruct_intra_block(
       const TX_TYPE tx_type = av1_get_tx_type(xd, plane_type, row, col, tx_size,
                                               reduced_tx_set_used);
       struct macroblockd_plane *const pd = &xd->plane[plane];
-      uint8_t *dst = &pd->dst.buf[(row * pd->dst.stride + col) << MI_SIZE_LOG2];
+      uint16_t *dst =
+          &pd->dst.buf[(row * pd->dst.stride + col) << MI_SIZE_LOG2];
       inverse_transform_block(dcb, plane, tx_type, tx_size, dst, pd->dst.stride,
                               reduced_tx_set_used);
     }
@@ -267,7 +268,7 @@ static AOM_INLINE void inverse_transform_inter_block(
   const TX_TYPE tx_type = av1_get_tx_type(xd, plane_type, blk_row, blk_col,
                                           tx_size, reduced_tx_set_used);
 
-  uint8_t *dst =
+  uint16_t *dst =
       &pd->dst.buf[(blk_row * pd->dst.stride + blk_col) << MI_SIZE_LOG2];
   inverse_transform_block(dcb, plane, tx_type, tx_size, dst, pd->dst.stride,
                           reduced_tx_set_used);
@@ -418,13 +419,11 @@ typedef struct PadBlock {
   int y1;
 } PadBlock;
 
-static AOM_INLINE void highbd_build_mc_border(const uint8_t *src8,
-                                              int src_stride, uint8_t *dst8,
+static AOM_INLINE void highbd_build_mc_border(const uint16_t *src,
+                                              int src_stride, uint16_t *dst,
                                               int dst_stride, int x, int y,
                                               int b_w, int b_h, int w, int h) {
   // Get a pointer to the start of the real data for this row.
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  uint16_t *dst = CONVERT_TO_SHORTPTR(dst8);
   const uint16_t *ref_row = src - x - y * src_stride;
 
   if (y >= h)
@@ -503,14 +502,14 @@ static INLINE void extend_mc_border(const struct scale_factors *const sf,
                                     MV32 scaled_mv, PadBlock block,
                                     int subpel_x_mv, int subpel_y_mv,
                                     int do_warp, int is_intrabc,
-                                    uint8_t *mc_buf, uint8_t **pre,
+                                    uint16_t *mc_buf, uint16_t **pre,
                                     int *src_stride) {
   int x_pad = 0, y_pad = 0;
   if (update_extend_mc_border_params(sf, pre_buf, scaled_mv, &block,
                                      subpel_x_mv, subpel_y_mv, do_warp,
                                      is_intrabc, &x_pad, &y_pad)) {
     // Get reference block pointer.
-    const uint8_t *const buf_ptr =
+    const uint16_t *const buf_ptr =
         pre_buf->buf0 + block.y0 * pre_buf->stride + block.x0;
     int buf_stride = pre_buf->stride;
     const int b_w = block.x1 - block.x0;
@@ -528,7 +527,7 @@ static INLINE void extend_mc_border(const struct scale_factors *const sf,
 
 static void dec_calc_subpel_params(
     const MV *const src_mv, InterPredParams *const inter_pred_params,
-    const MACROBLOCKD *const xd, int mi_x, int mi_y, uint8_t **pre,
+    const MACROBLOCKD *const xd, int mi_x, int mi_y, uint16_t **pre,
     SubpelParams *subpel_params, int *src_stride, PadBlock *block,
 #if CONFIG_OPTFLOW_REFINEMENT
     int use_optflow_refinement,
@@ -653,7 +652,7 @@ static void dec_calc_subpel_params_and_extend(
 #if CONFIG_OPTFLOW_REFINEMENT
     int use_optflow_refinement,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-    uint8_t **mc_buf, uint8_t **pre, SubpelParams *subpel_params,
+    uint16_t **mc_buf, uint16_t **pre, SubpelParams *subpel_params,
     int *src_stride) {
   PadBlock block;
   MV32 scaled_mv;
@@ -674,7 +673,7 @@ static void dec_calc_subpel_params_and_extend(
 #if CONFIG_TIP
 static AOM_INLINE void tip_dec_calc_subpel_params(
     const MV *const src_mv, InterPredParams *const inter_pred_params, int mi_x,
-    int mi_y, uint8_t **pre, SubpelParams *subpel_params, int *src_stride,
+    int mi_y, uint16_t **pre, SubpelParams *subpel_params, int *src_stride,
     PadBlock *block,
 #if CONFIG_OPTFLOW_REFINEMENT
     int use_optflow_refinement,
@@ -795,7 +794,7 @@ static void tip_dec_calc_subpel_params_and_extend(
 #if CONFIG_OPTFLOW_REFINEMENT
     int use_optflow_refinement,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-    uint8_t **mc_buf, uint8_t **pre, SubpelParams *subpel_params,
+    uint16_t **mc_buf, uint16_t **pre, SubpelParams *subpel_params,
     int *src_stride) {
   (void)xd;
   PadBlock block;
@@ -815,7 +814,7 @@ static void tip_dec_calc_subpel_params_and_extend(
 }
 
 static void av1_dec_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd,
-                                    uint8_t **mc_buf,
+                                    uint16_t **mc_buf,
                                     CONV_BUF_TYPE *tmp_conv_dst) {
   av1_setup_tip_motion_field(cm, 0);
 
@@ -824,7 +823,7 @@ static void av1_dec_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd,
 }
 
 static void av1_dec_tip_on_the_fly(AV1_COMMON *cm, MACROBLOCKD *xd,
-                                   uint8_t **mc_buf, CONV_BUF_TYPE *conv_dst) {
+                                   uint16_t **mc_buf, CONV_BUF_TYPE *conv_dst) {
   const MV *mv = &xd->mi[0]->mv[0].as_mv;
   const int mvs_rows =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
@@ -1006,7 +1005,7 @@ static INLINE void dec_build_prediction_by_above_pred(
 
 static AOM_INLINE void dec_build_prediction_by_above_preds(
     const AV1_COMMON *cm, DecoderCodingBlock *dcb,
-    uint8_t *tmp_buf[MAX_MB_PLANE], int tmp_width[MAX_MB_PLANE],
+    uint16_t *tmp_buf[MAX_MB_PLANE], int tmp_width[MAX_MB_PLANE],
     int tmp_height[MAX_MB_PLANE], int tmp_stride[MAX_MB_PLANE]) {
   MACROBLOCKD *const xd = &dcb->xd;
   if (!xd->up_available) return;
@@ -1061,7 +1060,7 @@ static INLINE void dec_build_prediction_by_left_pred(
 
 static AOM_INLINE void dec_build_prediction_by_left_preds(
     const AV1_COMMON *cm, DecoderCodingBlock *dcb,
-    uint8_t *tmp_buf[MAX_MB_PLANE], int tmp_width[MAX_MB_PLANE],
+    uint16_t *tmp_buf[MAX_MB_PLANE], int tmp_width[MAX_MB_PLANE],
     int tmp_height[MAX_MB_PLANE], int tmp_stride[MAX_MB_PLANE]) {
   MACROBLOCKD *const xd = &dcb->xd;
   if (!xd->left_available) return;
@@ -1089,7 +1088,7 @@ static AOM_INLINE void dec_build_prediction_by_left_preds(
 static AOM_INLINE void dec_build_obmc_inter_predictors_sb(
     const AV1_COMMON *cm, DecoderCodingBlock *dcb) {
   const int num_planes = av1_num_planes(cm);
-  uint8_t *dst_buf1[MAX_MB_PLANE], *dst_buf2[MAX_MB_PLANE];
+  uint16_t *dst_buf1[MAX_MB_PLANE], *dst_buf2[MAX_MB_PLANE];
   int dst_stride1[MAX_MB_PLANE] = { MAX_SB_SIZE, MAX_SB_SIZE, MAX_SB_SIZE };
   int dst_stride2[MAX_MB_PLANE] = { MAX_SB_SIZE, MAX_SB_SIZE, MAX_SB_SIZE };
   int dst_width1[MAX_MB_PLANE] = { MAX_SB_SIZE, MAX_SB_SIZE, MAX_SB_SIZE };
@@ -4228,7 +4227,7 @@ static AOM_INLINE void alloc_dec_jobs(AV1DecTileMT *tile_mt_info,
 void av1_free_mc_tmp_buf(ThreadData *thread_data) {
   int ref;
   for (ref = 0; ref < 2; ref++) {
-    aom_free(CONVERT_TO_SHORTPTR(thread_data->mc_buf[ref]));
+    aom_free(thread_data->mc_buf[ref]);
     thread_data->mc_buf[ref] = NULL;
   }
   thread_data->mc_buf_size = 0;
@@ -4253,7 +4252,7 @@ static AOM_INLINE void allocate_mc_tmp_buf(AV1_COMMON *const cm,
     uint16_t *hbd_mc_buf;
     CHECK_MEM_ERROR(cm, hbd_mc_buf, (uint16_t *)aom_memalign(16, buf_size));
     memset(hbd_mc_buf, 0, buf_size);
-    thread_data->mc_buf[ref] = CONVERT_TO_BYTEPTR(hbd_mc_buf);
+    thread_data->mc_buf[ref] = hbd_mc_buf;
   }
   thread_data->mc_buf_size = buf_size;
 
@@ -6629,12 +6628,11 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
         for (int r = 0; r < pic_height; ++r) {
           for (int c = 0; c < pic_width; ++c) {
 #if CONFIG_CCSO_EXT
-            ext_rec_y[c] = CONVERT_TO_SHORTPTR(xd->plane[pli].dst.buf)[c];
+            ext_rec_y[c] = xd->plane[pli].dst.buf[c];
 #else
               ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
                         CCSO_PADDING_SIZE] =
-                  CONVERT_TO_SHORTPTR(
-                      xd->plane[pli].dst.buf)[r * dst_stride + c];
+                  xd->plane[pli].dst.buf[r * dst_stride + c];
 #endif
           }
 #if CONFIG_CCSO_EXT

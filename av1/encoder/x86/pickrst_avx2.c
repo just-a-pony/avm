@@ -146,7 +146,7 @@ static INLINE void acc_stat_highbd_win7_one_line_avx2(
 }
 
 static INLINE void compute_stats_highbd_win7_opt_avx2(
-    const uint8_t *dgd8, const uint8_t *src8, int h_start, int h_end,
+    const uint16_t *dgd, const uint16_t *src, int h_start, int h_end,
     int v_start, int v_end, int dgd_stride, int src_stride, int64_t *M,
     int64_t *H, aom_bit_depth_t bit_depth) {
   int i, j, k, l, m, n;
@@ -154,8 +154,6 @@ static INLINE void compute_stats_highbd_win7_opt_avx2(
   const int pixel_count = (h_end - h_start) * (v_end - v_start);
   const int wiener_win2 = wiener_win * wiener_win;
   const int wiener_halfwin = (wiener_win >> 1);
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dgd = CONVERT_TO_SHORTPTR(dgd8);
   const uint16_t avg =
       find_average_highbd(dgd, h_start, h_end, v_start, v_end, dgd_stride);
 
@@ -286,7 +284,7 @@ static INLINE void acc_stat_highbd_win5_one_line_avx2(
 }
 
 static INLINE void compute_stats_highbd_win5_opt_avx2(
-    const uint8_t *dgd8, const uint8_t *src8, int h_start, int h_end,
+    const uint16_t *dgd, const uint16_t *src, int h_start, int h_end,
     int v_start, int v_end, int dgd_stride, int src_stride, int64_t *M,
     int64_t *H, aom_bit_depth_t bit_depth) {
   int i, j, k, l, m, n;
@@ -294,8 +292,6 @@ static INLINE void compute_stats_highbd_win5_opt_avx2(
   const int pixel_count = (h_end - h_start) * (v_end - v_start);
   const int wiener_win2 = wiener_win * wiener_win;
   const int wiener_halfwin = (wiener_win >> 1);
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dgd = CONVERT_TO_SHORTPTR(dgd8);
   const uint16_t avg =
       find_average_highbd(dgd, h_start, h_end, v_start, v_end, dgd_stride);
 
@@ -344,35 +340,31 @@ static INLINE void compute_stats_highbd_win5_opt_avx2(
   }
 }
 
-void av1_compute_stats_highbd_avx2(int wiener_win, const uint8_t *dgd8,
-                                   const uint8_t *src8, int h_start, int h_end,
+void av1_compute_stats_highbd_avx2(int wiener_win, const uint16_t *dgd,
+                                   const uint16_t *src, int h_start, int h_end,
                                    int v_start, int v_end, int dgd_stride,
                                    int src_stride, int64_t *M, int64_t *H,
                                    aom_bit_depth_t bit_depth) {
   if (wiener_win == WIENER_WIN) {
-    compute_stats_highbd_win7_opt_avx2(dgd8, src8, h_start, h_end, v_start,
-                                       v_end, dgd_stride, src_stride, M, H,
-                                       bit_depth);
+    compute_stats_highbd_win7_opt_avx2(dgd, src, h_start, h_end, v_start, v_end,
+                                       dgd_stride, src_stride, M, H, bit_depth);
   } else if (wiener_win == WIENER_WIN_CHROMA) {
-    compute_stats_highbd_win5_opt_avx2(dgd8, src8, h_start, h_end, v_start,
-                                       v_end, dgd_stride, src_stride, M, H,
-                                       bit_depth);
+    compute_stats_highbd_win5_opt_avx2(dgd, src, h_start, h_end, v_start, v_end,
+                                       dgd_stride, src_stride, M, H, bit_depth);
   } else {
-    av1_compute_stats_highbd_c(wiener_win, dgd8, src8, h_start, h_end, v_start,
+    av1_compute_stats_highbd_c(wiener_win, dgd, src, h_start, h_end, v_start,
                                v_end, dgd_stride, src_stride, M, H, bit_depth);
   }
 }
 
 int64_t av1_highbd_pixel_proj_error_avx2(
-    const uint8_t *src8, int width, int height, int src_stride,
-    const uint8_t *dat8, int dat_stride, int32_t *flt0, int flt0_stride,
+    const uint16_t *src, int width, int height, int src_stride,
+    const uint16_t *dat, int dat_stride, int32_t *flt0, int flt0_stride,
     int32_t *flt1, int flt1_stride, int xq[2], const sgr_params_type *params) {
   int i, j, k;
   const int32_t shift = SGRPROJ_RST_BITS + SGRPROJ_PRJ_BITS;
   const __m256i rounding = _mm256_set1_epi32(1 << (shift - 1));
   __m256i sum64 = _mm256_setzero_si256();
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dat = CONVERT_TO_SHORTPTR(dat8);
   int64_t err = 0;
   if (params->r[0] > 0 && params->r[1] > 0) {  // Both filters are enabled
     const __m256i xq0 = _mm256_set1_epi32(xq[0]);

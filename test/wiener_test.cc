@@ -33,8 +33,8 @@
 // High bit-depth tests:
 namespace wiener_highbd {
 
-static void compute_stats_highbd_win_opt_c(int wiener_win, const uint8_t *dgd8,
-                                           const uint8_t *src8, int h_start,
+static void compute_stats_highbd_win_opt_c(int wiener_win, const uint16_t *dgd,
+                                           const uint16_t *src, int h_start,
                                            int h_end, int v_start, int v_end,
                                            int dgd_stride, int src_stride,
                                            int64_t *M, int64_t *H,
@@ -44,8 +44,6 @@ static void compute_stats_highbd_win_opt_c(int wiener_win, const uint8_t *dgd8,
   const int pixel_count = (h_end - h_start) * (v_end - v_start);
   const int wiener_win2 = wiener_win * wiener_win;
   const int wiener_halfwin = (wiener_win >> 1);
-  const uint16_t *src = CONVERT_TO_SHORTPTR(src8);
-  const uint16_t *dgd = CONVERT_TO_SHORTPTR(dgd8);
   const uint16_t avg =
       find_average_highbd(dgd, h_start, h_end, v_start, v_end, dgd_stride);
 
@@ -143,8 +141,8 @@ static void compute_stats_highbd_win_opt_c(int wiener_win, const uint8_t *dgd8,
   }
 }
 
-void compute_stats_highbd_opt_c(int wiener_win, const uint8_t *dgd,
-                                const uint8_t *src, int h_start, int h_end,
+void compute_stats_highbd_opt_c(int wiener_win, const uint16_t *dgd,
+                                const uint16_t *src, int h_start, int h_end,
                                 int v_start, int v_end, int dgd_stride,
                                 int src_stride, int64_t *M, int64_t *H,
                                 aom_bit_depth_t bit_depth) {
@@ -159,8 +157,8 @@ void compute_stats_highbd_opt_c(int wiener_win, const uint8_t *dgd,
 }
 
 static const int kIterations = 100;
-typedef void (*compute_stats_Func)(int wiener_win, const uint8_t *dgd,
-                                   const uint8_t *src, int h_start, int h_end,
+typedef void (*compute_stats_Func)(int wiener_win, const uint16_t *dgd,
+                                   const uint16_t *src, int h_start, int h_end,
                                    int v_start, int v_end, int dgd_stride,
                                    int src_stride, int64_t *M, int64_t *H,
                                    aom_bit_depth_t bit_depth);
@@ -222,22 +220,22 @@ void WienerTestHighbd::RunWienerTest(const int32_t wiener_win,
       dgd_buf[i] = rng_.Rand16() % (1 << bit_depth);
       src_buf[i] = rng_.Rand16() % (1 << bit_depth);
     }
-    const uint8_t *dgd8 = CONVERT_TO_BYTEPTR(
-        dgd_buf + wiener_halfwin * MAX_DATA_BLOCK + wiener_halfwin);
-    const uint8_t *src8 = CONVERT_TO_BYTEPTR(src_buf);
+    const uint16_t *dgd =
+        dgd_buf + wiener_halfwin * MAX_DATA_BLOCK + wiener_halfwin;
+    const uint16_t *src = src_buf;
 
     aom_usec_timer timer;
     aom_usec_timer_start(&timer);
     for (int i = 0; i < run_times; ++i) {
-      av1_compute_stats_highbd_c(wiener_win, dgd8, src8, h_start, h_end,
-                                 v_start, v_end, dgd_stride, src_stride, M_ref,
-                                 H_ref, bit_depth);
+      av1_compute_stats_highbd_c(wiener_win, dgd, src, h_start, h_end, v_start,
+                                 v_end, dgd_stride, src_stride, M_ref, H_ref,
+                                 bit_depth);
     }
     aom_usec_timer_mark(&timer);
     const double time1 = static_cast<double>(aom_usec_timer_elapsed(&timer));
     aom_usec_timer_start(&timer);
     for (int i = 0; i < run_times; ++i) {
-      target_func_(wiener_win, dgd8, src8, h_start, h_end, v_start, v_end,
+      target_func_(wiener_win, dgd, src, h_start, h_end, v_start, v_end,
                    dgd_stride, src_stride, M_test, H_test, bit_depth);
     }
     aom_usec_timer_mark(&timer);
@@ -290,15 +288,15 @@ void WienerTestHighbd::RunWienerTest_ExtremeValues(const int32_t wiener_win,
       dgd_buf[i] = ((uint16_t)1 << bit_depth) - 1;
       src_buf[i] = ((uint16_t)1 << bit_depth) - 1;
     }
-    const uint8_t *dgd8 = CONVERT_TO_BYTEPTR(
-        dgd_buf + wiener_halfwin * MAX_DATA_BLOCK + wiener_halfwin);
-    const uint8_t *src8 = CONVERT_TO_BYTEPTR(src_buf);
+    const uint16_t *dgd =
+        dgd_buf + wiener_halfwin * MAX_DATA_BLOCK + wiener_halfwin;
+    const uint16_t *src = src_buf;
 
-    av1_compute_stats_highbd_c(wiener_win, dgd8, src8, h_start, h_end, v_start,
+    av1_compute_stats_highbd_c(wiener_win, dgd, src, h_start, h_end, v_start,
                                v_end, dgd_stride, src_stride, M_ref, H_ref,
                                bit_depth);
 
-    target_func_(wiener_win, dgd8, src8, h_start, h_end, v_start, v_end,
+    target_func_(wiener_win, dgd, src, h_start, h_end, v_start, v_end,
                  dgd_stride, src_stride, M_test, H_test, bit_depth);
 
     int failed = 0;

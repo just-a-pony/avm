@@ -41,7 +41,7 @@ typedef struct {
   /*!
    * Buffer for the above predictor in OBMC
    */
-  uint8_t *above_pred_buf[MAX_MB_PLANE];
+  uint16_t *above_pred_buf[MAX_MB_PLANE];
   /*!
    * Stride for the above predictor in OBMC
    */
@@ -49,7 +49,7 @@ typedef struct {
   /*!
    * Buffer for the left predictor in OBMC
    */
-  uint8_t *left_pred_buf[MAX_MB_PLANE];
+  uint16_t *left_pred_buf[MAX_MB_PLANE];
   /*!
    * Stride for the left predictor in OBMC
    */

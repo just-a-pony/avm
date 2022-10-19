@@ -1555,9 +1555,9 @@ int aom_denoise_and_model_run(struct aom_denoise_and_model_t *ctx,
                               aom_film_grain_t *film_grain) {
   const int block_size = ctx->block_size;
   uint8_t *raw_data[3] = {
-    (uint8_t *)CONVERT_TO_SHORTPTR(sd->y_buffer),
-    (uint8_t *)CONVERT_TO_SHORTPTR(sd->u_buffer),
-    (uint8_t *)CONVERT_TO_SHORTPTR(sd->v_buffer),
+    (uint8_t *)(sd->y_buffer),
+    (uint8_t *)(sd->u_buffer),
+    (uint8_t *)(sd->v_buffer),
   };
   const uint8_t *const data[3] = { raw_data[0], raw_data[1], raw_data[2] };
   int strides[3] = { sd->y_stride, sd->uv_stride, sd->uv_stride };
