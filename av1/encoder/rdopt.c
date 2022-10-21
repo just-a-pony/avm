@@ -14,7 +14,6 @@
 #include <math.h>
 #include <stdbool.h>
 
-#include "av1/common/tip.h"
 #include "config/aom_config.h"
 #include "config/aom_dsp_rtcd.h"
 #include "config/av1_rtcd.h"
@@ -41,6 +40,9 @@
 #include "av1/common/reconintra.h"
 #include "av1/common/scan.h"
 #include "av1/common/seg_common.h"
+#if CONFIG_TIP
+#include "av1/common/tip.h"
+#endif
 #include "av1/common/txb_common.h"
 #include "av1/common/warped_motion.h"
 

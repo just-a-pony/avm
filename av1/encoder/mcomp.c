@@ -229,7 +229,7 @@ void av1_make_default_subpel_ms_params(SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
 #endif
                                        const int *cost_list) {
 
-#if CONFIG_ADAPTIVE_MVD
+#if CONFIG_ADAPTIVE_MVD || !CONFIG_FLEX_MVRES
   const AV1_COMMON *cm = &cpi->common;
 #endif
 
