@@ -186,7 +186,7 @@ set_aom_config_var(
   "AV2 experiment flag to enable modified context derivation : CWG-B065.")
 set_aom_config_var(CONFIG_EXTENDED_WARP_PREDICTION 1
                    "AV2 experiment flag to add new local warp modes")
-set_aom_config_var(CONFIG_WARP_REF_LIST 0
+set_aom_config_var(CONFIG_WARP_REF_LIST 1
                    "AV2 experiment flag to improve warp-delta mode")
 
 # Source of throughput analysis : CWG-B065
