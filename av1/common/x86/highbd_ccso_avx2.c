@@ -527,7 +527,7 @@ void ccso_filter_block_hbd_with_buf_avx2(
 
       lut_idx_ext = _mm256_add_epi16(lut_idx_ext, cur_src_cls1_final);
 
-      uint16_t offset_idx[16];
+      DECLARE_ALIGNED(32, uint16_t, offset_idx[16]);
       int16_t offset_array[16];
       _mm256_store_si256((__m256i *)offset_idx, lut_idx_ext);
       for (int i = 0; i < 16; i++) {
