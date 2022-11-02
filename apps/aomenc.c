@@ -1068,6 +1068,13 @@ static int parse_stream_params(struct AvxEncoderConfig *global,
       config->write_ivf = 0;
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.threads, argi)) {
       config->cfg.g_threads = arg_parse_uint(&arg);
+#if !CONFIG_MULTITHREAD
+      if (config->cfg.g_threads > 1) {
+        die("Error: --threads=%d is not supported when CONFIG_MULTITHREAD = "
+            "0.\n",
+            config->cfg.g_threads);
+      }
+#endif
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.profile, argi)) {
       config->cfg.g_profile = arg_parse_uint(&arg);
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.width, argi)) {
