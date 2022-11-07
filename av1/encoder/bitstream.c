@@ -1787,7 +1787,9 @@ static void write_pb_mv_precision(const AV1_COMMON *const cm,
   assert(av1_get_mbmi_max_mv_precision(cm, xd->sbi, mbmi) ==
          mbmi->max_mv_precision);
 
+#if !CONFIG_C071_SUBBLK_WARPMV
   assert(check_mv_precision(cm, mbmi));
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
   const int down_ctx = av1_get_pb_mv_precision_down_context(cm, xd);
 

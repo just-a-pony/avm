@@ -511,9 +511,15 @@ static INLINE int get_mv_cost_with_precision(
 #if BUGFIX_AMVD_AMVR
   if (!is_adaptive_mvd)
 #endif
-    lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+    if (pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+      lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { mv.row - low_prec_ref_mv.row,
                     mv.col - low_prec_ref_mv.col };
+#if CONFIG_C071_SUBBLK_WARPMV
+  assert(is_this_mv_precision_compliant(diff, pb_mv_precision));
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   if (mvcost) {
     return (int)ROUND_POWER_OF_TWO_64(
@@ -586,9 +592,15 @@ static INLINE int mv_err_cost(const MV mv,
 #if BUGFIX_AMVD_AMVR
   if (!mv_cost_params->is_adaptive_mvd)
 #endif
-    lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+    if (pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+      lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { mv.row - low_prec_ref_mv.row,
                     mv.col - low_prec_ref_mv.col };
+#if CONFIG_C071_SUBBLK_WARPMV
+  assert(is_this_mv_precision_compliant(diff, pb_mv_precision));
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
 #endif
 
@@ -1062,7 +1074,10 @@ int av1_get_mv_err_cost(const MV *mv, const MV_COST_PARAMS *mv_cost_params) {
 static INLINE int get_mvpred_var_cost(
     const FULLPEL_MOTION_SEARCH_PARAMS *ms_params, const FULLPEL_MV *this_mv) {
   const aom_variance_fn_ptr_t *vfp = ms_params->vfp;
-  const MV sub_this_mv = get_mv_from_fullmv(this_mv);
+#if !CONFIG_C071_SUBBLK_WARPMV
+  const
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
+      MV sub_this_mv = get_mv_from_fullmv(this_mv);
   const struct buf_2d *const src = ms_params->ms_buffers.src;
   const struct buf_2d *const ref = ms_params->ms_buffers.ref;
   const uint16_t *src_buf = src->buf;
@@ -1075,6 +1090,15 @@ static INLINE int get_mvpred_var_cost(
   bestsme = vfp->vf(src_buf, src_stride, get_buf_from_fullmv(ref, this_mv),
                     ref_stride, &unused);
 #if CONFIG_FLEX_MVRES
+#if CONFIG_C071_SUBBLK_WARPMV
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(*ms_params->mv_cost_params.ref_mv, &sub_mv_offset,
+                    ms_params->mv_cost_params.pb_mv_precision);
+  if (ms_params->mv_cost_params.pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    sub_this_mv.col += sub_mv_offset.col;
+    sub_this_mv.row += sub_mv_offset.row;
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   bestsme += mv_err_cost(sub_this_mv, &ms_params->mv_cost_params);
 #else
   bestsme += mv_err_cost_(&sub_this_mv, &ms_params->mv_cost_params);
@@ -1120,8 +1144,20 @@ static INLINE int get_mvpred_compound_var_cost(
                       ref_stride, &unused);
   }
 
-  const MV sub_this_mv = get_mv_from_fullmv(this_mv);
+#if !CONFIG_C071_SUBBLK_WARPMV
+  const
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
+      MV sub_this_mv = get_mv_from_fullmv(this_mv);
 #if CONFIG_FLEX_MVRES
+#if CONFIG_C071_SUBBLK_WARPMV
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(*ms_params->mv_cost_params.ref_mv, &sub_mv_offset,
+                    ms_params->mv_cost_params.pb_mv_precision);
+  if (ms_params->mv_cost_params.pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    sub_this_mv.col += sub_mv_offset.col;
+    sub_this_mv.row += sub_mv_offset.row;
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   bestsme += mv_err_cost(sub_this_mv, &ms_params->mv_cost_params);
 #else
   bestsme += mv_err_cost_(&sub_this_mv, &ms_params->mv_cost_params);
@@ -3018,7 +3054,19 @@ static INLINE int get_obmc_mvpred_var(
   const int32_t *mask = ms_buffers->obmc_mask;
   const struct buf_2d *ref_buf = ms_buffers->ref;
 
-  const MV mv = get_mv_from_fullmv(this_mv);
+#if !CONFIG_C071_SUBBLK_WARPMV
+  const
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
+      MV mv = get_mv_from_fullmv(this_mv);
+#if CONFIG_C071_SUBBLK_WARPMV
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(*mv_cost_params->ref_mv, &sub_mv_offset,
+                    mv_cost_params->pb_mv_precision);
+  if (mv_cost_params->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    mv.col += sub_mv_offset.col;
+    mv.row += sub_mv_offset.row;
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   unsigned int unused;
 
   return vfp->ovf(get_buf_from_fullmv(ref_buf, this_mv), ref_buf->stride, wsrc,
@@ -3844,12 +3892,19 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
 
 #if CONFIG_FLEX_MVRES
-  lower_mv_precision(&ref_mv, mbmi->pb_mv_precision);
-  // We are not signaling other_mv. So frame level precision should be okay.
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+    lower_mv_precision(&ref_mv, mbmi->pb_mv_precision);
+    // We are not signaling other_mv. So frame level precision should be okay.
+#if !CONFIG_C071_SUBBLK_WARPMV
   lower_mv_precision(other_mv, cm->features.fr_mv_precision);
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #else
+#if !CONFIG_C071_SUBBLK_WARPMV
   lower_mv_precision(other_mv, allow_hp,
                      cm->features.cur_frame_force_integer_mv);
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #endif
 
   // How many steps to take. A round of 0 means fullpel search only, 1 means
@@ -3870,6 +3925,17 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 
   *bestmv = *start_mv;
   *best_other_mv = *other_mv;
+
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (mbmi->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    FULLPEL_MV tmp_full_bestmv = get_fullmv_from_mv(bestmv);
+    *bestmv = get_mv_from_fullmv(&tmp_full_bestmv);
+    MV sub_mv_offset = { 0, 0 };
+    get_phase_from_mv(ref_mv, &sub_mv_offset, mbmi->pb_mv_precision);
+    bestmv->col += sub_mv_offset.col;
+    bestmv->row += sub_mv_offset.row;
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   const int same_side = is_ref_frame_same_side(cm, mbmi);
 
@@ -3924,12 +3990,14 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #if CONFIG_IMPROVED_JMVD
         scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode);
 #endif  // CONFIG_IMPROVED_JMVD
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
         lower_mv_precision(&other_mvd, cm->features.fr_mv_precision);
 #else
         lower_mv_precision(&other_mvd, allow_hp,
                            cm->features.cur_frame_force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
         other_cand_mv.row = (int)(other_mv->row + other_mvd.row);
         other_cand_mv.col = (int)(other_mv->col + other_mvd.col);
@@ -3985,6 +4053,9 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
     // mv cost of top, left, right, bottom
     int mvcost[5] = { INT_MAX, INT_MAX, INT_MAX, INT_MAX, INT_MAX };
     for (int i = 0; i < 5; ++i) {
+#if CONFIG_C071_SUBBLK_WARPMV
+      if (av1_is_subpelmv_in_range(mv_limits, iter_center_mv) == 0) continue;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
       if (i < 4) {
         cur_mvd.row = cand_pos[i][0] * hstep;
         cur_mvd.col = cand_pos[i][1] * hstep;
@@ -3995,6 +4066,9 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       MV other_mvd = { 0, 0 };
       candidate_mv[0].row = iter_center_mv.row + cur_mvd.row;
       candidate_mv[0].col = iter_center_mv.col + cur_mvd.col;
+#if CONFIG_C071_SUBBLK_WARPMV
+      if (av1_is_subpelmv_in_range(mv_limits, candidate_mv[0]) == 0) continue;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
       const MV final_mvd = { candidate_mv[0].row - ref_mv.row,
                              candidate_mv[0].col - ref_mv.col };
@@ -4004,12 +4078,14 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode);
 #endif  // CONFIG_IMPROVED_JMVD
 
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
       lower_mv_precision(&other_mvd, cm->features.fr_mv_precision);
 #else
       lower_mv_precision(&other_mvd, allow_hp,
                          cm->features.cur_frame_force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
       candidate_mv[1].row = (int)(other_mv->row + other_mvd.row);
       candidate_mv[1].col = (int)(other_mv->col + other_mvd.col);
@@ -4030,6 +4106,10 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
     }
     hstep >>= 1;
   }
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (av1_is_subpelmv_in_range(&ms_params->mv_limits, *bestmv) == 0)
+    besterr = INT_MAX;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   return besterr;
 }
 
@@ -4050,9 +4130,14 @@ int low_precision_joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   // perform prediction for second MV
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
 
-  lower_mv_precision(&ref_mv, mbmi->pb_mv_precision);
-  // We are not signaling other_mv. So frame level precision should be okay.
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif
+    lower_mv_precision(&ref_mv, mbmi->pb_mv_precision);
+    // We are not signaling other_mv. So frame level precision should be okay.
+#if !CONFIG_C071_SUBBLK_WARPMV
   lower_mv_precision(other_mv, cm->features.fr_mv_precision);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   unsigned int besterr = INT_MAX;
 
@@ -4106,7 +4191,9 @@ int low_precision_joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #if CONFIG_IMPROVED_JMVD
         scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode);
 #endif  // CONFIG_IMPROVED_JMVD
+#if !CONFIG_C071_SUBBLK_WARPMV
         lower_mv_precision(&other_mvd, cm->features.fr_mv_precision);
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
         other_cand_mv.row = (int)(other_mv->row + other_mvd.row);
         other_cand_mv.col = (int)(other_mv->col + other_mvd.col);
@@ -4279,14 +4366,20 @@ int av1_joint_amvd_motion_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #if CONFIG_FLEX_MVRES
 #if BUGFIX_AMVD_AMVR
   set_amvd_mv_precision(mbmi, mbmi->max_mv_precision);
+#if !CONFIG_C071_SUBBLK_WARPMV
   lower_mv_precision(other_mv, cm->features.fr_mv_precision);
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #else
   assert(mbmi->pb_mv_precision == mbmi->max_mv_precision);
+#if !CONFIG_C071_SUBBLK_WARPMV
   lower_mv_precision(other_mv, mbmi->pb_mv_precision);
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #endif
 #else
+#if !CONFIG_C071_SUBBLK_WARPMV
   lower_mv_precision(other_mv, allow_hp,
                      cm->features.cur_frame_force_integer_mv);
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #endif
 
   // How many steps to take. A round of 0 means fullpel search only, 1 means
@@ -4343,6 +4436,7 @@ int av1_joint_amvd_motion_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #if CONFIG_IMPROVED_JMVD
       scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode);
 #endif  // CONFIG_IMPROVED_JMVD
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
       lower_mv_precision(&other_mvd,
 #if BUGFIX_AMVD_AMVR
@@ -4354,6 +4448,7 @@ int av1_joint_amvd_motion_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       lower_mv_precision(&other_mvd, allow_hp_mvd,
                          cm->features.cur_frame_force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
       candidate_mv[1].row = (int)(other_mv->row + other_mvd.row);
       candidate_mv[1].col = (int)(other_mv->col + other_mvd.col);
@@ -5929,7 +6024,19 @@ int av1_get_mvpred_sse(const MV_COST_PARAMS *mv_cost_params,
                        const FULLPEL_MV best_mv,
                        const aom_variance_fn_ptr_t *vfp,
                        const struct buf_2d *src, const struct buf_2d *pre) {
-  const MV mv = get_mv_from_fullmv(&best_mv);
+#if !CONFIG_C071_SUBBLK_WARPMV
+  const
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
+      MV mv = get_mv_from_fullmv(&best_mv);
+#if CONFIG_C071_SUBBLK_WARPMV
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(*mv_cost_params->ref_mv, &sub_mv_offset,
+                    mv_cost_params->pb_mv_precision);
+  if (mv_cost_params->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    mv.col += sub_mv_offset.col;
+    mv.row += sub_mv_offset.row;
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   unsigned int sse, var;
 
   var = vfp->vf(src->buf, src->stride, get_buf_from_fullmv(pre, &best_mv),
@@ -5948,7 +6055,19 @@ static INLINE int get_mvpred_av_var(const MV_COST_PARAMS *mv_cost_params,
                                     const aom_variance_fn_ptr_t *vfp,
                                     const struct buf_2d *src,
                                     const struct buf_2d *pre) {
-  const MV mv = get_mv_from_fullmv(&best_mv);
+#if !CONFIG_C071_SUBBLK_WARPMV
+  const
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
+      MV mv = get_mv_from_fullmv(&best_mv);
+#if CONFIG_C071_SUBBLK_WARPMV
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(*mv_cost_params->ref_mv, &sub_mv_offset,
+                    mv_cost_params->pb_mv_precision);
+  if (mv_cost_params->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    mv.col += sub_mv_offset.col;
+    mv.row += sub_mv_offset.row;
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   unsigned int unused;
 
   return vfp->svaf(get_buf_from_fullmv(pre, &best_mv), pre->stride, 0, 0,
@@ -5965,7 +6084,19 @@ static INLINE int get_mvpred_mask_var(
     const uint16_t *second_pred, const uint8_t *mask, int mask_stride,
     int invert_mask, const aom_variance_fn_ptr_t *vfp, const struct buf_2d *src,
     const struct buf_2d *pre) {
-  const MV mv = get_mv_from_fullmv(&best_mv);
+#if !CONFIG_C071_SUBBLK_WARPMV
+  const
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
+      MV mv = get_mv_from_fullmv(&best_mv);
+#if CONFIG_C071_SUBBLK_WARPMV
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(*mv_cost_params->ref_mv, &sub_mv_offset,
+                    mv_cost_params->pb_mv_precision);
+  if (mv_cost_params->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    mv.col += sub_mv_offset.col;
+    mv.row += sub_mv_offset.row;
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   unsigned int unused;
 
   return vfp->msvf(get_buf_from_fullmv(pre, &best_mv), pre->stride, 0, 0,

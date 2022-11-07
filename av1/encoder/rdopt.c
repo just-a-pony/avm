@@ -563,6 +563,9 @@ typedef struct InterModeSearchState {
   int64_t best_rd;
   int64_t best_skip_rd[2];
   MB_MODE_INFO best_mbmode;
+#if CONFIG_C071_SUBBLK_WARPMV
+  SUBMB_INFO best_submb[MAX_MIB_SIZE * MAX_MIB_SIZE];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   int best_rate_y;
   int best_rate_uv;
   int best_mode_skippable;
@@ -735,15 +738,23 @@ static AOM_INLINE void inter_mode_data_push(TileDataEnc *tile_data,
   }
 }
 
-static AOM_INLINE void inter_modes_info_push(InterModesInfo *inter_modes_info,
-                                             int mode_rate, int64_t sse,
-                                             int64_t rd, RD_STATS *rd_cost,
-                                             RD_STATS *rd_cost_y,
-                                             RD_STATS *rd_cost_uv,
-                                             const MB_MODE_INFO *mbmi) {
+static AOM_INLINE void inter_modes_info_push(
+    InterModesInfo *inter_modes_info, int mode_rate, int64_t sse, int64_t rd,
+    RD_STATS *rd_cost, RD_STATS *rd_cost_y, RD_STATS *rd_cost_uv,
+    const MB_MODE_INFO *mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+    ,
+    MACROBLOCKD *xd, const AV1_COMMON *const cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+) {
   const int num = inter_modes_info->num;
   assert(num < MAX_INTER_MODES);
   inter_modes_info->mbmi_arr[num] = *mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (is_warp_mode(mbmi->motion_mode))
+    store_submi(xd, cm, inter_modes_info->submi_arr[num],
+                mbmi->sb_type[PLANE_TYPE_Y]);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   inter_modes_info->mode_rate_arr[num] = mode_rate;
   inter_modes_info->sse_arr[num] = sse;
   inter_modes_info->est_rd_arr[num] = rd;
@@ -1306,13 +1317,54 @@ static AOM_INLINE void estimate_ref_frame_costs(
   }
 }
 
+#if CONFIG_C071_SUBBLK_WARPMV
+void store_submi(const MACROBLOCKD *const xd, const AV1_COMMON *cm,
+                 SUBMB_INFO *dst_submi, BLOCK_SIZE bsize) {
+  const int bw = mi_size_wide[bsize];
+  const int bh = mi_size_high[bsize];
+  const int mi_row = xd->mi_row;
+  const int mi_col = xd->mi_col;
+  const int x_inside_boundary = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
+  const int y_inside_boundary = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
+  const int dst_stride = MAX_MIB_SIZE;
+  const int src_stride = cm->mi_params.mi_stride;
+  for (int y = 0; y < y_inside_boundary; y++) {
+    for (int x = 0; x < x_inside_boundary; x++) {
+      dst_submi[y * dst_stride + x] = *xd->submi[y * src_stride + x];
+    }
+  }
+}
+
+void update_submi(MACROBLOCKD *const xd, const AV1_COMMON *cm,
+                  const SUBMB_INFO *src_submi, BLOCK_SIZE bsize) {
+  const int bw = mi_size_wide[bsize];
+  const int bh = mi_size_high[bsize];
+  const int mi_row = xd->mi_row;
+  const int mi_col = xd->mi_col;
+  const int x_inside_boundary = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
+  const int y_inside_boundary = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
+  const int src_stride = MAX_MIB_SIZE;
+  const int dst_stride = cm->mi_params.mi_stride;
+  for (int y = 0; y < y_inside_boundary; y++) {
+    for (int x = 0; x < x_inside_boundary; x++) {
+      *xd->submi[y * dst_stride + x] = src_submi[y * src_stride + x];
+    }
+  }
+}
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+
 static AOM_INLINE void store_coding_context(
 #if CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
     MACROBLOCK *x, PICK_MODE_CONTEXT *ctx, int mode_index,
 #else
     MACROBLOCK *x, PICK_MODE_CONTEXT *ctx,
 #endif  // CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
-    int64_t comp_pred_diff[REFERENCE_MODES], int skippable) {
+    int64_t comp_pred_diff[REFERENCE_MODES], int skippable
+#if CONFIG_C071_SUBBLK_WARPMV
+    ,
+    const AV1_COMMON *cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+) {
   MACROBLOCKD *const xd = &x->e_mbd;
 
   // Take a snapshot of the coding context so it can be
@@ -1323,6 +1375,11 @@ static AOM_INLINE void store_coding_context(
   ctx->best_mode_index = mode_index;
 #endif  // CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
   ctx->mic = *xd->mi[0];
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (is_warp_mode(xd->mi[0]->motion_mode)) {
+    store_submi(xd, cm, ctx->submic, xd->mi[0]->sb_type[PLANE_TYPE_Y]);
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   if (xd->tree_type != CHROMA_PART)
     av1_copy_mbmi_ext_to_mbmi_ext_frame(
         &ctx->mbmi_ext_best, x->mbmi_ext,
@@ -1382,7 +1439,6 @@ static AOM_INLINE void setup_buffer_ref_mvs_inter(
 #endif  // CONFIG_WARP_REF_LIST
 
   );
-
   // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
   // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
   av1_copy_usable_ref_mv_stack_and_weight(xd, mbmi_ext, ref_frame);
@@ -1490,8 +1546,12 @@ static int skip_repeated_mv(const AV1_COMMON *const cm,
 static INLINE int clamp_and_check_mv(int_mv *out_mv, int_mv in_mv,
                                      const AV1_COMMON *cm,
                                      const MACROBLOCK *x) {
+#if CONFIG_C071_SUBBLK_WARPMV
+  (void)cm;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   const MACROBLOCKD *const xd = &x->e_mbd;
   *out_mv = in_mv;
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
   // This function is called only for non-NEW MV modes.
   // Therefore, PB based MV resolution  is not necessary.
@@ -1500,6 +1560,7 @@ static INLINE int clamp_and_check_mv(int_mv *out_mv, int_mv in_mv,
   lower_mv_precision(&out_mv->as_mv, cm->features.allow_high_precision_mv,
                      cm->features.cur_frame_force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
   clamp_mv2(&out_mv->as_mv, xd);
   return av1_is_fullmv_in_range(&x->mv_limits,
                                 get_fullmv_from_mv(&out_mv->as_mv)
@@ -2214,6 +2275,11 @@ static int64_t motion_mode_rd(
 
   const MB_MODE_INFO base_mbmi = *mbmi;
   MB_MODE_INFO best_mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+  SUBMB_INFO best_submi[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  SUBMB_INFO base_submi[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  store_submi(xd, cm, base_submi, bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   const int interp_filter = features->interp_filter;
   const int switchable_rate =
       av1_is_interp_needed(cm, xd)
@@ -2277,6 +2343,9 @@ static int64_t motion_mode_rd(
       int tmp_rate_mv = rate_mv0;
 
       *mbmi = base_mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+      update_submi(xd, cm, base_submi, bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_WARP_REF_LIST
       mbmi->warp_ref_idx = warp_ref_idx;
       mbmi->max_num_warp_candidates =
@@ -2409,8 +2478,11 @@ static int64_t motion_mode_rd(
               tmp_rate2 = rate2_nocoeff - rate_mv0 + tmp_rate_mv;
             }
           }
-
-          // Build the warped predictor
+#if CONFIG_C071_SUBBLK_WARPMV
+          assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params[0], mi_row,
+                        mi_col);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        // Build the warped predictor
           av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
                                         av1_num_planes(cm) - 1);
         } else {
@@ -2496,7 +2568,10 @@ static int64_t motion_mode_rd(
 
           tmp_rate2 = rate2_nocoeff - rate_mv0 + tmp_rate_mv;
         }
-
+#if CONFIG_C071_SUBBLK_WARPMV
+        assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params[0], mi_row,
+                      mi_col);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
         av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
                                       av1_num_planes(cm) - 1);
       } else if (mbmi->motion_mode == WARP_EXTEND) {
@@ -2576,7 +2651,18 @@ static int64_t motion_mode_rd(
                 &neighbor_params, features->allow_high_precision_mv, bsize,
                 mi_col, mi_row, features->cur_frame_force_integer_mv);
 #endif
-            // Check that the prediction is in range
+#if CONFIG_C071_SUBBLK_WARPMV
+            if (mbmi->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+              FULLPEL_MV tmp_full_mv = get_fullmv_from_mv(&mbmi->mv[0].as_mv);
+              MV tmp_sub_mv = get_mv_from_fullmv(&tmp_full_mv);
+              MV sub_mv_offset = { 0, 0 };
+              get_phase_from_mv(ref_mv.as_mv, &sub_mv_offset,
+                                mbmi->pb_mv_precision);
+              mbmi->mv[0].as_mv.col = tmp_sub_mv.col + sub_mv_offset.col;
+              mbmi->mv[0].as_mv.row = tmp_sub_mv.row + sub_mv_offset.row;
+            }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        // Check that the prediction is in range
             if (!av1_is_subpelmv_in_range(mv_limits, mbmi->mv[0].as_mv)) {
               continue;
             }
@@ -2627,7 +2713,10 @@ static int64_t motion_mode_rd(
             mbmi->wm_params[0] = wm_params0;
           }
         }
-
+#if CONFIG_C071_SUBBLK_WARPMV
+        assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params[0], mi_row,
+                      mi_col);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
         // Build the warped predictor
         av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
                                       av1_num_planes(cm) - 1);
@@ -2774,13 +2863,23 @@ static int64_t motion_mode_rd(
             assert(curr_sse >= 0);
             inter_modes_info_push(inter_modes_info, mode_rate, curr_sse,
                                   rd_stats->rdcost, rd_stats, rd_stats_y,
-                                  rd_stats_uv, mbmi);
+                                  rd_stats_uv, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                                  ,
+                                  xd, cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+            );
           }
         } else {
           assert(curr_sse >= 0);
           inter_modes_info_push(inter_modes_info, mode_rate, curr_sse,
                                 rd_stats->rdcost, rd_stats, rd_stats_y,
-                                rd_stats_uv, mbmi);
+                                rd_stats_uv, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                                ,
+                                xd, cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+          );
         }
         mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
       } else {
@@ -2844,6 +2943,11 @@ static int64_t motion_mode_rd(
       if (mode_index == 0 || tmp_rd < best_rd) {
         // Update best_rd data if this is the best motion mode so far
         best_mbmi = *mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+        if (is_warp_mode(mbmi->motion_mode)) {
+          store_submi(xd, cm, best_submi, bsize);
+        }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
         best_rd = tmp_rd;
         best_rd_stats = *rd_stats;
         best_rd_stats_y = *rd_stats_y;
@@ -2868,6 +2972,9 @@ static int64_t motion_mode_rd(
     return INT64_MAX;
   }
   *mbmi = best_mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (is_warp_mode(mbmi->motion_mode)) update_submi(xd, cm, best_submi, bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   *rd_stats = best_rd_stats;
   *rd_stats_y = best_rd_stats_y;
   if (num_planes > 1) *rd_stats_uv = best_rd_stats_uv;
@@ -3028,23 +3135,27 @@ static INLINE int build_cur_mv(int_mv *cur_mv, PREDICTION_MODE this_mode,
         xd->skip_mvp_candidate_list.ref_mv_stack[mbmi->ref_mv_idx].this_mv;
 
     cur_mv[0] = this_mv;
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
     lower_mv_precision(&cur_mv[0].as_mv, mbmi->pb_mv_precision);
 #else
     lower_mv_precision(&cur_mv[0].as_mv, cm->features.allow_high_precision_mv,
                        cm->features.cur_frame_force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
     ret &= clamp_and_check_mv(cur_mv, this_mv, cm, x);
 
     this_mv =
         xd->skip_mvp_candidate_list.ref_mv_stack[mbmi->ref_mv_idx].comp_mv;
     cur_mv[1] = this_mv;
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
     lower_mv_precision(&cur_mv[1].as_mv, mbmi->pb_mv_precision);
 #else
     lower_mv_precision(&cur_mv[1].as_mv, cm->features.allow_high_precision_mv,
                        cm->features.cur_frame_force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
     ret &= clamp_and_check_mv(cur_mv + 1, this_mv, cm, x);
 
     return ret;
@@ -3386,7 +3497,10 @@ static int skip_similar_ref_mv(AV1_COMP *const cpi, MACROBLOCK *x,
               ? mbmi_ext->ref_mv_stack[ref_frame_type][mbmi->ref_mv_idx].this_mv
               : mbmi_ext->ref_mv_stack[ref_frame_type][mbmi->ref_mv_idx]
                     .comp_mv;
-      lower_mv_precision(&this_refmv[i].as_mv, mbmi->pb_mv_precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+      if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        lower_mv_precision(&this_refmv[i].as_mv, mbmi->pb_mv_precision);
     }
 
     for (int prev_ref_mv_idx = 0; prev_ref_mv_idx < mbmi->ref_mv_idx;
@@ -3401,7 +3515,10 @@ static int skip_similar_ref_mv(AV1_COMP *const cpi, MACROBLOCK *x,
                            .this_mv
                      : mbmi_ext->ref_mv_stack[ref_frame_type][prev_ref_mv_idx]
                            .comp_mv;
-        lower_mv_precision(&prev_refmv[i].as_mv, mbmi->pb_mv_precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+        if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+          lower_mv_precision(&prev_refmv[i].as_mv, mbmi->pb_mv_precision);
       }
       int prev_refmv_same_as_curr_ref_mv =
           (this_refmv[0].as_int == prev_refmv[0].as_int);
@@ -4168,6 +4285,10 @@ static int64_t handle_inter_mode(
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   MB_MODE_INFO best_mbmi = *mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+  SUBMB_INFO best_submi[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  store_submi(xd, cm, best_submi, bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   int best_xskip_txfm = 0;
   int64_t newmv_ret_val = INT64_MAX;
 #if CONFIG_FLEX_MVRES
@@ -4452,6 +4573,27 @@ static int64_t handle_inter_mode(
 
           if (newmv_ret_val != 0) continue;
 
+#if CONFIG_C071_SUBBLK_WARPMV
+          int mv_outlim = 0;
+          for (int ref = 0; ref < is_comp_pred + 1; ref++) {
+            const PREDICTION_MODE single_mode = get_single_mode(this_mode, ref);
+            if (single_mode == NEWMV) {
+              SUBPEL_MOTION_SEARCH_PARAMS ms_params;
+              MV ref_mv = av1_get_ref_mv(x, ref).as_mv;
+              if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
+                lower_mv_precision(&ref_mv, mbmi->pb_mv_precision);
+              av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize,
+                                                &ref_mv, pb_mv_precision, NULL);
+              if (!av1_is_subpelmv_in_range(&ms_params.mv_limits,
+                                            cur_mv[ref].as_mv)) {
+                mv_outlim = 1;
+                break;
+              }
+            }
+          }
+          if (mv_outlim) continue;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+
             // skip NEWMV mode in drl if the motion search result is the same
             // as a previous result
 #if CONFIG_FLEX_MVRES
@@ -4511,7 +4653,12 @@ static int64_t handle_inter_mode(
         }
 
 #if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi));
+        assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                                  ,
+                                  x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                  ));
 #endif
 
         const int like_nearest = (mbmi->mode == NEARMV ||
@@ -4560,7 +4707,12 @@ static int64_t handle_inter_mode(
         }
 
 #if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi));
+        assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                                  ,
+                                  x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                  ));
 #endif
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
@@ -4576,7 +4728,12 @@ static int64_t handle_inter_mode(
             &skip_build_pred, args, ref_best_rd);
 
 #if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi));
+        assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                                  ,
+                                  x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                  ));
 #endif
 #if CONFIG_COLLECT_COMPONENT_TIMING
         end_timing(cpi, interpolation_filter_search_time);
@@ -4636,7 +4793,12 @@ static int64_t handle_inter_mode(
                        ret_val == INT64_MAX));
 
 #if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi));
+        assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                                  ,
+                                  x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                  ));
 #endif
 
         if (ret_val != INT64_MAX) {
@@ -4676,6 +4838,11 @@ static int64_t handle_inter_mode(
             best_rd_stats_uv = *rd_stats_uv;
             best_rd = tmp_rd;
             best_mbmi = *mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+            if (is_warp_mode(mbmi->motion_mode)) {
+              store_submi(xd, cm, best_submi, bsize);
+            }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
             best_xskip_txfm = txfm_info->skip_txfm;
             memcpy(best_blk_skip, txfm_info->blk_skip,
                    sizeof(best_blk_skip[0]) * xd->height * xd->width);
@@ -4685,7 +4852,12 @@ static int64_t handle_inter_mode(
             motion_mode_cand->rate2_nocoeff = rate2_nocoeff;
           }
 #if CONFIG_FLEX_MVRES
-          assert(check_mv_precision(cm, mbmi));
+          assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                                    ,
+                                    x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                    ));
 #endif
 
           if (tmp_rd < ref_best_rd) {
@@ -4709,6 +4881,9 @@ static int64_t handle_inter_mode(
   *rd_stats_y = best_rd_stats_y;
   *rd_stats_uv = best_rd_stats_uv;
   *mbmi = best_mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (is_warp_mode(mbmi->motion_mode)) update_submi(xd, cm, best_submi, bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   txfm_info->skip_txfm = best_xskip_txfm;
   assert(IMPLIES(mbmi->comp_group_idx == 1,
                  mbmi->interinter_comp.type != COMPOUND_AVERAGE));
@@ -6678,6 +6853,10 @@ static AOM_INLINE void init_inter_mode_search_state(
   search_state->best_skip_rd[1] = INT64_MAX;
 
   av1_zero(search_state->best_mbmode);
+#if CONFIG_C071_SUBBLK_WARPMV
+  memset(search_state->best_submb, 0,
+         MAX_MIB_SIZE * MAX_MIB_SIZE * sizeof(*search_state->best_submb));
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   search_state->best_mbmode.mode = MODE_INVALID;
 
@@ -7001,6 +7180,14 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
   mbmi->max_num_warp_candidates = 0;
 #endif  // CONFIG_WARP_REF_LIST
 }
+
+#if CONFIG_C071_SUBBLK_WARPMV
+static INLINE void init_submi(MACROBLOCKD *const xd, AV1_COMMON *const cm,
+                              int mi_row, int mi_col, BLOCK_SIZE bsize) {
+  xd->submi[0]->mv[0].as_int = xd->submi[0]->mv[1].as_int = 0;
+  span_submv(cm, xd->submi, mi_row, mi_col, bsize);
+}
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
 static AOM_INLINE void collect_single_states(const AV1_COMMON *const cm,
                                              MACROBLOCK *x,
@@ -7367,7 +7554,12 @@ static INLINE void update_search_state(
     InterModeSearchState *search_state, RD_STATS *best_rd_stats_dst,
     PICK_MODE_CONTEXT *ctx, const RD_STATS *new_best_rd_stats,
     const RD_STATS *new_best_rd_stats_y, const RD_STATS *new_best_rd_stats_uv,
-    PREDICTION_MODE new_best_mode, const MACROBLOCK *x, int txfm_search_done) {
+    PREDICTION_MODE new_best_mode, const MACROBLOCK *x, int txfm_search_done
+#if CONFIG_C071_SUBBLK_WARPMV
+    ,
+    const AV1_COMMON *const cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+) {
   const MACROBLOCKD *xd = &x->e_mbd;
   const MB_MODE_INFO *mbmi = xd->mi[0];
   const int skip_ctx = av1_get_skip_txfm_context(xd);
@@ -7379,6 +7571,11 @@ static INLINE void update_search_state(
   search_state->best_rd = new_best_rd_stats->rdcost;
   *best_rd_stats_dst = *new_best_rd_stats;
   search_state->best_mbmode = *mbmi;
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (is_warp_mode(mbmi->motion_mode)) {
+    store_submi(xd, cm, search_state->best_submb, mbmi->sb_type[PLANE_TYPE_Y]);
+  }
+#endif
   search_state->best_skip2 = skip_txfm;
   search_state->best_mode_skippable = new_best_rd_stats->skip_txfm;
   // When !txfm_search_done, new_best_rd_stats won't provide correct rate_y
@@ -7518,7 +7715,12 @@ static AOM_INLINE void evaluate_motion_mode_for_winner_candidates(
           cpi->sf.winner_mode_sf.multi_winner_mode_type, do_tx_search);
       if (rd_stats.rdcost < search_state->best_rd) {
         update_search_state(search_state, rd_cost, ctx, &rd_stats, &rd_stats_y,
-                            &rd_stats_uv, mbmi->mode, x, do_tx_search);
+                            &rd_stats_uv, mbmi->mode, x, do_tx_search
+#if CONFIG_C071_SUBBLK_WARPMV
+                            ,
+                            cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        );
         if (do_tx_search) search_state->best_skip_rd[0] = skip_rd[0];
       }
     }
@@ -7732,6 +7934,10 @@ static void tx_search_best_inter_candidates(
   for (int j = 0; j < inter_modes_info->num; ++j) {
     const int data_idx = inter_modes_info->rd_idx_pair_arr[j].idx;
     *mbmi = inter_modes_info->mbmi_arr[data_idx];
+#if CONFIG_C071_SUBBLK_WARPMV
+    if (is_warp_mode(mbmi->motion_mode))
+      update_submi(xd, cm, inter_modes_info->submi_arr[data_idx], bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
     int64_t curr_est_rd = inter_modes_info->est_rd_arr[data_idx];
     if (curr_est_rd * 0.80 > top_est_rd) break;
 
@@ -7800,7 +8006,12 @@ static void tx_search_best_inter_candidates(
 
     if (rd_stats.rdcost < search_state->best_rd) {
       update_search_state(search_state, rd_cost, ctx, &rd_stats, &rd_stats_y,
-                          &rd_stats_uv, mbmi->mode, x, txfm_search_done);
+                          &rd_stats_uv, mbmi->mode, x, txfm_search_done
+#if CONFIG_C071_SUBBLK_WARPMV
+                          ,
+                          cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+      );
       search_state->best_skip_rd[0] = skip_rd;
     }
   }
@@ -8206,6 +8417,10 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
     );
 #endif  // CONFIG_IBC_SR_EXT
 
+#if CONFIG_C071_SUBBLK_WARPMV
+        init_submi(xd, cm, mi_row, mi_col, bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+
 #if CONFIG_FLEX_MVRES
         set_mv_precision(mbmi, mbmi->max_mv_precision);
         if (is_pb_mv_precision_active(cm, mbmi, bsize))
@@ -8367,7 +8582,12 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #endif  // CONFIG_NEW_REF_SIGNALING || CONFIG_TIP
           update_search_state(&search_state, rd_cost, ctx, &rd_stats,
                               &rd_stats_y, &rd_stats_uv, this_mode, x,
-                              do_tx_search);
+                              do_tx_search
+#if CONFIG_C071_SUBBLK_WARPMV
+                              ,
+                              cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+          );
           if (do_tx_search) search_state.best_skip_rd[0] = skip_rd[0];
           search_state.best_skip_rd[1] = skip_rd[1];
         }
@@ -8575,7 +8795,12 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         if (intra_rd_stats.rdcost < search_state.best_rd) {
           update_search_state(&search_state, rd_cost, ctx, &intra_rd_stats,
                               &intra_rd_stats_y, &intra_rd_stats_uv, this_mode,
-                              x, txfm_search_done);
+                              x, txfm_search_done
+#if CONFIG_C071_SUBBLK_WARPMV
+                              ,
+                              cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+          );
         }
       }
 #if CONFIG_FLEX_MVRES
@@ -8728,10 +8953,20 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   }
   // macroblock modes
   *mbmi = search_state.best_mbmode;
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (is_warp_mode(mbmi->motion_mode)) {
+    update_submi(xd, cm, search_state.best_submb, bsize);
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   assert(av1_check_newmv_joint_nonzero(cm, x));
 
 #if CONFIG_FLEX_MVRES
-  assert(check_mv_precision(cm, mbmi));
+  assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                            ,
+                            x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                            ));
 #endif
 
   txfm_info->skip_txfm |= search_state.best_skip2;
@@ -8756,7 +8991,12 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   }
 
 #if CONFIG_FLEX_MVRES
-  assert(check_mv_precision(cm, mbmi));
+  assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                            ,
+                            x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                            ));
 #endif
 
   txfm_info->skip_txfm |= search_state.best_mode_skippable;
@@ -8780,10 +9020,20 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       search_state.best_mbmode.mode, search_state.best_mbmode.ref_frame[0],
       search_state.best_mbmode.ref_frame[1]);
   store_coding_context(x, ctx, best_mode_enum, search_state.best_pred_diff,
-                       search_state.best_mode_skippable);
+                       search_state.best_mode_skippable
+#if CONFIG_C071_SUBBLK_WARPMV
+                       ,
+                       cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+  );
 #else
   store_coding_context(x, ctx, search_state.best_pred_diff,
-                       search_state.best_mode_skippable);
+                       search_state.best_mode_skippable
+#if CONFIG_C071_SUBBLK_WARPMV
+                       ,
+                       cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+  );
 #endif  // CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
 
   if (mbmi->palette_mode_info.palette_size[1] > 0) {
@@ -8897,7 +9147,12 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
   }
 
 #if CONFIG_FLEX_MVRES
-  assert(check_mv_precision(cm, mbmi));
+  assert(check_mv_precision(cm, mbmi
+#if CONFIG_C071_SUBBLK_WARPMV
+                            ,
+                            x
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                            ));
 #endif
   const InterpFilter interp_filter = features->interp_filter;
   set_default_interp_filters(mbmi,
@@ -8968,9 +9223,19 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
   av1_zero(best_pred_diff);
 
 #if CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
-  store_coding_context(x, ctx, THR_GLOBALMV, best_pred_diff, 0);
+  store_coding_context(x, ctx, THR_GLOBALMV, best_pred_diff, 0
+#if CONFIG_C071_SUBBLK_WARPMV
+                       ,
+                       cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+  );
 #else
-  store_coding_context(x, ctx, best_pred_diff, 0);
+  store_coding_context(x, ctx, best_pred_diff, 0
+#if CONFIG_C071_SUBBLK_WARPMV
+                       ,
+                       cm
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+  );
 #endif  // CONFIG_INTERNAL_STATS && !CONFIG_NEW_REF_SIGNALING
 }
 

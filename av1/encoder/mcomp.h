@@ -539,7 +539,10 @@ static INLINE void av1_set_subpel_mv_search_range(
   //  We have to make sure the generated mv_limits
   //  are compatible with target precision.
   MV low_prec_ref_mv = *ref_mv;
-  lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+    lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   // sub_pel_prec_shift is the number of LSBs need to be 0 to make the
   // mv/mv_limit compatible
   const int sub_pel_prec_shift =

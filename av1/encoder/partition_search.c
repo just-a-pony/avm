@@ -575,7 +575,12 @@ void av1_set_offsets_without_segment_id(const AV1_COMP *const cpi,
   const int mi_height = mi_size_high[bsize];
 
   set_mode_info_offsets(&cpi->common.mi_params, &cpi->mbmi_ext_info, x, xd,
-                        mi_row, mi_col);
+                        mi_row, mi_col
+#if CONFIG_C071_SUBBLK_WARPMV
+                        ,
+                        mi_width, mi_height
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+  );
 
   set_entropy_context(xd, mi_row, mi_col, num_planes);
   xd->above_txfm_context = cm->above_contexts.txfm[tile->tile_row] + mi_col;

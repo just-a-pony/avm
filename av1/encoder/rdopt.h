@@ -399,6 +399,16 @@ static INLINE void av1_copy_mbmi_ext_to_mbmi_ext_frame(
 #endif  // CONFIG_WARP_REF_LIST
 }
 
+#if CONFIG_C071_SUBBLK_WARPMV
+// store submi info into dst_submi
+void store_submi(const MACROBLOCKD *const xd, const AV1_COMMON *cm,
+                 SUBMB_INFO *dst_submi, BLOCK_SIZE bsize);
+
+// update submi from src_submi
+void update_submi(MACROBLOCKD *const xd, const AV1_COMMON *cm,
+                  const SUBMB_INFO *src_submi, BLOCK_SIZE bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

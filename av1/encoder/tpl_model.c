@@ -284,7 +284,12 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   const int mi_width = mi_size_wide[bsize];
   const int mi_height = mi_size_high[bsize];
   set_mode_info_offsets(&cpi->common.mi_params, &cpi->mbmi_ext_info, x, xd,
-                        mi_row, mi_col);
+                        mi_row, mi_col
+#if CONFIG_C071_SUBBLK_WARPMV
+                        ,
+                        mi_width, mi_height
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+  );
   set_mi_row_col(xd, &xd->tile, mi_row, mi_height, mi_col, mi_width,
                  cm->mi_params.mi_rows, cm->mi_params.mi_cols);
   set_plane_n4(xd, mi_size_wide[bsize], mi_size_high[bsize],

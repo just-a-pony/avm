@@ -109,8 +109,17 @@ static INLINE void clamp_mv_ref(MV *mv, int bw, int bh, const MACROBLOCKD *xd) {
   clamp_mv(mv, &mv_limits);
 }
 
-static INLINE int_mv get_block_mv(const MB_MODE_INFO *candidate, int which_mv) {
+static INLINE int_mv get_block_mv(const MB_MODE_INFO *candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                  const SUBMB_INFO *submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                  int which_mv) {
+#if CONFIG_C071_SUBBLK_WARPMV
+  return is_warp_mode(candidate->motion_mode) ? submi->mv[which_mv]
+                                              : candidate->mv[which_mv];
+#else
   return candidate->mv[which_mv];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 }
 
 // Checks that the given mi_row, mi_col and search point
@@ -760,6 +769,16 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
 void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
                             const MB_MODE_INFO *const mbmi);
 #endif  // CONFIG_REF_MV_BANK
+
+#if CONFIG_C071_SUBBLK_WARPMV
+// assign subblock mv from warp into submi
+void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,
+                   WarpedMotionParams *wm_params, int mi_row, int mi_col);
+
+// span the first subblock info into all the rest subblocks in the same block
+void span_submv(const AV1_COMMON *cm, SUBMB_INFO **submi, int mi_row,
+                int mi_col, BLOCK_SIZE bsize);
+#endif
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_WARP_REF_LIST

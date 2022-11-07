@@ -802,6 +802,13 @@ struct CommonModeInfoParams {
    * accessed directly, in most cases. Please use 'mi_grid_base' array instead.
    */
   MB_MODE_INFO *mi_alloc;
+#if CONFIG_C071_SUBBLK_WARPMV
+  /*!
+   * An array of SUBMB_INFO structs for every 'mi_alloc_bsize' sized block
+   * in the frame.
+   */
+  SUBMB_INFO *mi_alloc_sub;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   /*!
    * Number of allocated elements in 'mi_alloc'.
    */
@@ -826,6 +833,12 @@ struct CommonModeInfoParams {
    * - Some pointers can be NULL (for example, for blocks outside visible area).
    */
   MB_MODE_INFO **mi_grid_base;
+#if CONFIG_C071_SUBBLK_WARPMV
+  /*!
+   * Grid of pointers to 4x4 SUBMB_INFO structs allocated in 'mi_alloc_sub'.
+   */
+  SUBMB_INFO **submi_grid_base;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   /*!
    * Number of allocated elements in 'mi_grid_base' (and 'tx_type_map' also).
    */
@@ -2374,14 +2387,32 @@ static INLINE int get_alloc_mi_idx(const CommonModeInfoParams *const mi_params,
 
 // For this partition block, set pointers in mi_params->mi_grid_base and xd->mi.
 static INLINE void set_mi_offsets(const CommonModeInfoParams *const mi_params,
-                                  MACROBLOCKD *const xd, int mi_row,
-                                  int mi_col) {
+                                  MACROBLOCKD *const xd, int mi_row, int mi_col
+#if CONFIG_C071_SUBBLK_WARPMV
+                                  ,
+                                  int x_inside_boundary, int y_inside_boundary
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+) {
   // 'mi_grid_base' should point to appropriate memory in 'mi'.
   const int mi_grid_idx = get_mi_grid_idx(mi_params, mi_row, mi_col);
   const int mi_alloc_idx = get_alloc_mi_idx(mi_params, mi_row, mi_col);
   mi_params->mi_grid_base[mi_grid_idx] = &mi_params->mi_alloc[mi_alloc_idx];
   // 'xd->mi' should point to an offset in 'mi_grid_base';
   xd->mi = mi_params->mi_grid_base + mi_grid_idx;
+#if CONFIG_C071_SUBBLK_WARPMV
+  mi_params->submi_grid_base[mi_grid_idx] =
+      &mi_params->mi_alloc_sub[mi_alloc_idx];
+  xd->submi = mi_params->submi_grid_base + mi_grid_idx;
+  for (int y = 0; y < y_inside_boundary; y++) {
+    for (int x = 0; x < x_inside_boundary; x++) {
+      if (x == 0 && y == 0) continue;
+      const int mi_alloc_sub_idx =
+          get_alloc_mi_idx(mi_params, mi_row + y, mi_col + x);
+      xd->submi[y * mi_params->mi_stride + x] =
+          &mi_params->mi_alloc_sub[mi_alloc_sub_idx];
+    }
+  }
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   // 'xd->tx_type_map' should point to an offset in 'mi_params->tx_type_map'.
   if (xd->tree_type != CHROMA_PART)
     xd->tx_type_map = mi_params->tx_type_map + mi_grid_idx;

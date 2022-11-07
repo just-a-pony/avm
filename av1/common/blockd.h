@@ -575,6 +575,19 @@ typedef struct MB_MODE_INFO {
 #endif
 } MB_MODE_INFO;
 
+#if CONFIG_C071_SUBBLK_WARPMV
+/*! \brief Stores the subblock motion info of the current coding block
+ */
+// Note that this can not be stored in MB_MODE_INFO, because The MB_MODE_INFO is
+// only physically stored for the first sunblock of a block, the info of the
+// rest subblocks in the same block are only pointed to the first subblock and
+// is not physically stored.
+typedef struct SUBMB_INFO {
+  /*! \brief Stored subblock mv for reference. */
+  int_mv mv[2];
+} SUBMB_INFO;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+
 /*!\cond */
 // Get the start plane for semi-decoupled partitioning
 static INLINE int get_partition_plane_start(int tree_type) {
@@ -997,6 +1010,14 @@ typedef struct macroblockd {
    * mi_row and mi_col.
    */
   MB_MODE_INFO **mi;
+
+#if CONFIG_C071_SUBBLK_WARPMV
+  /*!
+   * Appropriate offset inside cm->mi_params.submi_grid_base based on current
+   * mi_row and mi_col.
+   */
+  SUBMB_INFO **submi;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   /*!
    * True if 4x4 block above the current block is available.

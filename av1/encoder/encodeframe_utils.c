@@ -224,6 +224,9 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
   assert(mi->sb_type[xd->tree_type == CHROMA_PART] == bsize);
 
   *mi_addr = *mi;
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (is_warp_mode(mi->motion_mode)) update_submi(xd, cm, ctx->submic, bsize);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   if (xd->tree_type != CHROMA_PART)
     copy_mbmi_ext_frame_to_mbmi_ext(x->mbmi_ext, &ctx->mbmi_ext_best,
                                     av1_ref_frame_type(ctx->mic.ref_frame));

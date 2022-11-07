@@ -116,6 +116,29 @@ static AOM_INLINE FULLPEL_MV get_fullmv_from_mv(const MV *subpel_mv) {
   return full_mv;
 }
 
+#if CONFIG_C071_SUBBLK_WARPMV
+static AOM_INLINE void get_phase_from_mv(MV ref_mv, MV *sub_mv_offset,
+                                         MvSubpelPrecision precision) {
+  sub_mv_offset->col = 0;
+  sub_mv_offset->row = 0;
+  int col_phase = ref_mv.col - GET_MV_SUBPEL(GET_MV_RAWPEL(ref_mv.col));
+  int row_phase = ref_mv.row - GET_MV_SUBPEL(GET_MV_RAWPEL(ref_mv.row));
+  if (precision == MV_PRECISION_QTR_PEL) {
+    sub_mv_offset->col = (col_phase & 1) ? col_phase : 0;
+    sub_mv_offset->row = (row_phase & 1) ? row_phase : 0;
+  } else if (precision == MV_PRECISION_HALF_PEL) {
+    sub_mv_offset->col = ((col_phase & 1) || (col_phase & 2)) ? col_phase : 0;
+    sub_mv_offset->row = ((row_phase & 1) || (row_phase & 2)) ? row_phase : 0;
+  } else if (precision == MV_PRECISION_ONE_PEL) {
+    sub_mv_offset->col = col_phase;
+    sub_mv_offset->row = row_phase;
+  } else {
+    assert(precision == MV_PRECISION_ONE_EIGHTH_PEL ||
+           precision < MV_PRECISION_ONE_PEL);
+  }
+}
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+
 static AOM_INLINE MV get_mv_from_fullmv(const FULLPEL_MV *full_mv) {
   const MV subpel_mv = { (int16_t)GET_MV_SUBPEL(full_mv->row),
                          (int16_t)GET_MV_SUBPEL(full_mv->col) };
@@ -442,7 +465,10 @@ static INLINE int_mv get_warp_motion_vector(const WarpedMotionParams *model,
     assert(IMPLIES(1 & (res.as_mv.row | res.as_mv.col),
                    precision == MV_PRECISION_ONE_EIGHTH_PEL));
 #endif
-    lower_mv_precision(&res.as_mv, precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+    if (precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+      lower_mv_precision(&res.as_mv, precision);
 #else
     // After the right shifts, there are 3 fractional bits of precision. If
     // allow_hp is false, the bottom bit is always zero (so we don't need a
@@ -481,7 +507,10 @@ static INLINE int_mv get_warp_motion_vector(const WarpedMotionParams *model,
   res.as_mv.col = tx;
 
 #if CONFIG_FLEX_MVRES
-  lower_mv_precision(&res.as_mv, precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+    lower_mv_precision(&res.as_mv, precision);
 #else
   if (is_integer) {
     integer_mv_precision(&res.as_mv);

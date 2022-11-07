@@ -391,6 +391,9 @@ static void read_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   }
 
   av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv, params);
+#if CONFIG_C071_SUBBLK_WARPMV
+  assign_warpmv(cm, xd->submi, bsize, params, mi_row, mi_col);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 }
 
 static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
@@ -1731,7 +1734,10 @@ static INLINE void read_mv(aom_reader *r, MV *mv, const MV *ref,
 #if BUGFIX_AMVD_AMVR
   if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-    lower_mv_precision(&ref, precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+    if (precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+      lower_mv_precision(&ref, precision);
   mv->row = ref.row + diff.row;
   mv->col = ref.col + diff.col;
 #else
@@ -2337,7 +2343,10 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if BUGFIX_AMVD_AMVR
       if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-        lower_mv_precision(&low_prec_refmv, precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+        if (precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+          lower_mv_precision(&low_prec_refmv, precision);
       diff.row = mv[jmvd_base_ref_list].as_mv.row - low_prec_refmv.row;
       diff.col = mv[jmvd_base_ref_list].as_mv.col - low_prec_refmv.col;
 #else
@@ -2350,6 +2359,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CONFIG_IMPROVED_JMVD
       scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode);
 #endif  // CONFIG_IMPROVED_JMVD
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
       // TODO(Mohammed): Do we need to apply block level lower mv precision?
       lower_mv_precision(&other_mvd, features->fr_mv_precision);
@@ -2362,6 +2372,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #endif  // IMPROVED_AMVD
                          features->cur_frame_force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
       mv[1 - jmvd_base_ref_list].as_mv.row =
           (int)(ref_mv[1 - jmvd_base_ref_list].as_mv.row + other_mvd.row);
       mv[1 - jmvd_base_ref_list].as_mv.col =
@@ -2785,6 +2796,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #endif
       mbmi->wm_params[0].invalid = 1;
     }
+#if CONFIG_C071_SUBBLK_WARPMV
+    assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params[0], mi_row, mi_col);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   }
 
   if (mbmi->motion_mode == WARP_EXTEND) {
@@ -2814,6 +2828,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
         mbmi->wm_params[0].invalid = 1;
       }
     }
+#if CONFIG_C071_SUBBLK_WARPMV
+    assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params[0], mi_row, mi_col);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   }
 #else
   if (mbmi->motion_mode == WARPED_CAUSAL) {
@@ -2861,6 +2878,11 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 
   mbmi->mv[0].as_int = 0;
   mbmi->mv[1].as_int = 0;
+#if CONFIG_C071_SUBBLK_WARPMV
+  xd->submi[0]->mv[0].as_int = xd->submi[0]->mv[1].as_int = 0;
+  span_submv(cm, xd->submi, xd->mi_row, xd->mi_col,
+             mbmi->sb_type[PLANE_TYPE_Y]);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
   set_default_max_mv_precision(mbmi, xd->sbi->sb_mv_precision);
   set_mv_precision(mbmi, mbmi->max_mv_precision);  // initialize to max

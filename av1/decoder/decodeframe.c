@@ -378,12 +378,18 @@ static AOM_INLINE void decode_reconstruct_tx(
 
 static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                                    BLOCK_SIZE bsize, int mi_row, int mi_col,
-                                   int bw, int bh, int x_mis, int y_mis) {
+                                   int bw, int bh, int x_inside_boundary,
+                                   int y_inside_boundary) {
   const int num_planes = av1_num_planes(cm);
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const TileInfo *const tile = &xd->tile;
 
-  set_mi_offsets(mi_params, xd, mi_row, mi_col);
+  set_mi_offsets(mi_params, xd, mi_row, mi_col
+#if CONFIG_C071_SUBBLK_WARPMV
+                 ,
+                 x_inside_boundary, y_inside_boundary
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+  );
   xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART] = bsize;
 #if CONFIG_RD_DEBUG
   xd->mi[0]->mi_row = mi_row;
@@ -391,11 +397,11 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
 #endif
 
   if (xd->tree_type == SHARED_PART) {
-    assert(x_mis && y_mis);
-    for (int x = 1; x < x_mis; ++x) xd->mi[x] = xd->mi[0];
+    assert(x_inside_boundary && y_inside_boundary);
+    for (int x = 1; x < x_inside_boundary; ++x) xd->mi[x] = xd->mi[0];
     int idx = mi_params->mi_stride;
-    for (int y = 1; y < y_mis; ++y) {
-      memcpy(&xd->mi[idx], &xd->mi[0], x_mis * sizeof(xd->mi[0]));
+    for (int y = 1; y < y_inside_boundary; ++y) {
+      memcpy(&xd->mi[idx], &xd->mi[0], x_inside_boundary * sizeof(xd->mi[0]));
       idx += mi_params->mi_stride;
     }
   }

@@ -84,6 +84,12 @@ static AOM_INLINE void enc_free_mi(CommonModeInfoParams *mi_params) {
   mi_params->mi_alloc = NULL;
   aom_free(mi_params->mi_grid_base);
   mi_params->mi_grid_base = NULL;
+#if CONFIG_C071_SUBBLK_WARPMV
+  aom_free(mi_params->mi_alloc_sub);
+  mi_params->mi_alloc_sub = NULL;
+  aom_free(mi_params->submi_grid_base);
+  mi_params->submi_grid_base = NULL;
+#endif
   mi_params->mi_alloc_size = 0;
   aom_free(mi_params->tx_type_map);
   mi_params->tx_type_map = NULL;

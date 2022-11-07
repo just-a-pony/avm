@@ -183,9 +183,15 @@ if (precision > MV_SUBPEL_LOW_PRECISION) {
 #if BUGFIX_AMVD_AMVR
     if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-      lower_mv_precision(&ref, precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+      if (precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        lower_mv_precision(&ref, precision);
 #endif  // CONFIG_FLEX_MVRES
     const MV diff = { mv.row - ref.row, mv.col - ref.col };
+#if CONFIG_C071_SUBBLK_WARPMV
+    assert(is_this_mv_precision_compliant(diff, precision));
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 #else
 void av1_update_mv_stats(const MV *mv, const MV *ref, nmv_context *mvctx,
 #if CONFIG_ADAPTIVE_MVD
@@ -709,8 +715,14 @@ static void build_nmv_component_cost_table(int *mvcost,
 #if BUGFIX_AMVD_AMVR
       if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-        lower_mv_precision(&ref, pb_mv_precision);
+#if CONFIG_C071_SUBBLK_WARPMV
+        if (pb_mv_precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+          lower_mv_precision(&ref, pb_mv_precision);
       const MV diff = { mv.row - ref.row, mv.col - ref.col };
+#if CONFIG_C071_SUBBLK_WARPMV
+      assert(is_this_mv_precision_compliant(diff, pb_mv_precision));
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 #else
   const MV diff = { mv->row - ref->row, mv->col - ref->col };
 #endif

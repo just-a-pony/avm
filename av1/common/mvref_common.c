@@ -273,7 +273,11 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
       ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
   const int cand_tpl_row = (mi_row_cand >> TMVP_SHIFT_BITS);
   const int cand_tpl_col = (mi_col_cand >> TMVP_SHIFT_BITS);
+#if CONFIG_C071_SUBBLK_WARPMV
+  int_mv cand_mv = candidate->mv[0];
+#else
   int_mv cand_mv = get_block_mv(candidate, 0);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   const FULLPEL_MV fullmv =
       clamp_tip_fullmv(cm, &cand_mv.as_mv, cand_tpl_row, cand_tpl_col);
   const int ref_blk_row = (fullmv.row >> TMVP_MI_SZ_LOG2) + cand_tpl_row;
@@ -331,10 +335,14 @@ static AOM_INLINE void add_ref_mv_candidate(
 #endif  // !CONFIG_SMVP_IMPROVEMENT
     int mi_row, int mi_col, int mi_row_cand, int mi_col_cand,
 #endif  // CONFIG_TIP
-    const MB_MODE_INFO *const candidate, const MV_REFERENCE_FRAME rf[2],
-    uint8_t *refmv_count, uint8_t *ref_match_count, uint8_t *newmv_count,
-    CANDIDATE_MV *ref_mv_stack, uint16_t *ref_mv_weight,
-    int_mv *gm_mv_candidates, const WarpedMotionParams *gm_params,
+    const MB_MODE_INFO *const candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+    const SUBMB_INFO *const submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+    const MV_REFERENCE_FRAME rf[2], uint8_t *refmv_count,
+    uint8_t *ref_match_count, uint8_t *newmv_count, CANDIDATE_MV *ref_mv_stack,
+    uint16_t *ref_mv_weight, int_mv *gm_mv_candidates,
+    const WarpedMotionParams *gm_params,
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     const MB_MODE_INFO *mbmi,
     MV_REFERENCE_FRAME ref_frame_idx0[MAX_REF_MV_STACK_SIZE],
@@ -357,6 +365,9 @@ static AOM_INLINE void add_ref_mv_candidate(
     const MvSubpelPrecision precision
 #endif
 ) {
+#if CONFIG_C071_SUBBLK_WARPMV
+  (void)precision;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   if (!is_inter_block(candidate, SHARED_PART)) return;
 
 #if CONFIG_IBC_SR_EXT
@@ -391,7 +402,11 @@ static AOM_INLINE void add_ref_mv_candidate(
         if (is_global_mv_block(candidate, gm_params[rf[ref]].wmtype))
           this_refmv[ref] = gm_mv_candidates[ref];
         else
-          this_refmv[ref] = get_block_mv(candidate, ref);
+          this_refmv[ref] = get_block_mv(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                         submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                         ref);
       }
 
       for (index = 0; index < *refmv_count; ++index) {
@@ -429,19 +444,32 @@ static AOM_INLINE void add_ref_mv_candidate(
 #if CONFIG_TIP
         int_mv this_refmv;
         if (is_tip_ref_frame(rf[0])) {
-          this_refmv = get_block_mv(candidate, ref);
+          this_refmv = get_block_mv(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                    submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                    ref);
         } else {
           const int is_gm_block =
               is_global_mv_block(candidate, gm_params[rf[0]].wmtype);
-          this_refmv =
-              is_gm_block ? gm_mv_candidates[0] : get_block_mv(candidate, ref);
+          this_refmv = is_gm_block ? gm_mv_candidates[0]
+                                   : get_block_mv(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                                  submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                                  ref);
         }
 #else
         const int is_gm_block =
             is_global_mv_block(candidate, gm_params[rf[0]].wmtype);
-        const int_mv this_refmv =
-            is_gm_block ? gm_mv_candidates[0] : get_block_mv(candidate, ref);
+        const int_mv this_refmv = is_gm_block ? gm_mv_candidates[0]
+                                              : get_block_mv(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                                             submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                                             ref);
 #endif  // CONFIG_TIP
+
         for (index = 0; index < *refmv_count; ++index) {
           if (ref_mv_stack[index].this_mv.as_int == this_refmv.as_int) {
             ref_mv_weight[index] += weight;
@@ -486,8 +514,12 @@ static AOM_INLINE void add_ref_mv_candidate(
 
           const int is_gm_block = is_global_mv_block(
               candidate, gm_params[candidate->ref_frame[ref]].wmtype);
-          const int_mv cand_refmv =
-              is_gm_block ? gm_mv_candidates[0] : get_block_mv(candidate, ref);
+          const int_mv cand_refmv = is_gm_block ? gm_mv_candidates[0]
+                                                : get_block_mv(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                                               submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                                               ref);
 #if !CONFIG_FLEX_MVRES
           const int allow_hp_mv = cm->features.allow_high_precision_mv;
           const int force_integer_mv = cm->features.cur_frame_force_integer_mv;
@@ -496,12 +528,13 @@ static AOM_INLINE void add_ref_mv_candidate(
           int_mv this_refmv;
           get_mv_projection(&this_refmv.as_mv, cand_refmv.as_mv,
                             cur_to_ref_dist, cand_to_ref_dist);
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
           lower_mv_precision(&this_refmv.as_mv, precision);
 #else
           lower_mv_precision(&this_refmv.as_mv, allow_hp_mv, force_integer_mv);
 #endif
-
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
           for (index = 0; index < *derived_mv_count; ++index) {
             if (derived_mv_stack[index].this_mv.as_int == this_refmv.as_int) {
               derived_mv_weight[index] += weight;
@@ -544,7 +577,11 @@ static AOM_INLINE void add_ref_mv_candidate(
           if (is_global_mv_block(candidate, gm_params[rf[ref]].wmtype))
             this_refmv[ref] = gm_mv_candidates[ref];
           else
-            this_refmv[ref] = get_block_mv(candidate, ref);
+            this_refmv[ref] = get_block_mv(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                           submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                           ref);
         }
 
         for (index = 0; index < *refmv_count; ++index) {
@@ -591,7 +628,11 @@ static AOM_INLINE void add_ref_mv_candidate(
               candidate, gm_params[rf[candidate_ref_idx0]].wmtype);
           this_refmv[candidate_ref_idx0] =
               is_gm_block ? gm_mv_candidates[candidate_ref_idx0]
-                          : get_block_mv(candidate, candidate_ref_idx0);
+                          : get_block_mv(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                         submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                         candidate_ref_idx0);
 
           int cand_idx = 0;
           for (cand_idx = 0; cand_idx < *single_mv_count; ++cand_idx) {
@@ -760,9 +801,15 @@ static AOM_INLINE void scan_row_mbmi(
   }
   const int use_step_16 = (xd->width >= 16);
   MB_MODE_INFO **const candidate_mi0 = xd->mi + row_offset * xd->mi_stride;
+#if CONFIG_C071_SUBBLK_WARPMV
+  SUBMB_INFO **const submi_mi0 = xd->submi + row_offset * xd->mi_stride;
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   const int plane_type = (xd->tree_type == CHROMA_PART);
   for (int i = 0; i < end_mi;) {
     const MB_MODE_INFO *const candidate = candidate_mi0[col_offset + i];
+#if CONFIG_C071_SUBBLK_WARPMV
+    const SUBMB_INFO *const submi = submi_mi0[col_offset + i];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
     const int candidate_bsize = candidate->sb_type[plane_type];
     const int n4_w = mi_size_wide[candidate_bsize];
     int len = AOMMIN(xd->width, n4_w);
@@ -809,7 +856,11 @@ static AOM_INLINE void scan_row_mbmi(
 #endif  // !CONFIG_SMVP_IMPROVEMENT
         mi_row, mi_col, cand_mi_row, cand_mi_col,
 #endif  // CONFIG_TIP
-        candidate, rf, refmv_count, ref_match_count, newmv_count, ref_mv_stack,
+        candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+        submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        rf, refmv_count, ref_match_count, newmv_count, ref_mv_stack,
         ref_mv_weight, gm_mv_candidates, cm->global_motion,
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
         xd->mi[0], ref_frame_idx0, ref_frame_idx1,
@@ -902,6 +953,10 @@ static AOM_INLINE void scan_col_mbmi(
   for (i = 0; i < end_mi;) {
     const MB_MODE_INFO *const candidate =
         xd->mi[(row_offset + i) * xd->mi_stride + col_offset];
+#if CONFIG_C071_SUBBLK_WARPMV
+    const SUBMB_INFO *const submi =
+        xd->submi[(row_offset + i) * xd->mi_stride + col_offset];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
     const int candidate_bsize =
         candidate->sb_type[xd->tree_type == CHROMA_PART];
     const int n4_h = mi_size_high[candidate_bsize];
@@ -949,7 +1004,11 @@ static AOM_INLINE void scan_col_mbmi(
 #endif  // !CONFIG_SMVP_IMPROVEMENT
         mi_row, mi_col, cand_mi_row, cand_mi_col,
 #endif  // CONFIG_TIP
-        candidate, rf, refmv_count, ref_match_count, newmv_count, ref_mv_stack,
+        candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+        submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        rf, refmv_count, ref_match_count, newmv_count, ref_mv_stack,
         ref_mv_weight, gm_mv_candidates, cm->global_motion,
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
         xd->mi[0], ref_frame_idx0, ref_frame_idx1,
@@ -1005,6 +1064,10 @@ static AOM_INLINE void scan_blk_mbmi(
   if (is_inside(tile, mi_col, mi_row, &mi_pos)) {
     const MB_MODE_INFO *const candidate =
         xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+#if CONFIG_C071_SUBBLK_WARPMV
+    const SUBMB_INFO *const submi =
+        xd->submi[mi_pos.row * xd->mi_stride + mi_pos.col];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
     const int len = mi_size_wide[BLOCK_8X8];
 
 #if CONFIG_COMPLEXITY_SCALABLE_MVP
@@ -1033,7 +1096,11 @@ static AOM_INLINE void scan_blk_mbmi(
 #endif  // !CONFIG_SMVP_IMPROVEMENT
         mi_row, mi_col, cand_mi_row, cand_mi_col,
 #endif  // CONFIG_TIP
-        candidate, rf, refmv_count, ref_match_count, newmv_count, ref_mv_stack,
+        candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+        submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        rf, refmv_count, ref_match_count, newmv_count, ref_mv_stack,
         ref_mv_weight, gm_mv_candidates, cm->global_motion,
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
         xd->mi[0], ref_frame_idx0, ref_frame_idx1,
@@ -1238,22 +1305,26 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   const int cur_offset_0 = get_relative_dist(&cm->seq_params.order_hint_info,
                                              cur_frame_index, frame0_index);
   int idx;
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
   const MvSubpelPrecision fr_mv_precision = cm->features.fr_mv_precision;
 #else
   const int allow_high_precision_mv = cm->features.allow_high_precision_mv;
   const int force_integer_mv = cm->features.cur_frame_force_integer_mv;
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
   int_mv this_refmv;
   get_mv_projection(&this_refmv.as_mv, prev_frame_mvs->mfmv0.as_mv,
                     cur_offset_0, prev_frame_mvs->ref_frame_offset);
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
   lower_mv_precision(&this_refmv.as_mv, fr_mv_precision);
 #else
   lower_mv_precision(&this_refmv.as_mv, allow_high_precision_mv,
                      force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
   if (rf[1] == NONE_FRAME) {
     if (blk_row == 0 && blk_col == 0) {
@@ -1292,12 +1363,14 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     int_mv comp_refmv;
     get_mv_projection(&comp_refmv.as_mv, prev_frame_mvs->mfmv0.as_mv,
                       cur_offset_1, prev_frame_mvs->ref_frame_offset);
+#if !CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
     lower_mv_precision(&comp_refmv.as_mv, fr_mv_precision);
 #else
     lower_mv_precision(&comp_refmv.as_mv, allow_high_precision_mv,
                        force_integer_mv);
 #endif
+#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
     if (blk_row == 0 && blk_col == 0) {
       if (abs(this_refmv.as_mv.row - gm_mv_candidates[0].as_mv.row) >= 16 ||
@@ -1362,22 +1435,34 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 }
 
 static AOM_INLINE void process_compound_ref_mv_candidate(
-    const MB_MODE_INFO *const candidate, const AV1_COMMON *const cm,
-    const MV_REFERENCE_FRAME *const rf, int_mv ref_id[2][2],
-    int ref_id_count[2], int_mv ref_diff[2][2], int ref_diff_count[2]) {
+    const MB_MODE_INFO *const candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+    const SUBMB_INFO *const submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+    const AV1_COMMON *const cm, const MV_REFERENCE_FRAME *const rf,
+    int_mv ref_id[2][2], int ref_id_count[2], int_mv ref_diff[2][2],
+    int ref_diff_count[2]) {
   for (int rf_idx = 0; rf_idx < 2; ++rf_idx) {
     MV_REFERENCE_FRAME can_rf = candidate->ref_frame[rf_idx];
 
     for (int cmp_idx = 0; cmp_idx < 2; ++cmp_idx) {
       if (can_rf == rf[cmp_idx] && ref_id_count[cmp_idx] < 2) {
-        ref_id[cmp_idx][ref_id_count[cmp_idx]] = candidate->mv[rf_idx];
+        ref_id[cmp_idx][ref_id_count[cmp_idx]] =
+#if CONFIG_C071_SUBBLK_WARPMV
+            is_warp_mode(candidate->motion_mode) ? submi->mv[rf_idx] :
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                                 candidate->mv[rf_idx];
         ++ref_id_count[cmp_idx];
       } else if (is_inter_ref_frame(can_rf) &&
 #if CONFIG_TIP
                  !is_tip_ref_frame(can_rf) &&
 #endif  // CONFIG_TIP
                  ref_diff_count[cmp_idx] < 2) {
-        int_mv this_mv = candidate->mv[rf_idx];
+        int_mv this_mv =
+#if CONFIG_C071_SUBBLK_WARPMV
+            is_warp_mode(candidate->motion_mode) ? submi->mv[rf_idx] :
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                                 candidate->mv[rf_idx];
         if (cm->ref_frame_sign_bias[can_rf] !=
             cm->ref_frame_sign_bias[rf[cmp_idx]]) {
           this_mv.as_mv.row = -this_mv.as_mv.row;
@@ -1391,8 +1476,12 @@ static AOM_INLINE void process_compound_ref_mv_candidate(
 }
 
 static AOM_INLINE void process_single_ref_mv_candidate(
-    const MB_MODE_INFO *const candidate, const AV1_COMMON *const cm,
-    MV_REFERENCE_FRAME ref_frame, uint8_t *const refmv_count,
+    const MB_MODE_INFO *const candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+    const SUBMB_INFO *const submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+    const AV1_COMMON *const cm, MV_REFERENCE_FRAME ref_frame,
+    uint8_t *const refmv_count,
     CANDIDATE_MV ref_mv_stack[MAX_REF_MV_STACK_SIZE],
     uint16_t ref_mv_weight[MAX_REF_MV_STACK_SIZE]) {
 #if CONFIG_TIP
@@ -1406,7 +1495,11 @@ static AOM_INLINE void process_single_ref_mv_candidate(
 #else
     if (is_inter_ref_frame(candidate->ref_frame[rf_idx])) {
 #endif  // CONFIG_TIP
-      int_mv this_mv = candidate->mv[rf_idx];
+      int_mv this_mv =
+#if CONFIG_C071_SUBBLK_WARPMV
+          is_warp_mode(candidate->motion_mode) ? submi->mv[rf_idx] :
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                               candidate->mv[rf_idx];
       if (cm->ref_frame_sign_bias[candidate->ref_frame[rf_idx]] !=
           cm->ref_frame_sign_bias[ref_frame]) {
         this_mv.as_mv.row = -this_mv.as_mv.row;
@@ -2126,15 +2219,29 @@ static AOM_INLINE void setup_ref_mv_list(
 
       for (int idx = 0; abs(max_row_offset) >= 1 && idx < mi_size;) {
         const MB_MODE_INFO *const candidate = xd->mi[-xd->mi_stride + idx];
-        process_compound_ref_mv_candidate(
-            candidate, cm, rf, ref_id, ref_id_count, ref_diff, ref_diff_count);
+#if CONFIG_C071_SUBBLK_WARPMV
+        const SUBMB_INFO *const submi = xd->submi[-xd->mi_stride + idx];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        process_compound_ref_mv_candidate(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                          submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                          cm, rf, ref_id, ref_id_count,
+                                          ref_diff, ref_diff_count);
         idx += mi_size_wide[candidate->sb_type[PLANE_TYPE_Y]];
       }
 
       for (int idx = 0; abs(max_col_offset) >= 1 && idx < mi_size;) {
         const MB_MODE_INFO *const candidate = xd->mi[idx * xd->mi_stride - 1];
-        process_compound_ref_mv_candidate(
-            candidate, cm, rf, ref_id, ref_id_count, ref_diff, ref_diff_count);
+#if CONFIG_C071_SUBBLK_WARPMV
+        const SUBMB_INFO *const submi = xd->submi[idx * xd->mi_stride - 1];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        process_compound_ref_mv_candidate(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                          submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                          cm, rf, ref_id, ref_id_count,
+                                          ref_diff, ref_diff_count);
         idx += mi_size_high[candidate->sb_type[PLANE_TYPE_Y]];
       }
 
@@ -2220,7 +2327,14 @@ static AOM_INLINE void setup_ref_mv_list(
       for (int idx = 0; abs(max_row_offset) >= 1 && idx < mi_size &&
                         *refmv_count < MAX_MV_REF_CANDIDATES;) {
         const MB_MODE_INFO *const candidate = xd->mi[-xd->mi_stride + idx];
-        process_single_ref_mv_candidate(candidate, cm, ref_frame, refmv_count,
+#if CONFIG_C071_SUBBLK_WARPMV
+        const SUBMB_INFO *const submi = xd->submi[-xd->mi_stride + idx];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        process_single_ref_mv_candidate(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                        submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                        cm, ref_frame, refmv_count,
                                         ref_mv_stack, ref_mv_weight);
         idx += mi_size_wide[candidate->sb_type[PLANE_TYPE_Y]];
       }
@@ -2228,7 +2342,14 @@ static AOM_INLINE void setup_ref_mv_list(
       for (int idx = 0; abs(max_col_offset) >= 1 && idx < mi_size &&
                         *refmv_count < MAX_MV_REF_CANDIDATES;) {
         const MB_MODE_INFO *const candidate = xd->mi[idx * xd->mi_stride - 1];
-        process_single_ref_mv_candidate(candidate, cm, ref_frame, refmv_count,
+#if CONFIG_C071_SUBBLK_WARPMV
+        const SUBMB_INFO *const submi = xd->submi[idx * xd->mi_stride - 1];
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+        process_single_ref_mv_candidate(candidate,
+#if CONFIG_C071_SUBBLK_WARPMV
+                                        submi,
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+                                        cm, ref_frame, refmv_count,
                                         ref_mv_stack, ref_mv_weight);
         idx += mi_size_high[candidate->sb_type[PLANE_TYPE_Y]];
       }
@@ -3992,6 +4113,56 @@ void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
   (void)cm;
 }
 #endif  // CONFIG_REF_MV_BANK
+
+#if CONFIG_C071_SUBBLK_WARPMV
+void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,
+                   WarpedMotionParams *wm_params, int mi_row, int mi_col) {
+  assert(wm_params->invalid == 0);
+  const int bw = mi_size_wide[bsize];
+  const int bh = mi_size_high[bsize];
+  const int p_x_mis = AOMMIN(bw, cm->mi_params.mi_cols - mi_col) * MI_SIZE;
+  const int p_y_mis = AOMMIN(bh, cm->mi_params.mi_rows - mi_row) * MI_SIZE;
+  const int p_row = mi_row * MI_SIZE;
+  const int p_col = mi_col * MI_SIZE;
+  const int mi_stride = cm->mi_params.mi_stride;
+  for (int i = p_row; i < p_row + p_y_mis; i += 8) {
+    for (int j = p_col; j < p_col + p_x_mis; j += 8) {
+      const int32_t src_x = j + 4;
+      const int32_t src_y = i + 4;
+      const int32_t dst_x = wm_params->wmmat[2] * src_x +
+                            wm_params->wmmat[3] * src_y + wm_params->wmmat[0];
+      const int32_t dst_y = wm_params->wmmat[4] * src_x +
+                            wm_params->wmmat[5] * src_y + wm_params->wmmat[1];
+      int32_t submv_x_hp = dst_x - (src_x << WARPEDMODEL_PREC_BITS);
+      int32_t submv_y_hp = dst_y - (src_y << WARPEDMODEL_PREC_BITS);
+      int mi_y = (i - p_row) / MI_SIZE;
+      int mi_x = (j - p_col) / MI_SIZE;
+      submi[mi_y * mi_stride + mi_x]->mv[0].as_mv.row =
+          ROUND_POWER_OF_TWO_SIGNED(submv_y_hp, WARPEDMODEL_PREC_BITS - 3);
+      submi[mi_y * mi_stride + mi_x]->mv[0].as_mv.col =
+          ROUND_POWER_OF_TWO_SIGNED(submv_x_hp, WARPEDMODEL_PREC_BITS - 3);
+      span_submv(cm, (submi + mi_y * mi_stride + mi_x), mi_row, mi_col,
+                 BLOCK_8X8);
+    }
+  }
+}
+
+void span_submv(const AV1_COMMON *cm, SUBMB_INFO **submi, int mi_row,
+                int mi_col, BLOCK_SIZE bsize) {
+  const int bw = mi_size_wide[bsize];
+  const int bh = mi_size_high[bsize];
+  const int x_inside_boundary = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
+  const int y_inside_boundary = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
+  const int stride = cm->mi_params.mi_stride;
+  for (int y = 0; y < y_inside_boundary; y++) {
+    for (int x = 0; x < x_inside_boundary; x++) {
+      if (x == 0 && y == 0) continue;
+      submi[y * stride + x]->mv[0] = submi[0]->mv[0];
+      submi[y * stride + x]->mv[1] = submi[0]->mv[1];
+    }
+  }
+}
+#endif
 
 #if CONFIG_WARP_REF_LIST
 
