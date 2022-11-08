@@ -610,11 +610,12 @@ static int read_segment_id(AV1_COMMON *const cm, const MACROBLOCKD *const xd,
 }
 
 static int dec_get_segment_id(const AV1_COMMON *cm, const uint8_t *segment_ids,
-                              int mi_offset, int x_mis, int y_mis) {
+                              int mi_offset, int x_inside_boundary,
+                              int y_inside_boundary) {
   int segment_id = INT_MAX;
 
-  for (int y = 0; y < y_mis; y++)
-    for (int x = 0; x < x_mis; x++)
+  for (int y = 0; y < y_inside_boundary; y++)
+    for (int x = 0; x < x_inside_boundary; x++)
       segment_id = AOMMIN(
           segment_id, segment_ids[mi_offset + y * cm->mi_params.mi_cols + x]);
 
@@ -622,12 +623,12 @@ static int dec_get_segment_id(const AV1_COMMON *cm, const uint8_t *segment_ids,
   return segment_id;
 }
 
-static void set_segment_id(AV1_COMMON *cm, int mi_offset, int x_mis, int y_mis,
-                           int segment_id) {
+static void set_segment_id(AV1_COMMON *cm, int mi_offset, int x_inside_boundary,
+                           int y_inside_boundary, int segment_id) {
   assert(segment_id >= 0 && segment_id < MAX_SEGMENTS);
 
-  for (int y = 0; y < y_mis; y++)
-    for (int x = 0; x < x_mis; x++)
+  for (int y = 0; y < y_inside_boundary; y++)
+    for (int x = 0; x < x_inside_boundary; x++)
       cm->cur_frame->seg_map[mi_offset + y * cm->mi_params.mi_cols + x] =
           segment_id;
 }
@@ -645,19 +646,20 @@ static int read_intra_segment_id(AV1_COMMON *const cm,
   const int mi_offset = mi_row * mi_params->mi_cols + mi_col;
   const int bw = mi_size_wide[bsize];
   const int bh = mi_size_high[bsize];
-  const int x_mis = AOMMIN(mi_params->mi_cols - mi_col, bw);
-  const int y_mis = AOMMIN(mi_params->mi_rows - mi_row, bh);
+  const int x_inside_boundary = AOMMIN(mi_params->mi_cols - mi_col, bw);
+  const int y_inside_boundary = AOMMIN(mi_params->mi_rows - mi_row, bh);
   const int segment_id = read_segment_id(cm, xd, r, skip);
-  set_segment_id(cm, mi_offset, x_mis, y_mis, segment_id);
+  set_segment_id(cm, mi_offset, x_inside_boundary, y_inside_boundary,
+                 segment_id);
   return segment_id;
 }
 
 static void copy_segment_id(const CommonModeInfoParams *const mi_params,
                             const uint8_t *last_segment_ids,
                             uint8_t *current_segment_ids, int mi_offset,
-                            int x_mis, int y_mis) {
-  for (int y = 0; y < y_mis; y++)
-    for (int x = 0; x < x_mis; x++)
+                            int x_inside_boundary, int y_inside_boundary) {
+  for (int y = 0; y < y_inside_boundary; y++)
+    for (int x = 0; x < x_inside_boundary; x++)
       current_segment_ids[mi_offset + y * mi_params->mi_cols + x] =
           last_segment_ids
               ? last_segment_ids[mi_offset + y * mi_params->mi_cols + x]
@@ -665,10 +667,12 @@ static void copy_segment_id(const CommonModeInfoParams *const mi_params,
 }
 
 static int get_predicted_segment_id(AV1_COMMON *const cm, int mi_offset,
-                                    int x_mis, int y_mis) {
-  return cm->last_frame_seg_map ? dec_get_segment_id(cm, cm->last_frame_seg_map,
-                                                     mi_offset, x_mis, y_mis)
-                                : 0;
+                                    int x_inside_boundary,
+                                    int y_inside_boundary) {
+  return cm->last_frame_seg_map
+             ? dec_get_segment_id(cm, cm->last_frame_seg_map, mi_offset,
+                                  x_inside_boundary, y_inside_boundary)
+             : 0;
 }
 
 static int read_inter_segment_id(AV1_COMMON *const cm, MACROBLOCKD *const xd,
@@ -682,16 +686,17 @@ static int read_inter_segment_id(AV1_COMMON *const cm, MACROBLOCKD *const xd,
   const int bw = mi_size_wide[mbmi->sb_type[PLANE_TYPE_Y]];
   const int bh = mi_size_high[mbmi->sb_type[PLANE_TYPE_Y]];
 
-  // TODO(slavarnway): move x_mis, y_mis into xd ?????
-  const int x_mis = AOMMIN(mi_params->mi_cols - mi_col, bw);
-  const int y_mis = AOMMIN(mi_params->mi_rows - mi_row, bh);
+  // TODO(slavarnway): move x_inside_boundary, y_inside_boundary into xd ?????
+  const int x_inside_boundary = AOMMIN(mi_params->mi_cols - mi_col, bw);
+  const int y_inside_boundary = AOMMIN(mi_params->mi_rows - mi_row, bh);
 
   if (!seg->enabled) return 0;  // Default for disabled segmentation
 
   if (!seg->update_map) {
     copy_segment_id(mi_params, cm->last_frame_seg_map, cm->cur_frame->seg_map,
-                    mi_offset, x_mis, y_mis);
-    return get_predicted_segment_id(cm, mi_offset, x_mis, y_mis);
+                    mi_offset, x_inside_boundary, y_inside_boundary);
+    return get_predicted_segment_id(cm, mi_offset, x_inside_boundary,
+                                    y_inside_boundary);
   }
 
   int segment_id;
@@ -703,7 +708,8 @@ static int read_inter_segment_id(AV1_COMMON *const cm, MACROBLOCKD *const xd,
         mbmi->seg_id_predicted = 0;
       }
       segment_id = read_segment_id(cm, xd, r, 1);
-      set_segment_id(cm, mi_offset, x_mis, y_mis, segment_id);
+      set_segment_id(cm, mi_offset, x_inside_boundary, y_inside_boundary,
+                     segment_id);
       return segment_id;
     }
   }
@@ -715,14 +721,16 @@ static int read_inter_segment_id(AV1_COMMON *const cm, MACROBLOCKD *const xd,
     aom_cdf_prob *pred_cdf = segp->pred_cdf[ctx];
     mbmi->seg_id_predicted = aom_read_symbol(r, pred_cdf, 2, ACCT_STR);
     if (mbmi->seg_id_predicted) {
-      segment_id = get_predicted_segment_id(cm, mi_offset, x_mis, y_mis);
+      segment_id = get_predicted_segment_id(cm, mi_offset, x_inside_boundary,
+                                            y_inside_boundary);
     } else {
       segment_id = read_segment_id(cm, xd, r, 0);
     }
   } else {
     segment_id = read_segment_id(cm, xd, r, 0);
   }
-  set_segment_id(cm, mi_offset, x_mis, y_mis, segment_id);
+  set_segment_id(cm, mi_offset, x_inside_boundary, y_inside_boundary,
+                 segment_id);
   return segment_id;
 }
 
@@ -2954,19 +2962,19 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 
 #if CONFIG_TIP
 static void intra_copy_frame_mvs(AV1_COMMON *const cm, int mi_row, int mi_col,
-                                 int x_mis, int y_mis) {
+                                 int x_inside_boundary, int y_inside_boundary) {
   const int mi_cols =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
 
   MV_REF *frame_mvs = cm->cur_frame->mvs +
                       (mi_row >> TMVP_SHIFT_BITS) * mi_cols +
                       (mi_col >> TMVP_SHIFT_BITS);
-  x_mis = ROUND_POWER_OF_TWO(x_mis, TMVP_SHIFT_BITS);
-  y_mis = ROUND_POWER_OF_TWO(y_mis, TMVP_SHIFT_BITS);
+  x_inside_boundary = ROUND_POWER_OF_TWO(x_inside_boundary, TMVP_SHIFT_BITS);
+  y_inside_boundary = ROUND_POWER_OF_TWO(y_inside_boundary, TMVP_SHIFT_BITS);
 
-  for (int h = 0; h < y_mis; h++) {
+  for (int h = 0; h < y_inside_boundary; h++) {
     MV_REF *mv = frame_mvs;
-    for (int w = 0; w < x_mis; w++) {
+    for (int w = 0; w < x_inside_boundary; w++) {
       for (int idx = 0; idx < 2; ++idx) {
         mv->ref_frame[idx] = NONE_FRAME;
       }
@@ -2977,16 +2985,16 @@ static void intra_copy_frame_mvs(AV1_COMMON *const cm, int mi_row, int mi_col,
 }
 #else
 static void intra_copy_frame_mvs(AV1_COMMON *const cm, int mi_row, int mi_col,
-                                 int x_mis, int y_mis) {
+                                 int x_inside_boundary, int y_inside_boundary) {
   const int frame_mvs_stride = ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, 1);
   MV_REF *frame_mvs =
       cm->cur_frame->mvs + (mi_row >> 1) * frame_mvs_stride + (mi_col >> 1);
-  x_mis = ROUND_POWER_OF_TWO(x_mis, 1);
-  y_mis = ROUND_POWER_OF_TWO(y_mis, 1);
+  x_inside_boundary = ROUND_POWER_OF_TWO(x_inside_boundary, 1);
+  y_inside_boundary = ROUND_POWER_OF_TWO(y_inside_boundary, 1);
 
-  for (int h = 0; h < y_mis; h++) {
+  for (int h = 0; h < y_inside_boundary; h++) {
     MV_REF *mv = frame_mvs;
-    for (int w = 0; w < x_mis; w++) {
+    for (int w = 0; w < x_inside_boundary; w++) {
       mv->ref_frame = NONE_FRAME;
       mv++;
     }
@@ -2996,7 +3004,8 @@ static void intra_copy_frame_mvs(AV1_COMMON *const cm, int mi_row, int mi_col,
 #endif  // CONFIG_TIP
 
 void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
-                        aom_reader *r, int x_mis, int y_mis) {
+                        aom_reader *r, int x_inside_boundary,
+                        int y_inside_boundary) {
   AV1_COMMON *const cm = &pbi->common;
   MACROBLOCKD *const xd = &dcb->xd;
   MB_MODE_INFO *const mi = xd->mi[0];
@@ -3015,7 +3024,8 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
     }
 #endif  // CONFIG_BVP_IMPROVEMENT && CONFIG_REF_MV_BANK
     if (cm->seq_params.order_hint_info.enable_ref_frame_mvs)
-      intra_copy_frame_mvs(cm, xd->mi_row, xd->mi_col, x_mis, y_mis);
+      intra_copy_frame_mvs(cm, xd->mi_row, xd->mi_col, x_inside_boundary,
+                           y_inside_boundary);
   } else {
     read_inter_frame_mode_info(pbi, dcb, r);
 #if CONFIG_BVP_IMPROVEMENT && CONFIG_REF_MV_BANK
@@ -3034,6 +3044,7 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
 #endif  // CONFIG_WARP_REF_LIST
 
     if (cm->seq_params.order_hint_info.enable_ref_frame_mvs)
-      av1_copy_frame_mvs(cm, mi, xd->mi_row, xd->mi_col, x_mis, y_mis);
+      av1_copy_frame_mvs(cm, mi, xd->mi_row, xd->mi_col, x_inside_boundary,
+                         y_inside_boundary);
   }
 }

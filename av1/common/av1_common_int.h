@@ -2444,10 +2444,11 @@ static INLINE int get_luma_split_flag(
   int width_unit = mi_size_wide[bsize];
   int height_unit = mi_size_high[bsize];
   int parent_block_width = block_size_wide[bsize];
-  const int x_mis = AOMMIN(width_unit, mi_params->mi_cols - mi_col);
-  const int y_mis = AOMMIN(height_unit, mi_params->mi_rows - mi_row);
-  int x_mis_half = x_mis >> 1;
-  int y_mis_half = y_mis >> 1;
+  const int x_inside_boundary = AOMMIN(width_unit, mi_params->mi_cols - mi_col);
+  const int y_inside_boundary =
+      AOMMIN(height_unit, mi_params->mi_rows - mi_row);
+  int x_mis_half = x_inside_boundary >> 1;
+  int y_mis_half = y_inside_boundary >> 1;
   int half_parent_width = parent_block_width >> 1;
   for (int y_district = 0; y_district < 2; y_district++) {
     for (int x_district = 0; x_district < 2; x_district++) {

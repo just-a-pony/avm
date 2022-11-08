@@ -839,13 +839,13 @@ static void av1_dec_tip_on_the_fly(AV1_COMMON *cm, MACROBLOCKD *xd,
 
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
-  const int x_mis = xd->width;
-  const int y_mis = xd->height;
+  const int x_inside_boundary = xd->width;
+  const int y_inside_boundary = xd->height;
 
   // define the block start and end pixel locations
   FULLPEL_MV start_mv = get_fullmv_from_mv(mv);
-  const int bw = (x_mis << MI_SIZE_LOG2);
-  const int bh = (y_mis << MI_SIZE_LOG2);
+  const int bw = (x_inside_boundary << MI_SIZE_LOG2);
+  const int bh = (y_inside_boundary << MI_SIZE_LOG2);
   int start_pixel_row = (mi_row << MI_SIZE_LOG2) + start_mv.row;
   int start_pixel_col = (mi_col << MI_SIZE_LOG2) + start_mv.col;
   int end_pixel_row = start_pixel_row + bh;
@@ -918,16 +918,17 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
   const SequenceHeader *const seq_params = &cm->seq_params;
   const int bw = mi_size_wide[bsize];
   const int bh = mi_size_high[bsize];
-  const int x_mis = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
-  const int y_mis = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
+  const int x_inside_boundary = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
+  const int y_inside_boundary = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
   MACROBLOCKD *const xd = &dcb->xd;
 
 #if CONFIG_ACCOUNTING
   aom_accounting_set_context(&pbi->accounting, mi_col, mi_row);
 #endif
-  set_offsets(cm, xd, bsize, mi_row, mi_col, bw, bh, x_mis, y_mis);
+  set_offsets(cm, xd, bsize, mi_row, mi_col, bw, bh, x_inside_boundary,
+              y_inside_boundary);
   xd->mi[0]->partition = partition;
-  av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
+  av1_read_mode_info(pbi, dcb, r, x_inside_boundary, y_inside_boundary);
   if (bsize >= BLOCK_8X8 &&
       (seq_params->subsampling_x || seq_params->subsampling_y)) {
     const BLOCK_SIZE uv_subsize =
@@ -1642,22 +1643,22 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
     const int bh = mi_size_high[bsize];
     const int bw = mi_size_wide[bsize];
     const CommonModeInfoParams *const mi_params = &cm->mi_params;
-    const int x_mis = AOMMIN(bw, mi_params->mi_cols - mi_col);
-    const int y_mis = AOMMIN(bh, mi_params->mi_rows - mi_row);
+    const int x_inside_boundary = AOMMIN(bw, mi_params->mi_cols - mi_col);
+    const int y_inside_boundary = AOMMIN(bh, mi_params->mi_rows - mi_row);
     int idx = mi_params->mi_stride;
-    assert(x_mis && y_mis);
+    assert(x_inside_boundary && y_inside_boundary);
     if (xd->tree_type != CHROMA_PART) {
-      for (int y = 0; y < y_mis; ++y) {
-        for (int x = 0; x < x_mis; ++x) {
+      for (int y = 0; y < y_inside_boundary; ++y) {
+        for (int x = 0; x < x_inside_boundary; ++x) {
           if (x == 0 && y == 0) continue;
           set_blk_offsets(mi_params, xd, mi_row, mi_col, y, x);
           *(xd->mi[y * idx + x]) = *(xd->mi[0]);
         }
       }
     } else {
-      assert(x_mis && y_mis);
-      for (int y = 0; y < y_mis; ++y) {
-        for (int x = 0; x < x_mis; ++x) {
+      assert(x_inside_boundary && y_inside_boundary);
+      for (int y = 0; y < y_inside_boundary; ++y) {
+        for (int x = 0; x < x_inside_boundary; ++x) {
           if (x == 0 && y == 0) continue;
           set_blk_offsets(mi_params, xd, mi_row, mi_col, y, x);
           xd->mi[y * idx + x]->sb_type[PLANE_TYPE_UV] =

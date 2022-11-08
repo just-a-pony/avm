@@ -463,7 +463,7 @@ static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
 
 void av1_copy_frame_mvs(const AV1_COMMON *const cm,
                         const MB_MODE_INFO *const mi, int mi_row, int mi_col,
-                        int x_mis, int y_mis);
+                        int x_inside_boundary, int y_inside_boundary);
 
 // The global_mvs output parameter points to an array of REF_FRAMES elements.
 // The caller may pass a null global_mvs if it does not need the global_mvs

@@ -22,7 +22,8 @@ extern "C" {
 #endif
 
 void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
-                        aom_reader *r, int x_mis, int y_mis);
+                        aom_reader *r, int x_inside_boundary,
+                        int y_inside_boundary);
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -32,7 +32,8 @@ typedef struct single_mv_candidate {
 #if CONFIG_TIP
 void av1_copy_frame_all_mvs(const AV1_COMMON *const cm,
                             const MB_MODE_INFO *const mi, int mi_row,
-                            int mi_col, int x_mis, int y_mis) {
+                            int mi_col, int x_inside_boundary,
+                            int y_inside_boundary) {
   const int frame_mvs_stride =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
   const int cur_tpl_row = (mi_row >> TMVP_SHIFT_BITS);
@@ -41,13 +42,13 @@ void av1_copy_frame_all_mvs(const AV1_COMMON *const cm,
   MV_REF *frame_mvs = cm->cur_frame->mvs + offset;
   const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + offset;
   const TIP *tip_ref = &cm->tip_ref;
-  x_mis = ROUND_POWER_OF_TWO(x_mis, TMVP_SHIFT_BITS);
-  y_mis = ROUND_POWER_OF_TWO(y_mis, TMVP_SHIFT_BITS);
+  x_inside_boundary = ROUND_POWER_OF_TWO(x_inside_boundary, TMVP_SHIFT_BITS);
+  y_inside_boundary = ROUND_POWER_OF_TWO(y_inside_boundary, TMVP_SHIFT_BITS);
 
-  for (int h = 0; h < y_mis; h++) {
+  for (int h = 0; h < y_inside_boundary; h++) {
     MV_REF *mv = frame_mvs;
     const TPL_MV_REF *tpl_mv = tpl_mvs;
-    for (int w = 0; w < x_mis; w++) {
+    for (int w = 0; w < x_inside_boundary; w++) {
       for (int idx = 0; idx < 2; ++idx) {
         mv->ref_frame[idx] = NONE_FRAME;
         mv->mv[idx].as_int = 0;
@@ -115,10 +116,11 @@ void av1_copy_frame_all_mvs(const AV1_COMMON *const cm,
 
 void av1_copy_frame_mvs(const AV1_COMMON *const cm,
                         const MB_MODE_INFO *const mi, int mi_row, int mi_col,
-                        int x_mis, int y_mis) {
+                        int x_inside_boundary, int y_inside_boundary) {
 #if CONFIG_TIP
   if (cm->seq_params.enable_tip && cm->features.tip_frame_mode) {
-    av1_copy_frame_all_mvs(cm, mi, mi_row, mi_col, x_mis, y_mis);
+    av1_copy_frame_all_mvs(cm, mi, mi_row, mi_col, x_inside_boundary,
+                           y_inside_boundary);
     return;
   }
 #endif  // CONFIG_TIP
@@ -126,13 +128,13 @@ void av1_copy_frame_mvs(const AV1_COMMON *const cm,
   const int frame_mvs_stride = ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, 1);
   MV_REF *frame_mvs =
       cm->cur_frame->mvs + (mi_row >> 1) * frame_mvs_stride + (mi_col >> 1);
-  x_mis = ROUND_POWER_OF_TWO(x_mis, 1);
-  y_mis = ROUND_POWER_OF_TWO(y_mis, 1);
+  x_inside_boundary = ROUND_POWER_OF_TWO(x_inside_boundary, 1);
+  y_inside_boundary = ROUND_POWER_OF_TWO(y_inside_boundary, 1);
   int w, h;
 
-  for (h = 0; h < y_mis; h++) {
+  for (h = 0; h < y_inside_boundary; h++) {
     MV_REF *mv = frame_mvs;
-    for (w = 0; w < x_mis; w++) {
+    for (w = 0; w < x_inside_boundary; w++) {
 #if CONFIG_TIP
       mv->ref_frame[0] = NONE_FRAME;
       mv->ref_frame[1] = NONE_FRAME;

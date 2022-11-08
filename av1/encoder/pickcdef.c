@@ -564,11 +564,11 @@ void av1_cdef_search(const YV12_BUFFER_CONFIG *frame,
             BLOCK_128X128 ||
         mi_params->mi_grid_base[sb_index[i]]->sb_type[PLANE_TYPE_Y] ==
             BLOCK_128X64) {
-      const int x_mis = AOMMIN(bw, mi_params->mi_cols - mi_col);
-      const int y_mis = AOMMIN(bh, mi_params->mi_rows - mi_row);
+      const int x_inside_boundary = AOMMIN(bw, mi_params->mi_cols - mi_col);
+      const int y_inside_boundary = AOMMIN(bh, mi_params->mi_rows - mi_row);
       int idx = mi_params->mi_stride;
-      for (int y = 0; y < y_mis; ++y) {
-        for (int x = 0; x < x_mis; ++x) {
+      for (int y = 0; y < y_inside_boundary; ++y) {
+        for (int x = 0; x < x_inside_boundary; ++x) {
           mi_params->mi_grid_base[sb_index[i] + y * idx + x]->cdef_strength =
               best_gi;
         }
