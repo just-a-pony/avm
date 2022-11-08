@@ -4651,15 +4651,15 @@ static int64_t handle_inter_mode(
         for (i = 0; i < is_comp_pred + 1; ++i) {
           mbmi->mv[i].as_int = cur_mv[i].as_int;
         }
-
-#if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                                  ,
-                                  x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                  ));
+#if CONFIG_FLEX_MVRES
+        assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+    assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
         const int like_nearest = (mbmi->mode == NEARMV ||
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -4706,14 +4706,15 @@ static int64_t handle_inter_mode(
           if (not_best_mode) continue;
         }
 
-#if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                                  ,
-                                  x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                  ));
+#if CONFIG_FLEX_MVRES
+        assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+    assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
         end_timing(cpi, compound_type_rd_time);
@@ -4727,14 +4728,15 @@ static int64_t handle_inter_mode(
             x, cpi, tile_data, bsize, &tmp_dst, &orig_dst, &rd, &rs,
             &skip_build_pred, args, ref_best_rd);
 
-#if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                                  ,
-                                  x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                  ));
+#if CONFIG_FLEX_MVRES
+        assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+    assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_COLLECT_COMPONENT_TIMING
         end_timing(cpi, interpolation_filter_search_time);
 #endif
@@ -4792,14 +4794,15 @@ static int64_t handle_inter_mode(
         assert(IMPLIES(!av1_check_newmv_joint_nonzero(cm, x),
                        ret_val == INT64_MAX));
 
-#if CONFIG_FLEX_MVRES
-        assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                                  ,
-                                  x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                  ));
+#if CONFIG_FLEX_MVRES
+        assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+    assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
         if (ret_val != INT64_MAX) {
           int64_t tmp_rd = RDCOST(x->rdmult, rd_stats->rate, rd_stats->dist);
@@ -4851,14 +4854,15 @@ static int64_t handle_inter_mode(
             motion_mode_cand->rate_mv = rate_mv;
             motion_mode_cand->rate2_nocoeff = rate2_nocoeff;
           }
-#if CONFIG_FLEX_MVRES
-          assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                                    ,
-                                    x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                    ));
+#if CONFIG_FLEX_MVRES
+          assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+      assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
           if (tmp_rd < ref_best_rd) {
             ref_best_rd = tmp_rd;
@@ -8960,14 +8964,15 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #endif  // CONFIG_C071_SUBBLK_WARPMV
   assert(av1_check_newmv_joint_nonzero(cm, x));
 
-#if CONFIG_FLEX_MVRES
-  assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                            ,
-                            x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                            ));
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   txfm_info->skip_txfm |= search_state.best_skip2;
 
@@ -8990,14 +8995,15 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
     }
   }
 
-#if CONFIG_FLEX_MVRES
-  assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                            ,
-                            x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                            ));
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   txfm_info->skip_txfm |= search_state.best_mode_skippable;
 
@@ -9146,14 +9152,15 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
                                              mbmi->num_proj_ref, bsize);
   }
 
-#if CONFIG_FLEX_MVRES
-  assert(check_mv_precision(cm, mbmi
 #if CONFIG_C071_SUBBLK_WARPMV
-                            ,
-                            x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                            ));
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi, x));
 #endif
+#else
+#if CONFIG_FLEX_MVRES
+  assert(check_mv_precision(cm, mbmi));
+#endif
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   const InterpFilter interp_filter = features->interp_filter;
   set_default_interp_filters(mbmi,
 
