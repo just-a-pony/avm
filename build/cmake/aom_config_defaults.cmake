@@ -226,6 +226,8 @@ set_aom_config_var(CONFIG_ALLOW_SAME_REF_COMPOUND 1
                    "Allow compound mode to refer to the same reference frame")
 set_aom_config_var(CONFIG_DISPLAY_ORDER_HINT_FIX 1
                    "Bug fix on display order hints of key frames")
+set_aom_config_var(CONFIG_PAR_HIDING 1
+                   "Enable parity hiding for coefficients coding. (PH)")
 
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1

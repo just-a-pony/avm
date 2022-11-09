@@ -723,6 +723,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                               "Enable reference MV bank (0: false "
                               "1: true)"),
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  .enable_parity_hiding = ARG_DEF(NULL, "enable-parity-hiding", 1,
+                                  "Enable parity hiding "
+                                  "(0:false), 1:true (default)"),
+#endif  // CONFIG_PAR_HIDING
   .frame_hash_metadata = ARG_DEF_ENUM(
       NULL, "frame-hash", 1,
       "Write decoded frame hash metadata OBUs:", frame_hash_metadata_enum),

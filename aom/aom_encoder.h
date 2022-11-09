@@ -480,6 +480,12 @@ typedef struct cfg_options {
    */
   unsigned int enable_refmvbank;
 #endif
+#if CONFIG_PAR_HIDING
+  /*!\brief enable parity hiding for coefficients coding
+   *
+   */
+  unsigned int enable_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
 } cfg_options_t;
 
 /*!\brief Encoded Frame Flags

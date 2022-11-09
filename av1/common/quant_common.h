@@ -22,7 +22,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#if CONFIG_PAR_HIDING
+#define PHTHRESH 4
+#endif  // CONFIG_PAR_HIDING
 #define MINQ 0
 #define QINDEX_BITS 9
 #define QINDEX_BITS_UNEXT 8

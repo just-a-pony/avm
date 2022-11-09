@@ -1316,6 +1316,16 @@ static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
 }
 #endif  // CONFIG_TIP
 
+#if CONFIG_PAR_HIDING
+static void av1_enc_setup_ph_frame(AV1_COMP *cpi) {
+  AV1_COMMON *const cm = &cpi->common;
+  if (cm->features.coded_lossless || !cm->seq_params.enable_parity_hiding)
+    cm->features.allow_parity_hiding = false;
+  else
+    cm->features.allow_parity_hiding = true;
+}
+#endif  // CONFIG_PAR_HIDING
+
 /*!\brief Encoder setup(only for the current frame), encoding, and recontruction
  * for a single frame
  *
@@ -1545,6 +1555,10 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
 #if CONFIG_TIP
   av1_enc_setup_tip_frame(cpi);
 #endif  // CONFIG_TIP
+
+#if CONFIG_PAR_HIDING
+  av1_enc_setup_ph_frame(cpi);
+#endif  // CONFIG_PAR_HIDING
 
   cm->current_frame.skip_mode_info.skip_mode_flag =
       check_skip_mode_enabled(cpi);

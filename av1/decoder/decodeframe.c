@@ -5186,6 +5186,10 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #if CONFIG_ADAPTIVE_DS_FILTER
   seq_params->enable_cfl_ds_filter = aom_rb_read_literal(rb, 2);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
+
+#if CONFIG_PAR_HIDING
+  seq_params->enable_parity_hiding = aom_rb_read_bit(rb);
+#endif  // CONFIG_PAR_HIDING
 }
 
 static int read_global_motion_params(WarpedMotionParams *params,
@@ -6334,6 +6338,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     setup_ccso(cm, rb);
   }
 #endif
+
+#if CONFIG_PAR_HIDING
+  if (features->coded_lossless || !cm->seq_params.enable_parity_hiding)
+    features->allow_parity_hiding = false;
+  else
+    features->allow_parity_hiding = aom_rb_read_bit(rb);
+#endif  // CONFIG_PAR_HIDING
 
   features->tx_mode = read_tx_mode(rb, features->coded_lossless);
   current_frame->reference_mode = read_frame_reference_mode(cm, rb);

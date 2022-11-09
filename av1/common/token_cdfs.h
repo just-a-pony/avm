@@ -6548,5 +6548,64 @@ static const aom_cdf_prob av1_default_coeff_base_eob_multi_cdfs
                                         { AOM_CDF3(10923, 21845) },
                                         { AOM_CDF3(10923, 21845) } } } } };
 #endif  // CONFIG_ATC_COEFCODING
+#if CONFIG_PAR_HIDING
+static const aom_cdf_prob
+    av1_default_coeff_base_ph_cdfs[TOKEN_CDF_Q_CTXS][COEFF_BASE_PH_CONTEXTS]
+                                  [CDF_SIZE(NUM_BASE_LEVELS + 2)] = {
+                                    { { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) } },
+                                    { { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) },
+                                      { AOM_CDF4(8192, 16384, 24576) } },
+                                    { { AOM_CDF4(30082, 32126, 32552) },
+                                      { AOM_CDF4(19423, 28772, 31368) },
+                                      { AOM_CDF4(13258, 24488, 29195) },
+                                      { AOM_CDF4(8972, 19031, 25235) },
+                                      { AOM_CDF4(5687, 12200, 17290) } },
+                                    { { AOM_CDF4(24861, 30211, 31801) },
+                                      { AOM_CDF4(17751, 28962, 31613) },
+                                      { AOM_CDF4(14955, 27020, 30827) },
+                                      { AOM_CDF4(11324, 22960, 28501) },
+                                      { AOM_CDF4(7895, 17320, 23747) } }
+                                  };
 
+static const aom_cdf_prob
+    av1_default_coeff_br_ph_cdfs[TOKEN_CDF_Q_CTXS][COEFF_BR_PH_CONTEXTS]
+                                [CDF_SIZE(BR_CDF_SIZE)] = {
+                                  { { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) } },
+                                  { { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) },
+                                    { AOM_CDF4(8192, 16384, 24576) } },
+                                  { { AOM_CDF4(16383, 24615, 28282) },
+                                    { AOM_CDF4(17376, 25032, 28526) },
+                                    { AOM_CDF4(15599, 23310, 27188) },
+                                    { AOM_CDF4(13061, 20827, 25204) },
+                                    { AOM_CDF4(10677, 18182, 22944) },
+                                    { AOM_CDF4(8880, 16032, 21029) },
+                                    { AOM_CDF4(5685, 11217, 15546) } },
+                                  { { AOM_CDF4(18433, 25932, 29414) },
+                                    { AOM_CDF4(19317, 26826, 29970) },
+                                    { AOM_CDF4(18900, 26400, 29602) },
+                                    { AOM_CDF4(16695, 24770, 28780) },
+                                    { AOM_CDF4(14476, 22777, 27426) },
+                                    { AOM_CDF4(11557, 20493, 26021) },
+                                    { AOM_CDF4(8902, 15844, 21619) } },
+                                };
+
+#endif
 #endif  // AOM_AV1_COMMON_TOKEN_CDFS_H_

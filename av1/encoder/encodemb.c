@@ -99,6 +99,103 @@ int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                               rate_cost, cpi->oxcf.algo_cfg.sharpness);
 }
 
+#if CONFIG_PAR_HIDING
+// This function returns the multiplier of dequantization for current position.
+static INLINE int get_dqv(const int32_t *dequant, int coeff_idx,
+                          const qm_val_t *iqmatrix) {
+  int dqv = dequant[!!coeff_idx];
+  if (iqmatrix != NULL)
+    dqv =
+        ((iqmatrix[coeff_idx] * dqv) + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
+  return dqv;
+}
+
+// This function tunes the coefficients when trellis quantization is off.
+void parity_hiding_trellis_off(const struct AV1_COMP *cpi, MACROBLOCK *mb,
+                               const int plane_type, int block, TX_SIZE tx_size,
+                               TX_TYPE tx_type) {
+  MACROBLOCKD *xd = &mb->e_mbd;
+  const struct macroblock_plane *const p = &mb->plane[plane_type];
+  const int32_t *dequant = p->dequant_QTX;
+  const qm_val_t *iqmatrix = av1_get_iqmatrix(&cpi->common.quant_params, xd,
+                                              plane_type, tx_size, tx_type);
+  const int shift = av1_get_tx_scale(tx_size);
+  tran_low_t *const qcoeff = p->qcoeff + BLOCK_OFFSET(block);
+  tran_low_t *const dqcoeff = p->dqcoeff + BLOCK_OFFSET(block);
+  tran_low_t *const tcoeff = p->coeff + BLOCK_OFFSET(block);
+  const int eob = p->eobs[block];
+
+  if (eob <= PHTHRESH) {
+    return;
+  }
+
+  const SCAN_ORDER *const scan_order = get_scan(tx_size, tx_type);
+  const int16_t *const scan = scan_order->scan;
+
+  int nz = 0, sum_abs1 = 0;
+  for (int si = eob - 1; si > 0; si--) {
+    const int pos = scan[si];
+    nz += !!(qcoeff[pos]);
+    sum_abs1 += AOMMIN(abs(qcoeff[pos]), MAX_BASE_BR_RANGE);
+  }
+  if (nz >= PHTHRESH && ((qcoeff[0] & 1) != (sum_abs1 & 1))) {
+    int tune_pos = scan[0];
+    tran_low_t absdqcoeff = abs(dqcoeff[tune_pos]);
+    tran_low_t abstcoeff = abs(tcoeff[tune_pos]);
+    tran_low_t absqcoeff =
+        abs(qcoeff[tune_pos]) + ((abstcoeff < absdqcoeff) ? -1 : 1);
+    absdqcoeff = (tran_low_t)(ROUND_POWER_OF_TWO_64(
+                                  (tran_high_t)absqcoeff *
+                                      get_dqv(dequant, tune_pos, iqmatrix),
+                                  QUANT_TABLE_BITS) >>
+                              shift);
+    tran_low_t dist_min = abs(abstcoeff - absdqcoeff);
+    tran_low_t tune_absqcoeff = absqcoeff, tune_absdqcoeff = absdqcoeff;
+
+    for (int si = eob - 1; si > 0; si--) {
+      const int pos = scan[si];
+      abstcoeff = abs(tcoeff[pos]);
+      absdqcoeff = abs(dqcoeff[pos]);
+      absqcoeff = abs(qcoeff[pos]);
+      bool tunable =
+          (absqcoeff < MAX_BASE_BR_RANGE) ||
+          ((absqcoeff == MAX_BASE_BR_RANGE) && (abstcoeff < absdqcoeff));
+      absqcoeff += ((abstcoeff < absdqcoeff) ? -1 : 1);
+      absdqcoeff = (tran_low_t)(ROUND_POWER_OF_TWO_64(
+                                    (tran_high_t)absqcoeff *
+                                        get_dqv(dequant, pos, iqmatrix),
+                                    QUANT_TABLE_BITS) >>
+                                shift);
+      tran_low_t absdist = abs(abstcoeff - absdqcoeff);
+      if (absdist < dist_min && tunable) {
+        dist_min = absdist;
+        tune_pos = pos;
+        tune_absqcoeff = absqcoeff;
+        tune_absdqcoeff = absdqcoeff;
+      }
+    }
+
+    tran_low_t sign = tcoeff[tune_pos] < 0 ? -1 : 1;
+    qcoeff[tune_pos] = tune_absqcoeff * sign;
+    dqcoeff[tune_pos] = tune_absdqcoeff * sign;
+  }
+
+  int si = eob - 1;
+  for (; si >= 0; si--) {
+    if (qcoeff[scan[si]]) {
+      break;
+    }
+  }
+  int new_eob = si + 1;
+
+  if (new_eob != p->eobs[block]) {
+    p->eobs[block] = new_eob;
+    p->txb_entropy_ctx[block] =
+        av1_get_txb_entropy_context(qcoeff, scan_order, new_eob);
+  }
+}
+#endif  // CONFIG_PAR_HIDING
+
 // Hyper-parameters for dropout optimization, based on following logics.
 // TODO(yjshen): These settings are tuned by experiments. They may still be
 // optimized for better performance.
@@ -522,6 +619,11 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
                             && !fsc_mode
 #endif  // CONFIG_FORWARDSKIP
         ;
+#if CONFIG_PAR_HIDING
+    bool enable_parity_hiding =
+        cm->features.allow_parity_hiding && !xd->lossless[mbmi->segment_id] &&
+        plane == PLANE_TYPE_Y && get_primary_tx_type(tx_type) < IDTX;
+#endif  // CONFIG_PAR_HIDING
     int quant_idx;
     if (use_trellis)
       quant_idx = AV1_XFORM_QUANT_FP;
@@ -565,10 +667,19 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
 #if CONFIG_FORWARDSKIP
         && !fsc_mode
 #endif  // CONFIG_FORWARDSKIP
+#if CONFIG_PAR_HIDING
+        && !enable_parity_hiding
+#endif  // CONFIG_PAR_HIDING
     ) {
       av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
                          cm->quant_params.base_qindex);
     }
+
+#if CONFIG_PAR_HIDING
+    if (!quant_param.use_optimize_b && enable_parity_hiding) {
+      parity_hiding_trellis_off(cpi, x, plane, block, tx_size, tx_type);
+    }
+#endif
   } else {
     p->eobs[block] = 0;
     p->txb_entropy_ctx[block] = 0;
@@ -940,6 +1051,11 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
         && !fsc_mode
 #endif  // CONFIG_FORWARDSKIP
         ;
+#if CONFIG_PAR_HIDING
+    bool enable_parity_hiding =
+        cm->features.allow_parity_hiding && !xd->lossless[mbmi->segment_id] &&
+        plane == PLANE_TYPE_Y && get_primary_tx_type(tx_type) < IDTX;
+#endif  // CONFIG_PAR_HIDING
     int quant_idx;
     if (use_trellis)
       quant_idx = AV1_XFORM_QUANT_FP;
@@ -1001,10 +1117,18 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
 #if CONFIG_FORWARDSKIP
         && !fsc_mode
 #endif  // CONFIG_FORWARDSKIP
+#if CONFIG_PAR_HIDING
+        && !enable_parity_hiding
+#endif  // CONFIG_PAR_HIDING
     ) {
       av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
                          cm->quant_params.base_qindex);
     }
+#if CONFIG_PAR_HIDING
+    if (!quant_param.use_optimize_b && enable_parity_hiding) {
+      parity_hiding_trellis_off(cpi, x, plane, block, tx_size, tx_type);
+    }
+#endif
   }
 
   if (*eob) {

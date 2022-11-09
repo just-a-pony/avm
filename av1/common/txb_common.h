@@ -521,6 +521,46 @@ typedef aom_cdf_prob (*base_lf_cdf_arr)[CDF_SIZE(LF_BASE_SYMBOLS)];
 #endif  // CONFIG_ATC_COEFCODING
 typedef aom_cdf_prob (*base_cdf_arr)[CDF_SIZE(4)];
 typedef aom_cdf_prob (*br_cdf_arr)[CDF_SIZE(BR_CDF_SIZE)];
+#if CONFIG_PAR_HIDING
+// This function returns the base range context index/increment for the
+// coefficients with hidden parity.
+static INLINE int get_base_ctx_ph(const uint8_t *levels, int pos, int bwl,
+                                  const TX_CLASS tx_class) {
+  const int stats =
+      get_nz_mag(levels + get_padded_idx(pos, bwl), bwl, tx_class);
+  return AOMMIN((stats + 1) >> 1, (COEFF_BASE_PH_CONTEXTS - 1));
+}
+
+// This function returns the low range context index/increment for the
+// coefficients with hidden parity.
+static AOM_FORCE_INLINE int get_par_br_ctx(const uint8_t *const levels,
+                                           const int c,  // raster order
+                                           const int bwl,
+                                           const TX_CLASS tx_class) {
+  const int row = c >> bwl;
+  const int col = c - (row << bwl);
+  const int stride = (1 << bwl) + TX_PAD_HOR;
+  const int pos = row * stride + col;
+  int mag = AOMMIN(levels[pos + 1], MAX_BASE_BR_RANGE);
+  mag += AOMMIN(levels[pos + stride], MAX_BASE_BR_RANGE);
+  switch (tx_class) {
+    case TX_CLASS_2D:
+      mag += AOMMIN(levels[pos + stride + 1], MAX_BASE_BR_RANGE);
+      mag = AOMMIN((mag + 1) >> 1, (COEFF_BR_PH_CONTEXTS - 1));
+      break;
+    case TX_CLASS_HORIZ:
+      mag += AOMMIN(levels[pos + 2], MAX_BASE_BR_RANGE);
+      mag = AOMMIN((mag + 1) >> 1, (COEFF_BR_PH_CONTEXTS - 1));
+      break;
+    case TX_CLASS_VERT:
+      mag += AOMMIN(levels[pos + (stride << 1)], MAX_BASE_BR_RANGE);
+      mag = AOMMIN((mag + 1) >> 1, (COEFF_BR_PH_CONTEXTS - 1));
+      break;
+    default: break;
+  }
+  return mag;
+}
+#endif  // CONFIG_PAR_HIDING
 
 static INLINE int get_lower_levels_ctx_eob(int bwl, int height, int scan_idx) {
   if (scan_idx == 0) return 0;

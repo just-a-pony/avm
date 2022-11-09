@@ -48,6 +48,11 @@ extern "C" {
 
 #define EOB_COEF_CONTEXTS 9
 
+#if CONFIG_PAR_HIDING
+#define COEFF_BASE_PH_CONTEXTS 5
+#define COEFF_BR_PH_CONTEXTS 7
+#endif  // CONFIG_PAR_HIDING
+
 #if CONFIG_ATC_COEFCODING
 // Number of coefficient coding contexts for the low-frequency region
 // for 2D and 1D transforms

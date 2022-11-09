@@ -213,6 +213,9 @@ struct av1_extracfg {
 #if CONFIG_REF_MV_BANK
   int enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  int enable_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
 };
 
 // Example subgop configs. Currently not used by default.
@@ -517,6 +520,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_REF_MV_BANK
   1,    // enable_refmvbank
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  1,    // enable_parity_hiding
+#endif  // CONFIG_PAR_HIDING
 };
 
 struct aom_codec_alg_priv {
@@ -952,6 +958,9 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_REF_MV_BANK
   cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
 }
 
 static void update_default_encoder_config(const cfg_options_t *cfg,
@@ -1043,6 +1052,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_REF_MV_BANK
   extra_cfg->enable_refmvbank = cfg->enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  extra_cfg->enable_parity_hiding = cfg->enable_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
 }
 
 static double convert_qp_offset(int qp, int qp_offset, int bit_depth) {
@@ -1286,7 +1298,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
                                      ? extra_cfg->enable_opfl_refine
                                      : AOM_OPFL_REFINE_NONE;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-
+#if CONFIG_PAR_HIDING
+  tool_cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
   // Set Quantization related configuration.
   q_cfg->using_qm = extra_cfg->enable_qm;
   q_cfg->qm_minlevel = extra_cfg->qm_min;
@@ -3821,6 +3835,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               argv, err_string)) {
     extra_cfg.enable_refmvbank = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_parity_hiding,
+                              argv, err_string)) {
+    extra_cfg.enable_parity_hiding = arg_parse_uint_helper(&arg, err_string);
+#endif  // CONFIG_PAR_HIDING
   } else {
     match = 0;
     snprintf(err_string, ARG_ERR_MSG_MAX_LEN, "Cannot find aom option %s",
@@ -4105,6 +4124,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_REF_MV_BANK
         1,
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+        1,
+#endif  // CONFIG_PAR_HIDING
     },  // cfg
 } };
 

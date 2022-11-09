@@ -534,6 +534,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_REF_MV_BANK
   seq->enable_refmvbank = tool_cfg->enable_refmvbank;
 #endif  // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  seq->enable_parity_hiding = tool_cfg->enable_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
 }
 
 static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {

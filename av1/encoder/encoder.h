@@ -873,6 +873,10 @@ typedef struct {
   // Indicates if optical flow refinement should be enabled
   aom_opfl_refine_type enable_opfl_refine;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_PAR_HIDING
+  // Indicates if parity hiding should be enabled
+  bool enable_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
   // Indicates what frame hash metadata to write
   unsigned int frame_hash_metadata;
 
@@ -1247,6 +1251,13 @@ typedef struct FRAME_COUNTS {
   unsigned int coeff_lps_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
                               [LEVEL_CONTEXTS][BR_CDF_SIZE];
 #endif  // CONFIG_ATC_COEFCODING
+#if CONFIG_PAR_HIDING
+  unsigned int coeff_base_ph_multi[TOKEN_CDF_Q_CTXS][COEFF_BASE_PH_CONTEXTS]
+                                  [NUM_BASE_LEVELS + 2];
+  unsigned int coeff_lps_ph[BR_CDF_SIZE - 1][COEFF_BR_PH_CONTEXTS][2];
+  unsigned int coeff_lps_ph_multi[TOKEN_CDF_Q_CTXS][COEFF_BR_PH_CONTEXTS]
+                                 [BR_CDF_SIZE];
+#endif  // CONFIG_PAR_HIDING
   unsigned int coeff_base_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
                                [SIG_COEF_CONTEXTS][NUM_BASE_LEVELS + 2];
   unsigned int coeff_base_eob_multi[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]

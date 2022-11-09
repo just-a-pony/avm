@@ -467,6 +467,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_JOINT_MVD
   &g_av1_codec_arg_defs.enable_joint_mvd,
 #endif  // CONFIG_JOINT_MVD
+#if CONFIG_PAR_HIDING
+  &g_av1_codec_arg_defs.enable_parity_hiding,
+#endif  // CONFIG_PAR_HIDING
   NULL,
 };
 
@@ -668,6 +671,9 @@ static void init_config(cfg_options_t *config) {
 #if CONFIG_REF_MV_BANK
   config->enable_refmvbank = 1;
 #endif
+#if CONFIG_PAR_HIDING
+  config->enable_parity_hiding = 1;
+#endif  // CONFIG_PAR_HIDING
 }
 
 /* Parses global config arguments into the AvxEncoderConfig. Note that
@@ -1549,11 +1555,17 @@ static void show_stream_config(struct stream_state *stream,
 
   fprintf(stdout,
           "Tool setting (Others)          : Palette (%d), "
+#if CONFIG_PAR_HIDING
+          "ParityHiding (%d), "
+#endif  // CONFIG_PAR_HIDING
 #if CONFIG_IBC_SR_EXT
           "IntraBCExt (%d), "
 #endif  // CONFIG_IBC_SR_EXT
           "IntraBC (%d)\n",
           encoder_cfg->enable_palette,
+#if CONFIG_PAR_HIDING
+          encoder_cfg->enable_parity_hiding,
+#endif  // CONFIG_PAR_HIDING
 #if CONFIG_IBC_SR_EXT
           encoder_cfg->enable_intrabc_ext,
 #endif  // CONFIG_IBC_SR_EXT

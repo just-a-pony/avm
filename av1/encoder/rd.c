@@ -934,6 +934,37 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
     }
   }
 #endif  // CONFIG_FORWARDSKIP
+#if CONFIG_PAR_HIDING
+  const int tx_size = TX_4X4;
+  const int plane_type = 0;
+  LV_MAP_COEFF_COST *pcost = &coeff_costs->coeff_costs[tx_size][plane_type];
+  for (int ctx = 0; ctx < COEFF_BASE_PH_CONTEXTS; ++ctx) {
+    av1_cost_tokens_from_cdf(pcost->base_ph_cost[ctx],
+                             fc->coeff_base_ph_cdf[ctx], NULL);
+  }
+
+  for (int ctx = 0; ctx < COEFF_BR_PH_CONTEXTS; ++ctx) {
+    int br_ph_rate[BR_CDF_SIZE];
+    int prev_cost = 0;
+    int i, j;
+    av1_cost_tokens_from_cdf(br_ph_rate, fc->coeff_br_ph_cdf[ctx], NULL);
+    for (i = 0; i < COEFF_BASE_RANGE; i += BR_CDF_SIZE - 1) {
+      for (j = 0; j < BR_CDF_SIZE - 1; j++) {
+        pcost->lps_ph_cost[ctx][i + j] = prev_cost + br_ph_rate[j];
+      }
+      prev_cost += br_ph_rate[j];
+    }
+    pcost->lps_ph_cost[ctx][i] = prev_cost;
+  }
+  for (int ctx = 0; ctx < COEFF_BR_PH_CONTEXTS; ++ctx) {
+    pcost->lps_ph_cost[ctx][0 + COEFF_BASE_RANGE + 1] =
+        pcost->lps_ph_cost[ctx][0];
+    for (int i = 1; i <= COEFF_BASE_RANGE; ++i) {
+      pcost->lps_ph_cost[ctx][i + COEFF_BASE_RANGE + 1] =
+          pcost->lps_ph_cost[ctx][i] - pcost->lps_ph_cost[ctx][i - 1];
+    }
+  }
+#endif  // CONFIG_PAR_HIDING
 }
 
 #if CONFIG_FLEX_MVRES

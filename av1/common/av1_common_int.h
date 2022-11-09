@@ -507,6 +507,9 @@ typedef struct SequenceHeader {
 #if CONFIG_REF_MV_BANK
   uint8_t enable_refmvbank;  // To turn on/off Ref MV Bank
 #endif                       // CONFIG_REF_MV_BANK
+#if CONFIG_PAR_HIDING
+  uint8_t enable_parity_hiding;  // To turn on/off PAR_HIDING
+#endif                           // CONFIG_PAR_HIDING
   BITSTREAM_PROFILE profile;
 
   // Color config.
@@ -688,6 +691,12 @@ typedef struct {
    */
   bool allow_tip_hole_fill;
 #endif  // CONFIG_TIP
+#if CONFIG_PAR_HIDING
+  /*!
+   * Enables/disables parity hiding.
+   */
+  bool allow_parity_hiding;
+#endif  // CONFIG_PAR_HIDING
 } FeatureFlags;
 
 /*!
