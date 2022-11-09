@@ -4293,8 +4293,28 @@ static int64_t handle_inter_mode(
   int64_t newmv_ret_val = INT64_MAX;
 #if CONFIG_FLEX_MVRES
   inter_mode_info mode_info[NUM_MV_PRECISIONS][MAX_REF_MV_SEARCH];
+
+  // initialize mode_info
+  for (int prec = 0; prec < NUM_MV_PRECISIONS; prec++) {
+    for (int idx = 0; idx < MAX_REF_MV_SEARCH; idx++) {
+      mode_info[prec][idx].full_search_mv.as_int = INVALID_MV;
+      mode_info[prec][idx].mv.as_int = INVALID_MV;
+      mode_info[prec][idx].rd = INT64_MAX;
+      mode_info[prec][idx].drl_cost = 0;
+      mode_info[prec][idx].rate_mv = 0;
+      mode_info[prec][idx].full_mv_rate = 0;
+    }
+  }
 #else
   inter_mode_info mode_info[MAX_REF_MV_SEARCH];
+  for (int idx = 0; idx < MAX_REF_MV_SEARCH; idx++) {
+    mode_info[idx].full_search_mv.as_int = INVALID_MV;
+    mode_info[idx].mv.as_int = INVALID_MV;
+    mode_info[idx].rd = INT64_MAX;
+    mode_info[idx].drl_cost = 0;
+    mode_info[idx].rate_mv = 0;
+    mode_info[idx].full_mv_rate = 0;
+  }
 #endif
 
   // Do not prune the mode based on inter cost from tpl if the current ref frame
