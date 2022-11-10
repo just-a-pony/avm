@@ -3567,7 +3567,7 @@ void update_coeff_ctx_hiden(TX_CLASS tx_class, const int16_t *scan, int bwl,
                             base_cdf_arr base_cdf_ph, br_cdf_arr br_cdf_ph
 #if CONFIG_ENTROPY_STATS
                             ,
-                            ThreadData *const td, int cdf_idx, int plane_type
+                            ThreadData *const td, int cdf_idx
 #endif  // CONFIG_ENTROPY_STATS
 ) {
   const int q_index = (level >> 1);
@@ -3931,7 +3931,7 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
                                ec_ctx->coeff_br_ph_cdf
 #if CONFIG_ENTROPY_STATS
                                ,
-                               td, cdf_idx, plane_type
+                               td, cdf_idx
 #endif  // CONFIG_ENTROPY_STATS
         );
       }
