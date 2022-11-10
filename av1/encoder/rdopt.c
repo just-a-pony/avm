@@ -1699,6 +1699,9 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         *rate_mv = 0;
         for (int i = 0; i < 2; ++i) {
           const int_mv ref_mv = av1_get_ref_mv(x, i);
+#if CONFIG_C071_SUBBLK_WARPMV
+          update_mv_precision(ref_mv.as_mv, pb_mv_precision, &cur_mv[i].as_mv);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
           *rate_mv +=
               av1_mv_bit_cost(&cur_mv[i].as_mv, &ref_mv.as_mv, pb_mv_precision,
@@ -1754,6 +1757,9 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
                                                        NULL, 0, rate_mv, 1);
         } else {
           const int_mv ref_mv = av1_get_ref_mv(x, 1);
+#if CONFIG_C071_SUBBLK_WARPMV
+          update_mv_precision(ref_mv.as_mv, pb_mv_precision, &cur_mv[1].as_mv);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
           *rate_mv = av1_mv_bit_cost(&cur_mv[1].as_mv, &ref_mv.as_mv,
 #if CONFIG_FLEX_MVRES
                                      pb_mv_precision, &x->mv_costs,
@@ -1869,6 +1875,9 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
                                                        NULL, 0, rate_mv, 0);
         } else {
           const int_mv ref_mv = av1_get_ref_mv(x, 0);
+#if CONFIG_C071_SUBBLK_WARPMV
+          update_mv_precision(ref_mv.as_mv, pb_mv_precision, &cur_mv[0].as_mv);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
           *rate_mv = av1_mv_bit_cost(&cur_mv[0].as_mv, &ref_mv.as_mv,
 #if CONFIG_FLEX_MVRES
                                      pb_mv_precision, &x->mv_costs,

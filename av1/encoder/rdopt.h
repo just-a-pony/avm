@@ -407,6 +407,18 @@ void store_submi(const MACROBLOCKD *const xd, const AV1_COMMON *cm,
 // update submi from src_submi
 void update_submi(MACROBLOCKD *const xd, const AV1_COMMON *cm,
                   const SUBMB_INFO *src_submi, BLOCK_SIZE bsize);
+
+// update curmv precision
+static INLINE void update_mv_precision(const MV ref_mv,
+                                       const MvSubpelPrecision pb_mv_precision,
+                                       MV *mv) {
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(ref_mv, &sub_mv_offset, pb_mv_precision);
+  if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    mv->col += sub_mv_offset.col;
+    mv->row += sub_mv_offset.row;
+  }
+}
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 
 #ifdef __cplusplus
