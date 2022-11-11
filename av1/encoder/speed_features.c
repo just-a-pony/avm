@@ -838,9 +838,6 @@ static AOM_INLINE void init_tx_sf(TX_SPEED_FEATURES *tx_sf) {
   tx_sf->tx_type_search.prune_2d_txfm_mode = TX_TYPE_PRUNE_1;
 #if CONFIG_NEW_TX_PARTITION
   tx_sf->tx_type_search.ml_tx_split_thresh = 400;
-  tx_sf->tx_type_search.ml_tx_split_horzvert_thresh = 4000;
-  tx_sf->tx_type_search.prune_inter_4way_split = 1;
-  tx_sf->tx_type_search.prune_intra_4way_split = 1;
 #else
   tx_sf->tx_type_search.ml_tx_split_thresh = 8500;
 #endif  // CONFIG_NEW_TX_PARTITION
@@ -917,9 +914,6 @@ static AOM_INLINE void init_lpf_sf(LOOP_FILTER_SPEED_FEATURES *lpf_sf) {
 static void av1_disable_ml_based_transform_sf(TX_SPEED_FEATURES *const tx_sf) {
   tx_sf->tx_type_search.prune_2d_txfm_mode = TX_TYPE_PRUNE_0;
   tx_sf->tx_type_search.ml_tx_split_thresh = -1;
-#if CONFIG_NEW_TX_PARTITION
-  tx_sf->tx_type_search.ml_tx_split_horzvert_thresh = -1;
-#endif  // CONFIG_NEW_TX_PARTITION
 }
 
 static void av1_disable_ml_based_partition_sf(
