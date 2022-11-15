@@ -214,11 +214,6 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
   // Can only activate one mode.
   assert(((mbmi->mode != DC_PRED) + use_palette + use_intrabc +
           use_filter_intra) <= 1);
-#if CONFIG_FORWARDSKIP
-  const int use_fsc = mbmi->fsc_mode[PLANE_TYPE_Y];
-  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
-#endif  // CONFIG_FORWARDSKIP
   const int try_palette =
       av1_allow_palette(cpi->common.features.allow_screen_content_tools,
                         mbmi->sb_type[PLANE_TYPE_Y]);
@@ -249,10 +244,8 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
   }
 #if CONFIG_FORWARDSKIP
   if (allow_fsc_intra(&cpi->common, xd, bsize, mbmi)) {
-    const uint8_t fsc_above = (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-    const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-    const int fsc_ctx =
-        frame_is_intra_only(&cpi->common) ? fsc_above + fsc_left : 3;
+    const int use_fsc = mbmi->fsc_mode[PLANE_TYPE_Y];
+    const int fsc_ctx = get_fsc_mode_ctx(xd, frame_is_intra_only(&cpi->common));
     total_rate +=
         mode_costs->fsc_cost[fsc_ctx][fsc_bsize_groups[bsize]][use_fsc];
   }
@@ -277,8 +270,14 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
     }
   }
 #endif  // !CONFIG_AIMC
-  if (av1_allow_intrabc(&cpi->common) && xd->tree_type != CHROMA_PART)
+  if (av1_allow_intrabc(&cpi->common) && xd->tree_type != CHROMA_PART) {
+#if CONFIG_NEW_CONTEXT_MODELING
+    const int intrabc_ctx = get_intrabc_ctx(xd);
+    total_rate += mode_costs->intrabc_cost[intrabc_ctx][use_intrabc];
+#else
     total_rate += mode_costs->intrabc_cost[use_intrabc];
+#endif  // CONFIG_NEW_CONTEXT_MODELING
+  }
   return total_rate;
 }
 

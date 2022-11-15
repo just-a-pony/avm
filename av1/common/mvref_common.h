@@ -430,33 +430,17 @@ static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   av1_zero(xd->neighbors_ref_counts);
 
   uint8_t *const ref_counts = xd->neighbors_ref_counts;
-
-  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
-  const int above_in_image = xd->up_available;
-  const int left_in_image = xd->left_available;
-
-  // Above neighbor
-  if (above_in_image &&
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL &&
 #if CONFIG_TIP
-      !is_tip_ref_frame(above_mbmi->ref_frame[0]) &&
+        !is_tip_ref_frame(neighbor->ref_frame[0]) &&
 #endif  // CONFIG_TIP
-      is_inter_block(above_mbmi, xd->tree_type)) {
-    ref_counts[above_mbmi->ref_frame[0]]++;
-    if (has_second_ref(above_mbmi)) {
-      ref_counts[above_mbmi->ref_frame[1]]++;
-    }
-  }
-
-  // Left neighbor
-  if (left_in_image &&
-#if CONFIG_TIP
-      !is_tip_ref_frame(left_mbmi->ref_frame[0]) &&
-#endif  // CONFIG_TIP
-      is_inter_block(left_mbmi, xd->tree_type)) {
-    ref_counts[left_mbmi->ref_frame[0]]++;
-    if (has_second_ref(left_mbmi)) {
-      ref_counts[left_mbmi->ref_frame[1]]++;
+        is_inter_block(neighbor, xd->tree_type)) {
+      ref_counts[neighbor->ref_frame[0]]++;
+      if (has_second_ref(neighbor)) {
+        ref_counts[neighbor->ref_frame[1]]++;
+      }
     }
   }
 }

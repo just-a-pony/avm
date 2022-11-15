@@ -307,7 +307,14 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
   }
 
 #endif  // !CONFIG_AIMC
+#if CONFIG_NEW_CONTEXT_MODELING
+  for (i = 0; i < INTRABC_CONTEXTS; ++i) {
+    av1_cost_tokens_from_cdf(mode_costs->intrabc_cost[i], fc->intrabc_cdf[i],
+                             NULL);
+  }
+#else
   av1_cost_tokens_from_cdf(mode_costs->intrabc_cost, fc->intrabc_cdf, NULL);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
 #if CONFIG_BVP_IMPROVEMENT
   av1_cost_tokens_from_cdf(mode_costs->intrabc_mode_cost, fc->intrabc_mode_cdf,
                            NULL);

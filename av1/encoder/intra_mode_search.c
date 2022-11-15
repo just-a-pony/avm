@@ -54,6 +54,10 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
   mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
   mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
 #endif  // CONFIG_FORWARDSKIP
+#if CONFIG_NEW_CONTEXT_MODELING
+  mbmi->use_intrabc[0] = 0;
+  mbmi->use_intrabc[1] = 0;
+#endif  // CONFIG_NEW_CONTEXT_MODELING
 #if CONFIG_AIMC
   mbmi->joint_y_mode_delta_angle = DC_PRED;
   mbmi->y_mode_idx = DC_PRED;
@@ -124,6 +128,10 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
     mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
     mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
 #endif  // CONFIG_FORWARDSKIP
+#if CONFIG_NEW_CONTEXT_MODELING
+    mbmi->use_intrabc[0] = 0;
+    mbmi->use_intrabc[1] = 0;
+#endif  // CONFIG_NEW_CONTEXT_MODELING
     return 1;
   } else {
     return 0;
@@ -1441,13 +1449,9 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   int mode_costs = 0;
 #else
   const int *bmode_costs;
-  const MB_MODE_INFO *above_mi = xd->above_mbmi;
-  const MB_MODE_INFO *left_mi = xd->left_mbmi;
-  const PREDICTION_MODE A = av1_above_block_mode(above_mi);
-  const PREDICTION_MODE L = av1_left_block_mode(left_mi);
-  const int above_ctx = intra_mode_context[A];
-  const int left_ctx = intra_mode_context[L];
-  bmode_costs = x->mode_costs.y_mode_costs[above_ctx][left_ctx];
+  const int neighbor0_ctx = get_y_mode_ctx(xd->neighbors[0]);
+  const int neighbor1_ctx = get_y_mode_ctx(xd->neighbors[1]);
+  bmode_costs = x->mode_costs.y_mode_costs[neighbor0_ctx][neighbor1_ctx];
 #endif  // CONFIG_AIMC
 
   mbmi->angle_delta[PLANE_TYPE_Y] = 0;

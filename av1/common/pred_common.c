@@ -560,18 +560,17 @@ int av1_get_palette_cache(const MACROBLOCKD *const xd, int plane,
 // 2 - intra/--, --/intra
 // 3 - intra/intra
 int av1_get_intra_inter_context(const MACROBLOCKD *xd) {
-  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
-  const int has_above = xd->up_available;
-  const int has_left = xd->left_available;
-
-  if (has_above && has_left) {  // both edges available
-    const int above_intra = !is_inter_block(above_mbmi, xd->tree_type);
-    const int left_intra = !is_inter_block(left_mbmi, xd->tree_type);
-    return left_intra && above_intra ? 3 : left_intra || above_intra;
-  } else if (has_above || has_left) {  // one edge available
-    return 2 *
-           !is_inter_block(has_above ? above_mbmi : left_mbmi, xd->tree_type);
+  const MB_MODE_INFO *const neighbor0 = xd->neighbors[0];
+  const MB_MODE_INFO *const neighbor1 = xd->neighbors[1];
+  if (neighbor0 && neighbor1) {  // both neighbors available
+    const int is_neighbor0_intra = !is_inter_block(neighbor0, xd->tree_type);
+    const int is_neighbor1_intra = !is_inter_block(neighbor1, xd->tree_type);
+    return is_neighbor0_intra && is_neighbor1_intra
+               ? 3
+               : is_neighbor0_intra || is_neighbor1_intra;
+  } else if (neighbor0 || neighbor1) {  // one neighbor available
+    const MB_MODE_INFO *const neighbor = neighbor0 ? neighbor0 : neighbor1;
+    return 2 * !is_inter_block(neighbor, xd->tree_type);
   } else {
     return 0;
   }
@@ -589,41 +588,39 @@ int av1_get_intra_inter_context(const MACROBLOCKD *xd) {
 int av1_get_reference_mode_context(const AV1_COMMON *cm,
                                    const MACROBLOCKD *xd) {
   (void)cm;
-  int ctx;
-  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
-  const int has_above = xd->up_available;
-  const int has_left = xd->left_available;
+  int ctx = 0;
+  const MB_MODE_INFO *const neighbor0 = xd->neighbors[0];
+  const MB_MODE_INFO *const neighbor1 = xd->neighbors[1];
 
   // Note:
   // The mode info data structure has a one element border above and to the
   // left of the entries corresponding to real macroblocks.
   // The prediction flags in these dummy entries are initialized to 0.
-  if (has_above && has_left) {  // both edges available
-    if (!has_second_ref(above_mbmi) && !has_second_ref(left_mbmi))
-      // neither edge uses comp pred (0/1)
-      ctx = IS_BACKWARD_REF_FRAME(above_mbmi->ref_frame[0]) ^
-            IS_BACKWARD_REF_FRAME(left_mbmi->ref_frame[0]);
-    else if (!has_second_ref(above_mbmi))
-      // one of two edges uses comp pred (2/3)
-      ctx = 2 + (IS_BACKWARD_REF_FRAME(above_mbmi->ref_frame[0]) ||
-                 !is_inter_block(above_mbmi, xd->tree_type));
-    else if (!has_second_ref(left_mbmi))
-      // one of two edges uses comp pred (2/3)
-      ctx = 2 + (IS_BACKWARD_REF_FRAME(left_mbmi->ref_frame[0]) ||
-                 !is_inter_block(left_mbmi, xd->tree_type));
-    else  // both edges use comp pred (4)
+  if (neighbor0 && neighbor1) {  // both neighbors available
+    if (!has_second_ref(neighbor0) && !has_second_ref(neighbor1))
+      // neither neighbor uses comp pred (0/1)
+      ctx = IS_BACKWARD_REF_FRAME(neighbor0->ref_frame[0]) ^
+            IS_BACKWARD_REF_FRAME(neighbor1->ref_frame[0]);
+    else if (!has_second_ref(neighbor0))
+      // one of two neighbors uses comp pred (2/3)
+      ctx = 2 + (IS_BACKWARD_REF_FRAME(neighbor0->ref_frame[0]) ||
+                 !is_inter_block(neighbor0, xd->tree_type));
+    else if (!has_second_ref(neighbor1))
+      // one of two neighbors uses comp pred (2/3)
+      ctx = 2 + (IS_BACKWARD_REF_FRAME(neighbor1->ref_frame[0]) ||
+                 !is_inter_block(neighbor1, xd->tree_type));
+    else  // both neighbors use comp pred (4)
       ctx = 4;
-  } else if (has_above || has_left) {  // one edge available
-    const MB_MODE_INFO *edge_mbmi = has_above ? above_mbmi : left_mbmi;
+  } else if (neighbor0 || neighbor1) {  // one neighbor available
+    const MB_MODE_INFO *neighbor = neighbor0 ? neighbor0 : neighbor1;
 
-    if (!has_second_ref(edge_mbmi))
-      // edge does not use comp pred (0/1)
-      ctx = IS_BACKWARD_REF_FRAME(edge_mbmi->ref_frame[0]);
+    if (!has_second_ref(neighbor))
+      // neighbor does not use comp pred (0/1)
+      ctx = IS_BACKWARD_REF_FRAME(neighbor->ref_frame[0]);
     else
-      // edge uses comp pred (3)
+      // neighbor uses comp pred (3)
       ctx = 3;
-  } else {  // no edges available (1)
+  } else {  // no neighbors available (1)
     ctx = 1;
   }
   assert(ctx >= 0 && ctx < COMP_INTER_CONTEXTS);
@@ -656,72 +653,70 @@ int av1_get_ref_pred_context(const MACROBLOCKD *xd, MV_REFERENCE_FRAME ref,
 }
 #else
 int av1_get_comp_reference_type_context(const MACROBLOCKD *xd) {
-  int pred_context;
-  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
-  const int above_in_image = xd->up_available;
-  const int left_in_image = xd->left_available;
+  int ctx = 0;
+  const MB_MODE_INFO *const neighbor0 = xd->neighbors[0];
+  const MB_MODE_INFO *const neighbor1 = xd->neighbors[1];
 
-  if (above_in_image && left_in_image) {  // both edges available
-    const int above_intra = !is_inter_block(above_mbmi, xd->tree_type);
-    const int left_intra = !is_inter_block(left_mbmi, xd->tree_type);
+  if (neighbor0 && neighbor1) {  // both neighbors available
+    const int is_neighbor0_intra = !is_inter_block(neighbor0, xd->tree_type);
+    const int is_neighbor1_intra = !is_inter_block(neighbor1, xd->tree_type);
 
-    if (above_intra && left_intra) {  // intra/intra
-      pred_context = 2;
-    } else if (above_intra || left_intra) {  // intra/inter
-      const MB_MODE_INFO *inter_mbmi = above_intra ? left_mbmi : above_mbmi;
+    if (is_neighbor0_intra && is_neighbor1_intra) {  // intra/intra
+      ctx = 2;
+    } else if (is_neighbor0_intra || is_neighbor1_intra) {  // intra/inter
+      const MB_MODE_INFO *inter_mbmi =
+          is_neighbor0_intra ? neighbor1 : neighbor0;
 
       if (!has_second_ref(inter_mbmi))  // single pred
-        pred_context = 2;
+        ctx = 2;
       else  // comp pred
-        pred_context = 1 + 2 * has_uni_comp_refs(inter_mbmi);
+        ctx = 1 + 2 * has_uni_comp_refs(inter_mbmi);
     } else {  // inter/inter
-      const int a_sg = !has_second_ref(above_mbmi);
-      const int l_sg = !has_second_ref(left_mbmi);
-      const MV_REFERENCE_FRAME frfa = above_mbmi->ref_frame[0];
-      const MV_REFERENCE_FRAME frfl = left_mbmi->ref_frame[0];
+      const int a_sg = !has_second_ref(neighbor0);
+      const int l_sg = !has_second_ref(neighbor1);
+      const MV_REFERENCE_FRAME frfa = neighbor0->ref_frame[0];
+      const MV_REFERENCE_FRAME frfl = neighbor1->ref_frame[0];
 
       if (a_sg && l_sg) {  // single/single
-        pred_context = 1 + 2 * (!(IS_BACKWARD_REF_FRAME(frfa) ^
-                                  IS_BACKWARD_REF_FRAME(frfl)));
+        ctx = 1 + 2 * (!(IS_BACKWARD_REF_FRAME(frfa) ^
+                         IS_BACKWARD_REF_FRAME(frfl)));
       } else if (l_sg || a_sg) {  // single/comp
         const int uni_rfc =
-            a_sg ? has_uni_comp_refs(left_mbmi) : has_uni_comp_refs(above_mbmi);
+            a_sg ? has_uni_comp_refs(neighbor1) : has_uni_comp_refs(neighbor0);
 
         if (!uni_rfc)  // comp bidir
-          pred_context = 1;
+          ctx = 1;
         else  // comp unidir
-          pred_context = 3 + (!(IS_BACKWARD_REF_FRAME(frfa) ^
-                                IS_BACKWARD_REF_FRAME(frfl)));
+          ctx = 3 +
+                (!(IS_BACKWARD_REF_FRAME(frfa) ^ IS_BACKWARD_REF_FRAME(frfl)));
       } else {  // comp/comp
-        const int a_uni_rfc = has_uni_comp_refs(above_mbmi);
-        const int l_uni_rfc = has_uni_comp_refs(left_mbmi);
+        const int a_uni_rfc = has_uni_comp_refs(neighbor0);
+        const int l_uni_rfc = has_uni_comp_refs(neighbor1);
 
         if (!a_uni_rfc && !l_uni_rfc)  // bidir/bidir
-          pred_context = 0;
+          ctx = 0;
         else if (!a_uni_rfc || !l_uni_rfc)  // unidir/bidir
-          pred_context = 2;
+          ctx = 2;
         else  // unidir/unidir
-          pred_context =
-              3 + (!((frfa == BWDREF_FRAME) ^ (frfl == BWDREF_FRAME)));
+          ctx = 3 + (!((frfa == BWDREF_FRAME) ^ (frfl == BWDREF_FRAME)));
       }
     }
-  } else if (above_in_image || left_in_image) {  // one edge available
-    const MB_MODE_INFO *edge_mbmi = above_in_image ? above_mbmi : left_mbmi;
-    if (!is_inter_block(edge_mbmi, xd->tree_type)) {  // intra
-      pred_context = 2;
-    } else {                           // inter
-      if (!has_second_ref(edge_mbmi))  // single pred
-        pred_context = 2;
+  } else if (neighbor0 || neighbor1) {  // one neighbor available
+    const MB_MODE_INFO *neighbor = neighbor0 ? neighbor0 : neighbor1;
+    if (!is_inter_block(neighbor, xd->tree_type)) {  // intra
+      ctx = 2;
+    } else {                          // inter
+      if (!has_second_ref(neighbor))  // single pred
+        ctx = 2;
       else  // comp pred
-        pred_context = 4 * has_uni_comp_refs(edge_mbmi);
+        ctx = 4 * has_uni_comp_refs(neighbor);
     }
-  } else {  // no edges available
-    pred_context = 2;
+  } else {  // no neighbors available
+    ctx = 2;
   }
 
-  assert(pred_context >= 0 && pred_context < COMP_REF_TYPE_CONTEXTS);
-  return pred_context;
+  assert(ctx >= 0 && ctx < COMP_REF_TYPE_CONTEXTS);
+  return ctx;
 }
 
 // Returns a context number for the given MB prediction signal

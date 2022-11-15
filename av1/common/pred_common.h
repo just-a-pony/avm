@@ -188,21 +188,14 @@ void av1_get_ref_frames(AV1_COMMON *const cm, int cur_frame_disp,
 
 #if CONFIG_TIP
 static INLINE int get_tip_ctx(const MACROBLOCKD *xd) {
-  int ctx;
-  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
-  const int has_above = xd->up_available;
-  const int has_left = xd->left_available;
-
-  if (has_above && has_left) {
-    ctx = is_tip_ref_frame(above_mbmi->ref_frame[0]) +
-          is_tip_ref_frame(left_mbmi->ref_frame[0]);
-  } else if (has_above || has_left) {
-    const MB_MODE_INFO *edge_mbmi = has_above ? above_mbmi : left_mbmi;
-    ctx = is_tip_ref_frame(edge_mbmi->ref_frame[0]) * 2;
-  } else {
-    ctx = 0;
+  int ctx = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL) {
+      ctx += is_tip_ref_frame(neighbor->ref_frame[0]);
+    }
   }
+
   return ctx;
 }
 #endif  // CONFIG_TIP
@@ -282,13 +275,29 @@ static INLINE int av1_get_pred_context_seg_id(const MACROBLOCKD *xd) {
   return above_sip + left_sip;
 }
 
+static INLINE int derive_comp_one_ref_context(const AV1_COMMON *cm,
+                                              const MB_MODE_INFO *const mi) {
+#if CONFIG_NEW_REF_SIGNALING
+  MV_REFERENCE_FRAME furthest_future_ref = get_furthest_future_ref_index(cm);
+#endif  // CONFIG_NEW_REF_SIGNALING
+  int ctx = 0;
+  if (mi) {
+    if (has_second_ref(mi)) ctx = mi->comp_group_idx;
+#if CONFIG_NEW_REF_SIGNALING
+    else if (mi->ref_frame[0] == furthest_future_ref)
+#else
+    else if (mi->ref_frame[0] == ALTREF_FRAME)
+#endif  // CONFIG_NEW_REF_SIGNALING
+      ctx = 2;
+  }
+
+  return ctx;
+}
+
 static INLINE int get_comp_group_idx_context(const AV1_COMMON *cm,
                                              const MACROBLOCKD *xd) {
   (void)cm;
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_NEW_REF_SIGNALING
-  MV_REFERENCE_FRAME furthest_future_ref = get_furthest_future_ref_index(cm);
-#endif  // CONFIG_NEW_REF_SIGNALING
   const RefCntBuffer *const bck_buf = get_ref_frame_buf(cm, mbmi->ref_frame[0]);
   const RefCntBuffer *const fwd_buf = get_ref_frame_buf(cm, mbmi->ref_frame[1]);
   int bck_frame_index = 0, fwd_frame_index = 0;
@@ -303,31 +312,12 @@ static INLINE int get_comp_group_idx_context(const AV1_COMMON *cm,
                                   cur_frame_index, bck_frame_index));
   const int offset = (fwd == bck);
 
-  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
-  int above_ctx = 0, left_ctx = 0;
+  const int ctx0 = derive_comp_one_ref_context(cm, xd->neighbors[0]);
+  const int ctx1 = derive_comp_one_ref_context(cm, xd->neighbors[1]);
 
-  if (above_mi) {
-    if (has_second_ref(above_mi)) above_ctx = above_mi->comp_group_idx;
-#if CONFIG_NEW_REF_SIGNALING
-    else if (above_mi->ref_frame[0] == furthest_future_ref)
-#else
-    else if (above_mi->ref_frame[0] == ALTREF_FRAME)
-#endif  // CONFIG_NEW_REF_SIGNALING
-      above_ctx = 2;
-  }
-  if (left_mi) {
-    if (has_second_ref(left_mi)) left_ctx = left_mi->comp_group_idx;
-#if CONFIG_NEW_REF_SIGNALING
-    else if (left_mi->ref_frame[0] == furthest_future_ref)
-#else
-    else if (left_mi->ref_frame[0] == ALTREF_FRAME)
-#endif  // CONFIG_NEW_REF_SIGNALING
-      left_ctx = 2;
-  }
   const int ctxmap[3 * 3] = { 0, 1, 2, 1, 3, 4, 2, 4, 5 };
 
-  return ctxmap[3 * above_ctx + left_ctx] + offset * 6;
+  return ctxmap[3 * ctx0 + ctx1] + offset * 6;
 }
 
 static INLINE aom_cdf_prob *av1_get_pred_cdf_seg_id(
@@ -336,30 +326,45 @@ static INLINE aom_cdf_prob *av1_get_pred_cdf_seg_id(
 }
 
 static INLINE int av1_get_skip_mode_context(const MACROBLOCKD *xd) {
-  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
-  const int above_skip_mode = above_mi ? above_mi->skip_mode : 0;
-  const int left_skip_mode = left_mi ? left_mi->skip_mode : 0;
-  return above_skip_mode + left_skip_mode;
+  int ctx = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL) {
+      ctx += neighbor->skip_mode;
+    }
+  }
+
+  return ctx;
 }
 
 static INLINE int av1_get_skip_txfm_context(const MACROBLOCKD *xd) {
-  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
-  const int above_skip_txfm =
-      above_mi ? above_mi->skip_txfm[xd->tree_type == CHROMA_PART] : 0;
-  const int left_skip_txfm =
-      left_mi ? left_mi->skip_txfm[xd->tree_type == CHROMA_PART] : 0;
+  int ctx = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL) {
+      ctx += neighbor->skip_txfm[xd->tree_type == CHROMA_PART];
+    }
+  }
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT
-  int ctx_idx = above_skip_txfm + left_skip_txfm;
-  if (xd->mi[0]->skip_mode) ctx_idx += SKIP_CONTEXTS >> 1;
-
-  return ctx_idx;
-#else
-  return above_skip_txfm + left_skip_txfm;
+  if (xd->mi[0]->skip_mode) ctx += (SKIP_CONTEXTS >> 1);
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+  return ctx;
 }
+
+#if CONFIG_NEW_CONTEXT_MODELING
+static INLINE int get_intrabc_ctx(const MACROBLOCKD *xd) {
+  int ctx = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL) {
+      ctx += is_intrabc_block(neighbor, xd->tree_type);
+    }
+  }
+
+  return ctx;
+}
+#endif  // CONFIG_NEW_CONTEXT_MODELING
 
 int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir);
 
@@ -376,11 +381,14 @@ static INLINE int av1_get_palette_bsize_ctx(BLOCK_SIZE bsize) {
 }
 
 static INLINE int av1_get_palette_mode_ctx(const MACROBLOCKD *xd) {
-  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
   int ctx = 0;
-  if (above_mi) ctx += (above_mi->palette_mode_info.palette_size[0] > 0);
-  if (left_mi) ctx += (left_mi->palette_mode_info.palette_size[0] > 0);
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL) {
+      ctx += (neighbor->palette_mode_info.palette_size[0] > 0);
+    }
+  }
+
   return ctx;
 }
 
@@ -573,34 +581,31 @@ static INLINE aom_cdf_prob *av1_get_pred_cdf_single_ref_p6(
 // The prediction flags in these dummy entries are initialized to 0.
 static INLINE int get_tx_size_context(const MACROBLOCKD *xd) {
   const MB_MODE_INFO *mbmi = xd->mi[0];
-  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
   const TX_SIZE max_tx_size =
       max_txsize_rect_lookup[mbmi->sb_type[PLANE_TYPE_Y]];
   const int max_tx_wide = tx_size_wide[max_tx_size];
   const int max_tx_high = tx_size_high[max_tx_size];
-  const int has_above = xd->up_available;
-  const int has_left = xd->left_available;
+  const int default_ctx[MAX_NUM_NEIGHBORS] = {
+    xd->above_txfm_context[0] >= max_tx_wide,
+    xd->left_txfm_context[0] >= max_tx_high
+  };
 
-  int above = xd->above_txfm_context[0] >= max_tx_wide;
-  int left = xd->left_txfm_context[0] >= max_tx_high;
+  const int max_tx_threshold[MAX_NUM_NEIGHBORS] = { max_tx_wide, max_tx_high };
 
-  if (has_above)
-    if (is_inter_block(above_mbmi, xd->tree_type))
-      above = block_size_wide[above_mbmi->sb_type[PLANE_TYPE_Y]] >= max_tx_wide;
+  int ctx = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL) {
+      if (is_inter_block(neighbor, xd->tree_type)) {
+        const int block_size = neighbor->sb_type[PLANE_TYPE_Y];
+        ctx += (block_size_wide[block_size] >= max_tx_threshold[i]);
+      } else {
+        ctx += default_ctx[i];
+      }
+    }
+  }
 
-  if (has_left)
-    if (is_inter_block(left_mbmi, xd->tree_type))
-      left = block_size_high[left_mbmi->sb_type[PLANE_TYPE_Y]] >= max_tx_high;
-
-  if (has_above && has_left)
-    return (above + left);
-  else if (has_above)
-    return above;
-  else if (has_left)
-    return left;
-  else
-    return 0;
+  return ctx;
 }
 
 #ifdef __cplusplus

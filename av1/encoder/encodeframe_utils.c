@@ -427,14 +427,29 @@ static void update_palette_cdf(MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi,
   }
 }
 
+#if CONFIG_FORWARDSKIP
+static INLINE void update_fsc_cdf(const AV1_COMMON *const cm, MACROBLOCKD *xd,
+#if CONFIG_ENTROPY_STATS
+                                  FRAME_COUNTS *counts,
+#endif  // CONFIG_ENTROPY_STATS
+                                  const int intraonly) {
+  const MB_MODE_INFO *const mbmi = xd->mi[0];
+  const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
+  if (allow_fsc_intra(cm, xd, bsize, mbmi)) {
+#if CONFIG_ENTROPY_STATS
+    const int ctx = get_fsc_mode_ctx(xd, intraonly);
+    ++counts->fsc_mode[ctx][fsc_bsize_groups[bsize]]
+                      [mbmi->fsc_mode[xd->tree_type == CHROMA_PART]];
+#endif  // CONFIG_ENTROPY_STATS
+    aom_cdf_prob *fsc_cdf = get_fsc_mode_cdf(xd, bsize, intraonly);
+    update_cdf(fsc_cdf, mbmi->fsc_mode[xd->tree_type == CHROMA_PART],
+               FSC_MODES);
+  }
+}
+#endif  // CONFIG_FORWARDSKIP
+
 void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
-                         MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi
-#if !CONFIG_AIMC
-                         ,
-                         const MB_MODE_INFO *above_mi,
-                         const MB_MODE_INFO *left_mi, const int intraonly
-#endif  // !CONFIG_AIMC
-) {
+                         MACROBLOCKD *xd, const MB_MODE_INFO *const mbmi) {
   FRAME_CONTEXT *fc = xd->tile_ctx;
 #if !CONFIG_AIMC
   const PREDICTION_MODE y_mode = mbmi->mode;
@@ -442,6 +457,9 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
   (void)counts;
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
   if (xd->tree_type != CHROMA_PART) {
+#if !CONFIG_AIMC || CONFIG_FORWARDSKIP
+    const int intraonly = frame_is_intra_only(cm);
+#endif  // !CONFIG_AIMC || CONFIG_FORWARDSKIP
 #if CONFIG_AIMC
     const int context = get_y_mode_idx_ctx(xd);
     const int mode_idx = mbmi->y_mode_idx;
@@ -466,34 +484,21 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
                  SECOND_MODE_COUNT);
     }
 #if CONFIG_FORWARDSKIP
-    if (allow_fsc_intra(cm, xd, bsize, mbmi)) {
-      const int intraonly = frame_is_intra_only(cm);
+    update_fsc_cdf(cm, xd,
 #if CONFIG_ENTROPY_STATS
-      const MB_MODE_INFO *above_mi = xd->above_mbmi;
-      const MB_MODE_INFO *left_mi = xd->left_mbmi;
-      const uint8_t fsc_above =
-          (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-      const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-      const int fsc_ctx = intraonly ? fsc_above + fsc_left : 3;
-      ++counts->fsc_mode[fsc_ctx][fsc_bsize_groups[bsize]]
-                        [mbmi->fsc_mode[xd->tree_type == CHROMA_PART]];
+                   counts,
 #endif  // CONFIG_ENTROPY_STATS
-      aom_cdf_prob *fsc_cdf =
-          get_fsc_mode_cdf(fc, xd->above_mbmi, xd->left_mbmi, bsize, intraonly);
-      update_cdf(fsc_cdf, mbmi->fsc_mode[xd->tree_type == CHROMA_PART],
-                 FSC_MODES);
-    }
+                   intraonly);
 #endif  // CONFIG_FORWARDSKIP
 #else
     if (intraonly) {
 #if CONFIG_ENTROPY_STATS
-      const PREDICTION_MODE above = av1_above_block_mode(above_mi);
-      const PREDICTION_MODE left = av1_left_block_mode(left_mi);
-      const int above_ctx = intra_mode_context[above];
-      const int left_ctx = intra_mode_context[left];
-      ++counts->kf_y_mode[above_ctx][left_ctx][y_mode];
+      const int neighbor0_ctx = get_y_mode_ctx(xd->neighbors[0]);
+      const int neighbor1_ctx = get_y_mode_ctx(xd->neighbors[1]);
+      ++counts->kf_y_mode[neighbor0_ctx][neighbor1_ctx][y_mode];
 #endif  // CONFIG_ENTROPY_STATS
-      update_cdf(get_y_mode_cdf(fc, above_mi, left_mi), y_mode, INTRA_MODES);
+      update_cdf(get_y_mode_cdf(fc, xd->neighbors[0], xd->neighbors[1]), y_mode,
+                 INTRA_MODES);
     } else {
 #if CONFIG_ENTROPY_STATS
       ++counts->y_mode[size_group_lookup[bsize]][y_mode];
@@ -501,20 +506,11 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
       update_cdf(fc->y_mode_cdf[size_group_lookup[bsize]], y_mode, INTRA_MODES);
     }
 #if CONFIG_FORWARDSKIP
-    if (allow_fsc_intra(cm, xd, bsize, mbmi)) {
+    update_fsc_cdf(cm, xd,
 #if CONFIG_ENTROPY_STATS
-      const uint8_t fsc_above =
-          (above_mi) ? above_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-      const uint8_t fsc_left = (left_mi) ? left_mi->fsc_mode[PLANE_TYPE_Y] : 0;
-      const int fsc_ctx = intraonly ? fsc_above + fsc_left : 3;
-      ++counts->fsc_mode[fsc_ctx][fsc_bsize_groups[bsize]]
-                        [mbmi->fsc_mode[xd->tree_type == CHROMA_PART]];
+                   counts,
 #endif  // CONFIG_ENTROPY_STATS
-      aom_cdf_prob *fsc_cdf =
-          get_fsc_mode_cdf(fc, xd->above_mbmi, xd->left_mbmi, bsize, intraonly);
-      update_cdf(fsc_cdf, mbmi->fsc_mode[xd->tree_type == CHROMA_PART],
-                 FSC_MODES);
-    }
+                   intraonly);
 #endif  // CONFIG_FORWARDSKIP
 #endif  // CONFIG_AIMC
     if (cm->seq_params.enable_mrls && av1_is_directional_mode(mbmi->mode)) {

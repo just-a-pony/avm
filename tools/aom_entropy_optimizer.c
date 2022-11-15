@@ -762,10 +762,18 @@ int main(int argc, const char **argv) {
                      "[COMP_GROUP_IDX_CONTEXTS][CDF_SIZE(2)]");
 
   /* intrabc */
+#if CONFIG_NEW_CONTEXT_MODELING
+  cts_each_dim[0] = INTRABC_CONTEXTS;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(&fc.intrabc[0][0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob\n"
+                     "default_intrabc_cdf[INTRABC_CONTEXTS][CDF_SIZE(2)]");
+#else
   cts_each_dim[0] = 2;
   optimize_cdf_table(
       &fc.intrabc[0], probsfile, 1, cts_each_dim,
       "static const aom_cdf_prob default_intrabc_cdf[CDF_SIZE(2)]");
+#endif  // CONFIG_NEW_CONTEXT_MODELING
 
 #if CONFIG_BVP_IMPROVEMENT
   /* intrabc mode flag*/

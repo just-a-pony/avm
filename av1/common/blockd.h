@@ -41,6 +41,8 @@ extern "C" {
 
 #define INTERINTRA_WEDGE_SIGN 0
 
+#define MAX_NUM_NEIGHBORS 2
+
 /*!\cond */
 
 // DIFFWTD_MASK_TYPES should not surpass 1 << MAX_DIFFWTD_MASK_BITS
@@ -698,9 +700,7 @@ static INLINE MV_REFERENCE_FRAME comp_ref1(int ref_idx) {
 #if CONFIG_AIMC
 PREDICTION_MODE av1_get_joint_mode(const MB_MODE_INFO *mi);
 #else
-PREDICTION_MODE av1_left_block_mode(const MB_MODE_INFO *left_mi);
-
-PREDICTION_MODE av1_above_block_mode(const MB_MODE_INFO *above_mi);
+PREDICTION_MODE av1_get_block_mode(const MB_MODE_INFO *mi);
 #endif  // CONFIG_AIMC
 
 static INLINE int is_global_mv_block(const MB_MODE_INFO *const mbmi,
@@ -1046,7 +1046,7 @@ typedef struct macroblockd {
    * up_available == true; otherwise NULL.
    */
   MB_MODE_INFO *above_mbmi;
-#if CONFIG_AIMC
+#if CONFIG_AIMC || CONFIG_NEW_CONTEXT_MODELING
   /*!
    * MB_MODE_INFO for 4x4 block to the bottom-left of the current block, if
    * left_available == true; otherwise NULL.
@@ -1057,7 +1057,12 @@ typedef struct macroblockd {
    * up_available == true; otherwise NULL.
    */
   MB_MODE_INFO *above_right_mbmi;
-#endif  // CONFIG_AIMC
+#endif  // CONFIG_AIMC || CONFIG_NEW_CONTEXT_MODELING
+  /*!
+   * Neighboring blocks' mbmi
+   * if no available mbmi, set to be NULL.
+   */
+  MB_MODE_INFO *neighbors[MAX_NUM_NEIGHBORS];
   /*!
    * Above chroma reference block if is_chroma_ref == true for the current block
    * and chroma_up_available == true; otherwise NULL.

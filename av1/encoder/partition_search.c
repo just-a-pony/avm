@@ -1059,17 +1059,24 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   }
 #endif
   if (!is_inter_block(mbmi, xd->tree_type)) {
-    av1_sum_intra_stats(cm, td->counts, xd, mbmi
-#if !CONFIG_AIMC
-                        ,
-                        xd->above_mbmi, xd->left_mbmi, frame_is_intra_only(cm)
-#endif  // !CONFIG_AIMC
-    );
+    av1_sum_intra_stats(cm, td->counts, xd, mbmi);
   }
   if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
-    update_cdf(fc->intrabc_cdf, is_intrabc_block(mbmi, xd->tree_type), 2);
+    const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
+#if CONFIG_NEW_CONTEXT_MODELING
+    const int intrabc_ctx = get_intrabc_ctx(xd);
+    update_cdf(fc->intrabc_cdf[intrabc_ctx], use_intrabc, 2);
+#if CONFIG_ENTROPY_STATS
+    ++td->counts->intrabc[intrabc_ctx][use_intrabc];
+#endif  // CONFIG_ENTROPY_STATS
+#else
+    update_cdf(fc->intrabc_cdf, use_intrabc, 2);
+#if CONFIG_ENTROPY_STATS
+    ++td->counts->intrabc[use_intrabc];
+#endif  // CONFIG_ENTROPY_STATS
+#endif  // CONFIG_NEW_CONTEXT_MODELING
 #if CONFIG_BVCOST_UPDATE
-    if (is_intrabc_block(mbmi, xd->tree_type)) {
+    if (use_intrabc) {
       const int_mv ref_mv = mbmi_ext->ref_mv_stack[INTRA_FRAME][0].this_mv;
 #if CONFIG_FLEX_MVRES
       av1_update_mv_stats(mbmi->mv[0].as_mv, ref_mv.as_mv, &fc->ndvc,
@@ -1089,7 +1096,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 
 #endif  // CONFIG_BVCOST_UPDATE
 #if CONFIG_BVP_IMPROVEMENT
-    if (is_intrabc_block(mbmi, xd->tree_type)) {
+    if (use_intrabc) {
       update_cdf(fc->intrabc_mode_cdf, mbmi->intrabc_mode, 2);
 #if CONFIG_ENTROPY_STATS
       ++td->counts->intrabc_mode[mbmi->intrabc_mode];
@@ -1097,9 +1104,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       update_intrabc_drl_idx_stats(MAX_REF_BV_STACK_SIZE, fc, td->counts, mbmi);
     }
 #endif  // CONFIG_BVP_IMPROVEMENT
-#if CONFIG_ENTROPY_STATS
-    ++td->counts->intrabc[is_intrabc_block(mbmi, xd->tree_type)];
-#endif  // CONFIG_ENTROPY_STATS
   }
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT

@@ -265,7 +265,11 @@ typedef struct frame_contexts {
 #endif  // CONFIG_CONTEXT_DERIVATION
   nmv_context nmvc;
   nmv_context ndvc;
+#if CONFIG_NEW_CONTEXT_MODELING
+  aom_cdf_prob intrabc_cdf[INTRABC_CONTEXTS][CDF_SIZE(2)];
+#else
   aom_cdf_prob intrabc_cdf[CDF_SIZE(2)];
+#endif  // CONFIG_NEW_CONTEXT_MODELING
 #if CONFIG_BVP_IMPROVEMENT
   aom_cdf_prob intrabc_mode_cdf[CDF_SIZE(2)];
   aom_cdf_prob intrabc_drl_idx_cdf[MAX_REF_BV_STACK_SIZE - 1][CDF_SIZE(2)];

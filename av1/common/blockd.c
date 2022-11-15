@@ -25,18 +25,10 @@ PREDICTION_MODE av1_get_joint_mode(const MB_MODE_INFO *mi) {
   return mi->joint_y_mode_delta_angle;
 }
 #else
-PREDICTION_MODE av1_left_block_mode(const MB_MODE_INFO *left_mi) {
-  if (!left_mi) return DC_PRED;
-  assert(!is_inter_block(left_mi, SHARED_PART) ||
-         is_intrabc_block(left_mi, SHARED_PART));
-  return left_mi->mode;
-}
-
-PREDICTION_MODE av1_above_block_mode(const MB_MODE_INFO *above_mi) {
-  if (!above_mi) return DC_PRED;
-  assert(!is_inter_block(above_mi, SHARED_PART) ||
-         is_intrabc_block(above_mi, SHARED_PART));
-  return above_mi->mode;
+PREDICTION_MODE av1_get_block_mode(const MB_MODE_INFO *mi) {
+  if (!mi) return DC_PRED;
+  assert(!is_inter_block(mi, SHARED_PART) || is_intrabc_block(mi, SHARED_PART));
+  return mi->mode;
 }
 #endif  // CONFIG_AIMC
 

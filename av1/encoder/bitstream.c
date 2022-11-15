@@ -87,13 +87,13 @@ static AOM_INLINE void write_intrabc_info(
 #if !CONFIG_AIMC
 static AOM_INLINE void write_intra_y_mode_kf(FRAME_CONTEXT *frame_ctx,
                                              const MB_MODE_INFO *mi,
-                                             const MB_MODE_INFO *above_mi,
-                                             const MB_MODE_INFO *left_mi,
+                                             const MB_MODE_INFO *neighbors0,
+                                             const MB_MODE_INFO *neighbors1,
                                              PREDICTION_MODE mode,
                                              aom_writer *w) {
   assert(!is_intrabc_block(mi, SHARED_PART));
   (void)mi;
-  aom_write_symbol(w, mode, get_y_mode_cdf(frame_ctx, above_mi, left_mi),
+  aom_write_symbol(w, mode, get_y_mode_cdf(frame_ctx, neighbors0, neighbors1),
                    INTRA_MODES);
 }
 #endif  // !CONFIG_AIMC
@@ -1637,10 +1637,6 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const PREDICTION_MODE mode = mbmi->mode;
-#if CONFIG_FORWARDSKIP
-  const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mi = xd->left_mbmi;
-#endif  // CONFIG_FORWARDSKIP
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
 #if !CONFIG_AIMC
   const int use_angle_delta = av1_use_angle_delta(bsize);
@@ -1652,26 +1648,21 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
     write_intra_luma_mode(xd, w);
 #if CONFIG_FORWARDSKIP
     if (allow_fsc_intra(cm, xd, bsize, mbmi) && xd->tree_type != CHROMA_PART) {
-      aom_cdf_prob *fsc_cdf =
-          get_fsc_mode_cdf(ec_ctx, above_mi, left_mi, bsize, is_keyframe);
+      aom_cdf_prob *fsc_cdf = get_fsc_mode_cdf(xd, bsize, is_keyframe);
       write_fsc_mode(mbmi->fsc_mode[xd->tree_type == CHROMA_PART], w, fsc_cdf);
     }
 #endif  // CONFIG_FORWARDSKIP
 #else
     if (is_keyframe) {
-#if !CONFIG_FORWARDSKIP
-      const MB_MODE_INFO *const above_mi = xd->above_mbmi;
-      const MB_MODE_INFO *const left_mi = xd->left_mbmi;
-#endif  // CONFIG_FORWARDSKIP
-      write_intra_y_mode_kf(ec_ctx, mbmi, above_mi, left_mi, mode, w);
+      write_intra_y_mode_kf(ec_ctx, mbmi, xd->neighbors[0], xd->neighbors[1],
+                            mode, w);
     } else {
       write_intra_y_mode_nonkf(ec_ctx, bsize, mode, w);
     }
 
 #if CONFIG_FORWARDSKIP
     if (allow_fsc_intra(cm, xd, bsize, mbmi) && xd->tree_type != CHROMA_PART) {
-      aom_cdf_prob *fsc_cdf =
-          get_fsc_mode_cdf(ec_ctx, above_mi, left_mi, bsize, is_keyframe);
+      aom_cdf_prob *fsc_cdf = get_fsc_mode_cdf(xd, bsize, is_keyframe);
       write_fsc_mode(mbmi->fsc_mode[xd->tree_type == CHROMA_PART], w, fsc_cdf);
     }
 #endif  // CONFIG_FORWARDSKIP
@@ -2142,7 +2133,13 @@ static AOM_INLINE void write_intrabc_info(
   int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+#if CONFIG_NEW_CONTEXT_MODELING
+  const int intrabc_ctx = get_intrabc_ctx(xd);
+  aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
+#else
   aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
+
   if (use_intrabc) {
     assert(mbmi->mode == DC_PRED);
     assert(mbmi->motion_mode == SIMPLE_TRANSLATION);

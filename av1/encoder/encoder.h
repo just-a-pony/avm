@@ -1313,7 +1313,11 @@ typedef struct FRAME_COUNTS {
   unsigned int comp_ref[REF_CONTEXTS][FWD_REFS - 1][2];
   unsigned int comp_bwdref[REF_CONTEXTS][BWD_REFS - 1][2];
 #endif  // CONFIG_NEW_REF_SIGNALING
+#if CONFIG_NEW_CONTEXT_MODELING
+  unsigned int intrabc[INTRABC_CONTEXTS][2];
+#else
   unsigned int intrabc[2];
+#endif  // CONFIG_NEW_CONTEXT_MODELING
 #if CONFIG_BVP_IMPROVEMENT
   unsigned int intrabc_mode[2];
   unsigned int intrabc_drl_idx[MAX_REF_BV_STACK_SIZE - 1][2];
