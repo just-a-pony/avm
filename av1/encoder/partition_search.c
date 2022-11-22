@@ -1893,7 +1893,11 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
 
       av1_find_mv_refs(&cpi->common, xd, mbmi, ref_frame_type,
                        x->mbmi_ext->ref_mv_count, xd->ref_mv_stack, xd->weight,
-                       NULL, NULL, NULL
+                       NULL, NULL
+#if !CONFIG_C076_INTER_MOD_CTX
+                       ,
+                       NULL
+#endif  //! CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_WARP_REF_LIST
                        ,
                        NULL, 0, NULL

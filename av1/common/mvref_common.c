@@ -330,6 +330,48 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
 }
 #endif  // CONFIG_TIP
 
+#if CONFIG_C076_INTER_MOD_CTX
+// add neighbor info to inter mode contexts
+static AOM_INLINE void add_ref_mv_candidate_ctx(
+    const MB_MODE_INFO *const candidate, uint8_t *ref_match_count,
+    uint8_t *newmv_count, const AV1_COMMON *cm, const MV_REFERENCE_FRAME rf[2],
+    const MB_MODE_INFO *mbmi) {
+  if (!is_inter_block(candidate, SHARED_PART)) return;
+#if CONFIG_TIP
+  const TIP *tip_ref = &cm->tip_ref;
+#endif  // CONFIG_TIP
+  if (mbmi->skip_mode) return;
+  if (rf[1] == NONE_FRAME) {
+    // single reference frame
+    for (int ref = 0; ref < 2; ++ref) {
+      if (candidate->ref_frame[ref] == rf[0]) {
+        if (have_newmv_in_inter_mode(candidate->mode)) ++*newmv_count;
+        ++*ref_match_count;
+      }
+    }
+  } else {
+#if CONFIG_TIP
+    if (is_tip_ref_frame(candidate->ref_frame[0]) &&
+        candidate->ref_frame[1] == NONE_FRAME &&
+        rf[0] == tip_ref->ref_frame[0] && rf[1] == tip_ref->ref_frame[1] &&
+        cm->features.tip_frame_mode) {
+      if (have_newmv_in_inter_mode(candidate->mode)) ++*newmv_count;
+      ++*ref_match_count;
+    } else {
+#endif  // CONFIG_TIP
+      // compound reference frame
+      if (candidate->ref_frame[0] == rf[0] &&
+          candidate->ref_frame[1] == rf[1]) {
+        if (have_newmv_in_inter_mode(candidate->mode)) ++*newmv_count;
+        ++*ref_match_count;
+      }
+    }
+#if CONFIG_TIP
+  }
+#endif  // CONFIG_TIP
+}
+#endif  // CONFIG_C076_INTER_MOD_CTX
+
 static AOM_INLINE void add_ref_mv_candidate(
 #if CONFIG_TIP
 #if !CONFIG_SMVP_IMPROVEMENT
@@ -1035,6 +1077,25 @@ static AOM_INLINE void scan_col_mbmi(
   }
 }
 
+#if CONFIG_C076_INTER_MOD_CTX
+static AOM_INLINE void scan_blk_mbmi_ctx(
+    const AV1_COMMON *cm, const MACROBLOCKD *xd, const int mi_row,
+    const int mi_col, const MV_REFERENCE_FRAME rf[2], int row_offset,
+    int col_offset, uint8_t *ref_match_count, uint8_t *newmv_count) {
+  const TileInfo *const tile = &xd->tile;
+  POSITION mi_pos;
+
+  mi_pos.row = row_offset;
+  mi_pos.col = col_offset;
+  if (is_inside(tile, mi_col, mi_row, &mi_pos)) {
+    const MB_MODE_INFO *const candidate =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    add_ref_mv_candidate_ctx(candidate, ref_match_count, newmv_count, cm, rf,
+                             xd->mi[0]);
+  }
+}
+#endif  // CONFIG_C076_INTER_MOD_CTX
+
 static AOM_INLINE void scan_blk_mbmi(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, const int mi_row,
     const int mi_col, const MV_REFERENCE_FRAME rf[2], int row_offset,
@@ -1258,7 +1319,12 @@ static int has_bottom_left(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 
 static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                           int mi_row, int mi_col, MV_REFERENCE_FRAME ref_frame,
-                          int blk_row, int blk_col, int_mv *gm_mv_candidates,
+                          int blk_row, int blk_col
+#if !CONFIG_C076_INTER_MOD_CTX
+                          ,
+                          int_mv *gm_mv_candidates
+#endif  // !CONFIG_C076_INTER_MOD_CTX
+                          ,
                           uint8_t *const refmv_count,
 #if CONFIG_C063_TMVP_IMPROVEMENT
                           int *added_tmvp_cnt,
@@ -1267,9 +1333,12 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                           uint16_t ref_mv_weight[MAX_REF_MV_STACK_SIZE],
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
                           MV_REFERENCE_FRAME *ref_frame_idx0,
-                          MV_REFERENCE_FRAME *ref_frame_idx1,
+                          MV_REFERENCE_FRAME *ref_frame_idx1
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
-                          int16_t *mode_context) {
+#if !CONFIG_C076_INTER_MOD_CTX
+                              int16_t *mode_context
+#endif  // !CONFIG_C076_INTER_MOD_CTX
+) {
   POSITION mi_pos;
   mi_pos.row = (mi_row & 0x01) ? blk_row : blk_row + 1;
   mi_pos.col = (mi_col & 0x01) ? blk_col : blk_col + 1;
@@ -1329,11 +1398,13 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 #endif  // !CONFIG_C071_SUBBLK_WARPMV
 
   if (rf[1] == NONE_FRAME) {
+#if !CONFIG_C076_INTER_MOD_CTX
     if (blk_row == 0 && blk_col == 0) {
       if (abs(this_refmv.as_mv.row - gm_mv_candidates[0].as_mv.row) >= 16 ||
           abs(this_refmv.as_mv.col - gm_mv_candidates[0].as_mv.col) >= 16)
         mode_context[ref_frame] |= (1 << GLOBALMV_OFFSET);
     }
+#endif  // !CONFIG_C076_INTER_MOD_CTX
 
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     assert(!xd->mi[0]->skip_mode);
@@ -1374,6 +1445,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 #endif
 #endif  // !CONFIG_C071_SUBBLK_WARPMV
 
+#if !CONFIG_C076_INTER_MOD_CTX
     if (blk_row == 0 && blk_col == 0) {
       if (abs(this_refmv.as_mv.row - gm_mv_candidates[0].as_mv.row) >= 16 ||
           abs(this_refmv.as_mv.col - gm_mv_candidates[0].as_mv.col) >= 16 ||
@@ -1381,6 +1453,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
           abs(comp_refmv.as_mv.col - gm_mv_candidates[1].as_mv.col) >= 16)
         mode_context[ref_frame] |= (1 << GLOBALMV_OFFSET);
     }
+#endif  // !CONFIG_C076_INTER_MOD_CTX
 
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     if (xd->mi[0]->skip_mode) {
@@ -1593,7 +1666,11 @@ static AOM_INLINE void setup_ref_mv_list(
     MV_REFERENCE_FRAME *ref_frame_idx0, MV_REFERENCE_FRAME *ref_frame_idx1,
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
     int_mv mv_ref_list[MAX_MV_REF_CANDIDATES], int_mv *gm_mv_candidates,
-    int mi_row, int mi_col, int16_t *mode_context
+    int mi_row, int mi_col
+#if !CONFIG_C076_INTER_MOD_CTX
+    ,
+    int16_t *mode_context
+#endif  //! CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_WARP_REF_LIST
     ,
     WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
@@ -1620,7 +1697,9 @@ static AOM_INLINE void setup_ref_mv_list(
   int processed_cols = 0;
 
   av1_set_ref_frame(rf, ref_frame);
+#if !CONFIG_C076_INTER_MOD_CTX
   mode_context[ref_frame] = 0;
+#endif  //! CONFIG_C076_INTER_MOD_CTX
   *refmv_count = 0;
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
@@ -1895,7 +1974,9 @@ static AOM_INLINE void setup_ref_mv_list(
                   refmv_count);
 #endif  // CONFIG_C043_MVP_IMPROVEMENTS
 
+#if !CONFIG_C076_INTER_MOD_CTX
   const uint8_t nearest_match = (row_match_count > 0) + (col_match_count > 0);
+#endif  //! CONFIG_C076_INTER_MOD_CTX
   const uint8_t nearest_refmv_count = *refmv_count;
 
   // TODO(yunqing): for comp_search, do it for all 3 cases.
@@ -1908,7 +1989,9 @@ static AOM_INLINE void setup_ref_mv_list(
 #else
   if (cm->features.allow_ref_frame_mvs) {
 #endif  // CONFIG_IBC_SR_EXT
+#if !CONFIG_C076_INTER_MOD_CTX
     int is_available = 0;
+#endif  //! CONFIG_C076_INTER_MOD_CTX
 #if !CONFIG_C063_TMVP_IMPROVEMENT
     const int voffset = AOMMAX(mi_size_high[BLOCK_8X8], xd->height);
     const int hoffset = AOMMAX(mi_size_wide[BLOCK_8X8], xd->width);
@@ -1948,37 +2031,61 @@ static AOM_INLINE void setup_ref_mv_list(
     for (int blk_row = 0; blk_row < blk_row_end; blk_row += step_h) {
       for (int blk_col = 0; blk_col < blk_col_end; blk_col += step_w) {
 #endif  // CONFIG_C063_TMVP_IMPROVEMENT
-        int ret = add_tpl_ref_mv(cm, xd, mi_row, mi_col, ref_frame, blk_row,
-                                 blk_col, gm_mv_candidates, refmv_count,
+#if !CONFIG_C076_INTER_MOD_CTX
+        int ret =
+#endif  //! CONFIG_C076_INTER_MOD_CTX
+            add_tpl_ref_mv(cm, xd, mi_row, mi_col, ref_frame, blk_row, blk_col
+#if !CONFIG_C076_INTER_MOD_CTX
+                           ,
+                           gm_mv_candidates
+#endif  //! CONFIG_C076_INTER_MOD_CTX
+                           ,
+                           refmv_count,
 #if CONFIG_C063_TMVP_IMPROVEMENT
-                                 &added_tmvp_cnt,
+                           &added_tmvp_cnt,
 #endif  // CONFIG_C063_TMVP_IMPROVEMENT
-                                 ref_mv_stack, ref_mv_weight,
+                           ref_mv_stack, ref_mv_weight,
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
-                                 ref_frame_idx0, ref_frame_idx1,
+                           ref_frame_idx0, ref_frame_idx1
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
-                                 mode_context);
+#if !CONFIG_C076_INTER_MOD_CTX
+                           ,
+                           mode_context
+#endif  // !CONFIG_C076_INTER_MOD_CTX
+            );
+#if !CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_C063_TMVP_IMPROVEMENT
         if (added_tmvp_cnt) is_available = ret;
 #else
         if (blk_row == 0 && blk_col == 0) is_available = ret;
 #endif  // CONFIG_C063_TMVP_IMPROVEMENT
+#endif  //! CONFIG_C076_INTER_MOD_CTX
       }
     }
 
+#if !CONFIG_C076_INTER_MOD_CTX
     if (is_available == 0) mode_context[ref_frame] |= (1 << GLOBALMV_OFFSET);
+#endif  //! CONFIG_C076_INTER_MOD_CTX
 #if !CONFIG_C063_TMVP_IMPROVEMENT
     for (int i = 0; i < 3 && allow_extension; ++i) {
       const int blk_row = tpl_sample_pos[i][0];
       const int blk_col = tpl_sample_pos[i][1];
 
       if (!check_sb_border(mi_row, mi_col, blk_row, blk_col)) continue;
-      add_tpl_ref_mv(cm, xd, mi_row, mi_col, ref_frame, blk_row, blk_col,
-                     gm_mv_candidates, refmv_count, ref_mv_stack, ref_mv_weight,
+      add_tpl_ref_mv(cm, xd, mi_row, mi_col, ref_frame, blk_row, blk_col
+#if !CONFIG_C076_INTER_MOD_CTX
+                     ,
+                     gm_mv_candidates,
+#endif  //! CONFIG_C076_INTER_MOD_CTX
+                     refmv_count, ref_mv_stack, ref_mv_weight,
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
-                     ref_frame_idx0, ref_frame_idx1,
+                     ref_frame_idx0,
+                     ref_frame_idx1
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
-                     mode_context);
+#if !CONFIG_C076_INTER_MOD_CTX
+                         mode_context
+#endif  //! CONFIG_C076_INTER_MOD_CTX
+      );
     }
 #endif  // !CONFIG_C063_TMVP_IMPROVEMENT
   }
@@ -2066,6 +2173,7 @@ static AOM_INLINE void setup_ref_mv_list(
   }
 #endif  // CONFIG_SMVP_IMPROVEMENT
 
+#if !CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_COMPLEXITY_SCALABLE_MVP
   // These contexts are independent of the outer area search
   int new_ctx = 2 * nearest_match + (newmv_count > 0);
@@ -2101,6 +2209,7 @@ static AOM_INLINE void setup_ref_mv_list(
       break;
   }
 #endif
+#endif  //! CONFIG_C076_INTER_MOD_CTX
 
   // Rank the likelihood and assign nearest and near mvs.
   int len = nearest_refmv_count;
@@ -2534,13 +2643,57 @@ void av1_initialize_warp_wrl_list(
 }
 #endif  // CONFIG_WARP_REF_LIST
 
+#if CONFIG_C076_INTER_MOD_CTX
+void av1_find_mode_ctx(const AV1_COMMON *cm, const MACROBLOCKD *xd,
+                       int16_t *mode_context, MV_REFERENCE_FRAME ref_frame) {
+  const int mi_row = xd->mi_row;
+  const int mi_col = xd->mi_col;
+  MV_REFERENCE_FRAME rf[2];
+
+  av1_set_ref_frame(rf, ref_frame);
+  mode_context[ref_frame] = 0;
+
+  uint8_t col_match_count = 0;
+  uint8_t row_match_count = 0;
+  uint8_t newmv_count = 0;
+
+  if (xd->left_available) {
+    scan_blk_mbmi_ctx(cm, xd, mi_row, mi_col, rf, (xd->height - 1), -1,
+                      &col_match_count, &newmv_count);
+  }
+  if (xd->up_available) {
+    scan_blk_mbmi_ctx(cm, xd, mi_row, mi_col, rf, -1, (xd->width - 1),
+                      &row_match_count, &newmv_count);
+  }
+  if (xd->left_available) {
+    scan_blk_mbmi_ctx(cm, xd, mi_row, mi_col, rf, 0, -1, &col_match_count,
+                      &newmv_count);
+  }
+  if (xd->up_available) {
+    scan_blk_mbmi_ctx(cm, xd, mi_row, mi_col, rf, -1, 0, &row_match_count,
+                      &newmv_count);
+  }
+
+  const uint8_t nearest_match = (row_match_count > 0) + (col_match_count > 0);
+
+  // These contexts are independent of the outer area search
+  int new_ctx = 2 * nearest_match + (newmv_count > 0);
+  int ref_ctx = 2 * nearest_match + (newmv_count < 3);
+  mode_context[ref_frame] |= new_ctx;
+  mode_context[ref_frame] |= (ref_ctx << REFMV_OFFSET);
+}
+#endif  // CONFIG_C076_INTER_MOD_CTX
+
 void av1_find_mv_refs(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, MB_MODE_INFO *mi,
     MV_REFERENCE_FRAME ref_frame, uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
     CANDIDATE_MV ref_mv_stack[][MAX_REF_MV_STACK_SIZE],
     uint16_t ref_mv_weight[][MAX_REF_MV_STACK_SIZE],
-    int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES], int_mv *global_mvs,
+    int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES], int_mv *global_mvs
+#if !CONFIG_C076_INTER_MOD_CTX
+    ,
     int16_t *mode_context
+#endif  // !CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_WARP_REF_LIST
     ,
     WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
@@ -2620,21 +2773,28 @@ void av1_find_mv_refs(
   if (mi->skip_mode) {
     SKIP_MODE_MVP_LIST *skip_list =
         (SKIP_MODE_MVP_LIST *)&(xd->skip_mvp_candidate_list);
-    setup_ref_mv_list(cm, xd, ref_frame, &(skip_list->ref_mv_count),
-                      skip_list->ref_mv_stack, skip_list->weight,
-                      skip_list->ref_frame0, skip_list->ref_frame1,
-                      mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv,
-                      mi_row, mi_col, skip_list->mode_context
+    setup_ref_mv_list(
+        cm, xd, ref_frame, &(skip_list->ref_mv_count), skip_list->ref_mv_stack,
+        skip_list->weight, skip_list->ref_frame0, skip_list->ref_frame1,
+        mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv, mi_row, mi_col
+#if !CONFIG_C076_INTER_MOD_CTX
+        ,
+        skip_list->mode_context
+#endif  // !CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_WARP_REF_LIST
-                      ,
-                      NULL, 0, NULL
+        ,
+        NULL, 0, NULL
 #endif  // CONFIG_WARP_REF_LIST
     );
   } else {
     setup_ref_mv_list(cm, xd, ref_frame, &ref_mv_count[ref_frame],
                       ref_mv_stack[ref_frame], ref_mv_weight[ref_frame], NULL,
                       NULL, mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv,
-                      mi_row, mi_col, mode_context
+                      mi_row, mi_col
+#if !CONFIG_C076_INTER_MOD_CTX
+                      ,
+                      mode_context
+#endif  //! CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_WARP_REF_LIST
                       ,
                       derive_wrl ? warp_param_stack[ref_frame] : NULL,
@@ -2648,7 +2808,11 @@ void av1_find_mv_refs(
   setup_ref_mv_list(cm, xd, ref_frame, &ref_mv_count[ref_frame],
                     ref_mv_stack[ref_frame], ref_mv_weight[ref_frame],
                     mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv, mi_row,
-                    mi_col, mode_context
+                    mi_col
+#if !CONFIG_C076_INTER_MOD_CTX
+                    ,
+                    mode_context
+#endif  //! CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_WARP_REF_LIST
                     ,
                     derive_wrl ? warp_param_stack[ref_frame] : NULL,
