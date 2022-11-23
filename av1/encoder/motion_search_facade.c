@@ -1431,6 +1431,10 @@ int_mv av1_simple_motion_search(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
   // av1_make_default_fullpel_ms_params) is disabled during pruning process
   mbmi->mode = NEWMV;
 #endif
+#if CONFIG_BAWP
+  mbmi->bawp_flag = 0;
+#endif
+
   const YV12_BUFFER_CONFIG *yv12 = get_ref_frame_yv12_buf(cm, ref);
   const YV12_BUFFER_CONFIG *scaled_ref_frame =
       av1_get_scaled_ref_frame(cpi, ref);

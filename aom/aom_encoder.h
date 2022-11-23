@@ -289,6 +289,12 @@ typedef struct cfg_options {
    */
   unsigned int enable_tip;
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  /*!\brief enable block adaptive weighted prediction
+   *
+   */
+  unsigned int enable_bawp;
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   /*!\brief enable Forward skip coding
    *

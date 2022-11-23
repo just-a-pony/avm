@@ -549,7 +549,13 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob "
                      "default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
-
+  /* Bawp flag */
+#if CONFIG_BAWP
+  cts_each_dim[0] = 2;
+  optimize_cdf_table(&fc.bawp[0], probsfile, 2, cts_each_dim,
+                     "static const aom_cdf_prob "
+                     "default_bawp_cdf[CDF_SIZE(2)]");
+#endif
   /* Intra/inter flag */
 #if CONFIG_CONTEXT_DERIVATION
   cts_each_dim[0] = INTRA_INTER_SKIP_TXFM_CONTEXTS;

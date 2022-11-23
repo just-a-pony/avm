@@ -358,7 +358,16 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
                            xd->block_ref_scale_factors[ref], num_planes);
     }
     int start_plane = 0;
+#if CONFIG_BAWP
+    struct macroblockd_plane *p = xd->plane;
+    const BUFFER_SET orig_dst = {
+      { p[0].dst.buf, p[1].dst.buf, p[2].dst.buf },
+      { p[0].dst.stride, p[1].dst.stride, p[2].dst.stride },
+    };
+    av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, &orig_dst, bsize,
+#else
     av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize,
+#endif
                                   start_plane, av1_num_planes(cm) - 1);
     if (mbmi->motion_mode == OBMC_CAUSAL) {
       assert(cpi->oxcf.motion_mode_cfg.enable_obmc);
@@ -1343,6 +1352,10 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif  // CONFIG_NEW_REF_SIGNALING
       }
 
+#if CONFIG_BAWP
+      if (cm->features.enable_bawp && av1_allow_bawp(mbmi))
+        update_cdf(fc->bawp_cdf, mbmi->bawp_flag == 1, 2);
+#endif  // CONFIG_BAWP
 #if CONFIG_EXTENDED_WARP_PREDICTION
       const int allowed_motion_modes = motion_mode_allowed(
           cm, xd, mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]], mbmi);

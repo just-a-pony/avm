@@ -188,6 +188,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->motion_mode_cdf, MOTION_MODES);
   RESET_CDF_COUNTER(fc->obmc_cdf, 2);
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_BAWP
+  RESET_CDF_COUNTER(fc->bawp_cdf, 2);
+#endif  // CONFIG_BAWP
 #if CONFIG_TIP
   RESET_CDF_COUNTER(fc->tip_cdf, 2);
 #endif  // CONFIG_TIP

@@ -2027,6 +2027,11 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
                     allow_hp);
 #endif
     }
+#if CONFIG_BAWP
+    if (cm->features.enable_bawp && av1_allow_bawp(mbmi)) {
+      aom_write_symbol(w, mbmi->bawp_flag == 1, xd->tile_ctx->bawp_cdf, 2);
+    }
+#endif
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
     write_motion_mode(cm, xd, mbmi, mbmi_ext_frame, w);
@@ -3875,6 +3880,9 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
     aom_wb_write_bit(wb, seq_params->enable_tip_hole_fill);
   }
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  aom_wb_write_bit(wb, seq_params->enable_bawp);
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   aom_wb_write_bit(wb, seq_params->enable_fsc);
 #endif  // CONFIG_FORWARDSKIP
@@ -4524,6 +4532,11 @@ static AOM_INLINE void write_uncompressed_header_obu(
     aom_wb_write_bit(wb, features->allow_warped_motion);
   else
     assert(!features->allow_warped_motion);
+
+#if CONFIG_BAWP
+  if (!frame_is_intra_only(cm) && seq_params->enable_bawp)
+    aom_wb_write_bit(wb, features->enable_bawp);
+#endif  // CONFIG_BAWP
 
   aom_wb_write_bit(wb, features->reduced_tx_set_used);
 

@@ -1384,6 +1384,140 @@ void av1_build_one_inter_predictor(
   }
 }
 
+#if CONFIG_BAWP
+// Derive the scaling factor and offset of block adaptive weighted prediction
+// mode. One row from the top boundary and one column from the left boundary
+// are used in the less square error process.
+void derive_bawp_parameters(MACROBLOCKD *xd, uint16_t *recon_top,
+                            uint16_t *recon_left, int rec_stride,
+                            uint16_t *ref_top, uint16_t *ref_left,
+                            int ref_stride, int ref, int plane, int bw,
+                            int bh) {
+  MB_MODE_INFO *mbmi = xd->mi[0];
+  assert(mbmi->bawp_flag == 1);
+  // only integer position of reference, may need to consider
+  // fractional position of ref samples
+  int count = 0;
+  int sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
+
+  if (xd->up_available) {
+    for (int i = 0; i < bw; ++i) {
+      sum_x += ref_top[i];
+      sum_y += recon_top[i];
+      sum_xy += ref_top[i] * recon_top[i];
+      sum_xx += ref_top[i] * ref_top[i];
+    }
+    count += bw;
+  }
+
+  if (xd->left_available) {
+    for (int i = 0; i < bh; ++i) {
+      sum_x += ref_left[0];
+      sum_y += recon_left[0];
+      sum_xy += ref_left[0] * recon_left[0];
+      sum_xx += ref_left[0] * ref_left[0];
+
+      recon_left += rec_stride;
+      ref_left += ref_stride;
+    }
+    count += bh;
+  }
+
+  const int16_t shift = 8;  // maybe a smaller value can be used
+  if (count > 0) {
+    int32_t der = sum_xx - (int32_t)((int64_t)sum_x * sum_x / count);
+    int32_t nor = sum_xy - (int32_t)((int64_t)sum_x * sum_y / count);
+    // Add a small portion to both self-correlation and cross-correlation to
+    // keep mode stable and have scaling factor leaning to value 1.0
+    // Temporal design, to be further updated
+    nor += der / 16;
+    der += der / 16;
+
+    if (nor && der)
+      mbmi->bawp_alpha[plane][ref] = resolve_divisor_32_CfL(nor, der, shift);
+    else
+      mbmi->bawp_alpha[plane][ref] = 1 << shift;
+    mbmi->bawp_beta[plane][ref] =
+        ((sum_y << shift) - sum_x * mbmi->bawp_alpha[plane][ref]) / count;
+  } else {
+    mbmi->bawp_alpha[plane][ref] = 1 << shift;
+    mbmi->bawp_beta[plane][ref] = -(1 << shift);
+  }
+}
+
+// generate inter prediction of a block coded in bwap mode enabled
+void av1_build_one_bawp_inter_predictor(
+    uint16_t *dst, int dst_stride, const MV *const src_mv,
+    InterPredParams *inter_pred_params, const AV1_COMMON *cm, MACROBLOCKD *xd,
+    const BUFFER_SET *dst_orig, int bw, int bh, int mi_x, int mi_y, int ref,
+    int plane, uint16_t **mc_buf,
+    CalcSubpelParamsFunc calc_subpel_params_func) {
+  SubpelParams subpel_params;
+  uint16_t *src;
+  int src_stride;
+  calc_subpel_params_func(src_mv, inter_pred_params, xd, mi_x, mi_y, ref,
+#if CONFIG_OPTFLOW_REFINEMENT
+                          0, /* use_optflow_refinement */
+#endif                       // CONFIG_OPTFLOW_REFINEMENT
+                          mc_buf, &src, &subpel_params, &src_stride);
+
+  assert(inter_pred_params->comp_mode == UNIFORM_SINGLE);
+  if (inter_pred_params->comp_mode == UNIFORM_SINGLE ||
+      inter_pred_params->comp_mode == UNIFORM_COMP) {
+    av1_make_inter_predictor(src, src_stride, dst, dst_stride,
+                             inter_pred_params, &subpel_params);
+  } else {
+    make_masked_inter_predictor(src, src_stride, dst, dst_stride,
+                                inter_pred_params, &subpel_params);
+  }
+
+  int shift = 8;
+  MB_MODE_INFO *mbmi = xd->mi[0];
+  int x_off = mbmi->mv[ref].as_mv.col >> 3;
+  int y_off = mbmi->mv[ref].as_mv.row >> 3;
+
+  int ref_w = bw;
+  if (mi_x + bw >= cm->width) ref_w = cm->width - mi_x;
+  int ref_h = bh;
+  if (mi_y + bh >= cm->height) ref_h = cm->height - mi_y;
+
+  if (mi_x + x_off - BAWP_REF_LINES < 0 || mi_y + y_off - BAWP_REF_LINES < 0 ||
+      mi_x + ref_w + x_off >= cm->width || mi_y + ref_h + y_off >= cm->height) {
+    mbmi->bawp_alpha[plane][ref] = 1 << shift;
+    mbmi->bawp_beta[plane][ref] = -(1 << shift);
+  } else {
+    uint16_t *recon_buf = xd->plane[plane].dst.buf;
+    int recon_stride = xd->plane[plane].dst.stride;
+
+    if (dst_orig != NULL) {
+      recon_buf = dst_orig->plane[plane];
+      recon_stride = dst_orig->stride[plane];
+    }
+    uint16_t *recon_top = recon_buf - BAWP_REF_LINES * recon_stride;
+    uint16_t *recon_left = recon_buf - BAWP_REF_LINES;
+
+    // the picture boundary limitation to be checked.
+    struct macroblockd_plane *const pd = &xd->plane[plane];
+    const int ref_stride = pd->pre[ref].stride;
+    uint16_t *ref_buf = pd->pre[ref].buf + y_off * ref_stride + x_off;
+    uint16_t *ref_top = ref_buf - BAWP_REF_LINES * ref_stride;
+    uint16_t *ref_left = ref_buf - BAWP_REF_LINES;
+
+    derive_bawp_parameters(xd, recon_top, recon_left, recon_stride, ref_top,
+                           ref_left, ref_stride, ref, plane, ref_w, ref_h);
+  }
+
+  int16_t alpha = mbmi->bawp_alpha[plane][ref];
+  int32_t beta = mbmi->bawp_beta[plane][ref];
+  for (int j = 0; j < ref_h; ++j) {
+    for (int i = 0; i < ref_w; ++i) {
+      dst[j * dst_stride + i] = clip_pixel_highbd(
+          (dst[j * dst_stride + i] * alpha + beta) >> shift, xd->bd);
+    }
+  }
+}
+#endif  // CONFIG_BAWP
+
 // True if the following hold:
 //  1. Not intrabc and not build_for_obmc
 //  2. At least one dimension is size 4 with subsampling
@@ -1490,6 +1624,9 @@ static void build_inter_predictors_sub8x8(
 
 static void build_inter_predictors_8x8_and_bigger(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, MB_MODE_INFO *mi,
+#if CONFIG_BAWP
+    const BUFFER_SET *dst_orig,
+#endif  // CONFIG_BAWP
     int build_for_obmc, int bw, int bh, int mi_x, int mi_y, uint16_t **mc_buf,
     CalcSubpelParamsFunc calc_subpel_params_func) {
   const int is_compound = has_second_ref(mi);
@@ -1638,6 +1775,14 @@ static void build_inter_predictors_8x8_and_bigger(
       continue;
     }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_BAWP
+    if (mi->bawp_flag == 1 && plane == 0 && !build_for_obmc) {
+      av1_build_one_bawp_inter_predictor(
+          dst, dst_buf->stride, &mv, &inter_pred_params, cm, xd, dst_orig, bw,
+          bh, mi_x, mi_y, ref, plane, mc_buf, calc_subpel_params_func);
+      continue;
+    }
+#endif  // CONFIG_BAWP
     av1_build_one_inter_predictor(dst, dst_buf->stride, &mv, &inter_pred_params,
                                   xd, mi_x, mi_y, ref, mc_buf,
                                   calc_subpel_params_func);
@@ -1645,9 +1790,12 @@ static void build_inter_predictors_8x8_and_bigger(
 }
 
 void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                int plane, MB_MODE_INFO *mi, int build_for_obmc,
-                                int bw, int bh, int mi_x, int mi_y,
-                                uint16_t **mc_buf,
+                                int plane, MB_MODE_INFO *mi,
+#if CONFIG_BAWP
+                                const BUFFER_SET *dst_orig,
+#endif
+                                int build_for_obmc, int bw, int bh, int mi_x,
+                                int mi_y, uint16_t **mc_buf,
                                 CalcSubpelParamsFunc calc_subpel_params_func) {
   if (is_sub8x8_inter(xd, plane, mi->sb_type[PLANE_TYPE_Y],
                       is_intrabc_block(mi, xd->tree_type), build_for_obmc)) {
@@ -1655,9 +1803,12 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
     build_inter_predictors_sub8x8(cm, xd, plane, mi, mi_x, mi_y, mc_buf,
                                   calc_subpel_params_func);
   } else {
-    build_inter_predictors_8x8_and_bigger(cm, xd, plane, mi, build_for_obmc, bw,
-                                          bh, mi_x, mi_y, mc_buf,
-                                          calc_subpel_params_func);
+    build_inter_predictors_8x8_and_bigger(cm, xd, plane, mi,
+#if CONFIG_BAWP
+                                          dst_orig,
+#endif
+                                          build_for_obmc, bw, bh, mi_x, mi_y,
+                                          mc_buf, calc_subpel_params_func);
   }
 }
 void av1_setup_dst_planes(struct macroblockd_plane *planes, BLOCK_SIZE bsize,

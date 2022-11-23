@@ -372,6 +372,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               " 1: TIP frame is used as reference or direct output (default), "
               " 2: TIP frame is only used as reference)"),
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  .enable_bawp = ARG_DEF(NULL, "enable-bawp", 1,
+                         "Enable block adaptive weighted prediction (BAWP)"
+                         "(0: false, 1: true (default))"),
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   .enable_fsc = ARG_DEF(NULL, "enable-fsc", 1,
                         "Enable forward skip coding"

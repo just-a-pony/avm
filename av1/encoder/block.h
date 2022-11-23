@@ -885,6 +885,10 @@ typedef struct {
   //! motion_mode_cost1
   int motion_mode_cost1[BLOCK_SIZES_ALL][2];
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_BAWP
+  //! bawp flag cost
+  int bawp_flg_cost[2];
+#endif
   //! switchable_interp_costs
   int switchable_interp_costs[SWITCHABLE_FILTER_CONTEXTS][SWITCHABLE_FILTERS];
   /**@}*/

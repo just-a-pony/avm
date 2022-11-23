@@ -88,6 +88,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_TIP
     GET_PARAMS(enable_tip);
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+    GET_PARAMS(enable_bawp);
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
     GET_PARAMS(enable_fsc);
 #endif  // CONFIG_FORWARDSKIP

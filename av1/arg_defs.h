@@ -144,6 +144,9 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_TIP
   arg_def_t enable_tip;
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  arg_def_t enable_bawp;
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   arg_def_t enable_fsc;
 #endif  // CONFIG_FORWARDSKIP

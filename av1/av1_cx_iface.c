@@ -118,6 +118,9 @@ struct av1_extracfg {
 #if CONFIG_TIP
   int enable_tip;  // enable temporal interpolated prediction
 #endif             // CONFIG_TIP
+#if CONFIG_BAWP
+  int enable_bawp;  // enable block adaptive weighted prediction
+#endif              // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   int enable_fsc;  // enable forward skip coding
 #endif             // CONFIG_FORWARDSKIP
@@ -423,6 +426,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_TIP
   1,    // enable temporal interpolated prediction (TIP)
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  1,    // enable block adaptive weighted prediction (BAWP)
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   1,    // enable forward skip coding
 #endif  // CONFIG_FORWARDSKIP
@@ -898,6 +904,9 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_TIP
   cfg->enable_tip = extra_cfg->enable_tip;
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  cfg->enable_bawp = extra_cfg->enable_bawp;
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   cfg->enable_fsc = extra_cfg->enable_fsc;
 #endif  // CONFIG_FORWARDSKIP
@@ -993,6 +1002,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_TIP
   extra_cfg->enable_tip = cfg->enable_tip;
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  extra_cfg->enable_bawp = cfg->enable_bawp;
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   extra_cfg->enable_fsc = cfg->enable_fsc;
 #endif  // CONFIG_FORWARDSKIP
@@ -1267,6 +1279,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     }
   }
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  tool_cfg->enable_bawp = extra_cfg->enable_bawp;
+#endif  // CONFIG_BAWP
   tool_cfg->force_video_mode = extra_cfg->force_video_mode;
   tool_cfg->enable_palette = extra_cfg->enable_palette;
   // FIXME(debargha): Should this be:
@@ -3621,6 +3636,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.enable_tip = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_bawp, argv,
+                              err_string)) {
+    extra_cfg.enable_bawp = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_fsc, argv,
                               err_string)) {
@@ -4080,6 +4100,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_TIP
         1,
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+        1,
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
         1,
 #endif  // CONFIG_FORWARDSKIP

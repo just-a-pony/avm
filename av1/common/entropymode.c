@@ -1193,6 +1193,10 @@ static const aom_cdf_prob default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)] = {
 };
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
+#if CONFIG_BAWP
+static const aom_cdf_prob default_bawp_cdf[CDF_SIZE(2)] = { AOM_CDF2(23664) };
+#endif  // CONFIG_BAWP
+
 #if CONFIG_CONTEXT_DERIVATION
 #if CONFIG_NEW_CONTEXT_MODELING
 static const aom_cdf_prob default_intra_inter_cdf
@@ -1881,6 +1885,7 @@ static const aom_cdf_prob default_skip_txfm_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(3576) }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 };
+
 #endif  // CONFIG_NEW_CONTEXT_MODELING
 #if CONFIG_SKIP_MODE_ENHANCEMENT
 #if CONFIG_NEW_CONTEXT_MODELING
@@ -1888,11 +1893,8 @@ static const aom_cdf_prob default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(
     2)] = { { AOM_CDF2(32298) }, { AOM_CDF2(23079) }, { AOM_CDF2(7376) } };
 #else
 static const aom_cdf_prob default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(
-    2)] = { { AOM_CDF2(26621) }, { AOM_CDF2(15708) }, { AOM_CDF2(4127) } };
-#endif  // CONFIG_NEW_CONTEXT_MODELING
-#else
-static const aom_cdf_prob default_skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(
     2)] = { { AOM_CDF2(32621) }, { AOM_CDF2(20708) }, { AOM_CDF2(8127) } };
+#endif
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
 #if CONFIG_NEW_CONTEXT_MODELING
@@ -2366,6 +2368,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #if CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
   av1_copy(fc->skip_drl_cdf, default_skip_drl_cdf);
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
+#if CONFIG_BAWP
+  av1_copy(fc->bawp_cdf, default_bawp_cdf);
+#endif  // CONFIG_BAWP
 #if CONFIG_OPTFLOW_REFINEMENT
   av1_copy(fc->use_optflow_cdf, default_use_optflow_cdf);
 #endif  // CONFIG_OPTFLOW_REFINEMENT

@@ -457,6 +457,9 @@ typedef struct SequenceHeader {
   uint8_t enable_tip;  // enables/disables temporal interpolated prediction
   uint8_t enable_tip_hole_fill;  // enables/disables hole fill for TIP
 #endif                           // CONFIG_TIP
+#if CONFIG_BAWP
+  uint8_t enable_bawp;  // enables/disables block adaptive weighted prediction
+#endif                  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   uint8_t enable_fsc;                // enables/disables forward skip coding
 #endif                               // CONFIG_FORWARDSKIP
@@ -697,6 +700,12 @@ typedef struct {
    */
   bool allow_parity_hiding;
 #endif  // CONFIG_PAR_HIDING
+#if CONFIG_BAWP
+  /*!
+   * Enables/disables block adaptive weighted prediction
+   */
+  bool enable_bawp;
+#endif  // CONFIG_BAWP
 } FeatureFlags;
 
 /*!
@@ -3088,6 +3097,10 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     return allowed_motion_modes;
   }
 
+#if CONFIG_BAWP
+  if (mbmi->bawp_flag == 1) return allowed_motion_modes;
+#endif  // CONFIG_BAWP
+
   bool interintra_allowed =
       cm->current_frame.reference_mode != COMPOUND_REFERENCE &&
       cm->seq_params.enable_interintra_compound && is_interintra_allowed(mbmi);
@@ -3228,6 +3241,9 @@ static INLINE MOTION_MODE motion_mode_allowed(const AV1_COMMON *cm,
   if (!cm->features.switchable_motion_mode) {
     return SIMPLE_TRANSLATION;
   }
+#if CONFIG_BAWP
+  if (mbmi->bawp_flag == 1) return SIMPLE_TRANSLATION;
+#endif  // CONFIG_BAWP
 
 #if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return SIMPLE_TRANSLATION;

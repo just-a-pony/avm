@@ -841,6 +841,10 @@ typedef struct {
   // enable temporal interpolated prediction
   int enable_tip;
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  // enable block adaptive weighted prediction
+  int enable_bawp;
+#endif  // CONFIG_BAWP
   // When enabled, video mode should be used even for single frame input.
   bool force_video_mode;
   // Indicates if the error resiliency features should be enabled.

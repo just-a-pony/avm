@@ -461,6 +461,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   }
   seq->enable_tip_hole_fill = seq->enable_tip;
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  seq->enable_bawp = tool_cfg->enable_bawp;
+#endif  // CONFIG_BAWP
   seq->enable_warped_motion = oxcf->motion_mode_cfg.enable_warped_motion;
   seq->enable_interintra_compound = tool_cfg->enable_interintra_comp;
   seq->enable_masked_compound = oxcf->comp_type_cfg.enable_masked_comp;
@@ -3229,7 +3232,10 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
 
   features->allow_warped_motion = oxcf->motion_mode_cfg.allow_warped_motion &&
                                   frame_might_allow_warped_motion(cm);
-
+  // temporal set of frame level enable_bawp flag.
+#if CONFIG_BAWP
+  features->enable_bawp = seq_params->enable_bawp;
+#endif
   cpi->last_frame_type = current_frame->frame_type;
 
   if (frame_is_sframe(cm)) {

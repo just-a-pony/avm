@@ -533,6 +533,9 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                fc->obmc_cdf[i], NULL);
     }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_BAWP
+    av1_cost_tokens_from_cdf(mode_costs->bawp_flg_cost, fc->bawp_cdf, NULL);
+#endif
     for (i = 0; i < COMP_GROUP_IDX_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->comp_group_idx_cost[i],
                                fc->comp_group_idx_cdf[i], NULL);

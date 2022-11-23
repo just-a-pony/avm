@@ -951,8 +951,11 @@ static void dec_build_inter_predictors(const AV1_COMMON *cm,
                                        DecoderCodingBlock *dcb, int plane,
                                        MB_MODE_INFO *mi, int build_for_obmc,
                                        int bw, int bh, int mi_x, int mi_y) {
-  av1_build_inter_predictors(cm, &dcb->xd, plane, mi, build_for_obmc, bw, bh,
-                             mi_x, mi_y, dcb->mc_buf,
+  av1_build_inter_predictors(cm, &dcb->xd, plane, mi,
+#if CONFIG_BAWP
+                             NULL,
+#endif
+                             build_for_obmc, bw, bh, mi_x, mi_y, dcb->mc_buf,
                              dec_calc_subpel_params_and_extend);
 }
 
@@ -5159,6 +5162,9 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
     seq_params->enable_tip_hole_fill = 0;
   }
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  seq_params->enable_bawp = aom_rb_read_bit(rb);
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   seq_params->enable_fsc = aom_rb_read_bit(rb);
 #endif  // CONFIG_FORWARDSKIP
@@ -6357,6 +6363,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     features->allow_warped_motion = aom_rb_read_bit(rb);
   else
     features->allow_warped_motion = 0;
+
+#if CONFIG_BAWP
+  if (!frame_is_intra_only(cm) && seq_params->enable_bawp)
+    features->enable_bawp = aom_rb_read_bit(rb);
+  else
+    features->enable_bawp = 0;
+#endif  // CONFIG_BAWP
 
   features->reduced_tx_set_used = aom_rb_read_bit(rb);
 

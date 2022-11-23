@@ -46,6 +46,10 @@ extern "C" {
 
 #define WEDGE_NONE -1
 
+#if CONFIG_BAWP
+#define BAWP_REF_LINES 1
+#endif
+
 // Angles are with respect to horizontal anti-clockwise
 enum {
   WEDGE_HORIZONTAL = 0,
@@ -379,9 +383,12 @@ void av1_build_one_inter_predictor(
     int ref, uint16_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func);
 
 void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                int plane, MB_MODE_INFO *mi, int build_for_obmc,
-                                int bw, int bh, int mi_x, int mi_y,
-                                uint16_t **mc_buf,
+                                int plane, MB_MODE_INFO *mi,
+#if CONFIG_BAWP
+                                const BUFFER_SET *dst_orig,
+#endif
+                                int build_for_obmc, int bw, int bh, int mi_x,
+                                int mi_y, uint16_t **mc_buf,
                                 CalcSubpelParamsFunc calc_subpel_params_func);
 
 #if CONFIG_OPTFLOW_REFINEMENT

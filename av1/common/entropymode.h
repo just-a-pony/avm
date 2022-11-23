@@ -206,6 +206,9 @@ typedef struct frame_contexts {
   aom_cdf_prob motion_mode_cdf[BLOCK_SIZES_ALL][CDF_SIZE(MOTION_MODES)];
   aom_cdf_prob obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif
+#if CONFIG_BAWP
+  aom_cdf_prob bawp_cdf[CDF_SIZE(2)];
+#endif  // CONFIG_BAWP
 #if CONFIG_TIP
   aom_cdf_prob tip_cdf[TIP_CONTEXTS][CDF_SIZE(2)];
 #endif  // CONFIG_TIP

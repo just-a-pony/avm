@@ -121,11 +121,17 @@ void av1_enc_build_one_inter_predictor(uint16_t *dst, int dst_stride,
 }
 
 static void enc_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
-                                       int plane, MB_MODE_INFO *mi, int bw,
-                                       int bh, int mi_x, int mi_y) {
-  av1_build_inter_predictors(cm, xd, plane, mi, 0 /* build_for_obmc */, bw, bh,
-                             mi_x, mi_y, NULL /* mc_buf */,
-                             enc_calc_subpel_params);
+                                       int plane, MB_MODE_INFO *mi,
+#if CONFIG_BAWP
+                                       const BUFFER_SET *ctx,
+#endif
+                                       int bw, int bh, int mi_x, int mi_y) {
+  av1_build_inter_predictors(cm, xd, plane, mi,
+#if CONFIG_BAWP
+                             ctx,
+#endif
+                             0 /* build_for_obmc */, bw, bh, mi_x, mi_y,
+                             NULL /* mc_buf */, enc_calc_subpel_params);
 }
 
 void av1_enc_build_inter_predictor_y(MACROBLOCKD *xd, int mi_row, int mi_col) {
@@ -158,8 +164,14 @@ void av1_enc_build_inter_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,
     if (plane && !xd->is_chroma_ref) break;
     const int mi_x = mi_col * MI_SIZE;
     const int mi_y = mi_row * MI_SIZE;
+#if CONFIG_BAWP
+    enc_build_inter_predictors(cm, xd, plane, xd->mi[0], ctx,
+                               xd->plane[plane].width, xd->plane[plane].height,
+                               mi_x, mi_y);
+#else
     enc_build_inter_predictors(cm, xd, plane, xd->mi[0], xd->plane[plane].width,
                                xd->plane[plane].height, mi_x, mi_y);
+#endif
 
     if (is_interintra_pred(xd->mi[0])) {
       BUFFER_SET default_ctx = {

@@ -449,6 +449,14 @@ typedef struct MB_MODE_INFO {
   int8_t interintra_wedge_index;
   /*! \brief Struct that stores the data used in interinter compound mode. */
   INTERINTER_COMPOUND_DATA interinter_comp;
+#if CONFIG_BAWP
+  /*! \brief The block level bawp enabling flag*/
+  int8_t bawp_flag;
+  /*! \brief The bawp parameters weight*/
+  int16_t bawp_alpha[3][2];  //[yuv][ref0/1], current only [0][0] is used.
+  /*! \brief The bawp parameters offset*/
+  int32_t bawp_beta[3][2];  //[yuv][ref0/1], current only [0][0] is used.
+#endif                      // CONFIG_BAWP
   /**@}*/
 
   /*****************************************************************************
@@ -2163,7 +2171,11 @@ static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
 static INLINE int is_interintra_allowed(const MB_MODE_INFO *mbmi) {
   return is_interintra_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
          is_interintra_allowed_mode(mbmi->mode) &&
-         is_interintra_allowed_ref(mbmi->ref_frame);
+         is_interintra_allowed_ref(mbmi->ref_frame)
+#if CONFIG_BAWP
+         && mbmi->bawp_flag != 1
+#endif  // CONFIG_BAWP
+      ;
 }
 
 static INLINE int is_interintra_allowed_bsize_group(int group) {
@@ -2221,6 +2233,19 @@ static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
   return (is_inter_block(mbmi, tree_type));
 #endif  // CONFIG_IBC_SR_EXT
 }
+
+#if CONFIG_BAWP
+static INLINE int av1_allow_bawp(const MB_MODE_INFO *mbmi) {
+#if CONFIG_TIP
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
+#endif  // CONFIG_TIP
+  if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
+      is_inter_singleref_mode(mbmi->mode))
+    return 1;
+  else
+    return 0;
+}
+#endif  // CONFIG_BAWP
 
 static INLINE int av1_allow_palette(int allow_screen_content_tools,
                                     BLOCK_SIZE sb_type) {

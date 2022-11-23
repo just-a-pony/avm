@@ -1234,6 +1234,9 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     set_most_probable_mv_precision(cm, mbmi, bsize);
 #endif
 
+#if CONFIG_BAWP
+    mbmi->bawp_flag = 0;
+#endif
 #if !CONFIG_C076_INTER_MOD_CTX
     int16_t inter_mode_ctx[MODE_CTX_REF_FRAMES];
 #endif  // !CONFIG_C076_INTER_MOD_CTX
@@ -2024,6 +2027,10 @@ static void read_intra_block_mode_info(AV1_COMMON *const cm,
   set_most_probable_mv_precision(cm, mbmi, bsize);
 #endif
 
+#if CONFIG_BAWP
+  mbmi->bawp_flag = 0;
+#endif
+
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
 #if CONFIG_AIMC
@@ -2533,6 +2540,10 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   set_most_probable_mv_precision(cm, mbmi, bsize);
 #endif  // CONFIG_FLEX_MVRES
 
+#if CONFIG_BAWP
+  mbmi->bawp_flag = 0;
+#endif
+
   av1_collect_neighbors_ref_counts(xd);
 
   read_ref_frames(cm, xd, r, mbmi->segment_id, mbmi->ref_frame);
@@ -2679,6 +2690,11 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 
                                            r);
   aom_merge_corrupted_flag(&dcb->corrupted, mv_corrupted_flag);
+
+#if CONFIG_BAWP
+  if (cm->features.enable_bawp && av1_allow_bawp(mbmi))
+    mbmi->bawp_flag = aom_read_symbol(r, xd->tile_ctx->bawp_cdf, 2, ACCT_STR);
+#endif
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
   for (int ref = 0; ref < 1 + has_second_ref(mbmi); ++ref) {
@@ -2911,6 +2927,11 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   set_default_precision_set(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
   set_most_probable_mv_precision(cm, mbmi, mbmi->sb_type[PLANE_TYPE_Y]);
 #endif  // CONFIG_FLEX_MVRES
+
+#if CONFIG_BAWP
+  mbmi->bawp_flag = 0;
+#endif
+
   mbmi->segment_id = read_inter_segment_id(cm, xd, 1, r);
 
   mbmi->skip_mode = read_skip_mode(cm, xd, mbmi->segment_id, r);

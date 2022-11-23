@@ -228,7 +228,7 @@ set_aom_config_var(CONFIG_DISPLAY_ORDER_HINT_FIX 1
                    "Bug fix on display order hints of key frames")
 set_aom_config_var(CONFIG_PAR_HIDING 1
                    "Enable parity hiding for coefficients coding. (PH)")
-
+set_aom_config_var(CONFIG_BAWP 1 "Enable block adaptive weighted prediction")
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
                    "Enable a sufficient MV search range.")

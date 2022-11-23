@@ -254,6 +254,9 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader) {
     AV1C_READ_BIT_OR_RETURN_ERROR(enable_tip_hole_fill);
   }
 #endif  // CONFIG_TIP
+#if CONFIG_BAWP
+  AV1C_READ_BIT_OR_RETURN_ERROR(enable_bawp);
+#endif  // CONFIG_BAWP
 #if CONFIG_FORWARDSKIP
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_fsc);
 #endif  // CONFIG_FORWARDSKIP
