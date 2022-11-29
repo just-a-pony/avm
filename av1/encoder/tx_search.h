@@ -91,6 +91,8 @@ static AOM_INLINE int tx_size_cost(const MACROBLOCK *const x, BLOCK_SIZE bsize,
 
   const MACROBLOCKD *const xd = &x->e_mbd;
 #if CONFIG_NEW_TX_PARTITION
+  if (bsize >= BLOCK_SIZES_ALL) return INT_MAX;
+
   (void)tx_size;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   const TX_SIZE max_tx_size = max_txsize_rect_lookup[bsize];

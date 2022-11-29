@@ -3037,7 +3037,7 @@ static void select_tx_partition_type(
   TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
 
   int64_t best_rd = INT64_MAX;
-  TX_PARTITION_TYPE best_tx_partition = -1;
+  TX_PARTITION_TYPE best_tx_partition = TX_PARTITION_INVALID;
   uint8_t best_partition_entropy_ctxs[MAX_TX_PARTITIONS] = { 0 };
   uint8_t best_partition_tx_types[MAX_TX_PARTITIONS] = { 0 };
   uint8_t full_blk_skip[MAX_TX_PARTITIONS] = { 0 };
@@ -3357,6 +3357,9 @@ static AOM_INLINE void choose_largest_tx_size(const AV1_COMP *const cpi,
 
     mbmi->tx_size = tx_size_max_32[mbmi->tx_size];
   }
+#if CONFIG_NEW_TX_PARTITION
+  mbmi->tx_partition_type[0] = TX_PARTITION_NONE;
+#endif  // CONFIG_NEW_TX_PARTITION
 
   const int skip_ctx = av1_get_skip_txfm_context(xd);
   const int no_skip_txfm_rate = x->mode_costs.skip_txfm_cost[skip_ctx][0];
@@ -3381,6 +3384,9 @@ static AOM_INLINE void choose_smallest_tx_size(const AV1_COMP *const cpi,
   MB_MODE_INFO *const mbmi = xd->mi[0];
 
   mbmi->tx_size = TX_4X4;
+#if CONFIG_NEW_TX_PARTITION
+  mbmi->tx_partition_type[0] = TX_PARTITION_NONE;
+#endif  // CONFIG_NEW_TX_PARTITION
   // TODO(any) : Pass this_rd based on skip/non-skip cost
   const int skip_trellis = 0;
   av1_txfm_rd_in_plane(x, cpi, rd_stats, ref_best_rd, 0, 0, bs, mbmi->tx_size,
