@@ -503,7 +503,12 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       is_cfl_allowed(xd)) {
 #if CONFIG_ADAPTIVE_DS_FILTER
     cfl_store_block(xd, mbmi->sb_type[xd->tree_type == CHROMA_PART],
-                    mbmi->tx_size, cm->seq_params.enable_cfl_ds_filter);
+                    mbmi->tx_size,
+#if DS_FRAME_LEVEL
+                    cm->features.ds_filter_type);
+#else
+                    cm->seq_params.enable_cfl_ds_filter);
+#endif  // DS_FRAME_LEVEL
 #else
     cfl_store_block(xd, mbmi->sb_type[xd->tree_type == CHROMA_PART],
                     mbmi->tx_size);

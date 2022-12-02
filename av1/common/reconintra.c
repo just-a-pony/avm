@@ -1701,7 +1701,11 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CONFIG_ADAPTIVE_DS_FILTER
       cfl_store_tx(xd, blk_row, blk_col, luma_tx_size,
                    mbmi->sb_type[PLANE_TYPE_UV],
+#if DS_FRAME_LEVEL
+                   cm->features.ds_filter_type);
+#else
                    cm->seq_params.enable_cfl_ds_filter);
+#endif  // DS_FRAME_LEVEL
 #else
       cfl_store_tx(xd, blk_row, blk_col, luma_tx_size,
                    mbmi->sb_type[PLANE_TYPE_UV]);

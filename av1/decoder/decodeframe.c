@@ -248,7 +248,11 @@ static AOM_INLINE void predict_and_reconstruct_intra_block(
       xd->tree_type == SHARED_PART) {
 #if CONFIG_ADAPTIVE_DS_FILTER
     cfl_store_tx(xd, row, col, tx_size, mbmi->sb_type[AOM_PLANE_Y],
+#if DS_FRAME_LEVEL
+                 cm->features.ds_filter_type);
+#else
                  cm->seq_params.enable_cfl_ds_filter);
+#endif  // DS_FRAME_LEVEL
 #else
     cfl_store_tx(xd, row, col, tx_size, mbmi->sb_type[AOM_PLANE_Y]);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
@@ -1127,7 +1131,12 @@ static AOM_INLINE void cfl_store_inter_block(AV1_COMMON *const cm,
   if (store_cfl_required(cm, xd) && xd->tree_type == SHARED_PART) {
 #if CONFIG_ADAPTIVE_DS_FILTER
     cfl_store_block(xd, mbmi->sb_type[PLANE_TYPE_Y], mbmi->tx_size,
-                    cm->seq_params.enable_cfl_ds_filter);
+#if DS_FRAME_LEVEL
+                    cm->features.ds_filter_type
+#else
+                    cm->seq_params.enable_cfl_ds_filter
+#endif
+    );
 #else
     cfl_store_block(xd, mbmi->sb_type[PLANE_TYPE_Y], mbmi->tx_size);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
@@ -5630,6 +5639,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     }
   }
   features->disable_cdf_update = aom_rb_read_bit(rb);
+#if DS_FRAME_LEVEL
+  if (current_frame->frame_type == KEY_FRAME) {
+    features->ds_filter_type = aom_rb_read_literal(rb, 2);
+  }
+#endif  // DS_FRAME_LEVEL
   if (seq_params->force_screen_content_tools == 2) {
     features->allow_screen_content_tools = aom_rb_read_bit(rb);
   } else {

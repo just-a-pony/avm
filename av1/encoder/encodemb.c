@@ -1159,7 +1159,11 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
   if (plane == AOM_PLANE_Y && xd->cfl.store_y && xd->tree_type == SHARED_PART) {
 #if CONFIG_ADAPTIVE_DS_FILTER
     cfl_store_tx(xd, blk_row, blk_col, tx_size, plane_bsize,
+#if DS_FRAME_LEVEL
+                 cm->features.ds_filter_type);
+#else
                  cm->seq_params.enable_cfl_ds_filter);
+#endif  // DS_FRAME_LEVEL
 #else
     cfl_store_tx(xd, blk_row, blk_col, tx_size, plane_bsize);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER

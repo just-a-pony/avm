@@ -210,11 +210,16 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       for (int i = 0; i < width; i += 2) {
         const int bot = i + input_stride;
 #if CONFIG_ADAPTIVE_DS_FILTER
-        if (cm->seq_params.enable_cfl_ds_filter == 1) {
+#if DS_FRAME_LEVEL
+        const int filter_type = cm->features.ds_filter_type;
+#else
+        const int filter_type = cm->seq_params.enable_cfl_ds_filter;
+#endif  // DS_FRAME_LEVEL
+        if (filter_type == 1) {
           output_q3[i >> 1] = input[AOMMAX(0, i - 1)] + 2 * input[i] +
                               input[i + 1] + input[bot + AOMMAX(-1, -i)] +
                               2 * input[bot] + input[bot + 1];
-        } else if (cm->seq_params.enable_cfl_ds_filter == 2) {
+        } else if (filter_type == 2) {
           output_q3[i >> 1] = input[i] * 8;
         } else {
           output_q3[i >> 1] =
@@ -260,10 +265,15 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       for (int j = 0; j < height; j += 2) {
         const int bot = input_stride;
 #if CONFIG_ADAPTIVE_DS_FILTER
-        if (cm->seq_params.enable_cfl_ds_filter == 1) {
+#if DS_FRAME_LEVEL
+        const int filter_type = cm->features.ds_filter_type;
+#else
+        const int filter_type = cm->seq_params.enable_cfl_ds_filter;
+#endif  // DS_FRAME_LEVEL
+        if (filter_type == 1) {
           output_q3[j >> 1] = input[-1] + 2 * input[0] + input[1] +
                               input[bot - 1] + 2 * input[bot] + input[bot + 1];
-        } else if (cm->seq_params.enable_cfl_ds_filter == 2) {
+        } else if (filter_type == 2) {
           output_q3[j >> 1] = input[0] * 8;
         } else {
           output_q3[j >> 1] =
