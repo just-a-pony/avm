@@ -163,11 +163,6 @@ Linux Unit (x86_64, sse4_2):
   variables:
     AOM_OPTIM_LEVEL: sse4_2
 
-Linux Unit (x86_64, avx2):
-  extends: .common-linux-unit-optim
-  variables:
-    AOM_OPTIM_LEVEL: avx2
-
 #
 # Sanitizer jobs
 # The following jobs run the unit tests but
