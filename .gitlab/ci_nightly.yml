@@ -292,8 +292,7 @@ Linux Sanitizer (thread) Test Nightly:
     - curl -s -S -f -O https://gitlab.com/AOMediaCodec/aom-testing/-/raw/master/test-files/${AOMENC_INPUT}.xz
     - unxz ${AOMENC_INPUT}.xz
   script:
-    - cd aom_nightly_build
-    - ./aomenc
+    - aom_nightly_build/aomenc
         --debug
         --cpu-used=0
         --passes=1
