@@ -108,7 +108,7 @@ Coverage Report:
 .common-linux-unit-optim:
   stage: test
   interruptible: true
-  parallel: 20
+  parallel: 10
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
     GTEST_TOTAL_SHARDS: ${CI_NODE_TOTAL}
@@ -127,7 +127,7 @@ Coverage Report:
         avx2) export AOM_SIMD_CAPS_MASK=0x1ff ;;
       esac
 
-      test_filter="-C*:MMX*:SSE*:SSSE*:AVX*"
+      test_filter="-C*:MMX*:SSE*:SSSE*:AVX*:*Large*"
 
     - ./test_libaom --gtest_filter=${test_filter}
   needs:
@@ -145,20 +145,10 @@ Linux Unit (x86_64, sse2):
   variables:
     AOM_OPTIM_LEVEL: sse2
 
-Linux Unit (x86_64, sse3):
-  extends: .common-linux-unit-optim
-  variables:
-    AOM_OPTIM_LEVEL: sse3
-
 Linux Unit (x86_64, ssse3):
   extends: .common-linux-unit-optim
   variables:
     AOM_OPTIM_LEVEL: ssse3
-
-Linux Unit (x86_64, sse4_1):
-  extends: .common-linux-unit-optim
-  variables:
-    AOM_OPTIM_LEVEL: sse4_1
 
 Linux Unit (x86_64, sse4_2):
   extends: .common-linux-unit-optim
