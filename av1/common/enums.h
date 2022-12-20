@@ -399,6 +399,30 @@ enum {
   DCT_ADST_TX_MASK = 0x000F,  // Either DCT or ADST in each direction
 } UENUM1BYTE(TX_TYPE);
 
+#if CONFIG_CROSS_CHROMA_TX
+#define CCTX_CONTEXTS 3
+
+// Drop C2 channel for some cctx_types.
+#define CCTX_C2_DROPPED 0
+#if CCTX_C2_DROPPED
+#define CCTX_DROP_30 1
+#define CCTX_DROP_60 1
+#define CCTX_DROP_45 1
+#endif  // CCTX_C2_DROPPED
+
+enum {
+  CCTX_NONE,     // No cross chroma transform
+  CCTX_45,       // 45 degrees rotation (Haar transform)
+  CCTX_30,       // 30 degrees rotation
+  CCTX_60,       // 60 degrees rotation
+  CCTX_MINUS45,  // -45 degrees rotation
+  CCTX_MINUS30,  // -30 degrees rotation
+  CCTX_MINUS60,  // -60 degrees rotation
+  CCTX_TYPES,
+  CCTX_START = CCTX_NONE + 1,
+} UENUM1BYTE(CctxType);
+#endif  // CONFIG_CROSS_CHROMA_TX
+
 enum {
   REG_REG,
   REG_SMOOTH,

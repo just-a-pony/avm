@@ -256,6 +256,11 @@ static int alloc_mi(CommonModeInfoParams *mi_params) {
     mi_params->tx_type_map =
         aom_calloc(mi_grid_size, sizeof(*mi_params->tx_type_map));
     if (!mi_params->tx_type_map) return 1;
+#if CONFIG_CROSS_CHROMA_TX
+    mi_params->cctx_type_map =
+        aom_calloc(mi_grid_size, sizeof(*mi_params->cctx_type_map));
+    if (!mi_params->cctx_type_map) return 1;
+#endif  // CONFIG_CROSS_CHROMA_TX
   }
 
   return 0;

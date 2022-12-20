@@ -122,6 +122,9 @@ typedef struct ThreadData {
   decode_block_visitor_fn_t read_coeffs_tx_intra_block_visit;
   decode_block_visitor_fn_t predict_and_recon_intra_block_visit;
   decode_block_visitor_fn_t read_coeffs_tx_inter_block_visit;
+#if CONFIG_CROSS_CHROMA_TX
+  decode_block_visitor_fn_t inverse_cctx_block_visit;
+#endif  // CONFIG_CROSS_CHROMA_TX
   decode_block_visitor_fn_t inverse_tx_inter_block_visit;
   predict_inter_block_visitor_fn_t predict_inter_block_visit;
   cfl_store_inter_block_visitor_fn_t cfl_store_inter_block_visit;

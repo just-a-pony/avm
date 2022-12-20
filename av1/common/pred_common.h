@@ -366,6 +366,54 @@ static INLINE int get_intrabc_ctx(const MACROBLOCKD *xd) {
 }
 #endif  // CONFIG_NEW_CONTEXT_MODELING
 
+#if CONFIG_CROSS_CHROMA_TX
+// Determine whether to allow cctx or not for a given block
+static INLINE int is_cctx_allowed(const AV1_COMMON *cm, const MACROBLOCKD *xd) {
+  const MB_MODE_INFO *const mbmi = xd->mi[0];
+  return cm->seq_params.enable_cctx && !xd->lossless[mbmi->segment_id];
+}
+
+static INLINE void get_above_and_left_cctx_type(const AV1_COMMON *cm,
+                                                const MACROBLOCKD *xd,
+                                                TX_SIZE tx_size,
+                                                int *above_cctx,
+                                                int *left_cctx) {
+  const int ss_x = xd->plane[AOM_PLANE_U].subsampling_x;
+  const int ss_y = xd->plane[AOM_PLANE_U].subsampling_y;
+  const int txh = tx_size_high_unit[tx_size];
+  const int txw = tx_size_wide_unit[tx_size];
+
+  const CommonModeInfoParams *const mi_params = &cm->mi_params;
+  const int stride = mi_params->mi_stride;
+
+  // Offsets are needed for sub 8x8 blocks to reach the top left corner of the
+  // current block where the current cctx_type is applied
+  const int mi_row_offset = (xd->mi_row & 0x01) && (txh & 0x01) && ss_y;
+  const int mi_col_offset = (xd->mi_col & 0x01) && (txw & 0x01) && ss_x;
+  const int mi_grid_idx = get_mi_grid_idx(mi_params, xd->mi_row - mi_row_offset,
+                                          xd->mi_col - mi_col_offset);
+  CctxType *const cur_cctx_ptr = mi_params->cctx_type_map + mi_grid_idx;
+  *above_cctx = xd->chroma_up_available ? (int)cur_cctx_ptr[-stride] : -1;
+  *left_cctx = xd->chroma_left_available ? (int)cur_cctx_ptr[-1] : -1;
+
+  assert(*above_cctx >= -1 && *above_cctx < CCTX_TYPES);
+  assert(*left_cctx >= -1 && *left_cctx < CCTX_TYPES);
+}
+
+// Context of cctx type is determined by comparing the numbers of positive and
+// negative angles in the above and left neighbors of the current tx block.
+// 0: tie, 1: more positive angles, 2: more negative angles.
+static INLINE int get_cctx_context(const MACROBLOCKD *xd, int *above,
+                                   int *left) {
+  int cnt = 0;
+  if (xd->chroma_up_available && *above > CCTX_NONE)
+    cnt += (*above > CCTX_60) ? -1 : 1;
+  if (xd->chroma_left_available && *left > CCTX_NONE)
+    cnt += (*left > CCTX_60) ? -1 : 1;
+  return cnt == 0 ? 0 : 1 + (cnt < 0);
+}
+#endif  // CONFIG_CROSS_CHROMA_TX
+
 int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir);
 
 // Get a list of palette base colors that are used in the above and left blocks,

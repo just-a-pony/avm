@@ -332,6 +332,12 @@ typedef struct {
    */
   bool enable_ist;
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  /*!
+   * Flag to indicate if cross chroma component transform is enabled.
+   */
+  bool enable_cctx;
+#endif  // CONFIG_CROSS_CHROMA_TX
 } TxfmSizeTypeCfg;
 
 /*!
@@ -1345,6 +1351,9 @@ typedef struct FRAME_COUNTS {
   unsigned int inter_ext_tx[EXT_TX_SETS_INTER][EXT_TX_SIZES][TX_TYPES];
   unsigned int intra_ext_tx[EXT_TX_SETS_INTRA][EXT_TX_SIZES][INTRA_MODES]
                            [TX_TYPES];
+#if CONFIG_CROSS_CHROMA_TX
+  unsigned int cctx_type[EXT_TX_SIZES][CCTX_CONTEXTS][CCTX_TYPES];
+#endif  // CONFIG_CROSS_CHROMA_TX
   unsigned int filter_intra_mode[FILTER_INTRA_MODES];
   unsigned int filter_intra[BLOCK_SIZES_ALL][2];
   unsigned int switchable_restore[RESTORE_SWITCHABLE_TYPES];

@@ -749,6 +749,24 @@ static const aom_cdf_prob
       },
     };
 
+#if CONFIG_CROSS_CHROMA_TX
+static const aom_cdf_prob
+    default_cctx_type_cdf[EXT_TX_SIZES][CCTX_CONTEXTS][CDF_SIZE(CCTX_TYPES)] = {
+      { { AOM_CDF7(19143, 19642, 20876, 21362, 23684, 30645) },
+        { AOM_CDF7(15852, 17519, 22430, 24276, 26473, 30362) },
+        { AOM_CDF7(9981, 10351, 11021, 11340, 16893, 28901) } },
+      { { AOM_CDF7(13312, 14068, 15345, 16249, 20082, 29648) },
+        { AOM_CDF7(11802, 14635, 17918, 20493, 23927, 29206) },
+        { AOM_CDF7(8348, 8915, 9727, 10347, 16584, 27923) } },
+      { { AOM_CDF7(10604, 11887, 13486, 14485, 19798, 28529) },
+        { AOM_CDF7(10790, 13346, 16867, 18854, 23398, 29133) },
+        { AOM_CDF7(6538, 7104, 7997, 8723, 15658, 26864) } },
+      { { AOM_CDF7(13226, 13959, 14918, 15707, 21009, 29328) },
+        { AOM_CDF7(10336, 13195, 15614, 17813, 21992, 29469) },
+        { AOM_CDF7(7769, 8772, 9617, 10150, 16729, 28132) } }
+    };
+#endif  // CONFIG_CROSS_CHROMA_TX
+
 static const aom_cdf_prob default_cfl_sign_cdf[CDF_SIZE(CFL_JOINT_SIGNS)] = {
   AOM_CDF8(1418, 2123, 13340, 18405, 26972, 28343, 32294)
 };
@@ -2451,6 +2469,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->pb_mv_precision_cdf, default_pb_mv_precision_cdf);
   av1_copy(fc->pb_mv_mpp_flag_cdf, default_pb_mv_most_probable_precision_cdf);
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_CROSS_CHROMA_TX
+  av1_copy(fc->cctx_type_cdf, default_cctx_type_cdf);
+#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 void av1_set_default_ref_deltas(int8_t *ref_deltas) {

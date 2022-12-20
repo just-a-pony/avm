@@ -439,6 +439,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_IST
   &g_av1_codec_arg_defs.enable_ist,
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  &g_av1_codec_arg_defs.enable_cctx,
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   &g_av1_codec_arg_defs.enable_ibp,
 #endif
@@ -620,6 +623,9 @@ static void init_config(cfg_options_t *config) {
 #if CONFIG_IST
   config->enable_ist = 1;
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  config->enable_cctx = 1;
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   config->enable_ibp = 1;
 #endif
@@ -1548,8 +1554,16 @@ static void show_stream_config(struct stream_state *stream,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
   fprintf(stdout,
-          "Tool setting (Transform)       : Flip & IDT (%d), TX_64 (%d)\n",
-          encoder_cfg->enable_flip_idtx, encoder_cfg->enable_tx64);
+          "Tool setting (Transform)       : Flip & IDT (%d), "
+#if CONFIG_CROSS_CHROMA_TX
+          "CCTX (%d), "
+#endif  // CONFIG_CROSS_CHROMA_TX
+          "TX_64 (%d)\n",
+          encoder_cfg->enable_flip_idtx,
+#if CONFIG_CROSS_CHROMA_TX
+          encoder_cfg->enable_cctx,
+#endif  // CONFIG_CROSS_CHROMA_TX
+          encoder_cfg->enable_tx64);
 
   fprintf(stdout,
           "Tool setting (Loop filter)     : Deblocking (%d), CDEF (%d), "

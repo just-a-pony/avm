@@ -350,6 +350,9 @@ typedef struct frame_contexts {
                                   [NUM_PB_FLEX_QUALIFIED_MAX_PREC]
                                   [CDF_SIZE(FLEX_MV_COSTS_SIZE)];
 #endif  // CONFIG_FLEX_MVRES
+#if CONFIG_CROSS_CHROMA_TX
+  aom_cdf_prob cctx_type_cdf[EXT_TX_SIZES][CCTX_CONTEXTS][CDF_SIZE(CCTX_TYPES)];
+#endif  // CONFIG_CROSS_CHROMA_TX
   int initialized;
 } FRAME_CONTEXT;
 

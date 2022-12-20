@@ -1098,6 +1098,12 @@ typedef struct macroblockd {
    * 'MACROBLOCK' structs.
    */
   TX_TYPE *tx_type_map;
+#if CONFIG_CROSS_CHROMA_TX
+  /*!
+   * Array of CCTX types.
+   */
+  CctxType *cctx_type_map;
+#endif  // CONFIG_CROSS_CHROMA_TX
   /*!
    * Stride for 'tx_type_map'. Note that this may / may not be same as
    * 'mi_stride', depending on which actual array 'tx_type_map' points to.
@@ -1890,6 +1896,72 @@ static INLINE void update_txk_array(MACROBLOCKD *const xd, int blk_row,
     }
   }
 }
+
+#if CONFIG_CROSS_CHROMA_TX
+#if CCTX_C2_DROPPED
+// Determine whether or not to keep the second chroma channel (C2).
+static INLINE int keep_chroma_c2(CctxType cctx_type) {
+  return
+#if !CCTX_DROP_45
+      cctx_type == CCTX_MINUS45 || cctx_type == CCTX_45 ||
+#endif  // !CCTX_DROP_45
+#if !CCTX_DROP_30
+      cctx_type == CCTX_MINUS30 || cctx_type == CCTX_30 ||
+#endif  // !CCTX_DROP_30
+#if !CCTX_DROP_60
+      cctx_type == CCTX_MINUS60 || cctx_type == CCTX_60 ||
+#endif  // !CCTX_DROP_60
+      cctx_type == CCTX_NONE;
+}
+#endif
+
+// When the current block is sub 8x8, obtain amounts of offset to its parent
+// 8x8 block. Otherwise set the offsets to 0.
+static INLINE void get_offsets_to_8x8(MACROBLOCKD *const xd, TX_SIZE tx_size,
+                                      int *row_offset, int *col_offset) {
+  const struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_U];
+  const int ss_x = pd->subsampling_x;
+  const int ss_y = pd->subsampling_y;
+  *row_offset =
+      (xd->mi_row & 0x01) && (tx_size_high_unit[tx_size] & 0x01) && ss_y;
+  *col_offset =
+      (xd->mi_col & 0x01) && (tx_size_wide_unit[tx_size] & 0x01) && ss_x;
+}
+
+static INLINE void update_cctx_array(MACROBLOCKD *const xd, int blk_row,
+                                     int blk_col, int blk_row_offset,
+                                     int blk_col_offset, TX_SIZE tx_size,
+                                     CctxType cctx_type) {
+  const int stride = xd->tx_type_map_stride;
+  const struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_U];
+  const int ss_x = pd->subsampling_x;
+  const int ss_y = pd->subsampling_y;
+  assert(xd->is_chroma_ref);
+
+  // For sub 8x8 block, offsets will be applied to reach the mi_row and mi_col
+  // of the >= 8x8 block area. Transform block size is upscaled to match the
+  // luma block size.
+  const int br = (blk_row << ss_y) - blk_row_offset;
+  const int bc = (blk_col << ss_x) - blk_col_offset;
+  const int txw = tx_size_wide_unit[tx_size] << ss_x;
+  const int txh = tx_size_high_unit[tx_size] << ss_y;
+
+  // To make cctx_type available for its right and bottom neighbors, cover
+  // all elements in cctx_type_map within the transform block range with the
+  // current cctx type
+  for (int idy = 0; idy < txh; idy++)
+    memset(&xd->cctx_type_map[(br + idy) * stride + bc], cctx_type,
+           txw * sizeof(xd->cctx_type_map[0]));
+}
+
+static INLINE CctxType av1_get_cctx_type(const MACROBLOCKD *xd, int blk_row,
+                                         int blk_col) {
+  const struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_U];
+  const int br = blk_row << pd->subsampling_y;
+  const int bc = blk_col << pd->subsampling_x;
+  return xd->cctx_type_map[br * xd->tx_type_map_stride + bc];
+}
+#endif  // CONFIG_CROSS_CHROMA_TX
 
 #if CONFIG_IST
 static INLINE int tx_size_is_depth0(TX_SIZE tx_size, BLOCK_SIZE bsize) {

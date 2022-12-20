@@ -130,6 +130,9 @@ struct av1_extracfg {
 #if CONFIG_IST
   int enable_ist;  // enable intra secondary transform
 #endif             // CONFIG_IST
+#if CONFIG_CROSS_CHROMA_TX
+  int enable_cctx;  // enable cross-chroma component transform
+#endif              // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   int enable_ibp;  // enable intra bi-prediction
 #endif             // CONFIG_IBP_DC or CONFIG_IBP_DIR
@@ -438,6 +441,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_IST
   1,    // enable intra secondary transform
 #endif  // CONFIG_IST
+#if CONFIG_CROSS_CHROMA_TX
+  1,    // enable cross-chroma component transform
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   1,    // enable intra bi-prediction
 #endif  // CONFIG_IBP_DC or CONFIG_IBP_DIR
@@ -916,6 +922,9 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_IST
   cfg->enable_ist = extra_cfg->enable_ist;
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  cfg->enable_cctx = extra_cfg->enable_cctx;
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   cfg->enable_ibp = extra_cfg->enable_ibp;
 #endif
@@ -1014,6 +1023,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_IST
   extra_cfg->enable_ist = cfg->enable_ist;
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  extra_cfg->enable_cctx = cfg->enable_cctx;
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   extra_cfg->enable_ibp = cfg->enable_ibp;
 #endif
@@ -1528,6 +1540,10 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_IST
   txfm_cfg->enable_ist = extra_cfg->enable_ist;
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  txfm_cfg->enable_cctx =
+      tool_cfg->enable_monochrome ? 0 : extra_cfg->enable_cctx;
+#endif  // CONFIG_CROSS_CHROMA_TX
 
   // Set compound type configuration.
   comp_type_cfg->enable_masked_comp = extra_cfg->enable_masked_comp;
@@ -3656,6 +3672,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.enable_ist = arg_parse_int_helper(&arg, err_string);
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_cctx, argv,
+                              err_string)) {
+    extra_cfg.enable_cctx = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ibp, argv,
                               err_string)) {
@@ -4112,6 +4133,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_IST
         1,
 #endif  // CONFIG_IST
+#if CONFIG_CROSS_CHROMA_TX
+        1,
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
         1,
 #endif  // CONFIG_IBP_DC or CONFIG_IBP_DIR

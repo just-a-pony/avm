@@ -100,6 +100,9 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_IST
     GET_PARAMS(enable_ist);
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+    GET_PARAMS(enable_cctx);
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
     GET_PARAMS(enable_ibp);
 #endif

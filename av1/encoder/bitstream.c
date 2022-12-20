@@ -1319,6 +1319,27 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
   }
 }
 
+#if CONFIG_CROSS_CHROMA_TX
+void av1_write_cctx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
+                         CctxType cctx_type, TX_SIZE tx_size, aom_writer *w) {
+  MB_MODE_INFO *mbmi = xd->mi[0];
+  assert(xd->is_chroma_ref);
+  if (((!cm->seg.enabled && cm->quant_params.base_qindex > 0) ||
+       (cm->seg.enabled && xd->qindex[mbmi->segment_id] > 0)) &&
+      !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
+      !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP)) {
+    FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+    const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];
+    int above_cctx, left_cctx;
+    get_above_and_left_cctx_type(cm, xd, tx_size, &above_cctx, &left_cctx);
+    const int cctx_ctx = get_cctx_context(xd, &above_cctx, &left_cctx);
+    aom_write_symbol(w, cctx_type,
+                     ec_ctx->cctx_type_cdf[square_tx_size][cctx_ctx],
+                     CCTX_TYPES);
+  }
+}
+#endif  // CONFIG_CROSS_CHROMA_TX
+
 #if CONFIG_IST
 void av1_write_sec_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
                            TX_TYPE tx_type, TX_SIZE tx_size, uint16_t eob,
@@ -2436,6 +2457,9 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
       get_mi_ext_idx(mi_row, mi_col, cm->mi_params.mi_alloc_bsize,
                      cpi->mbmi_ext_info.stride);
   xd->tx_type_map = mi_params->tx_type_map + grid_idx;
+#if CONFIG_CROSS_CHROMA_TX
+  xd->cctx_type_map = mi_params->cctx_type_map + grid_idx;
+#endif  // CONFIG_CROSS_CHROMA_TX
   xd->tx_type_map_stride = mi_params->mi_stride;
 
   MB_MODE_INFO *mbmi = xd->mi[0];
@@ -2449,6 +2473,23 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
   const int bw = mi_size_wide[bsize];
   set_mi_row_col(xd, tile, mi_row, bh, mi_col, bw, mi_params->mi_rows,
                  mi_params->mi_cols);
+
+#if CONFIG_CROSS_CHROMA_TX
+  // For skip blocks, reset the corresponding area in cctx_type_map to
+  // CCTX_NONE, which will be used as contexts for later blocks. No need to use
+  // av1_get_adjusted_tx_size because uv_txsize is intended to cover the entire
+  // prediction block area
+  if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
+      xd->tree_type != LUMA_PART && xd->is_chroma_ref) {
+    struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_U];
+    const BLOCK_SIZE uv_bsize =
+        get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
+    const TX_SIZE uv_txsize = max_txsize_rect_lookup[uv_bsize];
+    int row_offset, col_offset;
+    get_offsets_to_8x8(xd, uv_txsize, &row_offset, &col_offset);
+    update_cctx_array(xd, 0, 0, row_offset, col_offset, uv_txsize, CCTX_NONE);
+  }
+#endif  // CONFIG_CROSS_CHROMA_TX
 
   xd->above_txfm_context = cm->above_contexts.txfm[tile->tile_row] + mi_col;
   xd->left_txfm_context =
@@ -3873,6 +3914,9 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_IST
   aom_wb_write_bit(wb, seq_params->enable_ist);
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  if (!seq_params->monochrome) aom_wb_write_bit(wb, seq_params->enable_cctx);
+#endif  // CONFIG_CROSS_CHROMA_TX
   aom_wb_write_bit(wb, seq_params->enable_mrls);
 #if CONFIG_TIP
   aom_wb_write_literal(wb, seq_params->enable_tip, 2);

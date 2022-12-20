@@ -156,6 +156,9 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_IST
   arg_def_t enable_ist;
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  arg_def_t enable_cctx;
+#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_IBP_DC || CONFIG_IBP_DIR
   arg_def_t enable_ibp;
 #endif

@@ -93,6 +93,10 @@ static AOM_INLINE void enc_free_mi(CommonModeInfoParams *mi_params) {
   mi_params->mi_alloc_size = 0;
   aom_free(mi_params->tx_type_map);
   mi_params->tx_type_map = NULL;
+#if CONFIG_CROSS_CHROMA_TX
+  aom_free(mi_params->cctx_type_map);
+  mi_params->cctx_type_map = NULL;
+#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 static AOM_INLINE void enc_set_mb_mi(CommonModeInfoParams *mi_params, int width,
@@ -119,6 +123,10 @@ static AOM_INLINE void enc_setup_mi(CommonModeInfoParams *mi_params) {
          mi_grid_size * sizeof(*mi_params->mi_grid_base));
   memset(mi_params->tx_type_map, 0,
          mi_grid_size * sizeof(*mi_params->tx_type_map));
+#if CONFIG_CROSS_CHROMA_TX
+  memset(mi_params->cctx_type_map, 0,
+         mi_grid_size * sizeof(*mi_params->cctx_type_map));
+#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 static AOM_INLINE void init_buffer_indices(

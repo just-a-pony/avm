@@ -171,6 +171,10 @@ static void reset_tx_size(MACROBLOCK *x, MB_MODE_INFO *mbmi,
   for (int row = 0; row < mi_size_high[mbmi->sb_type[plane_index]]; ++row) {
     memset(xd->tx_type_map + row * stride, DCT_DCT,
            bw * sizeof(xd->tx_type_map[0]));
+#if CONFIG_CROSS_CHROMA_TX
+    memset(xd->cctx_type_map + row * stride, CCTX_NONE,
+           bw * sizeof(xd->cctx_type_map[0]));
+#endif  // CONFIG_CROSS_CHROMA_TX
   }
   av1_zero(txfm_info->blk_skip);
   txfm_info->skip_txfm = 0;
@@ -252,6 +256,37 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
       xd->tx_type_map_stride = mi_stride;
     }
   }
+
+#if CONFIG_CROSS_CHROMA_TX
+  if (xd->tree_type != LUMA_PART && xd->is_chroma_ref) {
+    xd->cctx_type_map = ctx->cctx_type_map;
+    xd->tx_type_map_stride = mi_size_wide[bsize];
+    // If this block is sub 8x8 in luma, derive the parent >= 8x8 block area,
+    // then update its corresponding chroma area in cctx_type_map to the
+    // current cctx type
+    const int ss_x = pd[AOM_PLANE_U].subsampling_x;
+    const int ss_y = pd[AOM_PLANE_U].subsampling_y;
+    const int mi_row_offset = (mi_row & 0x01) && (bh & 0x01) && ss_y;
+    const int mi_col_offset = (mi_col & 0x01) && (bw & 0x01) && ss_x;
+    const int grid_idx = get_mi_grid_idx(mi_params, mi_row - mi_row_offset,
+                                         mi_col - mi_col_offset);
+    CctxType *const cctx_type_map = mi_params->cctx_type_map + grid_idx;
+    const int mi_stride = mi_params->mi_stride;
+    const int allow_cctx = is_cctx_allowed(cm, xd);
+    // Set cctx_type to CCTX_NONE when not allowed or for skip blocks
+    CctxType cur_cctx_type = (txfm_info->skip_txfm || !allow_cctx)
+                                 ? CCTX_NONE
+                                 : xd->cctx_type_map[0];
+    for (int blk_row = 0; blk_row < (mi_row_offset ? 2 : bh); ++blk_row) {
+      memset(&cctx_type_map[blk_row * mi_stride], cur_cctx_type,
+             (mi_col_offset ? 2 : bw) * sizeof(cctx_type_map[0]));
+    }
+    if (!dry_run) {
+      xd->cctx_type_map = cctx_type_map;
+      xd->tx_type_map_stride = mi_stride;
+    }
+  }
+#endif
 
   // If segmentation in use
   if (seg->enabled) {
@@ -1417,6 +1452,9 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->coeff_base_ph_cdf, ctx_tr->coeff_base_ph_cdf, 4);
   AVERAGE_CDF(ctx_left->coeff_br_ph_cdf, ctx_tr->coeff_br_ph_cdf, 4);
 #endif  // CONFIG_PAR_HIDING
+#if CONFIG_CROSS_CHROMA_TX
+  AVERAGE_CDF(ctx_left->cctx_type_cdf, ctx_tr->cctx_type_cdf, CCTX_TYPES);
+#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 // Memset the mbmis at the current superblock to 0
@@ -1449,6 +1487,10 @@ void av1_reset_mbmi(CommonModeInfoParams *const mi_params, BLOCK_SIZE sb_size,
            sb_size_mi * sizeof(*mi_params->mi_grid_base));
     memset(&mi_params->tx_type_map[mi_grid_idx], 0,
            sb_size_mi * sizeof(*mi_params->tx_type_map));
+#if CONFIG_CROSS_CHROMA_TX
+    memset(&mi_params->cctx_type_map[mi_grid_idx], 0,
+           sb_size_mi * sizeof(*mi_params->cctx_type_map));
+#endif  // CONFIG_CROSS_CHROMA_TX
     if (cur_mi_row % mi_alloc_size_1d == 0) {
       memset(&mi_params->mi_alloc[alloc_mi_idx], 0,
              sb_size_alloc_mi * sizeof(*mi_params->mi_alloc));

@@ -1086,6 +1086,41 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
   }
 }
 
+#if CONFIG_CROSS_CHROMA_TX
+void av1_read_cctx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
+                        int blk_row, int blk_col, TX_SIZE tx_size,
+                        aom_reader *r) {
+  MB_MODE_INFO *mbmi = xd->mi[0];
+  // If it is a sub 8x8 chroma block, derive the mi_row and mi_col of the
+  // parent block area. Then apply cctx type update to this area w.r.t the
+  // offsets derived
+  int row_offset, col_offset;
+  get_offsets_to_8x8(xd, tx_size, &row_offset, &col_offset);
+  update_cctx_array(xd, blk_row, blk_col, row_offset, col_offset, tx_size,
+                    CCTX_NONE);
+
+  // No need to read transform type if block is skipped.
+  if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART] ||
+      segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP))
+    return;
+
+  // No need to read transform type for lossless mode(qindex==0).
+  const int qindex = xd->qindex[mbmi->segment_id];
+  if (qindex == 0) return;
+
+  CctxType cctx_type = CCTX_NONE;
+  FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+  const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];
+  int above_cctx, left_cctx;
+  get_above_and_left_cctx_type(cm, xd, tx_size, &above_cctx, &left_cctx);
+  const int cctx_ctx = get_cctx_context(xd, &above_cctx, &left_cctx);
+  cctx_type = aom_read_symbol(
+      r, ec_ctx->cctx_type_cdf[square_tx_size][cctx_ctx], CCTX_TYPES, ACCT_STR);
+  update_cctx_array(xd, blk_row, blk_col, row_offset, col_offset, tx_size,
+                    cctx_type);
+}
+#endif  // CONFIG_CROSS_CHROMA_TX
+
 #if CONFIG_IST
 void av1_read_sec_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                           int blk_row, int blk_col, TX_SIZE tx_size,

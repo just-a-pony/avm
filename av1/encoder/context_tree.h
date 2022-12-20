@@ -48,6 +48,9 @@ typedef struct PICK_MODE_CONTEXT {
   uint16_t *eobs[MAX_MB_PLANE];
   uint8_t *txb_entropy_ctx[MAX_MB_PLANE];
   TX_TYPE *tx_type_map;
+#if CONFIG_CROSS_CHROMA_TX
+  CctxType *cctx_type_map;
+#endif  // CONFIG_CROSS_CHROMA_TX
 
   int num_4x4_blk;
   // For current partition, only if all Y, U, and V transform blocks'

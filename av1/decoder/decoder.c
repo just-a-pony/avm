@@ -107,6 +107,10 @@ static void dec_setup_mi(CommonModeInfoParams *mi_params) {
   memset(mi_params->submi_grid_base, 0,
          mi_grid_size * sizeof(*mi_params->submi_grid_base));
 #endif  // CONFIG_C071_SUBBLK_WARPMV
+#if CONFIG_CROSS_CHROMA_TX
+  memset(mi_params->cctx_type_map, 0,
+         mi_grid_size * sizeof(*mi_params->cctx_type_map));
+#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 static void dec_free_mi(CommonModeInfoParams *mi_params) {
@@ -123,6 +127,10 @@ static void dec_free_mi(CommonModeInfoParams *mi_params) {
   mi_params->mi_alloc_size = 0;
   aom_free(mi_params->tx_type_map);
   mi_params->tx_type_map = NULL;
+#if CONFIG_CROSS_CHROMA_TX
+  aom_free(mi_params->cctx_type_map);
+  mi_params->cctx_type_map = NULL;
+#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 #if CONFIG_TIP

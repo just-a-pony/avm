@@ -311,6 +311,28 @@ void av1_highbd_fwd_txfm(const int16_t *src_diff, tran_low_t *coeff,
   }
 }
 
+#if CONFIG_CROSS_CHROMA_TX
+// Apply forward cross chroma component transform
+void av1_fwd_cross_chroma_tx_block(tran_low_t *coeff_c1, tran_low_t *coeff_c2,
+                                   TX_SIZE tx_size, CctxType cctx_type) {
+  if (cctx_type == CCTX_NONE) return;
+  const int ncoeffs = av1_get_max_eob(tx_size);
+  int32_t *src_c1 = (int32_t *)coeff_c1;
+  int32_t *src_c2 = (int32_t *)coeff_c2;
+  int64_t tmp[2] = { 0, 0 };
+
+  const int angle_idx = cctx_type - CCTX_START;
+  for (int i = 0; i < ncoeffs; i++) {
+    tmp[0] = (int64_t)cctx_mtx[angle_idx][0] * (int64_t)src_c1[i] +
+             (int64_t)cctx_mtx[angle_idx][1] * (int64_t)src_c2[i];
+    tmp[1] = (int64_t)-cctx_mtx[angle_idx][1] * (int64_t)src_c1[i] +
+             (int64_t)cctx_mtx[angle_idx][0] * (int64_t)src_c2[i];
+    src_c1[i] = (int32_t)ROUND_POWER_OF_TWO_SIGNED_64(tmp[0], CCTX_PREC_BITS);
+    src_c2[i] = (int32_t)ROUND_POWER_OF_TWO_SIGNED_64(tmp[1], CCTX_PREC_BITS);
+  }
+}
+#endif  // CONFIG_CROSS_CHROMA_TX
+
 #if CONFIG_IST
 void av1_fwd_stxfm(tran_low_t *coeff, TxfmParam *txfm_param) {
   const TX_TYPE stx_type = txfm_param->sec_tx_type;

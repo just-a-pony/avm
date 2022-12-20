@@ -33,6 +33,9 @@ typedef struct txfm_param {
   // intra prediction mode used for the current tx block
   PREDICTION_MODE intra_mode;
 #endif
+#if CONFIG_CROSS_CHROMA_TX
+  CctxType cctx_type;
+#endif  // CONFIG_CROSS_CHROMA_TX
   TX_SIZE tx_size;
   int lossless;
   int bd;
