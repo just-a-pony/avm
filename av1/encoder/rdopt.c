@@ -2394,8 +2394,13 @@ static int64_t motion_mode_rd(
           get_frame_update_type(&cpi->gf_group);
       const int prune_obmc = cpi->frame_probs.obmc_probs[update_type][bsize] <
                              cpi->sf.inter_sf.prune_obmc_prob_thresh;
-      if ((!cpi->oxcf.motion_mode_cfg.enable_obmc ||
-           cpi->sf.inter_sf.disable_obmc || prune_obmc) &&
+#if CONFIG_EXTENDED_WARP_PREDICTION
+      bool enable_obmc =
+          (cm->features.enabled_motion_modes & (1 << OBMC_CAUSAL)) != 0;
+#else
+    bool enable_obmc = cpi->oxcf.motion_mode_cfg.enable_obmc;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+      if ((!enable_obmc || cpi->sf.inter_sf.disable_obmc || prune_obmc) &&
           mbmi->motion_mode == OBMC_CAUSAL)
         continue;
 
@@ -2603,28 +2608,25 @@ static int64_t motion_mode_rd(
         }
 #endif
 
-        CANDIDATE_MV *neighbor =
-            &mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]][mbmi->ref_mv_idx];
-        assert(neighbor->row_offset == -1 || neighbor->col_offset == -1);
-        const MB_MODE_INFO *neighbor_mi =
-            xd->mi[neighbor->row_offset * xd->mi_stride + neighbor->col_offset];
+        CANDIDATE_MV *ref_mv_stack = mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]];
+        WarpedMotionParams neighbor_params;
+        bool valid_neighbor =
+            av1_get_neighbor_warp_model(cm, xd, ref_mv_stack, &neighbor_params);
+
+        if (!valid_neighbor) {
+          // Skip
+          continue;
+        }
 
         if (mbmi->mode == NEARMV) {
-          assert(is_warp_mode(neighbor_mi->motion_mode));
-          if (neighbor_mi->wm_params[0].invalid) {
-            // Skip invalid models
-            continue;
-          }
-          mbmi->wm_params[0] = neighbor_mi->wm_params[0];
+          mbmi->wm_params[0] = neighbor_params;
         } else {
           assert(mbmi->mode == NEWMV);
 
+          CANDIDATE_MV *neighbor = &ref_mv_stack[mbmi->ref_mv_idx];
           bool neighbor_is_above =
               xd->up_available &&
               (neighbor->row_offset == -1 && neighbor->col_offset >= 0);
-
-          WarpedMotionParams neighbor_params;
-          av1_get_neighbor_warp_model(cm, neighbor_mi, &neighbor_params);
 
           const int_mv ref_mv = av1_get_ref_mv(x, 0);
           SUBPEL_MOTION_SEARCH_PARAMS ms_params;
@@ -6997,9 +6999,13 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
   const FRAME_UPDATE_TYPE update_type = get_frame_update_type(&cpi->gf_group);
   const int prune_obmc = cpi->frame_probs.obmc_probs[update_type][bsize] <
                          cpi->sf.inter_sf.prune_obmc_prob_thresh;
-  if (cpi->oxcf.motion_mode_cfg.enable_obmc && !cpi->sf.inter_sf.disable_obmc &&
-
-      !prune_obmc) {
+#if CONFIG_EXTENDED_WARP_PREDICTION
+  bool enable_obmc =
+      (cm->features.enabled_motion_modes & (1 << OBMC_CAUSAL)) != 0;
+#else
+  bool enable_obmc = cpi->oxcf.motion_mode_cfg.enable_obmc;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+  if (enable_obmc && !cpi->sf.inter_sf.disable_obmc && !prune_obmc) {
     if (check_num_overlappable_neighbors(mbmi) &&
         is_motion_variation_allowed_bsize(bsize)) {
       int dst_width1[MAX_MB_PLANE] = { MAX_SB_SIZE, MAX_SB_SIZE, MAX_SB_SIZE };
