@@ -8,7 +8,7 @@
 #
 
 default:
-  timeout: 9 hours
+  timeout: 11 hours
 
 # Simple x86_64 Linux build
 Linux Nightly Build:
