@@ -1284,6 +1284,7 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
       else
         intra_dir = mbmi->mode;
 #endif  // !CONFIG_ATC_NEWTXSETS
+
 #if CONFIG_IST
       aom_write_symbol(
 #if CONFIG_FORWARDSKIP
@@ -1291,8 +1292,16 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
           w,
           av1_tx_type_to_idx(get_primary_tx_type(tx_type), tx_set_type,
                              intra_dir, size_info),
+#if CONFIG_ATC_REDUCED_TXSET
+          ec_ctx->intra_ext_tx_cdf[eset + features->reduced_tx_set_used]
+                                  [square_tx_size][intra_dir],
+          features->reduced_tx_set_used
+              ? av1_num_reduced_tx_set
+              : av1_num_ext_tx_set_intra[tx_set_type]);
+#else
           ec_ctx->intra_ext_tx_cdf[eset][square_tx_size][intra_dir],
           av1_num_ext_tx_set_intra[tx_set_type]);
+#endif  // CONFIG_ATC_REDUCED_TXSET
 #else
           w, av1_ext_tx_ind_intra[tx_set_type][get_primary_tx_type(tx_type)],
           ec_ctx->intra_ext_tx_cdf[eset][square_tx_size][intra_dir],

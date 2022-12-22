@@ -2188,7 +2188,20 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
         av1_md_trfm_used_flag[av1_size_class[tx_size]]
                              [is_inter ? 0 : av1_md_class[intra_dir]];
     ext_tx_used_flag &= mdtx_mask;
+#if CONFIG_ATC_REDUCED_TXSET
+    if (cm->features.reduced_tx_set_used) {
+      ext_tx_used_flag &=
+          (1 << DCT_DCT) | (1 << ADST_ADST);  // DCT_DCT, ADST_ADST
+    }
+#endif  // CONFIG_ATC_REDUCED_TXSET
   }
+#if CONFIG_ATC_REDUCED_TXSET
+  else {
+    if (cm->features.reduced_tx_set_used) {
+      ext_tx_used_flag &= (1 << DCT_DCT) | (1 << IDTX);  // DCT_DCT, IDTX
+    }
+  }
+#endif  // CONFIG_ATC_REDUCED_TXSET
 #endif  // CONFIG_ATC_NEWTXSETS
   if (cpi->oxcf.txfm_cfg.enable_flip_idtx == 0)
     ext_tx_used_flag &= DCT_ADST_TX_MASK;
@@ -2198,7 +2211,8 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
     allowed_tx_mask = 1 << txk_allowed;
     allowed_tx_mask &= ext_tx_used_flag;
   } else if (fast_tx_search) {
-    allowed_tx_mask = 0x0c01;  // V_DCT, H_DCT, DCT_DCT
+    allowed_tx_mask =
+        (1 << V_DCT) | (1 << H_DCT) | (1 << DCT_DCT);  // V_DCT, H_DCT, DCT_DCT
     allowed_tx_mask &= ext_tx_used_flag;
   } else {
     assert(plane == 0);
