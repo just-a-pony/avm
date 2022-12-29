@@ -2072,6 +2072,11 @@ static const aom_cdf_prob default_ccso_cdf[CDF_SIZE(2)] = { AOM_CDF2(11570) };
 static const aom_cdf_prob default_sgrproj_restore_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     16855) };
 
+#if CONFIG_LR_MERGE_COEFFS
+static const aom_cdf_prob default_merged_param_cdf[CDF_SIZE(2)] = { AOM_CDF2(
+    16855) };
+#endif  // CONFIG_LR_MERGE_COEFFS
+
 static const aom_cdf_prob default_delta_q_cdf[CDF_SIZE(DELTA_Q_PROBS + 1)] = {
   AOM_CDF4(28160, 32120, 32677)
 };
@@ -2517,6 +2522,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   }
 #endif
   av1_copy(fc->sgrproj_restore_cdf, default_sgrproj_restore_cdf);
+#if CONFIG_LR_MERGE_COEFFS
+  av1_copy(fc->merged_param_cdf, default_merged_param_cdf);
+#endif  // CONFIG_LR_MERGE_COEFFS
 #if CONFIG_AIMC
   av1_copy(fc->y_mode_set_cdf, default_y_mode_set_cdf);
   av1_copy(fc->y_mode_idx_cdf_0, default_y_first_mode_cdf);

@@ -958,6 +958,12 @@ typedef struct {
   int wiener_restore_cost[2];
   //! sgrproj_restore_cost
   int sgrproj_restore_cost[2];
+#if CONFIG_LR_MERGE_COEFFS
+  /*!
+   * merged_param_cost
+   */
+  int merged_param_cost[2];
+#endif  // CONFIG_LR_MERGE_COEFFS
   /**@}*/
 } ModeCosts;
 

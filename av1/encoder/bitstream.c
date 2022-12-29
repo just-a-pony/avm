@@ -51,6 +51,7 @@
 #include "av1/encoder/encodetxb.h"
 #include "av1/encoder/mcomp.h"
 #include "av1/encoder/palette.h"
+#include "av1/encoder/pickrst.h"
 #include "av1/encoder/segmentation.h"
 #include "av1/encoder/tokenize.h"
 
@@ -2943,11 +2944,32 @@ static AOM_INLINE void encode_restoration_mode(
   }
 }
 
-static AOM_INLINE void write_wiener_filter(int wiener_win,
+static AOM_INLINE void write_wiener_filter(MACROBLOCKD *xd, int wiener_win,
                                            const WienerInfo *wiener_info,
                                            WienerInfoBank *bank,
                                            aom_writer *wb) {
+#if CONFIG_LR_MERGE_COEFFS
+  const int equal_ref = check_wiener_bank_eq(bank, wiener_info);
+  const int exact_match = (equal_ref >= 0);
+  aom_write_symbol(wb, exact_match, xd->tile_ctx->merged_param_cdf, 2);
+  const int ref = wiener_info->bank_ref;
+  assert(IMPLIES(exact_match, ref == equal_ref));
+  assert(ref < AOMMAX(1, bank->bank_size));
+  int match = 0;
+  for (int k = 0; k < AOMMAX(0, bank->bank_size - 1); ++k) {
+    match = (k == ref);
+    aom_write_literal(wb, match, 1);
+    if (match) break;
+  }
+  assert(IMPLIES(!match, ref == AOMMAX(0, bank->bank_size - 1)));
+  if (exact_match) {
+    if (bank->bank_size == 0) av1_add_to_wiener_bank(bank, wiener_info);
+    return;
+  }
+#else
   const int ref = 0;
+  (void)xd;
+#endif  // CONFIG_LR_MERGE_COEFFS
   const WienerInfo *ref_wiener_info = av1_ref_from_wiener_bank(bank, ref);
   if (wiener_win == WIENER_WIN)
     aom_write_primitive_refsubexpfin(
@@ -2991,10 +3013,32 @@ static AOM_INLINE void write_wiener_filter(int wiener_win,
   return;
 }
 
-static AOM_INLINE void write_sgrproj_filter(const SgrprojInfo *sgrproj_info,
+static AOM_INLINE void write_sgrproj_filter(MACROBLOCKD *xd,
+                                            const SgrprojInfo *sgrproj_info,
                                             SgrprojInfoBank *bank,
                                             aom_writer *wb) {
+#if CONFIG_LR_MERGE_COEFFS
+  const int equal_ref = check_sgrproj_bank_eq(bank, sgrproj_info);
+  const int exact_match = (equal_ref >= 0);
+  aom_write_symbol(wb, exact_match, xd->tile_ctx->merged_param_cdf, 2);
+  const int ref = sgrproj_info->bank_ref;
+  assert(IMPLIES(exact_match, ref == equal_ref));
+  assert(ref < AOMMAX(1, bank->bank_size));
+  int match = 0;
+  for (int k = 0; k < AOMMAX(0, bank->bank_size - 1); ++k) {
+    match = (k == ref);
+    aom_write_literal(wb, match, 1);
+    if (match) break;
+  }
+  assert(IMPLIES(!match, ref == AOMMAX(0, bank->bank_size - 1)));
+  if (exact_match) {
+    if (bank->bank_size == 0) av1_add_to_sgrproj_bank(bank, sgrproj_info);
+    return;
+  }
+#else
   const int ref = 0;
+  (void)xd;
+#endif  // CONFIG_LR_MERGE_COEFFS
   const SgrprojInfo *ref_sgrproj_info = av1_ref_from_sgrproj_bank(bank, ref);
 
   aom_write_literal(wb, sgrproj_info->ep, SGRPROJ_PARAMS_BITS);
@@ -3046,11 +3090,12 @@ static AOM_INLINE void loop_restoration_write_sb_coeffs(
 #endif
     switch (unit_rtype) {
       case RESTORE_WIENER:
-        write_wiener_filter(wiener_win, &rui->wiener_info,
+        write_wiener_filter(xd, wiener_win, &rui->wiener_info,
                             &xd->wiener_info[plane], w);
         break;
       case RESTORE_SGRPROJ:
-        write_sgrproj_filter(&rui->sgrproj_info, &xd->sgrproj_info[plane], w);
+        write_sgrproj_filter(xd, &rui->sgrproj_info, &xd->sgrproj_info[plane],
+                             w);
         break;
       default: assert(unit_rtype == RESTORE_NONE); break;
     }
@@ -3061,7 +3106,7 @@ static AOM_INLINE void loop_restoration_write_sb_coeffs(
     ++counts->wiener_restore[unit_rtype != RESTORE_NONE];
 #endif
     if (unit_rtype != RESTORE_NONE) {
-      write_wiener_filter(wiener_win, &rui->wiener_info,
+      write_wiener_filter(xd, wiener_win, &rui->wiener_info,
                           &xd->wiener_info[plane], w);
     }
   } else if (frame_rtype == RESTORE_SGRPROJ) {
@@ -3071,7 +3116,7 @@ static AOM_INLINE void loop_restoration_write_sb_coeffs(
     ++counts->sgrproj_restore[unit_rtype != RESTORE_NONE];
 #endif
     if (unit_rtype != RESTORE_NONE) {
-      write_sgrproj_filter(&rui->sgrproj_info, &xd->sgrproj_info[plane], w);
+      write_sgrproj_filter(xd, &rui->sgrproj_info, &xd->sgrproj_info[plane], w);
     }
   }
 }

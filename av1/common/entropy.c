@@ -272,6 +272,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   }
 #endif
   RESET_CDF_COUNTER(fc->sgrproj_restore_cdf, 2);
+#if CONFIG_LR_MERGE_COEFFS
+  RESET_CDF_COUNTER(fc->merged_param_cdf, 2);
+#endif  // CONFIG_LR_MERGE_COEFFS
 #if CONFIG_AIMC
   RESET_CDF_COUNTER(fc->y_mode_set_cdf, INTRA_MODE_SETS);
   RESET_CDF_COUNTER(fc->y_mode_idx_cdf_0, FIRST_MODE_COUNT);

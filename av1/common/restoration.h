@@ -19,6 +19,10 @@
 #include "av1/common/blockd.h"
 #include "av1/common/enums.h"
 
+#if CONFIG_LR_MERGE_COEFFS
+#include "third_party/vector/vector.h"
+#endif  // CONFIG_LR_MERGE_COEFFS
+
 #ifdef __cplusplus
 extern "C" {
 #endif

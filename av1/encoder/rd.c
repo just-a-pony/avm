@@ -584,6 +584,11 @@ void av1_fill_lr_rates(ModeCosts *mode_costs, FRAME_CONTEXT *fc) {
                            fc->wiener_restore_cdf, NULL);
   av1_cost_tokens_from_cdf(mode_costs->sgrproj_restore_cost,
                            fc->sgrproj_restore_cdf, NULL);
+#if CONFIG_LR_MERGE_COEFFS
+  // Bit cost for parameter to designate whether unit coeffs are merged.
+  av1_cost_tokens_from_cdf(mode_costs->merged_param_cost, fc->merged_param_cdf,
+                           NULL);
+#endif  // CONFIG_LR_MERGE_COEFFS
 }
 
 // Values are now correlated to quantizer.

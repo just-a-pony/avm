@@ -787,7 +787,11 @@ typedef struct macroblockd_plane {
 
 #define BLOCK_OFFSET(i) ((i) << 4)
 
+#if CONFIG_LR_MERGE_COEFFS
+#define LR_BANK_SIZE 4
+#else
 #define LR_BANK_SIZE 1
+#endif  // CONFIG_LR_MERGE_COEFFS
 
 /*!\endcond */
 
@@ -802,6 +806,12 @@ typedef struct {
    * Horizontal filter kernel.
    */
   DECLARE_ALIGNED(16, InterpKernel, hfilter);
+#if CONFIG_LR_MERGE_COEFFS
+  /*!
+   * Best Reference from dynamic bank
+   */
+  int bank_ref;
+#endif  // CONFIG_LR_MERGE_COEFFS
 } WienerInfo;
 
 /*!\brief Parameters related to Wiener Filter Bank */
@@ -831,6 +841,12 @@ typedef struct {
    * Weights for linear combination of filtered versions
    */
   int xqd[2];
+#if CONFIG_LR_MERGE_COEFFS
+  /*!
+   * Best Reference from dynamic bank
+   */
+  int bank_ref;
+#endif  // CONFIG_LR_MERGE_COEFFS
 } SgrprojInfo;
 
 /*!\brief Parameters related to Sgrproj Filter Bank */

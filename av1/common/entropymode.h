@@ -293,6 +293,9 @@ typedef struct frame_contexts {
   aom_cdf_prob ccso_cdf[3][CDF_SIZE(2)];
 #endif
   aom_cdf_prob sgrproj_restore_cdf[CDF_SIZE(2)];
+#if CONFIG_LR_MERGE_COEFFS
+  aom_cdf_prob merged_param_cdf[CDF_SIZE(2)];
+#endif  // CONFIG_LR_MERGE_COEFFS
 #if !CONFIG_AIMC
   aom_cdf_prob y_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTRA_MODES)];
   aom_cdf_prob uv_mode_cdf[CFL_ALLOWED_TYPES][INTRA_MODES]
