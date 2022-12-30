@@ -287,7 +287,18 @@ typedef struct frame_contexts {
   struct segmentation_probs seg;
   aom_cdf_prob filter_intra_cdfs[BLOCK_SIZES_ALL][CDF_SIZE(2)];
   aom_cdf_prob filter_intra_mode_cdf[CDF_SIZE(FILTER_INTRA_MODES)];
+#if CONFIG_LR_FLEX_SYNTAX
+  // The code for switchable resroration mode is to signal a bit for
+  // every allowed restoration type in order from 0 (RESTORE_NONE).
+  // If the bit transmitted is 1, that particular restoration type
+  // is indicated; if the bit transmitted is 0, it indicates one of the
+  // restoration types after the current index.
+  // For disallowed tools, the corresponding bit is skipped.
+  aom_cdf_prob switchable_flex_restore_cdf[MAX_LR_FLEX_SWITCHABLE_BITS]
+                                          [MAX_MB_PLANE][CDF_SIZE(2)];
+#else
   aom_cdf_prob switchable_restore_cdf[CDF_SIZE(RESTORE_SWITCHABLE_TYPES)];
+#endif  // CONFIG_LR_FLEX_SYNTAX
   aom_cdf_prob wiener_restore_cdf[CDF_SIZE(2)];
 #if CONFIG_CCSO_EXT
   aom_cdf_prob ccso_cdf[3][CDF_SIZE(2)];

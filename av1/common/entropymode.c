@@ -2059,8 +2059,35 @@ static const aom_cdf_prob default_filter_intra_cdfs[BLOCK_SIZES_ALL][CDF_SIZE(
             { AOM_CDF2(20229) }, { AOM_CDF2(18101) }, { AOM_CDF2(16384) },
             { AOM_CDF2(16384) } };
 
+#if CONFIG_LR_FLEX_SYNTAX
+static const aom_cdf_prob
+    default_switchable_flex_restore_cdf[MAX_LR_FLEX_SWITCHABLE_BITS]
+                                       [MAX_MB_PLANE][CDF_SIZE(2)] = {
+                                         {
+                                             { AOM_CDF2(20384) },
+                                             { AOM_CDF2(20384) },
+                                             { AOM_CDF2(20384) },
+                                         },
+                                         {
+                                             { AOM_CDF2(20384) },
+                                             { AOM_CDF2(20384) },
+                                             { AOM_CDF2(20384) },
+                                         },
+                                         {
+                                             { AOM_CDF2(24384) },
+                                             { AOM_CDF2(24384) },
+                                             { AOM_CDF2(24384) },
+                                         },
+                                         {
+                                             { AOM_CDF2(20384) },
+                                             { AOM_CDF2(20384) },
+                                             { AOM_CDF2(20384) },
+                                         },
+                                       };
+#else
 static const aom_cdf_prob default_switchable_restore_cdf[CDF_SIZE(
     RESTORE_SWITCHABLE_TYPES)] = { AOM_CDF3(9413, 22581) };
+#endif  // CONFIG_LR_FLEX_SYNTAX
 
 static const aom_cdf_prob default_wiener_restore_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     11570) };

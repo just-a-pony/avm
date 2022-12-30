@@ -192,6 +192,8 @@ set_aom_config_var(CONFIG_WARP_REF_LIST 1
                    "AV2 experiment flag to improve warp-delta mode")
 set_aom_config_var(CONFIG_LR_MERGE_COEFFS 0
                    "AV2 experiment flag to enable LR coefficient merging")
+set_aom_config_var(CONFIG_LR_FLEX_SYNTAX 0
+                   "AV2 experiment flag to enable LR flexible syntax")
 
 # Source of throughput analysis : CWG-B065
 set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0

@@ -2195,6 +2195,35 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
   segfeatures_copy(&cm->cur_frame->seg, seg);
 }
 
+// Same function as av1_read_uniform but reading from uncompressed header rb
+static int rb_read_uniform(struct aom_read_bit_buffer *const rb, int n) {
+  const int l = get_unsigned_bits(n);
+  const int m = (1 << l) - n;
+  const int v = aom_rb_read_literal(rb, l - 1);
+  assert(l != 0);
+  if (v < m)
+    return v;
+  else
+    return (v << 1) - m + aom_rb_read_bit(rb);
+}
+
+#if CONFIG_LR_FLEX_SYNTAX
+// Converts decoded index to frame restoration type depending on lr tools
+// thta are enabled for the frame for a given plane.
+static RestorationType index_to_frame_restoration_type(
+    const AV1_COMMON *const cm, int plane, int ndx) {
+  RestorationType r = RESTORE_NONE;
+  for (r = RESTORE_NONE; r < RESTORE_TYPES; ++r) {
+    if (((cm->features.lr_tools_disable_mask[plane] >> r) & 1) == 0) {
+      ndx--;
+      if (ndx < 0) break;
+    }
+  }
+  assert(r < RESTORE_TYPES);
+  return r;
+}
+#endif  // CONFIG_LR_FLEX_SYNTAX
+
 static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
                                                struct aom_read_bit_buffer *rb) {
   assert(!cm->features.all_lossless);
@@ -2203,6 +2232,23 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
   int all_none = 1, chroma_none = 1;
   for (int p = 0; p < num_planes; ++p) {
     RestorationInfo *rsi = &cm->rst_info[p];
+#if CONFIG_LR_FLEX_SYNTAX
+    uint8_t plane_lr_tools_disable_mask =
+        cm->seq_params.lr_tools_disable_mask[p > 0];
+    av1_set_lr_tools(plane_lr_tools_disable_mask, p, &cm->features);
+    const int ndx = rb_read_uniform(rb, cm->features.lr_frame_tools_count[p]);
+    rsi->frame_restoration_type = index_to_frame_restoration_type(cm, p, ndx);
+    if (rsi->frame_restoration_type == RESTORE_SWITCHABLE &&
+        cm->features.lr_tools_count[p] > 2) {
+      if (aom_rb_read_bit(rb)) {
+        for (int i = 1; i < RESTORE_SWITCHABLE_TYPES; ++i) {
+          if (!(plane_lr_tools_disable_mask & (1 << i)))
+            plane_lr_tools_disable_mask |= (aom_rb_read_bit(rb) << i);
+        }
+        av1_set_lr_tools(plane_lr_tools_disable_mask, p, &cm->features);
+      }
+    }
+#else
     if (aom_rb_read_bit(rb)) {
       rsi->frame_restoration_type =
           aom_rb_read_bit(rb) ? RESTORE_SGRPROJ : RESTORE_WIENER;
@@ -2210,6 +2256,7 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
       rsi->frame_restoration_type =
           aom_rb_read_bit(rb) ? RESTORE_SWITCHABLE : RESTORE_NONE;
     }
+#endif  // CONFIG_LR_FLEX_SYNTAX
     if (rsi->frame_restoration_type != RESTORE_NONE) {
       all_none = 0;
       chroma_none &= p == 0;
@@ -2403,9 +2450,22 @@ static AOM_INLINE void loop_restoration_read_sb_coeffs(
   const int wiener_win = (plane > 0) ? WIENER_WIN_CHROMA : WIENER_WIN;
 
   if (rsi->frame_restoration_type == RESTORE_SWITCHABLE) {
+#if CONFIG_LR_FLEX_SYNTAX
+    rui->restoration_type = cm->features.lr_last_switchable_ndx_0_type[plane];
+    for (int re = 0; re <= cm->features.lr_last_switchable_ndx[plane]; re++) {
+      if (cm->features.lr_tools_disable_mask[plane] & (1 << re)) continue;
+      const int found = aom_read_symbol(
+          r, xd->tile_ctx->switchable_flex_restore_cdf[re][plane], 2, ACCT_STR);
+      if (found) {
+        rui->restoration_type = re;
+        break;
+      }
+    }
+#else
     rui->restoration_type =
         aom_read_symbol(r, xd->tile_ctx->switchable_restore_cdf,
                         RESTORE_SWITCHABLE_TYPES, ACCT_STR);
+#endif  // CONFIG_LR_FLEX_SYNTAX
     switch (rui->restoration_type) {
       case RESTORE_WIENER:
         read_wiener_filter(xd, wiener_win, &rui->wiener_info,
@@ -2433,6 +2493,10 @@ static AOM_INLINE void loop_restoration_read_sb_coeffs(
       rui->restoration_type = RESTORE_NONE;
     }
   }
+#if CONFIG_LR_FLEX_SYNTAX
+  assert(((cm->features.lr_tools_disable_mask[plane] >> rui->restoration_type) &
+          1) == 0);
+#endif  // CONFIG_LR_FLEX_SYNTAX
 }
 #if CONFIG_NEW_DF
 static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
@@ -3046,18 +3110,6 @@ static AOM_INLINE void setup_frame_size_with_refs(
                          "Referenced frame has incompatible color format");
   }
   setup_buffer_pool(cm);
-}
-
-// Same function as av1_read_uniform but reading from uncompresses header wb
-static int rb_read_uniform(struct aom_read_bit_buffer *const rb, int n) {
-  const int l = get_unsigned_bits(n);
-  const int m = (1 << l) - n;
-  const int v = aom_rb_read_literal(rb, l - 1);
-  assert(l != 0);
-  if (v < m)
-    return v;
-  else
-    return (v << 1) - m + aom_rb_read_bit(rb);
 }
 
 static AOM_INLINE void read_tile_info_max_tile(
@@ -5337,6 +5389,23 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
   seq_params->enable_superres = aom_rb_read_bit(rb);
   seq_params->enable_cdef = aom_rb_read_bit(rb);
   seq_params->enable_restoration = aom_rb_read_bit(rb);
+#if CONFIG_LR_FLEX_SYNTAX
+  if (seq_params->enable_restoration) {
+    for (int i = 1; i < RESTORE_SWITCHABLE_TYPES; ++i) {
+      seq_params->lr_tools_disable_mask[0] |= (aom_rb_read_bit(rb) << i);
+    }
+    if (aom_rb_read_bit(rb)) {
+      seq_params->lr_tools_disable_mask[1] = DEF_UV_LR_TOOLS_DISABLE_MASK;
+      for (int i = 1; i < RESTORE_SWITCHABLE_TYPES; ++i) {
+        if (DEF_UV_LR_TOOLS_DISABLE_MASK | (1 << i)) continue;
+        seq_params->lr_tools_disable_mask[1] |= (aom_rb_read_bit(rb) << i);
+      }
+    } else {
+      seq_params->lr_tools_disable_mask[1] =
+          (seq_params->lr_tools_disable_mask[0] | DEF_UV_LR_TOOLS_DISABLE_MASK);
+    }
+  }
+#endif  // CONFIG_LR_FLEX_SYNTAX
 }
 
 void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,

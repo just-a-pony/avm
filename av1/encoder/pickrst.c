@@ -2214,7 +2214,18 @@ static int get_switchable_restore_cost(const AV1_COMMON *const cm,
                                        int rest_type) {
   (void)cm;
   (void)plane;
+#if CONFIG_LR_FLEX_SYNTAX
+  int cost = 0;
+  for (int re = 0; re <= cm->features.lr_last_switchable_ndx[plane]; re++) {
+    if (cm->features.lr_tools_disable_mask[plane] & (1 << re)) continue;
+    const int found = (re == rest_type);
+    cost += x->mode_costs.switchable_flex_restore_cost[re][plane][found];
+    if (found) break;
+  }
+  return cost;
+#else
   return x->mode_costs.switchable_restore_cost[rest_type];
+#endif  // CONFIG_LR_FLEX_SYNTAX
 }
 
 static int64_t count_switchable_bits(int rest_type, RestSearchCtxt *rsc,
@@ -2282,6 +2293,10 @@ static void search_switchable_visitor(const RestorationTileLimits *limits,
     if (r > RESTORE_NONE) {
       if (rusi->best_rtype[r - 1] == RESTORE_NONE) continue;
     }
+#if CONFIG_LR_FLEX_SYNTAX
+    if (rsc->cm->features.lr_tools_disable_mask[rsc->plane] & (1 << r))
+      continue;
+#endif  // CONFIG_LR_FLEX_SYNTAX
 
     const int64_t sse = rusi->sse[r];
     int64_t bits = count_switchable_bits(r, rsc, rusi);
@@ -2325,6 +2340,10 @@ static void adjust_frame_rtype(RestorationInfo *rsi, int plane_ntiles,
                                RestSearchCtxt *rsc, const ToolCfg *tool_cfg) {
   (void)rsc;
   (void)tool_cfg;
+#if CONFIG_LR_FLEX_SYNTAX
+  rsi->sw_lr_tools_disable_mask = 0;
+  uint8_t sw_lr_tools_disable_mask = 0;
+#endif  // CONFIG_LR_FLEX_SYNTAX
   if (rsi->frame_restoration_type == RESTORE_NONE) return;
   int tool_count[RESTORE_SWITCHABLE_TYPES] = { 0 };
   for (int u = 0; u < plane_ntiles; ++u) {
@@ -2337,11 +2356,24 @@ static void adjust_frame_rtype(RestorationInfo *rsi, int plane_ntiles,
     if (tool_count[j] > 0) {
       ntools++;
       rused = j;
+#if CONFIG_LR_FLEX_SYNTAX
+      assert((rsc->cm->features.lr_tools_disable_mask[rsc->plane] & (1 << j)) ==
+             0);
+    } else {
+      sw_lr_tools_disable_mask |= (1 << j);
+#else
       assert(IMPLIES(j == RESTORE_WIENER, tool_cfg->enable_wiener));
       assert(IMPLIES(j == RESTORE_SGRPROJ, tool_cfg->enable_sgrproj));
+#endif  // CONFIG_LR_FLEX_SYNTAX
     }
   }
   rsi->frame_restoration_type = ntools < 2 ? rused : RESTORE_SWITCHABLE;
+#if CONFIG_LR_FLEX_SYNTAX
+  if (rsi->frame_restoration_type == RESTORE_SWITCHABLE &&
+      rsc->cm->features.lr_tools_count[rsc->plane] > 2) {
+    rsi->sw_lr_tools_disable_mask = sw_lr_tools_disable_mask;
+  }
+#endif  // CONFIG_LR_FLEX_SYNTAX
   return;
 }
 
@@ -2572,6 +2604,10 @@ void av1_pick_filter_restoration(const YV12_BUFFER_CONFIG *src, AV1_COMP *cpi) {
                        rsc.dgd_stride, RESTORATION_BORDER, RESTORATION_BORDER);
 
       for (RestorationType r = 0; r < num_rtypes; ++r) {
+#if CONFIG_LR_FLEX_SYNTAX
+        if (cpi->common.features.lr_tools_disable_mask[plane > 0] & (1 << r))
+          continue;
+#else
         const ToolCfg *const tool_cfg = &cpi->oxcf.tool_cfg;
         switch (r) {
           case RESTORE_WIENER:
@@ -2582,6 +2618,7 @@ void av1_pick_filter_restoration(const YV12_BUFFER_CONFIG *src, AV1_COMP *cpi) {
             break;
           default: break;
         };
+#endif  // CONFIG_LR_FLEX_SYNTAX
 
         gather_stats_rest_type(&rsc, r);
 
@@ -2595,6 +2632,12 @@ void av1_pick_filter_restoration(const YV12_BUFFER_CONFIG *src, AV1_COMP *cpi) {
     }
 
     finalize_frame_and_unit_info(best_rtype, &cm->rst_info[plane], &rsc);
+
+#if CONFIG_LR_FLEX_SYNTAX
+    assert(IMPLIES(
+        cm->features.lr_tools_count[plane] < 2,
+        cm->rst_info[plane].frame_restoration_type != RESTORE_SWITCHABLE));
+#endif  // CONFIG_LR_FLEX_SYNTAX
     adjust_frame_rtype(&cm->rst_info[plane], plane_ntiles, &rsc,
                        &cpi->oxcf.tool_cfg);
   }

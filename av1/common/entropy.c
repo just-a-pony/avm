@@ -264,7 +264,11 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
 #endif
   RESET_CDF_COUNTER(fc->filter_intra_cdfs, 2);
   RESET_CDF_COUNTER(fc->filter_intra_mode_cdf, FILTER_INTRA_MODES);
+#if CONFIG_LR_FLEX_SYNTAX
+  RESET_CDF_COUNTER(fc->switchable_flex_restore_cdf, 2);
+#else
   RESET_CDF_COUNTER(fc->switchable_restore_cdf, RESTORE_SWITCHABLE_TYPES);
+#endif  // CONFIG_LR_FLEX_SYNTAX
   RESET_CDF_COUNTER(fc->wiener_restore_cdf, 2);
 #if CONFIG_CCSO_EXT
   for (int plane = 0; plane < MAX_MB_PLANE; plane++) {

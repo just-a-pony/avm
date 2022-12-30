@@ -1003,6 +1003,10 @@ typedef enum {
   RESTORE_TYPES = 4,                             /**< Num Restore types */
 } RestorationType;
 
+#if CONFIG_LR_FLEX_SYNTAX
+#define MAX_LR_FLEX_SWITCHABLE_BITS 4
+#endif  // CONFIG_LR_FLEX_SYNTAX
+
 /*!\cond */
 // Picture prediction structures (0-12 are predefined) in scalability metadata.
 enum {

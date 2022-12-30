@@ -529,6 +529,14 @@ typedef struct SequenceHeader {
 #if CONFIG_REF_MV_BANK
   uint8_t enable_refmvbank;  // To turn on/off Ref MV Bank
 #endif                       // CONFIG_REF_MV_BANK
+#if CONFIG_LR_FLEX_SYNTAX
+  uint8_t lr_tools_disable_mask[2];  // mask of lr tool(s) to disable.
+                                     // To disable tool i in RestorationType
+                                     // enum where:
+                                     // 1 <= i <= RESTORE_SWITCHABLE_TYPES, set
+                                     // the ith bit in least to most significant
+                                     // order to 1.
+#endif                               // CONFIG_LR_FLEX_SYNTAX
 #if CONFIG_PAR_HIDING
   uint8_t enable_parity_hiding;  // To turn on/off PAR_HIDING
 #endif                           // CONFIG_PAR_HIDING
@@ -747,6 +755,38 @@ typedef struct {
    */
   int enabled_motion_modes;
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_LR_FLEX_SYNTAX
+  /*!
+   * mask of lr tool(s) to disable. To disable tool i in RestorationType enum
+   * where: * 1 <= i <= RESTORE_SWITCHABLE_TYPES, set the ith bit in least to
+   * most ignificant order to 1.
+   */
+  uint8_t lr_tools_disable_mask[MAX_MB_PLANE];
+  /*!
+   * Number of lr tools enabled
+   */
+  int lr_tools_count[MAX_MB_PLANE];
+  /*!
+   * Number of lr options in switchable mode
+   */
+  int lr_switchable_tools_count[MAX_MB_PLANE];
+  /*!
+   * Number of lr modes available at frame level
+   */
+  int lr_frame_tools_count[MAX_MB_PLANE];
+  /*!
+   * index of last bit transmitted for convenience. Beyond this index
+   * there is exactly one allowed option, and therefore there is no need
+   * to signal anything.
+   */
+  int lr_last_switchable_ndx[MAX_MB_PLANE];
+  /*!
+   * Restoration Type if last bit transmitted is 0 for convenience. If the
+   * last bit (lr_last_switchable_ndx) transmitted is 0, the
+   * restoration type is lr_last_switchable_ndx_0_type.
+   */
+  int lr_last_switchable_ndx_0_type[MAX_MB_PLANE];
+#endif  // CONFIG_LR_FLEX_SYNTAX
 } FeatureFlags;
 
 /*!
@@ -2918,6 +2958,43 @@ static INLINE void set_sb_size(SequenceHeader *const seq_params,
   seq_params->mib_size = mi_size_wide[seq_params->sb_size];
   seq_params->mib_size_log2 = mi_size_wide_log2[seq_params->sb_size];
 }
+
+#if CONFIG_LR_FLEX_SYNTAX
+// Sets the frame's lr specific fields in feature params depending on
+// which tools are enabled for the frame for the given plane.
+static INLINE void av1_set_lr_tools(uint8_t lr_tools_disable_mask, int plane,
+                                    FeatureFlags *const fea_params) {
+  fea_params->lr_tools_disable_mask[plane] = lr_tools_disable_mask;
+  int tools_count = 0;
+  for (int i = 1; i < RESTORE_SWITCHABLE_TYPES; ++i)
+    tools_count += !((fea_params->lr_tools_disable_mask[plane] >> i) & 1);
+  fea_params->lr_tools_count[plane] = tools_count;
+  fea_params->lr_switchable_tools_count[plane] = tools_count + 1;
+
+  // If total tools is < 2, there is no need to have switchable
+  if (tools_count < 2)
+    fea_params->lr_tools_disable_mask[plane] |= (1 << RESTORE_SWITCHABLE);
+  else
+    tools_count++;
+  fea_params->lr_frame_tools_count[plane] = tools_count + 1;
+
+  // If switchable is allowed get last index for transmitted bit, and the
+  // type if that bit is 0.
+  if (!((fea_params->lr_tools_disable_mask[plane] >> RESTORE_SWITCHABLE) & 1)) {
+    for (int t = 0, i = RESTORE_SWITCHABLE_TYPES - 1; i >= 0; --i) {
+      if (!((fea_params->lr_tools_disable_mask[plane] >> i) & 1)) {
+        t++;
+        if (t == 1) {
+          fea_params->lr_last_switchable_ndx_0_type[plane] = i;
+        } else if (t == 2) {
+          fea_params->lr_last_switchable_ndx[plane] = i;
+          break;
+        }
+      }
+    }
+  }
+}
+#endif  // CONFIG_LR_FLEX_SYNTAX
 
 #if CONFIG_FLEX_MVRES
 static INLINE SB_INFO *av1_get_sb_info(AV1_COMMON *cm, int mi_row, int mi_col) {

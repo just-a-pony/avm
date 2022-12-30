@@ -952,8 +952,13 @@ typedef struct {
    * \name Restoration Mode Costs
    ****************************************************************************/
   /**@{*/
+#if CONFIG_LR_FLEX_SYNTAX
+  //! switchable_flex_restore_cost
+  int switchable_flex_restore_cost[MAX_LR_FLEX_SWITCHABLE_BITS][2][2];
+#else
   //! switchable_restore_cost
   int switchable_restore_cost[RESTORE_SWITCHABLE_TYPES];
+#endif  // CONFIG_LR_FLEX_SYNTAX
   //! wiener_restore_cost
   int wiener_restore_cost[2];
   //! sgrproj_restore_cost
