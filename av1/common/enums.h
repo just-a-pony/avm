@@ -591,7 +591,11 @@ enum {
 #if IMPROVED_AMVD
   AMVDNEWMV,
 #endif  // IMPROVED_AMVD
-        // Compound ref compound modes
+
+#if CONFIG_WARPMV
+  WARPMV,  // WARPMV mode
+#endif     // CONFIG_WARPMV
+           // Compound ref compound modes
   NEAR_NEARMV,
   NEAR_NEWMV,
   NEW_NEARMV,
@@ -752,7 +756,13 @@ enum {
 #define TOTAL_ANGLE_DELTA_COUNT 7
 #endif
 
+#if CONFIG_WARPMV
+// The warpmv mode is signalled as a separate flag
+// So the number of remaining modes to be signalled is (SINGLE_INTER_MODE_NUM-1)
+#define INTER_SINGLE_MODES (SINGLE_INTER_MODE_NUM - 1)
+#else
 #define INTER_SINGLE_MODES SINGLE_INTER_MODE_NUM
+#endif  // CONFIG_WARPMV
 #define INTER_COMPOUND_MODES COMP_INTER_MODE_NUM
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT
@@ -787,6 +797,10 @@ enum {
 #else
 #define DRL_MODE_CONTEXTS (NEWMV_MODE_CONTEXTS * GLOBALMV_MODE_CONTEXTS)
 #endif  // CONFIG_C076_INTER_MOD_CTX
+
+#if CONFIG_WARPMV
+#define WARPMV_MODE_CONTEXT 10
+#endif  // CONFIG_WARPMV
 
 #if CONFIG_BVP_IMPROVEMENT
 #define MAX_REF_BV_STACK_SIZE 4

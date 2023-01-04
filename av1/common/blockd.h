@@ -99,8 +99,11 @@ static INLINE PREDICTION_MODE compound_ref0_mode(PREDICTION_MODE mode) {
     GLOBALMV,       // GLOBALMV
     NEWMV,          // NEWMV
 #if IMPROVED_AMVD
-    NEWMV,     // AMVDNEWMV
-#endif         // IMPROVED_AMVD
+    NEWMV,  // AMVDNEWMV
+#endif      // IMPROVED_AMVD
+#if CONFIG_WARPMV
+    WARPMV,    // WARPMV
+#endif         // CONFIG_WARPMV
     NEARMV,    // NEAR_NEARMV
     NEARMV,    // NEAR_NEWMV
     NEWMV,     // NEW_NEARMV
@@ -151,6 +154,9 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
 #if IMPROVED_AMVD
     MB_MODE_COUNT,  // AMVDNEWMV
 #endif              // IMPROVED_AMVD
+#if CONFIG_WARPMV
+    MB_MODE_COUNT,  // WARPMV
+#endif              // CONFIG_WARPMV
     NEARMV,         // NEAR_NEARMV
     NEWMV,          // NEAR_NEWMV
     NEARMV,         // NEW_NEARMV
@@ -2252,6 +2258,10 @@ static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
 }
 
 static INLINE int is_interintra_allowed(const MB_MODE_INFO *mbmi) {
+#if CONFIG_WARPMV
+  if (mbmi->mode == WARPMV) return 0;
+#endif  // CONFIG_WARPMV
+
   return is_interintra_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
          is_interintra_allowed_mode(mbmi->mode) &&
          is_interintra_allowed_ref(mbmi->ref_frame)
@@ -2319,6 +2329,9 @@ static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
 
 #if CONFIG_BAWP
 static INLINE int av1_allow_bawp(const MB_MODE_INFO *mbmi) {
+#if CONFIG_WARPMV
+  if (mbmi->mode == WARPMV) return 0;
+#endif  // CONFIG_WARPMV
 #if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
 #endif  // CONFIG_TIP
