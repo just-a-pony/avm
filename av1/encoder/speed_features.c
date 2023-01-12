@@ -167,7 +167,11 @@ static void set_good_speed_feature_framesize_dependent(
     else
       sf->part_sf.auto_max_partition_based_on_simple_motion = RELAXED_PRED;
   } else {
+#if CONFIG_EXT_RECUR_PARTITIONS
+    sf->part_sf.use_square_partition_only_threshold = BLOCK_128X128;
+#else   // CONFIG_EXT_RECUR_PARTITIONS
     sf->part_sf.use_square_partition_only_threshold = BLOCK_64X64;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     sf->part_sf.auto_max_partition_based_on_simple_motion = DIRECT_PRED;
   }
 
@@ -195,9 +199,17 @@ static void set_good_speed_feature_framesize_dependent(
     if (is_720p_or_larger) {
       sf->part_sf.use_square_partition_only_threshold = BLOCK_128X128;
     } else if (is_480p_or_larger) {
+#if CONFIG_EXT_RECUR_PARTITIONS
+      sf->part_sf.use_square_partition_only_threshold = BLOCK_128X128;
+#else   // CONFIG_EXT_RECUR_PARTITIONS
       sf->part_sf.use_square_partition_only_threshold = BLOCK_64X64;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     } else {
+#if CONFIG_EXT_RECUR_PARTITIONS
+      sf->part_sf.use_square_partition_only_threshold = BLOCK_128X128;
+#else   // CONFIG_EXT_RECUR_PARTITIONS
       sf->part_sf.use_square_partition_only_threshold = BLOCK_32X32;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     }
 
     if (!is_720p_or_larger) {
@@ -211,6 +223,9 @@ static void set_good_speed_feature_framesize_dependent(
   }
 
   if (speed >= 2) {
+#if CONFIG_EXT_RECUR_PARTITIONS
+    sf->part_sf.use_square_partition_only_threshold = BLOCK_128X128;
+#else   // CONFIG_EXT_RECUR_PARTITIONS
     if (is_720p_or_larger) {
       sf->part_sf.use_square_partition_only_threshold = BLOCK_64X64;
     } else if (is_480p_or_larger) {
@@ -218,6 +233,7 @@ static void set_good_speed_feature_framesize_dependent(
     } else {
       sf->part_sf.use_square_partition_only_threshold = BLOCK_32X32;
     }
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
     if (is_720p_or_larger) {
       sf->part_sf.partition_search_breakout_dist_thr = (1 << 24);
@@ -342,8 +358,13 @@ static void set_good_speed_features_framesize_independent(
 #endif  // CONFIG_NEW_REF_SIGNALING
 
   sf->part_sf.less_rectangular_check_level = 1;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  sf->part_sf.ml_prune_4_partition = 0;
+  sf->part_sf.ml_prune_ab_partition = 0;
+#else   // CONFIG_EXT_RECUR_PARTITIONS
   sf->part_sf.ml_prune_4_partition = 1;
   sf->part_sf.ml_prune_ab_partition = 1;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   sf->part_sf.ml_prune_rect_partition = 1;
   sf->part_sf.prune_ext_partition_types_search_level = 1;
   sf->part_sf.simple_motion_search_prune_rect = 1;
@@ -355,10 +376,14 @@ static void set_good_speed_features_framesize_independent(
   sf->inter_sf.prune_compound_using_single_ref = 1;
   sf->inter_sf.prune_mode_search_simple_translation = 1;
   sf->inter_sf.prune_motion_mode_level = 1;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  sf->inter_sf.prune_ref_frame_for_rect_partitions = 0;
+#else
   sf->inter_sf.prune_ref_frame_for_rect_partitions =
       (boosted || (allow_screen_content_tools))
           ? 0
           : (is_boosted_arf2_bwd_type ? 1 : 2);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   sf->inter_sf.prune_wedge_pred_diff_based = 1;
   sf->inter_sf.reduce_inter_modes = 1;
   sf->inter_sf.selective_ref_frame = 1;
@@ -392,7 +417,11 @@ static void set_good_speed_features_framesize_independent(
 #endif  // CONFIG_NEW_REF_SIGNALING
     sf->gm_sf.prune_ref_frame_for_gm_search = boosted ? 0 : 1;
 
+#if CONFIG_EXT_RECUR_PARTITIONS
+    sf->part_sf.intra_cnn_split = 0;
+#else   // CONFIG_EXT_RECUR_PARTITIONS
     sf->part_sf.intra_cnn_split = 1;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     sf->part_sf.simple_motion_search_early_term_none = 1;
     // TODO(Venkat): Clean-up frame type dependency for
     // simple_motion_search_split in partition search function and set the
@@ -727,6 +756,15 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
   part_sf->prune_4_partition_using_split_info = 0;
   part_sf->prune_ab_partition_using_split_info = 0;
   part_sf->early_term_after_none_split = 0;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  part_sf->prune_rect_with_none_rd = 0;
+  part_sf->prune_part_3_with_part_none = 0;
+  part_sf->prune_part_3_with_part_rect = 0;
+  part_sf->two_pass_partition_search = 0;
+  part_sf->prune_rect_with_ml = 0;
+  part_sf->end_part_search_after_consec_failures = 0;
+  part_sf->ext_recur_depth = INT_MAX;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static AOM_INLINE void init_mv_sf(MV_SPEED_FEATURES *mv_sf) {
@@ -808,6 +846,9 @@ static AOM_INLINE void init_inter_sf(INTER_MODE_SPEED_FEATURES *inter_sf) {
   inter_sf->txfm_rd_gate_level = 0;
   inter_sf->prune_inter_modes_if_skippable = 0;
   inter_sf->disable_masked_comp = 0;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  inter_sf->reuse_erp_mode_flag = 0;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static AOM_INLINE void init_interp_sf(INTERP_FILTER_SPEED_FEATURES *interp_sf) {
@@ -854,6 +895,9 @@ static AOM_INLINE void init_tx_sf(TX_SPEED_FEATURES *tx_sf) {
   tx_sf->use_intra_txb_hash = 0;
   tx_sf->use_inter_txb_hash = 1;
   tx_sf->refine_fast_tx_search_results = 1;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  tx_sf->use_largest_tx_size_for_small_bsize = false;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static AOM_INLINE void init_rd_sf(RD_CALC_SPEED_FEATURES *rd_sf,
@@ -933,6 +977,34 @@ static void av1_disable_ml_based_partition_sf(
   }
 }
 
+#if CONFIG_EXT_RECUR_PARTITIONS
+static AOM_INLINE void set_erp_speed_features_framesize_dependent(
+    AV1_COMP *cpi) {
+  SPEED_FEATURES *const sf = &cpi->sf;
+  const AV1_COMMON *const cm = &cpi->common;
+  const int is_1080p_or_larger = AOMMIN(cm->width, cm->height) >= 1080;
+  const unsigned int erp_pruning_level = cpi->oxcf.part_cfg.erp_pruning_level;
+
+  switch (erp_pruning_level) {
+    case 6: AOM_FALLTHROUGH_INTENDED;
+    case 5:
+      if (is_1080p_or_larger) {
+        sf->part_sf.partition_search_breakout_dist_thr = (1 << 22) + (1 << 21);
+      } else {
+        sf->part_sf.partition_search_breakout_dist_thr = (1 << 22);
+      }
+      sf->part_sf.partition_search_breakout_rate_thr = 100;
+      AOM_FALLTHROUGH_INTENDED;
+    case 4: AOM_FALLTHROUGH_INTENDED;
+    case 3: AOM_FALLTHROUGH_INTENDED;
+    case 2: AOM_FALLTHROUGH_INTENDED;
+    case 1: AOM_FALLTHROUGH_INTENDED;
+    case 0: break;
+    default: assert(0 && "Invalid ERP pruning level.");
+  }
+}
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+
 void av1_set_speed_features_framesize_dependent(AV1_COMP *cpi, int speed) {
   SPEED_FEATURES *const sf = &cpi->sf;
   const AV1EncoderConfig *const oxcf = &cpi->oxcf;
@@ -953,6 +1025,67 @@ void av1_set_speed_features_framesize_dependent(AV1_COMP *cpi, int speed) {
   if (oxcf->txfm_cfg.disable_ml_transform_speed_features)
     av1_disable_ml_based_transform_sf(&sf->tx_sf);
 }
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
+  SPEED_FEATURES *const sf = &cpi->sf;
+  const AV1_COMMON *const cm = &cpi->common;
+  const GF_GROUP *const gf_group = &cpi->gf_group;
+  const int boosted = frame_is_boosted(cpi);
+  const int is_boosted_arf2_bwd_type =
+      boosted || gf_group->update_type[gf_group->index] == INTNL_ARF_UPDATE;
+  const int allow_screen_content_tools =
+      cm->features.allow_screen_content_tools;
+  const unsigned int erp_pruning_level = cpi->oxcf.part_cfg.erp_pruning_level;
+
+  switch (erp_pruning_level) {
+    case 6:
+      sf->part_sf.ext_recur_depth = 1;
+      sf->part_sf.simple_motion_search_split = 1;
+      sf->part_sf.simple_motion_search_early_term_none = 1;
+      AOM_FALLTHROUGH_INTENDED;
+    case 5:
+      sf->tx_sf.use_largest_tx_size_for_small_bsize = true;
+      // TODO(chiyotsai@google.com): This speed feature causes large regression
+      // on b2 testset. Disable this for now until we figure out how to avoid
+      // the loss.
+      // sf->part_sf.end_part_search_after_consec_failures = 1;
+      AOM_FALLTHROUGH_INTENDED;
+    case 4:
+      sf->part_sf.prune_part_3_with_part_rect = 1;
+      AOM_FALLTHROUGH_INTENDED;
+    case 3:
+      sf->part_sf.prune_part_3_with_part_none = 1;
+      AOM_FALLTHROUGH_INTENDED;
+    case 2:
+      sf->inter_sf.prune_ref_frame_for_rect_partitions =
+          (boosted || (allow_screen_content_tools))
+              ? 0
+              : (is_boosted_arf2_bwd_type ? 1 : 2);
+      AOM_FALLTHROUGH_INTENDED;
+    case 1:
+      sf->inter_sf.reuse_erp_mode_flag =
+          (REUSE_PARTITION_MODE_FLAG | REUSE_INTERFRAME_FLAG);
+      sf->part_sf.prune_rect_with_none_rd = 1;
+      AOM_FALLTHROUGH_INTENDED;
+    case 0: break;
+    default: assert(0 && "Invalid ERP pruning level.");
+  }
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+  if (cpi->speed >= 1) {
+    // Emulate erp_pruning_level = 6.
+    sf->part_sf.ext_recur_depth = 1;
+    sf->part_sf.simple_motion_search_split = 1;
+    sf->part_sf.simple_motion_search_early_term_none = 1;
+  }
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+
+  if (cpi->oxcf.part_cfg.use_ml_erp_pruning) {
+    sf->part_sf.prune_rect_with_ml = 1;
+  }
+}
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
   SPEED_FEATURES *const sf = &cpi->sf;
@@ -1115,6 +1248,35 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
   }
 }
 
+#if CONFIG_EXT_RECUR_PARTITIONS
+static AOM_INLINE void set_erp_speed_features_qindex_dependent(AV1_COMP *cpi) {
+  SPEED_FEATURES *const sf = &cpi->sf;
+  const AV1_COMMON *const cm = &cpi->common;
+  const int is_1080p_or_larger = AOMMIN(cm->width, cm->height) >= 1080;
+  const unsigned int erp_pruning_level = cpi->oxcf.part_cfg.erp_pruning_level;
+
+  const int qindex_offset = MAXQ_OFFSET * (cm->seq_params.bit_depth - 8);
+  const int qindex_thresh2 = 113 + qindex_offset;
+
+  switch (erp_pruning_level) {
+    case 6: AOM_FALLTHROUGH_INTENDED;
+    case 5:
+      if (is_1080p_or_larger &&
+          cm->quant_params.base_qindex <= qindex_thresh2 &&
+          !frame_is_intra_only(cm)) {
+        sf->part_sf.two_pass_partition_search = 1;
+      }
+      AOM_FALLTHROUGH_INTENDED;
+    case 4: AOM_FALLTHROUGH_INTENDED;
+    case 3: AOM_FALLTHROUGH_INTENDED;
+    case 2: AOM_FALLTHROUGH_INTENDED;
+    case 1: AOM_FALLTHROUGH_INTENDED;
+    case 0: break;
+    default: assert(0 && "Invalid ERP pruning level.");
+  }
+}
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+
 // Override some speed features based on qindex
 void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
   AV1_COMMON *const cm = &cpi->common;
@@ -1135,8 +1297,10 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
       memcpy(winner_mode_params->coeff_opt_dist_threshold,
              coeff_opt_dist_thresholds[sf->rd_sf.perform_coeff_opt],
              sizeof(winner_mode_params->coeff_opt_dist_threshold));
+#if !CONFIG_EXT_RECUR_PARTITIONS
       sf->part_sf.simple_motion_search_split =
           cm->features.allow_screen_content_tools ? 1 : 2;
+#endif  // !CONFIG_EXT_RECUR_PARTITIONS
       sf->tx_sf.inter_tx_size_search_init_depth_rect = 1;
       sf->tx_sf.inter_tx_size_search_init_depth_sqr = 1;
       sf->tx_sf.intra_tx_size_search_init_depth_rect = 1;
@@ -1148,9 +1312,11 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
         sf->inter_sf.selective_ref_frame = 2;
         sf->rd_sf.tx_domain_dist_level = boosted ? 1 : 2;
         sf->rd_sf.tx_domain_dist_thres_level = 1;
+#if !CONFIG_EXT_RECUR_PARTITIONS
         sf->part_sf.simple_motion_search_early_term_none = 1;
         sf->part_sf.simple_motion_search_split =
             cm->features.allow_screen_content_tools ? 1 : 2;
+#endif  // !CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_NEW_TX_PARTITION
         sf->tx_sf.tx_type_search.ml_tx_split_thresh = 400;
 #else
@@ -1193,4 +1359,10 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
       sf->part_sf.ext_partition_eval_thresh = BLOCK_128X128;
     }
   }
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+  set_erp_speed_features(cpi);
+  set_erp_speed_features_framesize_dependent(cpi);
+  set_erp_speed_features_qindex_dependent(cpi);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }

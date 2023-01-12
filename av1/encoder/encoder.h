@@ -207,6 +207,20 @@ typedef struct {
    * disabled.
    */
   bool disable_ml_partition_speed_features;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  /*!
+   * Flag to indicate aggressiveness of erp pruning
+   * */
+  unsigned int erp_pruning_level;
+  /*!
+   * Flag to indicate the use of ml model for erp pruning.
+   * */
+  int use_ml_erp_pruning;
+  /*!
+   * Flag to indicate if ternary partitions are enabled.
+   * */
+  unsigned int enable_ternary_partitions;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*!
    * Flag to indicate if rectanguar partitions should be enabled.
    */
@@ -1230,7 +1244,16 @@ typedef struct FRAME_COUNTS {
   unsigned int palette_uv_color_index[PALETTE_SIZES]
                                      [PALETTE_COLOR_INDEX_CONTEXTS]
                                      [PALETTE_COLORS];
-  unsigned int partition[PARTITION_CONTEXTS][EXT_PARTITION_TYPES];
+  unsigned int partition[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
+                        [EXT_PARTITION_TYPES];
+#if CONFIG_EXT_RECUR_PARTITIONS
+  unsigned int
+      limited_partition[PARTITION_STRUCTURE_NUM][NUM_LIMITED_PARTITION_PARENTS]
+                       [PARTITION_CONTEXTS][LIMITED_EXT_PARTITION_TYPES];
+  unsigned int partition_rec[PARTITION_CONTEXTS_REC][PARTITION_TYPES_REC];
+  unsigned int partition_middle_rec[PARTITION_CONTEXTS_REC]
+                                   [PARTITION_TYPES_MIDDLE_REC];
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   unsigned int txb_skip[TOKEN_CDF_Q_CTXS][TX_SIZES][TXB_SKIP_CONTEXTS][2];
 #if CONFIG_CONTEXT_DERIVATION
   unsigned int v_txb_skip[TOKEN_CDF_Q_CTXS][V_TXB_SKIP_CONTEXTS][2];
@@ -1622,6 +1645,9 @@ typedef struct ThreadData {
   PC_TREE_SHARED_BUFFERS shared_coeff_buf;
   SIMPLE_MOTION_DATA_TREE *sms_tree;
   SIMPLE_MOTION_DATA_TREE *sms_root;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  struct SimpleMotionDataBufs *sms_bufs;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   InterModesInfo *inter_modes_info;
   uint32_t *hash_value_buffer[2][2];
   OBMCBuffer obmc_buffer;

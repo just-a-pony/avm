@@ -102,10 +102,44 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
   int i, j;
   for (int plane_index = (xd->tree_type == CHROMA_PART);
        plane_index < PARTITION_STRUCTURE_NUM; plane_index++) {
-    for (i = 0; i < PARTITION_CONTEXTS; ++i)
+    for (i = 0; i < PARTITION_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->partition_cost[plane_index][i],
                                fc->partition_cdf[plane_index][i], NULL);
+    }
+#if CONFIG_EXT_RECUR_PARTITIONS
+    for (i = 0; i < PARTITION_CONTEXTS; ++i) {
+      av1_cost_tokens_from_cdf(mode_costs->partition_noext_cost[plane_index][i],
+                               fc->partition_noext_cdf[plane_index][i], NULL);
+    }
+    for (i = 0; i < PARTITION_CONTEXTS; ++i) {
+      for (int dir = 0; dir < NUM_LIMITED_PARTITION_PARENTS; dir++) {
+        av1_cost_tokens_from_cdf(
+            mode_costs->limited_partition_cost[plane_index][dir][i],
+            fc->limited_partition_cdf[plane_index][dir][i], NULL);
+      }
+    }
+    for (i = 0; i < PARTITION_CONTEXTS; ++i) {
+      for (int dir = 0; dir < NUM_LIMITED_PARTITION_PARENTS; dir++) {
+        av1_cost_tokens_from_cdf(
+            mode_costs->limited_partition_noext_cost[plane_index][dir][i],
+            fc->limited_partition_noext_cdf[plane_index][dir][i], NULL);
+      }
+    }
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+  for (i = 0; i < PARTITION_CONTEXTS_REC; ++i) {
+    av1_cost_tokens_from_cdf(mode_costs->partition_rec_cost[i],
+                             fc->partition_rec_cdf[i], NULL);
+    av1_cost_tokens_from_cdf(mode_costs->partition_middle_rec_cost[i],
+                             fc->partition_middle_rec_cdf[i], NULL);
+    av1_cost_tokens_from_cdf(mode_costs->partition_noext_rec_cost[i],
+                             fc->partition_noext_rec_cdf[i], NULL);
+    av1_cost_tokens_from_cdf(mode_costs->partition_middle_noext_rec_cost[i],
+                             fc->partition_middle_noext_rec_cdf[i], NULL);
+  }
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   if (cm->current_frame.skip_mode_info.skip_mode_flag) {
     for (i = 0; i < SKIP_MODE_CONTEXTS; ++i) {
@@ -1635,11 +1669,11 @@ void av1_setup_pred_block(const MACROBLOCKD *xd,
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
   for (int i = 0; i < num_planes; ++i) {
-    setup_pred_plane(dst + i, xd->mi[0]->sb_type[i > 0 ? 1 : 0], dst[i].buf,
-                     i ? src->uv_crop_width : src->y_crop_width,
-                     i ? src->uv_crop_height : src->y_crop_height,
-                     dst[i].stride, mi_row, mi_col, i ? scale_uv : scale,
-                     xd->plane[i].subsampling_x, xd->plane[i].subsampling_y);
+    setup_pred_plane(
+        dst + i, dst[i].buf, i ? src->uv_crop_width : src->y_crop_width,
+        i ? src->uv_crop_height : src->y_crop_height, dst[i].stride, mi_row,
+        mi_col, i ? scale_uv : scale, xd->plane[i].subsampling_x,
+        xd->plane[i].subsampling_y, &xd->mi[0]->chroma_ref_info);
   }
 }
 

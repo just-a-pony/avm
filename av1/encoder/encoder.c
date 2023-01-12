@@ -474,6 +474,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_warped_motion = oxcf->motion_mode_cfg.enable_warped_motion;
   seq->enable_interintra_compound = tool_cfg->enable_interintra_comp;
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_EXT_RECUR_PARTITIONS
+  seq->enable_ternary_partitions = oxcf->part_cfg.enable_ternary_partitions;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   seq->enable_masked_compound = oxcf->comp_type_cfg.enable_masked_comp;
   seq->enable_intra_edge_filter = oxcf->intra_mode_cfg.enable_intra_edge_filter;
   seq->enable_filter_intra = oxcf->intra_mode_cfg.enable_filter_intra;
@@ -882,6 +885,9 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
       av1_free_context_buffers(cm);
       av1_free_shared_coeff_buffer(&cpi->td.shared_coeff_buf);
       av1_free_sms_tree(&cpi->td);
+#if CONFIG_EXT_RECUR_PARTITIONS
+      av1_free_sms_bufs(&cpi->td);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
       av1_free_pmc(cpi->td.firstpass_ctx, av1_num_planes(cm));
       cpi->td.firstpass_ctx = NULL;
       alloc_compressor_data(cpi);
@@ -1314,6 +1320,9 @@ static AOM_INLINE void free_thread_data(AV1_COMP *cpi) {
     thread_data->td->firstpass_ctx = NULL;
     av1_free_shared_coeff_buffer(&thread_data->td->shared_coeff_buf);
     av1_free_sms_tree(thread_data->td);
+#if CONFIG_EXT_RECUR_PARTITIONS
+    av1_free_sms_bufs(thread_data->td);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     aom_free(thread_data->td);
   }
 }
@@ -2020,6 +2029,9 @@ int av1_set_size_literal(AV1_COMP *cpi, int width, int height) {
     av1_free_context_buffers(cm);
     av1_free_shared_coeff_buffer(&cpi->td.shared_coeff_buf);
     av1_free_sms_tree(&cpi->td);
+#if CONFIG_EXT_RECUR_PARTITIONS
+    av1_free_sms_bufs(&cpi->td);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     av1_free_pmc(cpi->td.firstpass_ctx, av1_num_planes(cm));
     cpi->td.firstpass_ctx = NULL;
     alloc_compressor_data(cpi);
@@ -2141,8 +2153,8 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
   const int use_ccso = !cm->features.coded_lossless && !cm->tiles.large_scale &&
                        cm->seq_params.enable_ccso;
   const int num_planes = av1_num_planes(cm);
-  av1_setup_dst_planes(xd->plane, cm->seq_params.sb_size, &cm->cur_frame->buf,
-                       0, 0, 0, num_planes);
+  av1_setup_dst_planes(xd->plane, &cm->cur_frame->buf, 0, 0, 0, num_planes,
+                       NULL);
   const int ccso_stride = xd->plane[0].dst.width;
   const int ccso_stride_ext = xd->plane[0].dst.width + (CCSO_PADDING_SIZE << 1);
   for (int pli = 0; pli < num_planes; pli++) {
@@ -2207,8 +2219,8 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
 
 #if CONFIG_CCSO
   if (use_ccso) {
-    av1_setup_dst_planes(xd->plane, cm->seq_params.sb_size, &cm->cur_frame->buf,
-                         0, 0, 0, num_planes);
+    av1_setup_dst_planes(xd->plane, &cm->cur_frame->buf, 0, 0, 0, num_planes,
+                         NULL);
     // Reading original and reconstructed chroma samples as input
 #if CONFIG_CCSO_EXT
     for (int pli = 0; pli < num_planes; pli++) {

@@ -355,6 +355,19 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "disable-ml-partition-speed-features", 1,
               "Disable ML partition speed features "
               "(0: false (default), 1: true)"),
+#if CONFIG_EXT_RECUR_PARTITIONS
+  .erp_pruning_level =
+      ARG_DEF(NULL, "erp-pruning-level", 1,
+              "Set the level of aggressiveness for erp pruning."
+              "(0: off, 1: reuse partition decision for co-located block, "
+              "2 to 6 increasing level of aggressiveness. Default: 5."),
+  .use_ml_erp_pruning = ARG_DEF(NULL, "use-ml-erp-pruning", 1,
+                                "Use ML model to perform ERP Pruning."
+                                "(0: off (default), 1: on)."),
+  .enable_ternary_partitions = ARG_DEF(NULL, "enable-ternary-partitions", 1,
+                                       "Enable ternary partitions"
+                                       "(0: off (default), 1: on)."),
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   .enable_rect_partitions = ARG_DEF(NULL, "enable-rect-partitions", 1,
                                     "Enable rectangular partitions "
                                     "(0: false, 1: true (default))"),

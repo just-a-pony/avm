@@ -81,9 +81,15 @@ extern "C" {
 #define MI_SIZE_LOG2 2
 #define MI_SIZE (1 << MI_SIZE_LOG2)
 
+// 1/8 pels per Mode Info (MI) unit
+#define MI_SUBPEL_SIZE_LOG2 (MI_SIZE_LOG2 + 3)
+#define MI_SUBPEL_SIZE (1 << MI_SUBPEL_SIZE_LOG2)
+
 // MI-units per max superblock (MI Block - MIB)
 #define MAX_MIB_SIZE_LOG2 (MAX_SB_SIZE_LOG2 - MI_SIZE_LOG2)
 #define MAX_MIB_SIZE (1 << MAX_MIB_SIZE_LOG2)
+
+#define MAX_MIB_SQUARE (MAX_MIB_SIZE * MAX_MIB_SIZE)
 
 // MI-units per min superblock
 #define MIN_MIB_SIZE_LOG2 (MIN_SB_SIZE_LOG2 - MI_SIZE_LOG2)
@@ -205,6 +211,38 @@ typedef enum ATTRIBUTE_PACKED {
   BLOCK_LARGEST = (BLOCK_SIZES - 1)
 } BLOCK_SIZE;
 
+static AOM_INLINE BLOCK_SIZE get_larger_sqr_bsize(BLOCK_SIZE bsize) {
+  switch (bsize) {
+    case BLOCK_4X4:
+    case BLOCK_4X8:
+    case BLOCK_8X4: return BLOCK_8X8;
+
+    case BLOCK_8X8:
+    case BLOCK_8X16:
+    case BLOCK_16X8:
+    case BLOCK_4X16:
+    case BLOCK_16X4: return BLOCK_16X16;
+
+    case BLOCK_16X16:
+    case BLOCK_16X32:
+    case BLOCK_32X16:
+    case BLOCK_8X32:
+    case BLOCK_32X8: return BLOCK_32X32;
+
+    case BLOCK_32X32:
+    case BLOCK_32X64:
+    case BLOCK_64X32:
+    case BLOCK_16X64:
+    case BLOCK_64X16: return BLOCK_64X64;
+
+    case BLOCK_64X64:
+    case BLOCK_64X128:
+    case BLOCK_128X64:
+    case BLOCK_128X128: return BLOCK_128X128;
+    default: return BLOCK_INVALID;
+  }
+}
+
 enum {
   SHARED_PART = 0,
   LUMA_PART = 1,
@@ -215,6 +253,10 @@ enum {
 // 4X4, 8X8, 16X16, 32X32, 64X64, 128X128
 #define SQR_BLOCK_SIZES 6
 
+#if CONFIG_EXT_RECUR_PARTITIONS
+#define KEEP_PARTITION_SPLIT 0
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+
 //  Partition types.  R: Recursive
 //
 //  NONE          HORZ          VERT          SPLIT
@@ -224,6 +266,17 @@ enum {
 //  |       |     |       |     |   |   |     | R | R |
 //  +-------+     +-------+     +---+---+     +---+---+
 //
+#if CONFIG_EXT_RECUR_PARTITIONS
+//  HORZ_3                 VERT_3
+//  +--------------+       +---+------+---+
+//  |              |       |   |      |   |
+//  +--------------+       |   |      |   |
+//  |              |       |   |      |   |
+//  |              |       |   |      |   |
+//  +--------------+       |   |      |   |
+//  |              |       |   |      |   |
+//  +--------------+       +---+------+---+
+#else
 //  HORZ_A        HORZ_B        VERT_A        VERT_B
 //  +---+---+     +-------+     +---+---+     +---+---+
 //  |   |   |     |       |     |   |   |     |   |   |
@@ -236,6 +289,22 @@ enum {
 //  +-----+       | | | |
 //  +-----+       | | | |
 //  +-----+       +-+-+-+
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXT_RECUR_PARTITIONS
+enum {
+  PARTITION_NONE,
+  PARTITION_HORZ,
+  PARTITION_VERT,
+  PARTITION_HORZ_3,  // 3 horizontal sub-partitions with ratios 4:1, 2:1 and 4:1
+  PARTITION_VERT_3,  // 3 vertical sub-partitions with ratios 4:1, 2:1 and 4:1
+  EXT_PARTITION_TYPES,
+  LIMITED_EXT_PARTITION_TYPES = EXT_PARTITION_TYPES - 1,
+  PARTITION_SPLIT = EXT_PARTITION_TYPES,
+  PARTITION_TYPES = PARTITION_VERT + 1,
+  LIMITED_PARTITION_TYPES = PARTITION_TYPES - 1,
+  PARTITION_INVALID = 255
+} UENUM1BYTE(PARTITION_TYPE);
+#else   // CONFIG_EXT_RECUR_PARTITIONS
 enum {
   PARTITION_NONE,
   PARTITION_HORZ,
@@ -251,11 +320,30 @@ enum {
   PARTITION_TYPES = PARTITION_SPLIT + 1,
   PARTITION_INVALID = 255
 } UENUM1BYTE(PARTITION_TYPE);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 typedef char PARTITION_CONTEXT;
 #define PARTITION_PLOFFSET 4  // number of probability models per block size
 #define PARTITION_BLOCK_SIZES 5
 #define PARTITION_CONTEXTS (PARTITION_BLOCK_SIZES * PARTITION_PLOFFSET)
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+// If the parent block is PARTITION_3, then we might have a smaller set of
+// partitions
+#define NUM_LIMITED_PARTITION_PARENTS (2)
+enum {
+  PARTITION_NONE_REC,
+  PARTITION_LONG_SIDE_2_REC,
+  PARTITION_LONG_SIDE_3_REC,
+  PARTITION_SHORT_SIDE_2_REC,
+  PARTITION_TYPES_REC = PARTITION_SHORT_SIDE_2_REC + 1,
+  PARTITION_TYPES_MIDDLE_REC = PARTITION_TYPES_REC - 1,
+  PARTITION_INVALID_REC = 255
+} UENUM1BYTE(PARTITION_TYPE_REC);
+
+#define PARTITION_BLOCK_SIZES_REC 5  // 128x64, 64x32, 32x16, 16x8, 8x4
+#define PARTITION_CONTEXTS_REC (PARTITION_BLOCK_SIZES_REC * PARTITION_PLOFFSET)
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // block transform size
 enum {

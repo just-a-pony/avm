@@ -13,6 +13,8 @@
 #include "av1/common/av1_common_int.h"
 #include "av1/common/cfl.h"
 #include "av1/common/common_data.h"
+#include "av1/common/enums.h"
+#include "av1/common/reconintra.h"
 
 #include "config/av1_rtcd.h"
 
@@ -195,10 +197,15 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
   const int sub_x = cfl->subsampling_x;
   const int sub_y = cfl->subsampling_y;
 
+#if CONFIG_EXT_RECUR_PARTITIONS
+  int have_top = 0, have_left = 0;
+  set_have_top_and_left(&have_top, &have_left, xd, row, col, AOM_PLANE_Y);
+#else
   const int have_top =
       row || (sub_y ? xd->chroma_up_available : xd->up_available);
   const int have_left =
       col || (sub_x ? xd->chroma_left_available : xd->left_available);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   memset(cfl->recon_yuv_buf_above[0], 0, sizeof(cfl->recon_yuv_buf_above[0]));
   memset(cfl->recon_yuv_buf_left[0], 0, sizeof(cfl->recon_yuv_buf_left[0]));
@@ -318,13 +325,18 @@ void cfl_calc_luma_dc(MACROBLOCKD *const xd, int row, int col,
   CFL_CTX *const cfl = &xd->cfl;
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+  int have_top = 0, have_left = 0;
+  set_have_top_and_left(&have_top, &have_left, xd, row, col, AOM_PLANE_Y);
+#else
   const int sub_x = cfl->subsampling_x;
   const int sub_y = cfl->subsampling_y;
-
   const int have_top =
       row || (sub_y ? xd->chroma_up_available : xd->up_available);
   const int have_left =
       col || (sub_x ? xd->chroma_left_available : xd->left_available);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   int count = 0;
   int sum_x = 0;
@@ -369,10 +381,15 @@ void cfl_implicit_fetch_neighbor_chroma(const AV1_COMMON *cm,
   int pic_width_c = cm->width >> sub_x;
   int pic_height_c = cm->height >> sub_y;
 
+#if CONFIG_EXT_RECUR_PARTITIONS
+  int have_top = 0, have_left = 0;
+  set_have_top_and_left(&have_top, &have_left, xd, row, col, plane);
+#else
   const int have_top =
       row || (sub_y ? xd->chroma_up_available : xd->up_available);
   const int have_left =
       col || (sub_x ? xd->chroma_left_available : xd->left_available);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   memset(cfl->recon_yuv_buf_above[plane], 0,
          sizeof(cfl->recon_yuv_buf_above[plane]));
@@ -455,13 +472,18 @@ void cfl_derive_implicit_scaling_factor(MACROBLOCKD *const xd, int plane,
   MB_MODE_INFO *mbmi = xd->mi[0];
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+  int have_top = 0, have_left = 0;
+  set_have_top_and_left(&have_top, &have_left, xd, row, col, plane);
+#else
   const int sub_x = cfl->subsampling_x;
   const int sub_y = cfl->subsampling_y;
-
   const int have_top =
       row || (sub_y ? xd->chroma_up_available : xd->up_available);
   const int have_left =
       col || (sub_x ? xd->chroma_left_available : xd->left_available);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   int count = 0;
   int sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
@@ -699,26 +721,7 @@ static void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl,
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
 }
 
-// Adjust the row and column of blocks smaller than 8X8, as chroma-referenced
-// and non-chroma-referenced blocks are stored together in the CfL buffer.
-static INLINE void sub8x8_adjust_offset(const CFL_CTX *cfl, int mi_row,
-                                        int mi_col, int *row_out,
-                                        int *col_out) {
-  // Increment row index for bottom: 8x4, 16x4 or both bottom 4x4s.
-  if ((mi_row & 0x01) && cfl->subsampling_y) {
-    assert(*row_out == 0);
-    (*row_out)++;
-  }
-
-  // Increment col index for right: 4x8, 4x16 or both right 4x4s.
-  if ((mi_col & 0x01) && cfl->subsampling_x) {
-    assert(*col_out == 0);
-    (*col_out)++;
-  }
-}
-
-void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size,
-                  BLOCK_SIZE bsize
+void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size
 #if CONFIG_ADAPTIVE_DS_FILTER
                   ,
                   int filter_type
@@ -728,16 +731,17 @@ void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size,
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_Y];
   uint16_t *dst = &pd->dst.buf[(row * pd->dst.stride + col) << MI_SIZE_LOG2];
 
-  if (block_size_high[bsize] == 4 || block_size_wide[bsize] == 4) {
-    // Only dimensions of size 4 can have an odd offset.
-    assert(!((col & 1) && tx_size_wide[tx_size] != 4));
-    assert(!((row & 1) && tx_size_high[tx_size] != 4));
-    sub8x8_adjust_offset(cfl, xd->mi_row, xd->mi_col, &row, &col);
-  }
+  const int mi_row = -xd->mb_to_top_edge >> MI_SUBPEL_SIZE_LOG2;
+  const int mi_col = -xd->mb_to_left_edge >> MI_SUBPEL_SIZE_LOG2;
+  const int row_offset = mi_row - xd->mi[0]->chroma_ref_info.mi_row_chroma_base;
+  const int col_offset = mi_col - xd->mi[0]->chroma_ref_info.mi_col_chroma_base;
+
 #if CONFIG_ADAPTIVE_DS_FILTER
-  cfl_store(xd, cfl, dst, pd->dst.stride, row, col, tx_size, filter_type);
+  cfl_store(xd, cfl, dst, pd->dst.stride, row + row_offset, col + col_offset,
+            tx_size, filter_type);
 #else
-  cfl_store(xd, cfl, dst, pd->dst.stride, row, col, tx_size);
+  cfl_store(xd, cfl, dst, pd->dst.stride, row + row_offset, col + col_offset,
+            tx_size);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
 }
 
@@ -765,20 +769,20 @@ void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size
 ) {
   CFL_CTX *const cfl = &xd->cfl;
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_Y];
-  int row = 0;
-  int col = 0;
-
-  if (block_size_high[bsize] == 4 || block_size_wide[bsize] == 4) {
-    sub8x8_adjust_offset(cfl, xd->mi_row, xd->mi_col, &row, &col);
-  }
   const int width = max_intra_block_width(xd, bsize, AOM_PLANE_Y, tx_size);
   const int height = max_intra_block_height(xd, bsize, AOM_PLANE_Y, tx_size);
+  const int mi_row = -xd->mb_to_top_edge >> MI_SUBPEL_SIZE_LOG2;
+  const int mi_col = -xd->mb_to_left_edge >> MI_SUBPEL_SIZE_LOG2;
+  const int row_offset = mi_row - xd->mi[0]->chroma_ref_info.mi_row_chroma_base;
+  const int col_offset = mi_col - xd->mi[0]->chroma_ref_info.mi_col_chroma_base;
+
   tx_size = get_tx_size(width, height);
   assert(tx_size != TX_INVALID);
 #if CONFIG_ADAPTIVE_DS_FILTER
-  cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row, col, tx_size,
-            filter_type);
+  cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row_offset, col_offset,
+            tx_size, filter_type);
 #else
-  cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row, col, tx_size);
+  cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row_offset, col_offset,
+            tx_size);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
 }

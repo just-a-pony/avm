@@ -96,6 +96,7 @@ static INLINE int av1_is_directional_mode(PREDICTION_MODE mode) {
   return mode >= V_PRED && mode <= D67_PRED;
 }
 
+// TODO(any): Verify the correct behavior when we have BLOCK_4X16
 static INLINE int av1_use_angle_delta(BLOCK_SIZE bsize) {
   return bsize >= BLOCK_8X8;
 }
@@ -297,6 +298,16 @@ static const int32_t transpose_tx_size[TX_SIZES_ALL] = {
   TX_4X16, TX_32X8, TX_8X32,  TX_64X16, TX_16X64,
 };
 #endif
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+static AOM_INLINE void set_have_top_and_left(int *have_top, int *have_left,
+                                             const MACROBLOCKD *xd, int row_off,
+                                             int col_off, int plane) {
+  *have_top = row_off || (plane ? xd->chroma_up_available : xd->up_available);
+  *have_left =
+      col_off || (plane ? xd->chroma_left_available : xd->left_available);
+}
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #ifdef __cplusplus
 }  // extern "C"

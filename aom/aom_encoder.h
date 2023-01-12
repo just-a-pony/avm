@@ -271,6 +271,20 @@ typedef struct cfg_options {
    *
    */
   unsigned int disable_ml_partition_speed_features;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  /*!\brief prune partitions for ERP
+   *
+   */
+  unsigned int erp_pruning_level;
+  /*!\brief use ml model for erp pruning
+   *
+   */
+  unsigned int use_ml_erp_pruning;
+  /*!\brief enable ternary partitions
+   *
+   */
+  unsigned int enable_ternary_partitions;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief disable ml-based speed-up for transform search
    *
    */

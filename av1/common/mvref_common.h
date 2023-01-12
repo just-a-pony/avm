@@ -559,7 +559,9 @@ static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
     const int LT_mi_row_offset = (src_top_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
     const int LT_pos =
         LT_mi_row_offset * xd->is_mi_coded_stride + LT_mi_col_offset;
-    if (xd->is_mi_coded[LT_pos] == 0) return 0;
+    const int is_chroma_tree = xd->tree_type == CHROMA_PART;
+    const unsigned char *is_mi_coded_map = xd->is_mi_coded[is_chroma_tree];
+    if (is_mi_coded_map[LT_pos] == 0) return 0;
 
     const int BR_mi_col_offset =
         (src_right_x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
@@ -567,7 +569,7 @@ static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
         (src_bottom_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
     const int BR_pos =
         BR_mi_row_offset * xd->is_mi_coded_stride + BR_mi_col_offset;
-    if (xd->is_mi_coded[BR_pos] == 0) return 0;
+    if (is_mi_coded_map[BR_pos] == 0) return 0;
     assert(src_right_x < active_left_x || src_bottom_y < active_top_y);
 
     return 1;
@@ -612,6 +614,8 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
   int BR_same_sb = 0;
   const int sb_size = 1 << sb_size_log2;
   const int sb_mi_size = sb_size >> MI_SIZE_LOG2;
+  const int is_chroma_tree = xd->tree_type == CHROMA_PART;
+  const unsigned char *is_mi_coded_map = xd->is_mi_coded[is_chroma_tree];
   if ((sb_size_log2 == 7)) {
     if ((src_left_x >> sb_size_log2) == ((active_left_x >> sb_size_log2) - 1)) {
       const int src_colo_left_x = src_left_x + sb_size;
@@ -621,7 +625,7 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
       const int mi_col_offset = (offset64x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
       const int mi_row_offset = (offset64y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
       const int pos = mi_row_offset * xd->is_mi_coded_stride + mi_col_offset;
-      if (xd->is_mi_coded[pos]) return 0;
+      if (is_mi_coded_map[pos]) return 0;
       if (offset64x == active_left_x && offset64y == active_top_y) return 0;
       TL_same_sb = 0;
     } else {
@@ -641,7 +645,7 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
     const int LT_mi_row_offset = (src_top_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
     const int LT_pos =
         LT_mi_row_offset * xd->is_mi_coded_stride + LT_mi_col_offset;
-    if (xd->is_mi_coded[LT_pos] == 0) return 0;
+    if (is_mi_coded_map[LT_pos] == 0) return 0;
   }
 
   BR_same_sb = (src_right_x >> sb_size_log2) == (active_left_x >> sb_size_log2);
@@ -652,7 +656,7 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
         (src_bottom_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
     const int BR_pos =
         BR_mi_row_offset * xd->is_mi_coded_stride + BR_mi_col_offset;
-    if (xd->is_mi_coded[BR_pos] == 0) return 0;
+    if (is_mi_coded_map[BR_pos] == 0) return 0;
     assert(src_right_x < active_left_x || src_bottom_y < active_top_y);
   }
   return 1;
@@ -706,6 +710,17 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
       int tmp_bw = bw;
       if (!cm->seq_params.enable_sdp || !frame_is_intra_only(cm)) {
         if (xd->is_chroma_ref && av1_num_planes(cm) > 1) {
+#if CONFIG_EXT_RECUR_PARTITIONS
+          if (xd->mi && xd->mi[0]) {
+            const CHROMA_REF_INFO *chroma_ref_info =
+                &xd->mi[0]->chroma_ref_info;
+            const BLOCK_SIZE bsize_base = chroma_ref_info->bsize_base;
+            tmp_row = chroma_ref_info->mi_row_chroma_base;
+            tmp_col = chroma_ref_info->mi_col_chroma_base;
+            tmp_bh = block_size_high[bsize_base];
+            tmp_bw = block_size_wide[bsize_base];
+          }
+#else   // CONFIG_EXT_RECUR_PARTITIONS
           const struct macroblockd_plane *const pd = &xd->plane[1];
           if ((bw < 8 && pd->subsampling_x) && (bh < 8 && pd->subsampling_y)) {
             tmp_row = mi_row / 2 * 2;
@@ -719,6 +734,7 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
             tmp_row = mi_row / 2 * 2;
             tmp_bh = 8;
           }
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
         }
       }
       // The size of local search range is determined by the value of
