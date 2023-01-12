@@ -40,6 +40,10 @@
 
 #define aom_read(r, prob, ACCT_STR_NAME) \
   aom_read_(r, prob ACCT_STR_ARG(ACCT_STR_NAME))
+#if CONFIG_BYPASS_IMPROVEMENT
+#define aom_read_bypass(r, ACCT_STR_NAME) \
+  aom_read_bypass_(r ACCT_STR_ARG(ACCT_STR_NAME))
+#endif  // CONFIG_BYPASS_IMPROVEMENT
 #define aom_read_bit(r, ACCT_STR_NAME) \
   aom_read_bit_(r ACCT_STR_ARG(ACCT_STR_NAME))
 #define aom_read_tree(r, tree, probs, ACCT_STR_NAME) \
@@ -50,6 +54,11 @@
   aom_read_cdf_(r, cdf, nsymbs ACCT_STR_ARG(ACCT_STR_NAME))
 #define aom_read_symbol(r, cdf, nsymbs, ACCT_STR_NAME) \
   aom_read_symbol_(r, cdf, nsymbs ACCT_STR_ARG(ACCT_STR_NAME))
+
+#if CONFIG_BYPASS_IMPROVEMENT
+#define aom_read_unary(r, bits, ACCT_STR_NAME) \
+  aom_read_unary_(r, bits ACCT_STR_ARG(ACCT_STR_NAME))
+#endif  // CONFIG_BYPASS_IMPROVEMENT
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,18 +105,19 @@ static INLINE void aom_process_accounting(const aom_reader *r ACCT_STR_PARAM) {
 
 #if CONFIG_THROUGHPUT_ANALYSIS
 static INLINE void aom_update_symb_counts(const aom_reader *r, int is_binary,
-                                          int is_context_coded) {
+                                          int is_context_coded, int n_bits) {
 #else
-static INLINE void aom_update_symb_counts(const aom_reader *r, int is_binary) {
+static INLINE void aom_update_symb_counts(const aom_reader *r, int is_binary,
+                                          int n_bits) {
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
   if (r->accounting != NULL) {
-    r->accounting->syms.num_multi_syms += !is_binary;
-    r->accounting->syms.num_binary_syms += !!is_binary;
+    r->accounting->syms.num_multi_syms += is_binary ? 0 : n_bits;
+    r->accounting->syms.num_binary_syms += is_binary ? n_bits : 0;
 #if CONFIG_THROUGHPUT_ANALYSIS
     if (is_context_coded) {
-      r->accounting->syms.num_ctx_coded += 1;
+      r->accounting->syms.num_ctx_coded += n_bits;
     } else {
-      r->accounting->syms.num_bypass_coded += 1;
+      r->accounting->syms.num_bypass_coded += n_bits;
     }
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
   }
@@ -155,17 +165,36 @@ static INLINE int aom_read_(aom_reader *r, int prob ACCT_STR_PARAM) {
 #if CONFIG_ACCOUNTING
   if (ACCT_STR_NAME) aom_process_accounting(r, ACCT_STR_NAME);
 #if CONFIG_THROUGHPUT_ANALYSIS
-  aom_update_symb_counts(r, 1, 0);
+  aom_update_symb_counts(r, 1, 0, 1);
 #else
-  aom_update_symb_counts(r, 1);
+  aom_update_symb_counts(r, 1, 1);
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
 #endif
   return bit;
 }
 
+#if CONFIG_BYPASS_IMPROVEMENT
+static INLINE int aom_read_bypass_(aom_reader *r ACCT_STR_PARAM) {
+  int ret = od_ec_decode_literal_bypass(&r->ec, 1);
+#if CONFIG_ACCOUNTING
+  if (ACCT_STR_NAME) aom_process_accounting(r, ACCT_STR_NAME);
+#if CONFIG_THROUGHPUT_ANALYSIS
+  aom_update_symb_counts(r, 1, 0, 1);
+#else
+  aom_update_symb_counts(r, 1, 1);
+#endif
+#endif
+  return ret;
+}
+#endif  // CONFIG_BYPASS_IMPROVEMENT
+
 static INLINE int aom_read_bit_(aom_reader *r ACCT_STR_PARAM) {
   int ret;
+#if CONFIG_BYPASS_IMPROVEMENT
+  ret = aom_read_bypass(r, NULL);
+#else
   ret = aom_read(r, 128, NULL);  // aom_prob_half
+#endif  // CONFIG_BYPASS_IMPROVEMENT
 #if CONFIG_ACCOUNTING
   if (ACCT_STR_NAME) aom_process_accounting(r, ACCT_STR_NAME);
 #endif
@@ -173,14 +202,48 @@ static INLINE int aom_read_bit_(aom_reader *r ACCT_STR_PARAM) {
 }
 
 static INLINE int aom_read_literal_(aom_reader *r, int bits ACCT_STR_PARAM) {
+#if CONFIG_BYPASS_IMPROVEMENT
+  int literal = 0;
+  int n_bits = bits;
+  int n;
+  while (n_bits > 0) {
+    n = n_bits >= 8 ? 8 : n_bits;
+    literal <<= n;
+    literal += od_ec_decode_literal_bypass(&r->ec, n);
+    n_bits -= n;
+  }
+#if CONFIG_ACCOUNTING
+  if (ACCT_STR_NAME) aom_process_accounting(r, ACCT_STR_NAME);
+#if CONFIG_THROUGHPUT_ANALYSIS
+  aom_update_symb_counts(r, 1, 0, bits);
+#else
+  aom_update_symb_counts(r, 1, bits);
+#endif
+#endif  // CONFIG_ACCOUNTING
+#else
   int literal = 0, bit;
 
   for (bit = bits - 1; bit >= 0; bit--) literal |= aom_read_bit(r, NULL) << bit;
-#if CONFIG_ACCOUNTING
-  if (ACCT_STR_NAME) aom_process_accounting(r, ACCT_STR_NAME);
-#endif
+#endif  // CONFIG_BYPASS_IMPROVEMENT
   return literal;
 }
+
+#if CONFIG_BYPASS_IMPROVEMENT
+// Deocode unary coded symbol with truncation at max_bits.
+static INLINE int aom_read_unary_(aom_reader *r, int max_bits ACCT_STR_PARAM) {
+  int ret = od_ec_decode_unary_bypass(&r->ec, max_bits);
+#if CONFIG_ACCOUNTING
+  int n_bits = ret < max_bits ? ret + 1 : max_bits;
+  if (ACCT_STR_NAME) aom_process_accounting(r, ACCT_STR_NAME);
+#if CONFIG_THROUGHPUT_ANALYSIS
+  aom_update_symb_counts(r, 1, 0, n_bits);
+#else
+  aom_update_symb_counts(r, 1, n_bits);
+#endif
+#endif
+  return ret;
+}
+#endif  // CONFIG_BYPASS_IMPROVEMENT
 
 static INLINE int aom_read_cdf_(aom_reader *r, const aom_cdf_prob *cdf,
                                 int nsymbs ACCT_STR_PARAM) {
@@ -230,9 +293,9 @@ static INLINE int aom_read_cdf_(aom_reader *r, const aom_cdf_prob *cdf,
 #if CONFIG_ACCOUNTING
   if (ACCT_STR_NAME) aom_process_accounting(r, ACCT_STR_NAME);
 #if CONFIG_THROUGHPUT_ANALYSIS
-  aom_update_symb_counts(r, (nsymbs == 2), 1);
+  aom_update_symb_counts(r, (nsymbs == 2), 1, 1);
 #else
-  aom_update_symb_counts(r, (nsymbs == 2));
+  aom_update_symb_counts(r, (nsymbs == 2), 1);
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
 #endif
   return symb;
