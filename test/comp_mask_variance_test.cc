@@ -31,7 +31,7 @@
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
 
 namespace AV1CompMaskVariance {
-#if HAVE_SSSE3 || HAVE_SSE2 || HAVE_AVX2
+#if (HAVE_SSSE3 || HAVE_SSE2 || HAVE_AVX2)
 const BLOCK_SIZE kValidBlockSize[] = {
   BLOCK_8X8,   BLOCK_8X16,  BLOCK_8X32,   BLOCK_16X8,   BLOCK_16X16,
   BLOCK_16X32, BLOCK_32X8,  BLOCK_32X16,  BLOCK_32X32,  BLOCK_32X64,

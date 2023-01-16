@@ -28,6 +28,39 @@ extern "C" {
 /*!\cond */
 
 #undef MAX_SB_SIZE
+
+#if CONFIG_WEDGE_MOD_EXT
+/*WEDGE_0 is defined in the three o'clock direciton, the angles are defined in
+ * the anticlockwise.*/
+enum {
+  WEDGE_0,
+  WEDGE_14,
+  WEDGE_27,
+  WEDGE_45,
+  WEDGE_63,
+  WEDGE_90,
+  WEDGE_117,
+  WEDGE_135,
+  WEDGE_153,
+  WEDGE_166,
+  WEDGE_180,
+  WEDGE_194,
+  WEDGE_207,
+  WEDGE_225,
+  WEDGE_243,
+  WEDGE_270,
+  WEDGE_297,
+  WEDGE_315,
+  WEDGE_333,
+  WEDGE_346,
+  WEDGE_ANGLES
+} UENUM1BYTE(WedgeDirectionType);
+
+#define H_WEDGE_ANGLES 10
+#define NUM_WEDGE_DIST 4
+#define MAX_WEDGE_TYPES 68
+#endif  // CONFIG_WEDGE_MOD_EXT
+
 #if CONFIG_ADAPTIVE_DS_FILTER
 #define DS_FRAME_LEVEL 1  // Signal at key frame
 #endif

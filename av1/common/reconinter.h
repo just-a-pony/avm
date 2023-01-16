@@ -19,6 +19,10 @@
 #include "av1/common/warped_motion.h"
 #include "aom/aom_integer.h"
 
+#if CONFIG_WEDGE_MOD_EXT
+#include "av1/encoder/block.h"
+#endif
+
 // Work out how many pixels off the edge of a reference frame we're allowed
 // to go when forming an inter prediction.
 // The outermost row/col of each referernce frame is extended by
@@ -36,9 +40,15 @@
 extern "C" {
 #endif
 
+#if !CONFIG_WEDGE_MOD_EXT
 #define MAX_WEDGE_TYPES 16
+#endif
 
+#if CONFIG_WEDGE_MOD_EXT
+#define MAX_WEDGE_SIZE_LOG2 6  // 64x64
+#else
 #define MAX_WEDGE_SIZE_LOG2 5  // 32x32
+#endif
 #define MAX_WEDGE_SIZE (1 << MAX_WEDGE_SIZE_LOG2)
 #define MAX_WEDGE_SQUARE (MAX_WEDGE_SIZE * MAX_WEDGE_SIZE)
 
@@ -46,11 +56,83 @@ extern "C" {
 
 #define WEDGE_NONE -1
 
+#if CONFIG_WEDGE_MOD_EXT
+static const int wedge_angle_dist_2_index[WEDGE_ANGLES][NUM_WEDGE_DIST] = {
+  { -1, 0, 1, 2 },     // WEDGE_0
+  { 3, 4, 5, 6 },      // WEDGE_14
+  { 7, 8, 9, 10 },     // WEDGE_27
+  { 11, 12, 13, 14 },  // WEDGE_45
+  { 15, 16, 17, 18 },  // WEDGE_63
+  { -1, 19, 20, 21 },  // WEDGE_90
+  { 22, 23, 24, 25 },  // WEDGE_117
+  { 26, 27, 28, 29 },  // WEDGE_135
+  { 30, 31, 32, 33 },  // WEDGE_153
+  { 34, 35, 36, 37 },  // WEDGE_166
+  { -1, 38, 39, 40 },  // WEDGE_180
+  { -1, 41, 42, 43 },  // WEDGE_194
+  { -1, 44, 45, 46 },  // WEDGE_207
+  { -1, 47, 48, 49 },  // WEDGE_225
+  { -1, 50, 51, 52 },  // WEDGE_243
+  { -1, 53, 54, 55 },  // WEDGE_270
+  { -1, 56, 57, 58 },  // WEDGE_297
+  { -1, 59, 60, 61 },  // WEDGE_315
+  { -1, 62, 63, 64 },  // WEDGE_333
+  { -1, 65, 66, 67 },  // WEDGE_346
+};
+
+static const int wedge_index_2_angle[MAX_WEDGE_TYPES] = {
+  WEDGE_0,   WEDGE_0,   WEDGE_0,               // WEDGE_0
+  WEDGE_14,  WEDGE_14,  WEDGE_14,  WEDGE_14,   // WEDGE_14
+  WEDGE_27,  WEDGE_27,  WEDGE_27,  WEDGE_27,   // WEDGE_27
+  WEDGE_45,  WEDGE_45,  WEDGE_45,  WEDGE_45,   // WEDGE_45
+  WEDGE_63,  WEDGE_63,  WEDGE_63,  WEDGE_63,   // WEDGE_63
+  WEDGE_90,  WEDGE_90,  WEDGE_90,              // WEDGE_90
+  WEDGE_117, WEDGE_117, WEDGE_117, WEDGE_117,  // WEDGE_117
+  WEDGE_135, WEDGE_135, WEDGE_135, WEDGE_135,  // WEDGE_135
+  WEDGE_153, WEDGE_153, WEDGE_153, WEDGE_153,  // WEDGE_153
+  WEDGE_166, WEDGE_166, WEDGE_166, WEDGE_166,  // WEDGE_166
+  WEDGE_180, WEDGE_180, WEDGE_180,             // WEDGE_180
+  WEDGE_194, WEDGE_194, WEDGE_194,             // WEDGE_194
+  WEDGE_207, WEDGE_207, WEDGE_207,             // WEDGE_207
+  WEDGE_225, WEDGE_225, WEDGE_225,             // WEDGE_225
+  WEDGE_243, WEDGE_243, WEDGE_243,             // WEDGE_243
+  WEDGE_270, WEDGE_270, WEDGE_270,             // WEDGE_270
+  WEDGE_297, WEDGE_297, WEDGE_297,             // WEDGE_297
+  WEDGE_315, WEDGE_315, WEDGE_315,             // WEDGE_315
+  WEDGE_333, WEDGE_333, WEDGE_333,             // WEDGE_333
+  WEDGE_346, WEDGE_346, WEDGE_346              // WEDGE_346
+};
+
+static const int wedge_index_2_dist[MAX_WEDGE_TYPES] = {
+  1, 2, 3,     // WEDGE_0
+  0, 1, 2, 3,  // WEDGE_14
+  0, 1, 2, 3,  // WEDGE_27
+  0, 1, 2, 3,  // WEDGE_45
+  0, 1, 2, 3,  // WEDGE_63
+  1, 2, 3,     // WEDGE_90
+  0, 1, 2, 3,  // WEDGE_117
+  0, 1, 2, 3,  // WEDGE_135
+  0, 1, 2, 3,  // WEDGE_153
+  0, 1, 2, 3,  // WEDGE_166
+  1, 2, 3,     // WEDGE_180
+  1, 2, 3,     // WEDGE_194
+  1, 2, 3,     // WEDGE_207
+  1, 2, 3,     // WEDGE_225
+  1, 2, 3,     // WEDGE_243
+  1, 2, 3,     // WEDGE_270
+  1, 2, 3,     // WEDGE_297
+  1, 2, 3,     // WEDGE_315
+  1, 2, 3,     // WEDGE_333
+  1, 2, 3,     // WEDGE_346
+};
+#endif  // CONFIG_WEDGE_MOD_EXT
+
 #if CONFIG_BAWP
 #define BAWP_REF_LINES 1
 #endif
 
 // Angles are with respect to horizontal anti-clockwise
+#if !CONFIG_WEDGE_MOD_EXT
 enum {
   WEDGE_HORIZONTAL = 0,
   WEDGE_VERTICAL = 1,
@@ -60,6 +142,7 @@ enum {
   WEDGE_OBLIQUE153 = 5,
   WEDGE_DIRECTIONS
 } UENUM1BYTE(WedgeDirectionType);
+#endif
 
 // 3-tuple: {direction, x_offset, y_offset}
 typedef struct {

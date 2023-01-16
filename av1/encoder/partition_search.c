@@ -1463,11 +1463,20 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
             update_cdf(fc->wedge_interintra_cdf[bsize],
                        mbmi->use_wedge_interintra, 2);
             if (mbmi->use_wedge_interintra) {
+#if CONFIG_WEDGE_MOD_EXT
+              update_wedge_mode_cdf(fc, bsize, mbmi->interintra_wedge_index
+#if CONFIG_ENTROPY_STATS
+                                    ,
+                                    counts
+#endif  // CONFIG_ENTROPY_STATS
+              );
+#else
 #if CONFIG_ENTROPY_STATS
               counts->wedge_idx[bsize][mbmi->interintra_wedge_index]++;
 #endif
               update_cdf(fc->wedge_idx_cdf[bsize], mbmi->interintra_wedge_index,
                          16);
+#endif  // CONFIG_WEDGE_MOD_EXT
             }
           }
           continue_motion_mode_signaling = false;
@@ -1629,11 +1638,20 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       }
       if (mbmi->interinter_comp.type == COMPOUND_WEDGE) {
         if (is_interinter_compound_used(COMPOUND_WEDGE, bsize)) {
+#if CONFIG_WEDGE_MOD_EXT
+          update_wedge_mode_cdf(fc, bsize, mbmi->interinter_comp.wedge_index
+#if CONFIG_ENTROPY_STATS
+                                ,
+                                counts
+#endif  // CONFIG_ENTROPY_STATS
+          );
+#else
 #if CONFIG_ENTROPY_STATS
           counts->wedge_idx[bsize][mbmi->interinter_comp.wedge_index]++;
 #endif
           update_cdf(fc->wedge_idx_cdf[bsize],
                      mbmi->interinter_comp.wedge_index, 16);
+#endif  // CONFIG_WEDGE_MOD_EXT
         }
       }
     }
