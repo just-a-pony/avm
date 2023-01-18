@@ -1740,7 +1740,13 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         for (int i = 0; i < 2; ++i) {
           const int_mv ref_mv = av1_get_ref_mv(x, i);
 #if CONFIG_C071_SUBBLK_WARPMV
-          update_mv_precision(ref_mv.as_mv, pb_mv_precision, &cur_mv[i].as_mv);
+          update_mv_precision(ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                              pb_mv_precision,
+#else
+                              cm->features.allow_high_precision_mv,
+#endif
+                              &cur_mv[i].as_mv);
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_FLEX_MVRES
           *rate_mv +=
@@ -1798,7 +1804,13 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         } else {
           const int_mv ref_mv = av1_get_ref_mv(x, 1);
 #if CONFIG_C071_SUBBLK_WARPMV
-          update_mv_precision(ref_mv.as_mv, pb_mv_precision, &cur_mv[1].as_mv);
+          update_mv_precision(ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                              pb_mv_precision,
+#else
+                              cm->features.allow_high_precision_mv,
+#endif
+                              &cur_mv[1].as_mv);
 #endif  // CONFIG_C071_SUBBLK_WARPMV
           *rate_mv = av1_mv_bit_cost(&cur_mv[1].as_mv, &ref_mv.as_mv,
 #if CONFIG_FLEX_MVRES
@@ -1916,7 +1928,13 @@ static int64_t handle_newmv(const AV1_COMP *const cpi, MACROBLOCK *const x,
         } else {
           const int_mv ref_mv = av1_get_ref_mv(x, 0);
 #if CONFIG_C071_SUBBLK_WARPMV
-          update_mv_precision(ref_mv.as_mv, pb_mv_precision, &cur_mv[0].as_mv);
+          update_mv_precision(ref_mv.as_mv,
+#if CONFIG_FLEX_MVRES
+                              pb_mv_precision,
+#else
+                              cm->features.allow_high_precision_mv,
+#endif
+                              &cur_mv[0].as_mv);
 #endif  // CONFIG_C071_SUBBLK_WARPMV
           *rate_mv = av1_mv_bit_cost(&cur_mv[0].as_mv, &ref_mv.as_mv,
 #if CONFIG_FLEX_MVRES
@@ -2806,12 +2824,23 @@ static int64_t motion_mode_rd(
                 mi_col, mi_row, features->cur_frame_force_integer_mv);
 #endif
 #if CONFIG_C071_SUBBLK_WARPMV
-            if (mbmi->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+            if (
+#if CONFIG_FLEX_MVRES
+                mbmi->pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+                !cm->features.allow_high_precision_mv
+#endif
+            ) {
               FULLPEL_MV tmp_full_mv = get_fullmv_from_mv(&mbmi->mv[0].as_mv);
               MV tmp_sub_mv = get_mv_from_fullmv(&tmp_full_mv);
               MV sub_mv_offset = { 0, 0 };
               get_phase_from_mv(ref_mv.as_mv, &sub_mv_offset,
-                                mbmi->pb_mv_precision);
+#if CONFIG_FLEX_MVRES
+                                mbmi->pb_mv_precision
+#else
+                                cm->features.allow_high_precision_mv
+#endif
+              );
               mbmi->mv[0].as_mv.col = tmp_sub_mv.col + sub_mv_offset.col;
               mbmi->mv[0].as_mv.row = tmp_sub_mv.row + sub_mv_offset.row;
             }
@@ -4973,7 +5002,7 @@ static int64_t handle_inter_mode(
       if (newmv_ret_val != 0) continue;
 #endif
 
-#if CONFIG_C071_SUBBLK_WARPMV
+#if CONFIG_C071_SUBBLK_WARPMV && CONFIG_FLEX_MVRES
             int mv_outlim = 0;
             for (int ref = 0; ref < is_comp_pred + 1; ref++) {
               const PREDICTION_MODE single_mode =
@@ -4993,7 +5022,7 @@ static int64_t handle_inter_mode(
               }
             }
             if (mv_outlim) continue;
-#endif  // CONFIG_C071_SUBBLK_WARPMV
+#endif  // CONFIG_C071_SUBBLK_WARPMV && CONFIG_FLEX_MVRES
 
               // skip NEWMV mode in drl if the motion search result is the same
               // as a previous result

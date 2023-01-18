@@ -409,9 +409,9 @@ static AOM_INLINE void add_ref_mv_candidate(
     const MvSubpelPrecision precision
 #endif
 ) {
-#if CONFIG_C071_SUBBLK_WARPMV
+#if CONFIG_C071_SUBBLK_WARPMV && CONFIG_FLEX_MVRES
   (void)precision;
-#endif  // CONFIG_C071_SUBBLK_WARPMV
+#endif  // CONFIG_C071_SUBBLK_WARPMV && CONFIG_FLEX_MVRES
   if (!is_inter_block(candidate, SHARED_PART)) return;
 
 #if CONFIG_IBC_SR_EXT

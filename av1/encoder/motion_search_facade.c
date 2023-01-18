@@ -113,6 +113,11 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
   const MV ref_mv = ref_mv_low_prec;
 #else
   const MV ref_mv = av1_get_ref_mv(x, ref_idx).as_mv;
+#if CONFIG_C071_SUBBLK_WARPMV
+  MV sub_mv_offset = { 0, 0 };
+  get_phase_from_mv(ref_mv, &sub_mv_offset,
+                    cm->features.allow_high_precision_mv);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
 #endif
 
   FULLPEL_MV start_mv;
@@ -315,7 +320,13 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
     int_mv this_mv;
     this_mv.as_mv = get_mv_from_fullmv(&best_mv->as_fullmv);
 #if CONFIG_C071_SUBBLK_WARPMV
-    if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    if (
+#if CONFIG_FLEX_MVRES
+        pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+        !cm->features.allow_high_precision_mv
+#endif
+    ) {
       this_mv.as_mv.row += sub_mv_offset.row;
       this_mv.as_mv.col += sub_mv_offset.col;
     }
@@ -367,7 +378,13 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
   if (cpi->common.features.cur_frame_force_integer_mv) {
     convert_fullmv_to_mv(best_mv);
 #if CONFIG_C071_SUBBLK_WARPMV
-    if (mbmi->pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    if (
+#if CONFIG_FLEX_MVRES
+        mbmi->pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+        !cm->features.allow_high_precision_mv
+#endif
+    ) {
       best_mv->as_mv.col += sub_mv_offset.col;
       best_mv->as_mv.row += sub_mv_offset.row;
     }
@@ -394,7 +411,13 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
                                       cost_list);
     MV subpel_start_mv = get_mv_from_fullmv(&best_mv->as_fullmv);
 #if CONFIG_C071_SUBBLK_WARPMV
-    if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+    if (
+#if CONFIG_FLEX_MVRES
+        pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+        !cm->features.allow_high_precision_mv
+#endif
+    ) {
       subpel_start_mv.col += sub_mv_offset.col;
       subpel_start_mv.row += sub_mv_offset.row;
     }
@@ -417,7 +440,13 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
             MV this_best_mv;
             subpel_start_mv = get_mv_from_fullmv(&second_best_mv.as_fullmv);
 #if CONFIG_C071_SUBBLK_WARPMV
-            if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+            if (
+#if CONFIG_FLEX_MVRES
+                pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+                !cm->features.allow_high_precision_mv
+#endif
+            ) {
               subpel_start_mv.col += sub_mv_offset.col;
               subpel_start_mv.row += sub_mv_offset.row;
             }
@@ -772,7 +801,13 @@ void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 
 #if CONFIG_C071_SUBBLK_WARPMV
     MV sub_mv_offset = { 0, 0 };
-    get_phase_from_mv(ref_mv[id].as_mv, &sub_mv_offset, pb_mv_precision);
+    get_phase_from_mv(ref_mv[id].as_mv, &sub_mv_offset,
+#if CONFIG_FLEX_MVRES
+                      pb_mv_precision
+#else
+                      cm->features.allow_high_precision_mv
+#endif
+    );
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 
     // Small-range full-pixel motion search.
@@ -806,7 +841,13 @@ void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     if (cpi->common.features.cur_frame_force_integer_mv) {
       convert_fullmv_to_mv(&best_mv);
 #if CONFIG_C071_SUBBLK_WARPMV
-      if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+      if (
+#if CONFIG_FLEX_MVRES
+          pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+          !cm->features.allow_high_precision_mv
+#endif
+      ) {
         best_mv.as_mv.col += sub_mv_offset.col;
         best_mv.as_mv.row += sub_mv_offset.row;
       }
@@ -828,7 +869,13 @@ void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
       ms_params.forced_stop = EIGHTH_PEL;
       MV start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
 #if CONFIG_C071_SUBBLK_WARPMV
-      if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+      if (
+#if CONFIG_FLEX_MVRES
+          pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+          !cm->features.allow_high_precision_mv
+#endif
+      ) {
         start_mv.col += sub_mv_offset.col;
         start_mv.row += sub_mv_offset.row;
       }
@@ -1152,7 +1199,13 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 
 #if CONFIG_C071_SUBBLK_WARPMV
     MV sub_mv_offset = { 0, 0 };
-    get_phase_from_mv(ref_mv.as_mv, &sub_mv_offset, pb_mv_precision);
+    get_phase_from_mv(ref_mv.as_mv, &sub_mv_offset,
+#if CONFIG_FLEX_MVRES
+                      pb_mv_precision
+#else
+                      cm->features.allow_high_precision_mv
+#endif
+    );
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 
     // Small-range full-pixel motion search.
@@ -1180,7 +1233,13 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     if (cpi->common.features.cur_frame_force_integer_mv) {
       convert_fullmv_to_mv(&best_mv);
 #if CONFIG_C071_SUBBLK_WARPMV
-      if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+      if (
+#if CONFIG_FLEX_MVRES
+          pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+          !cm->features.allow_high_precision_mv
+#endif
+      ) {
         best_mv.as_mv.col += sub_mv_offset.col;
         best_mv.as_mv.row += sub_mv_offset.row;
       }
@@ -1204,7 +1263,13 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
       ms_params.forced_stop = EIGHTH_PEL;
       MV start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
 #if CONFIG_C071_SUBBLK_WARPMV
-      if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
+      if (
+#if CONFIG_FLEX_MVRES
+          pb_mv_precision >= MV_PRECISION_HALF_PEL
+#else
+          !cm->features.allow_high_precision_mv
+#endif
+      ) {
         start_mv.col += sub_mv_offset.col;
         start_mv.row += sub_mv_offset.row;
       }

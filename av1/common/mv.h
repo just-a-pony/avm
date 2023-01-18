@@ -118,9 +118,15 @@ static AOM_INLINE FULLPEL_MV get_fullmv_from_mv(const MV *subpel_mv) {
 
 #if CONFIG_C071_SUBBLK_WARPMV
 static AOM_INLINE void get_phase_from_mv(MV ref_mv, MV *sub_mv_offset,
-                                         MvSubpelPrecision precision) {
+#if CONFIG_FLEX_MVRES
+                                         MvSubpelPrecision precision
+#else
+                                         bool allow_hp
+#endif
+) {
   sub_mv_offset->col = 0;
   sub_mv_offset->row = 0;
+#if CONFIG_FLEX_MVRES
   int col_phase = ref_mv.col - GET_MV_SUBPEL(GET_MV_RAWPEL(ref_mv.col));
   int row_phase = ref_mv.row - GET_MV_SUBPEL(GET_MV_RAWPEL(ref_mv.row));
   if (precision == MV_PRECISION_QTR_PEL) {
@@ -136,6 +142,14 @@ static AOM_INLINE void get_phase_from_mv(MV ref_mv, MV *sub_mv_offset,
     assert(precision == MV_PRECISION_ONE_EIGHTH_PEL ||
            precision < MV_PRECISION_ONE_PEL);
   }
+#else
+  if (!allow_hp) {
+    int col_phase = ref_mv.col - GET_MV_SUBPEL(GET_MV_RAWPEL(ref_mv.col));
+    int row_phase = ref_mv.row - GET_MV_SUBPEL(GET_MV_RAWPEL(ref_mv.row));
+    sub_mv_offset->col = (col_phase & 1) ? col_phase : 0;
+    sub_mv_offset->row = (row_phase & 1) ? row_phase : 0;
+  }
+#endif
 }
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 
