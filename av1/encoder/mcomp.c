@@ -2901,6 +2901,7 @@ int av1_pick_ref_bv(FULLPEL_MV *best_full_mv,
     cur_ref_bv = xd->ref_mv_stack[INTRA_FRAME][cur_intrabc_drl_idx].this_mv;
     get_default_ref_bv(&cur_ref_bv, fullms_params);
 
+    ref_bv_ms_params.mv_limits = fullms_params->mv_limits;
     av1_init_ref_mv(&ref_bv_ms_params.mv_cost_params, &cur_ref_bv.as_mv);
 
 #if CONFIG_FLEX_MVRES
@@ -2909,6 +2910,11 @@ int av1_pick_ref_bv(FULLPEL_MV *best_full_mv,
                             mbmi->pb_mv_precision);
     if (!av1_is_fullmv_in_range(&ref_bv_ms_params.mv_limits, *best_full_mv,
                                 MV_PRECISION_ONE_PEL))
+      continue;
+#else
+    // ref_mv value is changed. mv_limits need to recalculate
+    av1_set_mv_search_range(&ref_bv_ms_params.mv_limits, &cur_ref_bv.as_mv);
+    if (!av1_is_fullmv_in_range(&ref_bv_ms_params.mv_limits, *best_full_mv))
       continue;
 #endif
 
