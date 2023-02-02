@@ -149,6 +149,9 @@ static REFERENCE_MODE read_frame_reference_mode(
 }
 
 static AOM_INLINE void inverse_transform_block(DecoderCodingBlock *dcb,
+#if CONFIG_CROSS_CHROMA_TX
+                                               const AV1_COMMON *cm,
+#endif  // CONFIG_CROSS_CHROMA_TX
                                                int plane, const TX_TYPE tx_type,
                                                const TX_SIZE tx_size,
                                                uint16_t *dst, int stride,
@@ -163,7 +166,7 @@ static AOM_INLINE void inverse_transform_block(DecoderCodingBlock *dcb,
   uint16_t eob = eob_data->eob;
 #if CONFIG_CROSS_CHROMA_TX
   // Update eob and scan_line according to those of the other chroma plane
-  if (plane) {
+  if (plane && is_cctx_allowed(cm, &dcb->xd)) {
     eob_info *eob_data_c1 =
         dcb->eob_data[AOM_PLANE_U] + dcb->txb_offset[AOM_PLANE_U];
     eob_info *eob_data_c2 =
@@ -265,7 +268,11 @@ static AOM_INLINE void predict_and_reconstruct_intra_block(
       struct macroblockd_plane *const pd = &xd->plane[plane];
       uint16_t *dst =
           &pd->dst.buf[(row * pd->dst.stride + col) << MI_SIZE_LOG2];
-      inverse_transform_block(dcb, plane, tx_type, tx_size, dst, pd->dst.stride,
+      inverse_transform_block(dcb,
+#if CONFIG_CROSS_CHROMA_TX
+                              cm,
+#endif  // CONFIG_CROSS_CHROMA_TX
+                              plane, tx_type, tx_size, dst, pd->dst.stride,
                               reduced_tx_set_used);
     }
   }
@@ -318,7 +325,11 @@ static AOM_INLINE void inverse_transform_inter_block(
 
   uint16_t *dst =
       &pd->dst.buf[(blk_row * pd->dst.stride + blk_col) << MI_SIZE_LOG2];
-  inverse_transform_block(dcb, plane, tx_type, tx_size, dst, pd->dst.stride,
+  inverse_transform_block(dcb,
+#if CONFIG_CROSS_CHROMA_TX
+                          cm,
+#endif  // CONFIG_CROSS_CHROMA_TX
+                          plane, tx_type, tx_size, dst, pd->dst.stride,
                           reduced_tx_set_used);
 #if CONFIG_MISMATCH_DEBUG
   int pixel_c, pixel_r;
