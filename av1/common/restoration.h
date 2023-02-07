@@ -91,6 +91,11 @@ extern "C" {
 #define RESTORATION_UNITPELS_MAX \
   (RESTORATION_UNITPELS_HORZ_MAX * RESTORATION_UNITPELS_VERT_MAX)
 
+#if CONFIG_PC_WIENER || CONFIG_WIENER_NONSEP
+#define NUM_PC_WIENER_TAPS_LUMA 13
+#include "av1/common/pc_wiener_filters.h"
+#endif  // CONFIG_PC_WIENER || CONFIG_WIENER_NONSEP
+
 // Two 32-bit buffers needed for the restored versions from two filters
 // TODO(debargha, rupert): Refactor to not need the large tilesize to be stored
 // on the decoder side.
@@ -170,6 +175,57 @@ extern "C" {
 #define WIENER_FILT_TAP1_SUBEXP_K 2
 #define WIENER_FILT_TAP2_SUBEXP_K 3
 
+#if CONFIG_WIENER_NONSEP
+#if CONFIG_WIENER_NONSEP_CROSS_FILT
+#define WIENERNS_UV_BRD 2  // Max offset for luma used for chorma
+#else
+#define WIENERNS_UV_BRD 0  // Max offset for luma used for chorma
+#endif                     // CONFIG_WIENER_NONSEP_CROSS_FILT
+
+#define WIENERNS_MAX 20
+
+#define WIENERNS_ROW_ID 0
+#define WIENERNS_COL_ID 1
+#define WIENERNS_BUF_POS 2
+
+#define WIENERNS_COEFCFG_LEN 3
+#define WIENERNS_BIT_ID 0
+#define WIENERNS_MIN_ID 1
+#define WIENERNS_PAR_ID 2
+
+typedef struct {
+  NonsepFilterConfig nsfilter_config;
+  int ncoeffs;
+  const int (*coeffs)[WIENERNS_COEFCFG_LEN];
+} WienernsFilterParameters;
+
+typedef struct {
+  const WienernsFilterParameters *y;
+  const WienernsFilterParameters *uv;
+} WienernsFilterPairParameters;
+
+extern const WienernsFilterPairParameters wienerns_filters_lowqp;
+extern const WienernsFilterPairParameters wienerns_filters_midqp;
+extern const WienernsFilterPairParameters wienerns_filters_highqp;
+
+#define USE_CENTER_WIENER_NONSEP 0
+
+static INLINE const WienernsFilterParameters *get_wienerns_parameters(
+    int qindex, int is_uv) {
+  const WienernsFilterPairParameters *pair_nsfilter_params = NULL;
+  (void)qindex;
+  pair_nsfilter_params = &wienerns_filters_midqp;
+  return is_uv ? pair_nsfilter_params->uv : pair_nsfilter_params->y;
+}
+
+static INLINE const NonsepFilterConfig *get_wienerns_config(int qindex,
+                                                            int is_uv) {
+  const WienernsFilterParameters *base_nsfilter_params =
+      get_wienerns_parameters(qindex, is_uv);
+  return &base_nsfilter_params->nsfilter_config;
+}
+#endif  // CONFIG_WIENER_NONSEP
+
 // Max of SGRPROJ_TMPBUF_SIZE, DOMAINTXFMRF_TMPBUF_SIZE, WIENER_TMPBUF_SIZE
 #define RESTORATION_TMPBUF_SIZE (SGRPROJ_TMPBUF_SIZE)
 
@@ -210,6 +266,63 @@ typedef struct {
    * Sgrproj filter parameters if restoration_type indicates Sgrproj
    */
   SgrprojInfo sgrproj_info;
+#if CONFIG_WIENER_NONSEP
+  /*!
+   * Nonseparable Wiener filter information.
+   */
+  WienerNonsepInfo wienerns_info;
+#if CONFIG_WIENER_NONSEP_CROSS_FILT
+  /*!
+   * Pointer to luma frame.
+   */
+  const uint16_t *luma;
+  /*!
+   * Stride for luma frame.
+   */
+  int luma_stride;
+#endif  // CONFIG_WIENER_NONSEP_CROSS_FILT
+#endif  // CONFIG_WIENER_NONSEP
+
+#if CONFIG_WIENER_NONSEP || CONFIG_PC_WIENER
+  /*!
+   * Plane for filtering.
+   */
+  int plane;
+  /*!
+   * Quantizer index.
+   */
+  int base_qindex;
+  /*!
+   * The class-id that classifcation related processing should be restricted to.
+   */
+  int wiener_class_id_restrict;
+#endif  // CONFIG_WIENER_NONSEP || CONFIG_PC_WIENER
+#if CONFIG_PC_WIENER
+  /*!
+   * Pointer to tskip frame.
+   */
+  const uint8_t *tskip;
+  /*!
+   * Stride for tskip frame.
+   */
+  int tskip_stride;
+  /*!
+   * Offset to quantizer index.
+   */
+  int qindex_offset;
+  /*!
+   * Pointer to wiener_class_id frame.
+   */
+  uint8_t *wiener_class_id;
+  /*!
+   * Stride for wiener_class_id frame.
+   */
+  int wiener_class_id_stride;
+  /*!
+   * Pointer to buffers for pcwiener computations.
+   */
+  PcwienerBuffers *pcwiener_buffers;
+#endif  // CONFIG_PC_WIENER
 } RestorationUnitInfo;
 
 /*!\cond */
@@ -316,6 +429,12 @@ typedef struct {
    */
   uint8_t sw_lr_tools_disable_mask;
 #endif  // CONFIG_LR_FLEX_SYNTAX
+#if CONFIG_WIENER_NONSEP
+  /*!
+   * Number of classes in the Wienerns filtering calculation.
+   */
+  int num_filter_classes;
+#endif  // CONFIG_WIENER_NONSEP
 } RestorationInfo;
 
 /*!\cond */
@@ -337,6 +456,41 @@ static INLINE void set_default_wiener(WienerInfo *wiener_info) {
   wiener_info->vfilter[6] = wiener_info->hfilter[6] = WIENER_FILT_TAP0_MIDV;
 }
 
+#if CONFIG_WIENER_NONSEP
+static INLINE void set_default_wienerns(WienerNonsepInfo *wienerns_info,
+                                        int qindex, int num_classes,
+                                        int chroma) {
+  const WienernsFilterParameters *nsfilter_params =
+      get_wienerns_parameters(qindex, chroma);
+  wienerns_info->num_classes = num_classes;
+  for (int c_id = 0; c_id < wienerns_info->num_classes; ++c_id) {
+#if CONFIG_LR_MERGE_COEFFS
+    wienerns_info->bank_ref_for_class[c_id] = 0;
+#endif  // CONFIG_LR_MERGE_COEFFS
+    int16_t *wienerns_info_nsfilter = nsfilter_taps(wienerns_info, c_id);
+    for (int i = 0; i < nsfilter_params->ncoeffs; ++i) {
+      wienerns_info_nsfilter[i] =
+          nsfilter_params->coeffs[i][WIENERNS_MIN_ID] +
+          (1 << nsfilter_params->coeffs[i][WIENERNS_BIT_ID]) / 2;
+    }
+  }
+}
+
+#if CONFIG_WIENER_NONSEP_CROSS_FILT
+
+// 0: Skip luma pixels to scale down to chroma (simplest)
+// 1: Average 4 or 2 luma pixels to scale down to chroma
+// 2: Use 8-tap downsampling filter
+#define WIENERNS_CROSS_FILT_LUMA_TYPE 0
+
+uint16_t *wienerns_copy_luma_highbd(const uint16_t *dgd, int height_y,
+                                    int width_y, int in_stride, uint16_t **luma,
+                                    int height_uv, int width_uv, int border,
+                                    int out_stride, int bd);
+#endif  // CONFIG_WIENER_NONSEP_CROSS_FILT
+
+#endif  // CONFIG_WIENER_NONSEP
+
 typedef struct {
   int h_start, h_end, v_start, v_end;
 } RestorationTileLimits;
@@ -355,6 +509,21 @@ typedef struct FilterFrameCtxt {
   uint16_t *data8, *dst8;
   int data_stride, dst_stride;
   AV1PixelRect tile_rect;
+#if CONFIG_WIENER_NONSEP || CONFIG_PC_WIENER
+  int plane;
+  int base_qindex;
+#endif  // CONFIG_WIENER_NONSEP || CONFIG_PC_WIENER
+#if CONFIG_WIENER_NONSEP_CROSS_FILT
+  const uint16_t *luma;
+  int luma_stride;
+#endif  // CONFIG_WIENER_NONSEP_CROSS_FILT
+#if CONFIG_PC_WIENER
+  const uint8_t *tskip;
+  int tskip_stride;
+  int qindex_offset;
+  uint8_t *wiener_class_id;
+  int wiener_class_id_stride;
+#endif  // CONFIG_PC_WIENER
 } FilterFrameCtxt;
 
 typedef struct AV1LrStruct {
@@ -434,7 +603,13 @@ void av1_loop_restoration_filter_frame(YV12_BUFFER_CONFIG *frame,
 /*!\cond */
 
 #if CONFIG_LR_FLEX_SYNTAX
+#if CONFIG_LR_FLEX_SYNTAX
+#if CONFIG_PC_WIENER
+#define DEF_UV_LR_TOOLS_DISABLE_MASK (1 << RESTORE_PC_WIENER)
+#else
 #define DEF_UV_LR_TOOLS_DISABLE_MASK 0
+#endif  // CONFIG_PC_WIENER
+#endif  // CONFIG_LR_FLEX_SYNTAX
 #endif  // CONFIG_LR_FLEX_SYNTAX
 
 void av1_loop_restoration_precal();

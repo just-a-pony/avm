@@ -58,6 +58,24 @@ static INLINE int linsolve(int n, double *A, int stride, double *b, double *x) {
   return 1;
 }
 
+// Solves Ax = b, where x and b are column vectors of size nx1 and A is nxn,
+// without destroying the contents of matrix A and vector b.
+static INLINE int linsolve_const(int n, const double *A, int stride,
+                                 const double *b, double *x) {
+  assert(n > 0);
+  assert(stride > 0);
+  double *A_ = (double *)malloc(sizeof(*A_) * n * n);
+  double *b_ = (double *)malloc(sizeof(*b_) * n);
+  for (int i = 0; i < n; ++i) {
+    memcpy(A_ + i * n, A + i * stride, sizeof(*A_) * n);
+  }
+  memcpy(b_, b, sizeof(*b_) * n);
+  int ret = linsolve(n, A_, n, b_, x);
+  free(A_);
+  free(b_);
+  return ret;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Least-squares
 // Solves for n-dim x in a least squares sense to minimize |Ax - b|^2
