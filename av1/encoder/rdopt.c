@@ -2603,7 +2603,9 @@ static int64_t motion_mode_rd(
 
             // Refine MV in a small range.
             av1_refine_warped_mv(xd, cm, &ms_params, bsize, pts0, pts_inref0,
-                                 total_samples);
+                                 total_samples,
+                                 cpi->sf.mv_sf.warp_search_method,
+                                 cpi->sf.mv_sf.warp_search_iters);
 
             if (mv0.as_int != mbmi->mv[0].as_int) {
               // Keep the refined MV and WM parameters.
@@ -2692,8 +2694,10 @@ static int64_t motion_mode_rd(
                                     [mbmi->warp_ref_idx]
                   .proj_type == PROJ_DEFAULT)
             continue;
-          valid = av1_refine_mv_for_base_param_warp_model(cm, xd, mbmi,
-                                                          mbmi_ext, &ms_params);
+          valid = av1_refine_mv_for_base_param_warp_model(
+              cm, xd, mbmi, mbmi_ext, &ms_params,
+              cpi->sf.mv_sf.warp_search_method,
+              cpi->sf.mv_sf.warp_search_iters);
         } else {
 #endif  // CONFIG_WARP_REF_LIST
 
@@ -2870,7 +2874,9 @@ static int64_t motion_mode_rd(
           // Refine motion vector. The final choice of MV and warp model are
           // stored directly into `mbmi`
           av1_refine_mv_for_warp_extend(cm, xd, &ms_params, neighbor_is_above,
-                                        bsize, &neighbor_params);
+                                        bsize, &neighbor_params,
+                                        cpi->sf.mv_sf.warp_search_method,
+                                        cpi->sf.mv_sf.warp_search_iters);
 
           // If we changed the MV, update costs
           if (mv0.as_int != mbmi->mv[0].as_int) {
