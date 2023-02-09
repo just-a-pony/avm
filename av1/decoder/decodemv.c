@@ -370,6 +370,35 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   assert(mbmi->ref_mv_idx < max_drl_bits + 1);
 }
 
+#if CONFIG_WEDGE_MOD_EXT
+static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
+                              const BLOCK_SIZE bsize) {
+  int wedge_angle_dir =
+      aom_read_symbol(r, ec_ctx->wedge_angle_dir_cdf[bsize], 2, ACCT_STR);
+  int wedge_angle = WEDGE_ANGLES;
+  if (wedge_angle_dir == 0) {
+    wedge_angle = aom_read_symbol(r, ec_ctx->wedge_angle_0_cdf[bsize],
+                                  H_WEDGE_ANGLES, ACCT_STR);
+  } else {
+    wedge_angle =
+        H_WEDGE_ANGLES + aom_read_symbol(r, ec_ctx->wedge_angle_1_cdf[bsize],
+                                         H_WEDGE_ANGLES, ACCT_STR);
+  }
+  int wedge_dist = 0;
+  if ((wedge_angle >= H_WEDGE_ANGLES) ||
+      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_180)) {
+    wedge_dist = aom_read_symbol(r, ec_ctx->wedge_dist_cdf2[bsize],
+                                 NUM_WEDGE_DIST - 1, ACCT_STR) +
+                 1;
+  } else {
+    assert(wedge_angle < H_WEDGE_ANGLES);
+    wedge_dist = aom_read_symbol(r, ec_ctx->wedge_dist_cdf[bsize],
+                                 NUM_WEDGE_DIST, ACCT_STR);
+  }
+  return wedge_angle_dist_2_index[wedge_angle][wedge_dist];
+}
+#endif  // CONFIG_WEDGE_MOD_EXT
+
 #if CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_WARP_REF_LIST
 // read the reference index warp_ref_idx of WRL
@@ -468,35 +497,6 @@ static void read_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   assign_warpmv(cm, xd->submi, bsize, params, mi_row, mi_col);
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 }
-
-#if CONFIG_WEDGE_MOD_EXT
-static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
-                              const BLOCK_SIZE bsize) {
-  int wedge_angle_dir =
-      aom_read_symbol(r, ec_ctx->wedge_angle_dir_cdf[bsize], 2, ACCT_STR);
-  int wedge_angle = WEDGE_ANGLES;
-  if (wedge_angle_dir == 0) {
-    wedge_angle = aom_read_symbol(r, ec_ctx->wedge_angle_0_cdf[bsize],
-                                  H_WEDGE_ANGLES, ACCT_STR);
-  } else {
-    wedge_angle =
-        H_WEDGE_ANGLES + aom_read_symbol(r, ec_ctx->wedge_angle_1_cdf[bsize],
-                                         H_WEDGE_ANGLES, ACCT_STR);
-  }
-  int wedge_dist = 0;
-  if ((wedge_angle >= H_WEDGE_ANGLES) ||
-      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_180)) {
-    wedge_dist = aom_read_symbol(r, ec_ctx->wedge_dist_cdf2[bsize],
-                                 NUM_WEDGE_DIST - 1, ACCT_STR) +
-                 1;
-  } else {
-    assert(wedge_angle < H_WEDGE_ANGLES);
-    wedge_dist = aom_read_symbol(r, ec_ctx->wedge_dist_cdf[bsize],
-                                 NUM_WEDGE_DIST, ACCT_STR);
-  }
-  return wedge_angle_dist_2_index[wedge_angle][wedge_dist];
-}
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
                                     MB_MODE_INFO *mbmi, aom_reader *r) {
@@ -3016,8 +3016,13 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
         mbmi->use_wedge_interintra = aom_read_symbol(
             r, ec_ctx->wedge_interintra_cdf[bsize], 2, ACCT_STR);
         if (mbmi->use_wedge_interintra) {
+#if CONFIG_WEDGE_MOD_EXT
+          mbmi->interintra_wedge_index = read_wedge_mode(r, ec_ctx, bsize);
+          assert(mbmi->interintra_wedge_index != -1);
+#else
           mbmi->interintra_wedge_index = (int8_t)aom_read_symbol(
               r, ec_ctx->wedge_idx_cdf[bsize], MAX_WEDGE_TYPES, ACCT_STR);
+#endif
         }
       }
     }
@@ -3182,6 +3187,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #endif
       mbmi->wm_params.invalid = 1;
     }
+#if CONFIG_C071_SUBBLK_WARPMV
+    assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params, mi_row, mi_col);
+#endif  // CONFIG_C071_SUBBLK_WARPMV
   }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 

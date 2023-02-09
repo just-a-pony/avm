@@ -2256,8 +2256,13 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
           aom_write_symbol(w, mbmi->use_wedge_interintra,
                            ec_ctx->wedge_interintra_cdf[bsize], 2);
           if (mbmi->use_wedge_interintra) {
+
+#if CONFIG_WEDGE_MOD_EXT
+            write_wedge_mode(w, ec_ctx, bsize, mbmi->interintra_wedge_index);
+#else
             aom_write_symbol(w, mbmi->interintra_wedge_index,
                              ec_ctx->wedge_idx_cdf[bsize], MAX_WEDGE_TYPES);
+#endif  // CONFIG_WEDGE_MOD_EXT
           }
         }
       }

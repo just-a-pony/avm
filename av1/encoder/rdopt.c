@@ -2627,8 +2627,12 @@ static int64_t motion_mode_rd(
             }
           }
 #if CONFIG_C071_SUBBLK_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
           assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params[0], mi_row,
                         mi_col);
+#else
+          assign_warpmv(cm, xd->submi, bsize, &mbmi->wm_params, mi_row, mi_col);
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #endif  // CONFIG_C071_SUBBLK_WARPMV
         // Build the warped predictor
           av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,

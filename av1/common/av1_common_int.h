@@ -3763,7 +3763,8 @@ static INLINE MOTION_MODE motion_mode_allowed(const AV1_COMMON *cm,
     if (is_global_mv_block(mbmi, gm_type)) return SIMPLE_TRANSLATION;
   }
 
-  if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
+  if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y], xd->mi_row,
+                                        xd->mi_col) &&
       is_inter_mode(mbmi->mode) && mbmi->ref_frame[1] != INTRA_FRAME &&
       is_motion_variation_allowed_compound(mbmi)) {
     if (!check_num_overlappable_neighbors(mbmi)) return SIMPLE_TRANSLATION;
