@@ -2893,7 +2893,11 @@ static INLINE int check_is_chroma_size_valid(
     // still coupled, then we need to make sure the corresponding chroma bsize
     // is valid.
     if (is_bsize_above_decoupled_thresh(bsize)) {
-      return get_plane_block_size(bsize, ss_x, ss_y) != BLOCK_INVALID;
+      const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
+      if (subsize == BLOCK_INVALID) {
+        return false;
+      }
+      return get_plane_block_size(subsize, ss_x, ss_y) != BLOCK_INVALID;
     }
 
     return true;
