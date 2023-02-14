@@ -812,9 +812,10 @@ static INLINE PARTITION_TYPE_REC get_symbol_from_partition_noext_rec_block(
 }
 
 /*!\brief Returns the symbol to be transmitted through the bitstream for the
- * middle block of ternary partition.
- * \note "limited_partition" refers to the fact that the middle block of ternary
- * partition cannot be split in the same direction as the ternary partition. */
+ * middle block of extended partition.
+ * \note "limited_partition" refers to the fact that the middle block of
+ * extended partition cannot be split in the same direction as the extended
+ * partition. */
 static INLINE PARTITION_TYPE get_symbol_from_limited_partition(
     PARTITION_TYPE part, PARTITION_TYPE parent_part) {
   assert(part != PARTITION_INVALID);
@@ -834,9 +835,10 @@ static INLINE PARTITION_TYPE get_symbol_from_limited_partition(
 }
 
 /*!\brief Returns the symbol to be transmitted through the bitstream for the
- * middle block of ternary partition when extended partition is disabled.
- * \note "limited_partition" refers to the fact that the middle block of ternary
- * partition cannot be split in the same direction as the ternary partition. */
+ * middle block of extended partition when extended partition is disabled.
+ * \note "limited_partition" refers to the fact that the middle block of
+ * extended partition cannot be split in the same direction as the extended
+ * partition. */
 static INLINE PARTITION_TYPE get_symbol_from_limited_partition_noext(
     PARTITION_TYPE part, PARTITION_TYPE parent_part) {
   assert(part != PARTITION_INVALID);
@@ -858,9 +860,9 @@ static INLINE PARTITION_TYPE get_symbol_from_limited_partition_noext(
 }
 
 /*!\brief Returns the partition type based on the symbol transmitted through the
- * bitstream for the middle block of ternary partition. \note
- * "limited_partition" refers to the fact that the middle block of ternary
- * partition cannot be split in the same direction as the ternary partition. */
+ * bitstream for the middle block of extended partition. \note
+ * "limited_partition" refers to the fact that the middle block of extended
+ * partition cannot be split in the same direction as the extended partition. */
 static INLINE PARTITION_TYPE
 get_limited_partition_from_symbol(int symbol, PARTITION_TYPE parent_part) {
   assert(parent_part == PARTITION_HORZ_3 || parent_part == PARTITION_VERT_3);
@@ -883,10 +885,10 @@ get_limited_partition_from_symbol(int symbol, PARTITION_TYPE parent_part) {
 }
 
 /*!\brief Returns the partition type based on the symbol transmitted through the
- * bitstream for the middle block of ternary partition when extended partition
+ * bitstream for the middle block of extended partition when extended partition
  * is disabled. \note "limited_partition" refers to the fact that the middle
- * block of ternary partition cannot be split in the same direction as the
- * ternary partition. */
+ * block of extended partition cannot be split in the same direction as the
+ * extended partition. */
 static INLINE PARTITION_TYPE get_limited_partition_noext_from_symbol(
     int symbol, PARTITION_TYPE parent_part) {
   assert(parent_part == PARTITION_HORZ_3 || parent_part == PARTITION_VERT_3);
@@ -1013,6 +1015,93 @@ static INLINE BLOCK_SIZE get_partition_subsize(BLOCK_SIZE bsize,
   }
 }
 
+#if CONFIG_H_PARTITION
+// Get the block size of the ith sub-block in a block partitioned via an
+// h-partition mode.
+static INLINE BLOCK_SIZE get_h_partition_subsize(BLOCK_SIZE bsize, int index,
+                                                 PARTITION_TYPE partition) {
+  assert(partition == PARTITION_HORZ_3 || partition == PARTITION_VERT_3);
+  assert(index >= 0 && index <= 3);
+  if (!is_partition_point(bsize) ||
+      subsize_lookup[partition][bsize] == BLOCK_INVALID) {
+    return BLOCK_INVALID;
+  }
+
+  if (index == 0 || index == 3) {
+    return subsize_lookup[partition][bsize];
+  } else {
+    static const BLOCK_SIZE mid_sub_block_hpart[BLOCK_SIZES] = {
+      BLOCK_INVALID,  // BLOCK_4X4
+      BLOCK_INVALID,  // BLOCK_4X8
+      BLOCK_INVALID,  // BLOCK_8X4
+      BLOCK_INVALID,  // BLOCK_8X8
+      BLOCK_4X8,      // BLOCK_8X16
+      BLOCK_8X4,      // BLOCK_16X8
+      BLOCK_8X8,      // BLOCK_16X16
+      BLOCK_8X16,     // BLOCK_16X32
+      BLOCK_16X8,     // BLOCK_32X16
+      BLOCK_16X16,    // BLOCK_32X32
+      BLOCK_16X32,    // BLOCK_32X64
+      BLOCK_32X16,    // BLOCK_64X32
+      BLOCK_32X32,    // BLOCK_64X64
+      BLOCK_INVALID,  // BLOCK_64X128
+      BLOCK_INVALID,  // BLOCK_128X64
+      BLOCK_INVALID,  // BLOCK_128X128
+    };
+
+    return mid_sub_block_hpart[bsize];
+  }
+}
+
+// Get the mi_row offset of the ith sub-block in a block partitioned via an
+// h-partition mode.
+static INLINE int get_h_partition_offset_mi_row(BLOCK_SIZE bsize, int index,
+                                                PARTITION_TYPE partition) {
+  assert(get_h_partition_subsize(bsize, index, partition) != BLOCK_INVALID);
+
+  const int hbh = mi_size_high[bsize] >> 1;
+  assert(hbh > 0);
+  if (partition == PARTITION_VERT_3) {
+    return index == 2 ? hbh : 0;
+  } else {
+    const int qbh = hbh >> 1;
+    assert(qbh > 0);
+
+    switch (index) {
+      case 0: return 0;
+      case 1:
+      case 2: return qbh;
+      case 3: return 3 * qbh;
+      default: assert(0); return -1;
+    }
+  }
+}
+
+// Get the mi_col offset of the ith sub-block in a block partitioned via an
+// h-partition mode.
+static INLINE int get_h_partition_offset_mi_col(BLOCK_SIZE bsize, int index,
+                                                PARTITION_TYPE partition) {
+  assert(get_h_partition_subsize(bsize, index, partition) != BLOCK_INVALID);
+
+  const int hbw = mi_size_wide[bsize] >> 1;
+  assert(hbw > 0);
+  if (partition == PARTITION_HORZ_3) {
+    return index == 2 ? hbw : 0;
+  } else {
+    const int qbw = hbw >> 1;
+    assert(qbw > 0);
+
+    switch (index) {
+      case 0: return 0;
+      case 1:
+      case 2: return qbw;
+      case 3: return 3 * qbw;
+      default: assert(0); return -1;
+    }
+  }
+}
+#endif  // CONFIG_H_PARTITION
+
 static INLINE int is_partition_valid(BLOCK_SIZE bsize, PARTITION_TYPE p) {
 #if CONFIG_EXT_RECUR_PARTITIONS
   if (p == PARTITION_SPLIT) return 0;
@@ -1054,8 +1143,13 @@ static INLINE int have_nz_chroma_ref_offset(BLOCK_SIZE bsize,
     case PARTITION_VERT: return hbw_less_than_4 || bh_less_than_4;
     case PARTITION_SPLIT: return hbw_less_than_4 || hbh_less_than_4;
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_H_PARTITION
+    case PARTITION_HORZ_3: return hbw_less_than_4 || qbh_less_than_4;
+    case PARTITION_VERT_3: return qbw_less_than_4 || hbh_less_than_4;
+#else
     case PARTITION_HORZ_3: return bw_less_than_4 || qbh_less_than_4;
     case PARTITION_VERT_3: return qbw_less_than_4 || bh_less_than_4;
+#endif  // CONFIG_H_PARTITION
 #else   // CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_A:
     case PARTITION_HORZ_B:
@@ -1105,8 +1199,13 @@ static INLINE int is_sub_partition_chroma_ref(PARTITION_TYPE partition,
           return 1;
       }
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_H_PARTITION
+    case PARTITION_VERT_3:
+    case PARTITION_HORZ_3: return index == 3;
+#else
     case PARTITION_VERT_3:
     case PARTITION_HORZ_3: return index == 2;
+#endif  // CONFIG_H_PARTITION
 #else   // CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_A:
     case PARTITION_HORZ_B:
@@ -2509,6 +2608,51 @@ static INLINE BLOCK_SIZE get_plane_block_size(BLOCK_SIZE bsize,
   assert(subsampling_x >= 0 && subsampling_x < 2);
   assert(subsampling_y >= 0 && subsampling_y < 2);
   return ss_size_lookup[bsize][subsampling_x][subsampling_y];
+}
+
+static INLINE int max_block_wide(const MACROBLOCKD *xd, BLOCK_SIZE bsize,
+                                 int plane) {
+  assert(bsize < BLOCK_SIZES_ALL);
+  int max_blocks_wide = block_size_wide[bsize];
+
+  if (xd->mb_to_right_edge < 0) {
+    const struct macroblockd_plane *const pd = &xd->plane[plane];
+    max_blocks_wide += xd->mb_to_right_edge >> (3 + pd->subsampling_x);
+  }
+
+  // Scale the width in the transform block unit.
+  return max_blocks_wide >> MI_SIZE_LOG2;
+}
+
+static INLINE int max_block_high(const MACROBLOCKD *xd, BLOCK_SIZE bsize,
+                                 int plane) {
+  int max_blocks_high = block_size_high[bsize];
+
+  if (xd->mb_to_bottom_edge < 0) {
+    const struct macroblockd_plane *const pd = &xd->plane[plane];
+    max_blocks_high += xd->mb_to_bottom_edge >> (3 + pd->subsampling_y);
+  }
+
+  // Scale the height in the transform block unit.
+  return max_blocks_high >> MI_SIZE_LOG2;
+}
+
+static INLINE int get_plane_tx_unit_height(const MACROBLOCKD *xd,
+                                           BLOCK_SIZE plane_bsize, int plane,
+                                           int row, int ss_y) {
+  const int max_plane_blocks_high = max_block_high(xd, plane_bsize, plane);
+  const int mu_plane_blocks_high =
+      AOMMIN(mi_size_high[BLOCK_64X64] >> ss_y, max_plane_blocks_high);
+  return AOMMIN(mu_plane_blocks_high + (row >> ss_y), max_plane_blocks_high);
+}
+
+static INLINE int get_plane_tx_unit_width(const MACROBLOCKD *xd,
+                                          BLOCK_SIZE plane_bsize, int plane,
+                                          int col, int ss_x) {
+  const int max_plane_blocks_wide = max_block_wide(xd, plane_bsize, plane);
+  const int mu_plane_blocks_wide =
+      AOMMIN(mi_size_wide[BLOCK_64X64] >> ss_x, max_plane_blocks_wide);
+  return AOMMIN(mu_plane_blocks_wide + (col >> ss_x), max_plane_blocks_wide);
 }
 
 /*!\brief Returns the index of luma/chroma based on the current partition tree
