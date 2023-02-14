@@ -2448,17 +2448,15 @@ static INLINE void update_ext_partition_context(MACROBLOCKD *xd, int mi_row,
                                                 int mi_col, BLOCK_SIZE subsize,
                                                 BLOCK_SIZE bsize,
                                                 PARTITION_TYPE partition) {
-  if (is_partition_point(bsize)) {
-#if !CONFIG_EXT_RECUR_PARTITIONS || !CONFIG_H_PARTITION
-    const int hbs = mi_size_wide[bsize] / 2;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS || !CONFIG_H_PARTITION
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if !CONFIG_H_PARTITION
-    const int quarter_step = hbs / 2;
-#endif  // !CONFIG_H_PARTITION
+  if (partition == PARTITION_NONE) {
+    assert(bsize == subsize);
+    update_partition_context(xd, mi_row, mi_col, subsize, bsize);
+  }
 #else
+  if (is_partition_point(bsize)) {
+    const int hbs = mi_size_wide[bsize] / 2;
     const BLOCK_SIZE bsize2 = get_partition_subsize(bsize, PARTITION_SPLIT);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     switch (partition) {
       case PARTITION_SPLIT:
         if (bsize != BLOCK_8X8) break;
@@ -2468,54 +2466,6 @@ static INLINE void update_ext_partition_context(MACROBLOCKD *xd, int mi_row,
       case PARTITION_VERT:
         update_partition_context(xd, mi_row, mi_col, subsize, bsize);
         break;
-#if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_H_PARTITION
-      case PARTITION_HORZ_3:
-      case PARTITION_VERT_3: {
-        for (int i = 0; i < 4; ++i) {
-          if (i == 2) continue;
-
-          const BLOCK_SIZE this_bsize =
-              get_h_partition_subsize(bsize, i, partition);
-          const int offset_mr =
-              get_h_partition_offset_mi_row(bsize, i, partition);
-          const int offset_mc =
-              get_h_partition_offset_mi_col(bsize, i, partition);
-
-          BLOCK_SIZE update_bsize = this_bsize;
-          if (i == 1) {
-            const PARTITION_TYPE half_part_mode =
-                (partition == PARTITION_HORZ_3) ? PARTITION_HORZ
-                                                : PARTITION_VERT;
-            update_bsize = get_partition_subsize(bsize, half_part_mode);
-          }
-
-          update_partition_context(xd, mi_row + offset_mr, mi_col + offset_mc,
-                                   this_bsize, update_bsize);
-        }
-        break;
-      }
-#else
-      case PARTITION_HORZ_3: {
-        const BLOCK_SIZE bsize3 = get_partition_subsize(bsize, PARTITION_HORZ);
-        update_partition_context(xd, mi_row, mi_col, subsize, subsize);
-        update_partition_context(xd, mi_row + quarter_step, mi_col, bsize3,
-                                 bsize3);
-        update_partition_context(xd, mi_row + 3 * quarter_step, mi_col, subsize,
-                                 subsize);
-        break;
-      }
-      case PARTITION_VERT_3: {
-        const BLOCK_SIZE bsize3 = get_partition_subsize(bsize, PARTITION_VERT);
-        update_partition_context(xd, mi_row, mi_col, subsize, subsize);
-        update_partition_context(xd, mi_row, mi_col + quarter_step, bsize3,
-                                 bsize3);
-        update_partition_context(xd, mi_row, mi_col + 3 * quarter_step, subsize,
-                                 subsize);
-        break;
-      }
-#endif  // CONFIG_H_PARTITION
-#else   // CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_HORZ_A:
         update_partition_context(xd, mi_row, mi_col, bsize2, subsize);
         update_partition_context(xd, mi_row + hbs, mi_col, subsize, subsize);
@@ -2536,10 +2486,10 @@ static INLINE void update_ext_partition_context(MACROBLOCKD *xd, int mi_row,
       case PARTITION_VERT_4:
         update_partition_context(xd, mi_row, mi_col, subsize, bsize);
         break;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       default: assert(0 && "Invalid partition type");
     }
   }
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
@@ -2561,16 +2511,16 @@ static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
 
     return (left * 2 + above) + bsl * PARTITION_PLOFFSET;
 #if CONFIG_EXT_RECUR_PARTITIONS
-  } else {
-    const int bsl_w = mi_size_wide_log2[bsize] - mi_size_wide_log2[BLOCK_8X8];
-    const int bsl_h = mi_size_high_log2[bsize] - mi_size_high_log2[BLOCK_8X8];
-
-    const int above = (*above_ctx >> AOMMAX(bsl_w, 0)) & 1;
-    const int left = (*left_ctx >> AOMMAX(bsl_h, 0)) & 1;
-
-    return (left * 2 + above) +
-           AOMMIN(bsl_w + 1, bsl_h + 1) * PARTITION_PLOFFSET;
   }
+  const int bsl_w = mi_size_wide_log2[bsize];
+  const int bsl_h = mi_size_high_log2[bsize];
+
+  const int above = (*above_ctx >> AOMMAX(bsl_w - 1, 0)) & 1;
+  const int left = (*left_ctx >> AOMMAX(bsl_h - 1, 0)) & 1;
+
+  const int context =
+      is_wide_block(bsize) ? (left * 2 + above) : (above * 2 + left);
+  return context + AOMMIN(bsl_w, bsl_h) * PARTITION_PLOFFSET;
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
