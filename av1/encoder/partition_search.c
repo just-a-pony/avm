@@ -2620,13 +2620,22 @@ static void build_one_split_tree(AV1_COMMON *const cm, TREE_TYPE tree_type,
   assert(block_size_high[bsize] == block_size_wide[bsize]);
   if (mi_row >= cm->mi_params.mi_rows || mi_col >= cm->mi_params.mi_cols)
     return;
+
+  const int ss_x = cm->seq_params.subsampling_x;
+  const int ss_y = cm->seq_params.subsampling_y;
+
+  PARTITION_TREE *parent = ptree->parent;
+  set_chroma_ref_info(mi_row, mi_col, ptree->index, bsize,
+                      &ptree->chroma_ref_info,
+                      parent ? &parent->chroma_ref_info : NULL,
+                      parent ? parent->bsize : BLOCK_INVALID,
+                      parent ? parent->partition : PARTITION_NONE, ss_x, ss_y);
+
   if (bsize == BLOCK_4X4) {
     ptree->partition = PARTITION_NONE;
     return;
   }
 
-  const bool ss_x = cm->cur_frame->buf.subsampling_x;
-  const bool ss_y = cm->cur_frame->buf.subsampling_y;
   const CHROMA_REF_INFO *chroma_ref_info = &ptree->chroma_ref_info;
 
   // Handle boundary for first partition.
