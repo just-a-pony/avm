@@ -585,9 +585,15 @@ static PC_TREE *look_for_counterpart_helper(PC_TREE *cur,
                                             const PC_TREE *target) {
   if (cur == NULL || cur == target) return NULL;
 
-  BLOCK_SIZE current_bsize = cur->block_size;
-  BLOCK_SIZE target_bsize = target->block_size;
-  if (current_bsize == target_bsize) {
+  const BLOCK_SIZE current_bsize = cur->block_size;
+  const BLOCK_SIZE target_bsize = target->block_size;
+  // Note: To find the counterpart block, we don't actually need to check the
+  // whole chroma_ref_info -- checking bsize_base should suffice due to
+  // constraints in the partitioning scheme. However, we are checking the whole
+  // struct for now as we are still experimenting with new partition schemes.
+  if (current_bsize == target_bsize &&
+      memcmp(&cur->chroma_ref_info, &target->chroma_ref_info,
+             sizeof(cur->chroma_ref_info)) == 0) {
     return cur;
   } else {
     if (mi_size_wide[current_bsize] >= mi_size_wide[target_bsize] &&
