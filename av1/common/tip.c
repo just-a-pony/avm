@@ -17,9 +17,15 @@
 #endif  // CONFIG_OPTFLOW_ON_TIP
 
 // CHROMA_MI_SIZE is the block size in luma unit for Chroma TIP interpolation
-#define CHROMA_MI_SIZE (TMVP_MI_SIZE << 1)
+#define CHROMA_MI_SIZE (TMVP_MI_SIZE)
 // Maximum block size is allowed to combine the blocks with same MV
-#define MAX_BLOCK_SIZE_WITH_SAME_MV 128
+#define MAX_BLOCK_SIZE_WITH_SAME_MV \
+  8  // Needs to be 8 when across scale
+     // prediction is needed due to use of
+     // superres or resize. A higher value
+     // such as 128 could be used if
+     // across scale prediction is not
+     // invoked.
 // Percentage threshold of number of blocks with available motion
 // projection in a frame to allow TIP mode
 #define TIP_ENABLE_COUNT_THRESHOLD 60
@@ -118,9 +124,13 @@ static int tip_motion_field_projection(AV1_COMMON *cm,
 
   const RefCntBuffer *const start_frame_buf =
       get_ref_frame_buf(cm, start_frame);
-  if (start_frame_buf == NULL) return 0;
+  if (!is_ref_motion_field_eligible(cm, start_frame_buf)) return 0;
 
   const int start_frame_order_hint = start_frame_buf->order_hint;
+
+  assert(start_frame_buf->width == cm->width &&
+         start_frame_buf->height == cm->height);
+
 #if CONFIG_NEW_REF_SIGNALING
   const int *const ref_order_hints = start_frame_buf->ref_order_hints;
 #else
@@ -479,7 +489,10 @@ static void tip_config_tip_parameter(AV1_COMMON *cm, int check_tip_threshold) {
   MV_REFERENCE_FRAME nearest_rf[2] = { tip_ref->ref_frame[0],
                                        tip_ref->ref_frame[1] };
 
-  if (nearest_rf[0] != NONE_FRAME && nearest_rf[1] != NONE_FRAME) {
+  if (nearest_rf[0] != NONE_FRAME && nearest_rf[1] != NONE_FRAME &&
+      (is_ref_motion_field_eligible(cm, get_ref_frame_buf(cm, nearest_rf[0])) ||
+       is_ref_motion_field_eligible(cm,
+                                    get_ref_frame_buf(cm, nearest_rf[1])))) {
     if (check_tip_threshold) {
       tip_check_enable_tip_mode(cm);
     }

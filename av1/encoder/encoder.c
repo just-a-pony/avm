@@ -458,10 +458,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_TIP
   seq->enable_tip = tool_cfg->enable_tip;
-
-  if (oxcf->superres_cfg.superres_mode != AOM_SUPERRES_NONE) {
-    seq->enable_tip = 0;
-  }
   seq->enable_tip_hole_fill = seq->enable_tip;
 #endif  // CONFIG_TIP
 #if CONFIG_BAWP
@@ -789,12 +785,6 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   cpi->superres_mode = oxcf->superres_cfg.superres_mode == AOM_SUPERRES_AUTO
                            ? AOM_SUPERRES_NONE
                            : oxcf->superres_cfg.superres_mode;  // default
-#if CONFIG_TIP
-  if (cpi->superres_mode != AOM_SUPERRES_NONE) {
-    seq_params->enable_tip = 0;
-  }
-
-#endif  // CONFIG_TIP
 #if CONFIG_LR_FLEX_SYNTAX
   if (seq_params->enable_restoration) set_seq_lr_tools_mask(seq_params, oxcf);
 #endif  // CONFIG_LR_FLEX_SYNTAX

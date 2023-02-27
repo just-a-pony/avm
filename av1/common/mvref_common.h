@@ -1050,6 +1050,24 @@ int16_t inter_warpmv_mode_ctx(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                               const MB_MODE_INFO *mbmi);
 
 #endif  // CONFIG_WARPMV
+
+static INLINE int is_ref_motion_field_eligible(
+    const AV1_COMMON *const cm, const RefCntBuffer *const start_frame_buf) {
+  if (start_frame_buf == NULL) return 0;
+
+  if (start_frame_buf->frame_type == KEY_FRAME ||
+      start_frame_buf->frame_type == INTRA_ONLY_FRAME)
+    return 0;
+#if CONFIG_ACROSS_SCALE_TPL_MVS
+  (void)cm;
+#else
+  if (start_frame_buf->mi_rows != cm->mi_params.mi_rows ||
+      start_frame_buf->mi_cols != cm->mi_params.mi_cols)
+    return 0;
+#endif  // CONFIG_ACROSS_SCALE_TPL_MVS
+  return 1;
+}
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

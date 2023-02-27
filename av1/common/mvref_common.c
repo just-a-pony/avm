@@ -3048,20 +3048,6 @@ static int get_block_position(AV1_COMMON *cm, int *mi_r, int *mi_c, int blk_row,
 }
 #endif  // !CONFIG_TIP
 
-static INLINE int is_ref_motion_field_eligible(
-    const AV1_COMMON *const cm, const RefCntBuffer *const start_frame_buf) {
-  if (start_frame_buf == NULL) return 0;
-
-  if (start_frame_buf->frame_type == KEY_FRAME ||
-      start_frame_buf->frame_type == INTRA_ONLY_FRAME)
-    return 0;
-
-  if (start_frame_buf->mi_rows != cm->mi_params.mi_rows ||
-      start_frame_buf->mi_cols != cm->mi_params.mi_cols)
-    return 0;
-  return 1;
-}
-
 #if CONFIG_TIP
 // Note: motion_filed_projection finds motion vectors of current frame's
 // reference frame, and projects them to current frame. To make it clear,
@@ -3097,6 +3083,10 @@ static int motion_field_projection_bwd(AV1_COMMON *cm,
   int temporal_scale_factor[REF_FRAMES] = { 0 };
   int ref_abs_offset[REF_FRAMES] = { 0 };
   int has_bwd_ref = 0;
+
+  assert(start_frame_buf->width == cm->width &&
+         start_frame_buf->height == cm->height);
+
 #if CONFIG_NEW_REF_SIGNALING
   const int *const ref_order_hints = &start_frame_buf->ref_order_hints[0];
   for (MV_REFERENCE_FRAME rf = 0; rf < INTER_REFS_PER_FRAME; ++rf) {
@@ -3201,6 +3191,10 @@ static int motion_field_projection(AV1_COMMON *cm,
 
   int temporal_scale_factor[REF_FRAMES] = { 0 };
   int ref_abs_offset[REF_FRAMES] = { 0 };
+
+  assert(start_frame_buf->width == cm->width &&
+         start_frame_buf->height == cm->height);
+
 #if CONFIG_NEW_REF_SIGNALING
   const int *const ref_order_hints = &start_frame_buf->ref_order_hints[0];
   for (MV_REFERENCE_FRAME rf = 0; rf < INTER_REFS_PER_FRAME; ++rf) {
@@ -3297,6 +3291,9 @@ static int motion_field_projection_bwd(AV1_COMMON *cm,
   int start_to_current_frame_offset = get_relative_dist(
       &cm->seq_params.order_hint_info, start_frame_order_hint, cur_order_hint);
 
+  assert(start_frame_buf->width == cm->width &&
+         start_frame_buf->height == cm->height);
+
 #if CONFIG_NEW_REF_SIGNALING
   const int *const ref_order_hints = &start_frame_buf->ref_order_hints[0];
   for (MV_REFERENCE_FRAME rf = 0; rf < INTER_REFS_PER_FRAME; ++rf) {
@@ -3382,6 +3379,9 @@ static int motion_field_projection(AV1_COMMON *cm,
   const int cur_order_hint = cm->cur_frame->order_hint;
   int start_to_current_frame_offset = get_relative_dist(
       &cm->seq_params.order_hint_info, start_frame_order_hint, cur_order_hint);
+
+  assert(start_frame_buf->width == cm->width &&
+         start_frame_buf->height == cm->height);
 
 #if CONFIG_NEW_REF_SIGNALING
   const int *const ref_order_hints = &start_frame_buf->ref_order_hints[0];
