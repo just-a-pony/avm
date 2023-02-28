@@ -2072,6 +2072,23 @@ int av1_set_size_literal(AV1_COMP *cpi, int width, int height) {
   return 0;
 }
 
+#if CONFIG_TIP
+static void setup_tip_frame_size(AV1_COMP *cpi) {
+  AV1_COMMON *const cm = &cpi->common;
+  RefCntBuffer *tip_frame = cm->tip_ref.tip_frame;
+  // Reset the frame pointers to the current frame size.
+  if (aom_realloc_frame_buffer(
+          &tip_frame->buf, cm->width, cm->height, cm->seq_params.subsampling_x,
+          cm->seq_params.subsampling_y, cpi->oxcf.border_in_pixels,
+          cm->features.byte_alignment, NULL, NULL, NULL)) {
+    aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
+                       "Failed to allocate frame buffer");
+  }
+
+  tip_frame->frame_type = INTER_FRAME;
+}
+#endif  // CONFIG_TIP
+
 void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   AV1_COMMON *const cm = &cpi->common;
   const SequenceHeader *const seq_params = &cm->seq_params;
@@ -2145,13 +2162,20 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   }
 
 #if CONFIG_TIP
-  RefCntBuffer *const buf = get_ref_frame_buf(cm, TIP_FRAME);
-  if (buf != NULL) {
-    struct scale_factors *sf = get_ref_scale_factors(cm, TIP_FRAME);
-    av1_setup_scale_factors_for_frame(sf, buf->buf.y_crop_width,
-                                      buf->buf.y_crop_height, cm->width,
-                                      cm->height);
-    if (av1_is_scaled(sf)) aom_extend_frame_borders(&buf->buf, num_planes);
+  if (cm->seq_params.enable_tip) {
+    RefCntBuffer *buf = get_ref_frame_buf(cm, TIP_FRAME);
+    if (buf == NULL || (buf->buf.y_crop_width != cm->width ||
+                        buf->buf.y_crop_height != cm->height)) {
+      setup_tip_frame_size(cpi);
+      buf = get_ref_frame_buf(cm, TIP_FRAME);
+    }
+    if (buf != NULL) {
+      struct scale_factors *sf = get_ref_scale_factors(cm, TIP_FRAME);
+      av1_setup_scale_factors_for_frame(sf, buf->buf.y_crop_width,
+                                        buf->buf.y_crop_height, cm->width,
+                                        cm->height);
+      if (av1_is_scaled(sf)) aom_extend_frame_borders(&buf->buf, num_planes);
+    }
   }
 #endif  // CONFIG_TIP
 
@@ -2865,6 +2889,7 @@ static INLINE int compute_tip_direct_output_mode_RD(AV1_COMP *cpi,
 
     // Compute sse and rate.
     YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+
     *sse = aom_highbd_get_y_sse(cpi->source, tip_frame_buf);
 
     const int64_t bits = (*size << 3);

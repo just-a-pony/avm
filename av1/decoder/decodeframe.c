@@ -3565,6 +3565,33 @@ static AOM_INLINE void resize_context_buffers(AV1_COMMON *cm, int width,
   cm->cur_frame->height = cm->height;
 }
 
+#if CONFIG_TIP
+static AOM_INLINE void setup_tip_frame_size(AV1_COMMON *cm) {
+  const SequenceHeader *const seq_params = &cm->seq_params;
+  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+  if (aom_realloc_frame_buffer(
+          tip_frame_buf, cm->width, cm->height, seq_params->subsampling_x,
+          seq_params->subsampling_y, AOM_DEC_BORDER_IN_PIXELS,
+          cm->features.byte_alignment, NULL, NULL, NULL)) {
+    aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
+                       "Failed to allocate frame buffer");
+  }
+
+  if (tip_frame_buf) {
+    tip_frame_buf->bit_depth = (unsigned int)seq_params->bit_depth;
+    tip_frame_buf->color_primaries = seq_params->color_primaries;
+    tip_frame_buf->transfer_characteristics =
+        seq_params->transfer_characteristics;
+    tip_frame_buf->matrix_coefficients = seq_params->matrix_coefficients;
+    tip_frame_buf->monochrome = seq_params->monochrome;
+    tip_frame_buf->chroma_sample_position = seq_params->chroma_sample_position;
+    tip_frame_buf->color_range = seq_params->color_range;
+    tip_frame_buf->render_width = cm->render_width;
+    tip_frame_buf->render_height = cm->render_height;
+  }
+}
+#endif  // CONFIG_TIP
+
 static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
   BufferPool *const pool = cm->buffer_pool;
   const SequenceHeader *const seq_params = &cm->seq_params;
@@ -3592,32 +3619,16 @@ static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
   cm->cur_frame->buf.color_range = seq_params->color_range;
   cm->cur_frame->buf.render_width = cm->render_width;
   cm->cur_frame->buf.render_height = cm->render_height;
-}
-
 #if CONFIG_TIP
-static AOM_INLINE void setup_tip_frame_size(AV1_COMMON *cm) {
-  const SequenceHeader *const seq_params = &cm->seq_params;
-  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
-  if (aom_realloc_frame_buffer(
-          tip_frame_buf, cm->width, cm->height, seq_params->subsampling_x,
-          seq_params->subsampling_y, AOM_DEC_BORDER_IN_PIXELS,
-          cm->features.byte_alignment, NULL, NULL, NULL)) {
-    aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
-                       "Failed to allocate frame buffer");
+  if (cm->seq_params.enable_tip) {
+    const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, TIP_FRAME);
+    if (ref_buf == NULL || (ref_buf->buf.y_crop_width != cm->width ||
+                            ref_buf->buf.y_crop_height != cm->height)) {
+      setup_tip_frame_size(cm);
+    }
   }
-
-  tip_frame_buf->bit_depth = (unsigned int)seq_params->bit_depth;
-  tip_frame_buf->color_primaries = seq_params->color_primaries;
-  tip_frame_buf->transfer_characteristics =
-      seq_params->transfer_characteristics;
-  tip_frame_buf->matrix_coefficients = seq_params->matrix_coefficients;
-  tip_frame_buf->monochrome = seq_params->monochrome;
-  tip_frame_buf->chroma_sample_position = seq_params->chroma_sample_position;
-  tip_frame_buf->color_range = seq_params->color_range;
-  tip_frame_buf->render_width = cm->render_width;
-  tip_frame_buf->render_height = cm->render_height;
-}
 #endif  // CONFIG_TIP
+}
 
 static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
                                         int frame_size_override_flag,
@@ -6775,10 +6786,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   if (current_frame->frame_type == KEY_FRAME) {
     cm->current_frame.pyramid_level = 1;
     setup_frame_size(cm, frame_size_override_flag, rb);
-
-#if CONFIG_TIP
-    setup_tip_frame_size(cm);
-#endif  // CONFIG_TIP
 
     if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
       features->allow_intrabc = aom_rb_read_bit(rb);
