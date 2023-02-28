@@ -3040,7 +3040,7 @@ static AOM_FORCE_INLINE bool parity_hide_tb(
     return true;  // hide
   }
 
-  tune_cand t_cand_dc, t_cand_non_dc;
+  tune_cand t_cand_dc = { 0 }, t_cand_non_dc = { 0 };
   t_cand_dc.cost = INT64_MAX;
   t_cand_non_dc.cost = INT64_MAX;
   // we change the quantized level's parity to check the rate change.
