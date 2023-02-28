@@ -2455,7 +2455,11 @@ static int encode_without_recode(AV1_COMP *cpi) {
         phase_scaler, true, false);
   }
 
-  {
+  // The code below turns across scale references off, which seems unnecessary.
+  // So only enable this based on a speed-feature, and if superes_in_recode is
+  // not allowed. Also consider dropping this segment completely.
+  if (cpi->sf.hl_sf.disable_unequal_scale_refs &&
+      !av1_superres_in_recode_allowed(cpi)) {
 #if CONFIG_NEW_REF_SIGNALING
     const MV_REFERENCE_FRAME golden_frame = get_best_past_ref_index(cm);
     const MV_REFERENCE_FRAME altref_frame = get_furthest_future_ref_index(cm);
