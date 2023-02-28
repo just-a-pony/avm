@@ -935,6 +935,7 @@ void av1_amvd_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 #endif  // BUGFIX_AMVD_AMVR
 #endif
 
+  struct buf_2d backup_yv12[MAX_MB_PLANE];
   const YV12_BUFFER_CONFIG *const scaled_ref_frame =
       av1_get_scaled_ref_frame(cpi, ref);
 
@@ -950,9 +951,12 @@ void av1_amvd_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     // match the resolution of the current frame, allowing the existing
     // full-pixel motion search code to be used without additional
     // modifications.
+    for (int i = 0; i < num_planes; i++) {
+      backup_yv12[i] = xd->plane[i].pre[0];
+    }
     const int mi_row = xd->mi_row;
     const int mi_col = xd->mi_col;
-    av1_setup_pre_planes(xd, ref_idx, scaled_ref_frame, mi_row, mi_col, NULL,
+    av1_setup_pre_planes(xd, 0, scaled_ref_frame, mi_row, mi_col, NULL,
                          num_planes, &mbmi->chroma_ref_info);
   }
 
@@ -971,6 +975,12 @@ void av1_amvd_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
   bestsme = adaptive_mvd_search(cm, xd, &ms_params, ref_mv.as_mv,
                                 &best_mv.as_mv, &dis, &sse);
 
+  if (scaled_ref_frame) {
+    // Swap back the original buffers for subpel motion search.
+    for (int i = 0; i < num_planes; i++) {
+      xd->plane[i].pre[0] = backup_yv12[i];
+    }
+  }
   // Restore the pointer to the first unscaled prediction buffer.
   if (ref_idx) pd->pre[0] = orig_yv12;
 
@@ -1065,11 +1075,11 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     // full-pixel motion search code to be used without additional
     // modifications.
     for (int i = 0; i < num_planes; i++) {
-      backup_yv12[i] = xd->plane[i].pre[ref_idx];
+      backup_yv12[i] = xd->plane[i].pre[0];
     }
     const int mi_row = xd->mi_row;
     const int mi_col = xd->mi_col;
-    av1_setup_pre_planes(xd, ref_idx, scaled_ref_frame, mi_row, mi_col, NULL,
+    av1_setup_pre_planes(xd, 0, scaled_ref_frame, mi_row, mi_col, NULL,
                          num_planes, &mbmi->chroma_ref_info);
   }
 
@@ -1226,7 +1236,7 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     if (scaled_ref_frame) {
       // Swap back the original buffers for subpel motion search.
       for (int i = 0; i < num_planes; i++) {
-        xd->plane[i].pre[ref_idx] = backup_yv12[i];
+        xd->plane[i].pre[0] = backup_yv12[i];
       }
     }
 

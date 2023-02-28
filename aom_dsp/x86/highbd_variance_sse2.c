@@ -581,14 +581,16 @@ void aom_highbd_upsampled_pred_sse2(MACROBLOCKD *xd,
                                     uint16_t *comp_pred, int width, int height,
                                     int subpel_x_q3, int subpel_y_q3,
                                     const uint16_t *ref, int ref_stride, int bd,
-                                    int subpel_search) {
+                                    int subpel_search, int is_scaled_ref) {
   // expect xd == NULL only in tests
   if (xd != NULL) {
     const MB_MODE_INFO *mi = xd->mi[0];
     const int ref_num = 0;
     const int is_intrabc = is_intrabc_block(mi, xd->tree_type);
     const struct scale_factors *const sf =
-        is_intrabc ? &cm->sf_identity : xd->block_ref_scale_factors[ref_num];
+        (is_intrabc || is_scaled_ref) ? &cm->sf_identity
+                                      : xd->block_ref_scale_factors[ref_num];
+
     const int is_scaled = av1_is_scaled(sf);
 
     if (is_scaled) {
@@ -683,7 +685,7 @@ void aom_highbd_comp_avg_upsampled_pred_sse2(
     int ref_stride, int bd, int subpel_search) {
   aom_highbd_upsampled_pred(xd, cm, mi_row, mi_col, mv, comp_pred16, width,
                             height, subpel_x_q3, subpel_y_q3, ref, ref_stride,
-                            bd, subpel_search);
+                            bd, subpel_search, 0);
   /*The total number of pixels must be a multiple of 8 (e.g., 4x4).*/
   assert(!(width * height & 7));
   int n = width * height >> 3;
@@ -769,7 +771,7 @@ void aom_highbd_dist_wtd_comp_avg_upsampled_pred_sse2(
   int i;
   aom_highbd_upsampled_pred(xd, cm, mi_row, mi_col, mv, comp_pred16, width,
                             height, subpel_x_q3, subpel_y_q3, ref, ref_stride,
-                            bd, subpel_search);
+                            bd, subpel_search, 0);
   assert(!(width * height & 7));
   n = width * height >> 3;
 

@@ -242,7 +242,7 @@ void AV1HighbdCompMaskUpVarianceTest::RunCheckOutput(
         // ref
         aom_highbd_upsampled_pred_c(NULL, NULL, 0, 0, NULL, comp_pred1_, w, h,
                                     subx, suby, ref_, MAX_SB_SIZE, bd_,
-                                    subpel_search);
+                                    subpel_search, 0);
 
         aom_highbd_comp_mask_pred_c(comp_pred1_, pred_, w, h, comp_pred1_, w,
                                     mask, w, inv);
@@ -250,7 +250,7 @@ void AV1HighbdCompMaskUpVarianceTest::RunCheckOutput(
         // test
         aom_highbd_upsampled_pred(NULL, NULL, 0, 0, NULL, comp_pred2_, w, h,
                                   subx, suby, ref_, MAX_SB_SIZE, bd_,
-                                  subpel_search);
+                                  subpel_search, 0);
 
         test_impl(comp_pred2_, pred_, w, h, comp_pred2_, w, mask, w, inv);
 
