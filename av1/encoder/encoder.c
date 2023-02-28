@@ -2858,7 +2858,8 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
 #if CONFIG_TIP
 static INLINE bool allow_tip_direct_output(AV1_COMMON *const cm) {
   if (!frame_is_intra_only(cm) && !encode_show_existing_frame(cm) &&
-      cm->seq_params.enable_tip == 1 && cm->features.tip_frame_mode) {
+      cm->seq_params.enable_tip == 1 && cm->features.tip_frame_mode &&
+      !av1_superres_scaled(cm)) {
     return true;
   }
 

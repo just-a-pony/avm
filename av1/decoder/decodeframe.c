@@ -3507,6 +3507,7 @@ static AOM_INLINE void setup_superres(AV1_COMMON *const cm,
                                       int *width, int *height) {
   cm->superres_upscaled_width = *width;
   cm->superres_upscaled_height = *height;
+  cm->superres_scale_denominator = SCALE_NUMERATOR;
 
   const SequenceHeader *const seq_params = &cm->seq_params;
   if (!seq_params->enable_superres) return;
@@ -6785,6 +6786,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
   if (current_frame->frame_type == KEY_FRAME) {
     cm->current_frame.pyramid_level = 1;
+#if CONFIG_TIP
+    features->tip_frame_mode = TIP_FRAME_DISABLED;
+#endif  // CONFIG_TIP
     setup_frame_size(cm, frame_size_override_flag, rb);
 
     if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
@@ -6804,9 +6808,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif  // CONFIG_IBC_SR_EXT
 
     features->allow_ref_frame_mvs = 0;
-#if CONFIG_TIP
-    features->tip_frame_mode = TIP_FRAME_DISABLED;
-#endif  // CONFIG_TIP
     cm->prev_frame = NULL;
   } else {
     features->allow_ref_frame_mvs = 0;
@@ -6989,6 +6990,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         if (features->tip_frame_mode >= TIP_FRAME_MODES) {
           aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                              "Invalid TIP mode.");
+        }
+        if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT &&
+            av1_superres_scaled(cm)) {
+          aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                             "Invalid TIP Direct mode with superres.");
         }
 
         if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {

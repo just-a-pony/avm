@@ -5258,13 +5258,16 @@ static AOM_INLINE void write_uncompressed_header_obu(
 #endif  // CONFIG_PEF
 #if CONFIG_TIP
       if (cm->seq_params.enable_tip) {
+        assert(IMPLIES(av1_superres_scaled(cm),
+                       features->tip_frame_mode != TIP_FRAME_AS_OUTPUT));
         aom_wb_write_literal(wb, features->tip_frame_mode, 2);
         if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {
           aom_wb_write_bit(wb, features->allow_tip_hole_fill);
         }
       }
 
-      if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
+      if (!cm->seq_params.enable_tip ||
+          features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
 #endif  // CONFIG_TIP
 #if CONFIG_IBC_SR_EXT
         if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
