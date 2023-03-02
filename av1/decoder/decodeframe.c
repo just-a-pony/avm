@@ -7101,16 +7101,18 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       }
 
 #if CONFIG_TIP
-      const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, TIP_FRAME);
-      if (ref_buf) {
-        struct scale_factors *const ref_scale_factors =
-            get_ref_scale_factors(cm, TIP_FRAME);
-        av1_setup_scale_factors_for_frame(
-            ref_scale_factors, ref_buf->buf.y_crop_width,
-            ref_buf->buf.y_crop_height, cm->width, cm->height);
-        if ((!av1_is_valid_scale(ref_scale_factors)))
-          aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-                             "Reference frame has invalid dimensions");
+      if (cm->seq_params.enable_tip) {
+        const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, TIP_FRAME);
+        if (ref_buf) {
+          struct scale_factors *const ref_scale_factors =
+              get_ref_scale_factors(cm, TIP_FRAME);
+          av1_setup_scale_factors_for_frame(
+              ref_scale_factors, ref_buf->buf.y_crop_width,
+              ref_buf->buf.y_crop_height, cm->width, cm->height);
+          if ((!av1_is_valid_scale(ref_scale_factors)))
+            aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                               "Reference frame has invalid dimensions");
+        }
       }
 #endif  // CONFIG_TIP
     }
