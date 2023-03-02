@@ -368,7 +368,7 @@ AV1PixelRect av1_whole_frame_rect(const AV1_COMMON *cm, int is_uv) {
   int ss_y = is_uv && cm->seq_params.subsampling_y;
 
   rect.top = 0;
-  rect.bottom = ROUND_POWER_OF_TWO(cm->height, ss_y);
+  rect.bottom = ROUND_POWER_OF_TWO(cm->superres_upscaled_height, ss_y);
   rect.left = 0;
   rect.right = ROUND_POWER_OF_TWO(cm->superres_upscaled_width, ss_x);
   return rect;
