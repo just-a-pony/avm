@@ -235,6 +235,10 @@ typedef struct {
   int winner_mode_tx_type_pruning;
   // Speed feature to disable intra secondary transform
   int skip_stx_search;
+#if CONFIG_CROSS_CHROMA_TX
+  // Speed feature to disable cross chroma component transform
+  int skip_cctx_search;
+#endif  // CONFIG_CROSS_CHROMA_TX
 } TX_TYPE_SEARCH;
 
 enum {
