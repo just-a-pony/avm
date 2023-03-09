@@ -231,8 +231,6 @@ set_aom_config_var(CONFIG_SKIP_MODE_ENHANCEMENT 1
 set_aom_config_var(
   CONFIG_SKIP_MODE_DRL_WITH_REF_IDX 1
   "AV2 experiment flag to enable DRL with ref_MV_idx for skip mode.")
-set_aom_config_var(CONFIG_NEW_DF 1
-                   "AV2 experiment flag on new deblocking filter.")
 set_aom_config_var(CONFIG_TIP 1 "Enable temporal interpolated prediction (TIP)")
 set_aom_config_var(CONFIG_OPTFLOW_ON_TIP 1
                    "Enable optical flow refinement on top of TIP")

@@ -3659,38 +3659,7 @@ static AOM_INLINE void loop_restoration_write_sb_coeffs(
 #endif  // CONFIG_PC_WIENER
   }
 }
-#if !CONFIG_NEW_DF
-// Only write out the ref delta section if any of the elements
-// will signal a delta.
-static bool is_mode_ref_delta_meaningful(AV1_COMMON *cm) {
-  struct loopfilter *lf = &cm->lf;
-  if (!lf->mode_ref_delta_update) {
-    return 0;
-  }
-  const RefCntBuffer *buf = get_primary_ref_frame_buf(cm);
-  int8_t last_ref_deltas[SINGLE_REF_FRAMES];
-  int8_t last_mode_deltas[MAX_MODE_LF_DELTAS];
-  if (buf == NULL) {
-    av1_set_default_ref_deltas(last_ref_deltas);
-    av1_set_default_mode_deltas(last_mode_deltas);
-  } else {
-    memcpy(last_ref_deltas, buf->ref_deltas, SINGLE_REF_FRAMES);
-    memcpy(last_mode_deltas, buf->mode_deltas, MAX_MODE_LF_DELTAS);
-  }
-  for (int i = 0; i < SINGLE_REF_FRAMES; i++) {
-    if (lf->ref_deltas[i] != last_ref_deltas[i]) {
-      return true;
-    }
-  }
-  for (int i = 0; i < MAX_MODE_LF_DELTAS; i++) {
-    if (lf->mode_deltas[i] != last_mode_deltas[i]) {
-      return true;
-    }
-  }
-  return false;
-}
-#endif  // !CONFIG_NEW_DF
-#if CONFIG_NEW_DF
+
 static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
                                          struct aom_write_bit_buffer *wb) {
   assert(!cm->features.coded_lossless);
@@ -3805,60 +3774,6 @@ static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
 #endif  // DF_TWO_PARAM
   }
 }
-#else
-static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
-                                         struct aom_write_bit_buffer *wb) {
-  assert(!cm->features.coded_lossless);
-  if (is_global_intrabc_allowed(cm)) return;
-  const int num_planes = av1_num_planes(cm);
-  struct loopfilter *lf = &cm->lf;
-
-  // Encode the loop filter level and type
-  aom_wb_write_literal(wb, lf->filter_level[0], 6);
-  aom_wb_write_literal(wb, lf->filter_level[1], 6);
-  if (num_planes > 1) {
-    if (lf->filter_level[0] || lf->filter_level[1]) {
-      aom_wb_write_literal(wb, lf->filter_level_u, 6);
-      aom_wb_write_literal(wb, lf->filter_level_v, 6);
-    }
-  }
-  aom_wb_write_literal(wb, lf->sharpness_level, 3);
-
-  aom_wb_write_bit(wb, lf->mode_ref_delta_enabled);
-
-  // Write out loop filter deltas applied at the MB level based on mode or
-  // ref frame (if they are enabled), only if there is information to write.
-  int meaningful = is_mode_ref_delta_meaningful(cm);
-  aom_wb_write_bit(wb, meaningful);
-  if (!meaningful) {
-    return;
-  }
-
-  const RefCntBuffer *buf = get_primary_ref_frame_buf(cm);
-  int8_t last_ref_deltas[SINGLE_REF_FRAMES];
-  int8_t last_mode_deltas[MAX_MODE_LF_DELTAS];
-  if (buf == NULL) {
-    av1_set_default_ref_deltas(last_ref_deltas);
-    av1_set_default_mode_deltas(last_mode_deltas);
-  } else {
-    memcpy(last_ref_deltas, buf->ref_deltas, SINGLE_REF_FRAMES);
-    memcpy(last_mode_deltas, buf->mode_deltas, MAX_MODE_LF_DELTAS);
-  }
-
-  for (int i = 0; i < SINGLE_REF_FRAMES; i++) {
-    const int delta = lf->ref_deltas[i];
-    const int changed = delta != last_ref_deltas[i];
-    aom_wb_write_bit(wb, changed);
-    if (changed) aom_wb_write_inv_signed_literal(wb, delta, 6);
-  }
-  for (int i = 0; i < MAX_MODE_LF_DELTAS; i++) {
-    const int delta = lf->mode_deltas[i];
-    const int changed = delta != last_mode_deltas[i];
-    aom_wb_write_bit(wb, changed);
-    if (changed) aom_wb_write_inv_signed_literal(wb, delta, 6);
-  }
-}
-#endif  // CONFIG_NEW_DF
 
 static AOM_INLINE void encode_cdef(const AV1_COMMON *cm,
                                    struct aom_write_bit_buffer *wb) {

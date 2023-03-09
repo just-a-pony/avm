@@ -23,8 +23,6 @@
 extern "C" {
 #endif
 
-#if CONFIG_NEW_DF
-
 #define MAX_DF_OFFSETS 64
 #define ZERO_DF_OFFSET 32
 
@@ -42,10 +40,6 @@ extern "C" {
 #define DF_CHROMA_WIDE 1
 
 #define DF_REDUCED_SB_EDGE 1
-#else
-#define DF_FILT26 0
-#define DF_CHROMA_WIDE 0
-#endif  // CONFIG_NEW_DF
 
 #define MAX_LOOP_FILTER 63
 #define MAX_SHARPNESS 7
@@ -110,7 +104,6 @@ struct loopfilter {
   int filter_level_u;
   int filter_level_v;
 
-#if CONFIG_NEW_DF
 #if DF_DUAL
   int delta_q_luma[2];
   int delta_side_luma[2];
@@ -122,9 +115,7 @@ struct loopfilter {
   int delta_side_u;
   int delta_q_v;
   int delta_side_v;
-#else
-  int sharpness_level;
-#endif  // CONFIG_NEW_DF
+
   uint8_t mode_ref_delta_enabled;
   uint8_t mode_ref_delta_update;
 
@@ -152,16 +143,10 @@ typedef struct {
 } loop_filter_thresh;
 
 typedef struct {
-#if CONFIG_NEW_DF
   uint16_t q_thr[MAX_MB_PLANE][MAX_SEGMENTS][2][SINGLE_REF_FRAMES]
                 [MAX_MODE_LF_DELTAS];
   uint16_t side_thr[MAX_MB_PLANE][MAX_SEGMENTS][2][SINGLE_REF_FRAMES]
                    [MAX_MODE_LF_DELTAS];
-#else
-  loop_filter_thresh lfthr[MAX_LOOP_FILTER + 1];
-  uint8_t lvl[MAX_MB_PLANE][MAX_SEGMENTS][2][SINGLE_REF_FRAMES]
-             [MAX_MODE_LF_DELTAS];
-#endif
 } loop_filter_info_n;
 
 typedef struct LoopFilterWorkerData {
@@ -208,16 +193,9 @@ void av1_filter_block_plane_horz(const struct AV1Common *const cm,
                                  const MACROBLOCKD *const xd, const int plane,
                                  const MACROBLOCKD_PLANE *const plane_ptr,
                                  const uint32_t mi_row, const uint32_t mi_col);
-#if !CONFIG_NEW_DF
-uint8_t av1_get_filter_level(const struct AV1Common *cm,
-                             const loop_filter_info_n *lfi_n, const int dir_idx,
-                             int plane, const MB_MODE_INFO *mbmi);
-#endif
-#if CONFIG_NEW_DF || CONFIG_PEF
 int df_quant_from_qindex(int q_index, int bit_depth);
 
 int df_side_from_qindex(int q_index, int bit_depth);
-#endif  // CONFIG_NEW_DF || CONFIG_PEF
 #if CONFIG_LPF_MASK
 void av1_filter_block_plane_ver(struct AV1Common *const cm,
                                 struct macroblockd_plane *const plane_ptr,

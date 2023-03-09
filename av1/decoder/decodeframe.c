@@ -3125,7 +3125,6 @@ static AOM_INLINE void loop_restoration_read_sb_coeffs(
           1) == 0);
 #endif  // CONFIG_LR_FLEX_SYNTAX
 }
-#if CONFIG_NEW_DF
 static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
                                         struct aom_read_bit_buffer *rb) {
   const int num_planes = av1_num_planes(cm);
@@ -3281,60 +3280,6 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
   lf->mode_ref_delta_update = 0;
   lf->mode_ref_delta_enabled = 0;
 }
-#else
-static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
-                                        struct aom_read_bit_buffer *rb) {
-  const int num_planes = av1_num_planes(cm);
-  struct loopfilter *lf = &cm->lf;
-
-  if (is_global_intrabc_allowed(cm) || cm->features.coded_lossless) {
-    // write default deltas to frame buffer
-    av1_set_default_ref_deltas(cm->cur_frame->ref_deltas);
-    av1_set_default_mode_deltas(cm->cur_frame->mode_deltas);
-    return;
-  }
-  assert(!cm->features.coded_lossless);
-  if (cm->prev_frame) {
-    // write deltas to frame buffer
-    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, SINGLE_REF_FRAMES);
-    memcpy(lf->mode_deltas, cm->prev_frame->mode_deltas, MAX_MODE_LF_DELTAS);
-  } else {
-    av1_set_default_ref_deltas(lf->ref_deltas);
-    av1_set_default_mode_deltas(lf->mode_deltas);
-  }
-  lf->filter_level[0] = aom_rb_read_literal(rb, 6);
-  lf->filter_level[1] = aom_rb_read_literal(rb, 6);
-  if (num_planes > 1) {
-    if (lf->filter_level[0] || lf->filter_level[1]) {
-      lf->filter_level_u = aom_rb_read_literal(rb, 6);
-      lf->filter_level_v = aom_rb_read_literal(rb, 6);
-    }
-  }
-  lf->sharpness_level = aom_rb_read_literal(rb, 3);
-
-  // Read in loop filter deltas applied at the MB level based on mode or ref
-  // frame.
-  lf->mode_ref_delta_update = 0;
-
-  lf->mode_ref_delta_enabled = aom_rb_read_bit(rb);
-  if (lf->mode_ref_delta_enabled) {
-    lf->mode_ref_delta_update = aom_rb_read_bit(rb);
-    if (lf->mode_ref_delta_update) {
-      for (int i = 0; i < SINGLE_REF_FRAMES; i++)
-        if (aom_rb_read_bit(rb))
-          lf->ref_deltas[i] = aom_rb_read_inv_signed_literal(rb, 6);
-
-      for (int i = 0; i < MAX_MODE_LF_DELTAS; i++)
-        if (aom_rb_read_bit(rb))
-          lf->mode_deltas[i] = aom_rb_read_inv_signed_literal(rb, 6);
-    }
-  }
-
-  // write deltas to frame buffer
-  memcpy(cm->cur_frame->ref_deltas, lf->ref_deltas, SINGLE_REF_FRAMES);
-  memcpy(cm->cur_frame->mode_deltas, lf->mode_deltas, MAX_MODE_LF_DELTAS);
-}
-#endif  // CONFIG_NEW_DF
 
 static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {
