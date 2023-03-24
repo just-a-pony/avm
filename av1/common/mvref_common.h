@@ -108,6 +108,123 @@ static INLINE void clamp_mv_ref(MV *mv, int bw, int bh, const MACROBLOCKD *xd) {
   };
   clamp_mv(mv, &mv_limits);
 }
+// Convert a global motion vector into a motion vector at the centre of the
+// given block.
+//
+// The resulting motion vector will have three fractional bits of precision. If
+// precision < MV_SUBPEL_EIGHTH, the bottom bit will always be zero. If
+// CONFIG_AMVR and precision == MV_SUBPEL_NONE, the bottom three bits will be
+// zero (so the motion vector represents an integer)
+#if CONFIG_FLEX_MVRES
+static INLINE int_mv get_warp_motion_vector(const MACROBLOCKD *xd,
+                                            const WarpedMotionParams *model,
+                                            MvSubpelPrecision precision,
+                                            BLOCK_SIZE bsize, int mi_col,
+                                            int mi_row) {
+#else
+static INLINE int_mv get_warp_motion_vector(const MACROBLOCKD *xd,
+                                            const WarpedMotionParams *model,
+                                            int allow_hp, BLOCK_SIZE bsize,
+                                            int mi_col, int mi_row,
+                                            int is_integer) {
+#endif
+  int_mv res;
+
+  if (model->wmtype == IDENTITY) {
+    res.as_int = 0;
+    return res;
+  }
+
+  const int32_t *mat = model->wmmat;
+  int x, y, tx, ty;
+
+  if (model->wmtype == TRANSLATION) {
+    // All global motion vectors are stored with WARPEDMODEL_PREC_BITS (16)
+    // bits of fractional precision. The offset for a translation is stored in
+    // entries 0 and 1. For translations, all but the top three (two if
+    // precision < MV_SUBPEL_EIGHTH) fractional bits are always
+    // zero.
+    //
+#if CONFIG_FLEX_MVRES
+    // After the right shifts, there are 3 fractional bits of precision. If
+    // precision < MV_SUBPEL_EIGHTH is false, the bottom bit is always zero
+    // (so we don't need a call to convert_to_trans_prec here)
+    res.as_mv.col = model->wmmat[0] >> WARPEDMODEL_TO_MV_SHIFT;
+    res.as_mv.row = model->wmmat[1] >> WARPEDMODEL_TO_MV_SHIFT;
+
+    clamp_mv_ref(&res.as_mv, xd->width << MI_SIZE_LOG2,
+                 xd->height << MI_SIZE_LOG2, xd);
+
+    // When extended warp prediction is enabled, the warp model can be derived
+    // from the neighbor. Neighbor may have different MV precision than current
+    // block. Therefore, this assertion is not valid when
+    // CONFIG_EXTENDED_WARP_PREDICTION is enabled
+    // When subblock warp mv is enabled. The precision is kept as higherst
+    // regardless the frame level mv during search
+#if !CONFIG_EXTENDED_WARP_PREDICTION && !CONFIG_C071_SUBBLK_WARPMV
+    assert(IMPLIES(1 & (res.as_mv.row | res.as_mv.col),
+                   precision == MV_PRECISION_ONE_EIGHTH_PEL));
+#endif
+#if CONFIG_C071_SUBBLK_WARPMV
+    if (precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+      lower_mv_precision(&res.as_mv, precision);
+#else
+    // After the right shifts, there are 3 fractional bits of precision. If
+    // allow_hp is false, the bottom bit is always zero (so we don't need a
+    // call to convert_to_trans_prec here)
+    res.as_mv.col = model->wmmat[0] >> WARPEDMODEL_TO_MV_SHIFT;
+    res.as_mv.row = model->wmmat[1] >> WARPEDMODEL_TO_MV_SHIFT;
+    clamp_mv_ref(&res.as_mv, xd->width << MI_SIZE_LOG2,
+                 xd->height << MI_SIZE_LOG2, xd);
+#if !CONFIG_EXTENDED_WARP_PREDICTION && !CONFIG_C071_SUBBLK_WARPMV
+    assert(IMPLIES(1 & (res.as_mv.row | res.as_mv.col), allow_hp));
+#endif
+    if (is_integer) {
+      integer_mv_precision(&res.as_mv);
+    }
+#endif
+    return res;
+  }
+
+  x = block_center_x(mi_col, bsize);
+  y = block_center_y(mi_row, bsize);
+
+  if (model->wmtype == ROTZOOM) {
+    assert(model->wmmat[5] == model->wmmat[2]);
+    assert(model->wmmat[4] == -model->wmmat[3]);
+  }
+
+  const int xc =
+      (mat[2] - (1 << WARPEDMODEL_PREC_BITS)) * x + mat[3] * y + mat[0];
+  const int yc =
+      mat[4] * x + (mat[5] - (1 << WARPEDMODEL_PREC_BITS)) * y + mat[1];
+#if CONFIG_FLEX_MVRES
+  tx = convert_to_trans_prec(precision, xc);
+  ty = convert_to_trans_prec(precision, yc);
+#else
+  tx = convert_to_trans_prec(allow_hp, xc);
+  ty = convert_to_trans_prec(allow_hp, yc);
+#endif
+
+  res.as_mv.row = ty;
+  res.as_mv.col = tx;
+
+  clamp_mv_ref(&res.as_mv, xd->width << MI_SIZE_LOG2,
+               xd->height << MI_SIZE_LOG2, xd);
+
+#if CONFIG_FLEX_MVRES
+#if CONFIG_C071_SUBBLK_WARPMV
+  if (precision < MV_PRECISION_HALF_PEL)
+#endif  // CONFIG_C071_SUBBLK_WARPMV
+    lower_mv_precision(&res.as_mv, precision);
+#else
+  if (is_integer) {
+    integer_mv_precision(&res.as_mv);
+  }
+#endif
+  return res;
+}
 
 static INLINE int_mv get_block_mv(const MB_MODE_INFO *candidate,
 #if CONFIG_C071_SUBBLK_WARPMV
@@ -121,6 +238,39 @@ static INLINE int_mv get_block_mv(const MB_MODE_INFO *candidate,
   return candidate->mv[which_mv];
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 }
+#if CONFIG_WARPMV
+// return derive MV from the ref_warp_model
+// ref_warp_model is extracted from the WRL listb before calling this function
+static INLINE int_mv get_mv_from_wrl(const MACROBLOCKD *xd,
+                                     const WarpedMotionParams *ref_warp_model,
+#if CONFIG_FLEX_MVRES
+                                     MvSubpelPrecision pb_mv_precision,
+#else
+                                     int allow_high_precision_mv,
+                                     int cur_frame_force_integer_mv,
+#endif
+                                     BLOCK_SIZE bsize, int mi_col, int mi_row) {
+  int_mv mv;
+  assert(ref_warp_model);
+  mv = get_warp_motion_vector(xd, ref_warp_model,
+#if CONFIG_FLEX_MVRES
+                              pb_mv_precision,
+#else
+                              allow_high_precision_mv,
+#endif
+                              bsize, mi_col, mi_row
+#if !CONFIG_FLEX_MVRES
+                              ,
+                              cur_frame_force_integer_mv
+#endif
+  );
+  const int clamp_max = MV_UPP - 1;
+  const int clamp_min = MV_LOW + 1;
+  mv.as_mv.row = (int16_t)clamp(mv.as_mv.row, clamp_min, clamp_max);
+  mv.as_mv.col = (int16_t)clamp(mv.as_mv.col, clamp_min, clamp_max);
+  return mv;
+}
+#endif  // CONFIG_WARPMV
 
 // Checks that the given mi_row, mi_col and search point
 // are inside the borders of the tile.
@@ -814,7 +964,7 @@ static INLINE void av1_get_warp_base_params(
             int mi_row = xd->mi_row;
             int mi_col = xd->mi_col;
 #if CONFIG_FLEX_MVRES
-            *center_mv = get_warp_motion_vector(&ref_mi->wm_params[0],
+            *center_mv = get_warp_motion_vector(xd, &ref_mi->wm_params[0],
                                                 mbmi->pb_mv_precision, bsize,
                                                 mi_col, mi_row);
 #else
@@ -823,8 +973,8 @@ static INLINE void av1_get_warp_base_params(
             const int force_integer_mv =
                 cm->features.cur_frame_force_integer_mv;
             *center_mv = get_warp_motion_vector(
-                &ref_mi->wm_params[0], allow_high_precision_mv, bsize, mi_col,
-                mi_row, force_integer_mv);
+                xd, &ref_mi->wm_params[0], allow_high_precision_mv, bsize,
+                mi_col, mi_row, force_integer_mv);
 #endif
 
           } else {

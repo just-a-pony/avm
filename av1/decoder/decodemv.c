@@ -2256,7 +2256,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CONFIG_WARPMV
     case WARPMV: {
       assert(ref_warp_model);
-      mbmi->mv[0] = get_mv_from_wrl(ref_warp_model,
+      mbmi->mv[0] = get_mv_from_wrl(xd, ref_warp_model,
 
 #if CONFIG_FLEX_MVRES
                                     MV_PRECISION_ONE_EIGHTH_PEL,
@@ -2269,16 +2269,17 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #endif  // CONFIG_WARPMV
     case GLOBALMV: {
 #if CONFIG_FLEX_MVRES
-      mv[0].as_int = get_warp_motion_vector(&cm->global_motion[ref_frame[0]],
-                                            features->fr_mv_precision, bsize,
-                                            xd->mi_col, xd->mi_row)
+      mv[0].as_int =
+          get_warp_motion_vector(xd, &cm->global_motion[ref_frame[0]],
+                                 features->fr_mv_precision, bsize, xd->mi_col,
+                                 xd->mi_row)
 #else
       mv[0].as_int = get_warp_motion_vector(
-                         &cm->global_motion[ref_frame[0]],
+                         xd, &cm->global_motion[ref_frame[0]],
                          features->allow_high_precision_mv, bsize, xd->mi_col,
                          xd->mi_row, features->cur_frame_force_integer_mv)
 #endif
-                         .as_int;
+              .as_int;
       break;
     }
     case NEW_NEWMV:
@@ -2370,32 +2371,34 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     }
     case GLOBAL_GLOBALMV: {
       assert(is_compound);
-      mv[0].as_int = get_warp_motion_vector(&cm->global_motion[ref_frame[0]],
+      mv[0].as_int =
+          get_warp_motion_vector(xd, &cm->global_motion[ref_frame[0]],
 #if CONFIG_FLEX_MVRES
-                                            features->fr_mv_precision,
+                                 features->fr_mv_precision,
 #else
-                                            features->allow_high_precision_mv,
+                                 features->allow_high_precision_mv,
 #endif
-                                            bsize, xd->mi_col, xd->mi_row
+                                 bsize, xd->mi_col, xd->mi_row
 #if !CONFIG_FLEX_MVRES
-                                            ,
-                                            features->cur_frame_force_integer_mv
+                                 ,
+                                 features->cur_frame_force_integer_mv
 #endif
-                                            )
-                         .as_int;
-      mv[1].as_int = get_warp_motion_vector(&cm->global_motion[ref_frame[1]],
+                                 )
+              .as_int;
+      mv[1].as_int =
+          get_warp_motion_vector(xd, &cm->global_motion[ref_frame[1]],
 #if CONFIG_FLEX_MVRES
-                                            features->fr_mv_precision,
+                                 features->fr_mv_precision,
 #else
-                                            features->allow_high_precision_mv,
+                                 features->allow_high_precision_mv,
 #endif
-                                            bsize, xd->mi_col, xd->mi_row
+                                 bsize, xd->mi_col, xd->mi_row
 #if !CONFIG_FLEX_MVRES
-                                            ,
-                                            features->cur_frame_force_integer_mv
+                                 ,
+                                 features->cur_frame_force_integer_mv
 #endif
-                                            )
-                         .as_int;
+                                 )
+              .as_int;
       break;
     }
 #if CONFIG_JOINT_MVD

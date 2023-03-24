@@ -1908,7 +1908,7 @@ static int64_t motion_mode_rd(
                   ->warp_param_stack[av1_ref_frame_type(mbmi->ref_frame)]
                                     [mbmi->warp_ref_idx]
                   .wm_params;
-          mbmi->mv[0] = get_mv_from_wrl(&ref_model,
+          mbmi->mv[0] = get_mv_from_wrl(xd, &ref_model,
 #if CONFIG_FLEX_MVRES
                                         MV_PRECISION_ONE_EIGHTH_PEL,
 #else
@@ -2029,7 +2029,7 @@ static int64_t motion_mode_rd(
                   ->warp_param_stack[av1_ref_frame_type(mbmi->ref_frame)]
                                     [mbmi->warp_ref_idx]
                   .wm_params;
-          mbmi->mv[0] = get_mv_from_wrl(&ref_model,
+          mbmi->mv[0] = get_mv_from_wrl(xd, &ref_model,
 #if CONFIG_FLEX_MVRES
                                         MV_PRECISION_ONE_EIGHTH_PEL,
 #else
@@ -2186,11 +2186,12 @@ static int64_t motion_mode_rd(
             // starting with the motion vector predicted by the neighbor's
             // warp model (if any)
 #if CONFIG_FLEX_MVRES
-            mbmi->mv[0] = get_warp_motion_vector(
-                &neighbor_params, mbmi->pb_mv_precision, bsize, mi_col, mi_row);
+            mbmi->mv[0] = get_warp_motion_vector(xd, &neighbor_params,
+                                                 mbmi->pb_mv_precision, bsize,
+                                                 mi_col, mi_row);
 #else
             mbmi->mv[0] = get_warp_motion_vector(
-                &neighbor_params, features->allow_high_precision_mv, bsize,
+                xd, &neighbor_params, features->allow_high_precision_mv, bsize,
                 mi_col, mi_row, features->cur_frame_force_integer_mv);
 #endif
 #if CONFIG_C071_SUBBLK_WARPMV
@@ -8882,10 +8883,10 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
 #endif  // CONFIG_TIP
     mbmi->mv[0].as_int =
 #if CONFIG_FLEX_MVRES
-        get_warp_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
+        get_warp_motion_vector(xd, &cm->global_motion[mbmi->ref_frame[0]],
                                features->fr_mv_precision, bsize, mi_col, mi_row)
 #else
-      get_warp_motion_vector(&cm->global_motion[mbmi->ref_frame[0]],
+      get_warp_motion_vector(xd, &cm->global_motion[mbmi->ref_frame[0]],
                              features->allow_high_precision_mv, bsize, mi_col,
                              mi_row, features->cur_frame_force_integer_mv)
 #endif

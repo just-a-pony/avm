@@ -2830,37 +2830,31 @@ void av1_find_mv_refs(
 #endif
     if (ref_frame < INTER_REFS_PER_FRAME) {
 #if CONFIG_FLEX_MVRES
-      gm_mv[0] = get_warp_motion_vector(&cm->global_motion[ref_frame],
+      gm_mv[0] = get_warp_motion_vector(xd, &cm->global_motion[ref_frame],
                                         fr_mv_precision, bsize, mi_col, mi_row);
 #else
-      gm_mv[0] = get_warp_motion_vector(&cm->global_motion[ref_frame],
+      gm_mv[0] = get_warp_motion_vector(xd, &cm->global_motion[ref_frame],
                                         allow_high_precision_mv, bsize, mi_col,
                                         mi_row, force_integer_mv);
 #endif
-      clamp_mv_ref(&gm_mv[0].as_mv, xd->width << MI_SIZE_LOG2,
-                   xd->height << MI_SIZE_LOG2, xd);
       gm_mv[1].as_int = 0;
       if (global_mvs != NULL) global_mvs[ref_frame] = gm_mv[0];
     } else {
       MV_REFERENCE_FRAME rf[2];
       av1_set_ref_frame(rf, ref_frame);
 #if CONFIG_FLEX_MVRES
-      gm_mv[0] = get_warp_motion_vector(&cm->global_motion[rf[0]],
+      gm_mv[0] = get_warp_motion_vector(xd, &cm->global_motion[rf[0]],
                                         fr_mv_precision, bsize, mi_col, mi_row);
-      gm_mv[1] = get_warp_motion_vector(&cm->global_motion[rf[1]],
+      gm_mv[1] = get_warp_motion_vector(xd, &cm->global_motion[rf[1]],
                                         fr_mv_precision, bsize, mi_col, mi_row);
 #else
-      gm_mv[0] = get_warp_motion_vector(&cm->global_motion[rf[0]],
+      gm_mv[0] = get_warp_motion_vector(xd, &cm->global_motion[rf[0]],
                                         allow_high_precision_mv, bsize, mi_col,
                                         mi_row, force_integer_mv);
-      gm_mv[1] = get_warp_motion_vector(&cm->global_motion[rf[1]],
+      gm_mv[1] = get_warp_motion_vector(xd, &cm->global_motion[rf[1]],
                                         allow_high_precision_mv, bsize, mi_col,
                                         mi_row, force_integer_mv);
 #endif
-      clamp_mv_ref(&gm_mv[0].as_mv, xd->width << MI_SIZE_LOG2,
-                   xd->height << MI_SIZE_LOG2, xd);
-      clamp_mv_ref(&gm_mv[1].as_mv, xd->width << MI_SIZE_LOG2,
-                   xd->height << MI_SIZE_LOG2, xd);
     }
   }
 
