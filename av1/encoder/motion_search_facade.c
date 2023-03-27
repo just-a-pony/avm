@@ -395,6 +395,7 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
 #endif
                                       cost_list);
     MV subpel_start_mv = get_mv_from_fullmv(&best_mv->as_fullmv);
+    assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, subpel_start_mv));
 #if CONFIG_C071_SUBBLK_WARPMV
     if (
 #if CONFIG_FLEX_MVRES
@@ -629,6 +630,7 @@ void av1_single_motion_search_high_precision(const AV1_COMP *const cpi,
     // ms_params.forced_stop = EIGHTH_PEL;
 
     MV start_mv1 = get_mv_from_fullmv(&curr_best_mv.as_fullmv);
+    assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, start_mv1));
 #if CONFIG_C071_SUBBLK_WARPMV
     if (pb_mv_precision >= MV_PRECISION_HALF_PEL) {
       start_mv1.col += sub_mv_offset.col;
@@ -853,6 +855,7 @@ void av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
                                mask, mask_stride, id);
       ms_params.forced_stop = EIGHTH_PEL;
       MV start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
+      assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, start_mv));
 #if CONFIG_C071_SUBBLK_WARPMV
       if (
 #if CONFIG_FLEX_MVRES
@@ -1257,6 +1260,7 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
                                mask, mask_stride, ref_idx);
       ms_params.forced_stop = EIGHTH_PEL;
       MV start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
+      assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, start_mv));
 #if CONFIG_C071_SUBBLK_WARPMV
       if (
 #if CONFIG_FLEX_MVRES
@@ -1567,6 +1571,7 @@ int_mv av1_simple_motion_search(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
     ms_params.forced_stop = cpi->sf.mv_sf.simple_motion_subpel_force_stop;
 
     MV subpel_start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
+    assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, subpel_start_mv));
 
     cpi->mv_search_params.find_fractional_mv_step(
         xd, cm, &ms_params, subpel_start_mv, &best_mv.as_mv, &not_used,
@@ -1714,6 +1719,7 @@ int_mv av1_simple_motion_search_ext(AV1_COMP *const cpi,
     ms_params.forced_stop = cpi->sf.mv_sf.simple_motion_subpel_force_stop;
 
     MV subpel_start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
+    assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, subpel_start_mv));
 
     cpi->mv_search_params.find_fractional_mv_step(
         xd, cm, &ms_params, subpel_start_mv, &best_mv.as_mv, &not_used,

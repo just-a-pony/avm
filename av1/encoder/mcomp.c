@@ -342,8 +342,6 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
                              : 0;
 
   const int max_full_mv = av1_lower_mv_limit(MAX_FULL_PEL_VAL, prec_shift);
-  const int mv_low = av1_lower_mv_limit(GET_MV_RAWPEL(MV_LOW + 1), prec_shift);
-  const int mv_upp = av1_lower_mv_limit(GET_MV_RAWPEL(MV_UPP - 1), prec_shift);
 
   // Producing the reference mv value to the target precision
   FULLPEL_MV full_ref_mv = get_fullmv_from_mv(mv);
@@ -351,18 +349,23 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
                      GET_MV_SUBPEL(full_ref_mv.col) };
   lower_mv_precision(&low_prec_mv, pb_mv_precision);
 
-  // generating min/max value based on differences
-  int col_min = GET_MV_RAWPEL(low_prec_mv.col) - max_full_mv +
-                (low_prec_mv.col & 7 ? 1 : 0);
-  int row_min = GET_MV_RAWPEL(low_prec_mv.row) - max_full_mv +
-                (low_prec_mv.row & 7 ? 1 : 0);
-  int col_max = GET_MV_RAWPEL(low_prec_mv.col) + max_full_mv;
-  int row_max = GET_MV_RAWPEL(low_prec_mv.row) + max_full_mv;
+  // Calculate the outermost full-pixel MVs which are inside the limits set by
+  // av1_set_subpel_mv_search_range().
+  //
+  // The subpel limits are simply mv->col +/- 8*MAX_FULL_PEL_VAL, and similar
+  // for mv->row. We can then divide by 8 to find the fullpel MV limits. But
+  // we have to be careful about the rounding. We want these bounds to be
+  // at least as tight as the subpel limits, which means that we must round
+  // the minimum values up and the maximum values down when dividing.
+  int col_min = ((low_prec_mv.col + 7) >> 3) - max_full_mv;
+  int row_min = ((low_prec_mv.row + 7) >> 3) - max_full_mv;
+  int col_max = (low_prec_mv.col >> 3) + max_full_mv;
+  int row_max = (low_prec_mv.row >> 3) + max_full_mv;
 
-  col_min = AOMMAX(col_min, mv_low + (1 << prec_shift));
-  row_min = AOMMAX(row_min, mv_low + (1 << prec_shift));
-  col_max = AOMMIN(col_max, mv_upp - (1 << prec_shift));
-  row_max = AOMMIN(row_max, mv_upp - (1 << prec_shift));
+  col_min = AOMMAX(col_min, (MV_LOW >> 3) + (1 << prec_shift));
+  row_min = AOMMAX(row_min, (MV_LOW >> 3) + (1 << prec_shift));
+  col_max = AOMMIN(col_max, (MV_UPP >> 3) - (1 << prec_shift));
+  row_max = AOMMIN(row_max, (MV_UPP >> 3) - (1 << prec_shift));
 
   full_pel_lower_mv_precision_one_comp(&mv_limits->col_min, pb_mv_precision, 0);
   full_pel_lower_mv_precision_one_comp(&mv_limits->row_min, pb_mv_precision, 0);
@@ -371,17 +374,15 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
 
 #else
 
-  int col_min =
-      GET_MV_RAWPEL(mv->col) - MAX_FULL_PEL_VAL + (mv->col & 7 ? 1 : 0);
-  int row_min =
-      GET_MV_RAWPEL(mv->row) - MAX_FULL_PEL_VAL + (mv->row & 7 ? 1 : 0);
-  int col_max = GET_MV_RAWPEL(mv->col) + MAX_FULL_PEL_VAL;
-  int row_max = GET_MV_RAWPEL(mv->row) + MAX_FULL_PEL_VAL;
+  int col_min = ((mv->col + 7) >> 3) - MAX_FULL_PEL_VAL;
+  int row_min = ((mv->row + 7) >> 3) - MAX_FULL_PEL_VAL;
+  int col_max = (mv->col >> 3) + MAX_FULL_PEL_VAL;
+  int row_max = (mv->row >> 3) + MAX_FULL_PEL_VAL;
 
-  col_min = AOMMAX(col_min, GET_MV_RAWPEL(MV_LOW) + 1);
-  row_min = AOMMAX(row_min, GET_MV_RAWPEL(MV_LOW) + 1);
-  col_max = AOMMIN(col_max, GET_MV_RAWPEL(MV_UPP) - 1);
-  row_max = AOMMIN(row_max, GET_MV_RAWPEL(MV_UPP) - 1);
+  col_min = AOMMAX(col_min, (MV_LOW >> 3) + 1);
+  row_min = AOMMAX(row_min, (MV_LOW >> 3) + 1);
+  col_max = AOMMIN(col_max, (MV_UPP >> 3) - 1);
+  row_max = AOMMIN(row_max, (MV_UPP >> 3) - 1);
 #endif
 
   // Get intersection of UMV window and valid MV window to reduce # of checks
