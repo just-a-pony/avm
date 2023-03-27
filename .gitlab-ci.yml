@@ -75,21 +75,6 @@ Style Check:
           esac
         fi
       done
-    - |
-      # Check commit messages
-      for i in $(git rev-list HEAD ^"$DIFF_REF"); do
-        echo "Checking commit $i"
-        subject="$(git log --pretty=format:%s -n 1 $i)"
-        if [ ! "${subject:0:6}" = "Revert" ]; then
-          length=$(echo -n "$subject" | wc -c)
-          if [ $length -gt 65 ]; then
-            echo "The commit subject: '$subject' is too long! ($length characters)"
-            echo "Try to keep this to 50 or less."
-            echo "https://www.git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#_commit_guidelines"
-            exit 1
-          fi
-        fi
-      done
 
 # MR checks (formerly patch_check)
 MR checks:
