@@ -2017,6 +2017,7 @@ typedef struct macroblockd {
   uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES];
 #endif  // CONFIG_WARP_REF_LIST
 
+#if !CONFIG_EXT_RECUR_PARTITIONS
   /*!
    * True if this is the last vertical rectangular block in a VERTICAL or
    * VERTICAL_4 partition.
@@ -2040,6 +2041,8 @@ typedef struct macroblockd {
    */
   bool is_first_vertical_rect;
 #endif  // CONFIG_C043_MVP_IMPROVEMENTS
+#endif  // !CONFIG_EXT_RECUR_PARTITIONS
+
   /*!
    * Counts of each reference frame in the above and left neighboring blocks.
    * NOTE: Take into account both single and comp references.
