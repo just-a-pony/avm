@@ -1314,6 +1314,7 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   MB_MODE_INFO *const mbmi = xd->mi[0];
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   assert(xd->tree_type != CHROMA_PART);
+#if !CONFIG_SKIP_TXFM_OPT
 #if CONFIG_NEW_CONTEXT_MODELING
   mbmi->use_intrabc[0] = 0;
   mbmi->use_intrabc[1] = 0;
@@ -1324,6 +1325,7 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
       aom_read_symbol(r, ec_ctx->intrabc_cdf, 2, ACCT_STR);
 #endif  // CONFIG_NEW_CONTEXT_MODELING
+#endif  // !CONFIG_SKIP_TXFM_OPT
   if (xd->tree_type == CHROMA_PART)
     assert(mbmi->use_intrabc[PLANE_TYPE_UV] == 0);
   if (mbmi->use_intrabc[xd->tree_type == CHROMA_PART]) {
@@ -1520,8 +1522,29 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
   mbmi->skip_mode = 0;
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
+#if CONFIG_SKIP_TXFM_OPT
+  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+#if CONFIG_NEW_CONTEXT_MODELING
+    mbmi->use_intrabc[0] = 0;
+    mbmi->use_intrabc[1] = 0;
+    const int intrabc_ctx = get_intrabc_ctx(xd);
+    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
+        aom_read_symbol(r, ec_ctx->intrabc_cdf[intrabc_ctx], 2, ACCT_STR);
+#else
+    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
+        aom_read_symbol(r, ec_ctx->intrabc_cdf, 2, ACCT_STR);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
+  }
+  if (is_intrabc_block(mbmi, xd->tree_type)) {
+    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
+        read_skip_txfm(cm, xd, mbmi->segment_id, r);
+  } else {
+    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
+  }
+#else
   mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
       read_skip_txfm(cm, xd, mbmi->segment_id, r);
+#endif  // CONFIG_SKIP_TXFM_OPT
 
   if (!seg->segid_preskip)
     mbmi->segment_id = read_intra_segment_id(
@@ -2437,10 +2460,10 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 
 static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                                int segment_id, aom_reader *r
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
                                ,
                                const int skip_txfm
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 ) {
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
     return 1;
@@ -2448,11 +2471,11 @@ static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
   const int ctx = av1_get_intra_inter_context(xd);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   const int is_inter =
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
       aom_read_symbol(r, ec_ctx->intra_inter_cdf[skip_txfm][ctx], 2, ACCT_STR);
 #else
       aom_read_symbol(r, ec_ctx->intra_inter_cdf[ctx], 2, ACCT_STR);
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   return is_inter;
 }
 
@@ -3049,14 +3072,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 
   mbmi->skip_mode = read_skip_mode(cm, xd, mbmi->segment_id, r);
 
-#if !CONFIG_SKIP_MODE_ENHANCEMENT
-  if (mbmi->skip_mode)
-    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-  else
-#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
-    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
-        read_skip_txfm(cm, xd, mbmi->segment_id, r);
-
   mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
   mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
 #if CONFIG_WARP_REF_LIST
@@ -3067,6 +3082,52 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   mbmi->use_intrabc[0] = 0;
   mbmi->use_intrabc[1] = 0;
 #endif  // CONFIG_NEW_CONTEXT_MODELING
+
+#if CONFIG_SKIP_TXFM_OPT
+  if (!mbmi->skip_mode) {
+    inter_block = read_is_inter_block(cm, xd, mbmi->segment_id, r);
+  }
+
+#if CONFIG_IBC_SR_EXT
+  if (!inter_block && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+#if CONFIG_NEW_CONTEXT_MODELING
+    mbmi->use_intrabc[0] = 0;
+    mbmi->use_intrabc[1] = 0;
+    const int intrabc_ctx = get_intrabc_ctx(xd);
+    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
+        aom_read_symbol(r, xd->tile_ctx->intrabc_cdf[intrabc_ctx], 2, ACCT_STR);
+#else
+    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
+        aom_read_symbol(r, ec_ctx->intrabc_cdf, 2, ACCT_STR);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
+  }
+#endif  // CONFIG_IBC_SR_EXT
+
+  if (inter_block
+#if CONFIG_IBC_SR_EXT
+      || (!inter_block && is_intrabc_block(mbmi, xd->tree_type))
+#endif  // CONFIG_IBC_SR_EXT
+  ) {
+#if !CONFIG_SKIP_MODE_ENHANCEMENT
+    if (mbmi->skip_mode)
+      mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
+    else
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
+      mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
+          read_skip_txfm(cm, xd, mbmi->segment_id, r);
+  } else {
+    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
+  }
+#else
+#if !CONFIG_SKIP_MODE_ENHANCEMENT
+  if (mbmi->skip_mode)
+    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
+  else
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
+    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
+        read_skip_txfm(cm, xd, mbmi->segment_id, r);
+#endif  // CONFIG_SKIP_TXFM_OPT
+
   if (!cm->seg.segid_preskip)
     mbmi->segment_id = read_inter_segment_id(cm, xd, 0, r);
 
@@ -3078,6 +3139,7 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 
   read_delta_q_params(cm, xd, r);
 
+#if !CONFIG_SKIP_TXFM_OPT
   if (!mbmi->skip_mode)
     inter_block =
         read_is_inter_block(cm, xd, mbmi->segment_id, r
@@ -3086,6 +3148,7 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
                             mbmi->skip_txfm[xd->tree_type == CHROMA_PART]
 #endif  // CONFIG_CONTEXT_DERIVATION
         );
+#endif  // !CONFIG_SKIP_TXFM_OPT
 
   mbmi->current_qindex = xd->current_base_qindex;
 
@@ -3100,6 +3163,16 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
     mbmi->ref_frame[1] = NONE_FRAME;
     mbmi->palette_mode_info.palette_size[0] = 0;
     mbmi->palette_mode_info.palette_size[1] = 0;
+#if CONFIG_NEW_CONTEXT_MODELING
+    mbmi->use_intrabc[0] = 0;
+    mbmi->use_intrabc[1] = 0;
+    const int intrabc_ctx = get_intrabc_ctx(xd);
+    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
+        aom_read_symbol(r, xd->tile_ctx->intrabc_cdf[intrabc_ctx], 2, ACCT_STR);
+#else
+    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
+        aom_read_symbol(r, xd->tile_ctx->intrabc_cdf, 2, ACCT_STR);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
     read_intrabc_info(cm, dcb, r);
     if (is_intrabc_block(mbmi, xd->tree_type)) return;
   }

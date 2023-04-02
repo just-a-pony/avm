@@ -1319,12 +1319,12 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->comp_group_idx_cdf, ctx_tr->comp_group_idx_cdf, 2);
   AVERAGE_CDF(ctx_left->skip_mode_cdfs, ctx_tr->skip_mode_cdfs, 2);
   AVERAGE_CDF(ctx_left->skip_txfm_cdfs, ctx_tr->skip_txfm_cdfs, 2);
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   AVERAGE_CDF(ctx_left->intra_inter_cdf[0], ctx_tr->intra_inter_cdf[0], 2);
   AVERAGE_CDF(ctx_left->intra_inter_cdf[1], ctx_tr->intra_inter_cdf[1], 2);
 #else
   AVERAGE_CDF(ctx_left->intra_inter_cdf, ctx_tr->intra_inter_cdf, 2);
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   avg_nmv(&ctx_left->nmvc, &ctx_tr->nmvc, wt_left, wt_tr);
   avg_nmv(&ctx_left->ndvc, &ctx_tr->ndvc, wt_left, wt_tr);
   AVERAGE_CDF(ctx_left->intrabc_cdf, ctx_tr->intrabc_cdf, 2);

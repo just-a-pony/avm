@@ -899,11 +899,11 @@ typedef struct {
    ****************************************************************************/
   /**@{*/
   //! intra_inter_cost
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   int intra_inter_cost[INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS][2];
 #else
   int intra_inter_cost[INTRA_INTER_CONTEXTS][2];
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   //! inter_compound_mode_cost
 #if CONFIG_OPTFLOW_REFINEMENT
   /*! use_optflow_cost */

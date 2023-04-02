@@ -396,10 +396,10 @@ static int write_skip_mode(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
                                       const MACROBLOCKD *xd, int segment_id,
                                       aom_writer *w, const int is_inter
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
                                       ,
                                       const int skip_txfm
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 ) {
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
     assert(is_inter);
@@ -407,11 +407,11 @@ static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
   }
   const int ctx = av1_get_intra_inter_context(xd);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[skip_txfm][ctx], 2);
 #else
   aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[ctx], 2);
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 }
 
 #if CONFIG_WEDGE_MOD_EXT
@@ -1823,6 +1823,39 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
   write_skip_mode(cm, xd, segment_id, mbmi, w);
 
+#if CONFIG_SKIP_TXFM_OPT
+  if (!mbmi->skip_mode) {
+    write_is_inter(cm, xd, mbmi->segment_id, w, is_inter);
+
+#if CONFIG_IBC_SR_EXT
+    if (!is_inter && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+      const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
+      if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
+#if CONFIG_NEW_CONTEXT_MODELING
+      const int intrabc_ctx = get_intrabc_ctx(xd);
+      aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
+#else
+      aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
+    }
+#endif  // CONFIG_IBC_SR_EXT
+  }
+
+  int skip = 0;
+  if (is_inter
+#if CONFIG_IBC_SR_EXT
+      || (!is_inter && is_intrabc_block(mbmi, xd->tree_type))
+#endif  // CONFIG_IBC_SR_EXT
+  ) {
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+    skip = write_skip(cm, xd, segment_id, mbmi, w);
+#else
+    assert(IMPLIES(mbmi->skip_mode,
+                   mbmi->skip_txfm[xd->tree_type == CHROMA_PART]));
+    skip = mbmi->skip_mode ? 1 : write_skip(cm, xd, segment_id, mbmi, w);
+#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
+  }
+#else
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   const int skip = write_skip(cm, xd, segment_id, mbmi, w);
 #else
@@ -1831,6 +1864,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   const int skip =
       mbmi->skip_mode ? 1 : write_skip(cm, xd, segment_id, mbmi, w);
 #endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
+#endif  // CONFIG_SKIP_TXFM_OPT
   write_inter_segment_id(cpi, w, seg, segp, skip, 0);
 
   write_cdef(cm, xd, w, skip);
@@ -1860,6 +1894,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   }
 #endif  // CONFIG_WARPMV
 
+#if !CONFIG_SKIP_TXFM_OPT
   if (!mbmi->skip_mode)
     write_is_inter(cm, xd, mbmi->segment_id, w, is_inter
 #if CONFIG_CONTEXT_DERIVATION
@@ -1867,6 +1902,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
                    skip
 #endif  // CONFIG_CONTEXT_DERIVATION
     );
+#endif  // !CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   if (mbmi->skip_mode) {
@@ -1881,6 +1917,13 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
 #if CONFIG_IBC_SR_EXT
   if (!is_inter && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+#if CONFIG_NEW_CONTEXT_MODELING
+    const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
+    const int intrabc_ctx = get_intrabc_ctx(xd);
+    aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
+#else
+    aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
     write_intrabc_info(xd, mbmi_ext_frame, w);
     if (is_intrabc_block(mbmi, xd->tree_type)) return;
   }
@@ -2170,12 +2213,14 @@ static AOM_INLINE void write_intrabc_info(
   int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+#if !CONFIG_SKIP_TXFM_OPT
 #if CONFIG_NEW_CONTEXT_MODELING
   const int intrabc_ctx = get_intrabc_ctx(xd);
   aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
 #else
   aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
 #endif  // CONFIG_NEW_CONTEXT_MODELING
+#endif  // !CONFIG_SKIP_TXFM_OPT
 
   if (use_intrabc) {
     assert(mbmi->mode == DC_PRED);
@@ -2212,8 +2257,25 @@ static AOM_INLINE void write_mb_modes_kf(
   if (seg->segid_preskip && seg->update_map)
     write_segment_id(cpi, mbmi, w, seg, segp, 0);
 
-  const int skip = write_skip(cm, xd, mbmi->segment_id, mbmi, w);
+#if CONFIG_SKIP_TXFM_OPT
+  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+    const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
+    if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
+#if CONFIG_NEW_CONTEXT_MODELING
+    const int intrabc_ctx = get_intrabc_ctx(xd);
+    aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
+#else
+    aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
+#endif  // CONFIG_NEW_CONTEXT_MODELING
+  }
 
+  int skip = 0;
+  if (is_intrabc_block(mbmi, xd->tree_type)) {
+    skip = write_skip(cm, xd, mbmi->segment_id, mbmi, w);
+  }
+#else
+  const int skip = write_skip(cm, xd, mbmi->segment_id, mbmi, w);
+#endif  // CONFIG_SKIP_TXFM_OPT
   if (!seg->segid_preskip && seg->update_map)
     write_segment_id(cpi, mbmi, w, seg, segp, skip);
 

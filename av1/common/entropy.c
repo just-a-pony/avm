@@ -234,12 +234,12 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
 #endif  // CONFIG_NEW_TX_PARTITION
   RESET_CDF_COUNTER(fc->comp_group_idx_cdf, 2);
   RESET_CDF_COUNTER(fc->skip_mode_cdfs, 2);
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   RESET_CDF_COUNTER(fc->intra_inter_cdf[0], 2);
   RESET_CDF_COUNTER(fc->intra_inter_cdf[1], 2);
 #else
   RESET_CDF_COUNTER(fc->intra_inter_cdf, 2);
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   RESET_CDF_COUNTER(fc->skip_txfm_cdfs, 2);
   reset_nmv_counter(&fc->nmvc);
   reset_nmv_counter(&fc->ndvc);

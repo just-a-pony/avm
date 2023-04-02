@@ -584,7 +584,7 @@ static AOM_INLINE void estimate_ref_frame_costs(
              REF_FRAMES * sizeof((*ref_costs_comp)[0]));
   } else {
     int intra_inter_ctx = av1_get_intra_inter_context(xd);
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
     const int skip_txfm = xd->mi[0]->skip_txfm[xd->tree_type == CHROMA_PART];
     ref_costs_single[INTRA_FRAME_INDEX] =
         mode_costs->intra_inter_cost[skip_txfm][intra_inter_ctx][0];
@@ -594,7 +594,7 @@ static AOM_INLINE void estimate_ref_frame_costs(
     ref_costs_single[INTRA_FRAME_INDEX] =
         mode_costs->intra_inter_cost[intra_inter_ctx][0];
     unsigned int base_cost = mode_costs->intra_inter_cost[intra_inter_ctx][1];
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_TIP
     if (cm->features.tip_frame_mode) {
@@ -5486,9 +5486,13 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
     }
 
     // Intra block is always coded as non-skip
+#if CONFIG_SKIP_TXFM_OPT
+    rd_cost->rate = rate_y + rate_uv;
+#else
     rd_cost->rate =
         rate_y + rate_uv +
         x->mode_costs.skip_txfm_cost[av1_get_skip_txfm_context(xd)][0];
+#endif  // CONFIG_SKIP_TXFM_OPT
     rd_cost->dist = dist_y + dist_uv;
     rd_cost->rdcost = RDCOST(x->rdmult, rd_cost->rate, rd_cost->dist);
     rd_cost->skip_txfm = 0;
@@ -5840,6 +5844,10 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
         x->txfm_search_info.skip_txfm = 1;
         search_state->best_mode_skippable = 1;
         search_state->best_skip2 = 1;
+#if CONFIG_SKIP_TXFM_OPT
+        search_state->best_rate_y =
+            x->mode_costs.skip_txfm_cost[av1_get_skip_txfm_context(xd)][1];
+#endif  // CONFIG_SKIP_TXFM_OPT
 
         restore_dst_buf(xd, orig_dst, num_planes);
       } else {
@@ -6204,7 +6212,13 @@ static AOM_INLINE void refine_winner_mode_tx(
         rd_stats_uv.dist = rd_stats_uv.sse;
       } else {
         skip_blk = 0;
+#if CONFIG_SKIP_TXFM_OPT
+        rd_stats_y.rate += is_inter_block(mbmi, xd->tree_type)
+                               ? mode_costs->skip_txfm_cost[skip_ctx][0]
+                               : 0;
+#else
         rd_stats_y.rate += mode_costs->skip_txfm_cost[skip_ctx][0];
+#endif  // CONFIG_SKIP_TXFM_OPT
       }
       int this_rate = rd_stats.rate + rd_stats_y.rate + rd_stats_uv.rate -
                       winner_rate_y - winner_rate_uv;
@@ -7407,8 +7421,16 @@ static INLINE void update_search_state(
   if (txfm_search_done) {
     search_state->best_rate_y =
         new_best_rd_stats_y->rate +
+#if CONFIG_SKIP_TXFM_OPT
+        (mode_is_intra
+             ? 0
+             : (x->mode_costs
+                    .skip_txfm_cost[skip_ctx][new_best_rd_stats->skip_txfm ||
+                                              skip_txfm]));
+#else
         x->mode_costs.skip_txfm_cost[skip_ctx]
                                     [new_best_rd_stats->skip_txfm || skip_txfm];
+#endif  // CONFIG_SKIP_TXFM_OPT
     search_state->best_rate_uv = new_best_rd_stats_uv->rate;
   }
   memcpy(ctx->blk_skip, txfm_info->blk_skip,

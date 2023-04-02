@@ -1608,7 +1608,7 @@ static const aom_cdf_prob default_obmc_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)] = {
 static const aom_cdf_prob default_bawp_cdf[CDF_SIZE(2)] = { AOM_CDF2(23664) };
 #endif  // CONFIG_BAWP
 
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 #if CONFIG_NEW_CONTEXT_MODELING
 static const aom_cdf_prob default_intra_inter_cdf
     [INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS][CDF_SIZE(2)] = {
@@ -1640,7 +1640,7 @@ static const aom_cdf_prob default_intra_inter_cdf[INTRA_INTER_CONTEXTS]
                                                    { AOM_CDF2(20186) },
                                                    { AOM_CDF2(26538) }
                                                  };
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_TIP
 static const aom_cdf_prob default_tip_cdf[TIP_CONTEXTS][CDF_SIZE(2)] = {
@@ -2872,12 +2872,12 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->inter_ext_tx_cdf, default_inter_ext_tx_cdf);
   av1_copy(fc->skip_mode_cdfs, default_skip_mode_cdfs);
   av1_copy(fc->skip_txfm_cdfs, default_skip_txfm_cdfs);
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   av1_copy(fc->intra_inter_cdf[0], default_intra_inter_cdf[0]);
   av1_copy(fc->intra_inter_cdf[1], default_intra_inter_cdf[1]);
 #else
   av1_copy(fc->intra_inter_cdf, default_intra_inter_cdf);
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   for (int i = 0; i < SPATIAL_PREDICTION_PROBS; i++)
     av1_copy(fc->seg.spatial_pred_seg_cdf[i],
              default_spatial_pred_seg_tree_cdf[i]);

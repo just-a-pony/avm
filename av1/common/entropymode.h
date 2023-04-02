@@ -267,12 +267,12 @@ typedef struct frame_contexts {
   aom_cdf_prob comp_group_idx_cdf[COMP_GROUP_IDX_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob skip_txfm_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)];
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   aom_cdf_prob intra_inter_cdf[INTRA_INTER_SKIP_TXFM_CONTEXTS]
                               [INTRA_INTER_CONTEXTS][CDF_SIZE(2)];
 #else
   aom_cdf_prob intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)];
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   nmv_context nmvc;
   nmv_context ndvc;
 #if CONFIG_NEW_CONTEXT_MODELING

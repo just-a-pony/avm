@@ -688,7 +688,7 @@ int main(int argc, const char **argv) {
                      "default_bawp_cdf[CDF_SIZE(2)]");
 #endif
   /* Intra/inter flag */
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   cts_each_dim[0] = INTRA_INTER_SKIP_TXFM_CONTEXTS;
   cts_each_dim[1] = INTRA_INTER_CONTEXTS;
   cts_each_dim[2] = 2;
@@ -703,7 +703,7 @@ int main(int argc, const char **argv) {
       &fc.intra_inter[0][0], probsfile, 2, cts_each_dim,
       "static const aom_cdf_prob\n"
       "default_intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)]");
-#endif  // CONFIG_CONTEXT_DERIVATION
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   /* Single/comp ref flag */
   cts_each_dim[0] = COMP_INTER_CONTEXTS;
   cts_each_dim[1] = 2;

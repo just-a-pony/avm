@@ -1335,12 +1335,12 @@ typedef struct FRAME_COUNTS {
   unsigned int motion_mode[BLOCK_SIZES_ALL][MOTION_MODES];
   unsigned int obmc[BLOCK_SIZES_ALL][2];
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
-#if CONFIG_CONTEXT_DERIVATION
+#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   unsigned int intra_inter[INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS]
                           [2];
 #else
   unsigned int intra_inter[INTRA_INTER_CONTEXTS][2];
-#endif
+#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 #if CONFIG_BAWP
   unsigned int bawp[2];
 #endif  // CONFIG_BAWP

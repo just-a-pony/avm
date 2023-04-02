@@ -3636,7 +3636,13 @@ static AOM_INLINE void choose_largest_tx_size(const AV1_COMP *const cpi,
   const int64_t skip_txfm_rd = is_inter_block(mbmi, xd->tree_type)
                                    ? RDCOST(x->rdmult, skip_txfm_rate, 0)
                                    : INT64_MAX;
+#if CONFIG_SKIP_TXFM_OPT
+  const int64_t no_skip_txfm_rd = is_inter_block(mbmi, xd->tree_type)
+                                      ? RDCOST(x->rdmult, no_skip_txfm_rate, 0)
+                                      : 0;
+#else
   const int64_t no_skip_txfm_rd = RDCOST(x->rdmult, no_skip_txfm_rate, 0);
+#endif  // CONFIG_SKIP_TXFM_OPT
   const int skip_trellis = 0;
   av1_txfm_rd_in_plane(x, cpi, rd_stats, ref_best_rd,
                        AOMMIN(no_skip_txfm_rd, skip_txfm_rd), AOM_PLANE_Y, bs,
@@ -3951,8 +3957,13 @@ int64_t av1_uniform_txfm_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
   const int skip_txfm_rate = mode_costs->skip_txfm_cost[skip_ctx][1];
   const int64_t skip_txfm_rd =
       is_inter ? RDCOST(x->rdmult, skip_txfm_rate, 0) : INT64_MAX;
+#if CONFIG_SKIP_TXFM_OPT
+  const int64_t no_this_rd =
+      is_inter ? RDCOST(x->rdmult, no_skip_txfm_rate + tx_size_rate, 0) : 0;
+#else
   const int64_t no_this_rd =
       RDCOST(x->rdmult, no_skip_txfm_rate + tx_size_rate, 0);
+#endif  // CONFIG_SKIP_TXFM_OPT
 
   mbmi->tx_size = tx_size;
   av1_txfm_rd_in_plane(x, cpi, rd_stats, ref_best_rd,
