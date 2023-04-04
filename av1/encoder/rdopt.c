@@ -4141,13 +4141,12 @@ static int64_t handle_inter_mode(
            precision_dx >= 0; precision_dx--) {
         MvSubpelPrecision pb_mv_precision =
             precision_def->precision[precision_dx];
-        assert(pb_mv_precision <= mbmi->max_mv_precision);
         mbmi->pb_mv_precision = pb_mv_precision;
         if (!is_pb_mv_precision_active(cm, mbmi, bsize) &&
             (pb_mv_precision != mbmi->max_mv_precision)) {
           continue;
         }
-
+        assert(pb_mv_precision <= mbmi->max_mv_precision);
 #if CONFIG_IMPROVED_JMVD
         // apply early termination method to jmvd scaling factors
         if (cpi->sf.inter_sf.early_terminate_jmvd_scale_factor) {
