@@ -546,7 +546,7 @@ void av1_find_mv_refs(
     ,
     WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
     int max_num_of_warp_candidates,
-    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]
+    uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME]
 #endif  // CONFIG_WARP_REF_LIST
 );
 
@@ -554,7 +554,7 @@ void av1_find_mv_refs(
 // Initialize the warp cadidate lists to invalid values
 void av1_initialize_warp_wrl_list(
     WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
-    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]);
+    uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME]);
 #endif  // CONFIG_WARP_REF_LIST
 
 // check a list of motion vectors by sad score using a number rows of pixels

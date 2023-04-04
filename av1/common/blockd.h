@@ -1656,15 +1656,15 @@ typedef struct {
   /*!
    * Number of warp parameters in the buffer.
    */
-  int wpb_count[SINGLE_REF_FRAMES];
+  int wpb_count[INTER_REFS_PER_FRAME];
   /*!
    * Index corresponding to the first warp parameters in the buffer.
    */
-  int wpb_start_idx[SINGLE_REF_FRAMES];
+  int wpb_start_idx[INTER_REFS_PER_FRAME];
   /*!
    * Circular buffer storing the warp parameters.
    */
-  WarpedMotionParams wpb_buffer[SINGLE_REF_FRAMES][WARP_PARAM_BANK_SIZE];
+  WarpedMotionParams wpb_buffer[INTER_REFS_PER_FRAME][WARP_PARAM_BANK_SIZE];
   /*!
    * Total number of mbmi updates conducted in SB
    */
@@ -2011,11 +2011,12 @@ typedef struct macroblockd {
   /*!
    * warp_param_stack contains the predicted warp parameters
    */
-  WARP_CANDIDATE warp_param_stack[SINGLE_REF_FRAMES][MAX_WARP_REF_CANDIDATES];
+  WARP_CANDIDATE warp_param_stack[INTER_REFS_PER_FRAME]
+                                 [MAX_WARP_REF_CANDIDATES];
   /*!
    * valid number of candidates in the warp_param_stack.
    */
-  uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES];
+  uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME];
 #endif  // CONFIG_WARP_REF_LIST
 
 #if !CONFIG_EXT_RECUR_PARTITIONS

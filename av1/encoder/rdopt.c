@@ -831,17 +831,18 @@ static AOM_INLINE void setup_buffer_ref_mvs_inter(
 #endif  // CONFIG_SKIP_MODE_DRL_WITH_REF_IDX
 
   // Gets an initial list of candidate vectors from neighbours and orders them
-  av1_find_mv_refs(cm, xd, mbmi, ref_frame, mbmi_ext->ref_mv_count,
-                   xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs
+  av1_find_mv_refs(
+      cm, xd, mbmi, ref_frame, mbmi_ext->ref_mv_count, xd->ref_mv_stack,
+      xd->weight, NULL, mbmi_ext->global_mvs
 #if !CONFIG_C076_INTER_MOD_CTX
-                   ,
-                   mbmi_ext->mode_context
+      ,
+      mbmi_ext->mode_context
 #endif  // !CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_WARP_REF_LIST
-                   ,
-                   xd->warp_param_stack,
-                   ref_frame < SINGLE_REF_FRAMES ? MAX_WARP_REF_CANDIDATES : 0,
-                   xd->valid_num_warp_candidates
+      ,
+      xd->warp_param_stack,
+      ref_frame < INTER_REFS_PER_FRAME ? MAX_WARP_REF_CANDIDATES : 0,
+      xd->valid_num_warp_candidates
 #endif  // CONFIG_WARP_REF_LIST
 
   );
@@ -6559,7 +6560,7 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
 #if CONFIG_WARP_REF_LIST
           ,
           xd->warp_param_stack,
-          ref_frame < SINGLE_REF_FRAMES ? MAX_WARP_REF_CANDIDATES : 0,
+          ref_frame < INTER_REFS_PER_FRAME ? MAX_WARP_REF_CANDIDATES : 0,
           xd->valid_num_warp_candidates
 #endif  // CONFIG_WARP_REF_LIST
 

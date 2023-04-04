@@ -252,7 +252,8 @@ typedef struct {
   /*!
    * warp_param_stack is the warp candidate list.
    */
-  WARP_CANDIDATE warp_param_stack[SINGLE_REF_FRAMES][MAX_WARP_REF_CANDIDATES];
+  WARP_CANDIDATE warp_param_stack[INTER_REFS_PER_FRAME]
+                                 [MAX_WARP_REF_CANDIDATES];
 #endif  // CONFIG_WARP_REF_LIST
 
 } MB_MODE_INFO_EXT;

@@ -207,7 +207,7 @@ static INLINE void copy_mbmi_ext_frame_to_mbmi_ext(
          sizeof(mbmi_ext->global_mvs));
 
 #if CONFIG_WARP_REF_LIST
-  if (ref_frame_type < SINGLE_REF_FRAMES) {
+  if (ref_frame_type < INTER_REFS_PER_FRAME) {
     memcpy(mbmi_ext->warp_param_stack[ref_frame_type],
            mbmi_ext_best->warp_param_stack,
            sizeof(mbmi_ext->warp_param_stack[MAX_WARP_REF_CANDIDATES]));

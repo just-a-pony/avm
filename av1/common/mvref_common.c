@@ -2747,8 +2747,8 @@ static AOM_INLINE void setup_ref_mv_list(
 // Initialize the warp parameter list
 void av1_initialize_warp_wrl_list(
     WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
-    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]) {
-  for (int ref_frame = 0; ref_frame < SINGLE_REF_FRAMES; ref_frame++) {
+    uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME]) {
+  for (int ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ref_frame++) {
     for (int warp_idx = 0; warp_idx < MAX_WARP_REF_CANDIDATES; warp_idx++) {
       warp_param_stack[ref_frame][warp_idx].wm_params.invalid = 1;
     }
@@ -2812,7 +2812,7 @@ void av1_find_mv_refs(
     ,
     WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
     int max_num_of_warp_candidates,
-    uint8_t valid_num_warp_candidates[SINGLE_REF_FRAMES]
+    uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME]
 #endif  // CONFIG_WARP_REF_LIST
 ) {
   const int mi_row = xd->mi_row;
@@ -2869,7 +2869,7 @@ void av1_find_mv_refs(
 #if CONFIG_WARP_REF_LIST
   bool derive_wrl = (warp_param_stack && valid_num_warp_candidates &&
                      max_num_of_warp_candidates);
-  derive_wrl &= (ref_frame < SINGLE_REF_FRAMES);
+  derive_wrl &= (ref_frame < INTER_REFS_PER_FRAME);
   derive_wrl &= is_motion_variation_allowed_bsize(mi->sb_type[PLANE_TYPE_Y],
                                                   mi_row, mi_col);
   if (derive_wrl && valid_num_warp_candidates) {
