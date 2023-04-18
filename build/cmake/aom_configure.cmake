@@ -228,7 +228,7 @@ aom_get_inline("INLINE")
 set(HAVE_PTHREAD_H ${CMAKE_USE_PTHREADS_INIT})
 aom_check_source_compiles("unistd_check" "#include <unistd.h>" HAVE_UNISTD_H)
 
-if(NOT MSVC)
+if(NOT WIN32)
   aom_push_var(CMAKE_REQUIRED_LIBRARIES "m")
   aom_check_c_compiles(
     "fenv_check"
@@ -285,6 +285,8 @@ else()
   require_c_flag("-std=c99" YES)
   if(CONFIG_TENSORFLOW_LITE)
     require_cxx_flag_nomsvc("-std=c++17" YES)
+  elseif(WIN32 AND NOT MINGW)
+    require_cxx_flag_nomsvc("-std=c++14" YES)
   else()
     require_cxx_flag_nomsvc("-std=c++11" YES)
   endif()

@@ -299,7 +299,7 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-if(NOT MSVC AND NOT APPLE)
+if(NOT WIN32 AND NOT APPLE)
   target_link_libraries(aom ${AOM_LIB_LINK_TYPE} m)
   if(BUILD_SHARED_LIBS)
     target_link_libraries(aom_static ${AOM_LIB_LINK_TYPE} m)

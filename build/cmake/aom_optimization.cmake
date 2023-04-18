@@ -50,8 +50,9 @@ function(add_intrinsics_object_library flag opt_name target_to_update sources)
   add_library(${target_name} OBJECT ${${sources}})
   set_property(TARGET ${target_name} PROPERTY FOLDER ${AOM_TARGET_CPU})
 
-  if(MSVC)
-    get_msvc_intrinsic_flag(${flag} "flag")
+  # Clang/CL requires the -mXXX flag. The MSVC version is not granular enough.
+  if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    get_msvc_intrinsic_flag("${flag}" "flag")
   endif()
 
   if("${flag}" STREQUAL "-mavx2")
