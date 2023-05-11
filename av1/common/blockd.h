@@ -738,171 +738,79 @@ static INLINE bool is_wide_block(BLOCK_SIZE bsize) {
   return block_size_high[bsize] < block_size_wide[bsize];
 }
 
-/*!\brief Returns the partition type for a non-square block based on the symbol
- * transmitted through the bitstream. */
-static INLINE PARTITION_TYPE get_partition_from_symbol_rec_block(
-    BLOCK_SIZE bsize, PARTITION_TYPE_REC partition_rec) {
-  if (is_wide_block(bsize))
-    return partition_map_from_symbol_block_wgth[partition_rec];
-  else if (is_tall_block(bsize))
-    return partition_map_from_symbol_block_hgtw[partition_rec];
-  else
-    return PARTITION_INVALID;
-}
-
-/*!\brief Returns the partition type for a non-square block based on the symbol
- * transmitted through the bitstream when extended partition is disabled. */
-static INLINE PARTITION_TYPE
-get_partition_noext_from_symbol_rec_block(BLOCK_SIZE bsize, int symbol) {
-  if (symbol == 0) {
-    return PARTITION_NONE;
-  } else {
-    const int is_wide = is_wide_block(bsize);
-    const PARTITION_TYPE partition_longside_2way =
-        is_wide ? PARTITION_VERT : PARTITION_HORZ;
-    const PARTITION_TYPE partition_shortside_2way =
-        is_wide ? PARTITION_HORZ : PARTITION_VERT;
-
-    if (symbol == 1)
-      return partition_longside_2way;
-    else if (symbol == 2)
-      return partition_shortside_2way;
-    else
-      return PARTITION_INVALID;
+/*!\brief Checks whether extended partition is allowed for current bsize. */
+static AOM_INLINE bool is_ext_partition_allowed_at_bsize(BLOCK_SIZE bsize,
+                                                         TREE_TYPE tree_type) {
+  // Extended partition is disabled above BLOCK_64X64 to avoid crossing the
+  // 64X64 boundary.
+  if (bsize > BLOCK_64X64) {
+    return false;
   }
-}
-
-/*!\brief Returns the symbol to be transmitted through the bitstream for
- * a non-square block based on the partition type. */
-static INLINE PARTITION_TYPE_REC get_symbol_from_partition_rec_block(
-    BLOCK_SIZE bsize, PARTITION_TYPE partition) {
-  assert(bsize < BLOCK_SIZES_ALL);
-  assert(partition < EXT_PARTITION_TYPES);
-  if (is_wide_block(bsize))
-    return symbol_map_from_partition_block_wgth[partition];
-  else if (is_tall_block(bsize))
-    return symbol_map_from_partition_block_hgtw[partition];
-  else
-    return PARTITION_INVALID_REC;
-}
-
-/*!\brief Returns the symbol to be transmitted through the bitstream for
- * a non-square block based on the partition type when extended partition is
- * disabled. */
-static INLINE PARTITION_TYPE_REC get_symbol_from_partition_noext_rec_block(
-    BLOCK_SIZE bsize, PARTITION_TYPE partition) {
-  assert(bsize < BLOCK_SIZES_ALL);
-  assert(partition < EXT_PARTITION_TYPES);
-
-  if (partition >= PARTITION_TYPES) return PARTITION_INVALID_REC;
-  if (partition == PARTITION_NONE) return 0;
-
-  PARTITION_TYPE partition_longside_2way =
-      is_wide_block(bsize) ? PARTITION_VERT : PARTITION_HORZ;
-  if (is_bsize_geq(BLOCK_8X8, bsize) || is_bsize_geq(bsize, BLOCK_64X64)) {
-    return partition == partition_longside_2way ? 1 : PARTITION_INVALID_REC;
-  } else {
-    return partition == partition_longside_2way ? 1 : 2;
+  // At bsize <= 8X8, extended partitions will lead to dimension < 2.
+  if (bsize <= BLOCK_8X8) {
+    return false;
   }
-}
-
-/*!\brief Returns the symbol to be transmitted through the bitstream for the
- * middle block of extended partition.
- * \note "limited_partition" refers to the fact that the middle block of
- * extended partition cannot be split in the same direction as the extended
- * partition. */
-static INLINE PARTITION_TYPE get_symbol_from_limited_partition(
-    PARTITION_TYPE part, PARTITION_TYPE parent_part) {
-  assert(part != PARTITION_INVALID);
-  assert(parent_part == PARTITION_HORZ_3 || parent_part == PARTITION_VERT_3);
-  static const int partition_to_symbol_map[NUM_LIMITED_PARTITION_PARENTS]
-                                          [EXT_PARTITION_TYPES] = {
-                                            // PARTITION_HORZ_3
-                                            { 0, PARTITION_INVALID_REC, 1, 2,
-                                              3 },
-                                            // PARTITION_VERT_3
-                                            { 0, 1, PARTITION_INVALID_REC, 2,
-                                              3 },
-                                          };
-  const int dir = (parent_part == PARTITION_HORZ_3) ? 0 : 1;
-  const int symbol = partition_to_symbol_map[dir][part];
-  return symbol;
-}
-
-/*!\brief Returns the symbol to be transmitted through the bitstream for the
- * middle block of extended partition when extended partition is disabled.
- * \note "limited_partition" refers to the fact that the middle block of
- * extended partition cannot be split in the same direction as the extended
- * partition. */
-static INLINE PARTITION_TYPE get_symbol_from_limited_partition_noext(
-    PARTITION_TYPE part, PARTITION_TYPE parent_part) {
-  assert(part != PARTITION_INVALID);
-  assert(parent_part == PARTITION_HORZ_3 || parent_part == PARTITION_VERT_3);
-  static const int partition_to_symbol_map[NUM_LIMITED_PARTITION_PARENTS]
-                                          [EXT_PARTITION_TYPES] = {
-                                            // PARTITION_HORZ_3
-                                            { 0, PARTITION_INVALID_REC, 1,
-                                              PARTITION_INVALID_REC,
-                                              PARTITION_INVALID_REC },
-                                            // PARTITION_VERT_3
-                                            { 0, 1, PARTITION_INVALID_REC,
-                                              PARTITION_INVALID_REC,
-                                              PARTITION_INVALID_REC },
-                                          };
-  const int dir = (parent_part == PARTITION_HORZ_3) ? 0 : 1;
-  const int symbol = partition_to_symbol_map[dir][part];
-  return symbol;
-}
-
-/*!\brief Returns the partition type based on the symbol transmitted through the
- * bitstream for the middle block of extended partition. \note
- * "limited_partition" refers to the fact that the middle block of extended
- * partition cannot be split in the same direction as the extended partition. */
-static INLINE PARTITION_TYPE
-get_limited_partition_from_symbol(int symbol, PARTITION_TYPE parent_part) {
-  assert(parent_part == PARTITION_HORZ_3 || parent_part == PARTITION_VERT_3);
-  static const PARTITION_TYPE horz3_parts[EXT_PARTITION_TYPES - 1] = {
-    PARTITION_NONE, /* PARTITION_HORZ, */ PARTITION_VERT, PARTITION_HORZ_3,
-    PARTITION_VERT_3
-  };
-  static const PARTITION_TYPE vert3_parts[EXT_PARTITION_TYPES - 1] = {
-    PARTITION_NONE, PARTITION_HORZ, /* PARTITION_VERT, */ PARTITION_HORZ_3,
-    PARTITION_VERT_3
-  };
-  switch (parent_part) {
-    case PARTITION_HORZ_3: return horz3_parts[symbol];
-    case PARTITION_VERT_3: return vert3_parts[symbol];
-    default:
-      assert(0 &&
-             "Invalid parent partition in get_limited_partition from symbol");
-      return PARTITION_INVALID;
+  // For chroma part, we do not allow dimension 4. So anything smaller than
+  // 16X16 is not allowed.
+  if (tree_type == CHROMA_PART && bsize <= BLOCK_16X16) {
+    return false;
   }
+  return true;
 }
 
-/*!\brief Returns the partition type based on the symbol transmitted through the
- * bitstream for the middle block of extended partition when extended partition
- * is disabled. \note "limited_partition" refers to the fact that the middle
- * block of extended partition cannot be split in the same direction as the
- * extended partition. */
-static INLINE PARTITION_TYPE get_limited_partition_noext_from_symbol(
-    int symbol, PARTITION_TYPE parent_part) {
-  assert(parent_part == PARTITION_HORZ_3 || parent_part == PARTITION_VERT_3);
-  static const PARTITION_TYPE horz3_parts[LIMITED_PARTITION_TYPES] = {
-    PARTITION_NONE, PARTITION_VERT
-  };
-  static const PARTITION_TYPE vert3_parts[LIMITED_PARTITION_TYPES] = {
-    PARTITION_NONE, PARTITION_HORZ
-  };
-  switch (parent_part) {
-    case PARTITION_HORZ_3: return horz3_parts[symbol];
-    case PARTITION_VERT_3: return vert3_parts[symbol];
-    default:
-      assert(0 &&
-             "Invalid parent partition in get_limited_partition from symbol");
-      return PARTITION_INVALID;
+/*!\brief Checks whether extended partition is allowed for current bsize and
+ * rect_type. */
+static AOM_INLINE bool is_ext_partition_allowed(BLOCK_SIZE bsize,
+                                                RECT_PART_TYPE rect_type,
+                                                TREE_TYPE tree_type) {
+  if (!is_ext_partition_allowed_at_bsize(bsize, tree_type)) {
+    return false;
   }
+  // A splittable wide block has ratio 2:1. If it performs HORZ_3 split, then
+  // we'll get a block ratio of 2:0.25 == 8:1, which is illegal. So extended
+  // partition is disabled. The same goes for tall block.
+  if ((is_wide_block(bsize) && rect_type == HORZ) ||
+      (is_tall_block(bsize) && rect_type == VERT)) {
+    return false;
+  }
+  return true;
 }
 
+/*!\brief Returns the rect_type that's implied by the bsize. If the rect_type
+ * cannot be derived from bsize, returns RECT_INVALID. */
+static AOM_INLINE RECT_PART_TYPE
+rect_type_implied_by_bsize(BLOCK_SIZE bsize, TREE_TYPE tree_type) {
+  // Handle luma part first
+  if (bsize == BLOCK_4X8 || bsize == BLOCK_64X128) {
+    return HORZ;
+  }
+  if (bsize == BLOCK_8X4 || bsize == BLOCK_128X64) {
+    return VERT;
+  }
+  // For chroma, we do not allow dimension of 4. If If we have BLOCK_8X16, we
+  // can only do HORZ.
+  if (tree_type == CHROMA_PART) {
+    if (bsize == BLOCK_8X16) {
+      return HORZ;
+    }
+    if (bsize == BLOCK_16X8) {
+      return VERT;
+    }
+  }
+  return RECT_INVALID;
+}
+
+/*!\brief Returns whether the current partition is horizontal type or vertical
+ * type. */
+static AOM_INLINE RECT_PART_TYPE get_rect_part_type(PARTITION_TYPE partition) {
+  if (partition == PARTITION_HORZ || partition == PARTITION_HORZ_3) {
+    return HORZ;
+  } else if (partition == PARTITION_VERT || partition == PARTITION_VERT_3) {
+    return VERT;
+  }
+  assert(0 && "Rectangular partition expected!");
+  return NUM_RECT_PARTS;
+}
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE int has_second_ref(const MB_MODE_INFO *mbmi) {
@@ -3404,7 +3312,6 @@ static AOM_INLINE const PARTITION_TREE *get_partition_subtree_const(
   }
   return partition_tree->sub_tree[idx];
 }
-
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 /*!\endcond */
