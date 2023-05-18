@@ -39,13 +39,23 @@ Style Check:
       # Run clang-format check.
       for f in $(git diff --diff-filter=ACMR --name-only $DIFF_REF '*.[hc]pp' '*.cc' '*.[ch]' \
         | grep -v third_party); do
-        clang-format -i --style=file $f -n -Werror
+        clang-format -i --style=file $f -n -Werror || exit_code=$?
+        if [ ${exit_code} -ne 0 ]; then
+          echo "Please format your code by following instructions here:"
+          echo "https://gitlab.com/AOMediaCodec/avm/-/wikis/Reproducing-CI-Test-Failures-Locally#style-check"
+          exit 1
+        fi
       done
     - |
       # Run cmake-format check.
       for f in $(git diff --diff-filter=ACMR --name-only $DIFF_REF '*.cmake' 'CMakeLists.txt' \
         | grep -v third_party); do
-        cmake-format --check $f
+        cmake-format --check $f || exit_code=$?
+        if [ ${exit_code} -ne 0 ]; then
+          echo "Please format your code by following instructions here:"
+          echo "https://gitlab.com/AOMediaCodec/avm/-/wikis/Reproducing-CI-Test-Failures-Locally#style-check"
+          exit 1
+        fi
       done
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -237,7 +247,16 @@ Test Data Check:
       echo "Extra CMake Flags: $EXTRA_CMAKE_FLAGS"
       echo "Configuration:     $AOM_BUILD_CONFIG"
     - cmake -B aom_build -S . -GNinja -DCMAKE_BUILD_TYPE=Release $CMAKE_FLAGS $EXTRA_CMAKE_FLAGS
-    - cmake --build aom_build -j 2
+    - cmake --build aom_build -j 2 || exit_code=$?
+    - |
+      if [ ${exit_code} -ne 0 ]; then
+        echo "You may reproduce the compile failure by following instructions here:"
+        echo "https://gitlab.com/AOMediaCodec/avm/-/wikis/Reproducing-CI-Test-Failures-Locally#build-avm-in-various-configurations"
+        echo "Using following values:"
+        echo "CMAKE_FLAGS = ${CMAKE_FLAGS}"
+        echo "EXTRA_CMAKE_FLAGS = ${EXTRA_CMAKE_FLAGS}"
+        exit 1
+      fi
     - cmake --build aom_build --target dist
     - DESTDIR="${CI_PROJECT_DIR}/${INSTALLROOT_FOLDER}" cmake --build aom_build --target install/strip
   needs: []
@@ -549,14 +568,20 @@ Example Test (x86_64):
     - |
       # Looking for sanitizer output in log...
       grep -q "\(ERROR\|WARNING\): \(Address\|Thread\|Memory\|Leak\)Sanitizer:" sanitizer.log && {
-        echo "Found sanitizer errors or warnings, check the log:"
+        echo "Found sanitizer errors or warnings, check the log below:"
         cat sanitizer.log
+        echo "You may reproduce sanitizer builds and tests by following instructions below: "
+        echo "https://gitlab.com/AOMediaCodec/avm/-/wikis/Reproducing-CI-Test-Failures-Locally#build-unit-tests-with-sanitizers and"
+        echo "https://gitlab.com/AOMediaCodec/avm/-/wikis/Reproducing-CI-Test-Failures-Locally#run-unit-tests-with-sanitizers"
         exit 1
       }
       # Looking for UBSan output in log (differs from the common format)
       grep -q ":[[:digit:]]\+:[[:digit:]]\+: runtime error:" sanitizer.log && {
-        echo "Found sanitizer errors or warnings, check the log:"
+        echo "Found sanitizer errors or warnings, check the log below:"
         cat sanitizer.log
+        echo "You may reproduce sanitizer builds and tests by following instructions below: "
+        echo "https://gitlab.com/AOMediaCodec/avm/-/wikis/Reproducing-CI-Test-Failures-Locally#build-unit-tests-with-sanitizers and"
+        echo "https://gitlab.com/AOMediaCodec/avm/-/wikis/Reproducing-CI-Test-Failures-Locally#run-unit-tests-with-sanitizers"
         exit 1
       }
       echo "No sanitizer errors found"
