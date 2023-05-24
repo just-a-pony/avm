@@ -1048,9 +1048,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   const CurrentFrame *const current_frame = &cm->current_frame;
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
   FRAME_CONTEXT *fc = xd->tile_ctx;
-#if CONFIG_SKIP_TXFM_OPT
   const int inter_block = mbmi->ref_frame[0] != INTRA_FRAME;
-#endif  // CONFIG_SKIP_TXFM_OPT
   const int seg_ref_active = 0;
 
   if (current_frame->skip_mode_info.skip_mode_flag && !seg_ref_active &&
