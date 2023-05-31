@@ -2228,6 +2228,25 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
 #endif  // !CONFIG_EXT_RECUR_PARTITIONS
 }
 
+#if CONFIG_ATC_DCTX_ALIGNED
+// Return the inter TX context based on last position value.
+static INLINE int get_lp2tx_ctx(TX_SIZE tx_size, int bwl, int eob) {
+  assert(eob != 0);
+  const int lim = 2;
+  const int eoby = (eob - 1) >> bwl;
+  const int eobx = (eob - 1) - (eoby << bwl);
+  const int diag = eobx + eoby;
+  const int max_diag = tx_size_wide[tx_size] + tx_size_high[tx_size] - 2;
+  int ctx_idx = 0;
+  if (diag < lim) {
+    ctx_idx = 1;
+  } else if (diag > (max_diag - lim)) {
+    ctx_idx = 2;
+  }
+  return ctx_idx;
+}
+#endif  // CONFIG_ATC_DCTX_ALIGNED
+
 static INLINE int get_fsc_mode_ctx(const MACROBLOCKD *xd, const int is_key) {
   int ctx = 0;
   if (is_key) {
