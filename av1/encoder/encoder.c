@@ -203,6 +203,9 @@ void av1_initialize_enc(void) {
   av1_init_me_luts();
   av1_rc_init_minq_luts();
   av1_init_wedge_masks();
+#if CONFIG_CWP
+  init_cwp_masks();
+#endif  // CONFIG_CWP
 }
 
 static void update_reference_segmentation_map(AV1_COMP *cpi) {
@@ -461,6 +464,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_BAWP
   seq->enable_bawp = tool_cfg->enable_bawp;
 #endif  // CONFIG_BAWP
+#if CONFIG_CWP
+  seq->enable_cwp = tool_cfg->enable_cwp;
+#endif  // CONFIG_CWP
 #if CONFIG_EXTENDED_WARP_PREDICTION
   seq->seq_enabled_motion_modes =
       oxcf->motion_mode_cfg.seq_enabled_motion_modes;
@@ -3310,6 +3316,9 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
 #if CONFIG_BAWP
   features->enable_bawp = seq_params->enable_bawp;
 #endif
+#if CONFIG_CWP
+  features->enable_cwp = seq_params->enable_cwp;
+#endif  // CONFIG_CWP
 
   cpi->last_frame_type = current_frame->frame_type;
 

@@ -938,6 +938,31 @@ static void update_intrabc_drl_idx_stats(int max_ref_bv_num, FRAME_CONTEXT *fc,
 }
 #endif  // CONFIG_BVP_IMPROVEMENT
 
+#if CONFIG_CWP
+// Update the stats for compound weighted prediction
+static void update_cwp_idx_stats(FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
+                                 const AV1_COMMON *const cm, MACROBLOCKD *xd) {
+#if !CONFIG_ENTROPY_STATS
+  (void)counts;
+#endif  // !CONFIG_ENTROPY_STATS
+  const MB_MODE_INFO *mbmi = xd->mi[0];
+
+  assert(mbmi->cwp_idx >= CWP_MIN && mbmi->cwp_idx <= CWP_MAX);
+  int bit_cnt = 0;
+  const int ctx = 0;
+
+  int8_t final_idx = get_cwp_coding_idx(mbmi->cwp_idx, 1, cm, mbmi);
+  for (int idx = 0; idx < MAX_CWP_NUM - 1; ++idx) {
+#if CONFIG_ENTROPY_STATS
+    counts->cwp_idx[bit_cnt][final_idx != idx]++;
+#endif  // CONFIG_ENTROPY_STATS
+    update_cdf(fc->cwp_idx_cdf[ctx][bit_cnt], final_idx != idx, 2);
+    if (final_idx == idx) break;
+    ++bit_cnt;
+  }
+}
+#endif  // CONFIG_CWP
+
 #if CONFIG_EXTENDED_WARP_PREDICTION
 static void update_warp_delta_param_stats(int index, int value,
 #if CONFIG_ENTROPY_STATS
@@ -1598,6 +1623,12 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif  // CONFIG_WEDGE_MOD_EXT
         }
       }
+
+#if CONFIG_CWP
+      if (cm->features.enable_cwp && is_cwp_allowed(mbmi) && !mbmi->skip_mode) {
+        update_cwp_idx_stats(fc, td->counts, cm, xd);
+      }
+#endif  // CONFIG_CWP
     }
   }
 

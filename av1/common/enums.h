@@ -912,6 +912,19 @@ enum {
 #define INTER_COMPOUND_MODE_CONTEXTS 8
 #endif  // CONFIG_C076_INTER_MOD_CTX
 
+#if CONFIG_CWP
+// Number of supported factors for compound weighted prediction
+#define MAX_CWP_NUM 5
+// maximum value for the supported factors
+#define CWP_MAX 20
+// minimum value for the supported factors
+#define CWP_MIN -4
+// Weighting factor for simple averge prediction
+#define CWP_EQUAL 8
+#define CWP_WEIGHT_BITS 4
+#define MAX_CWP_CONTEXTS 2
+#endif
+
 #define DELTA_Q_SMALL 3
 #define DELTA_Q_PROBS (DELTA_Q_SMALL)
 #define DEFAULT_DELTA_Q_RES_PERCEPTUAL 4

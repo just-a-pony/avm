@@ -487,6 +487,11 @@ typedef struct MB_MODE_INFO {
   /*! \brief The bawp parameters offset*/
   int32_t bawp_beta[3][2];  //[yuv][ref0/1], current only [0][0] is used.
 #endif                      // CONFIG_BAWP
+
+#if CONFIG_CWP
+  //! Index for compound weighted prediction parameters.
+  int8_t cwp_idx;
+#endif  // CONFIG_CWP
   /**@}*/
 
   /*****************************************************************************
@@ -3334,6 +3339,25 @@ static AOM_INLINE const PARTITION_TREE *get_partition_subtree_const(
   return partition_tree->sub_tree[idx];
 }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+
+#if CONFIG_CWP
+// check whether compound weighted prediction can be allowed
+static INLINE int is_cwp_allowed(const MB_MODE_INFO *mbmi) {
+  if (mbmi->skip_mode) return 1;
+  int use_cwp = has_second_ref(mbmi) && mbmi->mode < NEAR_NEARMV_OPTFLOW &&
+                mbmi->interinter_comp.type == COMPOUND_AVERAGE &&
+                mbmi->motion_mode == SIMPLE_TRANSLATION;
+  use_cwp &=
+      (mbmi->mode == NEAR_NEARMV || is_joint_mvd_coding_mode(mbmi->mode));
+  use_cwp &= (mbmi->jmvd_scale_mode == 0);
+  return use_cwp;
+}
+// Return the index for compound weighted prediction
+static INLINE int8_t get_cwp_idx(const MB_MODE_INFO *mbmi) {
+  assert(mbmi->cwp_idx <= CWP_MAX && mbmi->cwp_idx >= CWP_MIN);
+  return mbmi->cwp_idx;
+}
+#endif
 
 /*!\endcond */
 
