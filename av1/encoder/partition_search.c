@@ -3693,15 +3693,14 @@ static void rectangular_partition_search(
                               mi_pos_rect[i][0][i]))
       continue;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXT_RECUR_PARTITIONS && !CONFIG_H_PARTITION
     if (pc_tree->parent) {
       if ((pc_tree->parent->horizontal3[1] == pc_tree && i == HORZ) ||
           (pc_tree->parent->vertical3[1] == pc_tree && i == VERT)) {
         continue;
       }
     }
-
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+#endif  // CONFIG_EXT_RECUR_PARTITIONS && !CONFIG_H_PARTITION
 
     // Sub-partition idx.
     const PARTITION_TYPE partition_type = rect_partition_type[i];
@@ -3722,6 +3721,7 @@ static void rectangular_partition_search(
     }
 
     PC_TREE **sub_tree = (i == HORZ) ? pc_tree->horizontal : pc_tree->vertical;
+    assert(sub_tree);
 
     const int num_planes = av1_num_planes(cm);
     for (int idx = 0; idx < SUB_PARTITIONS_RECT; idx++) {
