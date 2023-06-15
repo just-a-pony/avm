@@ -138,7 +138,6 @@ void av1_make_default_fullpel_ms_params(
 
 #if CONFIG_CWP
   ms_params->xd = xd;
-  ms_params->cm = &cpi->common;
 #endif  // CONFIG_CWP
 
   // High level params
