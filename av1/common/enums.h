@@ -296,6 +296,17 @@ enum {
 //  +-------+     +-------+     +---+---+     +---+---+
 //
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_H_PARTITION
+//  HORZ_3                 VERT_3
+//  +---------------+       +---+------+---+
+//  |               |       |   |      |   |
+//  +---------------+       |   |      |   |
+//  |       |       |       |   |______|   |
+//  |       |       |       |   |      |   |
+//  +---------------+       |   |      |   |
+//  |               |       |   |      |   |
+//  +---------------+       +---+------+---+
+#else
 //  HORZ_3                 VERT_3
 //  +--------------+       +---+------+---+
 //  |              |       |   |      |   |
@@ -305,6 +316,30 @@ enum {
 //  +--------------+       |   |      |   |
 //  |              |       |   |      |   |
 //  +--------------+       +---+------+---+
+#endif  // CONFIG_H_PARTITION
+#if CONFIG_UNEVEN_4WAY
+//  HORZ_4A                 HORZ_4B
+//  +---------------+       +---------------+
+//  |               |       |               |
+//  +---------------+       +---------------+
+//  |               |       |               |
+//  |               |       |               |
+//  +---------------+       |               |
+//  |               |       |               |
+//  |               |       +---------------+
+//  |               |       |               |
+//  |               |       |               |
+//  +---------------+       +---------------+
+//  |               |       |               |
+//  +---------------+       +---------------+
+//
+//  VERT_4A                                 VERT_4B
+//  +-------------------------+          +-------------------------+
+//  |   |      |          |   |          |   |          |      |   |
+//  |   |      |          |   |          |   |          |      |   |
+//  |   |      |          |   |          |   |          |      |   |
+//  +-------------------------+          +-------------------------+
+#endif  // CONFIG_UNEVEN_4WAY
 #else
 //  HORZ_A        HORZ_B        VERT_A        VERT_B
 //  +---+---+     +-------+     +---+---+     +---+---+
@@ -324,13 +359,23 @@ enum {
   PARTITION_NONE,
   PARTITION_HORZ,
   PARTITION_VERT,
+#if !CONFIG_UNEVEN_4WAY || CONFIG_H_PARTITION
   PARTITION_HORZ_3,  // 3 horizontal sub-partitions with ratios 4:1, 2:1 and 4:1
   PARTITION_VERT_3,  // 3 vertical sub-partitions with ratios 4:1, 2:1 and 4:1
+#endif               // !CONFIG_UNEVEN_4WAY || CONFIG_H_PARTITION
+#if CONFIG_UNEVEN_4WAY
+  PARTITION_HORZ_4A,  // 4 horizontal uneven sub-partitions (1:2:4:1).
+  PARTITION_HORZ_4B,  // 4 horizontal uneven sub-partitions (1:4:2:1).
+  PARTITION_VERT_4A,  // 4 vertical uneven sub-partitions (1:2:4:1).
+  PARTITION_VERT_4B,  // 4 vertical uneven sub-partitions (1:4:2:1).
+#endif                // CONFIG_UNEVEN_4WAY
   EXT_PARTITION_TYPES,
-  LIMITED_EXT_PARTITION_TYPES = EXT_PARTITION_TYPES - 1,
   PARTITION_SPLIT = EXT_PARTITION_TYPES,
   PARTITION_TYPES = PARTITION_VERT + 1,
+#if !CONFIG_UNEVEN_4WAY
   LIMITED_PARTITION_TYPES = PARTITION_TYPES - 1,
+  LIMITED_EXT_PARTITION_TYPES = EXT_PARTITION_TYPES - 1,
+#endif  // !CONFIG_UNEVEN_4WAY
   PARTITION_INVALID = 255
 } UENUM1BYTE(PARTITION_TYPE);
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -350,6 +395,7 @@ enum {
   PARTITION_INVALID = 255
 } UENUM1BYTE(PARTITION_TYPE);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+
 // Rectangular partition types.
 enum {
   HORZ = 0,
@@ -357,6 +403,16 @@ enum {
   NUM_RECT_PARTS,
   RECT_INVALID = NUM_RECT_PARTS
 } UENUM1BYTE(RECT_PART_TYPE);
+
+#if CONFIG_UNEVEN_4WAY
+// Uneven 4-way partition types.
+enum {
+  UNEVEN_4A = 0,
+  UNEVEN_4B,
+  NUM_UNEVEN_4WAY_PARTS,
+} UENUM1BYTE(UNEVEN_4WAY_PART_TYPE);
+#endif  // CONFIG_UNEVEN_4WAY
+
 typedef char PARTITION_CONTEXT;
 #define PARTITION_PLOFFSET 4  // number of probability models per block size
 

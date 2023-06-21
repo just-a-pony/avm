@@ -1241,9 +1241,9 @@ static AOM_INLINE void dec_build_prediction_by_above_preds(
     cm, tmp_buf, tmp_width, tmp_height, tmp_stride, xd->mb_to_right_edge, dcb
   };
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[PLANE_TYPE_Y];
-  foreach_overlappable_nb_above(cm, xd,
-                                max_neighbor_obmc[mi_size_wide_log2[bsize]],
-                                dec_build_prediction_by_above_pred, &ctxt);
+  foreach_overlappable_nb_above(
+      cm, xd, max_neighbor_obmc[mi_size_wide_log2[bsize]],
+      dec_build_prediction_by_above_pred, &ctxt, false);
 
   xd->mb_to_left_edge = -GET_MV_SUBPEL(xd->mi_col * MI_SIZE);
   xd->mb_to_right_edge = ctxt.mb_to_far_edge;
@@ -2052,6 +2052,46 @@ static AOM_INLINE void decode_block(AV1Decoder *const pbi, ThreadData *const td,
 }
 
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_UNEVEN_4WAY
+/*!\brief Maps (ext_part, 4way, 4way_type, rect_type) to partition_type. */
+static PARTITION_TYPE
+    rect_part_table[2][2][NUM_UNEVEN_4WAY_PARTS][NUM_RECT_PARTS] = {
+      {
+          // !do_ext_partition
+          {
+              // !do_4way
+              { // UNEVEN_4A
+                PARTITION_HORZ, PARTITION_VERT },
+              { // UNEVEN_4B
+                PARTITION_HORZ, PARTITION_VERT },
+          },
+          {
+              // do_4way
+              { // UNEVEN_4A
+                PARTITION_HORZ, PARTITION_VERT },
+              { // UNEVEN_4B
+                PARTITION_HORZ, PARTITION_VERT },
+          },
+      },
+      {
+          // do_ext_partition
+          {
+              // !do_4way
+              { // UNEVEN_4A
+                PARTITION_HORZ_3, PARTITION_VERT_3 },
+              { // UNEVEN_4B
+                PARTITION_HORZ_3, PARTITION_VERT_3 },
+          },
+          {
+              // do_4way
+              { // UNEVEN_4A
+                PARTITION_HORZ_4A, PARTITION_VERT_4A },
+              { // UNEVEN_4B
+                PARTITION_HORZ_4B, PARTITION_VERT_4B },
+          },
+      },
+    };
+#else
 /*!\brief Maps (ext_part, rect_type) to partition_type. */
 static PARTITION_TYPE rect_part_table[2][NUM_RECT_PARTS] = {
   // !do_ext_partition
@@ -2059,6 +2099,7 @@ static PARTITION_TYPE rect_part_table[2][NUM_RECT_PARTS] = {
   // do_ext_partition
   { PARTITION_HORZ_3, PARTITION_VERT_3 },
 };
+#endif  // CONFIG_UNEVEN_4WAY
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
@@ -2074,6 +2115,7 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize);
+  assert(ctx >= 0);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -2103,20 +2145,45 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
 
   RECT_PART_TYPE rect_type = rect_type_implied_by_bsize(bsize, xd->tree_type);
   if (rect_type == RECT_INVALID) {
-    rect_type =
-        aom_read_symbol(r, ec_ctx->rect_type_cdf[plane][ctx], 2, ACCT_STR);
+    rect_type = aom_read_symbol(r, ec_ctx->rect_type_cdf[plane][ctx],
+                                NUM_RECT_PARTS, ACCT_STR);
   }
 
-  const bool disable_ext_part = !cm->seq_params.enable_ext_partitions;
-  const bool ext_partition_allowed =
-      !disable_ext_part &&
-      is_ext_partition_allowed(bsize, rect_type, xd->tree_type);
   bool do_ext_partition = false;
+#if CONFIG_UNEVEN_4WAY
+  bool do_uneven_4way_partition = false;
+  UNEVEN_4WAY_PART_TYPE uneven_4way_partition_type = UNEVEN_4A;
+#endif  // CONFIG_UNEVEN_4WAY
+
+  const bool ext_partition_allowed =
+      cm->seq_params.enable_ext_partitions &&
+      is_ext_partition_allowed(bsize, rect_type, xd->tree_type);
   if (ext_partition_allowed) {
     do_ext_partition = aom_read_symbol(
         r, ec_ctx->do_ext_partition_cdf[plane][rect_type][ctx], 2, ACCT_STR);
+#if CONFIG_UNEVEN_4WAY
+    if (do_ext_partition) {
+      const bool uneven_4way_partition_allowed =
+          is_uneven_4way_partition_allowed(bsize, rect_type, xd->tree_type);
+      if (uneven_4way_partition_allowed) {
+        do_uneven_4way_partition = aom_read_symbol(
+            r, ec_ctx->do_uneven_4way_partition_cdf[plane][rect_type][ctx], 2,
+            ACCT_STR);
+        if (do_uneven_4way_partition) {
+          uneven_4way_partition_type = aom_read_symbol(
+              r, ec_ctx->uneven_4way_partition_type_cdf[plane][rect_type][ctx],
+              NUM_UNEVEN_4WAY_PARTS, ACCT_STR);
+        }
+      }
+    }
+#endif  // CONFIG_UNEVEN_4WAY
   }
+#if CONFIG_UNEVEN_4WAY
+  return rect_part_table[do_ext_partition][do_uneven_4way_partition]
+                        [uneven_4way_partition_type][rect_type];
+#else
   return rect_part_table[do_ext_partition][rect_type];
+#endif  // CONFIG_UNEVEN_4WAY
 #else   // !CONFIG_EXT_RECUR_PARTITIONS
   if (!has_rows && !has_cols) return PARTITION_SPLIT;
 
@@ -2180,12 +2247,19 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   MACROBLOCKD *const xd = &dcb->xd;
   const int ss_x = xd->plane[1].subsampling_x;
   const int ss_y = xd->plane[1].subsampling_y;
+  // Half block width/height.
   const int hbs_w = mi_size_wide[bsize] / 2;
   const int hbs_h = mi_size_high[bsize] / 2;
-#if !CONFIG_H_PARTITION
+#if CONFIG_UNEVEN_4WAY
+  // One-eighth block width/height.
+  const int ebs_w = mi_size_wide[bsize] / 8;
+  const int ebs_h = mi_size_high[bsize] / 8;
+#endif  // CONFIG_UNEVEN_4WAY
+#if !CONFIG_UNEVEN_4WAY && !CONFIG_H_PARTITION
+  // Quarter block width/height.
   const int qbs_w = mi_size_wide[bsize] / 4;
   const int qbs_h = mi_size_high[bsize] / 4;
-#endif  // !CONFIG_H_PARTITION
+#endif  // !CONFIG_UNEVEN_4WAY && !CONFIG_H_PARTITION
   PARTITION_TYPE partition;
   const int has_rows = (mi_row + hbs_h) < cm->mi_params.mi_rows;
   const int has_cols = (mi_col + hbs_w) < cm->mi_params.mi_cols;
@@ -2255,6 +2329,12 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
     ptree->partition = partition;
 
     switch (partition) {
+#if CONFIG_UNEVEN_4WAY
+      case PARTITION_HORZ_4A:
+      case PARTITION_HORZ_4B:
+      case PARTITION_VERT_4A:
+      case PARTITION_VERT_4B:
+#endif  // CONFIG_UNEVEN_4WAY
       case PARTITION_SPLIT:
         ptree->sub_tree[0] = av1_alloc_ptree_node(ptree, 0);
         ptree->sub_tree[1] = av1_alloc_ptree_node(ptree, 1);
@@ -2384,6 +2464,82 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
 #if CONFIG_EXT_RECUR_PARTITIONS
+
+#if CONFIG_UNEVEN_4WAY
+    case PARTITION_HORZ_4A: {
+      const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
+      const BLOCK_SIZE bsize_med =
+          get_partition_subsize(bsize_big, PARTITION_HORZ);
+      assert(subsize == get_partition_subsize(bsize_med, PARTITION_HORZ));
+      int this_mi_row = mi_row;
+      DEC_PARTITION(this_mi_row, mi_col, subsize, 0);
+      this_mi_row += ebs_h;
+      if (this_mi_row >= cm->mi_params.mi_rows) break;
+      DEC_PARTITION(this_mi_row, mi_col, bsize_med, 1);
+      this_mi_row += 2 * ebs_h;
+      if (this_mi_row >= cm->mi_params.mi_rows) break;
+      DEC_PARTITION(this_mi_row, mi_col, bsize_big, 2);
+      this_mi_row += 4 * ebs_h;
+      if (this_mi_row >= cm->mi_params.mi_rows) break;
+      DEC_PARTITION(this_mi_row, mi_col, subsize, 3);
+      break;
+    }
+    case PARTITION_HORZ_4B: {
+      const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
+      const BLOCK_SIZE bsize_med =
+          get_partition_subsize(bsize_big, PARTITION_HORZ);
+      assert(subsize == get_partition_subsize(bsize_med, PARTITION_HORZ));
+      int this_mi_row = mi_row;
+      DEC_PARTITION(this_mi_row, mi_col, subsize, 0);
+      this_mi_row += ebs_h;
+      if (this_mi_row >= cm->mi_params.mi_rows) break;
+      DEC_PARTITION(this_mi_row, mi_col, bsize_big, 1);
+      this_mi_row += 4 * ebs_h;
+      if (this_mi_row >= cm->mi_params.mi_rows) break;
+      DEC_PARTITION(this_mi_row, mi_col, bsize_med, 2);
+      this_mi_row += 2 * ebs_h;
+      if (this_mi_row >= cm->mi_params.mi_rows) break;
+      DEC_PARTITION(this_mi_row, mi_col, subsize, 3);
+      break;
+    }
+    case PARTITION_VERT_4A: {
+      const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_VERT);
+      const BLOCK_SIZE bsize_med =
+          get_partition_subsize(bsize_big, PARTITION_VERT);
+      assert(subsize == get_partition_subsize(bsize_med, PARTITION_VERT));
+      int this_mi_col = mi_col;
+      DEC_PARTITION(mi_row, this_mi_col, subsize, 0);
+      this_mi_col += ebs_w;
+      if (this_mi_col >= cm->mi_params.mi_cols) break;
+      DEC_PARTITION(mi_row, this_mi_col, bsize_med, 1);
+      this_mi_col += 2 * ebs_w;
+      if (this_mi_col >= cm->mi_params.mi_cols) break;
+      DEC_PARTITION(mi_row, this_mi_col, bsize_big, 2);
+      this_mi_col += 4 * ebs_w;
+      if (this_mi_col >= cm->mi_params.mi_cols) break;
+      DEC_PARTITION(mi_row, this_mi_col, subsize, 3);
+      break;
+    }
+    case PARTITION_VERT_4B: {
+      const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_VERT);
+      const BLOCK_SIZE bsize_med =
+          get_partition_subsize(bsize_big, PARTITION_VERT);
+      assert(subsize == get_partition_subsize(bsize_med, PARTITION_VERT));
+      int this_mi_col = mi_col;
+      DEC_PARTITION(mi_row, this_mi_col, subsize, 0);
+      this_mi_col += ebs_w;
+      if (this_mi_col >= cm->mi_params.mi_cols) break;
+      DEC_PARTITION(mi_row, this_mi_col, bsize_big, 1);
+      this_mi_col += 4 * ebs_w;
+      if (this_mi_col >= cm->mi_params.mi_cols) break;
+      DEC_PARTITION(mi_row, this_mi_col, bsize_med, 2);
+      this_mi_col += 2 * ebs_w;
+      if (this_mi_col >= cm->mi_params.mi_cols) break;
+      DEC_PARTITION(mi_row, this_mi_col, subsize, 3);
+      break;
+    }
+#endif  // CONFIG_UNEVEN_4WAY
+
 #if CONFIG_H_PARTITION
     case PARTITION_HORZ_3:
     case PARTITION_VERT_3: {
@@ -2407,7 +2563,9 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
       }
       break;
     }
-#else
+#endif  // CONFIG_H_PARTITION
+
+#if !CONFIG_UNEVEN_4WAY && !CONFIG_H_PARTITION
     case PARTITION_HORZ_3: {
       const BLOCK_SIZE bsize3 = get_partition_subsize(bsize, PARTITION_HORZ);
       int this_mi_row = mi_row;
@@ -2432,8 +2590,8 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
       DEC_PARTITION(mi_row, this_mi_col, subsize, 2);
       break;
     }
-#endif  // CONFIG_H_PARTITION
-#else
+#endif  // !CONFIG_UNEVEN_4WAY && !CONFIG_H_PARTITION
+#else   // !CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_SPLIT:
       DEC_PARTITION(mi_row, mi_col, subsize, 0);
       DEC_PARTITION(mi_row, mi_col + hbs_w, subsize, 1);

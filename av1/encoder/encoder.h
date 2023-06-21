@@ -1244,13 +1244,21 @@ typedef struct FRAME_COUNTS {
   unsigned int palette_uv_color_index[PALETTE_SIZES]
                                      [PALETTE_COLOR_INDEX_CONTEXTS]
                                      [PALETTE_COLORS];
-  unsigned int partition[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
-                        [EXT_PARTITION_TYPES];
 #if CONFIG_EXT_RECUR_PARTITIONS
   unsigned int do_split[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS][2];
   unsigned int rect_type[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS][2];
   unsigned int do_ext_partition[PARTITION_STRUCTURE_NUM][NUM_RECT_PARTS]
                                [PARTITION_CONTEXTS][2];
+#if CONFIG_UNEVEN_4WAY
+  unsigned int do_uneven_4way_partition[PARTITION_STRUCTURE_NUM][NUM_RECT_PARTS]
+                                       [PARTITION_CONTEXTS][2];
+  unsigned int uneven_4way_partition_type[PARTITION_STRUCTURE_NUM]
+                                         [NUM_RECT_PARTS][PARTITION_CONTEXTS]
+                                         [NUM_UNEVEN_4WAY_PARTS];
+#endif  // CONFIG_UNEVEN_4WAY
+#else
+  unsigned int partition[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
+                        [EXT_PARTITION_TYPES];
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   unsigned int txb_skip[TOKEN_CDF_Q_CTXS][TX_SIZES][TXB_SKIP_CONTEXTS][2];
 #if CONFIG_CONTEXT_DERIVATION

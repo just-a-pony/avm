@@ -56,6 +56,7 @@ typedef struct PICK_MODE_CONTEXT {
 #endif  // CONFIG_CROSS_CHROMA_TX
 
   int num_4x4_blk;
+  int num_4x4_blk_chroma;
   // For current partition, only if all Y, U, and V transform blocks'
   // coefficients are quantized to 0, skippable is set to 1.
   int skippable;
@@ -79,13 +80,20 @@ typedef struct PC_TREE {
 #if CONFIG_EXT_RECUR_PARTITIONS
   struct PC_TREE *horizontal[2];
   struct PC_TREE *vertical[2];
+#if CONFIG_UNEVEN_4WAY
+  struct PC_TREE *horizontal4a[4];
+  struct PC_TREE *horizontal4b[4];
+  struct PC_TREE *vertical4a[4];
+  struct PC_TREE *vertical4b[4];
+#endif  // CONFIG_UNEVEN_4WAY
 #if CONFIG_H_PARTITION
   struct PC_TREE *horizontal3[4];
   struct PC_TREE *vertical3[4];
-#else
+#endif  // CONFIG_H_PARTITION
+#if !CONFIG_UNEVEN_4WAY && !CONFIG_H_PARTITION
   struct PC_TREE *horizontal3[3];
   struct PC_TREE *vertical3[3];
-#endif  // CONFIG_H_PARTITION
+#endif  // !CONFIG_UNEVEN_4WAY && !CONFIG_H_PARTITION
 #else
   PICK_MODE_CONTEXT *horizontal[2];
   PICK_MODE_CONTEXT *vertical[2];
