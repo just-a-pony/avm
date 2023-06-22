@@ -52,7 +52,11 @@
 #define RD_THRESH_POW 1.25
 
 #define RD_THRESH_MUL 4.40
+#if CONFIG_ADJ_Q_OFFSET
+#define RDMULT_FROM_Q2_NUM 80
+#else
 #define RDMULT_FROM_Q2_NUM 96
+#endif  // CONFIG_ADJ_Q_OFFSET
 #define RDMULT_FROM_Q2_DEN 32
 
 // The baseline rd thresholds for breaking out of the rd loop for

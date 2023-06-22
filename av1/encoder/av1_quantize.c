@@ -581,13 +581,14 @@ void set_frame_dc_delta_q(const AV1_COMMON *const cm, int *y_dc_delta_q,
   *v_dc_delta_q = 0;
   *u_ac_delta_q = 0;
   *v_ac_delta_q = 0;
-
+#if !CONFIG_ADJ_Q_OFFSET
   if (frame_is_intra_only(cm)) {
 #if CONFIG_EXT_QUANT_UPD
     if (cm->seq_params.uv_dc_delta_q_enabled)
 #endif  // CONFIG_EXT_QUANT_UPD
       *u_dc_delta_q = *v_dc_delta_q = -4;
   }
+#endif  // !CONFIG_ADJ_Q_OFFSET
 }
 
 void av1_set_quantizer(AV1_COMMON *const cm, int min_qmlevel, int max_qmlevel,
