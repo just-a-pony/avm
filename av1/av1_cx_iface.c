@@ -520,7 +520,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,  // enable difference-weighted compound
   1,  // enable interinter wedge compound
   1,  // enable interintra wedge compound
-  1,  // enable_global_motion usage
+  0,  // enable_global_motion usage
   1,  // enable_warped_motion at sequence level
 #if CONFIG_EXTENDED_WARP_PREDICTION
   1,  // enable_warped_causal at sequence level
