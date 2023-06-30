@@ -463,8 +463,7 @@ Linux Sanitizers (x86_64-clang):
           - address
           - undefined
           - integer
-          # TODO(urvang): Temporarily disabled to debug memory usage.
-          #- thread
+          - thread
           # CFI Sanitizer commented for now, as lto build does not work
           #- cfi
   script:
@@ -631,16 +630,15 @@ Linux Sanitizer (integer) Test:
 #     - 'Test Data'
 #     - 'Linux Sanitizers (x86_64-clang): [cfi]'
 
-# TODO(urvang): Temporarily disabled to debug memory usage.
-# Linux Sanitizer (thread) Test:
-#  extends: .sanitizer-common
-#  # Very few tests, so minimum parallelism.
-#  parallel: 2
-#  variables:
-#    AOM_SANITIZER_TYPE: thread
-#  needs:
-#    - 'Test Data'
-#    - 'Linux Sanitizers (x86_64-clang): [thread]'
+Linux Sanitizer (thread) Test:
+  extends: .sanitizer-common
+  # Very few tests, so minimum parallelism.
+  parallel: 2
+  variables:
+    AOM_SANITIZER_TYPE: thread
+  needs:
+    - 'Test Data'
+    - 'Linux Sanitizers (x86_64-clang): [thread]'
 
 # Encoder run and compare with target branch (MR) or previous runs
 .enc-run-common:
