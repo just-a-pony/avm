@@ -1654,7 +1654,7 @@ typedef struct AV1Common {
   /*!
    * relative distance between reference 'k' and current frame.
    */
-  int8_t ref_frame_relative_dist[REF_FRAMES];
+  int ref_frame_relative_dist[REF_FRAMES];
 #endif  // CONFIG_SMVP_IMPROVEMENT || CONFIG_JOINT_MVD
   /*!
    * Number of temporal layers: may be > 1 for SVC (scalable vector coding).
