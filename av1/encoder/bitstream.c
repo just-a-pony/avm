@@ -4628,7 +4628,7 @@ static AOM_INLINE void write_sequence_header(
     aom_wb_write_bit(wb, uv_neq_y);
     if (uv_neq_y) {
       for (int i = 1; i < RESTORE_SWITCHABLE_TYPES; ++i) {
-        if (DEF_UV_LR_TOOLS_DISABLE_MASK | (1 << i)) continue;
+        if (DEF_UV_LR_TOOLS_DISABLE_MASK & (1 << i)) continue;
         aom_wb_write_bit(wb, (seq_params->lr_tools_disable_mask[1] >> i) & 1);
       }
     }

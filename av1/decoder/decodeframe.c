@@ -6337,7 +6337,7 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
     if (aom_rb_read_bit(rb)) {
       seq_params->lr_tools_disable_mask[1] = DEF_UV_LR_TOOLS_DISABLE_MASK;
       for (int i = 1; i < RESTORE_SWITCHABLE_TYPES; ++i) {
-        if (DEF_UV_LR_TOOLS_DISABLE_MASK | (1 << i)) continue;
+        if (DEF_UV_LR_TOOLS_DISABLE_MASK & (1 << i)) continue;
         seq_params->lr_tools_disable_mask[1] |= (aom_rb_read_bit(rb) << i);
       }
     } else {
