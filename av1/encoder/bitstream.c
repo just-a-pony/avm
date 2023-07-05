@@ -3601,8 +3601,9 @@ static int check_and_write_merge_info(
     aom_write_literal(wb, match, 1);
     if (match) break;
   }
-  assert(
-      IMPLIES(!match, ref == bank->bank_size_for_class[wiener_class_id] - 1));
+  assert(IMPLIES(
+      !match,
+      ref == AOMMAX(0, bank->bank_size_for_class[wiener_class_id] - 1)));
   return exact_match;
 }
 #endif  // CONFIG_LR_MERGE_COEFFS

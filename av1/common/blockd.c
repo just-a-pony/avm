@@ -366,7 +366,7 @@ void av1_reset_wienerns_bank(WienerNonsepInfoBank *bank, int qindex,
 #endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
   }
   for (int c_id = 0; c_id < num_classes; ++c_id) {
-    bank->bank_size_for_class[c_id] = 1;
+    bank->bank_size_for_class[c_id] = 0;
     bank->bank_ptr_for_class[c_id] = 0;
   }
 }
@@ -398,26 +398,30 @@ void av1_add_to_wienerns_bank(WienerNonsepInfoBank *bank,
 WienerNonsepInfo *av1_ref_from_wienerns_bank(WienerNonsepInfoBank *bank,
                                              int ndx, int wiener_class_id) {
   assert(wiener_class_id != ALL_WIENERNS_CLASSES);
-  assert(bank->bank_size_for_class[wiener_class_id] > 0);
-
-  assert(ndx < bank->bank_size_for_class[wiener_class_id]);
-  const int ptr =
-      bank->bank_ptr_for_class[wiener_class_id] - ndx +
-      (bank->bank_ptr_for_class[wiener_class_id] < ndx ? LR_BANK_SIZE : 0);
-  return &bank->filter[ptr];
+  if (bank->bank_size_for_class[wiener_class_id] == 0) {
+    return &bank->filter[0];
+  } else {
+    assert(ndx < bank->bank_size_for_class[wiener_class_id]);
+    const int ptr =
+        bank->bank_ptr_for_class[wiener_class_id] - ndx +
+        (bank->bank_ptr_for_class[wiener_class_id] < ndx ? LR_BANK_SIZE : 0);
+    return &bank->filter[ptr];
+  }
 }
 
 // Get a const reference to a filter given the index
 const WienerNonsepInfo *av1_constref_from_wienerns_bank(
     const WienerNonsepInfoBank *bank, int ndx, int wiener_class_id) {
   assert(wiener_class_id != ALL_WIENERNS_CLASSES);
-  assert(bank->bank_size_for_class[wiener_class_id] > 0);
-
-  assert(ndx < bank->bank_size_for_class[wiener_class_id]);
-  const int ptr =
-      bank->bank_ptr_for_class[wiener_class_id] - ndx +
-      (bank->bank_ptr_for_class[wiener_class_id] < ndx ? LR_BANK_SIZE : 0);
-  return &bank->filter[ptr];
+  if (bank->bank_size_for_class[wiener_class_id] == 0) {
+    return &bank->filter[0];
+  } else {
+    assert(ndx < bank->bank_size_for_class[wiener_class_id]);
+    const int ptr =
+        bank->bank_ptr_for_class[wiener_class_id] - ndx +
+        (bank->bank_ptr_for_class[wiener_class_id] < ndx ? LR_BANK_SIZE : 0);
+    return &bank->filter[ptr];
+  }
 }
 
 // Directly replace a filter in the bank at given index
