@@ -1661,8 +1661,6 @@ typedef struct TileDataEnc {
 
 typedef struct RD_COUNTS {
   int64_t comp_pred_diff[REFERENCE_MODES];
-  // Stores number of 4x4 blocks using global motion per reference frame.
-  int global_motion_used[INTER_REFS_PER_FRAME];
   int compound_ref_used_flag;
   int skip_mode_used_flag;
   int tx_type_used[TX_SIZES_ALL][TX_TYPES];
@@ -1979,19 +1977,6 @@ static INLINE char const *get_component_name(int index) {
  */
 typedef struct {
   /*!
-   * Array to store the cost for signalling each global motion model.
-   * gmtype_cost[i] stores the cost of signalling the ith Global Motion model.
-   */
-  int type_cost[TRANS_TYPES];
-
-  /*!
-   * Array to store the cost for signalling a particular global motion model for
-   * each reference frame. gmparams_cost[i] stores the cost of signalling global
-   * motion for the ith reference frame.
-   */
-  int params_cost[INTER_REFS_PER_FRAME];
-
-  /*!
    * Flag to indicate if global motion search needs to be rerun.
    */
   bool search_done;
@@ -2042,6 +2027,25 @@ typedef struct {
    * the y co-ordinate of the ith corner point detected.
    */
   int src_corners[2 * MAX_CORNERS];
+
+#if CONFIG_IMPROVED_GLOBAL_MOTION
+  /*!
+   * \brief Error ratio for each selected global motion model
+   *
+   * This is used to help decide which models will actually be used,
+   * because that decision has to be deferred until we actually select a
+   * base model to use
+   */
+  double erroradvantage[INTER_REFS_PER_FRAME];
+
+  /**
+   * \name Reference path for selected base model
+   */
+  /**@{*/
+  int base_model_our_ref;   /*!< which of our ref frames to copy from */
+  int base_model_their_ref; /*!< which model to copy from that frame */
+  /**@}*/
+#endif  // CONFIG_IMPROVED_GLOBAL_MOTION
 } GlobalMotionInfo;
 
 /*!
@@ -2931,6 +2935,14 @@ typedef struct AV1_COMP {
    * Number of frames left to be encoded, is 0 if limit is not set.
    */
   int frames_left;
+
+  /*!
+   * Indicates if a valid global motion model has been found in the different
+   * frame update types of a GF group.
+   * valid_gm_model_found[i] indicates if valid global motion model has been
+   * found in the frame update type with enum value equal to i
+   */
+  int valid_gm_model_found[FRAME_UPDATE_TYPES];
 } AV1_COMP;
 
 /*!

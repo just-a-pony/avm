@@ -33,13 +33,6 @@ typedef struct MESH_PATTERN {
 } MESH_PATTERN;
 
 enum {
-  GM_FULL_SEARCH,
-  GM_REDUCED_REF_SEARCH_SKIP_LEV2,
-  GM_REDUCED_REF_SEARCH_SKIP_LEV3,
-  GM_DISABLE_SEARCH
-} UENUM1BYTE(GM_SEARCH_TYPE);
-
-enum {
   INTRA_ALL = (1 << DC_PRED) | (1 << V_PRED) | (1 << H_PRED) | (1 << D45_PRED) |
               (1 << D135_PRED) | (1 << D113_PRED) | (1 << D157_PRED) |
               (1 << D203_PRED) | (1 << D67_PRED) | (1 << SMOOTH_PRED) |
@@ -369,20 +362,16 @@ typedef struct TPL_SPEED_FEATURES {
 } TPL_SPEED_FEATURES;
 
 typedef struct GLOBAL_MOTION_SPEED_FEATURES {
-  // Do not compute the global motion parameters for a LAST2_FRAME or
-  // LAST3_FRAME if the GOLDEN_FRAME is closer and it has a non identity
-  // global model.
-  int selective_ref_gm;
-
-  GM_SEARCH_TYPE gm_search_type;
-
-  // whether to disable the global motion recode loop
-  int gm_disable_recode;
+  int max_ref_frames;
 
   // During global motion estimation, prune remaining reference frames in a
   // given direction(past/future), if the evaluated ref_frame in that direction
   // yields gm_type as INVALID/TRANSLATION/IDENTITY
   int prune_ref_frame_for_gm_search;
+
+  // Disable global motion estimation based on stats of previous frames in the
+  // GF group
+  int disable_gm_search_based_on_stats;
 } GLOBAL_MOTION_SPEED_FEATURES;
 
 typedef struct PARTITION_SPEED_FEATURES {

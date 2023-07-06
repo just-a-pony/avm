@@ -123,16 +123,6 @@ static unsigned int predict_dc_levels[3][MODE_EVAL_TYPES] = { { 0, 0, 0 },
                                                               { 1, 1, 0 },
                                                               { 1, 1, 1 } };
 
-// This table holds the maximum number of reference frames for global motion.
-// The table is indexed as per the speed feature 'gm_search_type'.
-// 0 : All reference frames are allowed.
-// 1 : All reference frames except L2 and L3 are allowed.
-// 2 : All reference frames except L2, L3 and ARF2 are allowed.
-// 3 : No reference frame is allowed.
-static int gm_available_reference_frames[GM_DISABLE_SEARCH + 1] = {
-  INTER_REFS_PER_FRAME, INTER_REFS_PER_FRAME - 2, INTER_REFS_PER_FRAME - 3, 0
-};
-
 // Intra only frames, golden frames (except alt ref overlays) and
 // alt ref frames tend to be coded at a higher than ambient quality
 static int frame_is_boosted(const AV1_COMP *cpi) {
@@ -350,8 +340,9 @@ static void set_good_speed_features_framesize_independent(
 #endif
 
   // Speed 0 for all speed features that give neutral coding performance change.
-  sf->gm_sf.gm_disable_recode = 1;
-  sf->gm_sf.gm_search_type = GM_REDUCED_REF_SEARCH_SKIP_LEV2;
+  sf->gm_sf.max_ref_frames = boosted ? 4 : 2;
+  sf->gm_sf.prune_ref_frame_for_gm_search = boosted ? 0 : 1;
+  sf->gm_sf.disable_gm_search_based_on_stats = 1;
 
   sf->part_sf.less_rectangular_check_level = 1;
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -407,9 +398,6 @@ static void set_good_speed_features_framesize_independent(
   sf->hl_sf.superres_auto_search_type = SUPERRES_AUTO_DUAL;
 
   if (speed >= 1) {
-    sf->gm_sf.gm_search_type = GM_REDUCED_REF_SEARCH_SKIP_LEV3;
-    sf->gm_sf.prune_ref_frame_for_gm_search = boosted ? 0 : 1;
-
 #if CONFIG_EXT_RECUR_PARTITIONS
     sf->part_sf.intra_cnn_split = 0;
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -511,7 +499,7 @@ static void set_good_speed_features_framesize_independent(
     sf->hl_sf.high_precision_mv_usage = CURRENT_Q;
     sf->hl_sf.recode_loop = ALLOW_RECODE_KFARFGF;
 
-    sf->gm_sf.gm_search_type = GM_DISABLE_SEARCH;
+    sf->gm_sf.max_ref_frames = 0;
 
     sf->part_sf.less_rectangular_check_level = 2;
     sf->part_sf.simple_motion_search_prune_agg = 1;
@@ -712,10 +700,9 @@ static AOM_INLINE void init_tpl_sf(TPL_SPEED_FEATURES *tpl_sf) {
 }
 
 static AOM_INLINE void init_gm_sf(GLOBAL_MOTION_SPEED_FEATURES *gm_sf) {
-  gm_sf->selective_ref_gm = 1;
-  gm_sf->gm_search_type = GM_FULL_SEARCH;
-  gm_sf->gm_disable_recode = 0;
+  gm_sf->max_ref_frames = INTER_REFS_PER_FRAME;
   gm_sf->prune_ref_frame_for_gm_search = 0;
+  gm_sf->disable_gm_search_based_on_stats = 0;
 }
 
 static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
@@ -1252,9 +1239,8 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
     // Disable the speed feature 'prune_ref_frame_for_gm_search' to achieve
     // better parallelism when number of threads available are greater than or
     // equal to maximum number of reference frames allowed for global motion.
-    if (sf->gm_sf.gm_search_type != GM_DISABLE_SEARCH &&
-        (cpi->oxcf.max_threads >=
-         gm_available_reference_frames[sf->gm_sf.gm_search_type]))
+    if (sf->gm_sf.max_ref_frames > 0 &&
+        cpi->oxcf.max_threads >= sf->gm_sf.max_ref_frames)
       sf->gm_sf.prune_ref_frame_for_gm_search = 0;
   }
 }
