@@ -637,7 +637,8 @@ class SubGopTestLarge
   unsigned int enable_subgop_stats_;
 };
 
-TEST_P(SubGopTestLarge, SubGopTest) {
+// TODO(urvang): Re-enable after reducing number of frames encoded.
+TEST_P(SubGopTestLarge, DISABLED_SubGopTest) {
   if (!is_extension_y4m(subgop_test_params_.input_file)) {
     libaom_test::I420VideoSource video(
         subgop_test_params_.input_file, subgop_test_params_.frame_w,
