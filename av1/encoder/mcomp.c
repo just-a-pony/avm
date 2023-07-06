@@ -3968,18 +3968,11 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #endif  // CONFIG_C071_SUBBLK_WARPMV
     lower_mv_precision(&ref_mv, mbmi->pb_mv_precision);
     // We are not signaling other_mv. So frame level precision should be okay.
-#if !CONFIG_C071_SUBBLK_WARPMV
-  lower_mv_precision(other_mv, cm->features.fr_mv_precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #else
-#if !CONFIG_C071_SUBBLK_WARPMV
-  lower_mv_precision(other_mv, allow_hp,
-                     cm->features.cur_frame_force_integer_mv);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #endif
 
-  // How many steps to take. A round of 0 means fullpel search only, 1 means
-  // half-pel, and so on.
+    // How many steps to take. A round of 0 means fullpel search only, 1 means
+    // half-pel, and so on.
 #if CONFIG_FLEX_MVRES
   const int round = (mbmi->pb_mv_precision >= MV_PRECISION_ONE_PEL)
                         ? AOMMIN(FULL_PEL - forced_stop,
@@ -4217,10 +4210,7 @@ int low_precision_joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
 #endif
     lower_mv_precision(&ref_mv, mbmi->pb_mv_precision);
-    // We are not signaling other_mv. So frame level precision should be okay.
-#if !CONFIG_C071_SUBBLK_WARPMV
-  lower_mv_precision(other_mv, cm->features.fr_mv_precision);
-#endif  // CONFIG_C071_SUBBLK_WARPMV
+  // We are not signaling other_mv. So frame level precision should be okay.
 
   unsigned int besterr = INT_MAX;
 
@@ -4446,23 +4436,10 @@ int av1_joint_amvd_motion_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   // perform prediction for second MV
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
 
-#if CONFIG_FLEX_MVRES
 #if BUGFIX_AMVD_AMVR
   set_amvd_mv_precision(mbmi, mbmi->max_mv_precision);
-#if !CONFIG_C071_SUBBLK_WARPMV
-  lower_mv_precision(other_mv, cm->features.fr_mv_precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #else
   assert(mbmi->pb_mv_precision == mbmi->max_mv_precision);
-#if !CONFIG_C071_SUBBLK_WARPMV
-  lower_mv_precision(other_mv, mbmi->pb_mv_precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
-#endif
-#else
-#if !CONFIG_C071_SUBBLK_WARPMV
-  lower_mv_precision(other_mv, allow_hp,
-                     cm->features.cur_frame_force_integer_mv);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 #endif
 
   // How many steps to take. A round of 0 means fullpel search only, 1 means
