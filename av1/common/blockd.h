@@ -3148,14 +3148,13 @@ void av1_reset_entropy_context(MACROBLOCKD *xd, BLOCK_SIZE bsize,
 
 void av1_reset_loop_filter_delta(MACROBLOCKD *xd, int num_planes);
 
-void av1_reset_wiener_bank(WienerInfoBank *bank);
+void av1_reset_wiener_bank(WienerInfoBank *bank, int chroma);
 void av1_add_to_wiener_bank(WienerInfoBank *bank, const WienerInfo *info);
 WienerInfo *av1_ref_from_wiener_bank(WienerInfoBank *bank, int ndx);
 const WienerInfo *av1_constref_from_wiener_bank(const WienerInfoBank *bank,
                                                 int ndx);
 void av1_upd_to_wiener_bank(WienerInfoBank *bank, int ndx,
                             const WienerInfo *info);
-void av1_get_from_wiener_bank(WienerInfoBank *bank, int ndx, WienerInfo *info);
 
 void av1_reset_sgrproj_bank(SgrprojInfoBank *bank);
 void av1_add_to_sgrproj_bank(SgrprojInfoBank *bank, const SgrprojInfo *info);
@@ -3164,8 +3163,6 @@ const SgrprojInfo *av1_constref_from_sgrproj_bank(const SgrprojInfoBank *bank,
                                                   int ndx);
 void av1_upd_to_sgrproj_bank(SgrprojInfoBank *bank, int ndx,
                              const SgrprojInfo *info);
-void av1_get_from_sgrproj_bank(SgrprojInfoBank *bank, int ndx,
-                               SgrprojInfo *info);
 
 #if CONFIG_WIENER_NONSEP
 // Resets the bank data structure holding LR_BANK_SIZE nonseparable Wiener

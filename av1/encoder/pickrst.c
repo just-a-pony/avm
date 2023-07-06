@@ -228,7 +228,7 @@ typedef struct RstUnitSnapshot {
 #endif  // CONFIG_LR_MERGE_COEFFS
 
 static AOM_INLINE void reset_all_banks(RestSearchCtxt *rsc) {
-  av1_reset_wiener_bank(&rsc->wiener_bank);
+  av1_reset_wiener_bank(&rsc->wiener_bank, rsc->plane != AOM_PLANE_Y);
   av1_reset_sgrproj_bank(&rsc->sgrproj_bank);
 #if CONFIG_WIENER_NONSEP
   av1_reset_wienerns_bank(&rsc->wienerns_bank,
