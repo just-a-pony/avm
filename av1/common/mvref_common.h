@@ -1160,6 +1160,13 @@ static INLINE int is_ref_motion_field_eligible(
   return 1;
 }
 
+#if CONFIG_CWG_D067_IMPROVED_WARP
+// Check all 3 neighbors to generate projected points
+int generate_points_from_corners(const MACROBLOCKD *xd, int *pts, int *mvs,
+                                 int *np, MV_REFERENCE_FRAME ref_frame);
+
+#endif  // CONFIG_CWG_D067_IMPROVED_WARP
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
