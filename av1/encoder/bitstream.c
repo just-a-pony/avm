@@ -1981,8 +1981,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   }
 #if CONFIG_CWP
   assert(IMPLIES(mbmi->refinemv_flag, mbmi->cwp_idx == CWP_EQUAL));
-#endif
-  assert(IMPLIES(mbmi->skip_mode, mbmi->refinemv_flag));
+#endif  // CONFIG_CWP
 #endif  // CONFIG_REFINEMV
 #if CONFIG_WARPMV
   // Just for debugging purpose

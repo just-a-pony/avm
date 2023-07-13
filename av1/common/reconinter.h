@@ -654,13 +654,6 @@ static INLINE int is_refinemv_allowed_reference(const AV1_COMMON *cm,
   // reference frame has to be both sides to apply dmvr
   if (!((d0 <= 0) ^ (d1 <= 0))) return 0;
 
-  // printf("cur_index = %d ref0->order_hint = %d ref1->order_hint = %d d0 = %d
-  // d1 = %d  \n", cur_index, ref0->order_hint, ref1->order_hint, d0, d1);
-
-  assert(d0 != 0 && d1 != 0);
-  assert(IMPLIES(d0 > 0, d1 < 0));
-  assert(IMPLIES(d0<0, d1> 0));
-
   // Current implementation only supports when both has the same distance
   if (abs(d0) != abs(d1)) return 0;
 
