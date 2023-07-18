@@ -5066,9 +5066,15 @@ static AOM_INLINE void write_global_motion(AV1_COMP *cpi,
     int temporal_distance;
     if (seq_params->order_hint_info.enable_order_hint) {
       const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, frame);
+#if CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
+      const int ref_order_hint = ref_buf->display_order_hint;
+      const int cur_order_hint = cm->cur_frame->display_order_hint;
+#else
+        const int ref_order_hint = ref_buf->order_hint;
+        const int cur_order_hint = cm->cur_frame->order_hint;
+#endif  // CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
       temporal_distance = get_relative_dist(&seq_params->order_hint_info,
-                                            (int)cm->cur_frame->order_hint,
-                                            (int)ref_buf->order_hint);
+                                            cur_order_hint, ref_order_hint);
     } else {
       temporal_distance = 1;
     }
