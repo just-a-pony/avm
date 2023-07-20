@@ -83,10 +83,17 @@ int ifd_inspect_superblock(insp_frame_data *fd, void *decoder) {
   PARTITION_TREE *chroma_tree = pbi->td.dcb.xd.sbi->ptree_root[1];
   insp_sb_data *sb = &fd->sb_grid[sb_row * fd->max_sb_cols + sb_col];
   sb->partition_tree_luma = copy_partition_tree(luma_tree, NULL);
-  if (chroma_tree != NULL) {
+  // Semi-decoupled partitioning is enabled only for intra-frames.
+  int use_sdp = (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
+                 cm->seq_params.enable_sdp);
+  if (chroma_tree != NULL && use_sdp) {
     sb->partition_tree_chroma = copy_partition_tree(chroma_tree, NULL);
-    sb->has_separate_chroma_partition_tree = true;
+  } else {
+    // For consistency, use a copy of the luma tree when SDP is not enabled for
+    // the frame.
+    sb->partition_tree_chroma = copy_partition_tree(luma_tree, NULL);
   }
+  sb->has_separate_chroma_partition_tree = use_sdp;
 
   for (int i = 0; i < MAX_MB_PLANE; i++) {
     memcpy(sb->dqcoeff[i], pbi->td.dcb.dqcoeff_block_copy[i], MAX_SB_SQUARE);
