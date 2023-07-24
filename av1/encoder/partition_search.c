@@ -4611,7 +4611,6 @@ static AOM_INLINE void set_part_none_allowed_flag(
       blk_params.has_rows && blk_params.has_cols)
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
     part_search_state->partition_none_allowed = 1;
-  assert(part_search_state->terminate_partition_search == 0);
 
 #if !CONFIG_EXT_RECUR_PARTITIONS
   if (part_search_state->partition_none_allowed == BLOCK_INVALID) {
