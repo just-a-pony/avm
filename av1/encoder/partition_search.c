@@ -912,9 +912,15 @@ static void update_drl_index_stats(int max_drl_bits, const int16_t mode_ctx,
 #if CONFIG_ENTROPY_STATS
       int drl_ctx = av1_drl_ctx(mode_ctx);
       switch (idx) {
-        case 0: counts->drl_mode[0][drl_ctx][mbmi->ref_mv_idx != idx]++; break;
-        case 1: counts->drl_mode[1][drl_ctx][mbmi->ref_mv_idx != idx]++; break;
-        default: counts->drl_mode[2][drl_ctx][mbmi->ref_mv_idx != idx]++; break;
+        case 0:
+          counts->drl_mode[0][drl_ctx][mbmi->ref_mv_idx[ref] != idx]++;
+          break;
+        case 1:
+          counts->drl_mode[1][drl_ctx][mbmi->ref_mv_idx[ref] != idx]++;
+          break;
+        default:
+          counts->drl_mode[2][drl_ctx][mbmi->ref_mv_idx[ref] != idx]++;
+          break;
       }
 #endif  // CONFIG_ENTROPY_STATS
       update_cdf(drl_cdf, mbmi->ref_mv_idx[ref] != idx, 2);
@@ -1087,6 +1093,18 @@ static void update_skip_drl_index_stats(int max_drl_bits, FRAME_CONTEXT *fc,
 #endif  // CONFIG_SEP_COMP_DRL
   for (int idx = 0; idx < max_drl_bits; ++idx) {
     aom_cdf_prob *drl_cdf = fc->skip_drl_cdf[AOMMIN(idx, 2)];
+#if CONFIG_SEP_COMP_DRL
+    update_cdf(drl_cdf, mbmi->ref_mv_idx[0] != idx, 2);
+#if CONFIG_ENTROPY_STATS
+    switch (idx) {
+      case 0: counts->skip_drl_mode[idx][mbmi->ref_mv_idx[0] != idx]++; break;
+      case 1: counts->skip_drl_mode[idx][mbmi->ref_mv_idx[0] != idx]++; break;
+      default: counts->skip_drl_mode[2][mbmi->ref_mv_idx[0] != idx]++; break;
+    }
+#endif  // CONFIG_ENTROPY_STATS
+    if (mbmi->ref_mv_idx[0] == idx) break;
+#else
+    update_cdf(drl_cdf, mbmi->ref_mv_idx != idx, 2);
 #if CONFIG_ENTROPY_STATS
     switch (idx) {
       case 0: counts->skip_drl_mode[idx][mbmi->ref_mv_idx != idx]++; break;
@@ -1094,11 +1112,6 @@ static void update_skip_drl_index_stats(int max_drl_bits, FRAME_CONTEXT *fc,
       default: counts->skip_drl_mode[2][mbmi->ref_mv_idx != idx]++; break;
     }
 #endif  // CONFIG_ENTROPY_STATS
-#if CONFIG_SEP_COMP_DRL
-    update_cdf(drl_cdf, mbmi->ref_mv_idx[0] != idx, 2);
-    if (mbmi->ref_mv_idx[0] == idx) break;
-#else
-    update_cdf(drl_cdf, mbmi->ref_mv_idx != idx, 2);
     if (mbmi->ref_mv_idx == idx) break;
 #endif  // CONFIG_SEP_COMP_DRL
   }
