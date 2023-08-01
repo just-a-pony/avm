@@ -1546,7 +1546,8 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_CWG_D067_IMPROVED_WARP
-  features->allow_warpmv_mode = features->enabled_motion_modes ? 1 : 0;
+  features->allow_warpmv_mode =
+      (features->enabled_motion_modes & (1 << WARP_DELTA)) != 0;
   if (features->allow_warpmv_mode &&
       cpi->sf.inter_sf.prune_warpmv_prob_thresh > 0) {
     const FRAME_UPDATE_TYPE update_type = get_frame_update_type(&cpi->gf_group);

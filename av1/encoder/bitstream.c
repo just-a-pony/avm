@@ -5565,7 +5565,8 @@ static AOM_INLINE void write_uncompressed_header_obu(
 #endif  // CONFIG_BAWP
 
 #if CONFIG_CWG_D067_IMPROVED_WARP
-  if (!frame_is_intra_only(cm) && features->enabled_motion_modes) {
+  if (!frame_is_intra_only(cm) &&
+      (features->enabled_motion_modes & (1 << WARP_DELTA)) != 0) {
     aom_wb_write_bit(wb, features->allow_warpmv_mode);
   } else {
     assert(IMPLIES(!frame_is_intra_only(cm), !features->allow_warpmv_mode));

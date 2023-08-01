@@ -7852,7 +7852,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif  // CONFIG_CWP
 #if CONFIG_CWG_D067_IMPROVED_WARP
   features->allow_warpmv_mode = 0;
-  if (!frame_is_intra_only(cm) && features->enabled_motion_modes) {
+  if (!frame_is_intra_only(cm) &&
+      (features->enabled_motion_modes & (1 << WARP_DELTA)) != 0) {
     features->allow_warpmv_mode = aom_rb_read_bit(rb);
   }
 #endif  // CONFIG_CWG_D067_IMPROVED_WARP
