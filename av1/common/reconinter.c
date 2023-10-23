@@ -132,7 +132,7 @@ void av1_init_warp_params(InterPredParams *inter_pred_params,
     return;
 
 #if CONFIG_TIP
-  if (is_tip_ref_frame(mi->ref_frame[ref])) return;
+  if (is_tip_ref_frame(mi->ref_frame[0])) return;
 #endif  // CONFIG_TIP
 
 #if CONFIG_REFINEMV
