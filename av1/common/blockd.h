@@ -3863,6 +3863,11 @@ static INLINE int is_nontrans_global_motion(const MACROBLOCKD *xd,
                                             const MB_MODE_INFO *mbmi) {
   int ref;
 
+#if CONFIG_TIP
+  // Global motion is never used for the TIP ref frame
+  if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
+#endif  // CONFIG_TIP
+
   // First check if all modes are GLOBALMV
   if (mbmi->mode != GLOBALMV && mbmi->mode != GLOBAL_GLOBALMV) return 0;
   if (AOMMIN(mi_size_wide[mbmi->sb_type[PLANE_TYPE_Y]],

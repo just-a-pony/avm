@@ -2476,18 +2476,27 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     }
 #endif  // CONFIG_WARPMV
     case GLOBALMV: {
+#if CONFIG_TIP
+      // Global motion is never used for the TIP ref frame
+      if (is_tip_ref_frame(ref_frame[0])) {
+        mv[0].as_int = 0;
+      } else {
+#endif  // CONFIG_TIP
 #if CONFIG_FLEX_MVRES
-      mv[0].as_int =
-          get_warp_motion_vector(xd, &cm->global_motion[ref_frame[0]],
-                                 features->fr_mv_precision, bsize, xd->mi_col,
-                                 xd->mi_row)
+        mv[0].as_int =
+            get_warp_motion_vector(xd, &cm->global_motion[ref_frame[0]],
+                                   features->fr_mv_precision, bsize, xd->mi_col,
+                                   xd->mi_row)
 #else
       mv[0].as_int = get_warp_motion_vector(
                          xd, &cm->global_motion[ref_frame[0]],
                          features->allow_high_precision_mv, bsize, xd->mi_col,
                          xd->mi_row, features->cur_frame_force_integer_mv)
 #endif
-              .as_int;
+                .as_int;
+#if CONFIG_TIP
+      }
+#endif  // CONFIG_TIP
       break;
     }
     case NEW_NEWMV:
@@ -2579,6 +2588,9 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     }
     case GLOBAL_GLOBALMV: {
       assert(is_compound);
+#if CONFIG_TIP
+      assert(!is_tip_ref_frame(ref_frame[0]));
+#endif  // CONFIG_TIP
       mv[0].as_int =
           get_warp_motion_vector(xd, &cm->global_motion[ref_frame[0]],
 #if CONFIG_FLEX_MVRES
