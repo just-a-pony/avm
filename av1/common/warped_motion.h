@@ -348,7 +348,23 @@ static INLINE void av1_scale_warp_model(const WarpedMotionParams *in_params,
                                              GM_ALPHA_MAX,    GM_ALPHA_MAX,
                                              GM_ROW3HOMO_MAX, GM_ROW3HOMO_MAX };
 
-  assert(in_distance != 0);
+  // If in_distance == 0, then we can't meaningfully scale the model because
+  // this would correspond to a division by 0. So we fall back to using the
+  // identity model as a reference.
+  //
+  // Note: Global motion is disabled for temporal distances of 0, so in this
+  // situation the input model must be the identity model anyway. Check this
+  // constraint here to help keep things internally consistent.
+  if (in_distance == 0) {
+    for (int param = 0; param < MAX_PARAMDIM; param++) {
+      assert(in_params->wmmat[param] == default_warp_params.wmmat[param]);
+    }
+    *out_params = default_warp_params;
+    return;
+  }
+
+  // If out_distance == 0, then global motion is disabled, so we shouldn't
+  // get to this function
   assert(out_distance != 0);
 
   // Flip signs so that in_distance is positive.
