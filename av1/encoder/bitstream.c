@@ -5472,6 +5472,8 @@ static AOM_INLINE void write_uncompressed_header_obu(
       }
 #if CONFIG_IBC_BV_IMPROVEMENT
 #if CONFIG_IBC_MAX_DRL
+      assert(features->max_bvp_drl_bits >= MIN_MAX_IBC_DRL_BITS &&
+             features->max_bvp_drl_bits <= MAX_MAX_IBC_DRL_BITS);
       aom_wb_write_primitive_quniform(
           wb, MAX_MAX_IBC_DRL_BITS - MIN_MAX_IBC_DRL_BITS + 1,
           features->max_bvp_drl_bits - MIN_MAX_IBC_DRL_BITS);
@@ -5497,6 +5499,8 @@ static AOM_INLINE void write_uncompressed_header_obu(
         }
 #if CONFIG_IBC_BV_IMPROVEMENT
 #if CONFIG_IBC_MAX_DRL
+        assert(features->max_bvp_drl_bits >= MIN_MAX_IBC_DRL_BITS &&
+               features->max_bvp_drl_bits <= MAX_MAX_IBC_DRL_BITS);
         aom_wb_write_primitive_quniform(
             wb, MAX_MAX_IBC_DRL_BITS - MIN_MAX_IBC_DRL_BITS + 1,
             features->max_bvp_drl_bits - MIN_MAX_IBC_DRL_BITS);
@@ -5603,6 +5607,8 @@ static AOM_INLINE void write_uncompressed_header_obu(
             features->max_drl_bits - MIN_MAX_DRL_BITS);
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         if (features->allow_intrabc) {
+          assert(features->max_bvp_drl_bits >= MIN_MAX_IBC_DRL_BITS &&
+                 features->max_bvp_drl_bits <= MAX_MAX_IBC_DRL_BITS);
           aom_wb_write_primitive_quniform(
               wb, MAX_MAX_IBC_DRL_BITS - MIN_MAX_IBC_DRL_BITS + 1,
               features->max_bvp_drl_bits - MIN_MAX_IBC_DRL_BITS);

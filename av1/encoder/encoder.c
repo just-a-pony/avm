@@ -2721,6 +2721,12 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
   // Determine whether to use screen content tools using two fast encoding.
   av1_determine_sc_tools_with_encoding(cpi, q);
 
+#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
+  if (cm->features.allow_intrabc) {
+    set_max_bvp_drl_bits(cpi);
+  }
+#endif
+
 #if CONFIG_IBC_SR_EXT
   if (cm->features.allow_intrabc) {
     cm->features.allow_global_intrabc =
