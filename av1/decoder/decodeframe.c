@@ -1333,6 +1333,9 @@ static AOM_INLINE void dec_build_inter_predictor(const AV1_COMMON *cm,
 #endif  // CONFIG_REFINEMV
     );
 
+    assert(IMPLIES(!is_interintra_allowed(xd->mi[0]),
+                   xd->mi[0]->motion_mode != INTERINTRA));
+
     if (is_interintra_pred(xd->mi[0])) {
       BUFFER_SET ctx = { { xd->plane[0].dst.buf, xd->plane[1].dst.buf,
                            xd->plane[2].dst.buf },
