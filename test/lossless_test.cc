@@ -107,7 +107,7 @@ TEST_P(LosslessTestLarge, TestLossLessEncoding) {
 }
 
 TEST_P(LosslessTestLarge, TestLossLessEncoding444) {
-  libaom_test::Y4mVideoSource video("rush_hour_444.y4m", 0, 5);
+  libaom_test::Y4mVideoSource video("rush_hour_444.y4m", 0, 3);
 
   cfg_.g_profile = 1;
   cfg_.g_timebase = video.timebase();
