@@ -2497,6 +2497,54 @@ static void loopfilter_frame(AV1_COMP *cpi, AV1_COMMON *cm) {
   cdef_restoration_frame(cpi, cm, xd, use_restoration, use_cdef);
 }
 
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+/*!\brief If the error resilience mode is turned on in the encoding, for frames
+ * following the error resilient frame, use the last encoded frame as the
+ * primary reference frame.
+ *
+ * \ingroup high_level_algo
+ */
+static void set_primary_ref_frame_for_error_resilient(AV1_COMP *cpi) {
+  AV1_COMMON *const cm = &cpi->common;
+  const int intra_only = cm->current_frame.frame_type == KEY_FRAME ||
+                         cm->current_frame.frame_type == INTRA_ONLY_FRAME;
+  if (intra_only) {
+    cpi->error_resilient_frame_seen = 0;
+  } else if (cm->features.error_resilient_mode) {
+    cpi->error_resilient_frame_seen = 1;
+  }
+
+  // The error resilient frame always use PRIMARY_REF_NONE. This is already
+  // handled.
+  if (cm->features.error_resilient_mode) return;
+
+  if (cpi->error_resilient_frame_seen) {
+    cm->features.primary_ref_frame = PRIMARY_REF_NONE;
+
+    // Find the last encoded frame, and use it as the primary ref frame.
+    const int n_refs = cm->ref_frames_info.num_total_refs;
+    const RefFrameMapPair *ref_frame_map_pairs = cm->ref_frame_map_pairs;
+    int i;
+
+    for (i = 0; i < n_refs; i++) {
+      // Get reference frame buffer
+      RefFrameMapPair cur_ref =
+          ref_frame_map_pairs[get_ref_frame_map_idx(cm, i)];
+      if (cur_ref.disp_order == -1) continue;
+      if (cur_ref.frame_type != INTER_FRAME) continue;
+
+      if (cur_ref.disp_order == cpi->last_encoded_frame_order_hint) {
+        cm->features.primary_ref_frame = i;
+        break;
+      }
+    }
+
+    if (cm->features.primary_ref_frame == PRIMARY_REF_NONE)
+      av1_setup_past_independence(cm);
+  }
+}
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
+
 /*!\brief Encode a frame without the recode loop, usually used in one-pass
  * encoding.
  *
@@ -2611,6 +2659,9 @@ static int encode_without_recode(AV1_COMP *cpi) {
   cm->features.primary_ref_frame = cm->features.derived_primary_ref_frame;
   if (cpi->ext_flags.use_primary_ref_none)
     cm->features.primary_ref_frame = PRIMARY_REF_NONE;
+
+  // Set primary reference frame while the error resilience mode is turned on.
+  set_primary_ref_frame_for_error_resilient(cpi);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
   av1_set_speed_features_qindex_dependent(cpi, cpi->oxcf.speed);
@@ -2808,6 +2859,9 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
     cm->features.primary_ref_frame = cm->features.derived_primary_ref_frame;
     if (cpi->ext_flags.use_primary_ref_none)
       cm->features.primary_ref_frame = PRIMARY_REF_NONE;
+
+    // Set primary reference frame while the error resilience mode is turned on.
+    set_primary_ref_frame_for_error_resilient(cpi);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
     av1_set_speed_features_qindex_dependent(cpi, oxcf->speed);
@@ -3259,7 +3313,7 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT
   if (cm->features.primary_ref_frame != PRIMARY_REF_NONE &&
-      !cm->tiles.large_scale) {
+      !cm->tiles.large_scale && !cpi->error_resilient_frame_seen) {
     const int n_refs = cm->ref_frames_info.num_total_refs;
     //    int frame_size[REF_FRAMES];
     int best_ref_idx = -1;
@@ -3343,6 +3397,10 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
                       tip_as_output_rate, largest_tile_id);
   }
 #endif  // CONFIG_TIP
+
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+  cpi->last_encoded_frame_order_hint = cm->current_frame.display_order_hint;
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
   return AOM_CODEC_OK;
 }

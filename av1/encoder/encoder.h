@@ -2982,6 +2982,18 @@ typedef struct AV1_COMP {
    */
   int palette_pixel_num;
 #endif  // CONFIG_SCC_DETERMINATION
+
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+  /*!
+   * Record if error_resilience mode is turned on in the encoding. This is used
+   * in the primary reference frame decision.
+   */
+  int error_resilient_frame_seen;
+  /*!
+   * Record last encoded frame's display order hint.
+   */
+  int last_encoded_frame_order_hint;
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 } AV1_COMP;
 
 /*!
