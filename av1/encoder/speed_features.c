@@ -1053,6 +1053,10 @@ static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
   const int allow_screen_content_tools =
       cm->features.allow_screen_content_tools;
   const unsigned int erp_pruning_level = cpi->oxcf.part_cfg.erp_pruning_level;
+  const size_t num_pixels = cm->width * cm->height;
+  // TODO(jinzhaoipc@google.com): Make sure this is aligned with the new size
+  // categories post-v6
+  const bool is_1080p_or_larger = num_pixels > (1366 * 768);
 
   switch (erp_pruning_level) {
     case 6:
@@ -1063,7 +1067,9 @@ static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
     case 5:
       sf->part_sf.prune_part_h_with_partition_boundary = true;
       sf->part_sf.adaptive_partition_search_order = true;
-      sf->tx_sf.use_largest_tx_size_for_small_bsize = true;
+      // Skip tx partition search for block_sizes smaller than or equal to
+      // BLOCK_16X16 on inter frames for 1080p or larger resolution
+      sf->tx_sf.use_largest_tx_size_for_small_bsize = is_1080p_or_larger;
       // TODO(chiyotsai@google.com): This speed feature causes large regression
       // on b2 testset. Disable this for now until we figure out how to avoid
       // the loss.
