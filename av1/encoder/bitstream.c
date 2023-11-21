@@ -4531,10 +4531,16 @@ static AOM_INLINE void encode_segmentation(AV1_COMMON *cm, MACROBLOCKD *xd,
   struct segmentation *seg = &cm->seg;
 
   aom_wb_write_bit(wb, seg->enabled);
-  if (!seg->enabled) return;
+  if (!seg->enabled) {
+    return;
+  }
 
   // Write update flags
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+  if (cm->features.derived_primary_ref_frame == PRIMARY_REF_NONE) {
+#else
   if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
     assert(seg->update_map == 1);
     seg->temporal_update = 0;
     assert(seg->update_data == 1);

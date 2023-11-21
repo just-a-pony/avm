@@ -2962,7 +2962,11 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
     cm->last_frame_seg_map = NULL;
   }
   // Read update flags
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+  if (cm->features.derived_primary_ref_frame == PRIMARY_REF_NONE) {
+#else
   if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
     // These frames can't use previous frames, so must signal map + features
     seg->update_map = 1;
     seg->temporal_update = 0;
