@@ -350,6 +350,12 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
     }
     assert(mbmi->ref_mv_idx[ref] < max_drl_bits + 1);
   }
+#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+  if (!mbmi->skip_mode && mbmi->ref_frame[0] == mbmi->ref_frame[1] &&
+      has_second_drl(mbmi) && mbmi->mode == NEAR_NEARMV &&
+      mbmi->ref_mv_idx[0] < max_drl_bits)
+    assert(mbmi->ref_mv_idx[0] < mbmi->ref_mv_idx[1]);
+#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
 #else
   mbmi->ref_mv_idx = 0;
 #if !CONFIG_SKIP_MODE_ENHANCEMENT
@@ -370,11 +376,6 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   }
   assert(mbmi->ref_mv_idx < max_drl_bits + 1);
 #endif  // CONFIG_SEP_COMP_DRL
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
-  if (!mbmi->skip_mode && mbmi->ref_frame[0] == mbmi->ref_frame[1] &&
-      has_second_drl(mbmi) && mbmi->mode == NEAR_NEARMV)
-    assert(mbmi->ref_mv_idx[0] < mbmi->ref_mv_idx[1]);
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
 }
 
 #if CONFIG_WEDGE_MOD_EXT
@@ -2298,7 +2299,10 @@ static AOM_INLINE void read_compound_ref(
                     n_refs - 1 < ref_frames_info->num_same_ref_compound)
                        ? n_refs - 1
                        : n_refs - 2;
-  assert(ref_frame[0] >= 0);
+  // TODO(kslu) This is a workaround for the corner case where
+  // num_same_ref_compound = 0 and n_refs = 1. Change the frame header syntax
+  // to disallow the use of REFERENCE_MODE_SELECT for this case.
+  if (ref_frame[0] == NONE_FRAME) ref_frame[0] = 0;
 #elif CONFIG_ALLOW_SAME_REF_COMPOUND
   if (n_bits < 1) ref_frame[0] = n_refs - 1;
 #else
