@@ -3774,11 +3774,20 @@ static INLINE int get_relative_dist(const OrderHintInfo *oh, int a, int b) {
 // If k is set to 1, refinement will only be enabled when |d0|=|d1|.
 #define OPFL_DIST_RATIO_THR 0
 
-static INLINE int is_opfl_refine_allowed(const AV1_COMMON *cm,
-                                         const MB_MODE_INFO *mbmi) {
+// Check whether optical flow refinement is applicable based on the sequence
+// level flag and the signaled reference frames
+static INLINE int opfl_allowed_for_cur_refs(const AV1_COMMON *cm,
+                                            const MB_MODE_INFO *mbmi) {
   if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_NONE ||
       cm->features.opfl_refine_type == REFINE_NONE)
     return 0;
+
+#if CONFIG_OPTFLOW_ON_TIP
+  if (!has_second_ref(mbmi) && !is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
+#else
+  if (!has_second_ref(mbmi)) return 0;
+#endif  // CONFIG_OPTFLOW_ON_TIP
+
 #if CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
   const unsigned int cur_index = cm->cur_frame->display_order_hint;
 #else
@@ -3812,6 +3821,32 @@ static INLINE int is_opfl_refine_allowed(const AV1_COMMON *cm,
          (AOMMAX(abs(d0), abs(d1)) <=
           OPFL_DIST_RATIO_THR * AOMMIN(abs(d0), abs(d1)));
 }
+
+// Check whether optical flow refinement is applicable based on the block and
+// mode info (mode, cwp_idx, compound average type). In REFINE_SWITCHABLE,
+// optical flow is always used in *MV_OPTFLOW modes, but in REFINE_ALL
+// (--enable-opfl-refine=2) the on/off switch for optical flow is based on these
+// block level flags.
+static INLINE int opfl_allowed_for_cur_block(const AV1_COMMON *cm,
+                                             const MB_MODE_INFO *mbmi) {
+  if (!opfl_allowed_for_cur_refs(cm, mbmi)) return 0;
+
+  if (cm->features.opfl_refine_type == REFINE_SWITCHABLE)
+    return mbmi->mode >= NEAR_NEARMV_OPTFLOW;
+
+  if (cm->features.opfl_refine_type == REFINE_ALL)
+    return mbmi->mode >= COMP_INTER_MODE_START &&
+           mbmi->mode < COMP_OPTFLOW_MODE_START &&
+           mbmi->mode != GLOBAL_GLOBALMV &&
+#if CONFIG_CWP
+           mbmi->cwp_idx == CWP_EQUAL &&
+#endif  // CONFIG_CWP
+           mbmi->interinter_comp.type == COMPOUND_AVERAGE;
+
+  assert(0);
+  return 0;
+}
+
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
 static INLINE int is_global_intrabc_allowed(const AV1_COMMON *const cm) {

@@ -501,7 +501,7 @@ static int cost_mv_ref(const ModeCosts *const mode_costs, PREDICTION_MODE mode,
 #if CONFIG_OPTFLOW_REFINEMENT
     int use_optical_flow_cost = 0;
     if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-        is_opfl_refine_allowed(cm, mbmi)) {
+        opfl_allowed_for_cur_refs(cm, mbmi)) {
       const int use_optical_flow = mode >= NEAR_NEARMV_OPTFLOW;
       use_optical_flow_cost =
           mode_costs->use_optflow_cost[mode_context][use_optical_flow];
@@ -10048,16 +10048,11 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #endif
 
 #if CONFIG_OPTFLOW_REFINEMENT
-        // Optical flow compound modes are only enabled with enable_order_hint
-        // and when prediction is bi-directional
+        // Optical flow compound modes are only enabled in REFINE_SWITCHABLE and
+        // when reference frames are different sided
         if (this_mode >= NEAR_NEARMV_OPTFLOW &&
-            (!cm->seq_params.order_hint_info.enable_order_hint ||
-             !has_second_ref(mbmi) || !is_opfl_refine_allowed(cm, mbmi)))
-          continue;
-        // In REFINE_ALL, optical flow refinement has been applied to regular
-        // compound modes.
-        if (cm->features.opfl_refine_type == REFINE_ALL &&
-            (this_mode >= NEAR_NEARMV_OPTFLOW || this_mode == GLOBAL_GLOBALMV))
+            (!opfl_allowed_for_cur_refs(cm, mbmi) ||
+             cm->features.opfl_refine_type == REFINE_ALL))
           continue;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
