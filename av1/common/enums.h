@@ -124,6 +124,22 @@ enum {
 #define MAX_SB_SQUARE (MAX_SB_SIZE * MAX_SB_SIZE)
 #define BLOCK_128_MI_SIZE_LOG2 5
 
+#if CONFIG_ENABLE_MHCCP
+#define MHCCP_CONTEXT_GROUP_SIZE 7
+#define LINE_NUM 3
+#define MHCCP_MODE_NUM 2
+#define MHCCP_NUM_PARAMS 5
+#define MHCCP_WINDOW_SIZE 6
+#define MHCCP_MAX_REF_SAMPLES \
+  (2 * MHCCP_WINDOW_SIZE * (2 * MAX_SB_SIZE + MHCCP_WINDOW_SIZE))
+
+#define MHCCP_DECIM_BITS 22
+#define MHCCP_DECIM_ROUND (1 << (MHCCP_DECIM_BITS - 1))
+
+#define FIXED_MULT(x, y) (((x) * (y) + MHCCP_DECIM_ROUND) >> MHCCP_DECIM_BITS)
+#define FIXED_DIV(x, y) (((x) << MHCCP_DECIM_BITS) / (y))
+#endif  // CONFIG_ENABLE_MHCCP
+
 // Min superblock size
 #define MIN_SB_SIZE_LOG2 6
 
@@ -886,6 +902,10 @@ enum {
 enum {
   CFL_EXPLICIT,       // av1 cfl
   CFL_DERIVED_ALPHA,  // implicit CfL mode with derived scaling factor
+#if CONFIG_ENABLE_MHCCP
+  CFL_MULTI_PARAM_V,  // multi hypothesis cross component vertical prediction
+  CFL_MULTI_PARAM_H,  // multi hypothesis cross component horizontal prediction
+#endif                // CONFIG_ENABLE_MHCCP
   CFL_TYPE_COUNT,     // CfL mode type count
 } UENUM1BYTE(CFL_TYPE);
 #endif
