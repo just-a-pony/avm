@@ -3110,8 +3110,11 @@ static INLINE TX_SIZE get_tx_size(int width, int height) {
 #if CONFIG_FLEX_PARTITION
     } else if ((4 * width) < height) {
       switch (width) {
-        case 4: return (height == 32) ? TX_4X32 : TX_4X64; break;
-        case 8: return TX_8X64; break;
+        case 4:
+          return (height == 32)   ? TX_4X32
+                 : (height == 64) ? TX_4X64
+                                  : TX_INVALID;
+        case 8: return (height == 64) ? TX_8X64 : TX_INVALID;
       }
 #endif  // CONFIG_FLEX_PARTITION
     } else {
@@ -3132,8 +3135,9 @@ static INLINE TX_SIZE get_tx_size(int width, int height) {
 #if CONFIG_FLEX_PARTITION
     } else if ((4 * height) < width) {
       switch (height) {
-        case 4: return (width == 32) ? TX_32X4 : TX_64X4; break;
-        case 8: return TX_64X8; break;
+        case 4:
+          return (width == 32) ? TX_32X4 : (width == 64) ? TX_64X4 : TX_INVALID;
+        case 8: return (width == 64) ? TX_64X8 : TX_INVALID;
       }
 #endif  // CONFIG_FLEX_PARTITION
     } else {
