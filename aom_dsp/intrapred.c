@@ -240,24 +240,6 @@ static INLINE int divide_using_multiply_shift(int num, int shift1,
   return interm * multiplier >> shift2;
 }
 
-// The constants (multiplier and shifts) for a given block size are obtained
-// as follows:
-// - Let sum_w_h =  block width + block height.
-// - Shift 'sum_w_h' right until we reach an odd number. Let the number of
-// shifts for that block size be called 'shift1' (see the parameter in
-// dc_predictor_rect() function), and let the odd number be 'd'. [d has only 2
-// possible values: d = 3 for a 1:2 rect block and d = 5 for a 1:4 rect
-// block].
-// - Find multipliers for (i) dividing by 3, and (ii) dividing by 5,
-// using the "Algorithm 1" in:
-// http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1467632
-// by ensuring that m + n = 16 (in that algorithm). This ensures that our 2nd
-// shift will be 16, regardless of the block size.
-
-// Note: For low bitdepth, assembly code may be optimized by using smaller
-// constants for smaller block sizes, where the range of the 'sum' is
-// restricted to fewer bits.
-
 static INLINE void highbd_v_predictor(uint16_t *dst, ptrdiff_t stride, int bw,
                                       int bh, const uint16_t *above,
                                       const uint16_t *left, int bd) {
@@ -706,24 +688,60 @@ static INLINE void ibp_dc_predictor(uint8_t *dst, ptrdiff_t stride, int bw,
   }
 }
 #endif
-// Obtained similarly as DC_MULTIPLIER_1X2 and DC_MULTIPLIER_1X4 above, but
-// assume 2nd shift of 17 bits instead of 16.
+
+// The constants (multiplier and shifts) for a given block size are obtained
+// as follows:
+// - Let sum_w_h =  block width + block height.
+// - Shift 'sum_w_h' right until we reach an odd number. Let the number of
+// shifts for that block size be called 'shift1' (see the parameter in
+// dc_predictor_rect() function), and let the odd number be 'd'.
+#if CONFIG_FLEX_PARTITION
+// d has only 4 possible values:
+// * d = 3 for a 1:2 rect block,
+// * d = 5 for a 1:4 rect block,
+// * d = 9 for a 1:8 rect block,
+// * d = 17 for a 1:16 rect block,
+// - Find multipliers for dividing by 3, 5, 9 and 17 using the "Algorithm 1" in:
+// http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1467632
+// by ensuring that m + n = 21 (in that algorithm). This ensures that our 2nd
+// shift will be 21, regardless of the block size.
+// Note: Strictly speaking, 2nd shift needs to be 21 only for bit depth = 12
+// and rectangular blocks with ratio 1:16/16:1.
+// Other cases can use scaled-down multipliers with a smaller shifts instead.
+// This special optimization can be used when writing assembly code.
+#define HIGHBD_DC_SHIFT2 21
+#define HIGHBD_DC_MULTIPLIER_1X2 0xAAAAB
+// Note: This constant is odd, but a smaller even constant (0x199a) with the
+// appropriate shift should work for neon in 8/10-bit.
+#define HIGHBD_DC_MULTIPLIER_1X4 0x66667
+#define HIGHBD_DC_MULTIPLIER_1X8 0x38E39
+#define HIGHBD_DC_MULTIPLIER_1X16 0x1E1E2
+#else
+// d has only 2 possible values:
+// * d = 3 for a 1:2 rect block,
+// * d = 5 for a 1:4 rect block.
+// - Find multipliers for dividing by 3 and 5 using the "Algorithm 1" in:
+// - Find multipliers for (i) dividing by 3, and (ii) dividing by 5,
+// using the "Algorithm 1" in:
+// http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1467632
+// by ensuring that m + n = 17 (in that algorithm). This ensures that our 2nd
+// shift will be 17, regardless of the block size.
+
+// Note: For low bitdepth, assembly code may be optimized by using smaller
+// constants for smaller block sizes, where the range of the 'sum' is
+// restricted to fewer bits.
+
 // Note: Strictly speaking, 2nd shift needs to be 17 only when:
 // - bit depth == 12, and
 // - bw + bh is divisible by 5 (as opposed to divisible by 3).
 // All other cases can use half the multipliers with a shift of 16 instead.
 // This special optimization can be used when writing assembly code.
+#define HIGHBD_DC_SHIFT2 17
 #define HIGHBD_DC_MULTIPLIER_1X2 0xAAAB
 // Note: This constant is odd, but a smaller even constant (0x199a) with the
 // appropriate shift should work for neon in 8/10-bit.
 #define HIGHBD_DC_MULTIPLIER_1X4 0x6667
-
-#if CONFIG_FLEX_PARTITION
-#define HIGHBD_DC_MULTIPLIER_1X8 0x38E4
-#define HIGHBD_DC_MULTIPLIER_1X16 0x1E1E
 #endif  // CONFIG_FLEX_PARTITION
-
-#define HIGHBD_DC_SHIFT2 17
 
 static INLINE void highbd_dc_predictor_rect(uint16_t *dst, ptrdiff_t stride,
                                             int bw, int bh,
