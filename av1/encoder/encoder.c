@@ -2542,6 +2542,7 @@ static void set_primary_ref_frame_for_error_resilient(AV1_COMP *cpi) {
   // The error resilient frame always use PRIMARY_REF_NONE. This is already
   // handled.
   if (cm->features.error_resilient_mode) return;
+  if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) return;
 
   if (cpi->error_resilient_frame_seen) {
     cm->features.primary_ref_frame = PRIMARY_REF_NONE;
@@ -2563,9 +2564,36 @@ static void set_primary_ref_frame_for_error_resilient(AV1_COMP *cpi) {
         break;
       }
     }
-
+    cpi->signal_primary_ref_frame = cm->features.primary_ref_frame !=
+                                    cm->features.derived_primary_ref_frame;
     if (cm->features.primary_ref_frame == PRIMARY_REF_NONE)
       av1_setup_past_independence(cm);
+  }
+}
+
+/*!\brief Set the primary reference frame before encoding a frame.
+ *
+ * \ingroup high_level_algo
+ */
+static void set_primary_ref_frame(AV1_COMP *cpi) {
+  AV1_COMMON *const cm = &cpi->common;
+  cpi->signal_primary_ref_frame = 0;
+  // Got the derived_primary_ref_frame.
+  cm->features.derived_primary_ref_frame = choose_primary_ref_frame(cm);
+  // The primary_ref_frame can be set to other refs other than the derived
+  // one. If that is needed, disable primary_ref_frame search.
+  cm->features.primary_ref_frame = cm->features.derived_primary_ref_frame;
+  if (cpi->ext_flags.use_primary_ref_none) {
+    cm->features.primary_ref_frame = PRIMARY_REF_NONE;
+  }
+
+  // Set primary reference frame while the error resilience mode is turned on.
+  set_primary_ref_frame_for_error_resilient(cpi);
+
+  if (cm->features.primary_ref_frame == PRIMARY_REF_NONE &&
+      cm->features.derived_primary_ref_frame != PRIMARY_REF_NONE) {
+    cm->features.derived_primary_ref_frame = PRIMARY_REF_NONE;
+    cpi->signal_primary_ref_frame = 1;
   }
 }
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
@@ -2677,16 +2705,7 @@ static int encode_without_recode(AV1_COMP *cpi) {
                     q_cfg->enable_chroma_deltaq);
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT
-  // Got the derived_primary_ref_frame.
-  cm->features.derived_primary_ref_frame = choose_primary_ref_frame(cm);
-  // The primary_ref_frame can be set to other refs other than the derived one.
-  // If that is needed, disable primary_ref_frame search.
-  cm->features.primary_ref_frame = cm->features.derived_primary_ref_frame;
-  if (cpi->ext_flags.use_primary_ref_none)
-    cm->features.primary_ref_frame = PRIMARY_REF_NONE;
-
-  // Set primary reference frame while the error resilience mode is turned on.
-  set_primary_ref_frame_for_error_resilient(cpi);
+  set_primary_ref_frame(cpi);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
   av1_set_speed_features_qindex_dependent(cpi, cpi->oxcf.speed);
@@ -2877,16 +2896,7 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
                       q_cfg->enable_chroma_deltaq);
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT
-    // Got the derived_primary_ref_frame.
-    cm->features.derived_primary_ref_frame = choose_primary_ref_frame(cm);
-    // The primary_ref_frame can be set to other refs other than the derived
-    // one. If that is needed, disable primary_ref_frame search.
-    cm->features.primary_ref_frame = cm->features.derived_primary_ref_frame;
-    if (cpi->ext_flags.use_primary_ref_none)
-      cm->features.primary_ref_frame = PRIMARY_REF_NONE;
-
-    // Set primary reference frame while the error resilience mode is turned on.
-    set_primary_ref_frame_for_error_resilient(cpi);
+    set_primary_ref_frame(cpi);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
     av1_set_speed_features_qindex_dependent(cpi, oxcf->speed);
@@ -3471,6 +3481,13 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
 #endif
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT
+  // For primary_ref_frame and derived_primary_ref_frame, if one of them is
+  // PRIMARY_REF_NONE, the other one is also PRIMARY_REF_NONE.
+  assert(IMPLIES(cm->features.derived_primary_ref_frame == PRIMARY_REF_NONE,
+                 cm->features.primary_ref_frame == PRIMARY_REF_NONE));
+  assert(IMPLIES(cm->features.primary_ref_frame == PRIMARY_REF_NONE,
+                 cm->features.derived_primary_ref_frame == PRIMARY_REF_NONE));
+
   if (cm->features.primary_ref_frame != PRIMARY_REF_NONE &&
       !cm->tiles.large_scale && !cpi->error_resilient_frame_seen) {
     const int n_refs = cm->ref_frames_info.num_total_refs;
@@ -3496,6 +3513,13 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
                            "Uninitialized entropy context.");
 
       av1_finalize_encoded_frame(cpi);
+      // Storing/restoring cm->features.primary_ref_frame isn't needed here
+      // since it always takes 3 bits for primary_ref_frame signaling.
+      // For cases allowing primary_ref_frame search, cpi->signal_primary_ref_
+      // frame should be 0 before primary_ref_frame search. Here no need to
+      // store previous cpi->signal_primary_ref_frame value.
+      // cpi->signal_primary_ref_frame =
+      //     cm->features.derived_primary_ref_frame != i;
       size_t temp_size;
       int temp_largest_tile_id = 0;  // Output from bitstream: unused here
       if (av1_pack_bitstream(cpi, dest, &temp_size, &temp_largest_tile_id) !=
@@ -3518,6 +3542,8 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
         best_frame_size < cur_frame_size) {
       cm->features.primary_ref_frame = best_ref_idx;
     }
+    cpi->signal_primary_ref_frame = cm->features.derived_primary_ref_frame !=
+                                    cm->features.primary_ref_frame;
 
     const int map_idx =
         get_ref_frame_map_idx(cm, cm->features.primary_ref_frame);

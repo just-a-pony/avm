@@ -5590,11 +5590,8 @@ static AOM_INLINE void write_uncompressed_header_obu(
 
     if (!features->error_resilient_mode && !frame_is_intra_only(cm)) {
 #if CONFIG_PRIMARY_REF_FRAME_OPT
-      aom_wb_write_literal(
-          wb,
-          features->derived_primary_ref_frame != features->primary_ref_frame,
-          1);
-      if (features->derived_primary_ref_frame != features->primary_ref_frame)
+      aom_wb_write_literal(wb, cpi->signal_primary_ref_frame, 1);
+      if (cpi->signal_primary_ref_frame)
         aom_wb_write_literal(wb, features->primary_ref_frame, PRIMARY_REF_BITS);
 #else
       aom_wb_write_literal(wb, features->primary_ref_frame, PRIMARY_REF_BITS);

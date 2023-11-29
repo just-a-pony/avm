@@ -7288,6 +7288,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT
   int signal_primary_ref_frame = -1;
+  features->derived_primary_ref_frame = PRIMARY_REF_NONE;
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
   if (!seq_params->reduced_still_picture_hdr) {
@@ -8042,6 +8043,18 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     if (!signal_primary_ref_frame)
       features->primary_ref_frame = features->derived_primary_ref_frame;
   }
+
+  // For primary_ref_frame and derived_primary_ref_frame, if one of them is
+  // PRIMARY_REF_NONE, the other one is also PRIMARY_REF_NONE.
+  if (features->derived_primary_ref_frame == PRIMARY_REF_NONE ||
+      features->primary_ref_frame == PRIMARY_REF_NONE) {
+    features->primary_ref_frame = PRIMARY_REF_NONE;
+    features->derived_primary_ref_frame = PRIMARY_REF_NONE;
+  }
+  assert(IMPLIES(features->derived_primary_ref_frame == PRIMARY_REF_NONE,
+                 features->primary_ref_frame == PRIMARY_REF_NONE));
+  assert(IMPLIES(features->primary_ref_frame == PRIMARY_REF_NONE,
+                 features->derived_primary_ref_frame == PRIMARY_REF_NONE));
 
   if (features->primary_ref_frame >= cm->ref_frames_info.num_total_refs &&
       features->primary_ref_frame != PRIMARY_REF_NONE) {

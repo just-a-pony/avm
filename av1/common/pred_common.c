@@ -214,10 +214,13 @@ typedef struct {
 
 // Check if one reference frame is better based on its distance to the current
 // frame.
-static int is_ref_better(int cur_disp, int ref_disp, int best_disp_so_far) {
-  if (abs(cur_disp - ref_disp) < abs(cur_disp - best_disp_so_far)) return 1;
-  if (abs(cur_disp - ref_disp) == abs(cur_disp - best_disp_so_far) &&
-      ref_disp > best_disp_so_far)
+static int is_ref_better(const OrderHintInfo *oh, int cur_disp, int ref_disp,
+                         int best_disp_so_far) {
+  const int d0 = get_relative_dist(oh, cur_disp, ref_disp);
+  const int d1 = get_relative_dist(oh, cur_disp, best_disp_so_far);
+  if (abs(d0) < abs(d1)) return 1;
+  if (abs(d0) == abs(d1) &&
+      get_relative_dist(oh, ref_disp, best_disp_so_far) > 0)
     return 1;
   return 0;
 }
@@ -246,6 +249,7 @@ int choose_primary_ref_frame(const AV1_COMMON *const cm) {
   PrimaryRefCand cand_lower_qp = { -1, -1, 0 };
   PrimaryRefCand cand_higher_qp = { -1, -1, INT32_MAX };
 
+  const OrderHintInfo *oh = &cm->seq_params.order_hint_info;
   for (i = 0; i < n_refs; i++) {
     // Get reference frame buffer
     RefFrameMapPair cur_ref = ref_frame_map_pairs[get_ref_frame_map_idx(cm, i)];
@@ -257,7 +261,7 @@ int choose_primary_ref_frame(const AV1_COMMON *const cm) {
     if (ref_base_qindex > cm->quant_params.base_qindex) {
       if ((ref_base_qindex < cand_higher_qp.base_qindex) ||
           (ref_base_qindex == cand_higher_qp.base_qindex &&
-           is_ref_better(cur_frame_disp, cur_ref.disp_order,
+           is_ref_better(oh, cur_frame_disp, cur_ref.disp_order,
                          cand_higher_qp.disp_order))) {
         cand_higher_qp.idx = i;
         cand_higher_qp.base_qindex = ref_base_qindex;
@@ -266,7 +270,7 @@ int choose_primary_ref_frame(const AV1_COMMON *const cm) {
     } else {
       if ((ref_base_qindex > cand_lower_qp.base_qindex) ||
           (ref_base_qindex == cand_lower_qp.base_qindex &&
-           is_ref_better(cur_frame_disp, cur_ref.disp_order,
+           is_ref_better(oh, cur_frame_disp, cur_ref.disp_order,
                          cand_lower_qp.disp_order))) {
         cand_lower_qp.idx = i;
         cand_lower_qp.base_qindex = ref_base_qindex;

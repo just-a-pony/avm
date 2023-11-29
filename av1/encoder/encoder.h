@@ -3054,6 +3054,10 @@ typedef struct AV1_COMP {
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT
   /*!
+   * Indicate if the primary reference frame is signaled.
+   */
+  int signal_primary_ref_frame;
+  /*!
    * Record if error_resilience mode is turned on in the encoding. This is used
    * in the primary reference frame decision.
    */
