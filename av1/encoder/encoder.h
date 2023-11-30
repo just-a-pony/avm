@@ -1534,7 +1534,6 @@ typedef struct FRAME_COUNTS {
   unsigned int wienerns_restore[2];
 #endif  // CONFIG_WIENER_NONSEP
 #endif  // CONFIG_ENTROPY_STATS
-
   unsigned int switchable_interp[SWITCHABLE_FILTER_CONTEXTS]
                                 [SWITCHABLE_FILTERS];
 } FRAME_COUNTS;

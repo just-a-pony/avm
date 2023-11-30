@@ -1169,7 +1169,12 @@ void av1_compute_subpel_gradients_interp(int16_t *pred_dst, int bw, int bh,
   (void)is_hbd;
   av1_bilinear_grad_interpolation_c(pred_dst, x_grad, y_grad, bw, bh);
 #else
-  av1_bicubic_grad_interpolation_highbd(pred_dst, x_grad, y_grad, bw, bh);
+#if CONFIG_OPFL_MV_SEARCH
+  if (bw < 8 || bh < 8)
+    av1_bicubic_grad_interpolation_highbd_c(pred_dst, x_grad, y_grad, bw, bh);
+  else
+#endif  // CONFIG_OPFL_MV_SEARCH
+    av1_bicubic_grad_interpolation_highbd(pred_dst, x_grad, y_grad, bw, bh);
 #endif  // OPFL_BILINEAR_GRAD
   *grad_prec_bits = 3 - SUBPEL_GRAD_DELTA_BITS - 2;
 }
@@ -1375,12 +1380,13 @@ int av1_opfl_mv_refinement_nxn_highbd_c(const uint16_t *p0, int pstride0,
 #if OPFL_COMBINE_INTERP_GRAD_LS
 static AOM_FORCE_INLINE void compute_pred_using_interp_grad_highbd(
     const uint16_t *src1, const uint16_t *src2, int16_t *dst1, int16_t *dst2,
-    int bw, int bh, int d0, int d1) {
+    int bw, int bh, int d0, int d1, int centered) {
   for (int i = 0; i < bh; ++i) {
     for (int j = 0; j < bw; ++j) {
       // To avoid overflow, we clamp d0*P0-d1*P1 and P0-P1.
       int32_t tmp_dst =
           d0 * (int32_t)src1[i * bw + j] - d1 * (int32_t)src2[i * bw + j];
+      if (centered) tmp_dst = ROUND_POWER_OF_TWO_SIGNED(tmp_dst, 1);
       dst1[i * bw + j] = clamp(tmp_dst, INT16_MIN, INT16_MAX);
       tmp_dst = (int32_t)src1[i * bw + j] - (int32_t)src2[i * bw + j];
       dst2[i * bw + j] = clamp(tmp_dst, INT16_MIN, INT16_MAX);
@@ -1391,10 +1397,11 @@ static AOM_FORCE_INLINE void compute_pred_using_interp_grad_highbd(
 
 void av1_copy_pred_array_highbd_c(const uint16_t *src1, const uint16_t *src2,
                                   int16_t *dst1, int16_t *dst2, int bw, int bh,
-                                  int d0, int d1) {
+                                  int d0, int d1, int centered) {
 #if OPFL_BILINEAR_GRAD || OPFL_BICUBIC_GRAD
 #if OPFL_COMBINE_INTERP_GRAD_LS
-  compute_pred_using_interp_grad_highbd(src1, src2, dst1, dst2, bw, bh, d0, d1);
+  compute_pred_using_interp_grad_highbd(src1, src2, dst1, dst2, bw, bh, d0, d1,
+                                        centered);
 #else
   (void)src2;
   (void)dst2;
@@ -1528,23 +1535,21 @@ int av1_get_optflow_based_mv_highbd(
   int16_t *tmp1 =
       (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
 #endif  // CONFIG_OPTFLOW_ON_TIP
-  av1_copy_pred_array_highbd(dst0, dst1, tmp0, tmp1, bw, bh, d0, d1);
+  av1_copy_pred_array_highbd(dst0, dst1, tmp0, tmp1, bw, bh, d0, d1, 0);
   // Buffers gx0 and gy0 are used to store the gradients of tmp0
   av1_compute_subpel_gradients_interp(tmp0, bw, bh, &grad_prec_bits, gx0, gy0);
-
   n_blocks = av1_opfl_mv_refinement_nxn_interp_grad(
       tmp1, bw, gx0, gy0, bw, bw, bh, n, d0, d1, grad_prec_bits, target_prec,
       vx0, vy0, vx1, vy1);
-
   aom_free(tmp0);
   aom_free(tmp1);
 #else
   int16_t *tmp =
       (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
-  av1_copy_pred_array_highbd(dst0, NULL, tmp, NULL, bw, bh, d0, d1);
+  av1_copy_pred_array_highbd(dst0, NULL, tmp, NULL, bw, bh, d0, d1, 0);
   av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx0, gy0);
 
-  av1_copy_pred_array_highbd(dst1, NULL, tmp, NULL, bw, bh, d0, d1);
+  av1_copy_pred_array_highbd(dst1, NULL, tmp, NULL, bw, bh, d0, d1, 0);
   av1_compute_subpel_gradients_interp(tmp, bw, bh, &grad_prec_bits, gx1, gy1);
 
   n_blocks = av1_opfl_mv_refinement_nxn_highbd(
@@ -4414,6 +4419,7 @@ void set_most_probable_mv_precision(const AV1_COMMON *const cm,
       break;
     }
   }
+  (void)mpp_found;
   assert(mpp_found);
 #endif
 }

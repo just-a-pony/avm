@@ -414,6 +414,140 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
   mv_limits->row_max = AOMMAX(mv_limits->row_min, mv_limits->row_max);
 }
 
+#if CONFIG_OPFL_MV_SEARCH
+// Obtain number of iterations for optical flow based MV search.
+int get_opfl_mv_iterations(const AV1_COMP *cpi, const MB_MODE_INFO *mbmi) {
+  // Allowed only for screen content
+  const AV1_COMMON *cm = &cpi->common;
+  if (!cm->features.allow_screen_content_tools) return 0;
+
+  if (mbmi->ref_frame[0] == NONE_FRAME) return 0;
+
+  // Optical flow MV search is allowed for NEWMV and WARPMV only, since it
+  // shows little improvements in compound modes.
+  if (mbmi->mode == WARPMV || mbmi->mode == NEWMV) return 3;
+
+  return 0;
+}
+
+// Apply average pooling operation to downsize the P0-P1 and gradient arrays.
+// This speeds up the equation solving routine and also improves numerical
+// stability.
+void avg_pooling_pdiff_gradients(int16_t *pdiff, const int pstride, int16_t *gx,
+                                 int16_t *gy, const int gstride, const int bw,
+                                 const int bh, const int n) {
+  assert(bw >= n);
+  assert(bh >= n);
+  const int bh_bits = get_msb(bh);
+  const int bw_bits = get_msb(bw);
+  const int n_bits = get_msb(n);
+  const int step_h = 1 << (bh_bits - n_bits);
+  const int step_w = 1 << (bw_bits - n_bits);
+  int avg_bits = bh_bits + bw_bits - n_bits * 2;
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      int32_t tmp_gx = 0, tmp_gy = 0, tmp_pdiff = 0;
+      for (int k = 0; k < step_h; k++) {
+        for (int l = 0; l < step_w; l++) {
+          tmp_gx += gx[(i * step_h + k) * gstride + (j * step_w + l)];
+          tmp_gy += gy[(i * step_h + k) * gstride + (j * step_w + l)];
+          tmp_pdiff += pdiff[(i * step_h + k) * pstride + (j * step_w + l)];
+        }
+      }
+      gx[i * gstride + j] =
+          (int16_t)ROUND_POWER_OF_TWO_SIGNED(tmp_gx, avg_bits);
+      gy[i * gstride + j] =
+          (int16_t)ROUND_POWER_OF_TWO_SIGNED(tmp_gy, avg_bits);
+      pdiff[i * pstride + j] =
+          (int16_t)ROUND_POWER_OF_TWO_SIGNED(tmp_pdiff, avg_bits);
+    }
+  }
+}
+
+// Derive a MVD based on optical flow method. In the two sided optical flow
+// refinement implemented in av1_get_optflow_based_mv_highbd, two predicted
+// blocks (P0, P1) are used to solve a MV delta, which is scaled based on d0
+// and d1 to derive MVs of src relative to P0 and P1. Alternatively, this
+// routine is a one sided optical flow solver, which uses the source block (src)
+// and one predicted block (P0) to derives an MV delta, which is by itself
+// relative to P0.
+int opfl_refine_fullpel_mv_one_sided(
+    const AV1_COMMON *cm, MACROBLOCKD *xd,
+    const FULLPEL_MOTION_SEARCH_PARAMS *ms_params, MB_MODE_INFO *mbmi,
+    const FULLPEL_MV *const smv, int_mv *mv_refined, BLOCK_SIZE bsize) {
+  (void)cm;
+  (void)xd;
+  (void)mbmi;
+  int bw = block_size_wide[bsize];
+  int bh = block_size_high[bsize];
+
+  const struct buf_2d *const pred = ms_params->ms_buffers.ref;
+  const struct buf_2d *const src = ms_params->ms_buffers.src;
+  uint16_t *pred_ptr = &pred->buf[smv->row * pred->stride + smv->col];
+
+#if OMVS_EARLY_TERM
+  // Early termination based on SAD
+  // int sad = ms_params->vfp->sdf(dst0, bw, dst1, bw);
+  int sad = ms_params->vfp->sdf(src->buf, src->stride, pred_ptr, pred->stride);
+  if (sad < bw * bh * OMVS_SAD_THR) return 1;
+#endif
+
+  int vx0, vx1, vy0, vy1;
+  int16_t *gx0, *gy0;
+  uint16_t *dst0 = NULL, *dst1 = NULL;
+  gx0 = (int16_t *)aom_memalign(16, bw * bh * sizeof(int16_t));
+  gy0 = (int16_t *)aom_memalign(16, bw * bh * sizeof(int16_t));
+  dst0 = (uint16_t *)aom_memalign(16, bw * bh * sizeof(uint16_t));
+  dst1 = (uint16_t *)aom_memalign(16, bw * bh * sizeof(uint16_t));
+
+  // Obrain Pred as dst0 and Cur as dst1
+  aom_highbd_convolve_copy(pred_ptr, pred->stride, dst0, bw, bw, bh);
+  aom_highbd_convolve_copy(src->buf, src->stride, dst1, bw, bw, bh);
+
+  int grad_prec_bits;
+  int16_t *tmp0 =
+      (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
+  int16_t *tmp1 =
+      (int16_t *)aom_memalign(16, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(int16_t));
+  // tmp0 = (P0 + Cur) / 2, tmp1 = P0 - Cur
+  if (bw < 8)
+    av1_copy_pred_array_highbd_c(dst0, dst1, tmp0, tmp1, bw, bh, 1, -1, 1);
+  else
+    av1_copy_pred_array_highbd(dst0, dst1, tmp0, tmp1, bw, bh, 1, -1, 1);
+  // Buffers gx0 and gy0 are used to store the gradients of tmp0
+  av1_compute_subpel_gradients_interp(tmp0, bw, bh, &grad_prec_bits, gx0, gy0);
+  int bits = 3 + get_opfl_mv_upshift_bits(mbmi);
+#if OMVS_AVG_POOLING
+  int n = AOMMIN(8, AOMMIN(bw, bh));
+  avg_pooling_pdiff_gradients(tmp1, bw, gx0, gy0, bw, bw, bh, n);
+  // The SIMD version performs refinement for every 4x8 or 8x8 region. It is
+  // only applicable when n == 8 in optical flow based MV search
+  if (n == 8)
+    av1_opfl_mv_refinement_nxn_interp_grad(tmp1, bw, gx0, gy0, bw, n, n, n, 1,
+                                           0, grad_prec_bits, bits, &vx0, &vy0,
+                                           &vx1, &vy1);
+  else
+    av1_opfl_mv_refinement_interp_grad(tmp1, bw, gx0, gy0, bw, n, n, 1, 0,
+                                       grad_prec_bits, bits, &vx0, &vy0, &vx1,
+                                       &vy1);
+#else
+  av1_opfl_mv_refinement_interp_grad(tmp1, bw, gx0, gy0, bw, bw, bh, 1, 0,
+                                     grad_prec_bits, bits, &vx0, &vy0, &vx1,
+                                     &vy1);
+#endif
+
+  aom_free(tmp0);
+  aom_free(tmp1);
+  aom_free(dst0);
+  aom_free(dst1);
+  aom_free(gx0);
+  aom_free(gy0);
+  mv_refined[0].as_mv.row += vy0;
+  mv_refined[0].as_mv.col += vx0;
+  return 0;
+}
+#endif  // CONFIG_OPFL_MV_SEARCH
+
 #if CONFIG_TIP
 void av1_set_tip_mv_search_range(FullMvLimits *mv_limits) {
   const int tmvp_mv = (TIP_MV_SEARCH_RANGE << TMVP_MI_SZ_LOG2);
@@ -4340,6 +4474,7 @@ int low_precision_joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #if CONFIG_DEBUG
   const MV xxmv = { bestmv->row, bestmv->col };
   assert(is_this_mv_precision_compliant(xxmv, mbmi->pb_mv_precision));
+  (void)xxmv;
 #endif
 
   return besterr;

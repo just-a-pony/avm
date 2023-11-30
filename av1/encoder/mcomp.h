@@ -300,8 +300,10 @@ static INLINE void av1_set_mv_search_method(
   };
 
   ms_params->search_method = search_method;
-  ms_params->search_sites =
-      &search_sites[search_method_lookup[ms_params->search_method]];
+  if (search_sites && search_method < NUM_SEARCH_METHODS) {
+    ms_params->search_sites =
+        &search_sites[search_method_lookup[ms_params->search_method]];
+  }
 }
 
 // Set up limit values for MV components.
@@ -345,6 +347,25 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv
                              MvSubpelPrecision pb_mv_precision
 #endif
 );
+
+#if CONFIG_OPFL_MV_SEARCH
+#define OMVS_AVG_POOLING 1
+#define OMVS_RANGE_THR 2
+#define OMVS_BIG_STEP 4
+#define OMVS_EARLY_TERM 1
+#define OMVS_SAD_THR 8
+
+// Obtain the bits of upshift for the MVD derived by optical flow based MV
+// search. The purpose for upscaling the MVD is to increase the search range and
+// obtain a new search point not covered by the traditional local search.
+static INLINE int get_opfl_mv_upshift_bits(const MB_MODE_INFO *mbmi) {
+  if (mbmi->mode == NEWMV || mbmi->mode == WARPMV) return 3;
+  return 0;
+}
+
+int get_opfl_mv_iterations(const struct AV1_COMP *cpi,
+                           const MB_MODE_INFO *mbmi);
+#endif  // CONFIG_OPFL_MV_SEARCH
 
 #if CONFIG_TIP
 void av1_set_tip_mv_search_range(FullMvLimits *mv_limits);
@@ -430,6 +451,13 @@ typedef struct {
   // Distortion calculation params
   SUBPEL_SEARCH_VAR_PARAMS var_params;
 } SUBPEL_MOTION_SEARCH_PARAMS;
+
+#if CONFIG_OPFL_MV_SEARCH
+int opfl_refine_fullpel_mv_one_sided(
+    const AV1_COMMON *cm, MACROBLOCKD *xd,
+    const FULLPEL_MOTION_SEARCH_PARAMS *ms_params, MB_MODE_INFO *mbmi,
+    const FULLPEL_MV *const smv, int_mv *mv_refined, BLOCK_SIZE bsize);
+#endif  // CONFIG_OPFL_MV_SEARCH
 
 #if CONFIG_JOINT_MVD
 // motion search for joint MVD coding
