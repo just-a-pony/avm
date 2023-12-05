@@ -6593,6 +6593,9 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
 #if CONFIG_OPTFLOW_REFINEMENT
     seq_params->enable_opfl_refine = AOM_OPFL_REFINE_NONE;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
+#if CONFIG_AFFINE_REFINEMENT
+    seq_params->enable_affine_refine = 0;
+#endif  // CONFIG_AFFINE_REFINEMENT
   } else {
 #if CONFIG_EXTENDED_WARP_PREDICTION
     int seq_enabled_motion_modes = (1 << SIMPLE_TRANSLATION);

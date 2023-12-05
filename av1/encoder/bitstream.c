@@ -5349,12 +5349,13 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->enable_idif);
 #endif  // CONFIG_IDIF
 #if CONFIG_OPTFLOW_REFINEMENT
-  if (seq_params->order_hint_info.enable_order_hint)
+  if (seq_params->order_hint_info.enable_order_hint) {
     aom_wb_write_literal(wb, seq_params->enable_opfl_refine, 2);
 #if CONFIG_AFFINE_REFINEMENT
-  if (seq_params->enable_opfl_refine)
-    aom_wb_write_bit(wb, seq_params->enable_affine_refine);
+    if (seq_params->enable_opfl_refine)
+      aom_wb_write_bit(wb, seq_params->enable_affine_refine);
 #endif  // CONFIG_AFFINE_REFINEMENT
+  }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
   aom_wb_write_bit(wb, seq_params->enable_ibp);
 #if CONFIG_ADAPTIVE_MVD
