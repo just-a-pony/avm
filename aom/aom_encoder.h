@@ -359,12 +359,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_ist;
-#if CONFIG_CROSS_CHROMA_TX
   /*!\brief enable cross-chroma component transform
    *
    */
   unsigned int enable_cctx;
-#endif  // CONFIG_CROSS_CHROMA_TX
   /*!\brief enable Intra Bi-Prediction (IBP)
    *
    */

@@ -340,12 +340,10 @@ typedef struct {
    * Flag to indicate if intra secondary transform should be enabled.
    */
   bool enable_ist;
-#if CONFIG_CROSS_CHROMA_TX
   /*!
    * Flag to indicate if cross chroma component transform is enabled.
    */
   bool enable_cctx;
-#endif  // CONFIG_CROSS_CHROMA_TX
 } TxfmSizeTypeCfg;
 
 /*!
@@ -1519,9 +1517,7 @@ typedef struct FRAME_COUNTS {
 #endif  // CONFIG_ATC_DCTX_ALIGNED
   unsigned int intra_ext_tx[EXT_TX_SETS_INTRA][EXT_TX_SIZES][INTRA_MODES]
                            [TX_TYPES];
-#if CONFIG_CROSS_CHROMA_TX
   unsigned int cctx_type[EXT_TX_SIZES][CCTX_CONTEXTS][CCTX_TYPES];
-#endif  // CONFIG_CROSS_CHROMA_TX
   unsigned int filter_intra_mode[FILTER_INTRA_MODES];
 #if CONFIG_D149_CTX_MODELING_OPT
   unsigned int filter_intra[2];

@@ -460,9 +460,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_idif,
 #endif  // CONFIG_IDIF
   &g_av1_codec_arg_defs.enable_ist,
-#if CONFIG_CROSS_CHROMA_TX
   &g_av1_codec_arg_defs.enable_cctx,
-#endif  // CONFIG_CROSS_CHROMA_TX
   &g_av1_codec_arg_defs.enable_ibp,
   &g_av1_codec_arg_defs.explicit_ref_frame_map,
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
@@ -686,9 +684,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_idif = 1;
 #endif  // CONFIG_IDIF
   config->enable_ist = 1;
-#if CONFIG_CROSS_CHROMA_TX
   config->enable_cctx = 1;
-#endif  // CONFIG_CROSS_CHROMA_TX
   config->enable_ibp = 1;
 #if CONFIG_ADAPTIVE_MVD
   config->enable_adaptive_mvd = 1;
@@ -1675,14 +1671,9 @@ static void show_stream_config(struct stream_state *stream,
 
   fprintf(stdout,
           "Tool setting (Transform)       : Flip & IDT (%d), "
-#if CONFIG_CROSS_CHROMA_TX
           "CCTX (%d), "
-#endif  // CONFIG_CROSS_CHROMA_TX
           "TX_64 (%d)\n",
-          encoder_cfg->enable_flip_idtx,
-#if CONFIG_CROSS_CHROMA_TX
-          encoder_cfg->enable_cctx,
-#endif  // CONFIG_CROSS_CHROMA_TX
+          encoder_cfg->enable_flip_idtx, encoder_cfg->enable_cctx,
           encoder_cfg->enable_tx64);
 
   fprintf(stdout,

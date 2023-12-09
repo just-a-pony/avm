@@ -56,10 +56,8 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
 #endif  // CONFIG_ATC_DCTX_ALIGNED
 );
 
-#if CONFIG_CROSS_CHROMA_TX
 void av1_write_cctx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
                          CctxType cctx_type, TX_SIZE tx_size, aom_writer *w);
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 #ifdef __cplusplus
 }  // extern "C"

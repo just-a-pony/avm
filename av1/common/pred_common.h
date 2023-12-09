@@ -364,7 +364,6 @@ static INLINE int get_intrabc_ctx(const MACROBLOCKD *xd) {
 }
 #endif  // CONFIG_NEW_CONTEXT_MODELING
 
-#if CONFIG_CROSS_CHROMA_TX
 static INLINE int is_cctx_enabled(const AV1_COMMON *cm, const MACROBLOCKD *xd) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   return cm->seq_params.enable_cctx && !xd->lossless[mbmi->segment_id];
@@ -438,7 +437,6 @@ static INLINE int get_cctx_context(const MACROBLOCKD *xd, int *above,
     cnt += (*left > CCTX_60) ? -1 : 1;
   return cnt == 0 ? 0 : 1 + (cnt < 0);
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir);
 

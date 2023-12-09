@@ -648,7 +648,6 @@ enum {
   DCT_ADST_TX_MASK = 0x000F,  // Either DCT or ADST in each direction
 } UENUM2BYTE(TX_TYPE);
 
-#if CONFIG_CROSS_CHROMA_TX
 #define CCTX_CONTEXTS 3
 
 // Drop C2 channel for some cctx_types.
@@ -670,7 +669,6 @@ enum {
   CCTX_TYPES,
   CCTX_START = CCTX_NONE + 1,
 } UENUM1BYTE(CctxType);
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 #if CONFIG_ADST_TUNED
 enum { FWD_TXFM, INV_TXFM, TXFM_DIRECTIONS } UENUM1BYTE(TXFM_DIRECTION);

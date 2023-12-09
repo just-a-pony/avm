@@ -41,10 +41,8 @@ void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
          sizeof(uint8_t) * src_ctx->num_4x4_blk);
   av1_copy_array(dst_ctx->tx_type_map, src_ctx->tx_type_map,
                  src_ctx->num_4x4_blk);
-#if CONFIG_CROSS_CHROMA_TX
   av1_copy_array(dst_ctx->cctx_type_map, src_ctx->cctx_type_map,
                  src_ctx->num_4x4_blk);
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   dst_ctx->hybrid_pred_diff = src_ctx->hybrid_pred_diff;
   dst_ctx->comp_pred_diff = src_ctx->comp_pred_diff;
@@ -140,10 +138,8 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
     ctx->submic = malloc(num_blk * sizeof(*ctx->submic));
   }
 #endif  // CONFIG_C071_SUBBLK_WARPMV
-#if CONFIG_CROSS_CHROMA_TX
   AOM_CHECK_MEM_ERROR(&error, ctx->cctx_type_map,
                       aom_calloc(num_blk, sizeof(*ctx->cctx_type_map)));
-#endif  // CONFIG_CROSS_CHROMA_TX
   ctx->num_4x4_blk = num_blk;
   ctx->num_4x4_blk_chroma = num_pix_chroma / 16;
 
@@ -193,9 +189,7 @@ void av1_free_pmc(PICK_MODE_CONTEXT *ctx, int num_planes) {
   aom_free(ctx->blk_skip);
   ctx->blk_skip = NULL;
   aom_free(ctx->tx_type_map);
-#if CONFIG_CROSS_CHROMA_TX
   aom_free(ctx->cctx_type_map);
-#endif  // CONFIG_CROSS_CHROMA_TX
   for (int i = 0; i < num_planes; ++i) {
     ctx->coeff[i] = NULL;
     ctx->qcoeff[i] = NULL;

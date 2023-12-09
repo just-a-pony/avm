@@ -2669,7 +2669,6 @@ static const aom_cdf_prob
     };
 #endif  // CONFIG_ATC_DCTX_ALIGNED
 
-#if CONFIG_CROSS_CHROMA_TX
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
     default_cctx_type_cdf[EXT_TX_SIZES][CCTX_CONTEXTS][CDF_SIZE(CCTX_TYPES)] = {
@@ -2711,7 +2710,6 @@ static const aom_cdf_prob
         { AOM_CDF7(7769, 8772, 9617, 10150, 16729, 28132) } }
     };
 #endif  // CONFIG_ENTROPY_PARA
-#endif  // CONFIG_CROSS_CHROMA_TX
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob default_cfl_sign_cdf[CDF_SIZE(CFL_JOINT_SIGNS)] = {
   AOM_CDF8(1418, 2123, 13340, 18405, 26972, 28343, 32294), 62
@@ -5940,9 +5938,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->pb_mv_precision_cdf, default_pb_mv_precision_cdf);
   av1_copy(fc->pb_mv_mpp_flag_cdf, default_pb_mv_most_probable_precision_cdf);
 #endif  // CONFIG_FLEX_MVRES
-#if CONFIG_CROSS_CHROMA_TX
   av1_copy(fc->cctx_type_cdf, default_cctx_type_cdf);
-#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 void av1_set_default_ref_deltas(int8_t *ref_deltas) {

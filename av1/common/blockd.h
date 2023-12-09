@@ -2019,7 +2019,6 @@ typedef struct macroblockd {
    * 'mi_stride', depending on which actual array 'tx_type_map' points to.
    */
   int tx_type_map_stride;
-#if CONFIG_CROSS_CHROMA_TX
   /*!
    * Array of CCTX types.
    */
@@ -2029,7 +2028,6 @@ typedef struct macroblockd {
    * 'mi_stride', depending on which actual array 'cctx_type_map' points to.
    */
   int cctx_type_map_stride;
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   /**
    * \name Distance of this macroblock from frame edges in 1/8th pixel units.
@@ -3139,7 +3137,6 @@ static INLINE void update_txk_array(MACROBLOCKD *const xd, int blk_row,
   }
 }
 
-#if CONFIG_CROSS_CHROMA_TX
 #if CCTX_C2_DROPPED
 // Determine whether or not to keep the second chroma channel (C2).
 static INLINE int keep_chroma_c2(CctxType cctx_type) {
@@ -3211,7 +3208,6 @@ static INLINE CctxType av1_get_cctx_type(const MACROBLOCKD *xd, int blk_row,
   const int bc = blk_col << pd->subsampling_x;
   return xd->cctx_type_map[br * xd->cctx_type_map_stride + bc];
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 static INLINE int tx_size_is_depth0(TX_SIZE tx_size, BLOCK_SIZE bsize) {
   TX_SIZE ctx_size = max_txsize_rect_lookup[bsize];

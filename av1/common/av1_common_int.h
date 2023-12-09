@@ -493,10 +493,8 @@ typedef struct SequenceHeader {
   uint8_t
       enable_idif;  // enables/disables Intra Directional Interpolation Filter
 #endif              // CONFIG_IDIF
-  uint8_t enable_ist;  // enables/disables intra secondary transform
-#if CONFIG_CROSS_CHROMA_TX
+  uint8_t enable_ist;   // enables/disables intra secondary transform
   uint8_t enable_cctx;  // enables/disables cross-chroma component transform
-#endif                  // CONFIG_CROSS_CHROMA_TX
   uint8_t enable_ibp;   // enables/disables intra bi-prediction(IBP)
 #if CONFIG_ADAPTIVE_MVD
   uint8_t enable_adaptive_mvd;  // enables/disables adaptive MVD resolution
@@ -1040,7 +1038,6 @@ struct CommonModeInfoParams {
    */
   uint32_t wiener_class_id_stride[MAX_MB_PLANE];
 #endif  // CONFIG_PC_WIENER
-#if CONFIG_CROSS_CHROMA_TX
   /*!
    * An array of cctx types for each 4x4 block in the frame.
    * Number of allocated elements is same as 'mi_grid_size', and stride is
@@ -1048,7 +1045,6 @@ struct CommonModeInfoParams {
    * 'mi_grid_base'.
    */
   CctxType *cctx_type_map;
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   /**
    * \name Function pointers to allow separate logic for encoder and decoder.
@@ -2799,12 +2795,10 @@ static INLINE void set_mi_offsets(const CommonModeInfoParams *const mi_params,
     xd->tx_type_map = mi_params->tx_type_map + mi_grid_idx;
   }
   xd->tx_type_map_stride = mi_params->mi_stride;
-#if CONFIG_CROSS_CHROMA_TX
   if (xd->tree_type != LUMA_PART) {
     xd->cctx_type_map = mi_params->cctx_type_map + mi_grid_idx;
   }
   xd->cctx_type_map_stride = mi_params->mi_stride;
-#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 // For this partition block, set pointers in mi_params->mi_grid_base and xd->mi.
@@ -2822,10 +2816,8 @@ static INLINE void set_blk_offsets(const CommonModeInfoParams *const mi_params,
       mi_params->mi_grid_base[mi_grid_idx];
   xd->tx_type_map = mi_params->tx_type_map + mi_grid_idx;
   xd->tx_type_map_stride = mi_params->mi_stride;
-#if CONFIG_CROSS_CHROMA_TX
   xd->cctx_type_map = mi_params->cctx_type_map + mi_grid_idx;
   xd->cctx_type_map_stride = mi_params->mi_stride;
-#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 #if CONFIG_EXT_RECUR_PARTITIONS

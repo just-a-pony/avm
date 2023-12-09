@@ -1571,7 +1571,6 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
   }
 }
 
-#if CONFIG_CROSS_CHROMA_TX
 void av1_write_cctx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
                          CctxType cctx_type, TX_SIZE tx_size, aom_writer *w) {
   MB_MODE_INFO *mbmi = xd->mi[0];
@@ -1594,7 +1593,6 @@ void av1_write_cctx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
                      CCTX_TYPES);
   }
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 // This function writes a 'secondary tx set' onto the bitstream
 static void write_sec_tx_set(FRAME_CONTEXT *ec_ctx, aom_writer *w,
@@ -3057,7 +3055,6 @@ static AOM_INLINE void write_inter_txb_coeff(
 
   for (int blk_row = row >> ss_y; blk_row < unit_height; blk_row += bkh) {
     for (int blk_col = col >> ss_x; blk_col < unit_width; blk_col += bkw) {
-#if CONFIG_CROSS_CHROMA_TX
       if (plane == AOM_PLANE_V && is_cctx_allowed(cm, xd)) {
         pack_txb_tokens(w, cm, x, tok, tok_end, xd, mbmi, AOM_PLANE_U,
                         plane_bsize, cm->seq_params.bit_depth,
@@ -3069,12 +3066,6 @@ static AOM_INLINE void write_inter_txb_coeff(
                       cm->seq_params.bit_depth, block[plane], blk_row, blk_col,
                       max_tx_size, token_stats);
       block[plane] += step;
-#else
-      pack_txb_tokens(w, cm, x, tok, tok_end, xd, mbmi, plane, plane_bsize,
-                      cm->seq_params.bit_depth, *block, blk_row, blk_col,
-                      max_tx_size, token_stats);
-      *block += step;
-#endif  // CONFIG_CROSS_CHROMA_TX
     }
   }
 }
@@ -3121,14 +3112,9 @@ static AOM_INLINE void write_tokens_b(AV1_COMP *cpi, aom_writer *w,
             get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
         for (int plane = plane_start; plane < plane_end; ++plane) {
           if (plane && !xd->is_chroma_ref) break;
-#if CONFIG_CROSS_CHROMA_TX
           if (plane == AOM_PLANE_U && is_cctx_allowed(cm, xd)) continue;
           write_inter_txb_coeff(cm, x, mbmi, w, tok, tok_end, &token_stats, row,
                                 col, block, plane);
-#else
-          write_inter_txb_coeff(cm, x, mbmi, w, tok, tok_end, &token_stats, row,
-                                col, &block[plane], plane);
-#endif  // CONFIG_CROSS_CHROMA_TX
         }
       }
     }
@@ -3159,10 +3145,8 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
                      cpi->mbmi_ext_info.stride);
   xd->tx_type_map = mi_params->tx_type_map + grid_idx;
   xd->tx_type_map_stride = mi_params->mi_stride;
-#if CONFIG_CROSS_CHROMA_TX
   xd->cctx_type_map = mi_params->cctx_type_map + grid_idx;
   xd->cctx_type_map_stride = mi_params->mi_stride;
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   MB_MODE_INFO *mbmi = xd->mi[0];
   const BLOCK_SIZE bsize = mbmi->sb_type[xd->tree_type == CHROMA_PART];
@@ -3176,7 +3160,6 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
   set_mi_row_col(xd, tile, mi_row, bh, mi_col, bw, mi_params->mi_rows,
                  mi_params->mi_cols, &mbmi->chroma_ref_info);
 
-#if CONFIG_CROSS_CHROMA_TX
   // For skip blocks, reset the corresponding area in cctx_type_map to
   // CCTX_NONE, which will be used as contexts for later blocks. No need to use
   // av1_get_adjusted_tx_size because uv_txsize is intended to cover the entire
@@ -3196,7 +3179,6 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
     update_cctx_array(xd, 0, 0, row_offset, col_offset, uv_txsize, CCTX_NONE);
   }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 #if !CONFIG_TX_PARTITION_CTX
   xd->above_txfm_context = cm->above_contexts.txfm[tile->tile_row] + mi_col;
@@ -5313,9 +5295,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   aom_wb_write_bit(wb, seq_params->enable_sdp);
   aom_wb_write_bit(wb, seq_params->enable_ist);
-#if CONFIG_CROSS_CHROMA_TX
   if (!seq_params->monochrome) aom_wb_write_bit(wb, seq_params->enable_cctx);
-#endif  // CONFIG_CROSS_CHROMA_TX
   aom_wb_write_bit(wb, seq_params->enable_mrls);
 #if CONFIG_TIP
   aom_wb_write_literal(wb, seq_params->enable_tip, 2);

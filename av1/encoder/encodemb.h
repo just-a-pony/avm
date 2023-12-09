@@ -75,10 +75,7 @@ void av1_encode_sby_pass1(struct AV1_COMP *cpi, MACROBLOCK *x,
                           BLOCK_SIZE bsize);
 
 void av1_setup_xform(const AV1_COMMON *cm, MACROBLOCK *x, int plane,
-                     TX_SIZE tx_size, TX_TYPE tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                     CctxType cctx_Type,
-#endif  // CONFIG_CROSS_CHROMA_TX
+                     TX_SIZE tx_size, TX_TYPE tx_type, CctxType cctx_Type,
                      TxfmParam *txfm_param);
 void av1_setup_quant(TX_SIZE tx_size, int use_optimize_b, int xform_quant_idx,
                      int use_quant_b_adapt, QUANT_PARAM *qparam);
@@ -100,10 +97,8 @@ void av1_xform_quant(const AV1_COMMON *cm, MACROBLOCK *x, int plane, int block,
 void av1_xform(MACROBLOCK *x, int plane, int block, int blk_row, int blk_col,
                BLOCK_SIZE plane_bsize, TxfmParam *txfm_param, const int reuse);
 
-#if CONFIG_CROSS_CHROMA_TX
 void forward_cross_chroma_transform(MACROBLOCK *x, int block, TX_SIZE tx_size,
                                     CctxType cctx_type);
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 #if CONFIG_ATC_DCTX_ALIGNED
 // This function sets the first position index in a TU.
@@ -116,10 +111,8 @@ void av1_quant(MACROBLOCK *x, int plane, int block, TxfmParam *txfm_param,
 
 int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *mb, int plane,
                    int block, TX_SIZE tx_size, TX_TYPE tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                   CctxType cctx_type,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                   const TXB_CTX *const txb_ctx, int *rate_cost);
+                   CctxType cctx_type, const TXB_CTX *const txb_ctx,
+                   int *rate_cost);
 #if CONFIG_PAR_HIDING
 // This function tunes the coefficients when trellis quantization is off.
 void parity_hiding_trellis_off(const struct AV1_COMP *cpi, MACROBLOCK *mb,
@@ -178,11 +171,9 @@ void av1_encode_intra_block_plane(const struct AV1_COMP *cpi, MACROBLOCK *x,
                                   BLOCK_SIZE bsize, int plane, RUN_TYPE dry_run,
                                   TRELLIS_OPT_TYPE enable_optimize_b);
 
-#if CONFIG_CROSS_CHROMA_TX
 void av1_encode_intra_block_joint_uv(const struct AV1_COMP *cpi, MACROBLOCK *x,
                                      BLOCK_SIZE bsize, RUN_TYPE dry_run,
                                      TRELLIS_OPT_TYPE enable_optimize_b);
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 static INLINE int is_trellis_used(TRELLIS_OPT_TYPE optimize_b,
                                   RUN_TYPE dry_run) {

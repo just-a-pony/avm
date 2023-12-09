@@ -110,9 +110,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_idif);
 #endif  // CONFIG_IDIF
     GET_PARAMS(enable_ist);
-#if CONFIG_CROSS_CHROMA_TX
     GET_PARAMS(enable_cctx);
-#endif  // CONFIG_CROSS_CHROMA_TX
     GET_PARAMS(enable_ibp);
 #if CONFIG_ADAPTIVE_MVD
     GET_PARAMS(enable_adaptive_mvd);

@@ -51,9 +51,7 @@ typedef struct PICK_MODE_CONTEXT {
 #endif  // CONFIG_ATC_DCTX_ALIGNED
   uint8_t *txb_entropy_ctx[MAX_MB_PLANE];
   TX_TYPE *tx_type_map;
-#if CONFIG_CROSS_CHROMA_TX
   CctxType *cctx_type_map;
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   int num_4x4_blk;
   int num_4x4_blk_chroma;

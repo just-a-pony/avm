@@ -560,9 +560,7 @@ static AOM_INLINE void set_skip_txfm(MACROBLOCK *x, RD_STATS *rd_stats,
   const int n4 = bsize_to_num_blk(bsize);
   const TX_SIZE tx_size = max_txsize_rect_lookup[bsize];
   memset(xd->tx_type_map, DCT_DCT, sizeof(xd->tx_type_map[0]) * n4);
-#if CONFIG_CROSS_CHROMA_TX
   memset(xd->cctx_type_map, CCTX_NONE, sizeof(xd->cctx_type_map[0]) * n4);
-#endif  // CONFIG_CROSS_CHROMA_TX
   memset(mbmi->inter_tx_size, tx_size, sizeof(mbmi->inter_tx_size));
 #if CONFIG_NEW_TX_PARTITION
   memset(mbmi->tx_partition_type, TX_PARTITION_NONE,
@@ -1174,18 +1172,13 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   if (!is_inter && best_eob &&
       (blk_row + tx_size_high_unit[tx_size] < mi_size_high[plane_bsize] ||
        blk_col + tx_size_wide_unit[tx_size] < mi_size_wide[plane_bsize])) {
-#if CONFIG_CROSS_CHROMA_TX
     CctxType cctx_type = av1_get_cctx_type(xd, blk_row, blk_col);
-#endif  // CONFIG_CROSS_CHROMA_TX
     // if the quantized coefficients are stored in the dqcoeff buffer, we don't
     // need to do transform and quantization again.
     if (do_quant) {
       TxfmParam txfm_param_intra;
       QUANT_PARAM quant_param_intra;
-      av1_setup_xform(cm, x, plane, tx_size, best_tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                      cctx_type,
-#endif  // CONFIG_CROSS_CHROMA_TX
+      av1_setup_xform(cm, x, plane, tx_size, best_tx_type, cctx_type,
                       &txfm_param_intra);
       av1_setup_quant(tx_size, !skip_trellis,
                       skip_trellis
@@ -1198,10 +1191,7 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
       av1_xform_quant(cm, x, plane, block, blk_row, blk_col, plane_bsize,
                       &txfm_param_intra, &quant_param_intra);
       if (quant_param_intra.use_optimize_b) {
-        av1_optimize_b(cpi, x, plane, block, tx_size, best_tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                       cctx_type,
-#endif  // CONFIG_CROSS_CHROMA_TX
+        av1_optimize_b(cpi, x, plane, block, tx_size, best_tx_type, cctx_type,
                        txb_ctx, rate_cost);
       }
 #if CONFIG_PAR_HIDING
@@ -1217,10 +1207,9 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #endif
     }
 
-#if CONFIG_CROSS_CHROMA_TX
-    // In CONFIG_CROSS_CHROMA_TX, reconstruction for U plane relies on dqcoeffs
-    // of V plane, so the below operators for U are performed together with V
-    // once dqcoeffs of V are obtained.
+    // In CCTX, reconstruction for U plane relies on dqcoeffs of V plane, so the
+    // below operators for U are performed together with V once dqcoeffs of V
+    // are obtained.
     if (plane == AOM_PLANE_V) {
       tran_low_t *dqcoeff_c1 =
           x->plane[AOM_PLANE_U].dqcoeff + BLOCK_OFFSET(block);
@@ -1236,13 +1225,10 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                                      max_chroma_eob,
                                      cm->features.reduced_tx_set_used);
     } else if (plane == AOM_PLANE_Y) {
-#endif  // CONFIG_CROSS_CHROMA_TX
       inverse_transform_block_facade(x, plane, block, blk_row, blk_col,
                                      x->plane[plane].eobs[block],
                                      cm->features.reduced_tx_set_used);
-#if CONFIG_CROSS_CHROMA_TX
     }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
     // This may happen because of hash collision. The eob stored in the hash
     // table is non-zero, but the real eob is zero. We need to make sure tx_type
@@ -1341,7 +1327,6 @@ static INLINE int64_t dist_block_px_domain(const AV1_COMP *cpi, MACROBLOCK *x,
                          blk_row, blk_col, plane_bsize, tx_bsize);
 }
 
-#if CONFIG_CROSS_CHROMA_TX
 // Evaluate U and V distortion jointly for cross chroma component transform
 // search.
 static INLINE int64_t joint_uv_dist_block_px_domain(
@@ -1417,7 +1402,6 @@ static INLINE int64_t joint_uv_dist_block_px_domain(
 
   return 16 * (dist_c1 + dist_c2);
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 static uint32_t get_intra_txb_hash(MACROBLOCK *x, int plane, int blk_row,
                                    int blk_col, BLOCK_SIZE plane_bsize,
@@ -1587,11 +1571,7 @@ uint16_t prune_txk_type_separ(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 
   QUANT_PARAM quant_param;
   TxfmParam txfm_param;
-  av1_setup_xform(cm, x, plane, tx_size, DCT_DCT,
-#if CONFIG_CROSS_CHROMA_TX
-                  CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                  &txfm_param);
+  av1_setup_xform(cm, x, plane, tx_size, DCT_DCT, CCTX_NONE, &txfm_param);
   av1_setup_quant(tx_size, 1, AV1_XFORM_QUANT_B, cpi->oxcf.q_cfg.quant_b_adapt,
                   &quant_param);
   int tx_type;
@@ -1611,12 +1591,9 @@ uint16_t prune_txk_type_separ(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                     &txfm_param, &quant_param);
     dist_block_tx_domain(x, plane, block, tx_size, &dist, &sse);
 
-    rate_cost =
-        av1_cost_coeffs_txb_laplacian(cm, x, plane, block, tx_size, tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                                      CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                                      txb_ctx, reduced_tx_set_used, 0);
+    rate_cost = av1_cost_coeffs_txb_laplacian(cm, x, plane, block, tx_size,
+                                              tx_type, CCTX_NONE, txb_ctx,
+                                              reduced_tx_set_used, 0);
 
     rds_h[idx] = RDCOST(x->rdmult, rate_cost, dist);
 
@@ -1645,12 +1622,9 @@ uint16_t prune_txk_type_separ(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 
     dist_block_tx_domain(x, plane, block, tx_size, &dist, &sse);
 
-    rate_cost =
-        av1_cost_coeffs_txb_laplacian(cm, x, plane, block, tx_size, tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                                      CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                                      txb_ctx, reduced_tx_set_used, 0);
+    rate_cost = av1_cost_coeffs_txb_laplacian(cm, x, plane, block, tx_size,
+                                              tx_type, CCTX_NONE, txb_ctx,
+                                              reduced_tx_set_used, 0);
 
     rds_v[idx] = RDCOST(x->rdmult, rate_cost, dist);
 
@@ -1713,11 +1687,7 @@ uint16_t prune_txk_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 
   TxfmParam txfm_param;
   QUANT_PARAM quant_param;
-  av1_setup_xform(cm, x, plane, tx_size, DCT_DCT,
-#if CONFIG_CROSS_CHROMA_TX
-                  CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                  &txfm_param);
+  av1_setup_xform(cm, x, plane, tx_size, DCT_DCT, CCTX_NONE, &txfm_param);
   av1_setup_quant(tx_size, 1, AV1_XFORM_QUANT_B, cpi->oxcf.q_cfg.quant_b_adapt,
                   &quant_param);
 
@@ -1736,12 +1706,9 @@ uint16_t prune_txk_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
     av1_xform_quant(cm, x, plane, block, blk_row, blk_col, plane_bsize,
                     &txfm_param, &quant_param);
     // estimate rate cost
-    rate_cost =
-        av1_cost_coeffs_txb_laplacian(cm, x, plane, block, tx_size, tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                                      CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                                      txb_ctx, reduced_tx_set_used, 0);
+    rate_cost = av1_cost_coeffs_txb_laplacian(cm, x, plane, block, tx_size,
+                                              tx_type, CCTX_NONE, txb_ctx,
+                                              reduced_tx_set_used, 0);
     // tx domain dist
     dist_block_tx_domain(x, plane, block, tx_size, &dist, &sse);
 
@@ -2285,13 +2252,13 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
     }
     assert(num_allowed > 0);
 
-#if CONFIG_DEBUG && CONFIG_CROSS_CHROMA_TX
+#if CONFIG_DEBUG
     if (plane) {
       const CctxType cctx_type = av1_get_cctx_type(xd, blk_row, blk_col);
       assert(cctx_type == CCTX_NONE);
       (void)cctx_type;
     }
-#endif  // CONFIG_DEBUG && CONFIG_CROSS_CHROMA_TX
+#endif  // CONFIG_DEBUG
 
     if (num_allowed > 2 && cpi->sf.tx_sf.tx_type_search.prune_tx_type_est_rd) {
       int pf = prune_factors[txfm_params->prune_2d_txfm_mode];
@@ -2378,9 +2345,7 @@ static INLINE void update_txb_coeff_cost(RD_STATS *rd_stats, int plane,
 
 static INLINE int cost_coeffs(const AV1_COMMON *cm, MACROBLOCK *x, int plane,
                               int block, TX_SIZE tx_size, const TX_TYPE tx_type,
-#if CONFIG_CROSS_CHROMA_TX
                               const CctxType cctx_type,
-#endif  // CONFIG_CROSS_CHROMA_TX
                               const TXB_CTX *const txb_ctx,
                               int reduced_tx_set_used) {
 #if TXCOEFF_COST_TIMER
@@ -2388,10 +2353,7 @@ static INLINE int cost_coeffs(const AV1_COMMON *cm, MACROBLOCK *x, int plane,
   aom_usec_timer_start(&timer);
 #endif
   const int cost = av1_cost_coeffs_txb(cm, x, plane, block, tx_size, tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                                       cctx_type,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                                       txb_ctx, reduced_tx_set_used);
+                                       cctx_type, txb_ctx, reduced_tx_set_used);
 #if TXCOEFF_COST_TIMER
   AV1_COMMON *tmp_cm = (AV1_COMMON *)&cpi->common;
   aom_usec_timer_mark(&timer);
@@ -2529,10 +2491,7 @@ static INLINE void predict_dc_only_block(
 static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                            int block, int blk_row, int blk_col,
                            BLOCK_SIZE plane_bsize, TX_SIZE tx_size,
-#if CONFIG_CROSS_CHROMA_TX
-                           int *coeffs_available,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                           const TXB_CTX *const txb_ctx,
+                           int *coeffs_available, const TXB_CTX *const txb_ctx,
                            FAST_TX_SEARCH_MODE ftxs_mode, int skip_trellis,
                            int64_t ref_best_rd, RD_STATS *best_rd_stats) {
   const AV1_COMMON *cm = &cpi->common;
@@ -2689,11 +2648,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   TxfmParam txfm_param;
   QUANT_PARAM quant_param;
   int skip_trellis_based_on_satd[TX_TYPES] = { 0 };
-  av1_setup_xform(cm, x, plane, tx_size, DCT_DCT,
-#if CONFIG_CROSS_CHROMA_TX
-                  CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                  &txfm_param);
+  av1_setup_xform(cm, x, plane, tx_size, DCT_DCT, CCTX_NONE, &txfm_param);
 
   const int xform_quant_b =
       USE_B_QUANT_NO_TRELLIS ? AV1_XFORM_QUANT_B : AV1_XFORM_QUANT_FP;
@@ -2820,9 +2775,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                     1);
         else
           av1_xform_dc_only(x, plane, block, &txfm_param, per_px_mean);
-#if CONFIG_CROSS_CHROMA_TX
         *coeffs_available = 1;
-#endif  // CONFIG_CROSS_CHROMA_TX
 
         skip_trellis_based_on_satd[txfm_param.tx_type] =
             skip_trellis_opt_based_on_satd(
@@ -2855,10 +2808,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #endif  // CONFIG_ATC_DCTX_ALIGNED
         // Calculate rate cost of quantized coefficients.
         if (quant_param.use_optimize_b) {
-          av1_optimize_b(cpi, x, plane, block, tx_size, tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                         CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
+          av1_optimize_b(cpi, x, plane, block, tx_size, tx_type, CCTX_NONE,
                          txb_ctx, &rate_cost);
         } else {
 #if CONFIG_PAR_HIDING
@@ -2870,11 +2820,9 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
             parity_hiding_trellis_off(cpi, x, plane, block, tx_size, tx_type);
 #endif
 
-          rate_cost = cost_coeffs(cm, x, plane, block, tx_size, tx_type,
-#if CONFIG_CROSS_CHROMA_TX
-                                  CCTX_NONE,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                                  txb_ctx, cm->features.reduced_tx_set_used);
+          rate_cost =
+              cost_coeffs(cm, x, plane, block, tx_size, tx_type, CCTX_NONE,
+                          txb_ctx, cm->features.reduced_tx_set_used);
         }
 
 #if CONFIG_ATC_DCTX_ALIGNED
@@ -3073,7 +3021,6 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
     if (plane == 0) intra_txb_rd_info->tx_type = best_tx_type;
   }
 
-#if CONFIG_CROSS_CHROMA_TX
   // Intra mode needs decoded pixels such that the next transform block
   // can use them for prediction. If cctx is enabled, this reconstruction
   // should be done later in search_cctx_type, when cctx type is chosen.
@@ -3083,22 +3030,8 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                 txb_ctx, skip_trellis, best_tx_type, 0, &rate_cost, best_eob);
     p->dqcoeff = orig_dqcoeff;
   }
-#else
-  // Intra mode needs decoded pixels such that the next transform block
-  // can use them for prediction.
-  recon_intra(cpi, x, plane, block, blk_row, blk_col, plane_bsize, tx_size,
-              txb_ctx, skip_trellis, best_tx_type, 0, &rate_cost, best_eob);
-#if CONFIG_ATC_DCTX_ALIGNED
-  if (plane == 0 && x->plane[plane].eobs[block] == 1 &&
-      best_tx_type != DCT_DCT && !is_inter) {
-    av1_invalid_rd_stats(best_rd_stats);
-  }
-#endif  // CONFIG_ATC_DCTX_ALIGNED
-  p->dqcoeff = orig_dqcoeff;
-#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
-#if CONFIG_CROSS_CHROMA_TX
 // Search for the best CCTX type for a given transform block.
 static void search_cctx_type(const AV1_COMP *cpi, MACROBLOCK *x, int block,
                              int blk_row, int blk_col, BLOCK_SIZE plane_bsize,
@@ -3326,7 +3259,6 @@ static void search_cctx_type(const AV1_COMP *cpi, MACROBLOCK *x, int block,
   aom_free(orig_coeff_c1);
   aom_free(orig_coeff_c2);
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 // Pick transform type for a luma transform block of tx_size. Note this function
 // is used only for inter-predicted blocks.
@@ -3368,14 +3300,10 @@ static AOM_INLINE void tx_type_rd(const AV1_COMP *cpi, MACROBLOCK *x,
 
   RD_STATS this_rd_stats;
   const int skip_trellis = 0;
-#if CONFIG_CROSS_CHROMA_TX
   int dummy = 0;
-#endif  // CONFIG_CROSS_CHROMA_TX
   search_tx_type(cpi, x, 0, block, blk_row, blk_col, plane_bsize, tx_size,
-#if CONFIG_CROSS_CHROMA_TX
-                 &dummy,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                 txb_ctx, ftxs_mode, skip_trellis, ref_rdcost, &this_rd_stats);
+                 &dummy, txb_ctx, ftxs_mode, skip_trellis, ref_rdcost,
+                 &this_rd_stats);
 
 #if CONFIG_ATC_DCTX_ALIGNED
   if (this_rd_stats.dist == INT64_MAX || this_rd_stats.rate == INT_MAX) {
@@ -4132,14 +4060,9 @@ static AOM_INLINE void block_rd_txfm(int plane, int block, int blk_row,
   TXB_CTX txb_ctx;
   get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx,
               xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART]);
-#if CONFIG_CROSS_CHROMA_TX
   int dummy = 0;
-#endif  // CONFIG_CROSS_CHROMA_TX
   search_tx_type(cpi, x, plane, block, blk_row, blk_col, plane_bsize, tx_size,
-#if CONFIG_CROSS_CHROMA_TX
-                 &dummy,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                 &txb_ctx, args->ftxs_mode, args->skip_trellis,
+                 &dummy, &txb_ctx, args->ftxs_mode, args->skip_trellis,
                  args->best_rd - args->current_rd, &this_rd_stats);
 
   if (this_rd_stats.dist == INT64_MAX
@@ -4450,7 +4373,6 @@ static int inter_block_yrd(const AV1_COMP *cpi, MACROBLOCK *x,
 }
 #endif  // !CONFIG_NEW_TX_PARTITION
 
-#if CONFIG_CROSS_CHROMA_TX
 // Search for the best cross chroma component transform (cctx) type for the
 // given transform block and obtain the corresponding RD cost.
 static AOM_INLINE void block_rd_txfm_joint_uv(int dummy_plane, int block,
@@ -4497,10 +4419,8 @@ static AOM_INLINE void block_rd_txfm_joint_uv(int dummy_plane, int block,
 
     // Obtain stats for CCTX_NONE
     search_tx_type(cpi, x, plane, block, blk_row, blk_col, plane_bsize, tx_size,
-#if CONFIG_CROSS_CHROMA_TX
-                   &uv_coeffs_available[plane - AOM_PLANE_U],
-#endif  // CONFIG_CROSS_CHROMA_TX
-                   txb_ctx, args->ftxs_mode, args->skip_trellis,
+                   &uv_coeffs_available[plane - AOM_PLANE_U], txb_ctx,
+                   args->ftxs_mode, args->skip_trellis,
                    args->best_rd - args->current_rd, this_rd_stats);
     if (this_rd_stats->dist == INT64_MAX
 #if CONFIG_ATC_DCTX_ALIGNED
@@ -4541,9 +4461,7 @@ static AOM_INLINE void block_rd_txfm_joint_uv(int dummy_plane, int block,
 
   if (!rd_stats_uv[0].skip_txfm || !rd_stats_uv[1].skip_txfm) {
     search_cctx_type(cpi, x, block, blk_row, blk_col, plane_bsize, tx_size,
-#if CONFIG_CROSS_CHROMA_TX
                      uv_coeffs_available[0] && uv_coeffs_available[1],
-#endif  // CONFIG_CROSS_CHROMA_TX
                      txb_ctx_uv, args->skip_trellis, &rd_stats_joint_uv);
   }
   av1_merge_rd_stats(&args->rd_stats, &rd_stats_joint_uv);
@@ -4587,7 +4505,6 @@ void av1_txfm_rd_joint_uv(MACROBLOCK *x, const AV1_COMP *cpi,
     *rd_stats = args.rd_stats;
   }
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 // Search for the best transform size and type for current inter-predicted
 // luma block with recursive transform block partitioning. The obtained
@@ -4870,10 +4787,8 @@ void av1_pick_uniform_tx_size_type_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
     return;
   }
 
-#if CONFIG_CROSS_CHROMA_TX
   const int n4 = bsize_to_num_blk(bs);
   memset(xd->cctx_type_map, CCTX_NONE, sizeof(xd->cctx_type_map[0]) * n4);
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   if (xd->lossless[mbmi->segment_id]) {
     // Lossless mode can only pick the smallest (4x4) transform size.
@@ -4912,7 +4827,6 @@ int av1_txfm_uvrd(const AV1_COMP *const cpi, MACROBLOCK *x, RD_STATS *rd_stats,
   const int skip_trellis = 0;
   const TX_SIZE uv_tx_size = av1_get_tx_size(AOM_PLANE_U, xd);
   int is_cost_valid = 1;
-#if CONFIG_CROSS_CHROMA_TX
   if (is_cctx_allowed(&cpi->common, xd) &&
       !cpi->sf.tx_sf.tx_type_search.skip_cctx_search) {
     RD_STATS this_rd_stats;
@@ -4931,7 +4845,6 @@ int av1_txfm_uvrd(const AV1_COMP *const cpi, MACROBLOCK *x, RD_STATS *rd_stats,
       if (AOMMIN(this_rd, skip_txfm_rd) > ref_best_rd) is_cost_valid = 0;
     }
   } else {
-#endif  // CONFIG_CROSS_CHROMA_TX
     for (int plane = 1; plane < MAX_MB_PLANE; ++plane) {
       RD_STATS this_rd_stats;
       int64_t chroma_ref_best_rd = ref_best_rd;
@@ -4957,9 +4870,7 @@ int av1_txfm_uvrd(const AV1_COMP *const cpi, MACROBLOCK *x, RD_STATS *rd_stats,
         break;
       }
     }
-#if CONFIG_CROSS_CHROMA_TX
   }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   if (!is_cost_valid) {
     // reset cost value

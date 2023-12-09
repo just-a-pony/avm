@@ -44,10 +44,8 @@ extern const int32_t av2_adst_kernel8[TXFM_DIRECTIONS][TXFM_KERNEL_SIZE8];
 extern const int32_t av2_adst_kernel16[TXFM_DIRECTIONS][TXFM_KERNEL_SIZE16];
 #endif  // CONFIG_ADST_TUNED
 
-#if CONFIG_CROSS_CHROMA_TX
 #define CCTX_PREC_BITS 8
 extern const int32_t cctx_mtx[CCTX_TYPES - 1][2];
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 #define MAX_TXFM_STAGE_NUM 12
 

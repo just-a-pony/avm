@@ -152,9 +152,7 @@ struct av1_extracfg {
   int enable_idif;  // enable IDIF
 #endif              // CONFIG_IDIF
   int enable_ist;   // enable intra secondary transform
-#if CONFIG_CROSS_CHROMA_TX
   int enable_cctx;  // enable cross-chroma component transform
-#endif              // CONFIG_CROSS_CHROMA_TX
   int enable_ibp;   // enable intra bi-prediction
 
 #if CONFIG_ADAPTIVE_MVD
@@ -507,9 +505,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,    // enable IDIF
 #endif  // CONFIG_IDIF
   1,    // enable intra secondary transform
-#if CONFIG_CROSS_CHROMA_TX
   1,    // enable cross-chroma component transform
-#endif  // CONFIG_CROSS_CHROMA_TX
   1,    // enable intra bi-prediction
 #if CONFIG_ADAPTIVE_MVD
   1,    // enable adaptive mvd resolution
@@ -1046,9 +1042,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_idif = extra_cfg->enable_idif;
 #endif  // CONFIG_IDIF
   cfg->enable_ist = extra_cfg->enable_ist;
-#if CONFIG_CROSS_CHROMA_TX
   cfg->enable_cctx = extra_cfg->enable_cctx;
-#endif  // CONFIG_CROSS_CHROMA_TX
   cfg->enable_ibp = extra_cfg->enable_ibp;
 #if CONFIG_ADAPTIVE_MVD
   cfg->enable_adaptive_mvd = extra_cfg->enable_adaptive_mvd;
@@ -1188,9 +1182,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_idif = cfg->enable_idif;
 #endif  // CONFIG_IDIF
   extra_cfg->enable_ist = cfg->enable_ist;
-#if CONFIG_CROSS_CHROMA_TX
   extra_cfg->enable_cctx = cfg->enable_cctx;
-#endif  // CONFIG_CROSS_CHROMA_TX
   extra_cfg->enable_ibp = cfg->enable_ibp;
 #if CONFIG_ADAPTIVE_MVD
   extra_cfg->enable_adaptive_mvd = cfg->enable_adaptive_mvd;
@@ -1822,10 +1814,8 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   txfm_cfg->disable_ml_transform_speed_features =
       extra_cfg->disable_ml_transform_speed_features;
   txfm_cfg->enable_ist = extra_cfg->enable_ist && !extra_cfg->lossless;
-#if CONFIG_CROSS_CHROMA_TX
   txfm_cfg->enable_cctx =
       tool_cfg->enable_monochrome ? 0 : extra_cfg->enable_cctx;
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   // Set compound type configuration.
   comp_type_cfg->enable_masked_comp = extra_cfg->enable_masked_comp;
@@ -4028,11 +4018,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ist, argv,
                               err_string)) {
     extra_cfg.enable_ist = arg_parse_int_helper(&arg, err_string);
-#if CONFIG_CROSS_CHROMA_TX
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_cctx, argv,
                               err_string)) {
     extra_cfg.enable_cctx = arg_parse_int_helper(&arg, err_string);
-#endif  // CONFIG_CROSS_CHROMA_TX
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ibp, argv,
                               err_string)) {
     extra_cfg.enable_ibp = arg_parse_int_helper(&arg, err_string);
@@ -4549,9 +4537,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
         1,
 #endif      // CONFIG_IDIF
         1,  // IST
-#if CONFIG_CROSS_CHROMA_TX
-        1,
-#endif  // CONFIG_CROSS_CHROMA_TX
+        1,  // enable_cctx
         1,
 #if CONFIG_ADAPTIVE_MVD
         1,

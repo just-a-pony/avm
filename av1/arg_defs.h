@@ -177,9 +177,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t enable_idif;
 #endif  // CONFIG_IDIF
   arg_def_t enable_ist;
-#if CONFIG_CROSS_CHROMA_TX
   arg_def_t enable_cctx;
-#endif  // CONFIG_CROSS_CHROMA_TX
   arg_def_t enable_ibp;
 #if CONFIG_ADAPTIVE_MVD
   arg_def_t enable_adaptive_mvd;

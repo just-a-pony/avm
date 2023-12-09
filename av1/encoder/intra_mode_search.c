@@ -359,9 +359,6 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
 #endif
   int64_t best_rd_uv[CFL_JOINT_SIGNS][CFL_PRED_PLANES];
   int best_c[CFL_JOINT_SIGNS][CFL_PRED_PLANES];
-#if CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
-  int best_rate_uv[CFL_JOINT_SIGNS][CFL_PRED_PLANES];
-#endif  // CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
 
 #if CONFIG_CONTEXT_DERIVATION
   const int skip_trellis = 0;
@@ -388,9 +385,6 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
     const int alpha_rate = mode_costs->cfl_cost[joint_sign][CFL_PRED_U][0];
     best_rd_uv[joint_sign][CFL_PRED_U] =
         RDCOST(x->rdmult, rd_stats.rate + alpha_rate, rd_stats.dist);
-#if CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
-    best_rate_uv[joint_sign][CFL_PRED_U] = rd_stats.rate;
-#endif  // CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
   }
   // Collect RD stats for alpha values other than zero in CFL_PRED_U.
   for (int pn_sign = CFL_SIGN_NEG; pn_sign < CFL_SIGNS; pn_sign++) {
@@ -413,9 +407,6 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
         if (this_rd >= best_rd_uv[joint_sign][CFL_PRED_U]) continue;
         best_rd_uv[joint_sign][CFL_PRED_U] = this_rd;
         best_c[joint_sign][CFL_PRED_U] = c;
-#if CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
-        best_rate_uv[joint_sign][CFL_PRED_U] = rd_stats.rate;
-#endif  // CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
         flag = 2;
         if (best_rd_uv[joint_sign][CFL_PRED_V] == INT64_MAX) continue;
         this_rd += mode_rd + best_rd_uv[joint_sign][CFL_PRED_V];
@@ -452,9 +443,6 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
       if (this_rd >= best_rd_uv[joint_sign][CFL_PRED_V]) continue;
       best_rd_uv[joint_sign][CFL_PRED_V] = this_rd;
       best_c[joint_sign][CFL_PRED_V] = c;
-#if CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
-      best_rate_uv[joint_sign][CFL_PRED_V] = rd_stats.rate;
-#endif  // CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
       flag = 2;
       if (best_rd_uv[joint_sign][CFL_PRED_U] == INT64_MAX) continue;
       this_rd += mode_rd + best_rd_uv[joint_sign][CFL_PRED_U];
@@ -488,9 +476,6 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
       const int alpha_rate = mode_costs->cfl_cost[joint_sign][plane][0];
       best_rd_uv[joint_sign][plane] =
           RDCOST(x->rdmult, rd_stats.rate + alpha_rate, rd_stats.dist);
-#if CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
-      best_rate_uv[joint_sign][plane] = rd_stats.rate;
-#endif  // CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
     }
   }
 
@@ -519,9 +504,6 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
           if (this_rd >= best_rd_uv[joint_sign][plane]) continue;
           best_rd_uv[joint_sign][plane] = this_rd;
           best_c[joint_sign][plane] = c;
-#if CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
-          best_rate_uv[joint_sign][plane] = rd_stats.rate;
-#endif  // CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
           flag = 2;
           if (best_rd_uv[joint_sign][!plane] == INT64_MAX) continue;
           this_rd += mode_rd + best_rd_uv[joint_sign][!plane];
@@ -543,20 +525,6 @@ static int cfl_rd_pick_alpha(MACROBLOCK *const x, const AV1_COMP *const cpi,
     ind = (u << CFL_ALPHABET_SIZE_LOG2) + v;
     best_rate_overhead = mode_costs->cfl_cost[best_joint_sign][CFL_PRED_U][u] +
                          mode_costs->cfl_cost[best_joint_sign][CFL_PRED_V][v];
-#if CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
-    xd->cfl.rate =
-#if CONFIG_AIMC
-#if CONFIG_UV_CFL
-        mode_costs->cfl_mode_cost[cfl_ctx][1] +
-#else
-        mode_costs->intra_uv_mode_cost[CFL_ALLOWED][uv_context][UV_CFL_PRED] +
-#endif  // CONFIG_UV_CFL
-#else
-        mode_costs->intra_uv_mode_cost[CFL_ALLOWED][mbmi->mode][UV_CFL_PRED] +
-#endif
-        best_rate_overhead + best_rate_uv[best_joint_sign][CFL_PRED_U] +
-        best_rate_uv[best_joint_sign][CFL_PRED_V];
-#endif  // CONFIG_DEBUG && !CONFIG_CROSS_CHROMA_TX
   } else {
     best_joint_sign = 0;
   }
@@ -598,9 +566,7 @@ int get_uv_mode_cost(MB_MODE_INFO *mbmi, const ModeCosts mode_costs,
 int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                                     int *rate, int *rate_tokenonly,
                                     int64_t *distortion, int *skippable,
-#if CONFIG_CROSS_CHROMA_TX
                                     const PICK_MODE_CONTEXT *ctx,
-#endif  // CONFIG_CROSS_CHROMA_TX
                                     BLOCK_SIZE bsize, TX_SIZE max_tx_size) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCKD *xd = &x->e_mbd;
@@ -782,18 +748,12 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                 intra_mode_info_cost_uv(cpi, x, mbmi, bsize, mode_cost);
     if (mode == UV_CFL_PRED) {
       assert(is_cfl_allowed(xd) && intra_mode_cfg->enable_cfl_intra);
-#if CONFIG_DEBUG && !CONFIG_IMPROVED_CFL && !CONFIG_CROSS_CHROMA_TX
-      if (!xd->lossless[mbmi->segment_id])
-        assert(xd->cfl.rate == tokenonly_rd_stats.rate + mode_cost);
-#endif  // CONFIG_DEBUG && !CONFIG_IMPROVED_CFL && !CONFIG_CROSS_CHROMA_TX
     }
     this_rd = RDCOST(x->rdmult, this_rate, tokenonly_rd_stats.dist);
 
     if (this_rd < best_rd) {
       best_mbmi = *mbmi;
-#if CONFIG_CROSS_CHROMA_TX
       av1_copy_array(ctx->cctx_type_map, xd->cctx_type_map, ctx->num_4x4_blk);
-#endif  // CONFIG_CROSS_CHROMA_TX
       best_rd = this_rd;
       *rate = this_rate;
       *rate_tokenonly = tokenonly_rd_stats.rate;
@@ -833,9 +793,7 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   }
 
   *mbmi = best_mbmi;
-#if CONFIG_CROSS_CHROMA_TX
   av1_copy_array(xd->cctx_type_map, ctx->cctx_type_map, ctx->num_4x4_blk);
-#endif  // CONFIG_CROSS_CHROMA_TX
   // Make sure we actually chose a mode
   assert(best_rd < INT64_MAX);
   return best_rd;
@@ -922,14 +880,10 @@ int av1_search_palette_mode(IntraModeSearchState *intra_search_state,
     {
       // We have not found any good uv mode yet, so we need to search for it.
       TX_SIZE uv_tx = av1_get_tx_size(AOM_PLANE_U, xd);
-      av1_rd_pick_intra_sbuv_mode(cpi, x, &intra_search_state->rate_uv_intra,
-                                  &intra_search_state->rate_uv_tokenonly,
-                                  &intra_search_state->dist_uvs,
-                                  &intra_search_state->skip_uvs,
-#if CONFIG_CROSS_CHROMA_TX
-                                  ctx,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                                  bsize, uv_tx);
+      av1_rd_pick_intra_sbuv_mode(
+          cpi, x, &intra_search_state->rate_uv_intra,
+          &intra_search_state->rate_uv_tokenonly, &intra_search_state->dist_uvs,
+          &intra_search_state->skip_uvs, ctx, bsize, uv_tx);
       intra_search_state->mode_uv = mbmi->uv_mode;
       intra_search_state->pmi_uv = *pmi;
       intra_search_state->uv_angle_delta = mbmi->angle_delta[PLANE_TYPE_UV];
@@ -1279,14 +1233,10 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
         return INT64_MAX;
       }
       const TX_SIZE uv_tx = av1_get_tx_size(AOM_PLANE_U, xd);
-      av1_rd_pick_intra_sbuv_mode(cpi, x, &intra_search_state->rate_uv_intra,
-                                  &intra_search_state->rate_uv_tokenonly,
-                                  &intra_search_state->dist_uvs,
-                                  &intra_search_state->skip_uvs,
-#if CONFIG_CROSS_CHROMA_TX
-                                  ctx,
-#endif  // CONFIG_CROSS_CHROMA_TX
-                                  bsize, uv_tx);
+      av1_rd_pick_intra_sbuv_mode(
+          cpi, x, &intra_search_state->rate_uv_intra,
+          &intra_search_state->rate_uv_tokenonly, &intra_search_state->dist_uvs,
+          &intra_search_state->skip_uvs, ctx, bsize, uv_tx);
       intra_search_state->mode_uv = mbmi->uv_mode;
       if (try_palette) intra_search_state->pmi_uv = *pmi;
       intra_search_state->uv_angle_delta = mbmi->angle_delta[PLANE_TYPE_UV];

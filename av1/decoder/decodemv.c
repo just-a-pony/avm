@@ -1405,7 +1405,6 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
   }
 }
 
-#if CONFIG_CROSS_CHROMA_TX
 void av1_read_cctx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                         int blk_row, int blk_col, TX_SIZE tx_size,
                         aom_reader *r) {
@@ -1447,7 +1446,6 @@ void av1_read_cctx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   update_cctx_array(xd, blk_row, blk_col, row_offset, col_offset, tx_size,
                     cctx_type);
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 // This function reads a 'secondary tx set' from the bitstream
 static void read_secondary_tx_set(FRAME_CONTEXT *ec_ctx, aom_reader *r,

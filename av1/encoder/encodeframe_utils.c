@@ -176,7 +176,6 @@ static void reset_tx_size(MACROBLOCK *x, MB_MODE_INFO *mbmi,
     memset(xd->tx_type_map + row * stride, DCT_DCT,
            bw * sizeof(xd->tx_type_map[0]));
   }
-#if CONFIG_CROSS_CHROMA_TX
 #if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE chroma_bsize = get_bsize_base(xd, mbmi, AOM_PLANE_U);
   for (int row = 0; row < mi_size_high[chroma_bsize]; ++row)
@@ -187,7 +186,6 @@ static void reset_tx_size(MACROBLOCK *x, MB_MODE_INFO *mbmi,
     memset(xd->cctx_type_map + row * xd->cctx_type_map_stride, CCTX_NONE,
            bw * sizeof(xd->cctx_type_map[0]));
 #endif  // CONFIG_EXT_RECUR_PARTITION
-#endif  // CONFIG_CROSS_CHROMA_TX
   av1_zero(txfm_info->blk_skip);
   txfm_info->skip_txfm = 0;
 }
@@ -304,7 +302,6 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
     }
   }
 
-#if CONFIG_CROSS_CHROMA_TX
   if (xd->tree_type != LUMA_PART && xd->is_chroma_ref &&
       is_cctx_allowed(cm, xd)) {
     xd->cctx_type_map = ctx->cctx_type_map;
@@ -351,7 +348,6 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
       xd->cctx_type_map_stride = mi_stride;
     }
   }
-#endif
 
   // If segmentation in use
   if (seg->enabled) {
@@ -1661,9 +1657,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->coeff_base_ph_cdf, ctx_tr->coeff_base_ph_cdf, 4);
   AVERAGE_CDF(ctx_left->coeff_br_ph_cdf, ctx_tr->coeff_br_ph_cdf, 4);
 #endif  // CONFIG_PAR_HIDING
-#if CONFIG_CROSS_CHROMA_TX
   AVERAGE_CDF(ctx_left->cctx_type_cdf, ctx_tr->cctx_type_cdf, CCTX_TYPES);
-#endif  // CONFIG_CROSS_CHROMA_TX
 }
 
 // Memset the mbmis at the current superblock to 0
@@ -1700,10 +1694,8 @@ void av1_reset_mbmi(CommonModeInfoParams *const mi_params, BLOCK_SIZE sb_size,
     memset(&mi_params->submi_grid_base[mi_grid_idx], 0,
            sb_size_mi * sizeof(*mi_params->submi_grid_base));
 #endif  // CONFIG_C071_SUBBLK_WARPMV
-#if CONFIG_CROSS_CHROMA_TX
     memset(&mi_params->cctx_type_map[mi_grid_idx], 0,
            sb_size_mi * sizeof(*mi_params->cctx_type_map));
-#endif  // CONFIG_CROSS_CHROMA_TX
     if (cur_mi_row % mi_alloc_size_1d == 0) {
       memset(&mi_params->mi_alloc[alloc_mi_idx], 0,
              sb_size_alloc_mi * sizeof(*mi_params->mi_alloc));

@@ -358,12 +358,12 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   *max_scan_line = 0;
   *eob = 0;
 
-#if CONFIG_CROSS_CHROMA_TX && CCTX_C2_DROPPED
+#if CCTX_C2_DROPPED
   if (plane == AOM_PLANE_V && is_cctx_allowed(cm, xd)) {
     CctxType cctx_type = av1_get_cctx_type(xd, blk_row, blk_col);
     if (!keep_chroma_c2(cctx_type)) return 0;
   }
-#endif  // CONFIG_CROSS_CHROMA_TX && CCTX_C2_DROPPED
+#endif  // CCTX_C2_DROPPED
 
 #if CONFIG_CONTEXT_DERIVATION
   if (plane == AOM_PLANE_U) {
@@ -412,7 +412,7 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   }
 #endif  // CONFIG_CONTEXT_DERIVATION
 
-#if CONFIG_CROSS_CHROMA_TX && !CONFIG_ATC_DCTX_ALIGNED
+#if !CONFIG_ATC_DCTX_ALIGNED
   if (plane == AOM_PLANE_U && is_cctx_allowed(cm, xd)) {
     if (!all_zero) {
       av1_read_cctx_type(cm, xd, blk_row, blk_col, tx_size, r);
@@ -427,7 +427,7 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                         CCTX_NONE);
     }
   }
-#endif  // CONFIG_CROSS_CHROMA_TX && !CONFIG_ATC_DCTX_ALIGNED
+#endif  // !CONFIG_ATC_DCTX_ALIGNED
 
   if (all_zero) {
     *max_scan_line = 0;
@@ -441,7 +441,6 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   av1_read_tx_type(cm, xd, blk_row, blk_col, tx_size, r, plane, *eob,
                    is_inter ? 0 : *eob);
 
-#if CONFIG_CROSS_CHROMA_TX
   if (plane == AOM_PLANE_U && is_cctx_allowed(cm, xd)) {
     const int skip_cctx = is_inter ? 0 : (*eob == 1);
     if (!all_zero && !skip_cctx) {
@@ -457,7 +456,6 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                         CCTX_NONE);
     }
   }
-#endif  // CONFIG_CROSS_CHROMA_TX
 #else
   if (plane == AOM_PLANE_Y) {  // only y plane's tx_type is transmitted
     av1_read_tx_type(cm, xd, blk_row, blk_col, tx_size, r);

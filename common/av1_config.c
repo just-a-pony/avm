@@ -254,9 +254,7 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader,
 #endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_sdp);
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_ist);
-#if CONFIG_CROSS_CHROMA_TX
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_cctx);
-#endif  // CONFIG_CROSS_CHROMA_TX
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_mrls);
 #if CONFIG_TIP
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_tip);

@@ -365,7 +365,6 @@ void av1_highbd_inv_txfm_add_c(const tran_low_t *input, uint16_t *dest,
   }
 }
 
-#if CONFIG_CROSS_CHROMA_TX
 // Apply inverse cross chroma component transform
 void av1_inv_cross_chroma_tx_block(tran_low_t *dqcoeff_c1,
                                    tran_low_t *dqcoeff_c2, TX_SIZE tx_size,
@@ -386,7 +385,6 @@ void av1_inv_cross_chroma_tx_block(tran_low_t *dqcoeff_c1,
     src_c2[i] = (int32_t)ROUND_POWER_OF_TWO_SIGNED_64(tmp[1], CCTX_PREC_BITS);
   }
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 void av1_inverse_transform_block(const MACROBLOCKD *xd,
                                  const tran_low_t *dqcoeff, int plane,

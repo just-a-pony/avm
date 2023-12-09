@@ -343,10 +343,8 @@ typedef struct {
   uint8_t blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   //! Map showing the txfm types for each blcok.
   TX_TYPE tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
-#if CONFIG_CROSS_CHROMA_TX
   //! Map showing the cctx types for each block.
   CctxType cctx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
-#endif  // CONFIG_CROSS_CHROMA_TX
   //! Rd_stats for the whole partition block.
   RD_STATS rd_stats;
   //! Hash value of the current record.
@@ -780,10 +778,8 @@ typedef struct {
    * primary tx_type
    */
   TX_TYPE tx_type_map_[MAX_MIB_SIZE * MAX_MIB_SIZE];
-#if CONFIG_CROSS_CHROMA_TX
   //! \brief CCTX types inside the partition block.
   CctxType cctx_type_map_[MAX_MIB_SIZE * MAX_MIB_SIZE];
-#endif  // CONFIG_CROSS_CHROMA_TX
 
   /** \name Txfm hash records
    * Hash records of the transform search results based on the residue. There
@@ -1252,10 +1248,8 @@ typedef struct {
   //! intra_tx_type_costs
   int intra_tx_type_costs[EXT_TX_SETS_INTRA][EXT_TX_SIZES][INTRA_MODES]
                          [TX_TYPES];
-#if CONFIG_CROSS_CHROMA_TX
   //! cctx_type_cost
   int cctx_type_cost[EXT_TX_SIZES][CCTX_CONTEXTS][CCTX_TYPES];
-#endif  // CONFIG_CROSS_CHROMA_TX
   /**@}*/
 
   /*****************************************************************************

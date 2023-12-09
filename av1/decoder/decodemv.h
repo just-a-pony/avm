@@ -41,10 +41,8 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
 #endif  // CONFIG_ATC_DCTX_ALIGNED
 );
 
-#if CONFIG_CROSS_CHROMA_TX
 void av1_read_cctx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                         int blk_row, int blk_col, TX_SIZE tx_size,
                         aom_reader *r);
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 #endif  // AOM_AV1_DECODER_DECODEMV_H_

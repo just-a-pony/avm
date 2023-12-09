@@ -379,7 +379,6 @@ void av1_highbd_fwd_txfm(const int16_t *src_diff, tran_low_t *coeff,
   }
 }
 
-#if CONFIG_CROSS_CHROMA_TX
 // Apply forward cross chroma component transform
 void av1_fwd_cross_chroma_tx_block(tran_low_t *coeff_c1, tran_low_t *coeff_c2,
                                    TX_SIZE tx_size, CctxType cctx_type) {
@@ -399,7 +398,6 @@ void av1_fwd_cross_chroma_tx_block(tran_low_t *coeff_c1, tran_low_t *coeff_c2,
     src_c2[i] = (int32_t)ROUND_POWER_OF_TWO_SIGNED_64(tmp[1], CCTX_PREC_BITS);
   }
 }
-#endif  // CONFIG_CROSS_CHROMA_TX
 
 void av1_fwd_stxfm(tran_low_t *coeff, TxfmParam *txfm_param) {
   const TX_TYPE stx_type = txfm_param->sec_tx_type;

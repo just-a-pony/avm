@@ -436,11 +436,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_ist = ARG_DEF(NULL, "enable-ist", 1,
                         "Enable intra secondary transform"
                         "(0: false, 1: true (default))"),
-#if CONFIG_CROSS_CHROMA_TX
   .enable_cctx = ARG_DEF(NULL, "enable-cctx", 1,
                          "Enable cross-chroma component transform "
                          "(0: false, 1: true(default))"),
-#endif  // CONFIG_CROSS_CHROMA_TX
   .enable_ibp = ARG_DEF(NULL, "enable-ibp", 1,
                         "Enable intra bi-prediction"
                         "(0: false, 1: true (default))"),
