@@ -1789,7 +1789,6 @@ struct scale_factors;
 
 /*!\endcond */
 
-#if CONFIG_REF_MV_BANK
 #define REF_MV_BANK_SIZE 4
 
 /*! \brief Variables related to reference MV bank. */
@@ -1811,7 +1810,6 @@ typedef struct {
    */
   int rmb_sb_hits;
 } REF_MV_BANK;
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_WARP_REF_LIST
 #define WARP_PARAM_BANK_SIZE 4
@@ -1877,7 +1875,6 @@ typedef struct macroblockd {
    */
   int mi_stride;
 
-#if CONFIG_REF_MV_BANK
   /**
    * \name Reference MV bank info.
    */
@@ -1887,7 +1884,6 @@ typedef struct macroblockd {
 #endif
   REF_MV_BANK ref_mv_bank; /*!< Ref mv bank to update */
   /**@}*/
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_WARP_REF_LIST
   /**

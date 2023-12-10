@@ -589,12 +589,10 @@ typedef struct cfg_options {
    */
   unsigned int max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   /*!\brief enable reference MV Bank
    *
    */
   unsigned int enable_refmvbank;
-#endif
 #if CONFIG_PAR_HIDING
   /*!\brief enable parity hiding for coefficients coding
    *

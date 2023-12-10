@@ -3907,14 +3907,14 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 
   if (xd->tree_type != LUMA_PART) xd->cfl.store_y = store_cfl_required(cm, xd);
 
-#if CONFIG_REF_MV_BANK && !CONFIG_IBC_BV_IMPROVEMENT
+#if !CONFIG_IBC_BV_IMPROVEMENT
 #if CONFIG_IBC_SR_EXT
   if (cm->seq_params.enable_refmvbank && !is_intrabc_block(mbmi, xd->tree_type))
 #else
   if (cm->seq_params.enable_refmvbank)
 #endif  // CONFIG_IBC_SR_EXT
     av1_update_ref_mv_bank(cm, xd, mbmi);
-#endif  // CONFIG_REF_MV_BANK && !CONFIG_IBC_BV_IMPROVEMENT
+#endif  // !CONFIG_IBC_BV_IMPROVEMENT
 
 #if DEC_MISMATCH_DEBUG
   dec_dump_logs(cm, mi, mi_row, mi_col, mode_ctx);
@@ -4137,25 +4137,25 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
 
   if (frame_is_intra_only(cm)) {
     read_intra_frame_mode_info(cm, dcb, r);
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_REF_MV_BANK
+#if CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank) {
       MB_MODE_INFO *const mbmi = xd->mi[0];
       if (is_intrabc_block(mbmi, xd->tree_type))
         av1_update_ref_mv_bank(cm, xd, mbmi);
     }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_REF_MV_BANK
+#endif  // CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.order_hint_info.enable_ref_frame_mvs)
       intra_copy_frame_mvs(cm, xd->mi_row, xd->mi_col, x_inside_boundary,
                            y_inside_boundary);
   } else {
     read_inter_frame_mode_info(pbi, dcb, r);
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_REF_MV_BANK
+#if CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank) {
       MB_MODE_INFO *const mbmi = xd->mi[0];
       if (is_inter_block(mbmi, xd->tree_type))
         av1_update_ref_mv_bank(cm, xd, mbmi);
     }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_REF_MV_BANK
+#endif  // CONFIG_IBC_BV_IMPROVEMENT
 
 #if CONFIG_WARP_REF_LIST
     MB_MODE_INFO *const mbmi_tmp = xd->mi[0];

@@ -176,9 +176,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
     GET_PARAMS(max_drl_refbvs);
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
     GET_PARAMS(enable_refmvbank);
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
     GET_PARAMS(enable_parity_hiding);
 #endif  // CONFIG_PAR_HIDING

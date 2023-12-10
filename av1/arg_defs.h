@@ -294,9 +294,7 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   arg_def_t max_drl_refbvs;
 #endif  //  CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   arg_def_t enable_refmvbank;
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
   arg_def_t enable_parity_hiding;
 #endif  // CONFIG_PAR_HIDING

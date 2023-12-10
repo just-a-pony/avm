@@ -543,11 +543,9 @@ typedef struct SequenceHeader {
   uint8_t enable_ccso;  // To turn on/off CCSO
 #endif
 #if CONFIG_PEF
-  uint8_t enable_pef;  // To turn on/off prediction enhancement filter
-#endif                 // CONFIG_PEF
-#if CONFIG_REF_MV_BANK
+  uint8_t enable_pef;        // To turn on/off prediction enhancement filter
+#endif                       // CONFIG_PEF
   uint8_t enable_refmvbank;  // To turn on/off Ref MV Bank
-#endif                       // CONFIG_REF_MV_BANK
 #if CONFIG_LR_FLEX_SYNTAX
   uint8_t lr_tools_disable_mask[2];  // mask of lr tool(s) to disable.
                                      // To disable tool i in RestorationType

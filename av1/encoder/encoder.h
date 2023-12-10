@@ -919,10 +919,8 @@ typedef struct {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   unsigned int max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   // Indicates if ref MV Bank should be enabled.
   bool enable_refmvbank;
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_OPTFLOW_REFINEMENT
   // Indicates if optical flow refinement should be enabled
   aom_opfl_refine_type enable_opfl_refine;

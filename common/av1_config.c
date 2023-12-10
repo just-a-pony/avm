@@ -240,9 +240,7 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader,
   (void)reduced_still_picture_header;
 
   int result = 0;
-#if CONFIG_REF_MV_BANK
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_refmvbank);
-#endif  // CONFIG_REF_MV_BANK
   AV1C_READ_BIT_OR_RETURN_ERROR(reduced_ref_frame_set);
   if (reduced_ref_frame_set) {
     AV1C_READ_BITS_OR_RETURN_ERROR(max_reference_frames, 2);

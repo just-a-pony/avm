@@ -5276,9 +5276,7 @@ static AOM_INLINE void write_sequence_header(
 
 static AOM_INLINE void write_sequence_header_beyond_av1(
     const SequenceHeader *const seq_params, struct aom_write_bit_buffer *wb) {
-#if CONFIG_REF_MV_BANK
   aom_wb_write_bit(wb, seq_params->enable_refmvbank);
-#endif  // CONFIG_REF_MV_BANK
   aom_wb_write_bit(wb, seq_params->explicit_ref_frame_map);
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
   // 0 : show_existing_frame, 1: implicit derviation

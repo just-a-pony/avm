@@ -2888,7 +2888,6 @@ static const aom_cdf_prob
 #endif  // CONFIG_C076_INTER_MOD_CTX
 #endif  // IMPROVED_AMVD
 #if CONFIG_C076_INTER_MOD_CTX
-#if CONFIG_REF_MV_BANK
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
     default_drl0_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
@@ -2902,9 +2901,7 @@ static const aom_cdf_prob
       { AOM_CDF2(23343) }, { AOM_CDF2(25555) }, { AOM_CDF2(16773) }
     };
 #endif  // CONFIG_ENTROPY_PARA
-#endif  // CONFIG_REF_MV_BANK
 
-#if CONFIG_REF_MV_BANK
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
     default_drl1_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
@@ -2919,9 +2916,7 @@ static const aom_cdf_prob
       { AOM_CDF2(16293) }, { AOM_CDF2(20567) }, { AOM_CDF2(20683) }
     };
 #endif  // CONFIG_ENTROPY_PARA
-#endif  // CONFIG_REF_MV_BANK
 
-#if CONFIG_REF_MV_BANK
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
     default_drl2_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
@@ -2936,9 +2931,7 @@ static const aom_cdf_prob
       { AOM_CDF2(19083) }, { AOM_CDF2(20824) }, { AOM_CDF2(21487) }
     };
 #endif  // CONFIG_ENTROPY_PARA
-#endif  // CONFIG_REF_MV_BANK
 #else
-#if CONFIG_REF_MV_BANK
 static const aom_cdf_prob
     default_drl0_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
       { AOM_CDF2(18923) }, { AOM_CDF2(12861) }, { AOM_CDF2(15472) },
@@ -2946,7 +2939,6 @@ static const aom_cdf_prob
       { AOM_CDF2(23482) }, { AOM_CDF2(23176) }, { AOM_CDF2(15143) },
       { AOM_CDF2(16155) }, { AOM_CDF2(20465) }, { AOM_CDF2(20185) }
     };
-#endif  // CONFIG_REF_MV_BANK
 static const aom_cdf_prob default_drl0_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(26658) }, { AOM_CDF2(22485) }, { AOM_CDF2(19400) },
   { AOM_CDF2(17600) }, { AOM_CDF2(23001) }, { AOM_CDF2(25649) },
@@ -2954,7 +2946,6 @@ static const aom_cdf_prob default_drl0_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(16468) }, { AOM_CDF2(21428) }, { AOM_CDF2(21326) }
 };
 
-#if CONFIG_REF_MV_BANK
 static const aom_cdf_prob
     default_drl1_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
       { AOM_CDF2(6862) },  { AOM_CDF2(7013) },  { AOM_CDF2(11644) },
@@ -2962,7 +2953,6 @@ static const aom_cdf_prob
       { AOM_CDF2(11637) }, { AOM_CDF2(10987) }, { AOM_CDF2(16528) },
       { AOM_CDF2(21970) }, { AOM_CDF2(15118) }, { AOM_CDF2(17207) }
     };
-#endif  // CONFIG_REF_MV_BANK
 static const aom_cdf_prob default_drl1_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(19705) }, { AOM_CDF2(15838) }, { AOM_CDF2(18496) },
   { AOM_CDF2(18312) }, { AOM_CDF2(15248) }, { AOM_CDF2(16292) },
@@ -2970,7 +2960,6 @@ static const aom_cdf_prob default_drl1_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(22903) }, { AOM_CDF2(16244) }, { AOM_CDF2(19319) }
 };
 
-#if CONFIG_REF_MV_BANK
 static const aom_cdf_prob
     default_drl2_cdf_refmvbank[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
       { AOM_CDF2(14694) }, { AOM_CDF2(13186) }, { AOM_CDF2(14211) },
@@ -2978,7 +2967,6 @@ static const aom_cdf_prob
       { AOM_CDF2(14358) }, { AOM_CDF2(13386) }, { AOM_CDF2(12462) },
       { AOM_CDF2(13917) }, { AOM_CDF2(14188) }, { AOM_CDF2(13904) }
     };
-#endif  // CONFIG_REF_MV_BANK
 static const aom_cdf_prob default_drl2_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
   { AOM_CDF2(12992) }, { AOM_CDF2(7518) },  { AOM_CDF2(18309) },
   { AOM_CDF2(17119) }, { AOM_CDF2(15195) }, { AOM_CDF2(15214) },
@@ -5742,7 +5730,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->inter_warp_mode_cdf, default_inter_warp_mode_cdf);
 #endif  // CONFIG_WARPMV
 
-#if CONFIG_REF_MV_BANK
 #if CONFIG_ENTROPY_PARA
   av1_copy(fc->drl_cdf[0], default_drl0_cdf_refmvbank);
   av1_copy(fc->drl_cdf[1], default_drl1_cdf_refmvbank);
@@ -5758,11 +5745,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
     av1_copy(fc->drl_cdf[2], default_drl2_cdf);
   }
 #endif  // CONFIG_ENTROPY_PARA
-#else
-  av1_copy(fc->drl_cdf[0], default_drl0_cdf);
-  av1_copy(fc->drl_cdf[1], default_drl1_cdf);
-  av1_copy(fc->drl_cdf[2], default_drl2_cdf);
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_REFINEMV
   av1_copy(fc->refinemv_flag_cdf, default_refinemv_flag_cdf);
 #endif  // CONFIG_REFINEMV

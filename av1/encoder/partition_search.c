@@ -538,7 +538,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       if (intra_tx_size != max_txsize_rect_lookup[bsize])
         ++x->txfm_search_info.txb_split_count;
     }
-#if CONFIG_REF_MV_BANK && !CONFIG_MVP_IMPROVEMENT
+#if !CONFIG_MVP_IMPROVEMENT
 #if CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank && is_inter &&
         !is_intrabc_block(mbmi, xd->tree_type))
@@ -546,7 +546,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
     if (cm->seq_params.enable_refmvbank && is_inter)
 #endif  // CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
       av1_update_ref_mv_bank(cm, xd, mbmi);
-#endif  // CONFIG_REF_MV_BANK && !CONFIG_MVP_IMPROVEMENT
+#endif  // !CONFIG_MVP_IMPROVEMENT
 
 #if CONFIG_WARP_REF_LIST && !WARP_CU_BANK
     if (is_inter) av1_update_warp_param_bank(cm, xd, mbmi);

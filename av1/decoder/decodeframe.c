@@ -4850,14 +4850,10 @@ static AOM_INLINE void decode_tile_sb_row(AV1Decoder *pbi, ThreadData *const td,
 
     sync_read(&tile_data->dec_row_mt_sync, sb_row_in_tile, sb_col_in_tile);
 
-#if CONFIG_REF_MV_BANK || CONFIG_WARP_REF_LIST
     DecoderCodingBlock *const dcb = &td->dcb;
     MACROBLOCKD *const xd = &dcb->xd;
-#endif  // CONFIG_REF_MV_BANK || CONFIG_WARP_REF_LIST
 
-#if CONFIG_REF_MV_BANK
     xd->ref_mv_bank.rmb_sb_hits = 0;
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_WARP_REF_LIST
     xd->warp_param_bank.wpb_sb_hits = 0;
@@ -4949,12 +4945,10 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
   for (int mi_row = tile_info.mi_row_start; mi_row < tile_info.mi_row_end;
        mi_row += cm->mib_size) {
     av1_zero_left_context(xd);
-#if CONFIG_REF_MV_BANK
     av1_zero(xd->ref_mv_bank);
 #if !CONFIG_MVP_IMPROVEMENT
     xd->ref_mv_bank_pt = &td->ref_mv_bank;
 #endif
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_WARP_REF_LIST
     av1_zero(xd->warp_param_bank);
@@ -4968,7 +4962,6 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
       av1_reset_is_mi_coded_map(xd, cm->mib_size);
       av1_set_sb_info(cm, xd, mi_row, mi_col);
       set_cb_buffer(pbi, dcb, &td->cb_buffer_base, num_planes, 0, 0);
-#if CONFIG_REF_MV_BANK
       // td->ref_mv_bank is initialized as xd->ref_mv_bank, and used
       // for MV referencing during decoding the tile.
       // xd->ref_mv_bank is updated as decoding goes.
@@ -4976,7 +4969,6 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
 #if !CONFIG_MVP_IMPROVEMENT
       td->ref_mv_bank = xd->ref_mv_bank;
 #endif  // !CONFIG_MVP_IMPROVEMENT
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_WARP_REF_LIST
       xd->warp_param_bank.wpb_sb_hits = 0;
@@ -5470,12 +5462,10 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
   for (int mi_row = tile_info.mi_row_start; mi_row < tile_info.mi_row_end;
        mi_row += cm->mib_size) {
     av1_zero_left_context(xd);
-#if CONFIG_REF_MV_BANK
     av1_zero(xd->ref_mv_bank);
 #if !CONFIG_MVP_IMPROVEMENT
     xd->ref_mv_bank_pt = &td->ref_mv_bank;
 #endif
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_WARP_REF_LIST
     av1_zero(xd->warp_param_bank);
@@ -5490,12 +5480,10 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
       av1_set_sb_info(cm, xd, mi_row, mi_col);
       set_cb_buffer(pbi, dcb, pbi->cb_buffer_base, num_planes, mi_row, mi_col);
 
-#if CONFIG_REF_MV_BANK
       xd->ref_mv_bank.rmb_sb_hits = 0;
 #if !CONFIG_MVP_IMPROVEMENT
       td->ref_mv_bank = xd->ref_mv_bank;
 #endif  // !CONFIG_MVP_IMPROVEMENT
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_WARP_REF_LIST
       xd->warp_param_bank.wpb_sb_hits = 0;
@@ -6627,9 +6615,7 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
 void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
                                          SequenceHeader *seq_params) {
   // printf("print sps\n");
-#if CONFIG_REF_MV_BANK
   seq_params->enable_refmvbank = aom_rb_read_bit(rb);
-#endif  // CONFIG_REF_MV_BANK
   seq_params->explicit_ref_frame_map = aom_rb_read_bit(rb);
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
   // 0 : use show_existing_frame, 1: use implicit derivation

@@ -249,9 +249,7 @@ struct av1_extracfg {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   unsigned int max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   int enable_refmvbank;
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
   int enable_parity_hiding;
 #endif  // CONFIG_PAR_HIDING
@@ -604,9 +602,7 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   0,    // max_drl_refbvs
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   1,    // enable_refmvbank
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
   1,    // enable_parity_hiding
 #endif  // CONFIG_PAR_HIDING
@@ -1095,9 +1091,7 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   cfg->max_drl_refbvs = extra_cfg->max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
   cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
 #endif  // CONFIG_PAR_HIDING
@@ -1233,9 +1227,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   extra_cfg->max_drl_refbvs = cfg->max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   extra_cfg->enable_refmvbank = cfg->enable_refmvbank;
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
   extra_cfg->enable_parity_hiding = cfg->enable_parity_hiding;
 #endif  // CONFIG_PAR_HIDING
@@ -1538,9 +1530,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   tool_cfg->max_drl_refbvs = extra_cfg->max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   tool_cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_OPTFLOW_REFINEMENT
   tool_cfg->enable_opfl_refine = extra_cfg->enable_order_hint
                                      ? extra_cfg->enable_opfl_refine
@@ -4233,11 +4223,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.max_drl_refbvs = arg_parse_uint_helper(&arg, err_string);
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_refmvbank,
                               argv, err_string)) {
     extra_cfg.enable_refmvbank = arg_parse_int_helper(&arg, err_string);
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_parity_hiding,
                               argv, err_string)) {
@@ -4575,9 +4563,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         0,
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
         1,
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
         1,
 #endif  // CONFIG_PAR_HIDING

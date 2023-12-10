@@ -2037,7 +2037,6 @@ static AOM_INLINE void process_single_ref_mv_candidate(
   }
 }
 
-#if CONFIG_REF_MV_BANK
 static AOM_INLINE bool check_rmb_cand(
     CANDIDATE_MV cand_mv, CANDIDATE_MV *ref_mv_stack, uint16_t *ref_mv_weight,
     uint8_t *refmv_count, int is_comp, int mi_row, int mi_col, int block_width,
@@ -2078,7 +2077,6 @@ static AOM_INLINE bool check_rmb_cand(
 
   return true;
 }
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_IBC_BV_IMPROVEMENT
 // Add a BV candidate to ref MV stack without duplicate check
@@ -2744,7 +2742,7 @@ static AOM_INLINE void setup_ref_mv_list(
   }
 #endif
 
-#if (CONFIG_REF_MV_BANK && CONFIG_MVP_IMPROVEMENT)
+#if CONFIG_MVP_IMPROVEMENT
   if (cm->seq_params.enable_refmvbank) {
     const int ref_mv_limit =
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
@@ -2786,7 +2784,7 @@ static AOM_INLINE void setup_ref_mv_list(
       }
     }
   }
-#endif  // (CONFIG_REF_MV_BANK && CONFIG_MVP_IMPROVEMENT)
+#endif  // CONFIG_MVP_IMPROVEMENT
 
 #if CONFIG_MVP_IMPROVEMENT
   const int max_ref_mv_count =
@@ -3013,7 +3011,7 @@ static AOM_INLINE void setup_ref_mv_list(
       }
     }
   }
-#if CONFIG_REF_MV_BANK && !CONFIG_MVP_IMPROVEMENT
+#if !CONFIG_MVP_IMPROVEMENT
   if (!cm->seq_params.enable_refmvbank) return;
   const int ref_mv_limit =
       AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
@@ -3049,7 +3047,7 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
     }
   }
-#endif  // CONFIG_REF_MV_BANK && !CONFIG_MVP_IMPROVEMENT
+#endif  // !CONFIG_MVP_IMPROVEMENT
 
 #if CONFIG_WARP_REF_LIST
   if (warp_param_stack && valid_num_warp_candidates &&
@@ -4631,7 +4629,6 @@ void av1_setup_skip_mode_allowed(AV1_COMMON *cm) {
 #endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 }
 
-#if CONFIG_REF_MV_BANK
 static INLINE void update_ref_mv_bank(const MB_MODE_INFO *const mbmi,
                                       REF_MV_BANK *ref_mv_bank) {
   const MV_REFERENCE_FRAME ref_frame = av1_ref_frame_type(mbmi->ref_frame);
@@ -4690,7 +4687,6 @@ void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
   update_ref_mv_bank(mbmi, &xd->ref_mv_bank);
   (void)cm;
 }
-#endif  // CONFIG_REF_MV_BANK
 
 #if CONFIG_C071_SUBBLK_WARPMV
 void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,

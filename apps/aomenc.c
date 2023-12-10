@@ -468,9 +468,7 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   &g_av1_codec_arg_defs.max_drl_refbvs,
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   &g_av1_codec_arg_defs.enable_refmvbank,
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_OPTFLOW_REFINEMENT
   &g_av1_codec_arg_defs.enable_opfl_refine,
 #endif  // CONFIG_OPTFLOW_REFINEMENT
@@ -756,9 +754,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_ref_frame_mvs = 1;
   config->enable_reduced_reference_set = 0;
   config->reduced_tx_type_set = 0;
-#if CONFIG_REF_MV_BANK
   config->enable_refmvbank = 1;
-#endif
 #if CONFIG_PAR_HIDING
   config->enable_parity_hiding = 1;
 #endif  // CONFIG_PAR_HIDING
@@ -1528,9 +1524,7 @@ static void show_stream_config(struct stream_state *stream,
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   fprintf(stdout, " max-drl-refbvs (%d)", encoder_cfg->max_drl_refbvs);
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   fprintf(stdout, " , Refmv Bank (%d)", encoder_cfg->enable_refmvbank);
-#endif  // CONFIG_REF_MV_BANK
   fprintf(stdout, "\n");
 
   fprintf(

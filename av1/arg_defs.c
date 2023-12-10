@@ -805,11 +805,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                             "(0 (auto), 2-4 (fixed)) default is 0 (auto)."),
 
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-#if CONFIG_REF_MV_BANK
   .enable_refmvbank = ARG_DEF(NULL, "enable-refmvbank", 1,
                               "Enable reference MV bank (0: false "
                               "1: true)"),
-#endif  // CONFIG_REF_MV_BANK
 #if CONFIG_PAR_HIDING
   .enable_parity_hiding = ARG_DEF(NULL, "enable-parity-hiding", 1,
                                   "Enable parity hiding "
