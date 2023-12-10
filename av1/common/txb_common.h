@@ -525,7 +525,6 @@ typedef aom_cdf_prob (*base_lf_cdf_arr)[CDF_SIZE(LF_BASE_SYMBOLS)];
 #endif  // CONFIG_ATC
 typedef aom_cdf_prob (*base_cdf_arr)[CDF_SIZE(4)];
 typedef aom_cdf_prob (*br_cdf_arr)[CDF_SIZE(BR_CDF_SIZE)];
-#if CONFIG_PAR_HIDING
 // This function returns the base range context index/increment for the
 // coefficients with hidden parity.
 static INLINE int get_base_ctx_ph(const uint8_t *levels, int pos, int bwl,
@@ -564,7 +563,6 @@ static AOM_FORCE_INLINE int get_par_br_ctx(const uint8_t *const levels,
   }
   return mag;
 }
-#endif  // CONFIG_PAR_HIDING
 
 static INLINE int get_lower_levels_ctx_eob(int bwl, int height, int scan_idx) {
   if (scan_idx == 0) return 0;

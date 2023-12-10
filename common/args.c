@@ -177,9 +177,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(max_drl_refbvs);
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
     GET_PARAMS(enable_refmvbank);
-#if CONFIG_PAR_HIDING
     GET_PARAMS(enable_parity_hiding);
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
     GET_PARAMS(enable_mrsse);
 #endif  // CONFIG_MRSSE

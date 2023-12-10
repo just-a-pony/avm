@@ -102,7 +102,6 @@ int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                               txb_ctx, rate_cost, cpi->oxcf.algo_cfg.sharpness);
 }
 
-#if CONFIG_PAR_HIDING
 // This function returns the multiplier of dequantization for current position.
 static INLINE int get_dqv(const int32_t *dequant, int coeff_idx,
                           const qm_val_t *iqmatrix) {
@@ -197,7 +196,6 @@ void parity_hiding_trellis_off(const struct AV1_COMP *cpi, MACROBLOCK *mb,
         av1_get_txb_entropy_context(qcoeff, scan_order, new_eob);
   }
 }
-#endif  // CONFIG_PAR_HIDING
 
 // Hyper-parameters for dropout optimization, based on following logics.
 // TODO(yjshen): These settings are tuned by experiments. They may still be
@@ -657,11 +655,9 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
                          use_inter_fsc(cm, plane, tx_type, is_inter);
     const int use_trellis =
         is_trellis_used(args->enable_optimize_b, dry_run) && !fsc_mode;
-#if CONFIG_PAR_HIDING
     bool enable_parity_hiding =
         cm->features.allow_parity_hiding && !xd->lossless[mbmi->segment_id] &&
         plane == PLANE_TYPE_Y && get_primary_tx_type(tx_type) < IDTX;
-#endif  // CONFIG_PAR_HIDING
     int quant_idx;
     if (use_trellis)
       quant_idx = AV1_XFORM_QUANT_FP;
@@ -689,20 +685,15 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
       av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, cctx_type,
                      &txb_ctx, &dummy_rate_cost);
     }
-    if (!quant_param.use_optimize_b && do_dropout && !fsc_mode
-#if CONFIG_PAR_HIDING
-        && !enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
-    ) {
+    if (!quant_param.use_optimize_b && do_dropout && !fsc_mode &&
+        !enable_parity_hiding) {
       av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
                          cm->quant_params.base_qindex);
     }
 
-#if CONFIG_PAR_HIDING
     if (!quant_param.use_optimize_b && enable_parity_hiding) {
       parity_hiding_trellis_off(cpi, x, plane, block, tx_size, tx_type);
     }
-#endif
 #if CONFIG_ATC_DCTX_ALIGNED
     const int skip_cctx = is_inter ? 0 : (p->eobs[block] == 1);
 #endif  // CONFIG_ATC_DCTX_ALIGNED
@@ -1231,11 +1222,9 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
                              use_inter_fsc(cm, plane, tx_type, is_inter);
     const int use_trellis =
         is_trellis_used(args->enable_optimize_b, args->dry_run) && !fsc_mode;
-#if CONFIG_PAR_HIDING
     bool enable_parity_hiding =
         cm->features.allow_parity_hiding && !xd->lossless[mbmi->segment_id] &&
         plane == PLANE_TYPE_Y && get_primary_tx_type(tx_type) < IDTX;
-#endif  // CONFIG_PAR_HIDING
     int quant_idx;
     if (use_trellis)
       quant_idx = AV1_XFORM_QUANT_FP;
@@ -1281,11 +1270,7 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
       av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, CCTX_NONE,
                      &txb_ctx, &dummy_rate_cost);
     }
-    if (do_dropout && !fsc_mode
-#if CONFIG_PAR_HIDING
-        && !enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
-    ) {
+    if (do_dropout && !fsc_mode && !enable_parity_hiding) {
       av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
                          cm->quant_params.base_qindex);
     }
@@ -1309,21 +1294,15 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
         av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, CCTX_NONE,
                        &txb_ctx, &dummy_rate_cost);
       }
-      if (do_dropout && !fsc_mode
-#if CONFIG_PAR_HIDING
-          && !enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
-      ) {
+      if (do_dropout && !fsc_mode && !enable_parity_hiding) {
         av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
                            cm->quant_params.base_qindex);
       }
     }
 #endif  // CONFIG_ATC_DCTX_ALIGNED
-#if CONFIG_PAR_HIDING
     if (!quant_param.use_optimize_b && enable_parity_hiding) {
       parity_hiding_trellis_off(cpi, x, plane, block, tx_size, tx_type);
     }
-#endif
   }
 
   if (*eob) {

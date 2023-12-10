@@ -12221,7 +12221,6 @@ static const aom_cdf_prob av1_default_coeff_base_eob_multi_cdfs
                                         { AOM_CDF3(10923, 21845) },
                                         { AOM_CDF3(10923, 21845) } } } } };
 #endif  // CONFIG_ATC
-#if CONFIG_PAR_HIDING
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
     av1_default_coeff_base_ph_cdfs[TOKEN_CDF_Q_CTXS][COEFF_BASE_PH_CONTEXTS]
@@ -12355,5 +12354,4 @@ static const aom_cdf_prob
                                     { AOM_CDF4(8902, 15844, 21619) } },
                                 };
 #endif  // CONFIG_ENTROPY_PARA
-#endif
 #endif  // AOM_AV1_COMMON_TOKEN_CDFS_H_

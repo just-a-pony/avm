@@ -499,9 +499,7 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_REFINEMV
   &g_av1_codec_arg_defs.enable_refinemv,
 #endif  // CONFIG_REFINEMV
-#if CONFIG_PAR_HIDING
   &g_av1_codec_arg_defs.enable_parity_hiding,
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_EXTENDED_WARP_PREDICTION
   &g_av1_codec_arg_defs.enable_warped_causal,
   &g_av1_codec_arg_defs.enable_warp_delta,
@@ -755,9 +753,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_reduced_reference_set = 0;
   config->reduced_tx_type_set = 0;
   config->enable_refmvbank = 1;
-#if CONFIG_PAR_HIDING
   config->enable_parity_hiding = 1;
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   config->enable_mrsse = 0;
 #endif  // CONFIG_MRSSE
@@ -1692,9 +1688,7 @@ static void show_stream_config(struct stream_state *stream,
 
   fprintf(stdout,
           "Tool setting (Others)          : Palette (%d), "
-#if CONFIG_PAR_HIDING
           "ParityHiding (%d), "
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_IBC_SR_EXT
           "IntraBCExt (%d), "
 #endif  // CONFIG_IBC_SR_EXT
@@ -1702,10 +1696,7 @@ static void show_stream_config(struct stream_state *stream,
           "MRSSE (%d), "
 #endif  // CONFIG_MRSSE
           "IntraBC (%d)\n",
-          encoder_cfg->enable_palette,
-#if CONFIG_PAR_HIDING
-          encoder_cfg->enable_parity_hiding,
-#endif  // CONFIG_PAR_HIDING
+          encoder_cfg->enable_palette, encoder_cfg->enable_parity_hiding,
 #if CONFIG_IBC_SR_EXT
           encoder_cfg->enable_intrabc_ext,
 #endif  // CONFIG_IBC_SR_EXT

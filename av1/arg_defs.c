@@ -808,11 +808,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_refmvbank = ARG_DEF(NULL, "enable-refmvbank", 1,
                               "Enable reference MV bank (0: false "
                               "1: true)"),
-#if CONFIG_PAR_HIDING
   .enable_parity_hiding = ARG_DEF(NULL, "enable-parity-hiding", 1,
                                   "Enable parity hiding "
                                   "(0:false), 1:true (default)"),
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   .enable_mrsse = ARG_DEF(NULL, "enable-mrsse", 1,
                           "Enable mean removed sse "

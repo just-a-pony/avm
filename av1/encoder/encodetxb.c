@@ -25,7 +25,6 @@
 #include "av1/encoder/rdopt.h"
 #include "av1/encoder/tokenize.h"
 
-#if CONFIG_PAR_HIDING
 typedef struct {
   tran_low_t qc;
   tran_low_t dqc;      // dequantized qc
@@ -65,7 +64,6 @@ void set_coeff_info(tran_low_t qc_low, tran_low_t dqc_low, tran_low_t qc_up,
     }
   }
 }
-#endif  // CONFIG_PAR_HIDING
 
 typedef struct LevelDownStats {
   int update;
@@ -915,7 +913,6 @@ void av1_write_coeffs_txb_skip(const AV1_COMMON *const cm, MACROBLOCK *const x,
   }
 }
 
-#if CONFIG_PAR_HIDING
 static INLINE void write_coeff_hidden(aom_writer *w, TX_CLASS tx_class,
                                       const int16_t *scan, int bwl,
                                       uint8_t *levels, const int level,
@@ -938,7 +935,6 @@ static INLINE void write_coeff_hidden(aom_writer *w, TX_CLASS tx_class,
     }
   }
 }
-#endif  // CONFIG_PAR_HIDING
 
 void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
                           aom_writer *w, int blk_row, int blk_col, int plane,
@@ -1073,16 +1069,11 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
 
   const int bwl = get_txb_bwl(tx_size);
 
-#if CONFIG_PAR_HIDING
   bool enable_parity_hiding = cm->features.allow_parity_hiding &&
                               !xd->lossless[xd->mi[0]->segment_id] &&
                               plane == PLANE_TYPE_Y &&
                               get_primary_tx_type(tx_type) < IDTX;
-  for (int c = eob - 1; c > 0; --c)
-#else
-  for (int c = eob - 1; c >= 0; --c)
-#endif  // CONFIG_PAR_HIDING
-  {
+  for (int c = eob - 1; c > 0; --c) {
     const int pos = scan[c];
     const int coeff_ctx = coeff_contexts[pos];
     const tran_low_t v = tcoeff[pos];
@@ -1174,7 +1165,6 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
 #endif  // CONFIG_ATC
   }
 
-#if CONFIG_PAR_HIDING
   int num_nz = 0;
   bool is_hidden = false;
   if (enable_parity_hiding) {
@@ -1282,7 +1272,6 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
     }
 #endif  // CONFIG_ATC
   }
-#endif  // CONFIG_PAR_HIDING
 
 #if DEBUG_EXTQUANT
   for (int c = 0; c < eob; ++c) {
@@ -1328,7 +1317,6 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
         aom_write_bit(w, sign);
 #endif  // CONFIG_CONTEXT_DERIVATION
       }
-#if CONFIG_PAR_HIDING
 #if CONFIG_ATC
       if (is_hidden && c == 0) {
         int q_index = level >> 1;
@@ -1357,24 +1345,6 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
           write_golomb(w, level - COEFF_BASE_RANGE - 1 - NUM_BASE_LEVELS);
       }
 #endif  // CONFIG_ATC
-#else
-#if CONFIG_ATC
-      const int pos = scan[c];
-      const int row = pos >> bwl;
-      const int col = pos - (row << bwl);
-      int limits = get_lf_limits(row, col, tx_class, plane);
-      if (limits) {
-        if (level > COEFF_BASE_RANGE + LF_NUM_BASE_LEVELS)
-          write_golomb(w, level - COEFF_BASE_RANGE - 1 - LF_NUM_BASE_LEVELS);
-      } else {
-        if (level > COEFF_BASE_RANGE + NUM_BASE_LEVELS)
-          write_golomb(w, level - COEFF_BASE_RANGE - 1 - NUM_BASE_LEVELS);
-      }
-#else
-      if (level > COEFF_BASE_RANGE + NUM_BASE_LEVELS)
-        write_golomb(w, level - COEFF_BASE_RANGE - 1 - NUM_BASE_LEVELS);
-#endif  // CONFIG_ATC
-#endif  // CONFIG_PAR_HIDING
     }
   }
 }
@@ -1741,12 +1711,8 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
     const struct macroblock_plane *p, const int eob,
     const PLANE_TYPE plane_type, const LV_MAP_COEFF_COST *const coeff_costs,
     const MACROBLOCKD *const xd, const TX_TYPE tx_type,
-    const CctxType cctx_type, const TX_CLASS tx_class, int reduced_tx_set_used
-#if CONFIG_PAR_HIDING
-    ,
-    bool enable_parity_hiding, const LV_MAP_COEFF_COST *const coeff_costs_ph
-#endif
-) {
+    const CctxType cctx_type, const TX_CLASS tx_class, int reduced_tx_set_used,
+    bool enable_parity_hiding, const LV_MAP_COEFF_COST *const coeff_costs_ph) {
   const tran_low_t *const qcoeff = p->qcoeff + BLOCK_OFFSET(block);
 #if CONFIG_CONTEXT_DERIVATION
   const struct macroblock_plane *pu = &x->plane[AOM_PLANE_U];
@@ -1954,7 +1920,6 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
     }
   }
   // c == 0 after previous loop
-#if CONFIG_PAR_HIDING
   int num_nz = 0;
   for (c = eob - 1; c > 0; --c) {
     const int pos = scan[c];
@@ -1979,7 +1944,6 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
     }
     return cost;
   }
-#endif
   {
     const int pos = scan[c];
     const tran_low_t v = qcoeff[pos];
@@ -2224,12 +2188,10 @@ int av1_cost_coeffs_txb(const AV1_COMMON *cm, const MACROBLOCK *x,
   }
 
   const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
-#if CONFIG_PAR_HIDING
   bool enable_parity_hiding = cm->features.allow_parity_hiding &&
                               !xd->lossless[xd->mi[0]->segment_id] &&
                               plane == PLANE_TYPE_Y &&
                               get_primary_tx_type(tx_type) < IDTX;
-#endif  // CONFIG_PAR_HIDING
 
   const MB_MODE_INFO *mbmi = xd->mi[0];
   if ((mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
@@ -2241,12 +2203,8 @@ int av1_cost_coeffs_txb(const AV1_COMMON *cm, const MACROBLOCK *x,
   } else {
     return warehouse_efficients_txb(
         cm, x, plane, block, tx_size, txb_ctx, p, eob, plane_type, coeff_costs,
-        xd, tx_type, cctx_type, tx_class, reduced_tx_set_used
-#if CONFIG_PAR_HIDING
-        ,
-        enable_parity_hiding, &x->coeff_costs.coeff_costs[0][0]
-#endif  // CONFIG_PAR_HIDING
-    );
+        xd, tx_type, cctx_type, tx_class, reduced_tx_set_used,
+        enable_parity_hiding, &x->coeff_costs.coeff_costs[0][0]);
   }
 }
 
@@ -2627,11 +2585,8 @@ static INLINE void update_coeff_general(
     ,
     int plane
 #endif  // CONFIG_CONTEXT_DERIVATION || CONFIG_ATC
-#if CONFIG_PAR_HIDING
     ,
-    coeff_info *coef_info, bool enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
-) {
+    coeff_info *coef_info, bool enable_parity_hiding) {
   const int dqv = get_dqv(dequant, scan[si], iqmatrix);
   const int ci = scan[si];
   const tran_low_t qc = qcoeff[ci];
@@ -2725,19 +2680,15 @@ static INLINE void update_coeff_general(
       levels[get_padded_idx(ci, bwl)] = AOMMIN(abs_qc_low, INT8_MAX);
       *accu_rate += rate_low;
       *accu_dist += dist_low - dist0;
-#if CONFIG_PAR_HIDING
       if (enable_parity_hiding)
         set_coeff_info(qc_low, dqc_low, qc, dqc, rd_low, rd, rate_low, rate,
                        false, coef_info, si);
-#endif  // CONFIG_PAR_HIDING
     } else {
       *accu_rate += rate;
       *accu_dist += dist - dist0;
-#if CONFIG_PAR_HIDING
       if (enable_parity_hiding)
         set_coeff_info(qc_low, dqc_low, qc, dqc, rd_low, rd, rate_low, rate,
                        true, coef_info, si);
-#endif  // CONFIG_PAR_HIDING
     }
   }
 }
@@ -2751,11 +2702,7 @@ static AOM_FORCE_INLINE void update_coeff_simple(
     const int32_t *dequant, const int16_t *scan,
     const LV_MAP_COEFF_COST *txb_costs, const tran_low_t *tcoeff,
     tran_low_t *qcoeff, tran_low_t *dqcoeff, uint8_t *levels,
-    const qm_val_t *iqmatrix
-#if CONFIG_PAR_HIDING
-    ,
-    coeff_info *coef_info, bool enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
+    const qm_val_t *iqmatrix, coeff_info *coef_info, bool enable_parity_hiding
 #if CONFIG_ATC
     ,
     int plane) {
@@ -2827,7 +2774,6 @@ static AOM_FORCE_INLINE void update_coeff_simple(
     const int64_t rd_low = RDCOST(rdmult, rate_low, dist_low);
 
     if (rd_low < rd) {
-#if CONFIG_PAR_HIDING
       tran_low_t qc_low = qc < 0 ? -abs_qc_low : abs_qc_low;
       tran_low_t dqc_low = qc < 0 ? -abs_dqc_low : abs_dqc_low;
       if (enable_parity_hiding)
@@ -2835,22 +2781,15 @@ static AOM_FORCE_INLINE void update_coeff_simple(
                        rate, false, coef_info, si);
       qcoeff[ci] = qc_low;
       dqcoeff[ci] = dqc_low;
-#else
-      const int sign = (qc < 0) ? 1 : 0;
-      qcoeff[ci] = (-sign ^ abs_qc_low) + sign;
-      dqcoeff[ci] = (-sign ^ abs_dqc_low) + sign;
-#endif  // CONFIG_PAR_HIDING
       levels[get_padded_idx(ci, bwl)] = AOMMIN(abs_qc_low, INT8_MAX);
       *accu_rate += rate_low;
     } else {
       *accu_rate += rate;
-#if CONFIG_PAR_HIDING
       tran_low_t qc_low = qc < 0 ? -abs_qc_low : abs_qc_low;
       tran_low_t dqc_low = qc < 0 ? -abs_dqc_low : abs_dqc_low;
       if (enable_parity_hiding)
         set_coeff_info(qc_low, dqc_low, qc, dqcoeff[ci], rd_low, rd, rate_low,
                        rate, true, coef_info, si);
-#endif  // CONFIG_PAR_HIDING
     }
   }
 }
@@ -2874,11 +2813,8 @@ static AOM_FORCE_INLINE void update_coeff_eob(
     ,
     int plane
 #endif  // CONFIG_CONTEXT_DERIVATION || CONFIG_ATC
-#if CONFIG_PAR_HIDING
     ,
-    coeff_info *coef_info, bool enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
-) {
+    coeff_info *coef_info, bool enable_parity_hiding) {
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
   const int dqv = get_dqv(dequant, scan[si], iqmatrix);
@@ -2915,10 +2851,8 @@ static AOM_FORCE_INLINE void update_coeff_eob(
     *accu_rate += txb_costs->base_cost[coeff_ctx][0];
 #endif  // CONFIG_ATC
   } else {
-#if CONFIG_PAR_HIDING
     int64_t rd_eob_low = INT64_MAX >> 1;
     int rate_eob_low = INT32_MAX >> 1;
-#endif  // CONFIG_PAR_HIDING
     int lower_level = 0;
     const tran_low_t abs_qc = abs(qc);
     const tran_low_t tqc = tcoeff[ci];
@@ -2976,10 +2910,8 @@ static AOM_FORCE_INLINE void update_coeff_eob(
           );
       rd_low = RDCOST(rdmult, *accu_rate + rate_low, *accu_dist + dist_low);
     }
-#if CONFIG_PAR_HIDING
     int rate_up_backup = rate;
     int64_t rd_up_backup = rd;
-#endif  // CONFIG_PAR_HIDING
     int lower_level_new_eob = 0;
     const int new_eob = si + 1;
     const int coeff_ctx_new_eob = get_lower_levels_ctx_eob(bwl, height, si);
@@ -3005,10 +2937,8 @@ static AOM_FORCE_INLINE void update_coeff_eob(
                        );
     int64_t dist_new_eob = dist;
     int64_t rd_new_eob = RDCOST(rdmult, rate_coeff_eob, dist_new_eob);
-#if CONFIG_PAR_HIDING
     int rateeobup = rate_coeff_eob;
     int64_t rdeobup = rd_new_eob;
-#endif  // CONFIG_PAR_HIDING
     if (abs_qc_low > 0) {
       const int rate_coeff_eob_low =
           new_eob_cost + get_coeff_cost_eob(ci, abs_qc_low, sign,
@@ -3026,10 +2956,8 @@ static AOM_FORCE_INLINE void update_coeff_eob(
       const int64_t dist_new_eob_low = dist_low;
       const int64_t rd_new_eob_low =
           RDCOST(rdmult, rate_coeff_eob_low, dist_new_eob_low);
-#if CONFIG_PAR_HIDING
       rate_eob_low = rate_coeff_eob_low;
       rd_eob_low = rd_new_eob_low;
-#endif  // CONFIG_PAR_HIDING
       if (rd_new_eob_low < rd_new_eob) {
         lower_level_new_eob = 1;
         rd_new_eob = rd_new_eob_low;
@@ -3057,20 +2985,16 @@ static AOM_FORCE_INLINE void update_coeff_eob(
       *accu_rate = rate_coeff_eob;
       *accu_dist = dist_new_eob;
       lower_level = lower_level_new_eob;
-#if CONFIG_PAR_HIDING
       if (abs_qc > 1 && enable_parity_hiding) {
         set_coeff_info(qc_low, dqc_low, qc, dqc, rd_eob_low, rdeobup,
                        rate_eob_low, rateeobup, !lower_level, coef_info, si);
       }
-#endif  // CONFIG_PAR_HIDING
     } else {
       *accu_rate += rate;
       *accu_dist += dist;
-#if CONFIG_PAR_HIDING
       if (enable_parity_hiding)
         set_coeff_info(qc_low, dqc_low, qc, dqc, rd_low, rd_up_backup, rate_low,
                        rate_up_backup, !lower_level, coef_info, si);
-#endif  // CONFIG_PAR_HIDING
     }
 
     if (lower_level) {
@@ -3105,7 +3029,6 @@ static INLINE void update_skip(int *accu_rate, int64_t accu_dist, int *eob,
   }
 }
 
-#if CONFIG_PAR_HIDING
 // This funtion returns the rate saving if the parity of current
 // DC coefficient is hidden.
 static AOM_FORCE_INLINE int rate_save(const LV_MAP_COEFF_COST *txb_costs,
@@ -3419,7 +3342,6 @@ static AOM_FORCE_INLINE bool parity_hide_tb(
     return true;
   }
 }
-#endif  // CONFIG_PAR_HIDING
 
 int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                          int block, TX_SIZE tx_size, TX_TYPE tx_type,
@@ -3465,7 +3387,6 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
   const int eob_multi_size = txsize_log2_minus4[tx_size];
   const LV_MAP_EOB_COST *txb_eob_costs =
       &coeff_costs->eob_costs[eob_multi_size][plane_type];
-#if CONFIG_PAR_HIDING
   const LV_MAP_COEFF_COST *txb_costs_ph =
       &coeff_costs->coeff_costs[0][plane_type];
   bool enable_parity_hiding = cm->features.allow_parity_hiding &&
@@ -3477,7 +3398,6 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
     coef_info[scan_idx].tunable = false;
     coef_info[scan_idx].upround = false;
   }
-#endif  // CONFIG_PAR_HIDING
 
   const int rshift =
       (sharpness +
@@ -3559,11 +3479,8 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                          ,
                          plane
 #endif  // CONFIG_CONTEXT_DERIVATION || CONFIG_ATC
-#if CONFIG_PAR_HIDING
                          ,
-                         coef_info, enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
-    );
+                         coef_info, enable_parity_hiding);
     --si;
   } else {
     assert(abs_qc == 1);
@@ -3587,7 +3504,6 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
     accu_dist += dist - dist0;
     --si;
   }
-#if CONFIG_PAR_HIDING
   for (; si >= 0 && nz_num <= max_nz_num; --si) {
     update_coeff_eob(&accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si, tx_size,
 #if CONFIG_EOB_POS_LUMA
@@ -3607,57 +3523,12 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                      ,
                      coef_info, enable_parity_hiding);
   }
-#else
-#if CONFIG_CONTEXT_DERIVATION
-#if CONFIG_ATC
-#define UPDATE_COEFF_EOB_CASE(tx_class_literal)                                \
-  case tx_class_literal:                                                       \
-    for (; si >= 0 && nz_num <= max_nz_num; --si) {                            \
-      update_coeff_eob(&accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si,       \
-                       tx_size, tx_class_literal, txb_ctx->dc_sign_ctx,        \
-                       rdmult, shift, dequant, scan, txb_eob_costs, txb_costs, \
-                       tcoeff, qcoeff, dqcoeff, levels, sharpness, iqmatrix,   \
-                       xd->tmp_sign, plane);                                   \
-    }                                                                          \
-    break;
-#else
-#define UPDATE_COEFF_EOB_CASE(tx_class_literal)                                \
-  case tx_class_literal:                                                       \
-    for (; si >= 0 && nz_num <= max_nz_num; --si) {                            \
-      update_coeff_eob(&accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si,       \
-                       tx_size, tx_class_literal, txb_ctx->dc_sign_ctx,        \
-                       rdmult, shift, dequant, scan, txb_eob_costs, txb_costs, \
-                       tcoeff, qcoeff, dqcoeff, levels, sharpness, iqmatrix,   \
-                       xd->tmp_sign, plane);                                   \
-    }                                                                          \
-    break;
-#endif  // CONFIG_ATC
-#else
-#define UPDATE_COEFF_EOB_CASE(tx_class_literal)                                \
-  case tx_class_literal:                                                       \
-    for (; si >= 0 && nz_num <= max_nz_num; --si) {                            \
-      update_coeff_eob(&accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si,       \
-                       tx_size, tx_class_literal, txb_ctx->dc_sign_ctx,        \
-                       rdmult, shift, dequant, scan, txb_eob_costs, txb_costs, \
-                       tcoeff, qcoeff, dqcoeff, levels, sharpness, iqmatrix);  \
-    }                                                                          \
-    break;
-#endif  // CONFIG_CONTEXT_DERIVATION
-  switch (tx_class) {
-    UPDATE_COEFF_EOB_CASE(TX_CLASS_2D);
-    UPDATE_COEFF_EOB_CASE(TX_CLASS_HORIZ);
-    UPDATE_COEFF_EOB_CASE(TX_CLASS_VERT);
-#undef UPDATE_COEFF_EOB_CASE
-    default: assert(false);
-  }
-#endif  // CONFIG_PAR_HIDING
 
   if (si == -1 && nz_num <= max_nz_num) {
     update_skip(&accu_rate, accu_dist, &eob, nz_num, nz_ci, rdmult, skip_cost,
                 non_skip_cost, qcoeff, dqcoeff, sharpness);
   }
 
-#if CONFIG_PAR_HIDING
   for (; si >= 1; --si) {
     update_coeff_simple(&accu_rate, si, eob,
 #if !CONFIG_ATC
@@ -3672,41 +3543,6 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #endif  // CONFIG_ATC
     );
   }
-#else
-#if CONFIG_ATC
-#define UPDATE_COEFF_SIMPLE_CASE(tx_class_literal)                            \
-  case tx_class_literal:                                                      \
-    for (; si >= 1; --si) {                                                   \
-      update_coeff_simple(&accu_rate, si, eob, tx_class_literal, bwl, rdmult, \
-                          shift, dequant, scan, txb_costs, tcoeff, qcoeff,    \
-                          dqcoeff, levels, iqmatrix, plane);                  \
-    }                                                                         \
-    break;
-  switch (tx_class) {
-    UPDATE_COEFF_SIMPLE_CASE(TX_CLASS_2D);
-    UPDATE_COEFF_SIMPLE_CASE(TX_CLASS_HORIZ);
-    UPDATE_COEFF_SIMPLE_CASE(TX_CLASS_VERT);
-#undef UPDATE_COEFF_SIMPLE_CASE
-    default: assert(false);
-  }
-#else
-#define UPDATE_COEFF_SIMPLE_CASE(tx_class_literal)                             \
-  case tx_class_literal:                                                       \
-    for (; si >= 1; --si) {                                                    \
-      update_coeff_simple(&accu_rate, si, eob, tx_size, tx_class_literal, bwl, \
-                          rdmult, shift, dequant, scan, txb_costs, tcoeff,     \
-                          qcoeff, dqcoeff, levels, iqmatrix);                  \
-    }                                                                          \
-    break;
-  switch (tx_class) {
-    UPDATE_COEFF_SIMPLE_CASE(TX_CLASS_2D);
-    UPDATE_COEFF_SIMPLE_CASE(TX_CLASS_HORIZ);
-    UPDATE_COEFF_SIMPLE_CASE(TX_CLASS_VERT);
-#undef UPDATE_COEFF_SIMPLE_CASE
-    default: assert(false);
-  }
-#endif  // CONFIG_ATC
-#endif  // CONFIG_PAR_HIDING
 
   // DC position
   if (si == 0) {
@@ -3727,14 +3563,10 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                          ,
                          plane
 #endif  // CONFIG_CONTEXT_DERIVATION || CONFIG_ATC
-#if CONFIG_PAR_HIDING
                          ,
-                         coef_info, enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
-    );
+                         coef_info, enable_parity_hiding);
   }
 
-#if CONFIG_PAR_HIDING
   if (enable_parity_hiding) {
     parity_hide_tb(eob, scan, levels, bwl, rdmult, shift, txb_costs,
                    txb_costs_ph, dequant, iqmatrix, txb_ctx->dc_sign_ctx,
@@ -3751,7 +3583,6 @@ int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
   }
 
   aom_free(coef_info);
-#endif  // CONFIG_PAR_HIDING
 
 #if CONFIG_ATC_DCTX_ALIGNED
   set_bob(x, plane, block, tx_size, tx_type);
@@ -4200,7 +4031,6 @@ void av1_update_and_record_txb_skip_context(int plane, int block, int blk_row,
                            blk_col, blk_row);
 }
 
-#if CONFIG_PAR_HIDING
 void update_coeff_ctx_hiden(TX_CLASS tx_class, const int16_t *scan, int bwl,
                             uint8_t *levels, int level,
                             base_cdf_arr base_cdf_ph, br_cdf_arr br_cdf_ph
@@ -4237,7 +4067,6 @@ void update_coeff_ctx_hiden(TX_CLASS tx_class, const int16_t *scan, int bwl,
     }
   }
 }
-#endif  // CONFIG_PAR_HIDING
 void av1_update_and_record_txb_context(int plane, int block, int blk_row,
                                        int blk_col, BLOCK_SIZE plane_bsize,
                                        TX_SIZE tx_size, void *arg) {
@@ -4431,15 +4260,11 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
                             plane
 #endif  // CONFIG_ATC
     );
-#if CONFIG_PAR_HIDING
     bool enable_parity_hiding = cm->features.allow_parity_hiding &&
                                 !xd->lossless[xd->mi[0]->segment_id] &&
                                 plane == PLANE_TYPE_Y &&
                                 get_primary_tx_type(tx_type) < IDTX;
     for (int c = eob - 1; c > 0; --c) {
-#else
-    for (int c = eob - 1; c >= 0; --c) {
-#endif  // CONFIG_PAR_HIDING
       const int pos = scan[c];
       const int coeff_ctx = coeff_contexts[pos];
       const tran_low_t v = qcoeff[pos];
@@ -4605,7 +4430,6 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
 #endif  // CONFIG_ATC
     }
 
-#if CONFIG_PAR_HIDING
     bool is_hidden = false;
     int num_nz = 0;
     for (int c = eob - 1; c > 0; --c) {
@@ -4789,7 +4613,6 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
       }
 #endif  // CONFIG_ATC
     }
-#endif  // CONFIG_PAR_HIDING
 
     // Update the context needed to code the DC sign (if applicable)
     if (tcoeff[0] != 0) {

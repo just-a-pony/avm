@@ -171,13 +171,11 @@ typedef struct {
   int lps_lf_cost[LF_LEVEL_CONTEXTS]
                  [COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1];
 #endif  // CONFIG_ATC
-#if CONFIG_PAR_HIDING
   //! Cost for encoding the base level of a parity-hidden coefficient
   int base_ph_cost[COEFF_BASE_PH_CONTEXTS][4];
   //! Cost for encoding an increment to the parity-hidden coefficient
   int lps_ph_cost[COEFF_BR_PH_CONTEXTS]
                  [COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1];
-#endif
   /*! \brief Cost for encoding the base_eob of a level.
    *
    * Decoder uses base_eob to derive the base_level as base_eob := base_eob+1.

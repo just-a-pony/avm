@@ -47,10 +47,8 @@ extern "C" {
 
 #define EOB_MAX_SYMS 11
 
-#if CONFIG_PAR_HIDING
 #define COEFF_BASE_PH_CONTEXTS 5
 #define COEFF_BR_PH_CONTEXTS 7
-#endif  // CONFIG_PAR_HIDING
 
 #if CONFIG_ATC
 // Number of coefficient coding contexts for the low-frequency region

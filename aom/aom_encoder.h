@@ -593,12 +593,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_refmvbank;
-#if CONFIG_PAR_HIDING
   /*!\brief enable parity hiding for coefficients coding
    *
    */
   unsigned int enable_parity_hiding;
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   /*!\brief enable mrsse for mean removed SSE
    *

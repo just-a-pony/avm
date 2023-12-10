@@ -1302,7 +1302,6 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
     }
   }
 
-#if CONFIG_PAR_HIDING
   const int tx_size = TX_4X4;
   const int plane_type = 0;
   LV_MAP_COEFF_COST *pcost = &coeff_costs->coeff_costs[tx_size][plane_type];
@@ -1332,7 +1331,6 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
           pcost->lps_ph_cost[ctx][i] - pcost->lps_ph_cost[ctx][i - 1];
     }
   }
-#endif  // CONFIG_PAR_HIDING
 }
 
 #if CONFIG_FLEX_MVRES

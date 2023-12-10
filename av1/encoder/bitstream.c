@@ -5352,9 +5352,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_literal(wb, seq_params->enable_cfl_ds_filter, 2);
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
 
-#if CONFIG_PAR_HIDING
   aom_wb_write_bit(wb, seq_params->enable_parity_hiding);
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_EXT_RECUR_PARTITIONS
   aom_wb_write_bit(wb, seq_params->enable_ext_partitions);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
@@ -6074,13 +6072,11 @@ static AOM_INLINE void write_uncompressed_header_obu(
 #endif
   }
 
-#if CONFIG_PAR_HIDING
   if (features->coded_lossless || !cm->seq_params.enable_parity_hiding) {
     assert(features->allow_parity_hiding == false);
   } else {
     aom_wb_write_bit(wb, features->allow_parity_hiding);
   }
-#endif  // CONFIG_PAR_HIDING
 
   // Write TX mode
   if (features->coded_lossless)

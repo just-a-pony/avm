@@ -82,10 +82,8 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   av1_copy(cm->fc->eob_flag_cdf256, av1_default_eob_multi256_cdfs[index]);
   av1_copy(cm->fc->eob_flag_cdf512, av1_default_eob_multi512_cdfs[index]);
   av1_copy(cm->fc->eob_flag_cdf1024, av1_default_eob_multi1024_cdfs[index]);
-#if CONFIG_PAR_HIDING
   av1_copy(cm->fc->coeff_base_ph_cdf, av1_default_coeff_base_ph_cdfs[index]);
   av1_copy(cm->fc->coeff_br_ph_cdf, av1_default_coeff_br_ph_cdfs[index]);
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_ATC_DCTX_ALIGNED
   av1_copy(cm->fc->coeff_base_bob_cdf,
            av1_default_coeff_base_bob_multi_cdfs[index]);
@@ -472,9 +470,7 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   }
 
 #endif  // CONFIG_FLEX_MVRES
-#if CONFIG_PAR_HIDING
   RESET_CDF_COUNTER(fc->coeff_base_ph_cdf, NUM_BASE_LEVELS + 2);
   RESET_CDF_COUNTER(fc->coeff_br_ph_cdf, BR_CDF_SIZE);
-#endif  // CONFIG_PAR_HIDING
   RESET_CDF_COUNTER(fc->cctx_type_cdf, CCTX_TYPES);
 }

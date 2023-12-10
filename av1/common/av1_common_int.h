@@ -554,9 +554,7 @@ typedef struct SequenceHeader {
                                      // the ith bit in least to most significant
                                      // order to 1.
 #endif                               // CONFIG_LR_FLEX_SYNTAX
-#if CONFIG_PAR_HIDING
-  uint8_t enable_parity_hiding;  // To turn on/off PAR_HIDING
-#endif                           // CONFIG_PAR_HIDING
+  uint8_t enable_parity_hiding;      // To turn on/off PAR_HIDING
 #if CONFIG_EXT_RECUR_PARTITIONS
   uint8_t enable_ext_partitions;  // enable extended partitions
 #endif                            // CONFIG_EXT_RECUR_PARTITIONS
@@ -777,12 +775,10 @@ typedef struct {
    */
   bool allow_pef;
 #endif  // CONFIG_PEF
-#if CONFIG_PAR_HIDING
   /*!
    * Enables/disables parity hiding.
    */
   bool allow_parity_hiding;
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_BAWP
   /*!
    * Enables/disables block adaptive weighted prediction

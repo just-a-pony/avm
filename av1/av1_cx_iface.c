@@ -250,9 +250,7 @@ struct av1_extracfg {
   unsigned int max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   int enable_refmvbank;
-#if CONFIG_PAR_HIDING
   int enable_parity_hiding;
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   unsigned int enable_mrsse;
 #endif  // CONFIG_MRSSE
@@ -603,9 +601,7 @@ static struct av1_extracfg default_extra_cfg = {
   0,    // max_drl_refbvs
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   1,    // enable_refmvbank
-#if CONFIG_PAR_HIDING
   1,    // enable_parity_hiding
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   0,
 #endif  // CONFIG_MRSSE
@@ -1092,9 +1088,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->max_drl_refbvs = extra_cfg->max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
-#if CONFIG_PAR_HIDING
   cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   cfg->enable_mrsse = extra_cfg->enable_mrsse;
 #endif  // CONFIG_MRSSE
@@ -1228,9 +1222,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->max_drl_refbvs = cfg->max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   extra_cfg->enable_refmvbank = cfg->enable_refmvbank;
-#if CONFIG_PAR_HIDING
   extra_cfg->enable_parity_hiding = cfg->enable_parity_hiding;
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   extra_cfg->enable_mrsse = cfg->enable_mrsse;
 #endif  // CONFIG_MRSSE
@@ -1540,9 +1532,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   tool_cfg->enable_affine_refine =
       extra_cfg->enable_opfl_refine ? extra_cfg->enable_affine_refine : 0;
 #endif  // CONFIG_AFFINE_REFINEMENT
-#if CONFIG_PAR_HIDING
   tool_cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   tool_cfg->enable_mrsse = extra_cfg->enable_mrsse;
 #endif  // CONFIG_MRSSE
@@ -4226,11 +4216,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_refmvbank,
                               argv, err_string)) {
     extra_cfg.enable_refmvbank = arg_parse_int_helper(&arg, err_string);
-#if CONFIG_PAR_HIDING
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_parity_hiding,
                               argv, err_string)) {
     extra_cfg.enable_parity_hiding = arg_parse_uint_helper(&arg, err_string);
-#endif  // CONFIG_PAR_HIDING
 #if CONFIG_MRSSE
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_mrsse, argv,
                               err_string)) {
@@ -4563,10 +4551,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         0,
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-        1,
-#if CONFIG_PAR_HIDING
-        1,
-#endif  // CONFIG_PAR_HIDING
+        1, 1,
 #if CONFIG_MRSSE
         0,
 #endif  // CONFIG_MRSSE

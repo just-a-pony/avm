@@ -1193,9 +1193,7 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
       if (quant_param_intra.use_optimize_b) {
         av1_optimize_b(cpi, x, plane, block, tx_size, best_tx_type, cctx_type,
                        txb_ctx, rate_cost);
-      }
-#if CONFIG_PAR_HIDING
-      else {
+      } else {
         bool enable_parity_hiding = cm->features.allow_parity_hiding &&
                                     !xd->lossless[mbmi->segment_id] &&
                                     plane == PLANE_TYPE_Y &&
@@ -1204,7 +1202,6 @@ static INLINE void recon_intra(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
           parity_hiding_trellis_off(cpi, x, plane, block, tx_size,
                                     best_tx_type);
       }
-#endif
     }
 
     // In CCTX, reconstruction for U plane relies on dqcoeffs of V plane, so the
@@ -2811,14 +2808,12 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
           av1_optimize_b(cpi, x, plane, block, tx_size, tx_type, CCTX_NONE,
                          txb_ctx, &rate_cost);
         } else {
-#if CONFIG_PAR_HIDING
           bool enable_parity_hiding = cm->features.allow_parity_hiding &&
                                       !xd->lossless[mbmi->segment_id] &&
                                       plane == PLANE_TYPE_Y &&
                                       primary_tx_type < IDTX;
           if (enable_parity_hiding)
             parity_hiding_trellis_off(cpi, x, plane, block, tx_size, tx_type);
-#endif
 
           rate_cost =
               cost_coeffs(cm, x, plane, block, tx_size, tx_type, CCTX_NONE,
