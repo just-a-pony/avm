@@ -261,13 +261,13 @@ typedef struct {
   //! Context used to encode the current mode.
   int16_t mode_context[MODE_CTX_REF_FRAMES];
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
   /*!
    * warp_param_stack is the warp candidate list.
    */
   WARP_CANDIDATE warp_param_stack[INTER_REFS_PER_FRAME]
                                  [MAX_WARP_REF_CANDIDATES];
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 } MB_MODE_INFO_EXT;
 
@@ -305,14 +305,14 @@ typedef struct {
   //! Offset of current coding block's coeff buffer relative to the sb.
   int cb_offset[MAX_MB_PLANE];
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
   //! warp_param_stack is the warp candidate list.
 #if CONFIG_COMPOUND_WARP_CAUSAL
   WARP_CANDIDATE warp_param_stack[2][MAX_WARP_REF_CANDIDATES];
 #else
   WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES];
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 } MB_MODE_INFO_EXT_FRAME;
 
@@ -963,10 +963,10 @@ typedef struct {
   //! inter single mode cost
   int inter_single_mode_cost[INTER_SINGLE_MODE_CONTEXTS][INTER_SINGLE_MODES];
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   //! inter warpmv mode cost
   int inter_warp_mode_cost[WARPMV_MODE_CONTEXT][2];
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   //! drl_mode_cost
   int drl_mode_cost[3][DRL_MODE_CONTEXTS][2];
@@ -1120,14 +1120,12 @@ typedef struct {
   int warp_delta_cost[BLOCK_SIZES_ALL][2];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_WARPMV
   //! warped_causal_warpmv_cost
 #if CONFIG_D149_CTX_MODELING_OPT
   int warped_causal_warpmv_cost[2];
 #else
   int warped_causal_warpmv_cost[BLOCK_SIZES_ALL][2];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARPMV
 
 #if CONFIG_REFINEMV
   //! refinemv_flag_cost
@@ -1136,18 +1134,14 @@ typedef struct {
 
   //! warp_delta_param_cost
   int warp_delta_param_cost[2][WARP_DELTA_NUM_SYMBOLS];
-#if CONFIG_WARP_REF_LIST
   //! warp_ref_idx_cost
   int warp_ref_idx_cost[3][WARP_REF_CONTEXTS][2];
-#if CONFIG_CWG_D067_IMPROVED_WARP
   //! warpmv_with_mvd_flag_cost
 #if CONFIG_D149_CTX_MODELING_OPT
   int warpmv_with_mvd_flag_cost[2];
 #else
   int warpmv_with_mvd_flag_cost[BLOCK_SIZES_ALL][2];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-#endif  // CONFIG_WARP_REF_LIST
   //! warp_extend_cost
   int warp_extend_cost[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2][2];
 #else

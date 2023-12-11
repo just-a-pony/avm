@@ -100,9 +100,9 @@ static INLINE PREDICTION_MODE compound_ref0_mode(PREDICTION_MODE mode) {
     GLOBALMV,       // GLOBALMV
     NEWMV,          // NEWMV
     NEWMV,          // AMVDNEWMV
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
     WARPMV,    // WARPMV
-#endif         // CONFIG_WARPMV
+#endif         // CONFIG_EXTENDED_WARP_PREDICTION
     NEARMV,    // NEAR_NEARMV
     NEARMV,    // NEAR_NEWMV
     NEWMV,     // NEW_NEARMV
@@ -151,9 +151,9 @@ static INLINE PREDICTION_MODE compound_ref1_mode(PREDICTION_MODE mode) {
     MB_MODE_COUNT,  // GLOBALMV
     MB_MODE_COUNT,  // NEWMV
     MB_MODE_COUNT,  // AMVDNEWMV
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
     MB_MODE_COUNT,  // WARPMV
-#endif              // CONFIG_WARPMV
+#endif              // CONFIG_EXTENDED_WARP_PREDICTION
     NEARMV,         // NEAR_NEARMV
     NEWMV,          // NEAR_NEWMV
     NEARMV,         // NEW_NEARMV
@@ -636,17 +636,15 @@ typedef struct MB_MODE_INFO {
   int_mv ref_bv;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
   /*! \brief Which index to use for warp base parameter. */
   uint8_t warp_ref_idx;
   /*! \brief Maximum number of warp reference indices to use for warp base
    * parameter. */
   uint8_t max_num_warp_candidates;
-#if CONFIG_CWG_D067_IMPROVED_WARP
   /*! \brief warpmv_with_mvd_flag. */
   uint8_t warpmv_with_mvd_flag;
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   /*! \brief Indicates if masked compound is used(1) or not (0). */
   uint8_t comp_group_idx : 1;
@@ -1776,7 +1774,7 @@ typedef struct {
   int rmb_sb_hits;
 } REF_MV_BANK;
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
 #define WARP_PARAM_BANK_SIZE 4
 
 /*! \brief Variables related to reference warp parameters bank. */
@@ -1798,8 +1796,8 @@ typedef struct {
    */
   int wpb_sb_hits;
 } WARP_PARAM_BANK;
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
-#endif  // CONFIG_WARP_REF_LIST
 #if CONFIG_SKIP_MODE_ENHANCEMENT
 /*! \brief Variables related to mvp list of skip mode.*/
 typedef struct {
@@ -1850,7 +1848,7 @@ typedef struct macroblockd {
   REF_MV_BANK ref_mv_bank; /*!< Ref mv bank to update */
   /**@}*/
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
   /**
    * \name Reference warp parameters bank info.
    */
@@ -1860,7 +1858,7 @@ typedef struct macroblockd {
   WARP_PARAM_BANK *warp_param_bank_pt; /*!< Pointer to bank to refer to */
 #endif                                 //! WARP_CU_BANK
   /**@}*/
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   /*!
    * True if current block transmits chroma information.
@@ -2140,7 +2138,7 @@ typedef struct macroblockd {
   SKIP_MODE_MVP_LIST skip_mvp_candidate_list;
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
   /*!
    * warp_param_stack contains the predicted warp parameters
    */
@@ -2150,7 +2148,7 @@ typedef struct macroblockd {
    * valid number of candidates in the warp_param_stack.
    */
   uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME];
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if !CONFIG_EXT_RECUR_PARTITIONS
   /*!
@@ -3601,9 +3599,9 @@ static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
 }
 
 static INLINE int is_interintra_allowed(const MB_MODE_INFO *mbmi) {
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   if (mbmi->mode == WARPMV) return 0;
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   return is_interintra_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]) &&
          is_interintra_allowed_mode(mbmi->mode) &&
@@ -3698,9 +3696,9 @@ static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
 #if CONFIG_BAWP
 static INLINE int av1_allow_bawp(const MB_MODE_INFO *mbmi, int mi_row,
                                  int mi_col) {
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   if (mbmi->mode == WARPMV) return 0;
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
 #endif  // CONFIG_TIP

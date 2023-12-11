@@ -784,7 +784,6 @@ int main(int argc, const char **argv) {
       "static const aom_cdf_prob "
       "default_warp_extend_cdf[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2]"
       "[CDF_SIZE(2)]");
-#if CONFIG_WARPMV
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.warped_causal_warpmv[0], probsfile, 1, cts_each_dim,
@@ -798,9 +797,7 @@ int main(int argc, const char **argv) {
       "static const aom_cdf_prob "
       "default_warped_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARPMV
 
-#if CONFIG_WARP_REF_LIST && CONFIG_CWG_D067_IMPROVED_WARP
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.warpmv_with_mvd_flag[0], probsfile, 1, cts_each_dim,
@@ -814,7 +811,6 @@ int main(int argc, const char **argv) {
       "static const aom_cdf_prob "
       "default_warpmv_with_mvd_flag_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARP_REF_LIST && CONFIG_CWG_D067_IMPROVED_WARP
 #else
   cts_each_dim[0] = BLOCK_SIZES_ALL;
   cts_each_dim[1] = MOTION_MODES;

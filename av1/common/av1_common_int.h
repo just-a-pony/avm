@@ -678,9 +678,9 @@ typedef struct {
 #if !CONFIG_EXTENDED_WARP_PREDICTION
   bool allow_warped_motion; /*!< If true, frame may use warped motion mode. */
 #endif
-#if CONFIG_CWG_D067_IMPROVED_WARP
+#if CONFIG_EXTENDED_WARP_PREDICTION
   bool allow_warpmv_mode; /*!< If true, frame may use WARPMV mode. */
-#endif                    // CONFIG_CWG_D067_IMPROVED_WARP
+#endif                    // CONFIG_EXTENDED_WARP_PREDICTION
   /*!
    * If true, using previous frames' motion vectors for prediction is allowed.
    */
@@ -3898,13 +3898,7 @@ static INLINE bool is_warp_mode(MOTION_MODE motion_mode) {
 // this function is used for two cases (a) to decide if WARP_EXTEND mode is
 // allowed or not (b) to derive the CDFs for WARPMV mode
 int allow_extend_nb(const AV1_COMMON *cm, const MACROBLOCKD *xd,
-                    const MB_MODE_INFO *mbmi
-#if CONFIG_WARPMV
-                    ,
-                    int *p_num_of_warp_neighbors
-#endif  // CONFIG_WARPMV
-
-);
+                    const MB_MODE_INFO *mbmi, int *p_num_of_warp_neighbors);
 
 #if CONFIG_COMPOUND_WARP_CAUSAL
 static INLINE int is_compound_warp_causal_allowed(const MB_MODE_INFO *mbmi) {
@@ -3920,7 +3914,6 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
   int enabled_motion_modes = cm->features.enabled_motion_modes;
 
-#if CONFIG_WARPMV
   // only WARP_DELTA and WARPED_CAUSAL are supported for WARPMV mode
   if (mbmi->mode == WARPMV) {
     int allowed_motion_mode_warpmv = (1 << WARP_DELTA);
@@ -3935,7 +3928,6 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     }
     return (allowed_motion_mode_warpmv & enabled_motion_modes);
   }
-#endif  // CONFIG_WARPMV
 
   if (mbmi->skip_mode || mbmi->ref_frame[0] == INTRA_FRAME) {
     return (1 << SIMPLE_TRANSLATION);
@@ -4012,28 +4004,15 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
 #else
   if (obmc_allowed && allow_warped_motion && mbmi->num_proj_ref >= 1
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
-#if CONFIG_WARPMV
-      && mbmi->mode != NEARMV
-#endif  // CONFIG_WARPMV
-  ) {
+      && mbmi->mode != NEARMV) {
     allowed_motion_modes |= (1 << WARPED_CAUSAL);
   }
 
   bool warp_extend_allowed = false;
   PREDICTION_MODE mode = mbmi->mode;
 
-  if (allow_warped_motion && (
-#if !CONFIG_WARPMV
-                                 mode == NEARMV ||
-#endif  // !CONFIG_WARPMV
-                                 mode == NEWMV)) {
-    warp_extend_allowed = allow_extend_nb(cm, xd, mbmi
-#if CONFIG_WARPMV
-                                          ,
-                                          NULL
-#endif  // CONFIG_WARPMV
-
-    );
+  if (allow_warped_motion && mode == NEWMV) {
+    warp_extend_allowed = allow_extend_nb(cm, xd, mbmi, NULL);
   }
 
   if (warp_extend_allowed) {

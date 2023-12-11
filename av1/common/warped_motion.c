@@ -1278,9 +1278,7 @@ int av1_extend_warp_model(const bool neighbor_is_above, const BLOCK_SIZE bsize,
 
   return 0;
 }
-#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
 // From the warp model, derive the MV in (x,y) position.
 // (x,y) is the horizontal and vertical position of the frame
 //(0,0) is the top-left co-ordinate of the frame
@@ -1312,14 +1310,6 @@ int_mv get_warp_motion_vector_xy_pos(const WarpedMotionParams *model,
     res.as_mv.col = model->wmmat[0] >> GM_TRANS_ONLY_PREC_DIFF;
     res.as_mv.row = model->wmmat[1] >> GM_TRANS_ONLY_PREC_DIFF;
 
-    // When extended warp prediction is enabled, the warp model can be derived
-    // from the neighbor. Neighbor may have different MV precision than current
-    // block. Therefore, this assertion is not valid when
-    // CONFIG_EXTENDED_WARP_PREDICTION is enabled
-#if !CONFIG_EXTENDED_WARP_PREDICTION
-    assert(IMPLIES(1 & (res.as_mv.row | res.as_mv.col),
-                   precision == MV_PRECISION_ONE_EIGHTH_PEL));
-#endif
 #if CONFIG_C071_SUBBLK_WARPMV
     if (precision < MV_PRECISION_HALF_PEL)
 #endif  // CONFIG_C071_SUBBLK_WARPMV
@@ -1467,4 +1457,4 @@ int get_model_from_corner_mvs(WarpedMotionParams *derive_model, int *pts,
 
   return 1;
 }
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION

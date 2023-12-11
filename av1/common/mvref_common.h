@@ -258,7 +258,7 @@ static INLINE int_mv get_block_mv(const MB_MODE_INFO *candidate,
   return candidate->mv[which_mv];
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 }
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
 // return derive MV from the ref_warp_model
 // ref_warp_model is extracted from the WRL listb before calling this function
 static INLINE int_mv get_mv_from_wrl(const MACROBLOCKD *xd,
@@ -286,7 +286,7 @@ static INLINE int_mv get_mv_from_wrl(const MACROBLOCKD *xd,
   );
   return mv;
 }
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 // Checks that the given mi_row, mi_col and search point
 // are inside the borders of the tile.
@@ -505,7 +505,7 @@ static INLINE aom_cdf_prob *av1_get_drl_cdf(FRAME_CONTEXT *ec_ctx,
     default: return ec_ctx->drl_cdf[2][ctx];
   }
 }
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
 // Get the cdf of the warp_ref_idx
 static INLINE aom_cdf_prob *av1_get_warp_ref_idx_cdf(FRAME_CONTEXT *ec_ctx,
                                                      int bit_idx) {
@@ -516,7 +516,8 @@ static INLINE aom_cdf_prob *av1_get_warp_ref_idx_cdf(FRAME_CONTEXT *ec_ctx,
     default: return ec_ctx->warp_ref_idx_cdf[2][ctx];
   }
 }
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+
 // TODO(jingning): Consider the use of lookup table for (num / den)
 // altogether.
 static int div_mult[32] = { 0,    16384, 8192, 5461, 4096, 3276, 2730, 2340,
@@ -594,24 +595,24 @@ void av1_find_mv_refs(
     ,
     int16_t *mode_context
 #endif  //! CONFIG_C076_INTER_MOD_CTX
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
     ,
     WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
     int max_num_of_warp_candidates,
     uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME]
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 );
 
 #if CONFIG_D072_SKIP_MODE_IMPROVE
 void get_skip_mode_ref_offsets(const AV1_COMMON *cm, int ref_order_hint[2]);
 #endif  // CONFIG_D072_SKIP_MODE_IMPROVE
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
 // Initialize the warp cadidate lists to invalid values
 void av1_initialize_warp_wrl_list(
     WARP_CANDIDATE warp_param_stack[][MAX_WARP_REF_CANDIDATES],
     uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME]);
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 // check a list of motion vectors by sad score using a number rows of pixels
 // above and a number cols of pixels in the left to select the one with best
@@ -955,11 +956,10 @@ void span_submv(const AV1_COMMON *cm, SUBMB_INFO **submi, int mi_row,
 #endif
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
-#if CONFIG_WARP_REF_LIST
 void av1_update_warp_param_bank(const AV1_COMMON *const cm,
                                 MACROBLOCKD *const xd,
                                 const MB_MODE_INFO *const mbmi);
-#endif  // CONFIG_WARP_REF_LIST
+
 // Decide what the base warp model should be when using WARP_DELTA.
 // The warp model to use is signalled as a delta from this.
 // The base model is stored into `params`, and can be modified further
@@ -1001,82 +1001,12 @@ void av1_update_warp_param_bank(const AV1_COMMON *const cm,
 //     predicted MV from the global model, because if we wanted the latter
 //     then we would have used the GLOBALMV mode.
 static INLINE void av1_get_warp_base_params(
-    const AV1_COMMON *cm,
-#if !CONFIG_WARP_REF_LIST
-    const MACROBLOCKD *xd,
-#endif  //! CONFIG_WARP_REF_LIST
-    const MB_MODE_INFO *mbmi,
-#if !CONFIG_WARP_REF_LIST
-    const CANDIDATE_MV *ref_mv_stack,
-#endif  //! CONFIG_WARP_REF_LIST
-    WarpedMotionParams *params, int_mv *center_mv
-#if CONFIG_WARP_REF_LIST
-    ,
-    const WARP_CANDIDATE *warp_param_stack
-#endif  // CONFIG_WARP_REF_LIST
-) {
+    const AV1_COMMON *cm, const MB_MODE_INFO *mbmi, WarpedMotionParams *params,
+    int_mv *center_mv, const WARP_CANDIDATE *warp_param_stack) {
   (void)cm;
 
-#if !CONFIG_WARP_REF_LIST
-  if (mbmi->mode != GLOBALMV) {
-    // Look at the reference block selected via the DRL.
-    // If it is warped, use that warp model as a base; otherwise, use global
-    // motion
-    const CANDIDATE_MV *ref = &ref_mv_stack[mbmi->ref_mv_idx];
-
-#if WARP_DELTA_REQUIRES_NEIGHBOR
-    bool ref_is_above =
-        xd->up_available && (ref->row_offset == -1 && ref->col_offset >= 0);
-    bool ref_is_left =
-        xd->left_available && (ref->col_offset == -1 && ref->row_offset >= 0);
-    bool ref_is_adjacent = ref_is_above || ref_is_left;
-    bool can_use_ref = ref_is_adjacent;
-#else
-    bool ref_is_spatial = (ref->row_offset != OFFSET_NONSPATIAL) &&
-                          (ref->col_offset != OFFSET_NONSPATIAL);
-    bool can_use_ref = ref_is_spatial;
-#endif
-
-    if (can_use_ref) {
-      const MB_MODE_INFO *ref_mi =
-          xd->mi[ref->row_offset * xd->mi_stride + ref->col_offset];
-
-      bool ref_is_warped = is_warp_mode(ref_mi->motion_mode);
-
-      if (ref_is_warped) {
-        *params = ref_mi->wm_params[0];
-        if (center_mv != NULL) {
-          if (mbmi->mode == NEARMV) {
-            BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
-            int mi_row = xd->mi_row;
-            int mi_col = xd->mi_col;
-#if CONFIG_FLEX_MVRES
-            *center_mv = get_warp_motion_vector(xd, &ref_mi->wm_params[0],
-                                                mbmi->pb_mv_precision, bsize,
-                                                mi_col, mi_row);
-#else
-            const int allow_high_precision_mv =
-                cm->features.allow_high_precision_mv;
-            const int force_integer_mv =
-                cm->features.cur_frame_force_integer_mv;
-            *center_mv = get_warp_motion_vector(
-                xd, &ref_mi->wm_params[0], allow_high_precision_mv, bsize,
-                mi_col, mi_row, force_integer_mv);
-#endif
-
-          } else {
-            *center_mv = mbmi->mv[0];
-          }
-        }
-        return;
-      }
-    }
-  }
-  *params = xd->global_motion[mbmi->ref_frame[0]];
-#else
   assert(mbmi->warp_ref_idx < mbmi->max_num_warp_candidates);
   *params = warp_param_stack[mbmi->warp_ref_idx].wm_params;
-#endif  //! CONFIG_WARP_REF_LIST
 
   if (center_mv != NULL) {
     *center_mv = mbmi->mv[0];
@@ -1192,23 +1122,18 @@ static INLINE int av1_get_warp_extend_ctx2(const MACROBLOCKD *xd,
 int get_extend_base_pos(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                         const MB_MODE_INFO *mbmi, int mvp_row_offset,
                         int mvp_col_offset, POSITION *base_pos);
-#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
-#if CONFIG_WARP_REF_LIST
 void av1_find_warp_delta_base_candidates(
     const MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
     WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
     WARP_CANDIDATE spatial_candidates[MAX_WARP_REF_CANDIDATES],
     uint8_t num_wrl_cand, uint8_t *p_valid_num_candidates);
-#endif  // CONFIG_WARP_REF_LIST
 
-#if CONFIG_WARPMV
 bool is_warp_candidate_inside_of_frame(const AV1_COMMON *cm,
                                        const MACROBLOCKD *xd, int_mv cand_mv);
 int16_t inter_warpmv_mode_ctx(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                               const MB_MODE_INFO *mbmi);
-
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 static INLINE int is_ref_motion_field_eligible(
     const AV1_COMMON *const cm, const RefCntBuffer *const start_frame_buf) {
@@ -1223,11 +1148,11 @@ static INLINE int is_ref_motion_field_eligible(
   return 1;
 }
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
+#if CONFIG_EXTENDED_WARP_PREDICTION
 // Check all 3 neighbors to generate projected points
 int generate_points_from_corners(const MACROBLOCKD *xd, int *pts, int *mvs,
                                  int *np, MV_REFERENCE_FRAME ref_frame);
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #ifdef __cplusplus
 }  // extern "C"

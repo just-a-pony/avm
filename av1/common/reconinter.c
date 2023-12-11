@@ -5172,7 +5172,7 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                 int build_for_obmc, int bw, int bh, int mi_x,
                                 int mi_y, uint16_t **mc_buf,
                                 CalcSubpelParamsFunc calc_subpel_params_func) {
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   // just for debugging purpose
   // Can be removed later on
   if (mi->mode == WARPMV) {
@@ -5184,7 +5184,7 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
 #endif  // CONFIG_SEP_COMP_DRL
     assert(mi->motion_mode == WARP_DELTA || mi->motion_mode == WARPED_CAUSAL);
   }
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
   if (is_sub8x8_inter(cm, xd, mi, plane, is_intrabc_block(mi, xd->tree_type),
                       build_for_obmc)) {
 #if !CONFIG_EXT_RECUR_PARTITIONS

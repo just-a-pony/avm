@@ -371,13 +371,13 @@ static INLINE void av1_copy_mbmi_ext_to_mbmi_ext_frame(
   memcpy(mbmi_ext_best->global_mvs, mbmi_ext->global_mvs,
          sizeof(mbmi_ext->global_mvs));
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
   if (ref_frame_type < INTER_REFS_PER_FRAME) {
     memcpy(mbmi_ext_best->warp_param_stack,
            mbmi_ext->warp_param_stack[ref_frame_type],
            sizeof(mbmi_ext->warp_param_stack[MAX_WARP_REF_CANDIDATES]));
   }
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 }
 
 #if CONFIG_C071_SUBBLK_WARPMV

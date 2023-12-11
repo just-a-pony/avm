@@ -2592,7 +2592,7 @@ static const aom_cdf_prob
     };
 #endif  // CONFIG_ENTROPY_PARA
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
     default_inter_warp_mode_cdf[WARPMV_MODE_CONTEXT][CDF_SIZE(2)] = {
@@ -2610,7 +2610,7 @@ static const aom_cdf_prob
       { AOM_CDF2(24626) }
     };
 #endif  // CONFIG_ENTROPY_PARA
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_C076_INTER_MOD_CTX
 #if CONFIG_ENTROPY_PARA
@@ -3271,7 +3271,7 @@ static const aom_cdf_prob
     };
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_D149_CTX_MODELING_OPT
 static const aom_cdf_prob default_warped_causal_warpmv_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(16384),
@@ -3296,7 +3296,7 @@ static const aom_cdf_prob
 #endif  // CONFIG_FLEX_PARTITION
     };
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_REFINEMV
 #if CONFIG_ENTROPY_PARA
@@ -3351,7 +3351,7 @@ static const aom_cdf_prob
     };
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob default_warp_ref_idx0_cdf[WARP_REF_CONTEXTS]
                                                    [CDF_SIZE(2)] = {
@@ -3373,7 +3373,7 @@ static const aom_cdf_prob default_warp_ref_idx1_cdf[WARP_REF_CONTEXTS][CDF_SIZE(
 static const aom_cdf_prob default_warp_ref_idx2_cdf[WARP_REF_CONTEXTS][CDF_SIZE(
     2)] = { { AOM_CDF2(18242) } };
 #endif  // CONFIG_ENTROPY_PARA
-#if CONFIG_CWG_D067_IMPROVED_WARP
+
 #if CONFIG_D149_CTX_MODELING_OPT
 static const aom_cdf_prob default_warpmv_with_mvd_flag_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(16384),
@@ -3398,8 +3398,7 @@ static const aom_cdf_prob
 #endif  // CONFIG_FLEX_PARTITION
     };
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
@@ -5482,9 +5481,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->comp_group_idx_cdf, default_comp_group_idx_cdfs);
   av1_copy(fc->inter_single_mode_cdf, default_inter_single_mode_cdf);
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   av1_copy(fc->inter_warp_mode_cdf, default_inter_warp_mode_cdf);
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_ENTROPY_PARA
   av1_copy(fc->drl_cdf[0], default_drl0_cdf_refmvbank);
@@ -5509,17 +5508,11 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #if CONFIG_EXTENDED_WARP_PREDICTION
   av1_copy(fc->warped_causal_cdf, default_warped_causal_cdf);
   av1_copy(fc->warp_delta_cdf, default_warp_delta_cdf);
-#if CONFIG_WARPMV
   av1_copy(fc->warped_causal_warpmv_cdf, default_warped_causal_warpmv_cdf);
-#endif  // CONFIG_WARPMV
-#if CONFIG_WARP_REF_LIST
   av1_copy(fc->warp_ref_idx_cdf[0], default_warp_ref_idx0_cdf);
   av1_copy(fc->warp_ref_idx_cdf[1], default_warp_ref_idx1_cdf);
   av1_copy(fc->warp_ref_idx_cdf[2], default_warp_ref_idx2_cdf);
-#if CONFIG_CWG_D067_IMPROVED_WARP
   av1_copy(fc->warpmv_with_mvd_flag_cdf, default_warpmv_with_mvd_flag_cdf);
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-#endif  // CONFIG_WARP_REF_LIST
   av1_copy(fc->warp_delta_param_cdf, default_warp_delta_param_cdf);
   av1_copy(fc->warp_extend_cdf, default_warp_extend_cdf);
 #else

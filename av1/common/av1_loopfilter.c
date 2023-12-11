@@ -67,9 +67,9 @@ static const int mode_lf_lut[] = {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // INTRA_MODES
   1, 0, 1,                                // INTER_SINGLE_MODES (GLOBALMV == 0)
   1,                                      // AMVDNEWMV
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   1,              // WARPMV
-#endif            // CONFIG_WARPMV
+#endif            // CONFIG_EXTENDED_WARP_PREDICTION
   1, 1, 1, 0, 1,  // INTER_COMPOUND_MODES (GLOBAL_GLOBALMV == 0)
 #if CONFIG_JOINT_MVD
   1, 1,

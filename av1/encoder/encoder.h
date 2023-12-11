@@ -1402,20 +1402,16 @@ typedef struct FRAME_COUNTS {
 #else
   unsigned int warped_causal[BLOCK_SIZES_ALL][2];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_WARPMV
 #if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warped_causal_warpmv[CDF_SIZE(2)];
 #else
   unsigned int warped_causal_warpmv[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARPMV
-#if CONFIG_WARP_REF_LIST && CONFIG_CWG_D067_IMPROVED_WARP
 #if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warpmv_with_mvd_flag[CDF_SIZE(2)];
 #else
   unsigned int warpmv_with_mvd_flag[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARP_REF_LIST && CONFIG_CWG_D067_IMPROVED_WARP
 #if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warp_delta[2];
 #else

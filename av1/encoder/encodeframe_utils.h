@@ -415,12 +415,12 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
 
 void av1_update_inter_mode_stats(FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
                                  PREDICTION_MODE mode, int16_t mode_context
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
                                  ,
                                  const AV1_COMMON *const cm,
                                  const MACROBLOCKD *xd,
                                  const MB_MODE_INFO *mbmi, BLOCK_SIZE bsize
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 );
 
 void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,

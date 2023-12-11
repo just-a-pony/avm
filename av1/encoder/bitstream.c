@@ -107,18 +107,18 @@ static AOM_INLINE void write_intra_y_mode_kf(FRAME_CONTEXT *frame_ctx,
 static AOM_INLINE void write_inter_mode(aom_writer *w, PREDICTION_MODE mode,
                                         FRAME_CONTEXT *ec_ctx,
                                         const int16_t mode_ctx
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
                                         ,
                                         const AV1_COMMON *const cm,
                                         const MACROBLOCKD *xd,
                                         const MB_MODE_INFO *mbmi,
                                         BLOCK_SIZE bsize
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 ) {
   const int16_t ismode_ctx = inter_single_mode_ctx(mode_ctx);
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   if (is_warpmv_mode_allowed(cm, mbmi, bsize)) {
     const int16_t iswarpmvmode_ctx = inter_warpmv_mode_ctx(cm, xd, mbmi);
     aom_write_symbol(w, mode == WARPMV,
@@ -127,7 +127,7 @@ static AOM_INLINE void write_inter_mode(aom_writer *w, PREDICTION_MODE mode,
   } else {
     assert(mode != WARPMV);
   }
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   aom_write_symbol(w, mode - SINGLE_INTER_MODE_START,
                    ec_ctx->inter_single_mode_cdf[ismode_ctx],
@@ -141,9 +141,9 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
 #if !CONFIG_SKIP_MODE_ENHANCEMENT
   assert(!mbmi->skip_mode);
 #endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   assert(IMPLIES(mbmi->mode == WARPMV, 0));
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
   // Write the DRL index as a sequence of bits encoding a decision tree:
   // 0 -> 0   10 -> 1   110 -> 2    111 -> 3
   // Also use the number of reference MVs for a frame type to reduce the
@@ -214,7 +214,8 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   }
 #endif  // CONFIG_SEP_COMP_DRL
 }
-#if CONFIG_WARP_REF_LIST
+
+#if CONFIG_EXTENDED_WARP_PREDICTION
 static void write_warp_ref_idx(FRAME_CONTEXT *ec_ctx, const MB_MODE_INFO *mbmi,
                                aom_writer *w) {
   assert(mbmi->warp_ref_idx < mbmi->max_num_warp_candidates);
@@ -231,7 +232,7 @@ static void write_warp_ref_idx(FRAME_CONTEXT *ec_ctx, const MB_MODE_INFO *mbmi,
     if (mbmi->warp_ref_idx == bit_idx) break;
   }
 }
-#if CONFIG_CWG_D067_IMPROVED_WARP
+
 static void write_warpmv_with_mvd_flag(FRAME_CONTEXT *ec_ctx,
                                        const MB_MODE_INFO *mbmi,
                                        aom_writer *w) {
@@ -244,9 +245,7 @@ static void write_warpmv_with_mvd_flag(FRAME_CONTEXT *ec_ctx,
 #endif  // CONFIG_D149_CTX_MODELING_OPT
                    2);
 }
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
 // Write scale mode flag for joint mvd coding mode
@@ -604,39 +603,19 @@ static void write_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                              const MB_MODE_INFO *mbmi,
                              const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
                              aom_writer *w) {
-#if CONFIG_WARP_REF_LIST
   assert(mbmi->warp_ref_idx < mbmi->max_num_warp_candidates);
-#if !CONFIG_WARPMV
-  write_warp_ref_idx(xd->tile_ctx, mbmi, w);
-#endif  // !CONFIG_WARPMV
-  if (!allow_warp_parameter_signaling(
-#if CONFIG_CWG_D067_IMPROVED_WARP
-          cm,
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-          mbmi)) {
+  if (!allow_warp_parameter_signaling(cm, mbmi)) {
     return;
   }
-#endif  // CONFIG_WARP_REF_LIST
 
   const WarpedMotionParams *params = &mbmi->wm_params[0];
   WarpedMotionParams base_params;
-  av1_get_warp_base_params(cm,
-#if !CONFIG_WARP_REF_LIST
-                           xd,
-#endif  //! CONFIG_WARP_REF_LIST
-                           mbmi,
-#if !CONFIG_WARP_REF_LIST
-                           mbmi_ext_frame->ref_mv_stack,
-#endif  //! CONFIG_WARP_REF_LIST
-                           &base_params, NULL
-#if CONFIG_WARP_REF_LIST
-                           ,
+  av1_get_warp_base_params(cm, mbmi, &base_params, NULL,
 #if CONFIG_COMPOUND_WARP_CAUSAL
                            mbmi_ext_frame->warp_param_stack[0]
 #else
                            mbmi_ext_frame->warp_param_stack
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
-#endif  // CONFIG_WARP_REF_LIST
   );
 
   // The RDO stage should not give us a model which is not warpable.
@@ -671,7 +650,6 @@ static AOM_INLINE void write_motion_mode(
   assert((mbmi->ref_frame[1] == INTRA_FRAME) == (motion_mode == INTERINTRA));
 #endif  // !CONFIG_INTERINTRA_IMPROVEMENT
 
-#if CONFIG_WARPMV
   if (mbmi->mode == WARPMV) {
     assert(mbmi->motion_mode == WARP_DELTA ||
            mbmi->motion_mode == WARPED_CAUSAL);
@@ -687,7 +665,6 @@ static AOM_INLINE void write_motion_mode(
     }
     return;
   }
-#endif  // CONFIG_WARPMV
 
   if (allowed_motion_modes & (1 << INTERINTRA)) {
     const int bsize_group = size_group_lookup[bsize];
@@ -765,12 +742,6 @@ static AOM_INLINE void write_motion_mode(
                      xd->tile_ctx->warp_delta_cdf[bsize],
 #endif  // CONFIG_D149_CTX_MODELING_OPT
                      2);
-#if !CONFIG_WARPMV
-    if (motion_mode == WARP_DELTA) {
-      write_warp_delta(cm, xd, mbmi, mbmi_ext_frame, w);
-      return;
-    }
-#endif  // !CONFIG_WARPMV
   }
 }
 #else
@@ -2266,7 +2237,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   assert(IMPLIES(mbmi->refinemv_flag, mbmi->cwp_idx == CWP_EQUAL));
 #endif  // CONFIG_CWP
 #endif  // CONFIG_REFINEMV
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   // Just for debugging purpose
   if (mbmi->mode == WARPMV) {
     assert(mbmi->skip_mode == 0);
@@ -2292,7 +2263,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif  // CONFIG_BAWP_CHROMA
 #endif
   }
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if !CONFIG_SKIP_TXFM_OPT
   if (!mbmi->skip_mode)
@@ -2366,13 +2337,13 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
                                   mode_ctx);
       else if (is_inter_singleref_mode(mode))
         write_inter_mode(w, mode, ec_ctx, mode_ctx
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
                          ,
                          cm, xd, mbmi, bsize
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
         );
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_BAWP
 #if CONFIG_BAWP_CHROMA
       if (cm->features.enable_bawp &&
@@ -2422,7 +2393,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif  // CONFIG_EXPLICIT_BAWP
       }
 #endif  // CONFIG_BAWP_CHROMA
-#endif
+#endif  // CONFIG_BAWP
 #if CONFIG_COMPOUND_WARP_CAUSAL
       if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y],
                                             xd->mi_row, xd->mi_col) &&
@@ -2443,15 +2414,13 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
           ((mbmi->motion_mode == WARPED_CAUSAL) && mbmi->mode == WARPMV);
       if (mbmi->motion_mode == WARP_DELTA || is_warpmv_warp_causal)
         write_warp_ref_idx(xd->tile_ctx, mbmi, w);
-#endif  // CONFIG_WARPMV
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
       if (allow_warpmv_with_mvd_coding(cm, mbmi)) {
         write_warpmv_with_mvd_flag(xd->tile_ctx, mbmi, w);
       } else {
         assert(mbmi->warpmv_with_mvd_flag == 0);
       }
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
       write_jmvd_scale_mode(xd, w, mbmi);
@@ -2478,7 +2447,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif  // CONFIG_FLEX_MVRES
     }
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
+#if CONFIG_EXTENDED_WARP_PREDICTION
     if (mbmi->mode == WARPMV && mbmi->warpmv_with_mvd_flag) {
       nmv_context *nmvc = &ec_ctx->nmvc;
       WarpedMotionParams ref_warp_model =
@@ -2502,10 +2471,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #else
                     allow_hp);
 #endif
-    }
-
-    else {
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
+    } else {
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
       if (have_newmv_in_each_reference(mode)) {
         for (ref = 0; ref < 1 + is_compound; ++ref) {
@@ -2575,10 +2542,10 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif
       }
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
+#if CONFIG_EXTENDED_WARP_PREDICTION
     }
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-#if CONFIG_BAWP && !CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_BAWP && !CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_BAWP_CHROMA
     if (cm->features.enable_bawp &&
         av1_allow_bawp(mbmi, xd->mi_row, xd->mi_col)) {
@@ -2595,16 +2562,12 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
       aom_write_symbol(w, mbmi->bawp_flag == 1, xd->tile_ctx->bawp_cdf, 2);
     }
 #endif  // CONFIG_BAWP_CHROMA
-#endif
+#endif  // CONFIG_BAWP && !CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
-#if !CONFIG_WARPMV
-    write_motion_mode(cm, xd, mbmi, mbmi_ext_frame, w);
-#else
     if (mbmi->motion_mode == WARP_DELTA) {
       write_warp_delta(cm, xd, mbmi, mbmi_ext_frame, w);
     }
-#endif  // !CONFIG_WARPMV
 #else
     if (cpi->common.current_frame.reference_mode != COMPOUND_REFERENCE &&
         cpi->common.seq_params.enable_interintra_compound &&
@@ -6051,14 +6014,14 @@ static AOM_INLINE void write_uncompressed_header_obu(
     aom_wb_write_bit(wb, features->enable_bawp);
 #endif  // CONFIG_BAWP
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
+#if CONFIG_EXTENDED_WARP_PREDICTION
   if (!frame_is_intra_only(cm) &&
       (features->enabled_motion_modes & (1 << WARP_DELTA)) != 0) {
     aom_wb_write_bit(wb, features->allow_warpmv_mode);
   } else {
     assert(IMPLIES(!frame_is_intra_only(cm), !features->allow_warpmv_mode));
   }
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   aom_wb_write_bit(wb, features->reduced_tx_set_used);
 

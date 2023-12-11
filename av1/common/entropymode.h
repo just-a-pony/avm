@@ -110,8 +110,29 @@ extern "C" {
 //  WARP_DELTA_STEP = (1 << 10) => Each step represents 1/64
 //  WARP_DELTA_STEP = (1 << 11) => Each step represents 1/32
 //
-// Note that each coefficient must be < 1/4 (and one must be < 1/7),
-// so `WARP_DELTA_MAX` here should work out to something < (1 << 14)
+// Some factors which feed into the precision selection:
+// i) The largest block size is 128x128, so the distance from the block
+//    center to an edge is <= 64 pixels. And the warp filter has 64
+//    sub-pixel kernels.
+//    Thus any change of less than about 1/(2^12) pixels/pixel
+//    will not change anything.
+//
+// ii) The precision of the {alpha, beta, gamma, delta} parameters
+//     which are used in the warp filter is only 10 fractional bits
+//     (see the use of WARP_PARAM_REDUCE_BITS in av1_get_shear_params())
+//
+//     Thus any changes of < 1/(2^10) pixels/pixel will generate the
+//     exact same prediction.
+//
+// iii) The maximum shift allowed by the warp filter is on the
+//      order of 1/4 to 1/8 of a pixel per pixel, and we probably
+//      want to be able to span this range in a reasonable number
+//      of steps.
+//      eg. if we allow shifts of up to +/- 1/8 pixel/pixel, split
+//      into 8 steps, then our refinement size is 1/64 pixel/pixel
+//
+// TODO(rachelbarker): Revisit this in light of the fact that we now
+// have 256x256 blocks and allow warps up to +/- 1/2 pixel/pixel.
 #define WARP_DELTA_STEP_BITS 10
 #define WARP_DELTA_STEP (1 << WARP_DELTA_STEP_BITS)
 #define WARP_DELTA_CODED_MAX 7
@@ -193,9 +214,9 @@ typedef struct frame_contexts {
 
   aom_cdf_prob inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS]
                                     [CDF_SIZE(INTER_SINGLE_MODES)];
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   aom_cdf_prob inter_warp_mode_cdf[WARPMV_MODE_CONTEXT][CDF_SIZE(2)];
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
   aom_cdf_prob drl_cdf[3][DRL_MODE_CONTEXTS][CDF_SIZE(2)];
 #if CONFIG_SKIP_MODE_ENHANCEMENT
@@ -270,30 +291,24 @@ typedef struct frame_contexts {
 #else
   aom_cdf_prob warp_delta_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_WARPMV
 #if CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob warped_causal_warpmv_cdf[CDF_SIZE(2)];
 #else
   aom_cdf_prob warped_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARPMV
-#if CONFIG_WARP_REF_LIST
   aom_cdf_prob warp_ref_idx_cdf[3][WARP_REF_CONTEXTS][CDF_SIZE(2)];
-#if CONFIG_CWG_D067_IMPROVED_WARP
 #if CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob warpmv_with_mvd_flag_cdf[CDF_SIZE(2)];
 #else
   aom_cdf_prob warpmv_with_mvd_flag_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-#endif  // CONFIG_WARP_REF_LIST
   aom_cdf_prob warp_delta_param_cdf[2][CDF_SIZE(WARP_DELTA_NUM_SYMBOLS)];
 
   aom_cdf_prob warp_extend_cdf[WARP_EXTEND_CTXS1][WARP_EXTEND_CTXS2]
                               [CDF_SIZE(2)];
 #else
   aom_cdf_prob motion_mode_cdf[BLOCK_SIZES_ALL][CDF_SIZE(MOTION_MODES)];
-#endif
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_BAWP
 #if CONFIG_BAWP_CHROMA
   aom_cdf_prob bawp_cdf[2][CDF_SIZE(2)];

@@ -182,8 +182,6 @@ set_aom_config_var(
   "AV2 experiment flag to enable modified context derivation : CWG-B065.")
 set_aom_config_var(CONFIG_EXTENDED_WARP_PREDICTION 1
                    "AV2 experiment flag to add new local warp modes")
-set_aom_config_var(CONFIG_WARP_REF_LIST 1
-                   "AV2 experiment flag to improve warp-delta mode")
 # Begin: CWG-C016
 set_aom_config_var(CONFIG_LR_MERGE_COEFFS 1
                    "AV2 experiment flag to enable LR coefficient merging")
@@ -254,7 +252,6 @@ set_aom_config_var(CONFIG_DISPLAY_ORDER_HINT_FIX 1
 set_aom_config_var(CONFIG_BAWP 1 "Enable block adaptive weighted prediction")
 set_aom_config_var(CONFIG_EXPLICIT_BAWP 0
                    "Explicit signaling for block adaptive weighted prediction")
-set_aom_config_var(CONFIG_WARPMV 1 "Enable warpmv modes")
 set_aom_config_var(CONFIG_BAWP_CHROMA 1
                    "Enable block adaptive weighted prediction for Chroma")
 set_aom_config_var(CONFIG_IMPROVED_ANGULAR_INTRA 1
@@ -278,8 +275,6 @@ set_aom_config_var(CONFIG_SEP_COMP_DRL 1
 set_aom_config_var(CONFIG_SKIP_ME_FOR_OPFL_MODES 1
                    "Reuse the mvs of compound mode from non-opfl path")
 
-set_aom_config_var(CONFIG_CWG_D067_IMPROVED_WARP 1
-                   "Improvement of warp motions")
 set_aom_config_var(CONFIG_EXT_WARP_FILTER 1 "Enable extended warp filter")
 
 set_aom_config_var(CONFIG_ADST_TUNED 1

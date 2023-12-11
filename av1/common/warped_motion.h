@@ -420,11 +420,11 @@ static INLINE void av1_scale_warp_model(const WarpedMotionParams *in_params,
 }
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
+#if CONFIG_EXTENDED_WARP_PREDICTION
 int_mv get_warp_motion_vector_xy_pos(const WarpedMotionParams *model,
                                      const int x, const int y,
                                      MvSubpelPrecision precision);
 int get_model_from_corner_mvs(WarpedMotionParams *derive_model, int *pts,
                               int np, int *mvs, const BLOCK_SIZE bsize);
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #endif  // AOM_AV1_COMMON_WARPED_MOTION_H_

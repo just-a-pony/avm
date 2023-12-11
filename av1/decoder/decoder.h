@@ -144,9 +144,9 @@ typedef struct ThreadData {
   cfl_store_inter_block_visitor_fn_t cfl_store_inter_block_visit;
 
   REF_MV_BANK ref_mv_bank;
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
   WARP_PARAM_BANK warp_param_bank;
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 } ThreadData;
 
 typedef struct AV1DecRowMTJobInfo {

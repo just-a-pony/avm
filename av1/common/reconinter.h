@@ -344,23 +344,14 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
                            const struct buf_2d *ref_buf,
                            InterpFilter interp_filter);
 
-#if CONFIG_WARP_REF_LIST
+#if CONFIG_EXTENDED_WARP_PREDICTION
 // Check if the signaling of the warp delta parameters are allowed
-static INLINE int allow_warp_parameter_signaling(
-#if CONFIG_CWG_D067_IMPROVED_WARP
-    const AV1_COMMON *const cm,
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-    const MB_MODE_INFO *mbmi) {
-  return (
-#if CONFIG_WARPMV
-      mbmi->mode != WARPMV &&
-#endif  // CONFIG_WARPMV
-#if CONFIG_CWG_D067_IMPROVED_WARP
-      cm->features.allow_warpmv_mode &&
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-      mbmi->motion_mode == WARP_DELTA && mbmi->warp_ref_idx == 1);
+static INLINE int allow_warp_parameter_signaling(const AV1_COMMON *const cm,
+                                                 const MB_MODE_INFO *mbmi) {
+  return (mbmi->mode != WARPMV && cm->features.allow_warpmv_mode &&
+          mbmi->motion_mode == WARP_DELTA && mbmi->warp_ref_idx == 1);
 }
-#endif  // CONFIG_WARP_REF_LIST
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_CWP
 // Map the index to weighting factor for compound weighted prediction
@@ -1278,9 +1269,9 @@ static INLINE int av1_is_interp_needed(const AV1_COMMON *const cm,
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   if (mbmi->skip_mode) return 0;
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
   if (mbmi->mode == WARPMV) return 0;
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #if CONFIG_OPTFLOW_REFINEMENT
   // No interpolation filter search when optical flow MV refinement is used.
@@ -1431,7 +1422,7 @@ int is_pb_mv_precision_active(const AV1_COMMON *const cm,
                               const MB_MODE_INFO *mbmi, const BLOCK_SIZE bsize);
 #endif
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
 // check if the WARPMV mode is allwed for a given blocksize
 static INLINE int is_warpmv_allowed_bsize(BLOCK_SIZE bsize) {
   assert(bsize < BLOCK_SIZES_ALL);
@@ -1449,25 +1440,20 @@ static INLINE int is_warpmv_mode_allowed(const AV1_COMMON *const cm,
 #if CONFIG_TIP
       || is_tip_ref_frame(mbmi->ref_frame[0])
 #endif  // CONFIG_TIP
-#if CONFIG_CWG_D067_IMPROVED_WARP
-      || !cm->features.allow_warpmv_mode
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
-  )
+      || !cm->features.allow_warpmv_mode)
     return 0;
 
   return frame_warp_delta_allowed && is_warpmv_allowed_bsize(bsize);
 }
 
-#if CONFIG_CWG_D067_IMPROVED_WARP
 // check if warpmv with mvd is allowed or not
 static INLINE int allow_warpmv_with_mvd_coding(const AV1_COMMON *const cm,
                                                const MB_MODE_INFO *mbmi) {
   if (!cm->features.allow_warpmv_mode) return 0;
   return (mbmi->mode == WARPMV && mbmi->warp_ref_idx < 2);
 }
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
 
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
 #ifdef __cplusplus
 }  // extern "C"

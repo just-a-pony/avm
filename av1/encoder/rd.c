@@ -560,12 +560,12 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                fc->inter_single_mode_cdf[i], NULL);
     }
 
-#if CONFIG_WARPMV
+#if CONFIG_EXTENDED_WARP_PREDICTION
     for (i = 0; i < WARPMV_MODE_CONTEXT; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->inter_warp_mode_cost[i],
                                fc->inter_warp_mode_cdf[i], NULL);
     }
-#endif  // CONFIG_WARPMV
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
     for (i = 0; i < DRL_MODE_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->drl_mode_cost[0][i],
@@ -695,7 +695,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                fc->warped_causal_cdf[i], NULL);
     }
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_WARPMV
 #if CONFIG_D149_CTX_MODELING_OPT
     av1_cost_tokens_from_cdf(mode_costs->warped_causal_warpmv_cost,
                              fc->warped_causal_warpmv_cdf, NULL);
@@ -705,8 +704,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                fc->warped_causal_warpmv_cdf[i], NULL);
     }
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_WARPMV
-#if CONFIG_CWG_D067_IMPROVED_WARP
 #if CONFIG_D149_CTX_MODELING_OPT
     av1_cost_tokens_from_cdf(mode_costs->warpmv_with_mvd_flag_cost,
                              fc->warpmv_with_mvd_flag_cdf, NULL);
@@ -716,16 +713,13 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                fc->warpmv_with_mvd_flag_cdf[i], NULL);
     }
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#endif  // CONFIG_CWG_D067_IMPROVED_WARP
 
-#if CONFIG_WARP_REF_LIST
     for (i = 0; i < 3; i++) {
       for (j = 0; j < WARP_REF_CONTEXTS; j++) {
         av1_cost_tokens_from_cdf(mode_costs->warp_ref_idx_cost[i][j],
                                  fc->warp_ref_idx_cdf[i][j], NULL);
       }
     }
-#endif  // CONFIG_WARP_REF_LIST
 
 #if CONFIG_D149_CTX_MODELING_OPT
     av1_cost_tokens_from_cdf(mode_costs->warp_delta_cost, fc->warp_delta_cdf,
