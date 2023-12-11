@@ -278,9 +278,7 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader,
 #if CONFIG_PEF
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_pef);
 #endif  // CONFIG_PEF
-#if CONFIG_ORIP
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_orip);
-#endif
 #if CONFIG_IDIF
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_idif);
 #endif  // CONFIG_IDIF

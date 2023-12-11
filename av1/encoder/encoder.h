@@ -282,12 +282,10 @@ typedef struct {
    * Flag to indicate if forward skip coding is enabled
    */
   bool enable_fsc;
-#if CONFIG_ORIP
   /*!
    * Flag to indicate if ORIP should be enabled
    */
   bool enable_orip;
-#endif
 #if CONFIG_IDIF
   /*!
    * Flag to indicate if IDIF should be enabled

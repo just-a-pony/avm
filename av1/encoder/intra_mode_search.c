@@ -62,10 +62,8 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
   mbmi->y_mode_idx = DC_PRED;
 #endif  // CONFIG_AIMC
 
-#if CONFIG_ORIP
   mbmi->angle_delta[PLANE_TYPE_Y] = 0;
   mbmi->angle_delta[PLANE_TYPE_UV] = 0;
-#endif
 
   for (mode = 0; mode < FILTER_INTRA_MODES; ++mode) {
     int64_t this_rd;
@@ -119,10 +117,8 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
     mbmi->joint_y_mode_delta_angle = DC_PRED;
     mbmi->y_mode_idx = DC_PRED;
 #endif  // CONFIG_AIMC
-#if CONFIG_ORIP
     mbmi->angle_delta[PLANE_TYPE_Y] = 0;
     mbmi->angle_delta[PLANE_TYPE_UV] = 0;
-#endif
     mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
     mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
 #if CONFIG_NEW_CONTEXT_MODELING
@@ -1062,10 +1058,8 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
   if (filter_intra_selected_flag) {
     mbmi->filter_intra_mode_info.use_filter_intra = 1;
     mbmi->filter_intra_mode_info.filter_intra_mode = best_fi_mode;
-#if CONFIG_ORIP
     mbmi->angle_delta[PLANE_TYPE_Y] = 0;
     mbmi->angle_delta[PLANE_TYPE_UV] = 0;
-#endif
   } else {
     mbmi->filter_intra_mode_info.use_filter_intra = 0;
   }

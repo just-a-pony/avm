@@ -144,10 +144,8 @@ struct av1_extracfg {
   int enable_imp_msk_bld;
 #endif  // CONFIG_D071_IMP_MSK_BLD
 
-  int enable_fsc;  // enable forward skip coding
-#if CONFIG_ORIP
+  int enable_fsc;   // enable forward skip coding
   int enable_orip;  // enable ORIP
-#endif              // CONFIG_ORIP
 #if CONFIG_IDIF
   int enable_idif;  // enable IDIF
 #endif              // CONFIG_IDIF
@@ -498,9 +496,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,    // eanble implicit maksed blending
 #endif  // CONFIG_D071_IMP_MSK_BLD
   1,    // enable forward skip coding
-#if CONFIG_ORIP
   1,    // enable ORIP
-#endif  // CONFIG_ORIP
 #if CONFIG_IDIF
   1,    // enable IDIF
 #endif  // CONFIG_IDIF
@@ -1035,9 +1031,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_imp_msk_bld = extra_cfg->enable_imp_msk_bld;
 #endif  // CONFIG_D071_IMP_MSK_BLD
   cfg->enable_fsc = extra_cfg->enable_fsc;
-#if CONFIG_ORIP
   cfg->enable_orip = extra_cfg->enable_orip;
-#endif
 #if CONFIG_IDIF
   cfg->enable_idif = extra_cfg->enable_idif;
 #endif  // CONFIG_IDIF
@@ -1175,9 +1169,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_imp_msk_bld = cfg->enable_imp_msk_bld;
 #endif  // CONFIG_D071_IMP_MSK_BLD
   extra_cfg->enable_fsc = cfg->enable_fsc;
-#if CONFIG_ORIP
   extra_cfg->enable_orip = cfg->enable_orip;
-#endif
 #if CONFIG_IDIF
   extra_cfg->enable_idif = cfg->enable_idif;
 #endif  // CONFIG_IDIF
@@ -1796,9 +1788,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   intra_mode_cfg->enable_cfl_intra = extra_cfg->enable_cfl_intra;
   intra_mode_cfg->enable_mrls = extra_cfg->enable_mrls;
   intra_mode_cfg->enable_fsc = extra_cfg->enable_fsc;
-#if CONFIG_ORIP
   intra_mode_cfg->enable_orip = extra_cfg->enable_orip;
-#endif
 #if CONFIG_IDIF
   intra_mode_cfg->enable_idif = extra_cfg->enable_idif;
 #endif  // CONFIG_IDIF
@@ -4005,11 +3995,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_fsc, argv,
                               err_string)) {
     extra_cfg.enable_fsc = arg_parse_int_helper(&arg, err_string);
-#if CONFIG_ORIP
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_orip, argv,
                               err_string)) {
     extra_cfg.enable_orip = arg_parse_int_helper(&arg, err_string);
-#endif
 #if CONFIG_IDIF
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_idif, argv,
                               err_string)) {
@@ -4529,10 +4517,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_D071_IMP_MSK_BLD
         1,
 #endif  // CONFIG_D071_IMP_MSK_BLD
-        1,
-#if CONFIG_ORIP
-        1,
-#endif
+        1, 1,
 #if CONFIG_IDIF
         1,
 #endif      // CONFIG_IDIF

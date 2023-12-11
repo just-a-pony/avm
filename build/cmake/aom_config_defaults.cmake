@@ -167,9 +167,6 @@ set_aom_config_var(CONFIG_COMPOUND_WARP_SAMPLES 1 NUMBER
 set_aom_config_var(CONFIG_NEW_TX_PARTITION 1
                    "AV2 new transform partitions experiment flag.")
 set_aom_config_var(
-  CONFIG_ORIP 1
-  "AV2 experiment flag to enable offset based refinement of intra prediction.")
-set_aom_config_var(
   CONFIG_IDIF 1
   "AV2 experiment flag to enable Intra Directional Interpolation Filter.")
 set_aom_config_var(CONFIG_ORIP_DC_DISABLED 0

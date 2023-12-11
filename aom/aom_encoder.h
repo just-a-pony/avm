@@ -343,12 +343,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_fsc;
-#if CONFIG_ORIP
   /*!\brief enable Offset based refinement of Intra prediction
    *
    */
   unsigned int enable_orip;
-#endif  // CONFIG_ORIP
 #if CONFIG_IDIF
   /*!\brief enable Intra Directional Interpolation Filter
    *

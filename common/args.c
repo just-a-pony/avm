@@ -103,9 +103,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_imp_msk_bld);
 #endif  // CONFIG_D071_IMP_MSK_BLD
     GET_PARAMS(enable_fsc);
-#if CONFIG_ORIP
     GET_PARAMS(enable_orip);
-#endif
 #if CONFIG_IDIF
     GET_PARAMS(enable_idif);
 #endif  // CONFIG_IDIF

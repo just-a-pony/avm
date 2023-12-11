@@ -7104,12 +7104,8 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     mbmi->filter_intra_mode_info.use_filter_intra = 0;
     mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 1;
     assert(xd->tree_type != CHROMA_PART);
-
-#if CONFIG_ORIP
     mbmi->angle_delta[PLANE_TYPE_Y] = 0;
     mbmi->angle_delta[PLANE_TYPE_UV] = 0;
-#endif
-
     mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
     mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
     mbmi->mode = DC_PRED;

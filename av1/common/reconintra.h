@@ -72,13 +72,10 @@ void av1_predict_intra_block(
     FILTER_INTRA_MODE filter_intra_mode, const uint16_t *ref, int ref_stride,
     uint16_t *dst, int dst_stride, int col_off, int row_off, int plane);
 
-#if CONFIG_ORIP
 void av1_apply_orip_4x4subblock_hbd(uint16_t *dst, ptrdiff_t stride,
                                     TX_SIZE tx_size, const uint16_t *above,
                                     const uint16_t *left, PREDICTION_MODE mode,
                                     int bd);
-#endif
-
 // Mapping of interintra to intra mode for use in the intra component
 static const PREDICTION_MODE interintra_to_intra_mode[INTERINTRA_MODES] = {
   DC_PRED, V_PRED, H_PRED, SMOOTH_PRED
@@ -149,7 +146,6 @@ static INLINE int av1_filter_intra_allowed(const AV1_COMMON *const cm,
          av1_filter_intra_allowed_bsize(cm, mbmi->sb_type[PLANE_TYPE_Y]);
 }
 
-#if CONFIG_ORIP
 #if DF_RESTRICT_ORIP
 static INLINE int av1_allow_orip_smooth_dc(PREDICTION_MODE mode, int plane,
                                            TX_SIZE tx_size) {
@@ -214,7 +210,6 @@ static INLINE int av1_allow_orip_smooth_dc(PREDICTION_MODE mode, int plane) {
 static INLINE int av1_allow_orip_dir(int p_angle) {
   return (p_angle == 90 || p_angle == 180);
 }
-#endif
 #endif
 
 extern const int8_t av1_filter_intra_taps[FILTER_INTRA_MODES][8][8];

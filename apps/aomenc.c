@@ -453,9 +453,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_imp_msk_bld,
 #endif  // CONFIG_D071_IMP_MSK_BLD
   &g_av1_codec_arg_defs.enable_fsc,
-#if CONFIG_ORIP
   &g_av1_codec_arg_defs.enable_orip,
-#endif
 #if CONFIG_IDIF
   &g_av1_codec_arg_defs.enable_idif,
 #endif  // CONFIG_IDIF
@@ -677,9 +675,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_imp_msk_bld = 1;
 #endif  // CONFIG_D071_IMP_MSK_BLD
   config->enable_fsc = 1;
-#if CONFIG_ORIP
   config->enable_orip = 1;
-#endif
 #if CONFIG_IDIF
   config->enable_idif = 1;
 #endif  // CONFIG_IDIF
@@ -1559,9 +1555,7 @@ static void show_stream_config(struct stream_state *stream,
           "EdgeFilter (%d), PaethPredictor (%d)"
           ", MRLS(%d)"
           ", FSC(%d)"
-#if CONFIG_ORIP
           ", ORIP(%d)"
-#endif  // CONFIG_CONFIG_ORIP
 #if CONFIG_IDIF
           ", IDIF(%d)"
 #endif  // CONFIG_IDIF
@@ -1569,11 +1563,7 @@ static void show_stream_config(struct stream_state *stream,
           "\n",
           encoder_cfg->enable_intra_edge_filter,
           encoder_cfg->enable_paeth_intra, encoder_cfg->enable_mrls,
-          encoder_cfg->enable_fsc
-#if CONFIG_ORIP
-          ,
-          encoder_cfg->enable_orip
-#endif  //  CONFIG_ORIP
+          encoder_cfg->enable_fsc, encoder_cfg->enable_orip
 #if CONFIG_IDIF
           ,
           encoder_cfg->enable_idif

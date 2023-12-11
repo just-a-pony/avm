@@ -39,11 +39,7 @@ enum {
 #define NUM_INTRA_NEIGHBOUR_PIXELS (MAX_TX_SIZE * 2 + 64)
 
 static const uint8_t extend_modes[INTRA_MODES] = {
-  NEED_ABOVE | NEED_LEFT
-#if CONFIG_ORIP
-      | NEED_ABOVELEFT
-#endif
-  ,                                         // DC
+  NEED_ABOVE | NEED_LEFT | NEED_ABOVELEFT,  // DC
   NEED_ABOVE,                               // V
   NEED_LEFT,                                // H
   NEED_ABOVE | NEED_ABOVERIGHT,             // D45
@@ -52,10 +48,7 @@ static const uint8_t extend_modes[INTRA_MODES] = {
   NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT,  // D157
   NEED_LEFT | NEED_BOTTOMLEFT,              // D203
   NEED_ABOVE | NEED_ABOVERIGHT,             // D67
-  NEED_LEFT | NEED_ABOVE
-#if CONFIG_ORIP
-      | NEED_ABOVELEFT
-#endif
+  NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT
 #if CONFIG_BLEND_MODE
       | NEED_ABOVERIGHT | NEED_BOTTOMLEFT
 #endif  // CONFIG_BLEND_MODE
@@ -1486,13 +1479,8 @@ static void build_intra_predictors_high(
     int dst_stride, PREDICTION_MODE mode, int angle_delta,
     FILTER_INTRA_MODE filter_intra_mode, TX_SIZE tx_size,
     int disable_edge_filter, int n_top_px, int n_topright_px, int n_left_px,
-    int n_bottomleft_px, int plane, int is_sb_boundary
-#if CONFIG_ORIP
-    ,
-    const int seq_intra_pred_filter_flag
-#endif
-    ,
-    const int seq_ibp_flag,
+    int n_bottomleft_px, int plane, int is_sb_boundary,
+    const int seq_intra_pred_filter_flag, const int seq_ibp_flag,
     uint8_t *const ibp_weights[TX_SIZES_ALL][DIR_MODES_0_90]
 #if CONFIG_IDIF
     ,
@@ -1536,11 +1524,8 @@ static void build_intra_predictors_high(
   // base+1   E      F  ..     U      V
   // base+1   G      H  ..     S      T      T      T      T      T
 
-#if CONFIG_ORIP
   int apply_sub_block_based_refinement_filter =
       seq_intra_pred_filter_flag && (mrl_index == 0);
-#endif
-
   if (is_dr_mode) {
     p_angle = mode_to_angle_map[mode] + angle_delta;
 #if CONFIG_EXT_DIR
@@ -1558,7 +1543,7 @@ static void build_intra_predictors_high(
       need_above = 1, need_left = 1, need_above_left = 1;
     }
 
-#if CONFIG_ORIP && !CONFIG_ORIP_NONDC_DISABLED
+#if !CONFIG_ORIP_NONDC_DISABLED
     if (apply_sub_block_based_refinement_filter &&
         (p_angle == 90 || p_angle == 180)) {
       need_above = 1;
@@ -1805,7 +1790,6 @@ static void build_intra_predictors_high(
       }
     }
 
-#if CONFIG_ORIP
 #if !CONFIG_ORIP_NONDC_DISABLED
     // Apply sub-block based filter for horizontal/vertical intra mode
     if (apply_sub_block_based_refinement_filter &&
@@ -1817,7 +1801,6 @@ static void build_intra_predictors_high(
       av1_apply_orip_4x4subblock_hbd(dst, dst_stride, tx_size, above_row,
                                      left_col, mode, xd->bd);
     }
-#endif
 #endif
     return;
   }
@@ -1836,7 +1819,6 @@ static void build_intra_predictors_high(
     pred_high[mode][tx_size](dst, dst_stride, above_row, left_col, xd->bd);
   }
 
-#if CONFIG_ORIP
   // Apply sub-block based filter for DC/smooth intra mode
   apply_sub_block_based_refinement_filter &=
 #if DF_RESTRICT_ORIP
@@ -1848,7 +1830,6 @@ static void build_intra_predictors_high(
     av1_apply_orip_4x4subblock_hbd(dst, dst_stride, tx_size, above_row,
                                    left_col, mode, xd->bd);
   }
-#endif
 }
 
 #define ARITHMETIC_LEFT_SHIFT(x, shift) \
@@ -1955,13 +1936,9 @@ void av1_predict_intra_block(
       have_top_right ? AOMMIN(txwpx, xr) : 0,
 #endif
       have_left ? AOMMIN(txhpx, yd + txhpx) : 0,
-      have_bottom_left ? px_bottom_left : 0, plane, is_sb_boundary
-#if CONFIG_ORIP
-      ,
-      cm->seq_params.enable_orip
-#endif
-      ,
-      cm->seq_params.enable_ibp, cm->ibp_directional_weights
+      have_bottom_left ? px_bottom_left : 0, plane, is_sb_boundary,
+      cm->seq_params.enable_orip, cm->seq_params.enable_ibp,
+      cm->ibp_directional_weights
 #if CONFIG_IDIF
       ,
       enable_idif
@@ -2368,8 +2345,6 @@ void av1_init_intra_predictors(void) {
   aom_once(init_intra_predictors_internal);
 }
 
-#if CONFIG_ORIP
-
 DECLARE_ALIGNED(16, const int8_t,
                 av1_sub_block_filter_intra_taps_4x4[16][9]) = {
   { 4, 16, 4, 0, 0, 16, 4, 0, 0 }, { 2, 4, 16, 4, 0, 8, 2, 0, 0 },
@@ -2485,4 +2460,3 @@ void av1_apply_orip_4x4subblock_hbd(uint16_t *dst, ptrdiff_t stride,
     }
   }
 }
-#endif

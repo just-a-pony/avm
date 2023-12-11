@@ -485,10 +485,7 @@ typedef struct SequenceHeader {
   uint8_t enable_fsc;                // enables/disables forward skip coding
   uint8_t enable_filter_intra;       // enables/disables filterintra
   uint8_t enable_intra_edge_filter;  // enables/disables edge upsampling
-
-#if CONFIG_ORIP
-  uint8_t enable_orip;  // To turn on/off sub-block based ORIP
-#endif
+  uint8_t enable_orip;               // To turn on/off sub-block based ORIP
 #if CONFIG_IDIF
   uint8_t
       enable_idif;  // enables/disables Intra Directional Interpolation Filter

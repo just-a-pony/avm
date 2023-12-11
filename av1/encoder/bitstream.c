@@ -5324,9 +5324,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   }
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
 #endif  // CONFIG_PEF
-#if CONFIG_ORIP
   aom_wb_write_bit(wb, seq_params->enable_orip);
-#endif
 #if CONFIG_IDIF
   aom_wb_write_bit(wb, seq_params->enable_idif);
 #endif  // CONFIG_IDIF
