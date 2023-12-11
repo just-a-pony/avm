@@ -62,9 +62,7 @@
 #include "av1/common/seg_common.h"
 #include "av1/common/thread_common.h"
 #include "av1/common/tile_common.h"
-#if CONFIG_TIP
 #include "av1/common/tip.h"
-#endif  // CONFIG_TIP
 #include "av1/common/warped_motion.h"
 #include "av1/common/obmc.h"
 #include "av1/decoder/decodeframe.h"
@@ -655,16 +653,9 @@ int update_extend_mc_border_params(const struct scale_factors *const sf,
 
   // Do border extension if there is motion or
   // width/height is not a multiple of 8 pixels.
-#if CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
   // Extension is needed in optical flow refinement to obtain MV offsets
   (void)scaled_mv;
   if (!is_intrabc && !do_warp) {
-#else
-  const int is_scaled = av1_is_scaled(sf);
-  if ((!is_intrabc) && (!do_warp) &&
-      (is_scaled || scaled_mv.col || scaled_mv.row || (frame_width & 0x7) ||
-       (frame_height & 0x7))) {
-#endif  // CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
     if (subpel_x_mv || (sf->x_step_q4 != SUBPEL_SHIFTS)) {
       block->x0 -= AOM_INTERP_EXTEND - 1;
       block->x1 += AOM_INTERP_EXTEND;
@@ -888,7 +879,6 @@ static void dec_calc_subpel_params_and_extend(
                    inter_pred_params->is_intrabc, mc_buf[ref], pre, src_stride);
 }
 
-#if CONFIG_TIP
 #if !CONFIG_REFINEMV
 static AOM_INLINE void tip_dec_calc_subpel_params(
     const MV *const src_mv, InterPredParams *const inter_pred_params, int mi_x,
@@ -1200,7 +1190,6 @@ static void av1_dec_tip_on_the_fly(AV1_COMMON *cm, MACROBLOCKD *xd,
                            tpl_end_col, mvs_cols, mc_buf, conv_dst,
                            tip_dec_calc_subpel_params_and_extend);
 }
-#endif  // CONFIG_TIP
 
 static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
                                          DecoderCodingBlock *dcb, int mi_row,
@@ -1240,53 +1229,11 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
 #if CONFIG_EXT_RECUR_PARTITIONS
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_TIP
   if (cm->features.tip_frame_mode == TIP_FRAME_AS_REF &&
       is_tip_ref_frame(xd->mi[0]->ref_frame[0])) {
     av1_dec_tip_on_the_fly(cm, xd, pbi->td.mc_buf, pbi->td.tmp_conv_dst);
   }
-#endif  // CONFIG_TIP
 }
-
-/*
-static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
-                                         DecoderCodingBlock *dcb, int mi_row,
-                                         int mi_col, aom_reader *r,
-                                         PARTITION_TYPE partition,
-                                         BLOCK_SIZE bsize) {
-  AV1_COMMON *const cm = &pbi->common;
-  const SequenceHeader *const seq_params = &cm->seq_params;
-  const int bw = mi_size_wide[bsize];
-  const int bh = mi_size_high[bsize];
-  const int x_inside_boundary = AOMMIN(bw, cm->mi_params.mi_cols - mi_col);
-  const int y_inside_boundary = AOMMIN(bh, cm->mi_params.mi_rows - mi_row);
-  MACROBLOCKD *const xd = &dcb->xd;
-
-#if CONFIG_ACCOUNTING
-  aom_accounting_set_context(&pbi->accounting, mi_col, mi_row);
-#endif
-  set_offsets(cm, xd, bsize, mi_row, mi_col, bw, bh, x_inside_boundary,
-              y_inside_boundary);
-  xd->mi[0]->partition = partition;
-  av1_read_mode_info(pbi, dcb, r, x_inside_boundary, y_inside_boundary);
-  if (bsize >= BLOCK_8X8 &&
-      (seq_params->subsampling_x || seq_params->subsampling_y)) {
-    const BLOCK_SIZE uv_subsize =
-        ss_size_lookup[bsize][seq_params->subsampling_x]
-                      [seq_params->subsampling_y];
-    if (uv_subsize == BLOCK_INVALID)
-      aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
-                         "Invalid block size.");
-  }
-
-#if CONFIG_TIP
-  if (cm->features.tip_frame_mode == TIP_FRAME_AS_REF &&
-      is_tip_ref_frame(xd->mi[0]->ref_frame[0])) {
-    av1_dec_tip_on_the_fly(cm, xd, pbi->td.mc_buf, pbi->td.tmp_conv_dst);
-  }
-#endif  // CONFIG_TIP
-}
-*/
 
 static void dec_build_inter_predictors(const AV1_COMMON *cm,
                                        DecoderCodingBlock *dcb, int plane,
@@ -4075,7 +4022,6 @@ static AOM_INLINE void resize_context_buffers(AV1_COMMON *cm, int width,
   cm->cur_frame->height = cm->height;
 }
 
-#if CONFIG_TIP
 static AOM_INLINE void setup_tip_frame_size(AV1_COMMON *cm) {
   const SequenceHeader *const seq_params = &cm->seq_params;
   YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
@@ -4124,7 +4070,6 @@ static AOM_INLINE void setup_tip_frame_size(AV1_COMMON *cm) {
   }
 #endif  // CONFIG_TIP_DIRECT_FRAME_MV
 }
-#endif  // CONFIG_TIP
 
 static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
   BufferPool *const pool = cm->buffer_pool;
@@ -4153,7 +4098,6 @@ static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
   cm->cur_frame->buf.color_range = seq_params->color_range;
   cm->cur_frame->buf.render_width = cm->render_width;
   cm->cur_frame->buf.render_height = cm->render_height;
-#if CONFIG_TIP
   if (cm->seq_params.enable_tip) {
     const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, TIP_FRAME);
     if (ref_buf == NULL || (ref_buf->buf.y_crop_width != cm->width ||
@@ -4161,7 +4105,6 @@ static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
       setup_tip_frame_size(cm);
     }
   }
-#endif  // CONFIG_TIP
 }
 
 static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
@@ -6613,14 +6556,12 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
   seq_params->enable_ist = aom_rb_read_bit(rb);
   seq_params->enable_cctx = seq_params->monochrome ? 0 : aom_rb_read_bit(rb);
   seq_params->enable_mrls = aom_rb_read_bit(rb);
-#if CONFIG_TIP
   seq_params->enable_tip = aom_rb_read_literal(rb, 2);
   if (seq_params->enable_tip) {
     seq_params->enable_tip_hole_fill = aom_rb_read_bit(rb);
   } else {
     seq_params->enable_tip_hole_fill = 0;
   }
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   seq_params->enable_bawp = aom_rb_read_bit(rb);
 #endif  // CONFIG_BAWP
@@ -7526,9 +7467,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
   if (current_frame->frame_type == KEY_FRAME) {
     cm->current_frame.pyramid_level = 1;
-#if CONFIG_TIP
     features->tip_frame_mode = TIP_FRAME_DISABLED;
-#endif  // CONFIG_TIP
     setup_frame_size(cm, frame_size_override_flag, rb);
 
     if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
@@ -7562,9 +7501,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
   } else {
     features->allow_ref_frame_mvs = 0;
-#if CONFIG_TIP
     features->tip_frame_mode = TIP_FRAME_DISABLED;
-#endif  // CONFIG_TIP
     if (current_frame->frame_type == INTRA_ONLY_FRAME) {
       cm->cur_frame->film_grain_params_present =
           seq_params->film_grain_params_present;
@@ -7730,7 +7667,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       }
 #endif  // CONFIG_PEF
 
-#if CONFIG_TIP
 #if CONFIG_TIP_DIRECT_FRAME_MV
       cm->tip_global_motion.as_int = 0;
       cm->tip_interp_filter = MULTITAP_SHARP;
@@ -7779,7 +7715,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       }
 
       if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
-#endif  // CONFIG_TIP
 #if CONFIG_IBC_SR_EXT
         if (features->allow_screen_content_tools && !av1_superres_scaled(cm)) {
           features->allow_intrabc = aom_rb_read_bit(rb);
@@ -7850,9 +7785,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           features->opfl_refine_type = cm->seq_params.enable_opfl_refine;
         }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_TIP
       }
-#endif  // CONFIG_TIP
     }
 
 #if !CONFIG_PRIMARY_REF_FRAME_OPT
@@ -7880,7 +7813,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                              "Reference frame has invalid dimensions");
       }
 
-#if CONFIG_TIP
       if (cm->seq_params.enable_tip) {
         const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, TIP_FRAME);
         if (ref_buf) {
@@ -7894,7 +7826,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                                "Reference frame has invalid dimensions");
         }
       }
-#endif  // CONFIG_TIP
     }
   }
 
@@ -7918,11 +7849,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   cm->cur_frame->buf.render_width = cm->render_width;
   cm->cur_frame->buf.render_height = cm->render_height;
 
-#if CONFIG_TIP
 #if CONFIG_TIP_DIRECT_FRAME_MV
   YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tmp_tip_frame->buf;
 #else
-  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
 #endif  // CONFIG_TIP_DIRECT_FRAME_MV
   tip_frame_buf->bit_depth = seq_params->bit_depth;
   tip_frame_buf->color_primaries = seq_params->color_primaries;
@@ -7934,7 +7864,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   tip_frame_buf->color_range = seq_params->color_range;
   tip_frame_buf->render_width = cm->render_width;
   tip_frame_buf->render_height = cm->render_height;
-#endif  // CONFIG_TIP
 
   if (pbi->need_resync) {
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
@@ -7942,11 +7871,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                        " state");
   }
 
-  if (is_global_intrabc_allowed(cm)
-#if CONFIG_TIP
-      || features->tip_frame_mode == TIP_FRAME_AS_OUTPUT
-#endif  // CONFIG_TIP
-  ) {
+  if (is_global_intrabc_allowed(cm) ||
+      features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
     // Set parameters corresponding to no filtering.
     struct loopfilter *lf = &cm->lf;
     lf->filter_level[0] = 0;
@@ -7954,10 +7880,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_FIX_CDEF_SYNTAX
     cm->cdef_info.cdef_frame_enable = 0;
 #else
-    cm->cdef_info.cdef_bits = 0;
-    cm->cdef_info.cdef_strengths[0] = 0;
-    cm->cdef_info.nb_cdef_strengths = 1;
-    cm->cdef_info.cdef_uv_strengths[0] = 0;
+  cm->cdef_info.cdef_bits = 0;
+  cm->cdef_info.cdef_strengths[0] = 0;
+  cm->cdef_info.nb_cdef_strengths = 1;
+  cm->cdef_info.cdef_uv_strengths[0] = 0;
 #endif  // CONFIG_FIX_CDEF_SYNTAX
     cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
@@ -7969,7 +7895,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif
   }
 
-#if CONFIG_TIP
   if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
 #if CONFIG_TIP_IMPLICIT_QUANT
     if (cm->seq_params.enable_tip_explicit_qp) {
@@ -7995,10 +7920,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->cur_frame->v_ac_delta_q = cm->quant_params.v_ac_delta_q;
     }
 #else
-    cm->quant_params.base_qindex = aom_rb_read_literal(
-        rb, cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_BITS_UNEXT
-                                                   : QINDEX_BITS);
-    cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
+  cm->quant_params.base_qindex = aom_rb_read_literal(
+      rb,
+      cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_BITS_UNEXT : QINDEX_BITS);
+  cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
     features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
     read_tile_info(pbi, rb);
@@ -8013,7 +7938,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     // No futher processing needed
     return 0;
   }
-#endif  // CONFIG_TIP
 
   const int might_bwd_adapt = !(seq_params->reduced_still_picture_hdr) &&
                               !(features->disable_cdf_update);
@@ -8142,9 +8066,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_FIX_CDEF_SYNTAX
     cm->cdef_info.cdef_frame_enable = 0;
 #else
-    cm->cdef_info.cdef_bits = 0;
-    cm->cdef_info.cdef_strengths[0] = 0;
-    cm->cdef_info.cdef_uv_strengths[0] = 0;
+  cm->cdef_info.cdef_bits = 0;
+  cm->cdef_info.cdef_strengths[0] = 0;
+  cm->cdef_info.cdef_uv_strengths[0] = 0;
 #endif  // CONFIG_FIX_CDEF_SYNTAX
   }
   if (features->all_lossless || !seq_params->enable_restoration) {
@@ -8219,12 +8143,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                        "Frame wrongly requests reference frame MVs");
   }
 
-#if CONFIG_TIP
   if (features->tip_frame_mode && !cm->seq_params.enable_tip) {
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                        "Frame wrongly requests TIP mode");
   }
-#endif  // CONFIG_TIP
 
   if (!frame_is_intra_only(cm)) read_global_motion(cm, rb);
 
@@ -8273,7 +8195,6 @@ static AOM_INLINE void superres_post_decode(AV1Decoder *pbi) {
   av1_superres_upscale(cm, pool, 0);
 }
 
-#if CONFIG_TIP
 static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
   AV1_COMMON *const cm = &pbi->common;
   const int num_planes = av1_num_planes(cm);
@@ -8313,7 +8234,6 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
     }
   }
 }
-#endif  // CONFIG_TIP
 
 uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
                                             struct aom_read_bit_buffer *rb,
@@ -8385,13 +8305,11 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
   }
 #endif  // CONFIG_PEF
 
-#if CONFIG_TIP
   process_tip_mode(pbi);
   if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
     *p_data_end = data + uncomp_hdr_size;
     return uncomp_hdr_size;
   }
-#endif  // CONFIG_TIP
 
   av1_setup_block_planes(xd, cm->seq_params.subsampling_x,
                          cm->seq_params.subsampling_y, num_planes);
@@ -8534,9 +8452,9 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_CCSO_EXT
             ext_rec_y[c] = xd->plane[pli].dst.buf[c];
 #else
-            ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
-                      CCSO_PADDING_SIZE] =
-                xd->plane[pli].dst.buf[r * dst_stride + c];
+              ext_rec_y[(r + CCSO_PADDING_SIZE) * ccso_stride_ext + c +
+                        CCSO_PADDING_SIZE] =
+                  xd->plane[pli].dst.buf[r * dst_stride + c];
 #endif
           }
 #if CONFIG_CCSO_EXT
@@ -8547,7 +8465,7 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
         ext_rec_y -= pic_height * ccso_stride_ext;
         xd->plane[0].dst.buf -= pic_height * ccso_stride_ext;
 #else
-        }
+          }
 #endif
       }
       extend_ccso_border(ext_rec_y, CCSO_PADDING_SIZE, xd);

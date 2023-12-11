@@ -42,14 +42,11 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_CCSO_EXT 0 !CONFIG_CCSO)
   endif()
 
-  # CONFIG_OPTFLOW_ON_TIP is dependent on CONFIG_OPTFLOW_REFINEMENT and
-  # CONFIG_TIP. If any of them is off, CONFIG_OPTFLOW_ON_TIP needs to be turned
+  # CONFIG_OPTFLOW_ON_TIP is dependent on CONFIG_OPTFLOW_REFINEMENT. If
+  # CONFIG_OPTFLOW_REFINEMENT is off, CONFIG_OPTFLOW_ON_TIP needs to be turned
   # off.
   if(NOT CONFIG_OPTFLOW_REFINEMENT AND CONFIG_OPTFLOW_ON_TIP)
     change_config_and_warn(CONFIG_OPTFLOW_ON_TIP 0 !CONFIG_OPTFLOW_REFINEMENT)
-  endif()
-  if(NOT CONFIG_TIP AND CONFIG_OPTFLOW_ON_TIP)
-    change_config_and_warn(CONFIG_OPTFLOW_ON_TIP 0 !CONFIG_TIP)
   endif()
 
   # CONFIG_IMPROVED_JMVD is dependent on CONFIG_JOINT_MVD. If CONFIG_JOINT_MVD
@@ -109,10 +106,6 @@ macro(fix_experiment_configs)
   if(NOT CONFIG_ALLOW_SAME_REF_COMPOUND AND CONFIG_IMPROVED_SAME_REF_COMPOUND)
     change_config_and_warn(CONFIG_IMPROVED_SAME_REF_COMPOUND 0
                            !CONFIG_ALLOW_SAME_REF_COMPOUND)
-  endif()
-  # CONFIG_TIP_IMPLICIT_QUANT depends on CONFIG_TIP
-  if(NOT CONFIG_TIP AND CONFIG_TIP_IMPLICIT_QUANT)
-    change_config_and_warn(CONFIG_TIP_IMPLICIT_QUANT 0 !CONFIG_TIP)
   endif()
 
   # CONFIG_TIP_IMPLICIT_QUANT depends on CONFIG_PEF

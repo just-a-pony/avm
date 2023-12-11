@@ -229,13 +229,11 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
               lfi->side_thr[plane][seg_id][dir][ref][mode] = side_thr_seg;
             }
           }
-#if CONFIG_TIP
           for (mode = 0; mode < MAX_MODE_LF_DELTAS; ++mode) {
             lfi->q_thr[plane][seg_id][dir][TIP_FRAME_INDEX][mode] = q_thr_seg;
             lfi->side_thr[plane][seg_id][dir][TIP_FRAME_INDEX][mode] =
                 side_thr_seg;
           }
-#endif  // CONFIG_TIP
         } else {
           // we could get rid of this if we assume that deltas are set to
           // zero when not in use; encoder always uses deltas
@@ -264,7 +262,6 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
             }
           }
 
-#if CONFIG_TIP
           const int scale_ref_deltas = lf->ref_deltas[TIP_FRAME_INDEX] * scale;
           for (mode = 0; mode < MAX_MODE_LF_DELTAS; ++mode) {
             lfi->q_thr[plane][seg_id][dir][TIP_FRAME_INDEX][mode] =
@@ -276,7 +273,6 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
                                         lf->mode_deltas[mode] * scale,
                                     cm->seq_params.bit_depth);
           }
-#endif  // CONFIG_TIP
         }
       }
     }

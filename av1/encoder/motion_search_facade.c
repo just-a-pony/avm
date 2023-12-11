@@ -163,10 +163,7 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
   int cnt = 1;
   int total_weight = 0;
 
-  if (!cpi->sf.mv_sf.full_pixel_search_level &&
-#if CONFIG_TIP
-      !is_tip_ref_frame(ref) &&
-#endif  // CONFIG_TIP
+  if (!cpi->sf.mv_sf.full_pixel_search_level && !is_tip_ref_frame(ref) &&
       mbmi->motion_mode == SIMPLE_TRANSLATION) {
     SuperBlockEnc *sb_enc = &x->sb_enc;
     if (sb_enc->tpl_data_count) {

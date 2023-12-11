@@ -668,9 +668,8 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
 static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
                                     MB_MODE_INFO *mbmi, aom_reader *r) {
   if (mbmi->skip_mode) return SIMPLE_TRANSLATION;
-#if CONFIG_TIP
+
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return SIMPLE_TRANSLATION;
-#endif  // CONFIG_TIP
 
   const MOTION_MODE last_motion_mode_allowed =
       motion_mode_allowed(cm, xd, mbmi);
@@ -2226,7 +2225,6 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
     return;
   }
 
-#if CONFIG_TIP
   ref_frame[0] = NONE_FRAME;
   ref_frame[1] = NONE_FRAME;
 #if !CONFIG_EXT_RECUR_PARTITIONS
@@ -2246,7 +2244,6 @@ static void read_ref_frames(AV1_COMMON *const cm, MACROBLOCKD *const xd,
   }
 
   if (is_tip_ref_frame(ref_frame[0])) return;
-#endif  // CONFIG_TIP
 
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_SKIP) ||
       segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
@@ -2508,27 +2505,23 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
     case GLOBALMV: {
-#if CONFIG_TIP
       // Global motion is never used for the TIP ref frame
       if (is_tip_ref_frame(ref_frame[0])) {
         mv[0].as_int = 0;
       } else {
-#endif  // CONFIG_TIP
 #if CONFIG_FLEX_MVRES
         mv[0].as_int =
             get_warp_motion_vector(xd, &cm->global_motion[ref_frame[0]],
                                    features->fr_mv_precision, bsize, xd->mi_col,
                                    xd->mi_row)
 #else
-      mv[0].as_int = get_warp_motion_vector(
-                         xd, &cm->global_motion[ref_frame[0]],
-                         features->allow_high_precision_mv, bsize, xd->mi_col,
-                         xd->mi_row, features->cur_frame_force_integer_mv)
+        mv[0].as_int = get_warp_motion_vector(
+                           xd, &cm->global_motion[ref_frame[0]],
+                           features->allow_high_precision_mv, bsize, xd->mi_col,
+                           xd->mi_row, features->cur_frame_force_integer_mv)
 #endif
                 .as_int;
-#if CONFIG_TIP
       }
-#endif  // CONFIG_TIP
       break;
     }
     case NEW_NEWMV:
@@ -2611,9 +2604,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
     }
     case GLOBAL_GLOBALMV: {
       assert(is_compound);
-#if CONFIG_TIP
       assert(!is_tip_ref_frame(ref_frame[0]));
-#endif  // CONFIG_TIP
       mv[0].as_int =
           get_warp_motion_vector(xd, &cm->global_motion[ref_frame[0]],
 #if CONFIG_FLEX_MVRES
@@ -3133,9 +3124,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       }
       if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y],
                                             xd->mi_row, xd->mi_col) &&
-#if CONFIG_TIP
           !is_tip_ref_frame(mbmi->ref_frame[0]) &&
-#endif  // CONFIG_TIP
 #if CONFIG_COMPOUND_WARP_CAUSAL
           !mbmi->skip_mode &&
           (!has_second_ref(mbmi) || is_compound_warp_causal_allowed(mbmi))) {
@@ -3405,10 +3394,8 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y], xd->mi_row,
                                         xd->mi_col) &&
-#if CONFIG_TIP
-      !is_tip_ref_frame(mbmi->ref_frame[0]) &&
-#endif  // CONFIG_TIP
-      !mbmi->skip_mode && !has_second_ref(mbmi)) {
+      !is_tip_ref_frame(mbmi->ref_frame[0]) && !mbmi->skip_mode &&
+      !has_second_ref(mbmi)) {
     mbmi->num_proj_ref = av1_findSamples(cm, xd, pts, pts_inref);
   }
   av1_count_overlappable_neighbors(cm, xd);
@@ -3846,7 +3833,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
     read_intra_block_mode_info(cm, xd, mbmi, r);
 }
 
-#if CONFIG_TIP
 static void intra_copy_frame_mvs(AV1_COMMON *const cm, int mi_row, int mi_col,
                                  int x_inside_boundary, int y_inside_boundary) {
   const int mi_cols =
@@ -3869,25 +3855,6 @@ static void intra_copy_frame_mvs(AV1_COMMON *const cm, int mi_row, int mi_col,
     frame_mvs += mi_cols;
   }
 }
-#else
-static void intra_copy_frame_mvs(AV1_COMMON *const cm, int mi_row, int mi_col,
-                                 int x_inside_boundary, int y_inside_boundary) {
-  const int frame_mvs_stride = ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, 1);
-  MV_REF *frame_mvs =
-      cm->cur_frame->mvs + (mi_row >> 1) * frame_mvs_stride + (mi_col >> 1);
-  x_inside_boundary = ROUND_POWER_OF_TWO(x_inside_boundary, 1);
-  y_inside_boundary = ROUND_POWER_OF_TWO(y_inside_boundary, 1);
-
-  for (int h = 0; h < y_inside_boundary; h++) {
-    MV_REF *mv = frame_mvs;
-    for (int w = 0; w < x_inside_boundary; w++) {
-      mv->ref_frame = NONE_FRAME;
-      mv++;
-    }
-    frame_mvs += frame_mvs_stride;
-  }
-}
-#endif  // CONFIG_TIP
 
 void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
                         aom_reader *r, int x_inside_boundary,

@@ -2024,7 +2024,6 @@ static INLINE int_mv get_ref_mv_from_stack(
   }
 
   assert(ref_idx == 0);
-#if CONFIG_TIP
 #if CONFIG_SEP_COMP_DRL
   if (ref_mv_idx < mbmi_ext_frame->ref_mv_count[0]) {
 #else
@@ -2038,11 +2037,6 @@ static INLINE int_mv get_ref_mv_from_stack(
   } else {
     return mbmi_ext_frame->global_mvs[ref_frame_type];
   }
-#else
-  return ref_mv_idx < mbmi_ext_frame->ref_mv_count
-             ? curr_ref_mv_stack[ref_mv_idx].this_mv
-             : mbmi_ext_frame->global_mvs[ref_frame_type];
-#endif  // CONFIG_TIP
 }
 
 static INLINE int_mv get_ref_mv(const MACROBLOCK *x, int ref_idx) {
@@ -2303,7 +2297,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
     av1_collect_neighbors_ref_counts(xd);
 
-#if CONFIG_TIP
     if (cm->features.tip_frame_mode &&
 #if CONFIG_EXT_RECUR_PARTITIONS
         is_tip_allowed_bsize(mbmi)) {
@@ -2316,9 +2309,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
     }
 
     if (!is_tip_ref_frame(mbmi->ref_frame[0])) write_ref_frames(cm, xd, w);
-#else
-    write_ref_frames(cm, xd, w);
-#endif  // CONFIG_TIP
 
     mode_ctx =
         mode_context_analyzer(mbmi_ext_frame->mode_context, mbmi->ref_frame);
@@ -2397,10 +2387,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #if CONFIG_COMPOUND_WARP_CAUSAL
       if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y],
                                             xd->mi_row, xd->mi_col) &&
-#if CONFIG_TIP
-          !is_tip_ref_frame(mbmi->ref_frame[0]) &&
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL
-          !mbmi->skip_mode &&
+          !is_tip_ref_frame(mbmi->ref_frame[0]) && !mbmi->skip_mode &&
           (!has_second_ref(mbmi) || is_compound_warp_causal_allowed(mbmi))) {
         int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
         mbmi->num_proj_ref[0] = mbmi->num_proj_ref[1] = 0;
@@ -5205,12 +5192,10 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->enable_ist);
   if (!seq_params->monochrome) aom_wb_write_bit(wb, seq_params->enable_cctx);
   aom_wb_write_bit(wb, seq_params->enable_mrls);
-#if CONFIG_TIP
   aom_wb_write_literal(wb, seq_params->enable_tip, 2);
   if (seq_params->enable_tip) {
     aom_wb_write_bit(wb, seq_params->enable_tip_hole_fill);
   }
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   aom_wb_write_bit(wb, seq_params->enable_bawp);
 #endif  // CONFIG_BAWP
@@ -5802,7 +5787,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
         }
       }
 #endif  // CONFIG_PEF
-#if CONFIG_TIP
       if (cm->seq_params.enable_tip) {
         assert(IMPLIES(av1_superres_scaled(cm),
                        features->tip_frame_mode != TIP_FRAME_AS_OUTPUT));
@@ -5829,7 +5813,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
 
       if (!cm->seq_params.enable_tip ||
           features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
-#endif  // CONFIG_TIP
 #if CONFIG_IBC_SR_EXT
         if (features->allow_screen_content_tools && !av1_superres_scaled(cm))
           aom_wb_write_bit(wb, features->allow_intrabc);
@@ -5862,9 +5845,9 @@ static AOM_INLINE void write_uncompressed_header_obu(
                        features->fr_mv_precision == MV_PRECISION_ONE_PEL));
 #endif
 #else
-      if (!features->cur_frame_force_integer_mv) {
-        aom_wb_write_bit(wb, features->allow_high_precision_mv);
-      }
+        if (!features->cur_frame_force_integer_mv) {
+          aom_wb_write_bit(wb, features->allow_high_precision_mv);
+        }
 #endif
 
         write_frame_interp_filter(features->interp_filter, wb);
@@ -5883,20 +5866,17 @@ static AOM_INLINE void write_uncompressed_header_obu(
           }
         }
 #else
-      aom_wb_write_bit(wb, features->switchable_motion_mode);
+        aom_wb_write_bit(wb, features->switchable_motion_mode);
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 #if CONFIG_OPTFLOW_REFINEMENT
         if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
           aom_wb_write_literal(wb, features->opfl_refine_type, 2);
         }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_TIP
       }
-#endif  // CONFIG_TIP
     }
   }
 
-#if CONFIG_TIP
   if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
 #if CONFIG_TIP_IMPLICIT_QUANT
     if (cm->seq_params.enable_tip_explicit_qp) {
@@ -5917,10 +5897,10 @@ static AOM_INLINE void write_uncompressed_header_obu(
       }
     }
 #else
-      aom_wb_write_literal(wb, quant_params->base_qindex,
-                           cm->seq_params.bit_depth == AOM_BITS_8
-                               ? QINDEX_BITS_UNEXT
-                               : QINDEX_BITS);
+    aom_wb_write_literal(wb, quant_params->base_qindex,
+                         cm->seq_params.bit_depth == AOM_BITS_8
+                             ? QINDEX_BITS_UNEXT
+                             : QINDEX_BITS);
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
     write_tile_info(cm, saved_wb, wb);
     if (seq_params->film_grain_params_present &&
@@ -5928,7 +5908,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
       write_film_grain_params(cpi, wb);
     return;
   }
-#endif  // CONFIG_TIP
 
   const int might_bwd_adapt = !(seq_params->reduced_still_picture_hdr) &&
                               !(features->disable_cdf_update);
@@ -6917,10 +6896,7 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
 #else   // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
       (cpi->num_tg > 1 || encode_show_existing_frame(cm)
 #endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
-#if CONFIG_TIP
-       || (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT)
-#endif  // CONFIG_TIP
-      );
+       || (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT));
   struct aom_write_bit_buffer saved_wb = { NULL, 0 };
   size_t length_field = 0;
   if (write_frame_header) {
@@ -6955,10 +6931,7 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
 #else   // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
   if (encode_show_existing_frame(cm)
 #endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
-#if CONFIG_TIP
-      || (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT)
-#endif  // CONFIG_TIP
-  ) {
+      || (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT)) {
     data_size = 0;
   } else {
     // Since length_field is determined adaptively after frame header

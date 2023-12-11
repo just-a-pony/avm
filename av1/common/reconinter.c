@@ -131,9 +131,7 @@ void av1_init_warp_params(InterPredParams *inter_pred_params,
   if (inter_pred_params->block_height < 8 || inter_pred_params->block_width < 8)
     return;
 
-#if CONFIG_TIP
   if (is_tip_ref_frame(mi->ref_frame[0])) return;
-#endif  // CONFIG_TIP
 
 #if CONFIG_REFINEMV
   // We do not do refineMV for warp blocks
@@ -1218,14 +1216,12 @@ void av1_opfl_build_inter_predictor(
   inter_pred_params->original_pu_height = pu_height;
 #endif  // CONFIG_REFINEMV
 
-#if CONFIG_TIP
   const int width = (cm->mi_params.mi_cols << MI_SIZE_LOG2);
   const int height = (cm->mi_params.mi_rows << MI_SIZE_LOG2);
   inter_pred_params->dist_to_top_edge = -GET_MV_SUBPEL(pre_y);
   inter_pred_params->dist_to_bottom_edge = GET_MV_SUBPEL(height - bh - pre_y);
   inter_pred_params->dist_to_left_edge = -GET_MV_SUBPEL(pre_x);
   inter_pred_params->dist_to_right_edge = GET_MV_SUBPEL(width - bw - pre_x);
-#endif
 
   inter_pred_params->conv_params = get_conv_params_no_round(
       0, plane, xd->tmp_conv_dst, MAX_SB_SIZE, is_compound, xd->bd);
@@ -3644,16 +3640,9 @@ int update_extend_mc_border_params(const struct scale_factors *const sf,
 
   // Do border extension if there is motion or
   // width/height is not a multiple of 8 pixels.
-#if CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
   // Extension is needed in optical flow refinement to obtain MV offsets
   (void)scaled_mv;
   if (!is_intrabc && !do_warp) {
-#else
-  const int is_scaled = av1_is_scaled(sf);
-  if ((!is_intrabc) && (!do_warp) &&
-      (is_scaled || scaled_mv.col || scaled_mv.row || (frame_width & 0x7) ||
-       (frame_height & 0x7))) {
-#endif  // CONFIG_OPTFLOW_REFINEMENT || CONFIG_TIP
     if (subpel_x_mv || (sf->x_step_q4 != SUBPEL_SHIFTS)) {
       block->x0 -= AOM_INTERP_EXTEND - 1;
       block->x1 += AOM_INTERP_EXTEND;
@@ -3716,7 +3705,6 @@ static void refinemv_extend_mc_border(
   }
 }
 
-#if CONFIG_TIP
 // Derive the sub-pixel related parameters of TIP blocks
 // Sub-pel related parameters are stored in the structures pointed by
 // "subpel_params" and "block"
@@ -3903,7 +3891,6 @@ void tip_common_calc_subpel_params_and_extend(
       &inter_pred_params->ref_area->paded_ref_buf[0], paded_ref_buf_stride, pre,
       src_stride, inter_pred_params->ref_area);
 }
-#endif
 
 void dec_calc_subpel_params(const MV *const src_mv,
                             InterPredParams *const inter_pred_params,
@@ -4170,14 +4157,12 @@ void av1_get_reference_area_with_padding(const AV1_COMMON *cm, MACROBLOCKD *xd,
     inter_pred_params.original_pu_width = bw;
     inter_pred_params.original_pu_height = bh;
 
-#if CONFIG_TIP
     const int width = (cm->mi_params.mi_cols << MI_SIZE_LOG2);
     const int height = (cm->mi_params.mi_rows << MI_SIZE_LOG2);
     inter_pred_params.dist_to_top_edge = -GET_MV_SUBPEL(pre_y);
     inter_pred_params.dist_to_bottom_edge = GET_MV_SUBPEL(height - bh - pre_y);
     inter_pred_params.dist_to_left_edge = -GET_MV_SUBPEL(pre_x);
     inter_pred_params.dist_to_right_edge = GET_MV_SUBPEL(width - bw - pre_x);
-#endif
 
     SubpelParams subpel_params;
     uint16_t *src;
@@ -4263,7 +4248,6 @@ void apply_mv_refinement(const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
     inter_pred_params[ref].original_pu_height = pu_height;
 #endif  // CONFIG_REFINEMV
 
-#if CONFIG_TIP
     const int width = (cm->mi_params.mi_cols << MI_SIZE_LOG2);
     const int height = (cm->mi_params.mi_rows << MI_SIZE_LOG2);
     inter_pred_params[ref].dist_to_top_edge = -GET_MV_SUBPEL(pre_y);
@@ -4272,7 +4256,6 @@ void apply_mv_refinement(const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
     inter_pred_params[ref].dist_to_left_edge = -GET_MV_SUBPEL(pre_x);
     inter_pred_params[ref].dist_to_right_edge =
         GET_MV_SUBPEL(width - bw - pre_x);
-#endif
 
     inter_pred_params[ref].conv_params = get_conv_params_no_round(
         0, plane, xd->tmp_conv_dst, MAX_SB_SIZE, is_compound, xd->bd);
@@ -4452,15 +4435,11 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
 
   int is_global[2] = { 0, 0 };
   for (int ref = 0; ref < 1 + is_compound; ++ref) {
-#if CONFIG_TIP
     if (!is_tip_ref_frame(mi->ref_frame[ref])) {
-#endif  // CONFIG_TIP
       const WarpedMotionParams *const wm =
           &xd->global_motion[mi->ref_frame[ref]];
       is_global[ref] = is_global_mv_block(mi, wm->wmtype);
-#if CONFIG_TIP
     }
-#endif  // CONFIG_TIP
   }
 
   assert(!is_global[0] && !is_global[1]);
@@ -4863,15 +4842,11 @@ static void build_inter_predictors_8x8_and_bigger(
 
   int is_global[2] = { 0, 0 };
   for (int ref = 0; ref < 1 + is_compound; ++ref) {
-#if CONFIG_TIP
     if (!is_tip_ref_frame(mi->ref_frame[ref])) {
-#endif  // CONFIG_TIP
       const WarpedMotionParams *const wm =
           &xd->global_motion[mi->ref_frame[ref]];
       is_global[ref] = is_global_mv_block(mi, wm->wmtype);
-#if CONFIG_TIP
     }
-#endif  // CONFIG_TIP
   }
 
   int row_start = 0;

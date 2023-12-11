@@ -789,11 +789,9 @@ static INLINE int is_inter_ref_frame(MV_REFERENCE_FRAME ref_frame) {
          ref_frame != NONE_FRAME;
 }
 
-#if CONFIG_TIP
 static INLINE int is_tip_ref_frame(MV_REFERENCE_FRAME ref_frame) {
   return ref_frame == TIP_FRAME;
 }
-#endif  // CONFIG_TIP
 
 static INLINE int is_inter_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return is_intrabc_block(mbmi, tree_type) ||
@@ -3558,7 +3556,6 @@ static INLINE int is_interintra_mode(const MB_MODE_INFO *mbmi) {
   return mbmi->motion_mode == INTERINTRA;
 }
 
-#if CONFIG_TIP
 #if CONFIG_EXT_RECUR_PARTITIONS
 static INLINE int is_tip_allowed_bsize(const MB_MODE_INFO *mbmi) {
   const BLOCK_SIZE bsize = mbmi->sb_type[0];
@@ -3576,7 +3573,6 @@ static INLINE int is_tip_allowed_bsize(BLOCK_SIZE bsize) {
   return AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >= 8;
 }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
-#endif  // CONFIG_TIP
 
 static INLINE int is_interintra_allowed_bsize(const BLOCK_SIZE bsize) {
   return bsize >= BLOCK_8X8 &&
@@ -3592,9 +3588,7 @@ static INLINE int is_interintra_allowed_mode(const PREDICTION_MODE mode) {
 }
 
 static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
-#if CONFIG_TIP
   if (is_tip_ref_frame(rf[0])) return 0;
-#endif  // CONFIG_TIP
   return is_inter_ref_frame(rf[0]) && !is_inter_ref_frame(rf[1]);
 }
 
@@ -3681,9 +3675,7 @@ static INLINE int check_num_overlappable_neighbors(const MB_MODE_INFO *mbmi) {
 
 static INLINE int is_neighbor_overlappable(const MB_MODE_INFO *mbmi,
                                            int tree_type) {
-#if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
-#endif  // CONFIG_TIP
 
 #if CONFIG_IBC_SR_EXT
   return (is_inter_block(mbmi, tree_type) &&
@@ -3699,9 +3691,7 @@ static INLINE int av1_allow_bawp(const MB_MODE_INFO *mbmi, int mi_row,
 #if CONFIG_EXTENDED_WARP_PREDICTION
   if (mbmi->mode == WARPMV) return 0;
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
-#if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
-#endif  // CONFIG_TIP
   if (is_motion_variation_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y], mi_row,
                                         mi_col) &&
       is_inter_singleref_mode(mbmi->mode))
@@ -3816,10 +3806,8 @@ static INLINE int is_nontrans_global_motion(const MACROBLOCKD *xd,
                                             const MB_MODE_INFO *mbmi) {
   int ref;
 
-#if CONFIG_TIP
   // Global motion is never used for the TIP ref frame
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return 0;
-#endif  // CONFIG_TIP
 
   // First check if all modes are GLOBALMV
   if (mbmi->mode != GLOBALMV && mbmi->mode != GLOBAL_GLOBALMV) return 0;

@@ -1004,10 +1004,8 @@ typedef struct {
 #endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   //! comp_inter_cost
   int comp_inter_cost[COMP_INTER_CONTEXTS][2];
-#if CONFIG_TIP
   //! tip_cost
   int tip_cost[TIP_CONTEXTS][CDF_SIZE(2)];
-#endif  // CONFIG_TIP
   /**@}*/
 
   /*****************************************************************************

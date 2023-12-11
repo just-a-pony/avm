@@ -872,10 +872,8 @@ typedef struct {
   // Indicates if refineMV mode should be enabled.
   bool enable_refinemv;
 #endif  // CONFIG_REFINEMV
-#if CONFIG_TIP
   // enable temporal interpolated prediction
   int enable_tip;
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   // enable block adaptive weighted prediction
   int enable_bawp;
@@ -1434,9 +1432,7 @@ typedef struct FRAME_COUNTS {
 #if CONFIG_BAWP
   unsigned int bawp[2];
 #endif  // CONFIG_BAWP
-#if CONFIG_TIP
   unsigned int tip_ref[TIP_CONTEXTS][2];
-#endif  // CONFIG_TIP
   unsigned int comp_inter[COMP_INTER_CONTEXTS][2];
   unsigned int single_ref[REF_CONTEXTS][INTER_REFS_PER_FRAME - 1][2];
 #if CONFIG_ALLOW_SAME_REF_COMPOUND
@@ -1972,9 +1968,7 @@ enum {
   av1_encode_frame_time,
   av1_compute_global_motion_time,
   av1_setup_motion_field_time,
-#if CONFIG_TIP
   av1_enc_setup_tip_frame_time,
-#endif  // CONFIG_TIP
   encode_sb_time,
   rd_pick_partition_time,
   rd_pick_sb_modes_time,
@@ -2002,9 +1996,7 @@ static INLINE char const *get_component_name(int index) {
     case av1_compute_global_motion_time:
       return "av1_compute_global_motion_time";
     case av1_setup_motion_field_time: return "av1_setup_motion_field_time";
-#if CONFIG_TIP
     case av1_enc_setup_tip_frame_time: return "av1_enc_setup_tip_frame_time";
-#endif  // CONFIG_TIP
     case encode_sb_time: return "encode_sb_time";
     case rd_pick_partition_time: return "rd_pick_partition_time";
     case rd_pick_sb_modes_time: return "rd_pick_sb_modes_time";
@@ -3217,13 +3209,8 @@ void av1_set_downsample_filter_options(AV1_COMP *cpi);
 // However, the estimation is not accurate and may misclassify videos.
 // A slower but more accurate approach that determines whether to use screen
 // content tools is employed later. See av1_determine_sc_tools_with_encoding().
-#if CONFIG_TIP
 void av1_set_screen_content_options(struct AV1_COMP *cpi,
                                     FeatureFlags *features);
-#else
-void av1_set_screen_content_options(const struct AV1_COMP *cpi,
-                                    FeatureFlags *features);
-#endif  // CONFIG_TIP
 
 // av1 uses 10,000,000 ticks/second as time stamp
 #define TICKS_PER_SEC 10000000LL
@@ -3357,20 +3344,10 @@ static INLINE int get_stats_buf_size(int num_lap_buffer, int num_lag_buffer) {
 static INLINE void set_ref_ptrs(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                 MV_REFERENCE_FRAME ref0,
                                 MV_REFERENCE_FRAME ref1) {
-  xd->block_ref_scale_factors[0] =
-      get_ref_scale_factors_const(cm, ref0 < INTER_REFS_PER_FRAME
-#if CONFIG_TIP
-                                              || is_tip_ref_frame(ref0)
-#endif  // CONFIG_TIP
-                                          ? ref0
-                                          : 0);
-  xd->block_ref_scale_factors[1] =
-      get_ref_scale_factors_const(cm, ref1 < INTER_REFS_PER_FRAME
-#if CONFIG_TIP
-                                              || is_tip_ref_frame(ref1)
-#endif  // CONFIG_TIP
-                                          ? ref1
-                                          : 0);
+  xd->block_ref_scale_factors[0] = get_ref_scale_factors_const(
+      cm, ref0 < INTER_REFS_PER_FRAME || is_tip_ref_frame(ref0) ? ref0 : 0);
+  xd->block_ref_scale_factors[1] = get_ref_scale_factors_const(
+      cm, ref1 < INTER_REFS_PER_FRAME || is_tip_ref_frame(ref1) ? ref1 : 0);
 }
 
 static INLINE int get_chessboard_index(int frame_index) {

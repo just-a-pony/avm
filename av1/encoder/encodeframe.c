@@ -18,9 +18,7 @@
 
 #include "config/aom_config.h"
 #include "config/aom_dsp_rtcd.h"
-#if CONFIG_TIP
 #include "config/aom_scale_rtcd.h"
-#endif  // CONFIG_TIP
 #include "config/av1_rtcd.h"
 
 #include "aom_dsp/aom_dsp_common.h"
@@ -45,9 +43,7 @@
 #include "av1/common/reconintra.h"
 #include "av1/common/seg_common.h"
 #include "av1/common/tile_common.h"
-#if CONFIG_TIP
 #include "av1/common/tip.h"
-#endif  // CONFIG_TIP
 #include "av1/common/warped_motion.h"
 
 #include "av1/encoder/aq_complexity.h"
@@ -1304,7 +1300,6 @@ static AOM_INLINE void set_default_interp_skip_flags(
                         : INTERP_SKIP_LUMA_SKIP_CHROMA;
 }
 
-#if CONFIG_TIP
 AOM_INLINE void av1_tip_enc_calc_subpel_params(
     const MV *const src_mv, InterPredParams *const inter_pred_params,
     MACROBLOCKD *xd, int mi_x, int mi_y, int ref,
@@ -1470,7 +1465,6 @@ static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
     cm->features.tip_frame_mode = TIP_FRAME_DISABLED;
   }
 }
-#endif  // CONFIG_TIP
 
 static void av1_enc_setup_ph_frame(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
@@ -1744,9 +1738,7 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
   if (cm->features.allow_pef) init_pef_parameter(cm, 0, av1_num_planes(cm));
 #endif  // CONFIG_PEF
 
-#if CONFIG_TIP
   av1_enc_setup_tip_frame(cpi);
-#endif  // CONFIG_TIP
 
   av1_enc_setup_ph_frame(cpi);
 

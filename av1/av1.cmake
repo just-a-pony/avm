@@ -88,6 +88,8 @@ list(
   "${AOM_ROOT}/av1/common/tile_common.h"
   "${AOM_ROOT}/av1/common/timing.c"
   "${AOM_ROOT}/av1/common/timing.h"
+  "${AOM_ROOT}/av1/common/tip.c"
+  "${AOM_ROOT}/av1/common/tip.h"
   "${AOM_ROOT}/av1/common/token_cdfs.h"
   "${AOM_ROOT}/av1/common/txb_common.c"
   "${AOM_ROOT}/av1/common/txb_common.h"
@@ -120,11 +122,6 @@ if(CONFIG_CCSO)
        "${AOM_ROOT}/av1/common/ccso.h")
   list(APPEND AOM_AV1_ENCODER_SOURCES "${AOM_ROOT}/av1/encoder/pickccso.c"
        "${AOM_ROOT}/av1/encoder/pickccso.h")
-endif()
-
-if(CONFIG_TIP)
-  list(APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/common/tip.c"
-       "${AOM_ROOT}/av1/common/tip.h")
 endif()
 
 list(

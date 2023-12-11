@@ -151,7 +151,6 @@ static INLINE int get_best_past_ref_index(const AV1_COMMON *const cm) {
 static INLINE int get_dir_rank(const AV1_COMMON *const cm, int refrank,
                                int *dir_refrank) {
   if (!is_inter_ref_frame(refrank)) return -1;
-#if CONFIG_TIP
   if (is_tip_ref_frame(refrank)) {
     if (dir_refrank) {
       dir_refrank[0] = -1;
@@ -159,7 +158,6 @@ static INLINE int get_dir_rank(const AV1_COMMON *const cm, int refrank,
     }
     return 1;
   }
-#endif  // CONFIG_TIP
   assert(refrank < cm->ref_frames_info.num_total_refs);
   if (dir_refrank) {
     dir_refrank[0] = -1;
@@ -183,7 +181,6 @@ static INLINE int get_dir_rank(const AV1_COMMON *const cm, int refrank,
   return -1;
 }
 
-#if CONFIG_TIP
 static INLINE int get_tip_ctx(const MACROBLOCKD *xd) {
   int ctx = 0;
   for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
@@ -195,7 +192,6 @@ static INLINE int get_tip_ctx(const MACROBLOCKD *xd) {
 
   return ctx;
 }
-#endif  // CONFIG_TIP
 
 static INLINE int get_segment_id(const CommonModeInfoParams *const mi_params,
                                  const uint8_t *segment_ids, BLOCK_SIZE bsize,

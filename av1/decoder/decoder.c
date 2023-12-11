@@ -139,7 +139,6 @@ static void dec_free_mi(CommonModeInfoParams *mi_params) {
 #endif  // CONFIG_PC_WIENER
 }
 
-#if CONFIG_TIP
 static INLINE void dec_init_tip_ref_frame(AV1_COMMON *const cm) {
   TIP *tip_ref = &cm->tip_ref;
   tip_ref->tip_frame = aom_calloc(1, sizeof(*tip_ref->tip_frame));
@@ -181,7 +180,6 @@ static INLINE void dec_free_optflow_bufs(AV1_COMMON *const cm) {
   aom_free(cm->gx1);
 }
 #endif  // CONFIG_OPTFLOW_ON_TIP
-#endif  // CONFIG_TIP
 
 AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   AV1Decoder *volatile const pbi = aom_memalign(32, sizeof(*pbi));
@@ -236,12 +234,10 @@ AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   aom_accounting_init(&pbi->accounting);
 #endif
 
-#if CONFIG_TIP
   dec_init_tip_ref_frame(cm);
 #if CONFIG_OPTFLOW_ON_TIP
   dec_init_optflow_bufs(cm);
 #endif  // CONFIG_OPTFLOW_ON_TIP
-#endif  // CONFIG_TIP
 
   cm->error.setjmp = 0;
 
@@ -323,12 +319,10 @@ void av1_decoder_remove(AV1Decoder *pbi) {
     av1_dealloc_dec_jobs(&pbi->tile_mt_info);
   }
 
-#if CONFIG_TIP
   dec_free_tip_ref_frame(&pbi->common);
 #if CONFIG_OPTFLOW_ON_TIP
   dec_free_optflow_bufs(&pbi->common);
 #endif  // CONFIG_OPTFLOW_ON_TIP
-#endif  // CONFIG_TIP
 
   av1_dec_free_cb_buf(pbi);
 #if CONFIG_ACCOUNTING

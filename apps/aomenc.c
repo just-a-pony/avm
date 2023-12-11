@@ -440,9 +440,7 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_WIENER_NONSEP
   &g_av1_codec_arg_defs.enable_wiener_nonsep,
 #endif  //  CONFIG_WIENER_NONSEP
-#if CONFIG_TIP
   &g_av1_codec_arg_defs.enable_tip,
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   &g_av1_codec_arg_defs.enable_bawp,
 #endif  // CONFIG_BAWP
@@ -656,9 +654,7 @@ static void init_config(cfg_options_t *config) {
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   config->enable_sdp = 1;
   config->enable_mrls = 1;
-#if CONFIG_TIP
   config->enable_tip = 1;
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   config->enable_bawp = 1;
 #endif  // CONFIG_BAWP
@@ -1579,10 +1575,8 @@ static void show_stream_config(struct stream_state *stream,
   }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
-#if CONFIG_TIP
   fprintf(stdout, "                               : TIP (%d)\n",
           encoder_cfg->enable_tip);
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   fprintf(stdout, "                               : BAWP (%d)\n",
           encoder_cfg->enable_bawp);

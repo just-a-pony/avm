@@ -49,9 +49,7 @@
 #include "av1/common/cfl.h"
 #include "av1/common/resize.h"
 #include "av1/common/tile_common.h"
-#if CONFIG_TIP
 #include "av1/common/tip.h"
-#endif  // CONFIG_TIP
 
 #include "av1/encoder/aq_complexity.h"
 #include "av1/encoder/aq_cyclicrefresh.h"
@@ -423,13 +421,11 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_AFFINE_REFINEMENT
   seq->enable_affine_refine = tool_cfg->enable_affine_refine;
 #endif  // CONFIG_AFFINE_REFINEMENT
-#if CONFIG_TIP
   seq->enable_tip = tool_cfg->enable_tip;
   seq->enable_tip_hole_fill = seq->enable_tip;
 #if CONFIG_TIP_IMPLICIT_QUANT
   seq->enable_tip_explicit_qp = 0;
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   seq->enable_bawp = tool_cfg->enable_bawp;
 #endif  // CONFIG_BAWP
@@ -1000,7 +996,6 @@ static INLINE void init_frame_info(FRAME_INFO *frame_info,
   frame_info->subsampling_y = seq_params->subsampling_y;
 }
 
-#if CONFIG_TIP
 static INLINE void init_tip_ref_frame(AV1_COMMON *const cm) {
   cm->tip_ref.tip_frame = aom_calloc(1, sizeof(*cm->tip_ref.tip_frame));
 #if CONFIG_TIP_DIRECT_FRAME_MV
@@ -1033,7 +1028,6 @@ static INLINE void free_optflow_bufs(AV1_COMMON *const cm) {
   aom_free(cm->gx1);
 }
 #endif  // CONFIG_OPTFLOW_ON_TIP
-#endif  // CONFIG_TIP
 
 AV1_COMP *av1_create_compressor(AV1EncoderConfig *oxcf, BufferPool *const pool,
                                 FIRSTPASS_STATS *frame_stats_buf,
@@ -1276,12 +1270,10 @@ AV1_COMP *av1_create_compressor(AV1EncoderConfig *oxcf, BufferPool *const pool,
   cm->superres_upscaled_height = oxcf->frm_dim_cfg.height;
   av1_loop_restoration_precal();
 
-#if CONFIG_TIP
   init_tip_ref_frame(cm);
 #if CONFIG_OPTFLOW_ON_TIP
   init_optflow_bufs(cm);
 #endif  // CONFIG_OPTFLOW_ON_TIP
-#endif  // CONFIG_TIP
 
   cm->error.setjmp = 0;
 
@@ -1489,12 +1481,10 @@ void av1_remove_compressor(AV1_COMP *cpi) {
   cpi->ssim_vars = NULL;
 #endif  // CONFIG_INTERNAL_STATS
 
-#if CONFIG_TIP
   free_tip_ref_frame(cm);
 #if CONFIG_OPTFLOW_ON_TIP
   free_optflow_bufs(cm);
 #endif  // CONFIG_OPTFLOW_ON_TIP
-#endif  // CONFIG_TIP
 
   av1_remove_common(cm);
   av1_free_ref_frame_buffers(cm->buffer_pool);
@@ -1622,7 +1612,6 @@ static void set_mv_search_params(AV1_COMP *cpi) {
   }
 }
 
-#if CONFIG_TIP
 // counts_1: Counts of blocks with no more than color_thresh colors.
 // counts_2: Counts of blocks with no more than color_thresh colors and
 // variance larger than var_thresh.
@@ -1650,7 +1639,6 @@ static void set_hole_fill_decision(AV1_COMP *cpi, int width, int height,
     }
   }
 }
-#endif  // CONFIG_TIP
 
 #if CONFIG_ADAPTIVE_DS_FILTER
 static void subtract_average_c(uint16_t *src, int16_t *dst, int width,
@@ -1883,13 +1871,7 @@ void av1_set_downsample_filter_options(AV1_COMP *cpi) {
 }
 #endif  // CONFIG_ADAPTIVE_DS_FILTER
 
-#if CONFIG_TIP
 void av1_set_screen_content_options(AV1_COMP *cpi, FeatureFlags *features) {
-#else
-void av1_set_screen_content_options(const AV1_COMP *cpi,
-                                    FeatureFlags *features) {
-#endif  // CONFIG_TIP
-
   const AV1_COMMON *const cm = &cpi->common;
 
   if (cm->seq_params.force_screen_content_tools != 2) {
@@ -1953,20 +1935,10 @@ void av1_set_screen_content_options(const AV1_COMP *cpi,
       features->allow_screen_content_tools &&
       counts_2 * blk_h * blk_w * var_factor > width * height;
 
-#if CONFIG_TIP
   if (frame_is_intra_only(cm) && cm->seq_params.enable_tip) {
     set_hole_fill_decision(cpi, width, height, blk_w, blk_h, counts_1,
                            counts_2);
   }
-#endif  // CONFIG_TIP
-
-  /*
-  printf("allow_screen_content_tools = %d, allow_intrabc = %d\n",
-         features->allow_screen_content_tools, features->allow_intrabc);
-  printf("c1 %d > %f; c1 %d > %f\n", counts_1,
-         width * height / ((float)(blk_h * blk_w * col_factor)), counts_2,
-         width * height / ((float)(blk_h * blk_w * var_factor)));
-         */
 }
 
 // Function pointer to search site config initialization
@@ -2120,7 +2092,6 @@ int av1_set_size_literal(AV1_COMP *cpi, int width, int height) {
   return 0;
 }
 
-#if CONFIG_TIP
 static void setup_tip_frame_size(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
   RefCntBuffer *tip_frame = cm->tip_ref.tip_frame;
@@ -2147,7 +2118,6 @@ static void setup_tip_frame_size(AV1_COMP *cpi) {
   tip_frame->frame_type = INTER_FRAME;
 #endif  // CONFIG_TIP_DIRECT_FRAME_MV
 }
-#endif  // CONFIG_TIP
 
 void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   AV1_COMMON *const cm = &cpi->common;
@@ -2222,7 +2192,6 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
     }
   }
 
-#if CONFIG_TIP
   if (cm->seq_params.enable_tip) {
     RefCntBuffer *buf = get_ref_frame_buf(cm, TIP_FRAME);
     if (buf == NULL || (buf->buf.y_crop_width != cm->width ||
@@ -2238,7 +2207,6 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
       if (av1_is_scaled(sf)) aom_extend_frame_borders(&buf->buf, num_planes);
     }
   }
-#endif  // CONFIG_TIP
 
   av1_setup_scale_factors_for_frame(&cm->sf_identity, cm->width, cm->height,
                                     cm->width, cm->height);
@@ -3040,7 +3008,6 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
   return AOM_CODEC_OK;
 }
 
-#if CONFIG_TIP
 static INLINE bool allow_tip_direct_output(AV1_COMMON *const cm) {
   if (!frame_is_intra_only(cm) && !encode_show_existing_frame(cm) &&
       cm->seq_params.enable_tip == 1 && cm->features.tip_frame_mode &&
@@ -3354,7 +3321,6 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
 
   return AOM_CODEC_OK;
 }
-#endif  // CONFIG_TIP
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT && CONFIG_LR_FLEX_SYNTAX
 /*!\brief Parameters for representing LR flexible syntax.
@@ -3519,12 +3485,10 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
 #endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
   }
 
-#if CONFIG_TIP
   int64_t tip_as_output_sse = INT64_MAX;
   int64_t tip_as_output_rate = INT64_MAX;
   compute_tip_direct_output_mode_RD(cpi, dest, size, &tip_as_output_sse,
                                     &tip_as_output_rate, largest_tile_id);
-#endif  // CONFIG_TIP
 
   // TODO(debargha): Fix mv search range on encoder side
   // aom_extend_frame_inner_borders(&cm->cur_frame->buf, av1_num_planes(cm));
@@ -3630,12 +3594,10 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
     *rate = (bits << 5);  // To match scale.
   }
 
-#if CONFIG_TIP
   if (allow_tip_direct_output(cm)) {
     finalize_tip_mode(cpi, dest, size, sse, rate, tip_as_output_sse,
                       tip_as_output_rate, largest_tile_id);
   }
-#endif  // CONFIG_TIP
 
 #if CONFIG_PRIMARY_REF_FRAME_OPT
   cpi->last_encoded_frame_order_hint = cm->current_frame.display_order_hint;

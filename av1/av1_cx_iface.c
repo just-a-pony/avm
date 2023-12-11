@@ -131,9 +131,7 @@ struct av1_extracfg {
   int disable_ml_transform_speed_features;  // disable all ml transform speedups
   int enable_sdp;   // enable semi-decoupled partitioning
   int enable_mrls;  // enable multiple reference line selection
-#if CONFIG_TIP
-  int enable_tip;  // enable temporal interpolated prediction
-#endif             // CONFIG_TIP
+  int enable_tip;   // enable temporal interpolated prediction
 #if CONFIG_BAWP
   int enable_bawp;  // enable block adaptive weighted prediction
 #endif              // CONFIG_BAWP
@@ -477,9 +475,7 @@ static struct av1_extracfg default_extra_cfg = {
   0,  // disable ml based transform speed features
   1,  // enable semi-decoupled partitioning
   1,  // enable multiple reference line selection
-#if CONFIG_TIP
-  1,    // enable temporal interpolated prediction (TIP)
-#endif  // CONFIG_TIP
+  1,  // enable temporal interpolated prediction (TIP)
 #if CONFIG_BAWP
   1,    // enable block adaptive weighted prediction (BAWP)
 #endif  // CONFIG_BAWP
@@ -1006,9 +1002,7 @@ static void update_encoder_config(cfg_options_t *cfg,
       extra_cfg->disable_ml_transform_speed_features;
   cfg->enable_sdp = extra_cfg->enable_sdp;
   cfg->enable_mrls = extra_cfg->enable_mrls;
-#if CONFIG_TIP
   cfg->enable_tip = extra_cfg->enable_tip;
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   cfg->enable_bawp = extra_cfg->enable_bawp;
 #endif  // CONFIG_BAWP
@@ -1138,9 +1132,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   extra_cfg->enable_sdp = cfg->enable_sdp;
   extra_cfg->enable_mrls = cfg->enable_mrls;
-#if CONFIG_TIP
   extra_cfg->enable_tip = cfg->enable_tip;
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   extra_cfg->enable_bawp = cfg->enable_bawp;
 #endif  // CONFIG_BAWP
@@ -1463,7 +1455,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_REFINEMV
   tool_cfg->enable_refinemv = extra_cfg->enable_refinemv;
 #endif  // CONFIG_REFINEMV
-#if CONFIG_TIP
   tool_cfg->enable_tip = extra_cfg->enable_tip;
   if (tool_cfg->enable_tip) {
     if (cfg->g_lag_in_frames == 0) {
@@ -1474,7 +1465,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
       tool_cfg->enable_tip = 0;
     }
   }
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   tool_cfg->enable_bawp = extra_cfg->enable_bawp;
 #endif  // CONFIG_BAWP
@@ -3942,11 +3932,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_mrls, argv,
                               err_string)) {
     extra_cfg.enable_mrls = arg_parse_int_helper(&arg, err_string);
-#if CONFIG_TIP
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tip, argv,
                               err_string)) {
     extra_cfg.enable_tip = arg_parse_int_helper(&arg, err_string);
-#endif  // CONFIG_TIP
 #if CONFIG_BAWP
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_bawp, argv,
                               err_string)) {
@@ -4468,10 +4456,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #else       // CONFIG_EXT_RECUR_PARTITIONS
         0,
 #endif      // CONFIG_EXT_RECUR_PARTITIONS
-        0, 1,   1,
-#if CONFIG_TIP
-        1,
-#endif  // CONFIG_TIP
+        0, 1,   1,   1,
 #if CONFIG_BAWP
         1,
 #endif  // CONFIG_BAWP

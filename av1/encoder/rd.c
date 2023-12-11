@@ -505,11 +505,9 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                                fc->comp_inter_cdf[i], NULL);
     }
 
-#if CONFIG_TIP
     for (i = 0; i < TIP_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->tip_cost[i], fc->tip_cdf[i], NULL);
     }
-#endif  // CONFIG_TIP
 
     for (i = 0; i < REF_CONTEXTS; ++i) {
       for (j = 0; j < INTER_REFS_PER_FRAME - 1; ++j) {
@@ -1800,7 +1798,6 @@ void av1_get_entropy_contexts(BLOCK_SIZE plane_bsize,
 
 void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint16_t *ref_y_buffer,
                  int ref_y_stride, int ref_frame, BLOCK_SIZE block_size) {
-#if CONFIG_TIP
   // When the tip buffer is invalid, for example for frames that
   // have only one reference, ref_y_buffer is invalid and should
   // not be used for computing x->pred_mv_sad.
@@ -1812,7 +1809,6 @@ void av1_mv_pred(const AV1_COMP *cpi, MACROBLOCK *x, uint16_t *ref_y_buffer,
       return;
     }
   }
-#endif  // CONFIG_TIP
   const MV_REFERENCE_FRAME ref_frames[2] = { ref_frame, NONE_FRAME };
 
 #if CONFIG_SEP_COMP_DRL
@@ -1892,11 +1888,9 @@ void av1_setup_pred_block(const MACROBLOCKD *xd,
 
 YV12_BUFFER_CONFIG *av1_get_scaled_ref_frame(const AV1_COMP *cpi,
                                              MV_REFERENCE_FRAME ref_frame) {
-#if CONFIG_TIP
   if (is_tip_ref_frame(ref_frame)) {
     return NULL;
   }
-#endif  // CONFIG_TIP
 
   assert(ref_frame < cpi->common.ref_frames_info.num_total_refs);
   RefCntBuffer *const scaled_buf = cpi->scaled_ref_buf[ref_frame];

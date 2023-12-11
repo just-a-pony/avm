@@ -56,7 +56,6 @@ static AOM_INLINE int_mv get_ref_mv_for_mv_stats(
   }
 
   assert(ref_idx == 0);
-#if CONFIG_TIP
 #if CONFIG_SEP_COMP_DRL
   if (ref_mv_idx < mbmi_ext_frame->ref_mv_count[0]) {
 #else
@@ -70,11 +69,6 @@ static AOM_INLINE int_mv get_ref_mv_for_mv_stats(
   } else {
     return mbmi_ext_frame->global_mvs[ref_frame_type];
   }
-#else
-  return ref_mv_idx < mbmi_ext_frame->ref_mv_count
-             ? curr_ref_mv_stack[ref_mv_idx].this_mv
-             : mbmi_ext_frame->global_mvs[ref_frame_type];
-#endif  // CONFIG_TIP
 }
 
 static AOM_INLINE int get_symbol_cost(const aom_cdf_prob *cdf, int symbol) {

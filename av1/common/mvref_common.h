@@ -40,7 +40,6 @@ typedef struct position {
   int col;
 } POSITION;
 
-#if CONFIG_TIP
 #define MAX_OFFSET_WIDTH 64
 #define MAX_OFFSET_HEIGHT 0
 #define MAX_OFFSET_HEIGHT_LOG2 (MAX_OFFSET_HEIGHT >> TMVP_MI_SZ_LOG2)
@@ -98,7 +97,6 @@ static AOM_INLINE int get_block_position(AV1_COMMON *cm, int *mi_r, int *mi_c,
 
   return 1;
 }
-#endif  // CONFIG_TIP
 
 // clamp_mv_ref
 #define MV_BORDER (16 << 3)  // Allow 16 pels in 1/8th pel units
@@ -446,10 +444,7 @@ static INLINE void av1_set_ref_mv_idx(int *ref_mv_idx, int ref_mv_idx_type) {
 
 static INLINE void av1_set_ref_frame(MV_REFERENCE_FRAME *rf,
                                      MV_REFERENCE_FRAME ref_frame_type) {
-  if (ref_frame_type == INTRA_FRAME ||
-#if CONFIG_TIP
-      is_tip_ref_frame(ref_frame_type) ||
-#endif  // CONFIG_TIP
+  if (ref_frame_type == INTRA_FRAME || is_tip_ref_frame(ref_frame_type) ||
       ref_frame_type < INTER_REFS_PER_FRAME) {
     rf[0] = ref_frame_type;
     rf[1] = NONE_FRAME;
@@ -552,10 +547,7 @@ static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   uint8_t *const ref_counts = xd->neighbors_ref_counts;
   for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
     const MB_MODE_INFO *const neighbor = xd->neighbors[i];
-    if (neighbor != NULL &&
-#if CONFIG_TIP
-        !is_tip_ref_frame(neighbor->ref_frame[0]) &&
-#endif  // CONFIG_TIP
+    if (neighbor != NULL && !is_tip_ref_frame(neighbor->ref_frame[0]) &&
         is_inter_block(neighbor, xd->tree_type)) {
       ref_counts[neighbor->ref_frame[0]]++;
       if (has_second_ref(neighbor)) {

@@ -240,16 +240,14 @@ typedef struct InterPredParams {
   INTERINTER_COMPOUND_DATA mask_comp;
   BLOCK_SIZE sb_type;
   int is_intrabc;
-#if CONFIG_TIP
   /**
-   * \name Distance of this block from frame edges in 1/8th pixel units.
+   * \name Distance of TIP block from frame edges in 1/8th pixel units.
    */
   /**@{*/
   int dist_to_left_edge;   /*!< Distance from left edge */
   int dist_to_right_edge;  /*!< Distance from right edge */
   int dist_to_top_edge;    /*!< Distance from top edge */
   int dist_to_bottom_edge; /*!< Distance from bottom edge */
-#endif                     // CONFIG_TIP
 
 #if CONFIG_REFINEMV
   int use_ref_padding;
@@ -1436,11 +1434,8 @@ static INLINE int is_warpmv_mode_allowed(const AV1_COMMON *const cm,
   int frame_warp_delta_allowed =
       (cm->features.enabled_motion_modes & (1 << WARP_DELTA)) != 0;
 
-  if (has_second_ref(mbmi) || !frame_warp_delta_allowed
-#if CONFIG_TIP
-      || is_tip_ref_frame(mbmi->ref_frame[0])
-#endif  // CONFIG_TIP
-      || !cm->features.allow_warpmv_mode)
+  if (has_second_ref(mbmi) || !frame_warp_delta_allowed ||
+      is_tip_ref_frame(mbmi->ref_frame[0]) || !cm->features.allow_warpmv_mode)
     return 0;
 
   return frame_warp_delta_allowed && is_warpmv_allowed_bsize(bsize);

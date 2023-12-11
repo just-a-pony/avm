@@ -93,7 +93,6 @@ extern "C" {
 #define TXCOEFF_TIMER 0
 #define TXCOEFF_COST_TIMER 0
 
-#if CONFIG_TIP
 // Some arrays (e.g. x->pred_sse and yv12_mb) are defined such that their
 // indices 0-8 correspond to inter ref0, ref1,... ref6, intra ref, and TIP ref.
 // This macros maps the ref_frame indices to corresponding array indices, where
@@ -102,13 +101,6 @@ extern "C" {
 #define COMPACT_INDEX0_NRS(r)               \
   (((r) == INTRA_FRAME) ? INTRA_FRAME_INDEX \
                         : (((r) == TIP_FRAME) ? TIP_FRAME_INDEX : (r)))
-#else
-// Some arrays (e.g. x->pred_sse and yv12_mb) are defined such that their
-// indices 0-7 correspond to inter ref0, ref1,... ref6, and intra ref. This
-// macros maps the ref_frame indices to corresponding array indices, where
-// intra ref_frame index, INTRA_FRAME (28) is mapped to INTRA_FRAME_INDEX (7).
-#define COMPACT_INDEX0_NRS(r) (((r) == INTRA_FRAME) ? INTRA_FRAME_INDEX : (r))
-#endif  // CONFIG_TIP
 
 // This macro is similar to the previous one, but also maps INVALID_IDX
 // (ref_frame[1] for the single reference case) to 7, which typically
@@ -116,7 +108,6 @@ extern "C" {
 #define COMPACT_INDEX1_NRS(r) \
   (!is_inter_ref_frame((r)) ? INTRA_FRAME_INDEX : (r))
 
-#if CONFIG_TIP || CONFIG_PEF
 // MI unit is 4x4, TMVP unit is 8x8, so there is 1 shift
 // between TMVP unit and MI unit
 #define TMVP_SHIFT_BITS 1
@@ -125,7 +116,6 @@ extern "C" {
 #define TMVP_MI_SIZE (1 << TMVP_MI_SZ_LOG2)
 // TIP MV search range constraint in TMVP unit
 #define TIP_MV_SEARCH_RANGE 4
-#endif  // CONFIG_TIP || CONFIG_PEF
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
 #define MIN_BSIZE_WARP_DELTA 8
@@ -178,7 +168,6 @@ enum {
   REFRESH_FRAME_CONTEXT_BACKWARD,
 } UENUM1BYTE(REFRESH_FRAME_CONTEXT_MODE);
 
-#if CONFIG_TIP
 enum {
   /**
    * TIP frame generation is disabled
@@ -197,24 +186,16 @@ enum {
    */
   TIP_FRAME_MODES,
 } UENUM1BYTE(TIP_FRAME_MODE);
-#endif  // CONFIG_TIP
 
 typedef struct {
   int_mv mfmv0;
   uint8_t ref_frame_offset;
 } TPL_MV_REF;
 
-#if CONFIG_TIP
 typedef struct {
   int_mv mv[2];
   MV_REFERENCE_FRAME ref_frame[2];
 } MV_REF;
-#else
-typedef struct {
-  int_mv mv;
-  MV_REFERENCE_FRAME ref_frame;
-} MV_REF;
-#endif  // CONFIG_TIP
 
 typedef struct PlaneHash {
   uint8_t md5[16];
@@ -465,13 +446,11 @@ typedef struct SequenceHeader {
                                        // 2 - adaptive
   uint8_t enable_sdp;   // enables/disables semi-decoupled partitioning
   uint8_t enable_mrls;  // enables/disables multiple reference line selection
-#if CONFIG_TIP
-  uint8_t enable_tip;  // enables/disables temporal interpolated prediction
+  uint8_t enable_tip;   // enables/disables temporal interpolated prediction
   uint8_t enable_tip_hole_fill;  // enables/disables hole fill for TIP
 #if CONFIG_TIP_IMPLICIT_QUANT
   uint8_t enable_tip_explicit_qp;  // enables/disables explicit qp for TIP
 #endif                             // CONFIG_TIP_IMPLICIT_QUANT
-#endif                             // CONFIG_TIP
 #if CONFIG_BAWP
   uint8_t enable_bawp;  // enables/disables block adaptive weighted prediction
 #endif                  // CONFIG_BAWP
@@ -751,7 +730,6 @@ typedef struct {
    */
   OPTFLOW_REFINE_TYPE opfl_refine_type;
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_TIP
   /*!
    * TIP mode.
    */
@@ -766,7 +744,6 @@ typedef struct {
    * Enables/disables hole fill for TIP
    */
   bool allow_tip_hole_fill;
-#endif  // CONFIG_TIP
 #if CONFIG_PEF
   /*!
    * Enables/disables prediction enhancement filter
@@ -1299,7 +1276,6 @@ typedef struct {
 #endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 } RefFramesInfo;
 
-#if CONFIG_TIP
 /*!
  * \brief Structure used for storing tip reconstruct and prediction
  */
@@ -1382,7 +1358,6 @@ typedef struct TIP_Buffer {
    */
   int *mf_need_clamp;
 } TIP;
-#endif  // CONFIG_TIP
 
 /*!
  * \brief Top level common structure used by both encoder and decoder.
@@ -1805,7 +1780,6 @@ typedef struct AV1Common {
   FILE *fDecCoeffLog;
 #endif
 
-#if CONFIG_TIP
   /*!
    * Flag to indicate if current frame has backward ref frame
    */
@@ -1841,7 +1815,6 @@ typedef struct AV1Common {
    */
   int16_t *gy1;
 #endif  // CONFIG_OPTFLOW_ON_TIP
-#endif  // CONFIG_TIP
   /*!
    * Size of the superblock used for this frame.
    */
@@ -1904,9 +1877,7 @@ static void unlock_buffer_pool(BufferPool *const pool) {
 }
 
 static INLINE YV12_BUFFER_CONFIG *get_ref_frame(AV1_COMMON *cm, int index) {
-#if CONFIG_TIP
   if (is_tip_ref_frame(index)) return &cm->tip_ref.tip_frame->buf;
-#endif  // CONFIG_TIP
   if (index < 0 || index >= REF_FRAMES) return NULL;
   if (cm->ref_frame_map[index] == NULL) return NULL;
   return &cm->ref_frame_map[index]->buf;
@@ -1998,11 +1969,9 @@ static INLINE int get_ref_frame_map_idx(const AV1_COMMON *const cm,
 
 static INLINE RefCntBuffer *get_ref_frame_buf(
     const AV1_COMMON *const cm, const MV_REFERENCE_FRAME ref_frame) {
-#if CONFIG_TIP
   if (is_tip_ref_frame(ref_frame)) {
     return cm->tip_ref.tip_frame;
   }
-#endif  // CONFIG_TIP
   const int map_idx = get_ref_frame_map_idx(cm, ref_frame);
   return (map_idx != INVALID_IDX) ? cm->ref_frame_map[map_idx] : NULL;
 }
@@ -2011,22 +1980,18 @@ static INLINE RefCntBuffer *get_ref_frame_buf(
 // can be used with a const AV1_COMMON if needed.
 static INLINE const struct scale_factors *get_ref_scale_factors_const(
     const AV1_COMMON *const cm, const MV_REFERENCE_FRAME ref_frame) {
-#if CONFIG_TIP
   if (is_tip_ref_frame(ref_frame)) {
     return &cm->tip_ref.scale_factor;
   }
-#endif  // CONFIG_TIP
   const int map_idx = get_ref_frame_map_idx(cm, ref_frame);
   return (map_idx != INVALID_IDX) ? &cm->ref_scale_factors[map_idx] : NULL;
 }
 
 static INLINE struct scale_factors *get_ref_scale_factors(
     AV1_COMMON *const cm, const MV_REFERENCE_FRAME ref_frame) {
-#if CONFIG_TIP
   if (is_tip_ref_frame(ref_frame)) {
     return &cm->tip_ref.scale_factor;
   }
-#endif  // CONFIG_TIP
   const int map_idx = get_ref_frame_map_idx(cm, ref_frame);
   return (map_idx != INVALID_IDX) ? &cm->ref_scale_factors[map_idx] : NULL;
 }
@@ -2039,11 +2004,9 @@ static INLINE RefCntBuffer *get_primary_ref_frame_buf(
   const int primary_ref_frame = cm->features.primary_ref_frame;
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
   if (primary_ref_frame == PRIMARY_REF_NONE) return NULL;
-#if CONFIG_TIP
   if (is_tip_ref_frame(primary_ref_frame)) {
     return cm->tip_ref.tip_frame;
   }
-#endif  // CONFIG_TIP
   const int map_idx = get_ref_frame_map_idx(cm, primary_ref_frame);
   return (map_idx != INVALID_IDX) ? cm->ref_frame_map[map_idx] : NULL;
 }
@@ -2069,26 +2032,17 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
   const int buf_cols = buf->mi_cols;
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
 
-#if CONFIG_TIP
   const int tpl_rows = ROUND_POWER_OF_TWO(mi_params->mi_rows, TMVP_SHIFT_BITS);
   const int tpl_cols = ROUND_POWER_OF_TWO(mi_params->mi_cols, TMVP_SHIFT_BITS);
   const int mem_size = tpl_rows * tpl_cols;
-#endif  // CONFIG_TIP
 
   if (buf->mvs == NULL || buf_rows != mi_params->mi_rows ||
       buf_cols != mi_params->mi_cols) {
     aom_free(buf->mvs);
     buf->mi_rows = mi_params->mi_rows;
     buf->mi_cols = mi_params->mi_cols;
-#if CONFIG_TIP
     CHECK_MEM_ERROR(cm, buf->mvs,
                     (MV_REF *)aom_calloc(mem_size, sizeof(*buf->mvs)));
-#else
-    CHECK_MEM_ERROR(cm, buf->mvs,
-                    (MV_REF *)aom_calloc(((mi_params->mi_rows + 1) >> 1) *
-                                             ((mi_params->mi_cols + 1) >> 1),
-                                         sizeof(*buf->mvs)));
-#endif  // CONFIG_TIP
     aom_free(buf->seg_map);
     CHECK_MEM_ERROR(
         cm, buf->seg_map,
@@ -2096,10 +2050,6 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
                               sizeof(*buf->seg_map)));
   }
 
-#if !CONFIG_TIP
-  const int mem_size =
-      ((mi_params->mi_rows + MAX_MIB_SIZE) >> 1) * (mi_params->mi_stride >> 1);
-#endif  // !CONFIG_TIP
   const int is_tpl_mvs_mem_size_too_small = (cm->tpl_mvs_mem_size < mem_size);
   int realloc = cm->tpl_mvs == NULL || is_tpl_mvs_mem_size_too_small;
   if (realloc) {
@@ -2109,7 +2059,6 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
     cm->tpl_mvs_mem_size = mem_size;
   }
 
-#if CONFIG_TIP
   realloc = cm->tip_ref.available_flag == NULL || is_tpl_mvs_mem_size_too_small;
   if (realloc) {
     aom_free(cm->tip_ref.available_flag);
@@ -2125,7 +2074,6 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
         cm, cm->tip_ref.mf_need_clamp,
         (int *)aom_calloc(mem_size, sizeof(*cm->tip_ref.mf_need_clamp)));
   }
-#endif  // CONFIG_TIP
 }
 
 void cfl_init(CFL_CTX *cfl, const SequenceHeader *seq_params);
@@ -3953,11 +3901,9 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     allowed_motion_modes |= (1 << INTERINTRA);
   }
 
-#if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) {
     return (allowed_motion_modes & enabled_motion_modes);
   }
-#endif  // CONFIG_TIP
 
 #if CONFIG_ALLOW_SAME_REF_COMPOUND
   if (mbmi->ref_frame[0] == mbmi->ref_frame[1]) {
@@ -4049,9 +3995,7 @@ static INLINE MOTION_MODE motion_mode_allowed(const AV1_COMMON *cm,
 #endif  // CONFIG_BAWP_CHROMA
 #endif  // CONFIG_BAWP
 
-#if CONFIG_TIP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return SIMPLE_TRANSLATION;
-#endif  // CONFIG_TIP
 
 #if CONFIG_ALLOW_SAME_REF_COMPOUND
   if (mbmi->ref_frame[0] == mbmi->ref_frame[1]) return SIMPLE_TRANSLATION;

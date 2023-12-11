@@ -1361,7 +1361,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       const MV_REFERENCE_FRAME ref0 = mbmi->ref_frame[0];
       const MV_REFERENCE_FRAME ref1 = mbmi->ref_frame[1];
 
-#if CONFIG_TIP
       if (cm->features.tip_frame_mode &&
 #if CONFIG_EXT_RECUR_PARTITIONS
           is_tip_allowed_bsize(mbmi)) {
@@ -1374,13 +1373,9 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         ++counts->tip_ref[tip_ctx][is_tip_ref_frame(ref0)];
 #endif
       }
-#endif  // CONFIG_TIP
 
-      if (current_frame->reference_mode == REFERENCE_MODE_SELECT
-#if CONFIG_TIP
-          && !is_tip_ref_frame(ref0)
-#endif  // CONFIG_TIP
-      ) {
+      if (current_frame->reference_mode == REFERENCE_MODE_SELECT &&
+          !is_tip_ref_frame(ref0)) {
         if (is_comp_ref_allowed(bsize)) {
 #if CONFIG_ENTROPY_STATS
           counts->comp_inter[av1_get_reference_mode_context(cm, xd)]
@@ -1409,9 +1404,9 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           const int bit =
               ((n_bits == 0) && (ref0 == i)) || ((n_bits == 1) && (ref1 == i));
 #else
-        assert(ref0 < ref1);
-        for (int i = 0; i < n_refs + n_bits - 2 && n_bits < 2; i++) {
-          const int bit = ref0 == i || ref1 == i;
+      assert(ref0 < ref1);
+      for (int i = 0; i < n_refs + n_bits - 2 && n_bits < 2; i++) {
+        const int bit = ref0 == i || ref1 == i;
 #endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
           const int bit_type = n_bits == 0 ? -1
                                            : av1_get_compound_ref_bit_type(
@@ -1455,11 +1450,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           if (i < cm->ref_frames_info.num_same_ref_compound) i -= bit;
 #endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
         }
-#if CONFIG_TIP
       } else if (!is_tip_ref_frame(ref0)) {
-#else
-      } else {
-#endif  // CONFIG_TIP
         const int n_refs = cm->ref_frames_info.num_total_refs;
         const MV_REFERENCE_FRAME ref0_nrs = mbmi->ref_frame[0];
         for (int i = 0; i < n_refs - 1; i++) {

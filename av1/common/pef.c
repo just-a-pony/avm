@@ -290,7 +290,7 @@ static INLINE void enhance_sub_prediction_blocks(const AV1_COMMON *cm,
   int tpl_offset = 0;
   int mvs_stride = ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
   const TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
-#if CONFIG_TIP
+
   if (pef_mode == 1) {
     const int frame_w = xd->plane[0].dst.width;
     const int frame_h = xd->plane[0].dst.height;
@@ -315,7 +315,7 @@ static INLINE void enhance_sub_prediction_blocks(const AV1_COMMON *cm,
     tpl_start_col = ref_start_pixel_col >> TMVP_MI_SZ_LOG2;
     tpl_offset = tpl_start_row * mvs_stride + tpl_start_col;
   }
-#endif  // CONFIG_TIP
+
   const TPL_MV_REF *tpl_mvs = tpl_mvs_base + tpl_offset;
 
   // initialize x_step and y_step based on blockiness location
@@ -434,7 +434,6 @@ static INLINE void enhance_sub_prediction_blocks(const AV1_COMMON *cm,
   }
 }
 
-#if CONFIG_TIP
 // setup dst buffer for each color component
 static INLINE void pef_setup_pred_plane(struct buf_2d *dst, uint16_t *src,
                                         int width, int height, int stride,
@@ -490,7 +489,6 @@ void enhance_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd) {
     enhance_sub_prediction_blocks(cm, xd, &pef_input);
   }
 }
-#endif  // CONFIG_TIP
 
 void enhance_prediction(const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
                         uint16_t *dst, int dst_stride, int bw, int bh
@@ -509,7 +507,7 @@ void enhance_prediction(const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
 ) {
   if (!cm->seq_params.enable_pef) return;
   if (!cm->features.allow_pef) return;
-#if CONFIG_TIP
+
   MB_MODE_INFO *mbmi = xd->mi[0];
   const int use_tip = is_tip_ref_frame(mbmi->ref_frame[0]);
   if (use_tip) {
@@ -522,7 +520,7 @@ void enhance_prediction(const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
     enhance_sub_prediction_blocks(cm, xd, &pef_input);
     return;
   }
-#endif  // CONFIG_TIP
+
 #if CONFIG_OPTFLOW_REFINEMENT
 #if !CONFIG_AFFINE_REFINEMENT
   use_opfl &= (plane == 0);
