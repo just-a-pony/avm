@@ -116,7 +116,7 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
   // Biggest chroma block covering multiple luma blocks is of size 16X32 /
   // 32x16, when a 32x64 / 64x32 block uses a HORZ / VERTICAL 4A/4B partition.
   const int num_pix_chroma = AOMMAX(num_pix, 16 * 32);
-#elif CONFIG_UNEVEN_4WAY
+#elif CONFIG_EXT_RECUR_PARTITIONS
   // Biggest chroma block covering multiple luma blocks is of size 8X16 / 16X8,
   // when a 16X32 / 32X16 block uses a HORZ / VERTICAL 4A/4B partition.
   const int num_pix_chroma = AOMMAX(num_pix, 16 * 8);
@@ -246,14 +246,12 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
     pc_tree->vertical[i] = NULL;
   }
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
   for (int i = 0; i < 4; ++i) {
     pc_tree->horizontal4a[i] = NULL;
     pc_tree->horizontal4b[i] = NULL;
     pc_tree->vertical4a[i] = NULL;
     pc_tree->vertical4b[i] = NULL;
   }
-#endif  // CONFIG_UNEVEN_4WAY
   for (int i = 0; i < 4; ++i) {
     pc_tree->horizontal3[i] = NULL;
     pc_tree->vertical3[i] = NULL;
@@ -312,8 +310,6 @@ void av1_free_pc_tree_recursive(PC_TREE *pc_tree, int num_planes, int keep_best,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 #if CONFIG_EXT_RECUR_PARTITIONS
-
-#if CONFIG_UNEVEN_4WAY
   if (!keep_best || (partition != PARTITION_HORZ_4A)) {
     for (int i = 0; i < 4; ++i) {
       if (pc_tree->horizontal4a[i] != NULL) {
@@ -349,7 +345,6 @@ void av1_free_pc_tree_recursive(PC_TREE *pc_tree, int num_planes, int keep_best,
       }
     }
   }
-#endif  // CONFIG_UNEVEN_4WAY
   for (int i = 0; i < 4; ++i) {
     if ((!keep_best || (partition != PARTITION_HORZ_3)) &&
         pc_tree->horizontal3[i] != NULL) {
@@ -488,7 +483,6 @@ void av1_copy_pc_tree_recursive(const AV1_COMMON *cm, PC_TREE *dst,
         }
       }
       break;
-#if CONFIG_UNEVEN_4WAY
     // PARTITION_HORZ_4A
     case PARTITION_HORZ_4A:
       if (is_partition_valid(bsize, PARTITION_HORZ_4A)) {
@@ -601,7 +595,6 @@ void av1_copy_pc_tree_recursive(const AV1_COMMON *cm, PC_TREE *dst,
         }
       }
       break;
-#endif  // CONFIG_UNEVEN_4WAY
 
     // PARTITION_HORZ_3
     case PARTITION_HORZ_3:
@@ -794,7 +787,6 @@ PC_TREE *counterpart_from_different_partition(PC_TREE *pc_tree,
   if (result) return result;
   result = look_for_counterpart_helper(pc_tree->vertical[0], target);
   if (result) return result;
-#if CONFIG_UNEVEN_4WAY
   result = look_for_counterpart_helper(pc_tree->horizontal4a[0], target);
   if (result) return result;
   result = look_for_counterpart_helper(pc_tree->horizontal4b[0], target);
@@ -803,7 +795,6 @@ PC_TREE *counterpart_from_different_partition(PC_TREE *pc_tree,
   if (result) return result;
   result = look_for_counterpart_helper(pc_tree->vertical4b[0], target);
   if (result) return result;
-#endif  // CONFIG_UNEVEN_4WAY
   result = look_for_counterpart_helper(pc_tree->horizontal3[0], target);
   if (result) return result;
   result = look_for_counterpart_helper(pc_tree->vertical3[0], target);

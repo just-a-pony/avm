@@ -2303,7 +2303,6 @@ static AOM_INLINE void decode_block(AV1Decoder *const pbi, ThreadData *const td,
 }
 
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
 /*!\brief Maps (ext_part, 4way, 4way_type, rect_type) to partition_type. */
 static PARTITION_TYPE
     rect_part_table[2][2][NUM_UNEVEN_4WAY_PARTS][NUM_RECT_PARTS] = {
@@ -2342,15 +2341,6 @@ static PARTITION_TYPE
           },
       },
     };
-#else
-/*!\brief Maps (ext_part, rect_type) to partition_type. */
-static PARTITION_TYPE rect_part_table[2][NUM_RECT_PARTS] = {
-  // !do_ext_partition
-  { PARTITION_HORZ, PARTITION_VERT },
-  // do_ext_partition
-  { PARTITION_HORZ_3, PARTITION_VERT_3 },
-};
-#endif  // CONFIG_UNEVEN_4WAY
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
@@ -2403,10 +2393,8 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
   }
 
   bool do_ext_partition = false;
-#if CONFIG_UNEVEN_4WAY
   bool do_uneven_4way_partition = false;
   UNEVEN_4WAY_PART_TYPE uneven_4way_partition_type = UNEVEN_4A;
-#endif  // CONFIG_UNEVEN_4WAY
 
   const bool ext_partition_allowed =
       cm->seq_params.enable_ext_partitions &&
@@ -2415,7 +2403,6 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
     do_ext_partition =
         aom_read_symbol(r, ec_ctx->do_ext_partition_cdf[plane][rect_type][ctx],
                         2, ACCT_INFO("do_ext_partition"));
-#if CONFIG_UNEVEN_4WAY
     if (do_ext_partition) {
       const bool uneven_4way_partition_allowed =
           is_uneven_4way_partition_allowed(bsize, rect_type, xd->tree_type);
@@ -2430,14 +2417,9 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
         }
       }
     }
-#endif  // CONFIG_UNEVEN_4WAY
   }
-#if CONFIG_UNEVEN_4WAY
   return rect_part_table[do_ext_partition][do_uneven_4way_partition]
                         [uneven_4way_partition_type][rect_type];
-#else
-  return rect_part_table[do_ext_partition][rect_type];
-#endif  // CONFIG_UNEVEN_4WAY
 #else   // !CONFIG_EXT_RECUR_PARTITIONS
   if (!has_rows && !has_cols) return PARTITION_SPLIT;
 
@@ -2507,12 +2489,11 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   // Half block width/height.
   const int hbs_w = mi_size_wide[bsize] / 2;
   const int hbs_h = mi_size_high[bsize] / 2;
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
   // One-eighth block width/height.
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
-#endif  // CONFIG_UNEVEN_4WAY
-#if !CONFIG_EXT_RECUR_PARTITIONS
+#else
   // Quarter block width/height.
   const int qbs_w = mi_size_wide[bsize] / 4;
   const int qbs_h = mi_size_high[bsize] / 4;
@@ -2593,12 +2574,12 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
     ptree->partition = partition;
 
     switch (partition) {
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_HORZ_4A:
       case PARTITION_HORZ_4B:
       case PARTITION_VERT_4A:
       case PARTITION_VERT_4B:
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_SPLIT:
         ptree->sub_tree[0] = av1_alloc_ptree_node(ptree, 0);
         ptree->sub_tree[1] = av1_alloc_ptree_node(ptree, 1);
@@ -2726,8 +2707,6 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
 #if CONFIG_EXT_RECUR_PARTITIONS
-
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A: {
       const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
@@ -2796,7 +2775,6 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
       DEC_PARTITION(mi_row, this_mi_col, subsize, 3);
       break;
     }
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_3:
     case PARTITION_VERT_3: {
       for (int i = 0; i < 4; ++i) {

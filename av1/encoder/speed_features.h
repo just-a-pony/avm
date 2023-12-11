@@ -491,7 +491,6 @@ typedef struct PARTITION_SPEED_FEATURES {
   // the same direction.
   int prune_ext_part_with_part_rect;
 
-#if CONFIG_UNEVEN_4WAY
   // Prunes PARTITION_HORZ_4A/4B if vertical is the best partition, and
   // Prunes PARTITION_VERT_4A/4B if horizontal is the best partition.
   int prune_part_4_horz_or_vert;
@@ -499,7 +498,6 @@ typedef struct PARTITION_SPEED_FEATURES {
   // Prunes PARTITION_HORZ_4A/4B based on PARTITION_HORZ_3 search result, and
   // Prunes PARTITION_VERT_4A/4B based on PARTITION_VERT_3 search result.
   int prune_part_4_with_part_3;
-#endif  // CONFIG_UNEVEN_4WAY
 
   int two_pass_partition_search;
 
@@ -526,12 +524,10 @@ typedef struct PARTITION_SPEED_FEATURES {
   // the current best partition's boundary after searching NONE, HORZ, and VERT.
   int prune_part_h_with_partition_boundary;
 
-#if CONFIG_UNEVEN_4WAY
   // Prune r-way partition types if their resulting boundary does not agree with
   // the current best partition's boundary after searching NONE, HORZ, VERT, and
   // H-parts.
   int prune_part_4_with_partition_boundary;
-#endif  // CONFIG_UNEVEN_4WAY
 #if CONFIG_BLOCK_256
   // Delay the search for block 256 to after block 128
   int search_256_after_128;

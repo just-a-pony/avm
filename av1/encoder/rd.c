@@ -141,7 +141,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
         av1_cost_tokens_from_cdf(
             mode_costs->do_ext_partition_cost[plane_index][rect_type][i],
             fc->do_ext_partition_cdf[plane_index][rect_type][i], NULL);
-#if CONFIG_UNEVEN_4WAY
         av1_cost_tokens_from_cdf(
             mode_costs
                 ->do_uneven_4way_partition_cost[plane_index][rect_type][i],
@@ -151,7 +150,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                 ->uneven_4way_partition_type_cost[plane_index][rect_type][i],
             fc->uneven_4way_partition_type_cdf[plane_index][rect_type][i],
             NULL);
-#endif  // CONFIG_UNEVEN_4WAY
       }
     }
   }
@@ -193,7 +191,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
             mode_costs->partition_cost[plane_index][ctx][part] +=
                 mode_costs->do_ext_partition_cost[plane_index][rect_type][ctx]
                                                  [do_ext_partition];
-#if CONFIG_UNEVEN_4WAY
             if (do_ext_partition) {
               const bool uneven_4way_partition_allowed =
                   is_uneven_4way_partition_allowed(bsize, rect_type, tree_type);
@@ -214,7 +211,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                 }
               }
             }
-#endif  // CONFIG_UNEVEN_4WAY
           }
         }
       }

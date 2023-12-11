@@ -1559,7 +1559,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
       }
     };
 
-#if CONFIG_UNEVEN_4WAY
 static aom_cdf_prob default_do_uneven_4way_partition_cdf
     [PARTITION_STRUCTURE_NUM][NUM_RECT_PARTS][PARTITION_CONTEXTS]
     [CDF_SIZE(2)] = {
@@ -1925,7 +1924,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
         }
       },
     };
-#endif  // CONFIG_UNEVEN_4WAY
 #endif  // CONFIG_FLEX_PARTITION
 
 #if CONFIG_BLOCK_256
@@ -5870,12 +5868,10 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #endif  // CONFIG_BLOCK_256
   av1_copy(fc->rect_type_cdf, default_rect_type_cdf);
   av1_copy(fc->do_ext_partition_cdf, default_do_ext_partition_cdf);
-#if CONFIG_UNEVEN_4WAY
   av1_copy(fc->do_uneven_4way_partition_cdf,
            default_do_uneven_4way_partition_cdf);
   av1_copy(fc->uneven_4way_partition_type_cdf,
            default_uneven_4way_partition_type_cdf);
-#endif  // CONFIG_UNEVEN_4WAY
 #else
   av1_copy(fc->partition_cdf, default_partition_cdf);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS

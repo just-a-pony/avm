@@ -100,9 +100,7 @@ static void count_segs_sb(const AV1_COMMON *cm, MACROBLOCKD *xd,
   const int bw = mi_size_wide[bsize], bh = mi_size_high[bsize];
   const int hbw = bw / 2, hbh = bh / 2;
   const int qbw = bw / 4, qbh = bh / 4;
-#if CONFIG_UNEVEN_4WAY
   const int ebw = bw / 8, ebh = bh / 8;
-#endif  // CONFIG_UNEVEN_4WAY
 #else
   const int bs = mi_size_wide[bsize], hbs = bs / 2;
   const int qbs = bs / 4;
@@ -156,7 +154,6 @@ static void count_segs_sb(const AV1_COMMON *cm, MACROBLOCKD *xd,
       if (mi_col + 3 * qbw < mi_params->mi_cols)
         CSEGS_RECURSIVE(0, 3 * qbw, ptree->sub_tree[tree_idx++]);
       break;
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A:
       CSEGS_RECURSIVE(0, 0, ptree->sub_tree[tree_idx++]);
       if (mi_row + ebh < mi_params->mi_rows)
@@ -193,7 +190,6 @@ static void count_segs_sb(const AV1_COMMON *cm, MACROBLOCKD *xd,
       if (mi_col + 7 * ebw < mi_params->mi_cols)
         CSEGS_RECURSIVE(0, 7 * ebw, ptree->sub_tree[tree_idx++]);
       break;
-#endif  // CONFIG_UNEVEN_4WAY
 #else   // CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_NONE: CSEGS(bs, bs, 0, 0); break;
     case PARTITION_HORZ:

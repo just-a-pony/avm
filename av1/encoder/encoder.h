@@ -1282,13 +1282,11 @@ typedef struct FRAME_COUNTS {
   unsigned int rect_type[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS][2];
   unsigned int do_ext_partition[PARTITION_STRUCTURE_NUM][NUM_RECT_PARTS]
                                [PARTITION_CONTEXTS][2];
-#if CONFIG_UNEVEN_4WAY
   unsigned int do_uneven_4way_partition[PARTITION_STRUCTURE_NUM][NUM_RECT_PARTS]
                                        [PARTITION_CONTEXTS][2];
   unsigned int uneven_4way_partition_type[PARTITION_STRUCTURE_NUM]
                                          [NUM_RECT_PARTS][PARTITION_CONTEXTS]
                                          [NUM_UNEVEN_4WAY_PARTS];
-#endif  // CONFIG_UNEVEN_4WAY
 #else
   unsigned int partition[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
                         [EXT_PARTITION_TYPES];

@@ -3336,13 +3336,11 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
       // PARTITION_HORZ_B. To distinguish the latter two, check if the lower
       // half was split.
       if (sshigh * 4 == bhigh) {
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
         return PARTITION_HORZ_4A;
-#elif CONFIG_EXT_RECUR_PARTITIONS
-        return PARTITION_HORZ_3;
-#else   // !CONFIG_UNEVEN_4WAY && !CONFIG_EXT_RECUR_PARTITIONS
+#else
         return PARTITION_HORZ_4;
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
       }
 #if !CONFIG_EXT_RECUR_PARTITIONS
       assert(sshigh * 2 == bhigh);
@@ -3357,13 +3355,11 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
       // PARTITION_VERT_B. To distinguish the latter two, check if the right
       // half was split.
       if (sswide * 4 == bwide) {
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
         return PARTITION_VERT_4A;
-#elif CONFIG_EXT_RECUR_PARTITIONS
-        return PARTITION_VERT_3;
-#else   // !CONFIG_UNEVEN_4WAY && !CONFIG_EXT_RECUR_PARTITIONS
+#else
         return PARTITION_VERT_4;
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
       }
 #if !CONFIG_EXT_RECUR_PARTITIONS
       assert(sswide * 2 == bhigh);

@@ -2475,7 +2475,6 @@ static void update_partition_stats(MACROBLOCKD *const xd,
 #endif  // CONFIG_ENTROPY_STATS
     update_cdf(fc->do_ext_partition_cdf[plane_index][rect_type][ctx],
                do_ext_partition, 2);
-#if CONFIG_UNEVEN_4WAY
     if (do_ext_partition) {
       const bool uneven_4way_partition_allowed =
           is_uneven_4way_partition_allowed(bsize, rect_type, tree_type);
@@ -2503,7 +2502,6 @@ static void update_partition_stats(MACROBLOCKD *const xd,
         }
       }
     }
-#endif  // CONFIG_UNEVEN_4WAY
   }
 #else  // CONFIG_EXT_RECUR_PARTITIONS
   const int hbs_w = mi_size_wide[bsize] / 2;
@@ -2617,14 +2615,13 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
   assert(bsize < BLOCK_SIZES_ALL);
   const int hbs_w = mi_size_wide[bsize] / 2;
   const int hbs_h = mi_size_high[bsize] / 2;
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
-#endif  // CONFIG_UNEVEN_4WAY
-#if !CONFIG_EXT_RECUR_PARTITIONS
+#else
   const int qbs_w = mi_size_wide[bsize] / 4;
   const int qbs_h = mi_size_high[bsize] / 4;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   const int is_partition_root = is_partition_point(bsize);
   const int ctx = is_partition_root
                       ? partition_plane_context(xd, mi_row, mi_col, bsize)
@@ -2676,12 +2673,12 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
         parent ? parent->partition : PARTITION_NONE, ss_x, ss_y);
 
     switch (partition) {
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_HORZ_4A:
       case PARTITION_HORZ_4B:
       case PARTITION_VERT_4A:
       case PARTITION_VERT_4B:
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_SPLIT:
         ptree->sub_tree[0] = av1_alloc_ptree_node(ptree, 0);
         ptree->sub_tree[1] = av1_alloc_ptree_node(ptree, 1);
@@ -2766,7 +2763,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A: {
       const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
@@ -2851,7 +2847,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
                 track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
       break;
     }
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_3:
     case PARTITION_VERT_3: {
       for (int i = 0; i < 4; ++i) {
@@ -3394,12 +3389,10 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
         last_part_rdc.dist += tmp_rdc.dist;
       }
       break;
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B:
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B:
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_3:
     case PARTITION_VERT_3:
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -3716,7 +3709,6 @@ static AOM_INLINE void init_allowed_partitions(
       is_bsize_geq(get_partition_subsize(bsize, PARTITION_VERT_3),
                    blk_params->min_partition_size);
 
-#if CONFIG_UNEVEN_4WAY
   part_search_state->partition_4a_allowed[HORZ] =
       ext_partition_allowed &&
       get_partition_subsize(bsize, PARTITION_HORZ_4A) != BLOCK_INVALID &&
@@ -3756,7 +3748,6 @@ static AOM_INLINE void init_allowed_partitions(
                    blk_params->min_partition_size) &&
       IMPLIES(have_nz_chroma_ref_offset(bsize, PARTITION_VERT_4B, ss_x, ss_y),
               blk_params->has_7_8th_cols);
-#endif  // CONFIG_UNEVEN_4WAY
 
   // Reset the flag indicating whether a partition leading to a rdcost lower
   // than the bound best_rdc has been found.
@@ -3884,10 +3875,8 @@ static void init_partition_search_state_params(
   part_search_state->partition_boundaries = NULL;
   part_search_state->prune_partition_none = false;
   av1_zero(part_search_state->prune_partition_3);
-#if CONFIG_UNEVEN_4WAY
   av1_zero(part_search_state->prune_partition_4a);
   av1_zero(part_search_state->prune_partition_4b);
-#endif  // CONFIG_UNEVEN_4WAY
 
   part_search_state->forced_partition =
       get_forced_partition_type(cm, x, mi_row, mi_col, bsize, ptree_luma,
@@ -3901,12 +3890,10 @@ static void init_partition_search_state_params(
         part_search_state->prune_rect_part[VERT] = true;
     part_search_state->prune_partition_3[HORZ] =
         part_search_state->prune_partition_3[VERT] = true;
-#if CONFIG_UNEVEN_4WAY
     part_search_state->prune_partition_4a[HORZ] =
         part_search_state->prune_partition_4a[VERT] = true;
     part_search_state->prune_partition_4b[HORZ] =
         part_search_state->prune_partition_4b[VERT] = true;
-#endif  // CONFIG_UNEVEN_4WAY
   }
 #else
   part_search_state->do_square_split =
@@ -5408,23 +5395,19 @@ typedef struct SUBBLOCK_RDO_DATA {
 /*!\brief Whether the current partition node uses horizontal type partitions. */
 static AOM_INLINE bool node_uses_horz(const PC_TREE *pc_tree) {
   assert(pc_tree);
-  return pc_tree->partitioning == PARTITION_HORZ
-#if CONFIG_UNEVEN_4WAY
-         || pc_tree->partitioning == PARTITION_HORZ_4A ||
-         pc_tree->partitioning == PARTITION_HORZ_4B
-#endif  // CONFIG_UNEVEN_4WAY
-         || pc_tree->partitioning == PARTITION_HORZ_3;
+  return pc_tree->partitioning == PARTITION_HORZ ||
+         pc_tree->partitioning == PARTITION_HORZ_4A ||
+         pc_tree->partitioning == PARTITION_HORZ_4B ||
+         pc_tree->partitioning == PARTITION_HORZ_3;
 }
 
 /*!\brief Whether the current partition node uses vertical type partitions. */
 static AOM_INLINE bool node_uses_vert(const PC_TREE *pc_tree) {
   assert(pc_tree);
-  return pc_tree->partitioning == PARTITION_VERT
-#if CONFIG_UNEVEN_4WAY
-         || pc_tree->partitioning == PARTITION_VERT_4A ||
-         pc_tree->partitioning == PARTITION_VERT_4B
-#endif  // CONFIG_UNEVEN_4WAY
-         || pc_tree->partitioning == PARTITION_VERT_3;
+  return pc_tree->partitioning == PARTITION_VERT ||
+         pc_tree->partitioning == PARTITION_VERT_4A ||
+         pc_tree->partitioning == PARTITION_VERT_4B ||
+         pc_tree->partitioning == PARTITION_VERT_3;
 }
 
 /*!\brief Try searching for an encoding for the given subblock.
@@ -5497,11 +5480,9 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
   assert(bsize < BLOCK_SIZES_ALL);
   const int mi_width = mi_size_wide[bsize];
   const int mi_height = mi_size_high[bsize];
-#if CONFIG_UNEVEN_4WAY
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
   const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
-#endif  // CONFIG_UNEVEN_4WAY
   switch (partition) {
     case PARTITION_NONE:
       for (int col = 0; col < mi_width; col++) {
@@ -5562,7 +5543,6 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
           mi_col + 3 * mi_width / 4,
           get_h_partition_subsize(bsize, 0, PARTITION_VERT_3));
       break;
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A: {
       const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
@@ -5619,7 +5599,6 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
                                mi_row, mi_col + 7 * ebs_w, subsize);
       break;
     }
-#endif  // CONFIG_UNEVEN_4WAY
     default: assert(0 && "Invalid partition type in trace_partition_boundary!");
   }
 }
@@ -5707,7 +5686,6 @@ static AOM_INLINE void prune_part_3_with_partition_boundary(
   }
 }
 
-#if CONFIG_UNEVEN_4WAY
 /*!\brief Prunes 4-way partitions using the current best partition boundaries.
  *
  * If the 4-way partitions don't have any overlap with the current best
@@ -5809,8 +5787,6 @@ static AOM_INLINE void prune_part_4_with_partition_boundary(
   }
 }
 
-#endif  // CONFIG_UNEVEN_4WAY
-
 // Pruning logic for PARTITION_HORZ_3 and PARTITION_VERT_3.
 static AOM_INLINE void prune_ext_partitions_3way(
     AV1_COMP *const cpi, PC_TREE *pc_tree,
@@ -5890,7 +5866,6 @@ static AOM_INLINE void prune_ext_partitions_3way(
   }
 }
 
-#if CONFIG_UNEVEN_4WAY
 // Pruning logic for PARTITION_HORZ_4A/B and PARTITION_VERT_4A/B.
 static AOM_INLINE void prune_ext_partitions_4way(
     AV1_COMP *const cpi, PC_TREE *pc_tree,
@@ -6615,7 +6590,6 @@ static INLINE void search_partition_vert_4b(
   restore_level_banks(&x->e_mbd, level_banks);
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
 }
-#endif  // CONFIG_UNEVEN_4WAY
 
 /*!\brief Performs rdopt on PARTITION_HORZ_3. */
 static INLINE void search_partition_horz_3(
@@ -6881,7 +6855,7 @@ static AOM_INLINE int get_partition_depth(const PC_TREE *pc_tree,
             get_partition_depth(pc_tree->vertical3[idx], curr_depth + 1));
       }
       break;
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_4A:
       for (int idx = 0; idx < 4; idx++) {
         max_depth = AOMMAX(
@@ -6910,7 +6884,7 @@ static AOM_INLINE int get_partition_depth(const PC_TREE *pc_tree,
             get_partition_depth(pc_tree->vertical4b[idx], curr_depth + 1));
       }
       break;
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0); break;
   }
   return max_depth;
@@ -7583,7 +7557,6 @@ BEGIN_PARTITION_SEARCH:
                           multi_pass_mode, ext_recur_depth);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
-#if CONFIG_UNEVEN_4WAY
   prune_ext_partitions_4way(cpi, pc_tree, &part_search_state,
                             partition_boundaries);
 
@@ -7626,7 +7599,6 @@ BEGIN_PARTITION_SEARCH:
                            &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
                            multi_pass_mode, ext_recur_depth);
-#endif  // CONFIG_UNEVEN_4WAY
 
   if (bsize == cm->sb_size && !part_search_state.found_best_partition) {
     if (x->must_find_valid_partition) {

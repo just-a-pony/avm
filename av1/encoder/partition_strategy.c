@@ -515,10 +515,10 @@ void av1_simple_motion_search_prune_rect(
     AV1_COMP *const cpi, MACROBLOCK *x, SIMPLE_MOTION_DATA_TREE *sms_tree,
     int mi_row, int mi_col, BLOCK_SIZE bsize, int partition_horz_allowed,
     int partition_vert_allowed, bool *prune_horz, bool *prune_vert) {
-  // TODO(urvang): Need to change for CONFIG_UNEVEN_4WAY.
-#if CONFIG_UNEVEN_4WAY
+  // TODO(urvang): Need to change for uneven 4-way partition support.
+#if CONFIG_EXT_RECUR_PARTITIONS
   assert(0 && "Not implemented");
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   aom_clear_system_state();
   const AV1_COMMON *const cm = &cpi->common;
   const int bsize_idx = convert_bsize_to_idx(bsize);
@@ -1634,7 +1634,6 @@ static INLINE int get_sms_count_from_length(int mi_length) {
 
 // Gets the linear index corresponds to the current block.
 
-#if CONFIG_UNEVEN_4WAY
 static INLINE int get_sms_arr_1d_idx(int mi_bsize, int mi_in_sb) {
   int idx = -1;
   if (mi_bsize <= 2) {
@@ -1650,20 +1649,6 @@ static INLINE int get_sms_arr_1d_idx(int mi_bsize, int mi_in_sb) {
 
   return idx;
 }
-#else
-static INLINE int get_sms_arr_1d_idx(int mi_bsize, int mi_in_sb) {
-  int idx = -1;
-  if (mi_bsize == 1) {
-    idx = mi_in_sb;
-  } else {
-    assert(mi_in_sb % (mi_bsize / 2) == 0);
-    idx = mi_in_sb / (mi_bsize / 2);
-  }
-  assert(idx >= 0 && idx < get_sms_count_from_length(mi_bsize));
-
-  return idx;
-}
-#endif  // CONFIG_UNEVEN_4WAY
 
 #define MAKE_SMS_ARR_SWITCH_CASE(width, height) \
   case BLOCK_##width##X##height: {              \
@@ -1862,12 +1847,10 @@ static INLINE void add_start_mv_to_partition(
     2,  // PARTITION_VERT
     4,  // PARTITION_HORZ_3
     4,  // PARTITION_VERT_3
-#if CONFIG_UNEVEN_4WAY
     4,  // PARTITION_HORZ_4A
     4,  // PARTITION_HORZ_4B
     4,  // PARTITION_VERT_4A
     4,  // PARTITION_VERT_4B
-#endif  // CONFIG_UNEVEN_4WAY
     4,  // PARTITION_SPLIT
   };
   // PARTITION x NUM_SUBBLOCKS x (ROW and COL)
@@ -1877,12 +1860,10 @@ static INLINE void add_start_mv_to_partition(
     { { 0, 0 }, { 0, 4 }, { 0, 0 }, { 0, 0 } },  // PARTITION_VERT
     { { 0, 0 }, { 2, 0 }, { 2, 4 }, { 6, 0 } },  // PARTITION_HORZ_3
     { { 0, 0 }, { 0, 2 }, { 4, 2 }, { 0, 6 } },  // PARTITION_VERT_3
-#if CONFIG_UNEVEN_4WAY
     { { 0, 0 }, { 1, 0 }, { 3, 0 }, { 7, 0 } },  // PARTITION_HORZ_4A
     { { 0, 0 }, { 1, 0 }, { 5, 0 }, { 7, 0 } },  // PARTITION_HORZ_4B
     { { 0, 0 }, { 0, 1 }, { 0, 3 }, { 0, 7 } },  // PARTITION_VERT_4A
     { { 0, 0 }, { 0, 1 }, { 0, 5 }, { 0, 7 } },  // PARTITION_VERT_4B
-#endif                                           // CONFIG_UNEVEN_4WAY
     { { 0, 0 }, { 0, 4 }, { 4, 0 }, { 4, 4 } },  // PARTITION_SPLIT
   };
 
@@ -1892,7 +1873,6 @@ static INLINE void add_start_mv_to_partition(
 
   BLOCK_SIZE subsizes[4] = { part_subsize, part_subsize, part_subsize,
                              part_subsize };
-#if CONFIG_UNEVEN_4WAY
   if (partition == PARTITION_HORZ_4A) {
     subsizes[2] = get_partition_subsize(bsize, PARTITION_HORZ);
     subsizes[1] = get_partition_subsize(subsizes[2], PARTITION_HORZ);
@@ -1906,7 +1886,6 @@ static INLINE void add_start_mv_to_partition(
     subsizes[1] = get_partition_subsize(bsize, PARTITION_VERT);
     subsizes[2] = get_partition_subsize(subsizes[1], PARTITION_VERT);
   }
-#endif  // CONFIG_UNEVEN_4WAY
   if (partition == PARTITION_HORZ_3) {
     subsizes[1] = get_h_partition_subsize(sb_size, 1, PARTITION_HORZ_3);
     subsizes[2] = get_h_partition_subsize(sb_size, 2, PARTITION_HORZ_3);

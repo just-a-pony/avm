@@ -304,7 +304,6 @@ static const BLOCK_SIZE
     BLOCK_INVALID, BLOCK_INVALID,                // 8, 64
     BLOCK_INVALID, BLOCK_INVALID,                // 4, 64
 #endif  // CONFIG_FLEX_PARTITION
-#if CONFIG_UNEVEN_4WAY
   }, {  // PARTITION_HORZ_4A
     BLOCK_INVALID,                               // 4
     BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID, // 8
@@ -397,7 +396,6 @@ static const BLOCK_SIZE
     BLOCK_INVALID, BLOCK_INVALID,                // 8, 64
     BLOCK_INVALID, BLOCK_INVALID,                // 4, 64
 #endif  // CONFIG_FLEX_PARTITION
-#endif  // CONFIG_UNEVEN_4WAY
   }, {
     // PARTITION_SPLIT
     BLOCK_INVALID,                               // 4
@@ -432,7 +430,6 @@ static AOM_INLINE PARTITION_TYPE sdp_chroma_part_from_luma(
     case PARTITION_NONE: return PARTITION_NONE;
     case PARTITION_HORZ: return (bh_chr < 8) ? PARTITION_NONE : PARTITION_HORZ;
     case PARTITION_VERT: return (bw_chr < 8) ? PARTITION_NONE : PARTITION_VERT;
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A:
       if (bh_chr >= 32) {
         return PARTITION_HORZ_4A;
@@ -465,7 +462,6 @@ static AOM_INLINE PARTITION_TYPE sdp_chroma_part_from_luma(
       } else {
         return PARTITION_NONE;
       }
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_3:
       if (bh_chr >= 16)
         return PARTITION_HORZ_3;

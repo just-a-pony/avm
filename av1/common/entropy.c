@@ -389,13 +389,11 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
     for (RECT_PART_TYPE rect = 0; rect < NUM_RECT_PARTS; rect++) {
       for (int i = 0; i < PARTITION_CONTEXTS; i++) {
         RESET_CDF_COUNTER(fc->do_ext_partition_cdf[plane_index][rect][i], 2);
-#if CONFIG_UNEVEN_4WAY
         RESET_CDF_COUNTER(
             fc->do_uneven_4way_partition_cdf[plane_index][rect][i], 2);
         RESET_CDF_COUNTER(
             fc->uneven_4way_partition_type_cdf[plane_index][rect][i],
             NUM_UNEVEN_4WAY_PARTS);
-#endif  // CONFIG_UNEVEN_4WAY
       }
     }
   }

@@ -469,7 +469,7 @@ DECLS(sse2);
   }
 
 // TODO(any): Add back 16X16, 16X8, 16X4 for CONFIG_FLEX_PARTITION and
-// CONFIG_UNEVEN_4WAY after fixing alignment issues.
+// CONFIG_EXT_RECUR_PARTITIONS after fixing alignment issues.
 #if CONFIG_FLEX_PARTITION
 #define FNS(opt)                          \
   FN(128, 128, 16, 7, 7, opt, (int64_t)); \
@@ -492,7 +492,7 @@ DECLS(sse2);
   FN(8, 64, 8, 3, 6, opt, (int64_t));     \
   FN(32, 4, 16, 5, 2, opt, (int64_t));    \
   FN(64, 4, 16, 6, 2, opt, (int64_t));
-#elif CONFIG_UNEVEN_4WAY
+#elif CONFIG_EXT_RECUR_PARTITIONS
 #define FNS(opt)                          \
   FN(128, 128, 16, 7, 7, opt, (int64_t)); \
   FN(128, 64, 16, 7, 6, opt, (int64_t));  \
@@ -741,7 +741,7 @@ DECLS(sse2);
   }
 
 // TODO(any): Add back 16X16, 16X8, 16X4 for CONFIG_FLEX_PARTITION and
-// CONFIG_UNEVEN_4WAY after fixing alignment issues.
+// CONFIG_EXT_RECUR_PARTITIONS after fixing alignment issues.
 #if CONFIG_FLEX_PARTITION
 #define FNS(opt)                        \
   FN(64, 64, 16, 6, 6, opt, (int64_t)); \
@@ -761,7 +761,7 @@ DECLS(sse2);
   FN(8, 64, 8, 3, 6, opt, (int64_t));   \
   FN(32, 4, 16, 5, 2, opt, (int64_t));  \
   FN(64, 4, 16, 6, 2, opt, (int64_t));
-#elif CONFIG_UNEVEN_4WAY
+#elif CONFIG_EXT_RECUR_PARTITIONS
 #define FNS(opt)                        \
   FN(64, 64, 16, 6, 6, opt, (int64_t)); \
   FN(64, 32, 16, 6, 5, opt, (int64_t)); \

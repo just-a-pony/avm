@@ -78,12 +78,10 @@ typedef struct PC_TREE {
 #if CONFIG_EXT_RECUR_PARTITIONS
   struct PC_TREE *horizontal[2];
   struct PC_TREE *vertical[2];
-#if CONFIG_UNEVEN_4WAY
   struct PC_TREE *horizontal4a[4];
   struct PC_TREE *horizontal4b[4];
   struct PC_TREE *vertical4a[4];
   struct PC_TREE *vertical4b[4];
-#endif  // CONFIG_UNEVEN_4WAY
   struct PC_TREE *horizontal3[4];
   struct PC_TREE *vertical3[4];
 #else

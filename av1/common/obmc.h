@@ -38,7 +38,7 @@ static INLINE void foreach_overlappable_nb_above(const AV1_COMMON *cm,
        above_mi_col += mi_step) {
     MB_MODE_INFO **above_mi = prev_row_mi + above_mi_col;
     mi_step = mi_size_wide[above_mi[0]->sb_type[PLANE_TYPE_Y]];
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
     if (count_only) {
       // In this case, we may only be parsing without decoding (e.g. in case of
       // row-baed multi-threading). Hence, we do not have access to variables
@@ -82,11 +82,11 @@ static INLINE void foreach_overlappable_nb_above(const AV1_COMMON *cm,
       above_mi = prev_row_mi + above_mi_col + 1;
       mi_step = 2;
     }
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
     mi_step = AOMMIN(mi_step, mi_size_wide[BLOCK_64X64]);
     int overlapped_mi_width = AOMMIN(xd->width, mi_step);
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
     if (!IS_POWER_OF_TWO(overlapped_mi_width)) {
       assert(!IS_POWER_OF_TWO(mi_step));
       const int mi_step_pow2 = 1 << get_msb(mi_step);
@@ -94,7 +94,7 @@ static INLINE void foreach_overlappable_nb_above(const AV1_COMMON *cm,
       mi_step = mi_step_pow2;
       overlapped_mi_width = AOMMIN(xd->width, mi_step);
     }
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     assert(IS_POWER_OF_TWO(overlapped_mi_width));
     if (is_neighbor_overlappable(*above_mi, xd->tree_type)) {
       ++nb_count;
@@ -123,7 +123,7 @@ static INLINE void foreach_overlappable_nb_left(const AV1_COMMON *cm,
        left_mi_row += mi_step) {
     MB_MODE_INFO **left_mi = prev_col_mi + left_mi_row * xd->mi_stride;
     mi_step = mi_size_high[left_mi[0]->sb_type[PLANE_TYPE_Y]];
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
     // If we're considering a block that is NOT a chroma ref:
     // - Move left_mi_col back to the base mi col,
     // - Set left_mbmi to point at the block with chroma information, and
@@ -150,11 +150,11 @@ static INLINE void foreach_overlappable_nb_left(const AV1_COMMON *cm,
       left_mi = prev_col_mi + (left_mi_row + 1) * xd->mi_stride;
       mi_step = 2;
     }
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
     mi_step = AOMMIN(mi_step, mi_size_high[BLOCK_64X64]);
     int overlapped_mi_height = AOMMIN(xd->height, mi_step);
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
     if (!IS_POWER_OF_TWO(overlapped_mi_height)) {
       assert(!IS_POWER_OF_TWO(mi_step));
       const int mi_step_pow2 = 1 << get_msb(mi_step);
@@ -162,7 +162,7 @@ static INLINE void foreach_overlappable_nb_left(const AV1_COMMON *cm,
       mi_step = mi_step_pow2;
       overlapped_mi_height = AOMMIN(xd->height, mi_step);
     }
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     assert(IS_POWER_OF_TWO(overlapped_mi_height));
     if (is_neighbor_overlappable(*left_mi, xd->tree_type)) {
       ++nb_count;

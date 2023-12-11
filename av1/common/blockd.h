@@ -894,7 +894,6 @@ static AOM_INLINE bool is_ext_partition_allowed(BLOCK_SIZE bsize,
   return true;
 }
 
-#if CONFIG_UNEVEN_4WAY
 /*!\brief Checks whether uneven 4-way partition is allowed for current bsize and
  * rect_type. */
 static AOM_INLINE bool is_uneven_4way_partition_allowed(
@@ -924,7 +923,6 @@ static AOM_INLINE bool is_uneven_4way_partition_allowed(
 #endif  // CONFIG_FLEX_PARTITION
   return false;
 }
-#endif  // CONFIG_UNEVEN_4WAY
 
 /*!\brief Returns the rect_type that's implied by the bsize. If the rect_type
  * cannot be derived from bsize, returns RECT_INVALID. */
@@ -974,17 +972,11 @@ static AOM_INLINE bool is_square_split_eligible(BLOCK_SIZE bsize,
 /*!\brief Returns whether the current partition is horizontal type or vertical
  * type. */
 static AOM_INLINE RECT_PART_TYPE get_rect_part_type(PARTITION_TYPE partition) {
-  if (partition == PARTITION_HORZ || partition == PARTITION_HORZ_3
-#if CONFIG_UNEVEN_4WAY
-      || partition == PARTITION_HORZ_4A || partition == PARTITION_HORZ_4B
-#endif  // CONFIG_UNEVEN_4WAY
-  ) {
+  if (partition == PARTITION_HORZ || partition == PARTITION_HORZ_3 ||
+      partition == PARTITION_HORZ_4A || partition == PARTITION_HORZ_4B) {
     return HORZ;
-  } else if (partition == PARTITION_VERT || partition == PARTITION_VERT_3
-#if CONFIG_UNEVEN_4WAY
-             || partition == PARTITION_VERT_4A || partition == PARTITION_VERT_4B
-#endif  // CONFIG_UNEVEN_4WAY
-  ) {
+  } else if (partition == PARTITION_VERT || partition == PARTITION_VERT_3 ||
+             partition == PARTITION_VERT_4A || partition == PARTITION_VERT_4B) {
     return VERT;
   }
   assert(0 && "Rectangular partition expected!");
@@ -1202,28 +1194,24 @@ static INLINE int have_nz_chroma_ref_offset(BLOCK_SIZE bsize,
   // Check if half block width/height is less than 8.
   const int hbw_less_than_4 = bw < 8;
   const int hbh_less_than_4 = bh < 8;
-#if !CONFIG_UNEVEN_4WAY || CONFIG_EXT_RECUR_PARTITIONS
   // Check if quarter block width/height is less than 16.
   const int qbw_less_than_4 = bw < 16;
   const int qbh_less_than_4 = bh < 16;
-#endif  // !CONFIG_UNEVEN_4WAY || CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
   // Check if one-eighth block width/height is less than 32.
   const int ebw_less_than_4 = bw < 32;
   const int ebh_less_than_4 = bh < 32;
-#endif  // CONFIG_UNEVEN_4WAY
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   switch (partition) {
     case PARTITION_NONE: return bw_less_than_4 || bh_less_than_4;
     case PARTITION_HORZ: return bw_less_than_4 || hbh_less_than_4;
     case PARTITION_VERT: return hbw_less_than_4 || bh_less_than_4;
     case PARTITION_SPLIT: return hbw_less_than_4 || hbh_less_than_4;
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B: return bw_less_than_4 || ebh_less_than_4;
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B: return ebw_less_than_4 || bh_less_than_4;
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_3: return hbw_less_than_4 || qbh_less_than_4;
     case PARTITION_VERT_3: return qbw_less_than_4 || hbh_less_than_4;
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -1275,12 +1263,10 @@ static INLINE int is_sub_partition_chroma_ref(PARTITION_TYPE partition,
           return 1;
       }
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B:
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B: return index == 3;
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_VERT_3:
     case PARTITION_HORZ_3: return index == 3;
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -1361,12 +1347,10 @@ static INLINE void set_chroma_ref_offset_size(
     case PARTITION_HORZ:
     case PARTITION_VERT:
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B:
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B:
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_VERT_3:
     case PARTITION_HORZ_3:
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
@@ -3729,19 +3713,9 @@ static INLINE int is_motion_variation_allowed_bsize(BLOCK_SIZE bsize,
   if (AOMMIN(block_size_wide[bsize], block_size_high[bsize]) < 8) {
     return 0;
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
-#if !CONFIG_UNEVEN_4WAY
-  // TODO(urvang): Enable this special case, if we make OBMC work.
-  // TODO(yuec): Enable this case when the alignment issue is fixed. There
-  // will be memory leak in global above_pred_buff and left_pred_buff if
-  // the restriction on mi_row and mi_col is removed.
-  if ((mi_row & 0x01) || (mi_col & 0x01)) {
-    return 0;
-  }
-#endif  // !CONFIG_UNEVEN_4WAY
-#else
+#if !CONFIG_EXT_RECUR_PARTITIONS
   assert(!(mi_row & 0x01) && !(mi_col & 0x01));
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   (void)mi_row;
   (void)mi_col;
 

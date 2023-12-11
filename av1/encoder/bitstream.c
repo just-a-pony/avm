@@ -3343,7 +3343,6 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
     const bool do_ext_partition = (p >= PARTITION_HORZ_3);
     aom_write_symbol(w, do_ext_partition,
                      ec_ctx->do_ext_partition_cdf[plane][rect_type][ctx], 2);
-#if CONFIG_UNEVEN_4WAY
     if (do_ext_partition) {
       const bool uneven_4way_partition_allowed =
           is_uneven_4way_partition_allowed(bsize, rect_type, xd->tree_type);
@@ -3363,7 +3362,6 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
         }
       }
     }
-#endif  // CONFIG_UNEVEN_4WAY
   }
 #else   // CONFIG_EXT_RECUR_PARTITIONS
   const int hbs_w = mi_size_wide[bsize] / 2;
@@ -3420,14 +3418,13 @@ static AOM_INLINE void write_modes_sb(
   assert(bsize < BLOCK_SIZES_ALL);
   const int hbs_w = mi_size_wide[bsize] / 2;
   const int hbs_h = mi_size_high[bsize] / 2;
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
-#endif  // CONFIG_UNEVEN_4WAY
-#if !CONFIG_EXT_RECUR_PARTITIONS
+#else
   const int qbs_w = mi_size_wide[bsize] / 4;
   const int qbs_h = mi_size_high[bsize] / 4;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   assert(ptree);
   const PARTITION_TYPE partition = ptree->partition;
   const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
@@ -3510,7 +3507,6 @@ static AOM_INLINE void write_modes_sb(
 #endif
       break;
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A: {
       const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
@@ -3595,7 +3591,6 @@ static AOM_INLINE void write_modes_sb(
                      mi_col + 7 * ebs_w, subsize);
       break;
     }
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_3:
     case PARTITION_VERT_3:
       for (int i = 0; i < 4; ++i) {

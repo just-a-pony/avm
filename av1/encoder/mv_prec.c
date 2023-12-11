@@ -656,14 +656,13 @@ static AOM_INLINE void collect_mv_stats_sb(MV_STATS *mv_stats,
 
   const int hbs_w = mi_size_wide[bsize] / 2;
   const int hbs_h = mi_size_high[bsize] / 2;
-#if CONFIG_UNEVEN_4WAY
+#if CONFIG_EXT_RECUR_PARTITIONS
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
-#endif  // CONFIG_UNEVEN_4WAY
-#if !CONFIG_EXT_RECUR_PARTITIONS
+#else
   const int qbs_w = mi_size_wide[bsize] / 4;
   const int qbs_h = mi_size_high[bsize] / 4;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   switch (partition) {
     case PARTITION_NONE:
       collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
@@ -701,7 +700,6 @@ static AOM_INLINE void collect_mv_stats_sb(MV_STATS *mv_stats,
                           subsize, ptree->sub_tree[3]);
       break;
 #if CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_4A: {
       const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
@@ -758,7 +756,6 @@ static AOM_INLINE void collect_mv_stats_sb(MV_STATS *mv_stats,
                           ptree->sub_tree[3]);
       break;
     }
-#endif  // CONFIG_UNEVEN_4WAY
     case PARTITION_HORZ_3:
     case PARTITION_VERT_3: {
       for (int i = 0; i < 4; ++i) {
