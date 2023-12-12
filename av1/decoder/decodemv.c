@@ -715,7 +715,6 @@ static PREDICTION_MODE read_jmvd_scale_mode(MACROBLOCKD *xd, aom_reader *r,
 }
 #endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
 
-#if CONFIG_CWP
 // Read index for the weighting factor of compound weighted prediction
 static int read_cwp_idx(MACROBLOCKD *xd, aom_reader *r, const AV1_COMMON *cm,
                         MB_MODE_INFO *const mbmi) {
@@ -734,7 +733,6 @@ static int read_cwp_idx(MACROBLOCKD *xd, aom_reader *r, const AV1_COMMON *cm,
   // convert index to weight
   return get_cwp_coding_idx(cwp_idx, 0, cm, mbmi);
 }
-#endif  // CONFIG_CWP
 
 static PREDICTION_MODE read_inter_compound_mode(MACROBLOCKD *xd, aom_reader *r,
 #if CONFIG_OPTFLOW_REFINEMENT
@@ -1540,9 +1538,7 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       xd->ref_mv_stack[INTRA_FRAME][i].row_offset = OFFSET_NONSPATIAL;
       xd->ref_mv_stack[INTRA_FRAME][i].col_offset = OFFSET_NONSPATIAL;
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
-#if CONFIG_CWP
       xd->ref_mv_stack[INTRA_FRAME][i].cwp_idx = CWP_EQUAL;
-#endif  // CONFIG_CWP
     }
 #endif  // CONFIG_IBC_BV_IMPROVEMENT
 
@@ -2922,9 +2918,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   mbmi->ref_mv_idx = 0;
 #endif  // CONFIG_SEP_COMP_DRL
 
-#if CONFIG_CWP
   mbmi->cwp_idx = CWP_EQUAL;
-#endif  // CONFIG_CWP
 #if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
   mbmi->jmvd_scale_mode = 0;
 #endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
@@ -2950,10 +2944,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #endif  // !CONFIG_D072_SKIP_MODE_IMPROVE
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
-    mbmi->mode = (cm->features.opfl_refine_type
-#if CONFIG_CWP
-                          && !cm->features.enable_cwp
-#endif  // CONFIG_CWP
+    mbmi->mode = (cm->features.opfl_refine_type && !cm->features.enable_cwp
                       ? NEAR_NEARMV_OPTFLOW
                       : NEAR_NEARMV);
 #else
@@ -3005,10 +2996,8 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
     } else {
 #endif  // CONFIG_D072_SKIP_MODE_IMPROVE
       mbmi->mode = (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-                            opfl_allowed_for_cur_refs(cm, mbmi)
-#if CONFIG_CWP
-                            && !cm->features.enable_cwp
-#endif  // CONFIG_CWP
+                            opfl_allowed_for_cur_refs(cm, mbmi) &&
+                            !cm->features.enable_cwp
                         ? NEAR_NEARMV_OPTFLOW
                         : NEAR_NEARMV);
 #if CONFIG_D072_SKIP_MODE_IMPROVE
@@ -3017,13 +3006,6 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #else
     mbmi->mode = NEAR_NEARMV;
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_REFINEMV && !CONFIG_CWP
-    mbmi->refinemv_flag =
-#if CONFIG_D072_SKIP_MODE_IMPROVE
-        !is_compound ? 0 :
-#endif  // CONFIG_D072_SKIP_MODE_IMPROVE
-                     get_default_refinemv_flag(cm, mbmi);
-#endif  // CONFIG_REFINEMV && !CONFIG_CWP
 #if CONFIG_AFFINE_REFINEMENT
     mbmi->comp_refine_type = mbmi->mode == NEAR_NEARMV_OPTFLOW
                                  ? COMP_REFINE_TYPE_FOR_SKIP
@@ -3270,7 +3252,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 
   if (mbmi->skip_mode) {
 #if CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
-#if CONFIG_D072_SKIP_MODE_IMPROVE && CONFIG_CWP
+#if CONFIG_D072_SKIP_MODE_IMPROVE
     assert(mbmi->mode ==
            (!is_compound
                 ? NEARMV
@@ -3279,20 +3261,12 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
                            !cm->features.enable_cwp
                        ? NEAR_NEARMV_OPTFLOW
                        : NEAR_NEARMV)));
-#elif CONFIG_D072_SKIP_MODE_IMPROVE
-    assert(mbmi->mode ==
-           (!is_compound
-                ? NEARMV
-                : (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-                           opfl_allowed_for_cur_refs(cm, mbmi)
-                       ? NEAR_NEARMV_OPTFLOW
-                       : NEAR_NEARMV)));
 #else
     assert(mbmi->mode == ((cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
                                    opfl_allowed_for_cur_refs(cm, mbmi)
                                ? NEAR_NEARMV_OPTFLOW
                                : NEAR_NEARMV)));
-#endif  // CONFIG_D072_SKIP_MODE_IMPROVE && CONFIG_CWP
+#endif  // CONFIG_D072_SKIP_MODE_IMPROVE
 #else
     assert(mbmi->mode == NEAR_NEARMV);
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT && CONFIG_OPTFLOW_REFINEMENT
@@ -3487,7 +3461,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       }
     }
   }
-#if CONFIG_CWP && CONFIG_SKIP_MODE_ENHANCEMENT
+#if CONFIG_SKIP_MODE_ENHANCEMENT
   mbmi->cwp_idx = CWP_EQUAL;
   if (cm->features.enable_cwp) {
     if (is_cwp_allowed(mbmi) && !mbmi->skip_mode)
@@ -3512,7 +3486,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
                               : 0;
   }
 #endif  // CONFIG_REFINEMV
-#endif  // CONFIG_CWP && CONFIG_SKIP_MODE_ENHANCEMENT
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
   read_mb_interp_filter(xd, features->interp_filter, cm, mbmi, r);
 
@@ -3728,9 +3702,7 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
   mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
 
-#if CONFIG_CWP
   mbmi->cwp_idx = CWP_EQUAL;
-#endif  // CONFIG_CWP
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
   mbmi->warp_ref_idx = 0;

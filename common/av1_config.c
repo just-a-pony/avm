@@ -261,9 +261,7 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader,
 #if CONFIG_BAWP
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_bawp);
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_cwp);
-#endif  // CONFIG_CWP
 #if CONFIG_D071_IMP_MSK_BLD
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_imp_msk_bld);
 #endif  // CONFIG_D071_IMP_MSK_BLD

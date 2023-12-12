@@ -6567,9 +6567,7 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #if CONFIG_BAWP
   seq_params->enable_bawp = aom_rb_read_bit(rb);
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
   seq_params->enable_cwp = aom_rb_read_bit(rb);
-#endif  // CONFIG_CWP
 #if CONFIG_D071_IMP_MSK_BLD
   seq_params->enable_imp_msk_bld = aom_rb_read_bit(rb);
 #endif  // CONFIG_D071_IMP_MSK_BLD
@@ -8123,9 +8121,7 @@ YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
     features->enable_bawp = 0;
 #endif  // CONFIG_BAWP
 
-#if CONFIG_CWP
   features->enable_cwp = seq_params->enable_cwp;
-#endif  // CONFIG_CWP
 #if CONFIG_EXTENDED_WARP_PREDICTION
   features->allow_warpmv_mode = 0;
   if (!frame_is_intra_only(cm) &&

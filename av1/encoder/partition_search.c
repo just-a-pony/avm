@@ -1012,7 +1012,6 @@ static void update_intrabc_drl_idx_stats(int max_ref_bv_num, FRAME_CONTEXT *fc,
 }
 #endif  // CONFIG_IBC_BV_IMPROVEMENT
 
-#if CONFIG_CWP
 // Update the stats for compound weighted prediction
 static void update_cwp_idx_stats(FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
                                  const AV1_COMMON *const cm, MACROBLOCKD *xd) {
@@ -1035,7 +1034,6 @@ static void update_cwp_idx_stats(FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
     ++bit_cnt;
   }
 }
-#endif  // CONFIG_CWP
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
 static void update_warp_delta_param_stats(int index, int value,
@@ -1847,11 +1845,9 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         }
       }
 
-#if CONFIG_CWP
       if (cm->features.enable_cwp && is_cwp_allowed(mbmi) && !mbmi->skip_mode) {
         update_cwp_idx_stats(fc, td->counts, cm, xd);
       }
-#endif  // CONFIG_CWP
     }
   }
 

@@ -325,12 +325,10 @@ typedef struct cfg_options {
    */
   unsigned int enable_bawp;
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
   /*!\brief enable compound weighted prediction
    *
    */
   unsigned int enable_cwp;
-#endif  // CONFIG_BAWP
 #if CONFIG_D071_IMP_MSK_BLD
   /*!\brief enable implicit maksed blending
    *

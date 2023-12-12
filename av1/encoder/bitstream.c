@@ -264,7 +264,6 @@ static AOM_INLINE void write_jmvd_scale_mode(MACROBLOCKD *xd, aom_writer *w,
 }
 #endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
 
-#if CONFIG_CWP
 // Write the index for the weighting factor of compound weighted prediction
 static AOM_INLINE void write_cwp_idx(MACROBLOCKD *xd, aom_writer *w,
                                      const AV1_COMMON *const cm,
@@ -280,7 +279,6 @@ static AOM_INLINE void write_cwp_idx(MACROBLOCKD *xd, aom_writer *w,
     ++bit_cnt;
   }
 }
-#endif  // CONFIG_CWP
 
 static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
                                                  PREDICTION_MODE mode,
@@ -2229,9 +2227,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
     assert(mbmi->bawp_flag == 0);
 #endif  // CONFIG_BAWP_CHROMA
   }
-#if CONFIG_CWP
   assert(IMPLIES(mbmi->refinemv_flag, mbmi->cwp_idx == CWP_EQUAL));
-#endif  // CONFIG_CWP
 #endif  // CONFIG_REFINEMV
 #if CONFIG_EXTENDED_WARP_PREDICTION
   // Just for debugging purpose
@@ -2668,10 +2664,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
         }
       }
     }
-#if CONFIG_CWP
     if (cm->features.enable_cwp && is_cwp_allowed(mbmi) && !mbmi->skip_mode)
       write_cwp_idx(xd, w, cm, mbmi);
-#endif  // CONFIG_CWP
     write_mb_interp_filter(cm, xd, w);
   }
 }
@@ -5201,9 +5195,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_BAWP
   aom_wb_write_bit(wb, seq_params->enable_bawp);
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
   aom_wb_write_bit(wb, seq_params->enable_cwp);
-#endif  // CONFIG_CWP
 #if CONFIG_D071_IMP_MSK_BLD
   aom_wb_write_bit(wb, seq_params->enable_imp_msk_bld);
 #endif  // CONFIG_D071_IMP_MSK_BLD

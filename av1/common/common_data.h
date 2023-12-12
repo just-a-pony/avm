@@ -158,13 +158,11 @@ static const uint8_t num_pels_log2_lookup[BLOCK_SIZES_ALL] = {
 #endif  // CONFIG_FLEX_PARTITION
 };
 
-#if CONFIG_CWP
 // Supported weighting factor for compound weighted prediction
 static const int8_t cwp_weighting_factor[2][MAX_CWP_NUM] = {
   { 8, 12, 4, 10, 6 },
   { 8, 12, 4, 20, -4 },
 };
-#endif  // CONFIG_CWP
 
 #if CONFIG_EXT_RECUR_PARTITIONS
 /* clang-format off */

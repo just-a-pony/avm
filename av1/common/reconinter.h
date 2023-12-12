@@ -351,7 +351,6 @@ static INLINE int allow_warp_parameter_signaling(const AV1_COMMON *const cm,
 }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
-#if CONFIG_CWP
 // Map the index to weighting factor for compound weighted prediction
 static INLINE int get_cwp_coding_idx(int val, int encode,
                                      const AV1_COMMON *const cm,
@@ -376,7 +375,6 @@ static INLINE int get_cwp_coding_idx(int val, int encode,
     return cwp_weighting_factor[is_same_side][val];
   }
 }
-#endif  // CONFIG_CWP
 
 static INLINE int enable_adaptive_mvd_resolution(const AV1_COMMON *const cm,
                                                  const MB_MODE_INFO *mbmi) {
@@ -1323,12 +1321,10 @@ static INLINE const uint8_t *av1_get_contiguous_soft_mask(int8_t wedge_index,
 const uint8_t *av1_get_compound_type_mask(
     const INTERINTER_COMPOUND_DATA *const comp_data, BLOCK_SIZE sb_type);
 
-#if CONFIG_CWP
 // Init the masks for compound weighted prediction
 void init_cwp_masks();
 // Get the mask for compound weighted prediction
 const int8_t *av1_get_cwp_mask(int list_idx, int idx);
-#endif  // CONFIG_CWP
 
 // build interintra_predictors for one plane
 void av1_build_interintra_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,

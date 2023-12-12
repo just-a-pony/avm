@@ -125,9 +125,7 @@ void av1_make_default_fullpel_ms_params(
   const int is_adaptive_mvd =
       enable_adaptive_mvd_resolution(&cpi->common, mbmi);
 
-#if CONFIG_CWP
   ms_params->xd = xd;
-#endif  // CONFIG_CWP
 
   // High level params
   ms_params->bsize = bsize;
@@ -1219,7 +1217,6 @@ static INLINE int get_mvpred_compound_var_cost(
   return bestsme;
 }
 
-#if CONFIG_CWP
 // Set weighting factor for two reference frames
 static INLINE void set_cmp_weight(const MB_MODE_INFO *mi, int invert_mask,
                                   DIST_WTD_COMP_PARAMS *jcp_param) {
@@ -1228,7 +1225,6 @@ static INLINE void set_cmp_weight(const MB_MODE_INFO *mi, int invert_mask,
   jcp_param->fwd_offset = weight;
   jcp_param->bck_offset = (1 << CWP_WEIGHT_BITS) - weight;
 }
-#endif  // CONFIG_CWP
 
 static INLINE int get_mvpred_compound_sad(
     const FULLPEL_MOTION_SEARCH_PARAMS *ms_params,
@@ -1247,7 +1243,6 @@ static INLINE int get_mvpred_compound_sad(
     return vfp->msdf(src_buf, src_stride, ref_address, ref_stride, second_pred,
                      mask, mask_stride, invert_mask);
   } else if (second_pred) {
-#if CONFIG_CWP
     const MB_MODE_INFO *mi = ms_params->xd->mi[0];
     if (get_cwp_idx(mi) != CWP_EQUAL) {
       DIST_WTD_COMP_PARAMS jcp_param;
@@ -1256,7 +1251,6 @@ static INLINE int get_mvpred_compound_sad(
       return vfp->jsdaf(src_buf, src_stride, ref_address, ref_stride,
                         second_pred, &jcp_param);
     }
-#endif  // CONFIG_CWP
     return vfp->sdaf(src_buf, src_stride, ref_address, ref_stride, second_pred);
   } else {
     return ms_params->sdf(src_buf, src_stride, ref_address, ref_stride);
@@ -2874,7 +2868,6 @@ int av1_full_pixel_search(const FULLPEL_MV start_mv,
   return var;
 }
 
-#if CONFIG_CWP
 // Get the cost for compound weighted prediction
 int av1_get_cwp_idx_cost(int8_t cwp_idx, const AV1_COMMON *const cm,
                          const MACROBLOCK *x) {
@@ -2893,7 +2886,6 @@ int av1_get_cwp_idx_cost(int8_t cwp_idx, const AV1_COMMON *const cm,
   }
   return cost;
 }
-#endif  // CONFIG_CWP
 
 #if CONFIG_IBC_BV_IMPROVEMENT
 int av1_get_ref_mvpred_var_cost(const AV1_COMP *cpi, const MACROBLOCKD *xd,
@@ -3541,7 +3533,6 @@ static int upsampled_pref_error(MACROBLOCKD *xd, const AV1_COMMON *cm,
           subpel_y_q3, ref, ref_stride, mask, mask_stride, invert_mask, xd->bd,
           subpel_search_type);
     } else {
-#if CONFIG_CWP
       if (get_cwp_idx(xd->mi[0]) != CWP_EQUAL) {
         DIST_WTD_COMP_PARAMS jcp_param;
         set_cmp_weight(xd->mi[0], invert_mask, &jcp_param);
@@ -3551,7 +3542,6 @@ static int upsampled_pref_error(MACROBLOCKD *xd, const AV1_COMMON *cm,
             subpel_x_q3, subpel_y_q3, ref, ref_stride, xd->bd, &jcp_param,
             subpel_search_type);
       } else
-#endif  // CONFIG_CWP
 
         aom_highbd_comp_avg_upsampled_pred(xd, cm, mi_row, mi_col, this_mv,
                                            pred, second_pred, w, h, subpel_x_q3,

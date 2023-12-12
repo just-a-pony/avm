@@ -366,9 +366,7 @@ DECLARE_ALIGNED(16, static uint8_t,
                 smooth_interintra_mask_buf[INTERINTRA_MODES][BLOCK_SIZES_ALL]
                                           [MAX_WEDGE_SQUARE]);
 
-#if CONFIG_CWP
 DECLARE_ALIGNED(16, static int8_t, cwp_mask[2][MAX_CWP_NUM][MAX_SB_SQUARE]);
-#endif  // CONFIG_CWP
 
 static wedge_masks_type wedge_masks[BLOCK_SIZES_ALL][2];
 
@@ -520,7 +518,6 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
 };
 #endif
 
-#if CONFIG_CWP
 // Init the cwp masks, called by init_cwp_masks
 static AOM_INLINE void build_cwp_mask(int8_t *mask, int stride,
                                       BLOCK_SIZE plane_bsize, int8_t w) {
@@ -546,7 +543,6 @@ void init_cwp_masks() {
 const int8_t *av1_get_cwp_mask(int list_idx, int idx) {
   return cwp_mask[list_idx][idx];
 }
-#endif  // CONFIG_CWP
 
 static const uint8_t *get_wedge_mask_inplace(int wedge_index, int neg,
                                              BLOCK_SIZE sb_type) {
@@ -4429,9 +4425,7 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
   assert(!is_masked_compound_type(mi->interinter_comp.type));
   assert(!is_tip_ref_frame(mi->ref_frame[0]));
 
-#if CONFIG_CWP
   assert(mi->cwp_idx == CWP_EQUAL);
-#endif
 
   int is_global[2] = { 0, 0 };
   for (int ref = 0; ref < 1 + is_compound; ++ref) {
@@ -4581,9 +4575,7 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
 #if CONFIG_D071_IMP_MSK_BLD
   BacpBlockData bacp_block_data[2 * N_OF_OFFSETS];
   uint8_t use_bacp = !build_for_obmc && use_border_aware_compound(cm, mi) &&
-#if CONFIG_CWP
                      mi->cwp_idx == CWP_EQUAL &&
-#endif  // CONFIG_CWP
                      cm->features.enable_imp_msk_bld;
 #endif  // CONFIG_D071_IMP_MSK_BLD
 
@@ -4740,9 +4732,7 @@ static void build_inter_predictors_8x8_and_bigger(
                                  mi->interinter_comp.type == COMPOUND_AVERAGE);
 
   if (apply_sub_block_refinemv) {
-#if CONFIG_CWP
     assert(IMPLIES(mi->refinemv_flag, mi->cwp_idx == CWP_EQUAL));
-#endif
     int refinemv_sb_size_width =
         AOMMIN((REFINEMV_SUBBLOCK_WIDTH >> pd->subsampling_x), bw);
     int refinemv_sb_size_height =
@@ -4979,9 +4969,7 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_D071_IMP_MSK_BLD
   BacpBlockData bacp_block_data[2 * N_OF_OFFSETS];
   uint8_t use_bacp = !build_for_obmc && use_border_aware_compound(cm, mi) &&
-#if CONFIG_CWP
                      mi->cwp_idx == CWP_EQUAL &&
-#endif  // CONFIG_CWP
                      cm->features.enable_imp_msk_bld;
 #endif  // CONFIG_D071_IMP_MSK_BLD
 
@@ -5049,7 +5037,6 @@ static void build_inter_predictors_8x8_and_bigger(
       inter_pred_params.mask_comp.seg_mask = xd->seg_mask;
     }
 
-#if CONFIG_CWP
     if (ref == 1 && inter_pred_params.conv_params.do_average == 1) {
       if (get_cwp_idx(mi) != CWP_EQUAL) {
         int8_t weight = get_cwp_idx(mi);
@@ -5059,7 +5046,6 @@ static void build_inter_predictors_8x8_and_bigger(
             (1 << CWP_WEIGHT_BITS) - weight;
       }
     }
-#endif  // CONFIG_CWP
 
 #if CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_AFFINE_REFINEMENT

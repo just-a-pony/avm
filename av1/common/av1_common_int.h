@@ -454,9 +454,7 @@ typedef struct SequenceHeader {
 #if CONFIG_BAWP
   uint8_t enable_bawp;  // enables/disables block adaptive weighted prediction
 #endif                  // CONFIG_BAWP
-#if CONFIG_CWP
-  uint8_t enable_cwp;  // enables/disables compound weighted prediction
-#endif                 // CONFIG_CWP
+  uint8_t enable_cwp;   // enables/disables compound weighted prediction
 #if CONFIG_D071_IMP_MSK_BLD
   uint8_t enable_imp_msk_bld;  // enable implicit maksed blending
 #endif                         // CONFIG_D071_IMP_MSK_BLD
@@ -760,12 +758,10 @@ typedef struct {
    */
   bool enable_bawp;
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
   /*!
    * Enables/disables compound weighted prediction
    */
   bool enable_cwp;
-#endif  // CONFIG_CWP
 #if CONFIG_D071_IMP_MSK_BLD
   /*!
    * Enables/disables implicit masked blending.
@@ -3789,10 +3785,7 @@ static INLINE int opfl_allowed_for_cur_block(const AV1_COMMON *cm,
   if (cm->features.opfl_refine_type == REFINE_ALL)
     return mbmi->mode >= COMP_INTER_MODE_START &&
            mbmi->mode < COMP_OPTFLOW_MODE_START &&
-           mbmi->mode != GLOBAL_GLOBALMV &&
-#if CONFIG_CWP
-           mbmi->cwp_idx == CWP_EQUAL &&
-#endif  // CONFIG_CWP
+           mbmi->mode != GLOBAL_GLOBALMV && mbmi->cwp_idx == CWP_EQUAL &&
            mbmi->interinter_comp.type == COMPOUND_AVERAGE;
 
   assert(0);

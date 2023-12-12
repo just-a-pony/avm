@@ -641,11 +641,9 @@ static INLINE int av1_is_subpelmv_in_range(const SubpelMvLimits *mv_limits,
          (mv.row >= mv_limits->row_min) && (mv.row <= mv_limits->row_max);
 }
 
-#if CONFIG_CWP
 // Returns the cost for signaling the index of compound weighted prediction
 int av1_get_cwp_idx_cost(int8_t cwp_idx, const AV1_COMMON *const cm,
                          const MACROBLOCK *x);
-#endif  // CONFIG_CWP
 
 #if CONFIG_IBC_BV_IMPROVEMENT
 // Returns the cost of using the current mv during the motion search

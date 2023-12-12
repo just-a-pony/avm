@@ -536,10 +536,8 @@ typedef struct MB_MODE_INFO {
   int32_t bawp_beta[3][2];  //[yuv][ref0/1], current only [0][0] is used.
 #endif                      // CONFIG_BAWP
 
-#if CONFIG_CWP
   //! Index for compound weighted prediction parameters.
   int8_t cwp_idx;
-#endif  // CONFIG_CWP
   /**@}*/
 
   /*****************************************************************************
@@ -3855,7 +3853,6 @@ static AOM_INLINE const PARTITION_TREE *get_partition_subtree_const(
 }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
-#if CONFIG_CWP
 // check whether compound weighted prediction can be allowed
 static INLINE int is_cwp_allowed(const MB_MODE_INFO *mbmi) {
 #if CONFIG_REFINEMV
@@ -3880,7 +3877,6 @@ static INLINE int8_t get_cwp_idx(const MB_MODE_INFO *mbmi) {
   assert(mbmi->cwp_idx <= CWP_MAX && mbmi->cwp_idx >= CWP_MIN);
   return mbmi->cwp_idx;
 }
-#endif
 
 /*!\endcond */
 

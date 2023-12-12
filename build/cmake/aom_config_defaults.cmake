@@ -260,7 +260,6 @@ set_aom_config_var(CONFIG_D071_IMP_MSK_BLD 1
 
 set_aom_config_var(CONFIG_SKIP_TXFM_OPT 1
                    "Enable to optimize the signaling of skip_txfm")
-set_aom_config_var(CONFIG_CWP 1 "Enables compound weighted prediction.")
 set_aom_config_var(CONFIG_REFINEMV 1 "Enable refinemv modes")
 
 set_aom_config_var(CONFIG_EXPLICIT_TEMPORAL_DIST_CALC 1

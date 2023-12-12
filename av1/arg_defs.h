@@ -161,9 +161,7 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_BAWP
   arg_def_t enable_bawp;
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
   arg_def_t enable_cwp;
-#endif  // CONFIG_CWP
 #if CONFIG_D071_IMP_MSK_BLD
   arg_def_t enable_imp_msk_bld;
 #endif  // CONFIG_D071_IMP_MSK_BLD

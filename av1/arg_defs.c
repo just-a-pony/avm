@@ -408,11 +408,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                          "Enable block adaptive weighted prediction (BAWP)"
                          "(0: false, 1: true (default))"),
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
   .enable_cwp = ARG_DEF(NULL, "enable-cwp", 1,
                         "Enable compound weighted prediction (CWP)"
                         "(0: false, 1: true (default))"),
-#endif  // CONFIG_CWP
 #if CONFIG_D071_IMP_MSK_BLD
   .enable_imp_msk_bld = ARG_DEF(NULL, "enable-imp-msk-bld", 1,
                                 "Enable implicit maksed blending"

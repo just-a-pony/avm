@@ -94,9 +94,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
 #if CONFIG_BAWP
     GET_PARAMS(enable_bawp);
 #endif  // CONFIG_BAWP
-#if CONFIG_CWP
     GET_PARAMS(enable_cwp);
-#endif  // CONFIG_CWP
 #if CONFIG_D071_IMP_MSK_BLD
     GET_PARAMS(enable_imp_msk_bld);
 #endif  // CONFIG_D071_IMP_MSK_BLD

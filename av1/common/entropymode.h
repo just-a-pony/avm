@@ -237,9 +237,7 @@ typedef struct frame_contexts {
                                       [CDF_SIZE(INTER_COMPOUND_MODES)];
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
-#if CONFIG_CWP
   aom_cdf_prob cwp_idx_cdf[MAX_CWP_CONTEXTS][MAX_CWP_NUM - 1][CDF_SIZE(2)];
-#endif  // CONFIG_CWP
 #if CONFIG_IMPROVED_JMVD
   aom_cdf_prob jmvd_scale_mode_cdf[CDF_SIZE(JOINT_NEWMV_SCALE_FACTOR_CNT)];
   aom_cdf_prob jmvd_amvd_scale_mode_cdf[CDF_SIZE(JOINT_AMVD_SCALE_FACTOR_CNT)];
