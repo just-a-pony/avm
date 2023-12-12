@@ -365,7 +365,7 @@ static const WarpedMotionParams default_warp_params = {
   IDENTITY,
   0,
 #if CONFIG_EXT_WARP_FILTER
-  false
+  true
 #endif  // CONFIG_EXT_WARP_FILTER
 };
 /* clang-format on */
