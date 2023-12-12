@@ -253,7 +253,6 @@ static void write_warpmv_with_mvd_flag(FRAME_CONTEXT *ec_ctx,
 static AOM_INLINE void write_jmvd_scale_mode(MACROBLOCKD *xd, aom_writer *w,
                                              const MB_MODE_INFO *const mbmi) {
   if (!is_joint_mvd_coding_mode(mbmi->mode)) return;
-#if CONFIG_ADAPTIVE_MVD
   const int is_joint_amvd_mode = is_joint_amvd_coding_mode(mbmi->mode);
   aom_cdf_prob *jmvd_scale_mode_cdf =
       is_joint_amvd_mode ? xd->tile_ctx->jmvd_amvd_scale_mode_cdf
@@ -263,10 +262,6 @@ static AOM_INLINE void write_jmvd_scale_mode(MACROBLOCKD *xd, aom_writer *w,
 
   aom_write_symbol(w, mbmi->jmvd_scale_mode, jmvd_scale_mode_cdf,
                    jmvd_scale_cnt);
-#else
-  aom_write_symbol(w, mbmi->jmvd_scale_mode, xd->tile_ctx->jmvd_scale_mode_cdf,
-                   JOINT_NEWMV_SCALE_FACTOR_CNT);
-#endif  // CONFIG_ADAPTIVE_MVD
 }
 #endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
 
@@ -2497,19 +2492,12 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #if CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
       write_jmvd_scale_mode(xd, w, mbmi);
 #endif  // CONFIG_IMPROVED_JMVD && CONFIG_JOINT_MVD
-#if IMPROVED_AMVD
       int max_drl_bits = cm->features.max_drl_bits;
       if (mbmi->mode == AMVDNEWMV) max_drl_bits = AOMMIN(max_drl_bits, 1);
-#endif  // IMPROVED_AMVD
 
       if (have_drl_index(mode))
-        write_drl_idx(
-#if IMPROVED_AMVD
-            max_drl_bits,
-#else
-            cm->features.max_drl_bits,
-#endif  // IMPROVED_AMVD
-            mbmi_ext_frame->mode_context, ec_ctx, mbmi, mbmi_ext_frame, w);
+        write_drl_idx(max_drl_bits, mbmi_ext_frame->mode_context, ec_ctx, mbmi,
+                      mbmi_ext_frame, w);
       else
 #if CONFIG_SEP_COMP_DRL
       {
@@ -2704,9 +2692,9 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #if CONFIG_REFINEMV
         && (!mbmi->refinemv_flag || !switchable_refinemv_flag(cm, mbmi))
 #endif  // CONFIG_REFINEMV
-#if IMPROVED_AMVD && CONFIG_JOINT_MVD
+#if CONFIG_JOINT_MVD
         && !is_joint_amvd_coding_mode(mbmi->mode)
-#endif  // IMPROVED_AMVD && CONFIG_JOINT_MVD
+#endif  // CONFIG_JOINT_MVD
     ) {
 
       const int masked_compound_used = is_any_masked_compound_used(bsize) &&
@@ -5331,9 +5319,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
   aom_wb_write_bit(wb, seq_params->enable_ibp);
-#if CONFIG_ADAPTIVE_MVD
   aom_wb_write_bit(wb, seq_params->enable_adaptive_mvd);
-#endif  // CONFIG_ADAPTIVE_MVD
 
 #if CONFIG_REFINEMV
   aom_wb_write_bit(wb, seq_params->enable_refinemv);
