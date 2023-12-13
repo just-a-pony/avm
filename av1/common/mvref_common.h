@@ -42,15 +42,32 @@ typedef struct position {
 #define MAX_OFFSET_HEIGHT 0
 #define MAX_OFFSET_HEIGHT_LOG2 (MAX_OFFSET_HEIGHT >> TMVP_MI_SZ_LOG2)
 #define MAX_OFFSET_WIDTH_LOG2 (MAX_OFFSET_WIDTH >> TMVP_MI_SZ_LOG2)
+
+static AOM_INLINE int get_mf_sb_size_log2(int sb_size, int mib_size_log2) {
+#if CONFIG_BLOCK_256
+  (void)mib_size_log2;
+#endif  // CONFIG_BLOCK_256
+
+  int mi_size_log2 = INT_MIN;
+  if (sb_size <= 64) {
+    mi_size_log2 = mi_size_high_log2[BLOCK_64X64];
+  } else {
+#if CONFIG_BLOCK_256
+    mi_size_log2 = mi_size_high_log2[BLOCK_128X128];
+#else
+    mi_size_log2 = mib_size_log2;
+#endif  // CONFIG_BLOCK_256
+  }
+  return mi_size_log2 + MI_SIZE_LOG2;
+}
+
 static AOM_INLINE int get_block_position(AV1_COMMON *cm, int *mi_r, int *mi_c,
                                          int blk_row, int blk_col, MV mv,
                                          int sign_bias) {
 #if CONFIG_MF_IMPROVEMENT
   const SequenceHeader *const seq_params = &cm->seq_params;
   const int sb_size = block_size_high[seq_params->sb_size];
-  const int mf_sb_size_log2 = (sb_size <= 64 ? mi_size_high_log2[BLOCK_64X64]
-                                             : seq_params->mib_size_log2) +
-                              MI_SIZE_LOG2;
+  const int mf_sb_size_log2 = get_mf_sb_size_log2(sb_size, cm->mib_size_log2);
   const int mf_sb_size = (1 << mf_sb_size_log2);
   const int sb_tmvp_size = (mf_sb_size >> TMVP_MI_SZ_LOG2);
   const int sb_tmvp_size_log2 = mf_sb_size_log2 - TMVP_MI_SZ_LOG2;
