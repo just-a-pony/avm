@@ -218,40 +218,29 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       uint16_t *input = dst - 2 * input_stride;
       for (int i = 0; i < width; i += 2) {
         const int bot = i + input_stride;
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
         const int filter_type = cm->seq_params.enable_cfl_ds_filter;
         if (filter_type == 1) {
           output_q3[i >> 1] = input[AOMMAX(0, i - 1)] + 2 * input[i] +
                               input[i + 1] + input[bot + AOMMAX(-1, -i)] +
                               2 * input[bot] + input[bot + 1];
         } else if (filter_type == 2) {
-#if CONFIG_CFL_IMPROVEMENTS
           const int top = i - input_stride;
           output_q3[i >> 1] = input[AOMMAX(0, i - 1)] + 4 * input[i] +
                               input[i + 1] + input[top] + input[bot];
-#else
-          output_q3[i >> 1] = input[i] * 8;
-#endif  // CONFIG_CFL_IMPROVEMENTS
         } else {
           output_q3[i >> 1] =
               (input[i] + input[i + 1] + input[bot] + input[bot + 1]) << 1;
         }
 #else
-#if CONFIG_IMPROVED_CFL
-        output_q3[i >> 1] = input[AOMMAX(0, i - 1)] + 2 * input[i] +
-                            input[i + 1] + input[bot + AOMMAX(-1, -i)] +
-                            2 * input[bot] + input[bot + 1];
-#else
         output_q3[i >> 1] =
             (input[i] + input[i + 1] + input[bot] + input[bot + 1]) << 1;
-#endif
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
       }
-#if CONFIG_ADPTIVE_DS_422
+#if CONFIG_IMPROVED_CFL
     } else if (sub_x) {
       uint16_t *input = dst - input_stride;
       for (int i = 0; i < width; i += 2) {
-#if CONFIG_ADAPTIVE_DS_FILTER
         const int filter_type = cm->seq_params.enable_cfl_ds_filter;
         if (filter_type == 1) {
           output_q3[i >> 1] =
@@ -261,11 +250,8 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
         } else {
           output_q3[i >> 1] = (input[i] + input[i + 1]) << 2;
         }
-#else
-        output_q3[i >> 1] = input[i] << 3;
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
       }
-#endif  // CONFIG_ADPTIVE_DS_422
+#endif  // CONFIG_IMPROVED_CFL
     } else if (sub_y) {
       uint16_t *input = dst - 2 * input_stride;
       for (int i = 0; i < width; ++i) {
@@ -298,39 +284,29 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       uint16_t *input = dst - 2;
       for (int j = 0; j < height; j += 2) {
         const int bot = input_stride;
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
         const int filter_type = cm->seq_params.enable_cfl_ds_filter;
         if (filter_type == 1) {
           output_q3[j >> 1] = input[-1] + 2 * input[0] + input[1] +
                               input[bot - 1] + 2 * input[bot] + input[bot + 1];
         } else if (filter_type == 2) {
-#if CONFIG_CFL_IMPROVEMENTS
           const int top = (j == 0) ? 0 : (0 - input_stride);
           output_q3[j >> 1] =
               input[-1] + 4 * input[0] + input[1] + input[top] + input[bot];
-#else
-          output_q3[j >> 1] = input[0] * 8;
-#endif  // CONFIG_CFL_IMPROVEMENTS
         } else {
           output_q3[j >> 1] =
               (input[0] + input[1] + input[bot] + input[bot + 1]) << 1;
         }
 #else
-#if CONFIG_IMPROVED_CFL
-        output_q3[j >> 1] = input[-1] + 2 * input[0] + input[1] +
-                            input[bot - 1] + 2 * input[bot] + input[bot + 1];
-#else
         output_q3[j >> 1] = (input[0] + input[1] + input[bot] + input[bot + 1])
                             << 1;
-#endif
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
         input += input_stride * 2;
       }
-#if CONFIG_ADPTIVE_DS_422
+#if CONFIG_IMPROVED_CFL
     } else if (sub_x) {
       uint16_t *input = dst - 2;
       for (int j = 0; j < height; ++j) {
-#if CONFIG_ADAPTIVE_DS_FILTER
         const int filter_type = cm->seq_params.enable_cfl_ds_filter;
         if (filter_type == 1) {
           output_q3[j] = (input[-1] + 2 * input[0] + input[1]) << 1;
@@ -339,12 +315,9 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
         } else {
           output_q3[j] = (input[0] + input[1]) << 2;
         }
-#else
-        output_q3[j] = input[0] << 3;
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
         input += input_stride;
       }
-#endif  // CONFIG_ADPTIVE_DS_422
+#endif  // CONFIG_IMPROVED_CFL
     } else if (sub_y) {
       uint16_t *input = dst - 1;
       for (int j = 0; j < height; ++j) {
@@ -556,7 +529,7 @@ void cfl_derive_implicit_scaling_factor(MACROBLOCKD *const xd, int plane,
 }
 #endif
 
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
 void cfl_derive_block_implicit_scaling_factor(uint16_t *l, const uint16_t *c,
                                               const int width, const int height,
                                               const int stride,
@@ -583,7 +556,7 @@ void cfl_derive_block_implicit_scaling_factor(uint16_t *l, const uint16_t *c,
     *alpha = 0;
   }
 }
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
 
 void cfl_predict_block(MACROBLOCKD *const xd, uint16_t *dst, int dst_stride,
                        TX_SIZE tx_size, int plane, bool have_top,
@@ -646,21 +619,17 @@ static void cfl_luma_subsampling_420_hbd_c(const uint16_t *input,
   }
 }
 
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
 void cfl_luma_subsampling_420_hbd_colocated(const uint16_t *input,
                                             int input_stride,
                                             uint16_t *output_q3, int width,
                                             int height) {
   for (int j = 0; j < height; j += 2) {
     for (int i = 0; i < width; i += 2) {
-#if CONFIG_CFL_IMPROVEMENTS
       const int top = (j == 0) ? i : (i - input_stride);
       const int bot = i + input_stride;
       output_q3[i >> 1] = input[AOMMAX(0, i - 1)] + 4 * input[i] +
                           input[i + 1] + input[top] + input[bot];
-#else
-      output_q3[i >> 1] = input[i] * 8;
-#endif  // CONFIG_CFL_IMPROVEMENTS
     }
     input += input_stride << 1;
     output_q3 += CFL_BUF_LINE;
@@ -681,7 +650,7 @@ void cfl_luma_subsampling_420_hbd_121_c(const uint16_t *input, int input_stride,
     output_q3 += CFL_BUF_LINE;
   }
 }
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
 
 static void cfl_luma_subsampling_422_hbd_c(const uint16_t *input,
                                            int input_stride,
@@ -697,8 +666,7 @@ static void cfl_luma_subsampling_422_hbd_c(const uint16_t *input,
   }
 }
 
-#if CONFIG_ADPTIVE_DS_422
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
 void cfl_adaptive_luma_subsampling_422_hbd_c(const uint16_t *input,
                                              int input_stride,
                                              uint16_t *output_q3, int width,
@@ -719,22 +687,7 @@ void cfl_adaptive_luma_subsampling_422_hbd_c(const uint16_t *input,
     output_q3 += CFL_BUF_LINE;
   }
 }
-#else
-void cfl_luma_subsampling_422_hbd_colocated(const uint16_t *input,
-                                            int input_stride,
-                                            uint16_t *output_q3, int width,
-                                            int height) {
-  assert((height - 1) * CFL_BUF_LINE + width <= CFL_BUF_SQUARE);
-  for (int j = 0; j < height; j++) {
-    for (int i = 0; i < width; i += 2) {
-      output_q3[i >> 1] = (input[i]) << 3;
-    }
-    input += input_stride;
-    output_q3 += CFL_BUF_LINE;
-  }
-}
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
-#endif  // CONFIG_ADPTIVE_DS_422
+#endif  // CONFIG_IMPROVED_CFL
 
 static void cfl_luma_subsampling_444_hbd_c(const uint16_t *input,
                                            int input_stride,
@@ -766,10 +719,10 @@ static INLINE cfl_subsample_hbd_fn cfl_subsampling_hbd(TX_SIZE tx_size,
 static void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl,
                       const uint16_t *input, int input_stride, int row, int col,
                       TX_SIZE tx_size
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
                       ,
                       int filter_type
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
 ) {
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
@@ -810,15 +763,11 @@ static void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl,
   // Store the input into the CfL pixel buffer
   uint16_t *recon_buf_q3 =
       cfl->recon_buf_q3 + (store_row * CFL_BUF_LINE + store_col);
-#if CONFIG_ADAPTIVE_DS_FILTER
-#if CONFIG_ADPTIVE_DS_422
+#if CONFIG_IMPROVED_CFL
   if (sub_x == 1 && sub_y == 0) {
     cfl_adaptive_luma_subsampling_422_hbd_c(input, input_stride, recon_buf_q3,
                                             width, height, filter_type);
   } else if (filter_type == 1) {
-#else
-  if (filter_type == 1) {
-#endif  // CONFIG_ADPTIVE_DS_422
     if (sub_x && sub_y)
       cfl_luma_subsampling_420_hbd_121_c(input, input_stride, recon_buf_q3,
                                          width, height);
@@ -837,27 +786,15 @@ static void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl,
                                                recon_buf_q3);
   }
 #else
-#if CONFIG_IMPROVED_CFL
-  if (sub_x && sub_y)
-    cfl_luma_subsampling_420_hbd_121_c(input, input_stride, recon_buf_q3, width,
-                                       height);
-#if CONFIG_ADPTIVE_DS_422
-  else if (sub_x == 1 && sub_y == 0)
-    cfl_luma_subsampling_422_hbd_colocated(input, input_stride, recon_buf_q3,
-                                           width, height);
-#endif  // CONFIG_ADPTIVE_DS_422
-  else
-#endif
-    cfl_subsampling_hbd(tx_size, sub_x, sub_y)(input, input_stride,
-                                               recon_buf_q3);
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+  cfl_subsampling_hbd(tx_size, sub_x, sub_y)(input, input_stride, recon_buf_q3);
+#endif  // CONFIG_IMPROVED_CFL
 }
 
 void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
                   ,
                   int filter_type
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
 ) {
   CFL_CTX *const cfl = &xd->cfl;
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_Y];
@@ -868,13 +805,13 @@ void cfl_store_tx(MACROBLOCKD *const xd, int row, int col, TX_SIZE tx_size
   const int row_offset = mi_row - xd->mi[0]->chroma_ref_info.mi_row_chroma_base;
   const int col_offset = mi_col - xd->mi[0]->chroma_ref_info.mi_col_chroma_base;
 
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
   cfl_store(xd, cfl, dst, pd->dst.stride, row + row_offset, col + col_offset,
             tx_size, filter_type);
 #else
   cfl_store(xd, cfl, dst, pd->dst.stride, row + row_offset, col + col_offset,
             tx_size);
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
 }
 
 #if !CONFIG_FLEX_PARTITION
@@ -896,10 +833,10 @@ static INLINE int max_intra_block_height(const MACROBLOCKD *xd,
 #endif  // !CONFIG_FLEX_PARTITION
 
 void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
                      ,
                      int filter_type
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
 ) {
   CFL_CTX *const cfl = &xd->cfl;
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_Y];
@@ -921,13 +858,13 @@ void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size
 
   tx_size = get_tx_size(width, height);
   assert(tx_size != TX_INVALID);
-#if CONFIG_ADAPTIVE_DS_FILTER
+#if CONFIG_IMPROVED_CFL
   cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row_offset, col_offset,
             tx_size, filter_type);
 #else
   cfl_store(xd, cfl, pd->dst.buf, pd->dst.stride, row_offset, col_offset,
             tx_size);
-#endif  // CONFIG_ADAPTIVE_DS_FILTER
+#endif  // CONFIG_IMPROVED_CFL
 }
 
 #if CONFIG_ENABLE_MHCCP
