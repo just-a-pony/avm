@@ -228,6 +228,9 @@ Test Data Check:
         inspection-accounting)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_INSPECTION=1 -DCONFIG_ACCOUNTING=1"
           ;;
+        entropy-stats)
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_ENTROPY_STATS=1"
+          ;;
         nasm)
           CMAKE_FLAGS="$CMAKE_FLAGS -DENABLE_NASM=1"
           ;;
@@ -309,6 +312,16 @@ Previous Build (x86_64-linux-gcc):
       - ${CI_PROJECT_DIR}/installroot_old/*
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+Build (entropy-stats):
+  extends: .build-common
+  variables:
+    # Allow build warnings.
+    EXTRA_CMAKE_FLAGS: -DENABLE_WERROR=0
+  parallel:
+    matrix:
+      - AOM_BUILD_CONFIG:
+          - entropy-stats
 
 Build (x86-linux-gcc):
   extends: .build-common
