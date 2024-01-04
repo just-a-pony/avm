@@ -1335,6 +1335,18 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
                                        .filter_intra_mode]
               : get_intra_mode(mbmi, PLANE_TYPE_Y);
       const int size_info = av1_size_class[tx_size];
+#if CONFIG_INTRA_TX_IST_PARSE
+      *tx_type = av1_tx_idx_to_type(
+          aom_read_symbol(
+              r,
+              ec_ctx->intra_ext_tx_cdf[eset + cm->features.reduced_tx_set_used]
+                                      [square_tx_size],
+              cm->features.reduced_tx_set_used
+                  ? av1_num_reduced_tx_set
+                  : av1_num_ext_tx_set_intra[tx_set_type],
+              ACCT_INFO("tx_type")),
+          tx_set_type, intra_mode, size_info);
+#else
       *tx_type = av1_tx_idx_to_type(
           aom_read_symbol(
               r,
@@ -1345,6 +1357,7 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
                   : av1_num_ext_tx_set_intra[tx_set_type],
               ACCT_INFO("tx_type")),
           tx_set_type, intra_mode, size_info);
+#endif  // CONFIG_INTRA_TX_IST_PARSE
     }
   }
 }
@@ -1395,11 +1408,19 @@ void av1_read_cctx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 static void read_secondary_tx_set(FRAME_CONTEXT *ec_ctx, aom_reader *r,
                                   MB_MODE_INFO *mbmi, TX_TYPE *tx_type) {
   uint8_t intra_mode = get_intra_mode(mbmi, PLANE_TYPE_Y);
+#if CONFIG_INTRA_TX_IST_PARSE
+  const TX_TYPE reordered_stx_set_flag =
+      aom_read_symbol(r, ec_ctx->most_probable_stx_set_cdf, IST_DIR_SIZE,
+                      ACCT_INFO("stx_set_flag"));
+  TX_TYPE stx_set_flag =
+      inv_most_probable_stx_mapping[intra_mode][reordered_stx_set_flag];
+#else
   uint8_t stx_set_ctx = stx_transpose_mapping[intra_mode];
   assert(stx_set_ctx < IST_DIR_SIZE);
   TX_TYPE stx_set_flag =
       aom_read_symbol(r, ec_ctx->stx_set_cdf[stx_set_ctx], IST_DIR_SIZE,
                       ACCT_INFO("stx_set_flag"));
+#endif  // CONFIG_INTRA_TX_IST_PARSE
   assert(stx_set_flag < IST_DIR_SIZE);
   if (get_primary_tx_type(*tx_type) == ADST_ADST) stx_set_flag += IST_DIR_SIZE;
   set_secondary_tx_set(tx_type, stx_set_flag);

@@ -1622,8 +1622,13 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
           w,
           av1_tx_type_to_idx(get_primary_tx_type(tx_type), tx_set_type,
                              intra_dir, size_info),
+#if CONFIG_INTRA_TX_IST_PARSE
+          ec_ctx->intra_ext_tx_cdf[eset + features->reduced_tx_set_used]
+                                  [square_tx_size],
+#else
           ec_ctx->intra_ext_tx_cdf[eset + features->reduced_tx_set_used]
                                   [square_tx_size][intra_dir],
+#endif  // CONFIG_INTRA_TX_IST_PARSE
           features->reduced_tx_set_used
               ? av1_num_reduced_tx_set
               : av1_num_ext_tx_set_intra[tx_set_type]);
@@ -1662,10 +1667,15 @@ static void write_sec_tx_set(FRAME_CONTEXT *ec_ctx, aom_writer *w,
   if (get_primary_tx_type(tx_type) == ADST_ADST) stx_set_flag -= IST_DIR_SIZE;
   assert(stx_set_flag < IST_DIR_SIZE);
   uint8_t intra_mode = get_intra_mode(mbmi, PLANE_TYPE_Y);
+#if CONFIG_INTRA_TX_IST_PARSE
+  aom_write_symbol(w, most_probable_stx_mapping[intra_mode][stx_set_flag],
+                   ec_ctx->most_probable_stx_set_cdf, IST_DIR_SIZE);
+#else
   uint8_t stx_set_ctx = stx_transpose_mapping[intra_mode];
   assert(stx_set_ctx < IST_DIR_SIZE);
   aom_write_symbol(w, stx_set_flag, ec_ctx->stx_set_cdf[stx_set_ctx],
                    IST_DIR_SIZE);
+#endif  // CONFIG_INTRA_TX_IST_PARSE
 }
 
 void av1_write_sec_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,

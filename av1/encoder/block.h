@@ -934,7 +934,11 @@ typedef struct {
   int stx_flag_cost[TX_SIZES][STX_TYPES];
 #if CONFIG_IST_SET_FLAG
   //! Cost of signaling secondary transform set index
+#if CONFIG_INTRA_TX_IST_PARSE
+  int most_probable_stx_set_flag_cost[IST_DIR_SIZE];
+#else
   int stx_set_flag_cost[IST_DIR_SIZE][IST_DIR_SIZE];
+#endif  // CONFIG_INTRA_TX_IST_PARSE
 #endif  // CONFIG_IST_SET_FLAG
 
   //! Rate rate associated with each alpha codeword
@@ -1255,8 +1259,12 @@ typedef struct {
   int inter_tx_type_costs[EXT_TX_SETS_INTER][EOB_TX_CTXS][EXT_TX_SIZES]
                          [TX_TYPES];
   //! intra_tx_type_costs
+#if CONFIG_INTRA_TX_IST_PARSE
+  int intra_tx_type_costs[EXT_TX_SETS_INTRA][EXT_TX_SIZES][TX_TYPES];
+#else
   int intra_tx_type_costs[EXT_TX_SETS_INTRA][EXT_TX_SIZES][INTRA_MODES]
                          [TX_TYPES];
+#endif  // CONFIG_INTRA_TX_IST_PARSE
   //! cctx_type_cost
   int cctx_type_cost[EXT_TX_SIZES][CCTX_CONTEXTS][CCTX_TYPES];
   /**@}*/

@@ -1281,9 +1281,13 @@ typedef struct FRAME_COUNTS {
   unsigned int delta_lf_cnts[CDF_SIZE(DELTA_LF_PROBS + 1)];       // placeholder
   unsigned int stx_cnts[TX_SIZES][CDF_SIZE(STX_TYPES)];           // placeholder
 #if CONFIG_IST_SET_FLAG
+#if CONFIG_INTRA_TX_IST_PARSE
+  unsigned int stx_set_cnts[CDF_SIZE(IST_DIR_SIZE)];  // placeholder
+#else
   unsigned int stx_set_cnts[IST_DIR_SIZE]
                            [CDF_SIZE(IST_DIR_SIZE)];  // placeholder
-#endif                                                // CONFIG_IST_SET_FLAG
+#endif
+#endif  // CONFIG_IST_SET_FLAG
   unsigned int pb_mv_mpp_flag_cnts[NUM_MV_PREC_MPP_CONTEXT]
                                   [CDF_SIZE(2)];  // placeholder
   unsigned int pb_mv_precision_cnts[MV_PREC_DOWN_CONTEXTS]
@@ -1673,8 +1677,12 @@ typedef struct FRAME_COUNTS {
 
   unsigned int inter_ext_tx[EXT_TX_SETS_INTER][EOB_TX_CTXS][EXT_TX_SIZES]
                            [TX_TYPES];
+#if CONFIG_INTRA_TX_IST_PARSE
+  unsigned int intra_ext_tx[EXT_TX_SETS_INTRA][EXT_TX_SIZES][TX_TYPES];
+#else
   unsigned int intra_ext_tx[EXT_TX_SETS_INTRA][EXT_TX_SIZES][INTRA_MODES]
                            [TX_TYPES];
+#endif  // CONFIG_INTRA_TX_IST_PARSE
   unsigned int cctx_type[EXT_TX_SIZES][CCTX_CONTEXTS][CCTX_TYPES];
   unsigned int filter_intra_mode[FILTER_INTRA_MODES];
 #if CONFIG_D149_CTX_MODELING_OPT

@@ -1118,6 +1118,41 @@ static AOM_INLINE bool is_bsize_gt(BLOCK_SIZE bsize1, BLOCK_SIZE bsize2) {
          block_size_high[bsize1] > block_size_high[bsize2];
 }
 
+#if CONFIG_INTRA_TX_IST_PARSE
+// Mapping of IST kernel set to an index based on intra mode.
+// The index will be signaled in the bitstream
+static const uint8_t
+    most_probable_stx_mapping[INTRA_MODES - 1][IST_DIR_SIZE] = {
+      { 2, 1, 6, 5, 4, 3, 0 },  // DC_PRED
+      { 2, 0, 4, 6, 3, 5, 1 },  // V_PRED
+      { 2, 0, 4, 6, 3, 5, 1 },  // H_PRED
+      { 2, 4, 0, 6, 5, 3, 1 },  // D45_PRED
+      { 4, 3, 5, 0, 1, 6, 2 },  // D135_PRED
+      { 4, 1, 6, 2, 0, 5, 3 },  // D113_PRED
+      { 4, 1, 6, 2, 0, 5, 3 },  // D157_PRED
+      { 1, 4, 3, 6, 5, 0, 2 },  // D203_PRED
+      { 1, 4, 3, 6, 5, 0, 2 },  // D67_PRED
+      { 2, 1, 6, 5, 4, 3, 0 },  // SMOOTH_PRED
+      { 2, 0, 4, 6, 3, 5, 1 },  // SMOOTH_V_PRED
+      { 2, 0, 4, 6, 3, 5, 1 },  // SMOOTH_H_PRED
+    };
+// Inverse Mapping of signaled index to IST kernal set based on intra mode.
+static const uint8_t
+    inv_most_probable_stx_mapping[INTRA_MODES - 1][IST_DIR_SIZE] = {
+      { 6, 1, 0, 5, 4, 3, 2 },  // DC_PRED
+      { 1, 6, 0, 4, 2, 5, 3 },  // V_PRED
+      { 1, 6, 0, 4, 2, 5, 3 },  // H_PRED
+      { 2, 6, 0, 5, 1, 4, 3 },  // D45_PRED
+      { 3, 4, 6, 1, 0, 2, 5 },  // D135_PRED
+      { 4, 1, 3, 6, 0, 5, 2 },  // D113_PRED
+      { 4, 1, 3, 6, 0, 5, 2 },  // D157_PRED
+      { 5, 0, 6, 2, 1, 4, 3 },  // D203_PRED
+      { 5, 0, 6, 2, 1, 4, 3 },  // D67_PRED
+      { 6, 1, 0, 5, 4, 3, 2 },  // SMOOTH_PRED
+      { 1, 6, 0, 4, 2, 5, 3 },  // SMOOTH_V_PRED
+      { 1, 6, 0, 4, 2, 5, 3 },  // SMOOTH_H_PRED
+    };
+#endif  // CONFIG_INTRA_TX_IST_PARSE
 // Mapping of intra modes to IST kernel set
 // Secondary transforms are enabled only intra modes < PAETH_PRED.
 // Thus, the array size is kept as INTRA_MODES - 1

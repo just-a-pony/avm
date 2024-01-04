@@ -500,9 +500,13 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
     }
 
     for (s = 1; s < EXT_TX_SETS_INTRA; ++s) {
-      int tx_set_type = av1_ext_tx_set_idx_to_type[0][s];
       const int cdf_offset = cm->features.reduced_tx_set_used ? 1 : 0;
       if (use_intra_ext_tx_for_txsize[s][i]) {
+#if CONFIG_INTRA_TX_IST_PARSE
+        av1_cost_tokens_from_cdf(mode_costs->intra_tx_type_costs[s][i],
+                                 fc->intra_ext_tx_cdf[s + cdf_offset][i], NULL);
+#else
+        int tx_set_type = av1_ext_tx_set_idx_to_type[0][s];
         for (j = 0; j < INTRA_MODES; ++j) {
           av1_cost_tokens_from_cdf(
               mode_costs->intra_tx_type_costs[s][i][j],
@@ -511,6 +515,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
                   ? av1_md_idx2type[av1_size_class[i]][av1_md_class[j]]
                   : av1_ext_tx_inv[tx_set_type]);
         }
+#endif  // CONFIG_INTRA_TX_IST_PARSE
       }
     }
   }
@@ -556,10 +561,15 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
   }
 
 #if CONFIG_IST_SET_FLAG
+#if CONFIG_INTRA_TX_IST_PARSE
+  av1_cost_tokens_from_cdf(mode_costs->most_probable_stx_set_flag_cost,
+                           fc->most_probable_stx_set_cdf, NULL);
+#else
   for (i = 0; i < IST_DIR_SIZE; ++i) {
     av1_cost_tokens_from_cdf(mode_costs->stx_set_flag_cost[i],
                              fc->stx_set_cdf[i], NULL);
   }
+#endif  // CONFIG_INTRA_TX_IST_PARSE
 #endif  // CONFIG_IST_SET_FLAG
 
   for (i = 0; i < EXT_TX_SIZES; ++i) {
