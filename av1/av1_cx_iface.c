@@ -2868,17 +2868,10 @@ static aom_codec_frame_flags_t get_frame_pkt_flags(const AV1_COMP *cpi,
 }
 
 static void calculate_psnr(AV1_COMP *cpi, PSNR_STATS *psnr) {
-  int i;
-  PSNR_STATS stats;
-
   const uint32_t in_bit_depth = cpi->oxcf.input_cfg.input_bit_depth;
   const uint32_t bit_depth = cpi->td.mb.e_mbd.bd;
   aom_calc_highbd_psnr(cpi->unfiltered_source, &cpi->common.cur_frame->buf,
-                       &stats, bit_depth, in_bit_depth);
-
-  for (i = 0; i < 4; ++i) {
-    psnr->psnr[i] = stats.psnr[i];
-  }
+                       psnr, bit_depth, in_bit_depth);
 }
 
 static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
@@ -2892,9 +2885,10 @@ static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
 
   for (int i = 0; i < 4; ++i) {
     psnr.psnr[i] = 0;
+    psnr.psnr_hbd[i] = 0;
   }
 
-  if (cpi->b_calculate_psnr) {
+  if (cpi->b_calculate_psnr >= 1) {
     calculate_psnr(cpi, &psnr);
   }
 
@@ -2909,7 +2903,8 @@ static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
                              ? -1
                              : ref_poc[ref_idx];
     }
-    if (cpi->b_calculate_psnr) {
+    if (cpi->b_calculate_psnr >= 1) {
+      const bool use_hbd_psnr = (cpi->b_calculate_psnr == 2);
       fprintf(stdout,
               "POC:%6d [%s][Level:%d][Q:%3d]: %10" PRIu64
               " Bytes, "
@@ -2919,8 +2914,10 @@ static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
               cm->cur_frame->absolute_poc,
               frameType[cm->current_frame.frame_type],
               cm->cur_frame->pyramid_level, base_qindex, (uint64_t)frame_size,
-              cx_time / 1000.0, psnr.psnr[1], psnr.psnr[2], psnr.psnr[3],
-              psnr.psnr[0]);
+              cx_time / 1000.0, use_hbd_psnr ? psnr.psnr_hbd[1] : psnr.psnr[1],
+              use_hbd_psnr ? psnr.psnr_hbd[2] : psnr.psnr[2],
+              use_hbd_psnr ? psnr.psnr_hbd[3] : psnr.psnr[3],
+              use_hbd_psnr ? psnr.psnr_hbd[0] : psnr.psnr[0]);
     } else {
       fprintf(stdout,
               "POC:%6d [%s][Level:%d][Q:%3d]: %10" PRIu64
@@ -3035,6 +3032,9 @@ static aom_codec_err_t encoder_encode(aom_codec_alg_priv_t *ctx,
     // Set up internal flags
     if (ctx->base.init_flags & AOM_CODEC_USE_PSNR) {
       cpi->b_calculate_psnr = 1;
+    }
+    if (ctx->base.init_flags & AOM_CODEC_USE_STREAM_PSNR) {
+      cpi->b_calculate_psnr = 2;
     }
     if (ctx->base.init_flags & AOM_CODEC_USE_PER_FRAME_STATS) {
       cpi->print_per_frame_stats = 1;
