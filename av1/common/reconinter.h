@@ -645,11 +645,12 @@ static INLINE int32_t divide_and_round_signed(int64_t num, int64_t den) {
 }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
 
-#if CONFIG_AFFINE_REFINEMENT || CONFIG_OPFL_MV_SEARCH
-void avg_pooling_pdiff_gradients(int16_t *pdiff, const int pstride, int16_t *gx,
-                                 int16_t *gy, const int gstride, const int bw,
-                                 const int bh, const int n);
-#endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_OPFL_MV_SEARCH
+#if CONFIG_AFFINE_REFINEMENT
+void av1_avg_pooling_pdiff_gradients_c(int16_t *pdiff, const int pstride,
+                                       int16_t *gx, int16_t *gy,
+                                       const int gstride, const int bw,
+                                       const int bh, const int n);
+#endif  // CONFIG_AFFINE_REFINEMENT
 
 #if CONFIG_AFFINE_REFINEMENT
 #define AFFINE_OPFL_BASED_ON_SAD 1
@@ -691,6 +692,10 @@ void avg_pooling_pdiff_gradients(int16_t *pdiff, const int pstride, int16_t *gx,
 #define AFFINE_PREC_BITS 12
 #define AFFINE_PARAMS_MAX (1 << (AFFINE_PREC_BITS + 3))
 #define AFFINE_RLS_PARAM 2
+
+#if AFFINE_FAST_WARP_METHOD == 3
+#define BILINEAR_WARP_PREC_BITS 12
+#endif
 
 static INLINE int is_translational_refinement_allowed(const AV1_COMMON *cm,
                                                       const int mode) {
