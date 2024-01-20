@@ -3241,7 +3241,7 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
             mib + jj * hbs * mi_params->mi_stride + ii * hbs, tp,
             mi_row + y_idx, mi_col + x_idx, subsize, &tmp_rdc.rate,
             &tmp_rdc.dist, i != (SUB_PARTITIONS_SPLIT - 1),
-            ptree ? ptree->sub_tree[1] : NULL, pc_tree->split[i]);
+            ptree ? ptree->sub_tree[i] : NULL, pc_tree->split[i]);
         if (tmp_rdc.rate == INT_MAX || tmp_rdc.dist == INT64_MAX) {
           av1_invalid_rd_stats(&last_part_rdc);
           break;
