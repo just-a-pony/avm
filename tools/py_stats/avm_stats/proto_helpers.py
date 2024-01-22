@@ -164,7 +164,7 @@ def _copy_samples_from_proto(
         (pixels_height, pixels_width)
     )[:sb_height_clipped, :sb_width_clipped]
 
-    samples[sb_y : sb_y + sb_height_clipped, sb_x : sb_x + sb_width_clipped] = (
+    samples[sb_y: sb_y + sb_height_clipped, sb_x: sb_x + sb_width_clipped] = (
         superblock_samples
     )
 
@@ -541,23 +541,10 @@ class Frame:
     self.superblocks = [
         Superblock(self, sb_proto) for sb_proto in proto.superblocks
     ]
-    self.pixels = [
-        _create_plane_buffer(self, p) for p in (Plane.Y, Plane.U, Plane.V)
-    ]
-
-    if self.pixels[0].original is None:
-      self.original_rgb = None
-    else:
-      self.original_rgb = yuv_tools.yuv_to_rgb(
-          self.pixels[0].original,
-          yuv_tools.upscale(self.pixels[1].original, 2),
-          yuv_tools.upscale(self.pixels[2].original, 2),
-      )
-    self.reconstruction_rgb = yuv_tools.yuv_to_rgb(
-        self.pixels[0].reconstruction,
-        yuv_tools.upscale(self.pixels[1].reconstruction, 2),
-        yuv_tools.upscale(self.pixels[2].reconstruction, 2),
-    )
+    # Pixel data is created lazily.
+    self._pixels = None
+    self._original_rgb = None
+    self._reconstruction_rgb = None
 
   @property
   def frame_id(self) -> int:
@@ -574,6 +561,38 @@ class Frame:
   @property
   def bit_depth(self) -> int:
     return self.proto.frame_params.bit_depth
+
+  @property
+  def is_intra_frame(self) -> bool:
+    return self.proto.frame_params.frame_type == 0
+
+  @property
+  def pixels(self) -> list[PlaneBuffer]:
+    if self._pixels is None:
+      self.pixels = [
+          _create_plane_buffer(self, p) for p in (Plane.Y, Plane.U, Plane.V)
+      ]
+    return self._pixels
+
+  @property
+  def original_rgb(self) -> np.ndarray:
+    if self._original_rgb is None and self.pixels[0].original is not None:
+      self._original_rgb = yuv_tools.yuv_to_rgb(
+          self.pixels[0].original,
+          yuv_tools.upscale(self.pixels[1].original, 2),
+          yuv_tools.upscale(self.pixels[2].original, 2),
+      )
+    return self._original_rgb
+
+  @property
+  def reconstruction_rgb(self) -> np.ndarray:
+    if self._reconstruction_rgb is None:
+      self._reconstruction_rgb = yuv_tools.yuv_to_rgb(
+          self.pixels[0].reconstruction,
+          yuv_tools.upscale(self.pixels[1].reconstruction, 2),
+          yuv_tools.upscale(self.pixels[2].reconstruction, 2),
+      )
+    return self._reconstruction_rgb
 
   def clip_rect(self, rect: Rectangle) -> Rectangle:
     """Clips a rectangle to be contained with the frame boundaries.

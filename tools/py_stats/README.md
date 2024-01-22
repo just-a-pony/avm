@@ -197,30 +197,105 @@ Note that the script will also display the proportion of total bits used for the
 Bits for read_intra_luma_mode: 760.7987823486328 (9.55%)
 ```
 
-### Prediction mode / block size aggregation
-All previous examples focused on visualizing a single frame from a single stream. This example shows how to compute aggregated stats across an arbitrary number of AVM streams.
-A typical use case might be to compare how bits are spent in CTC frames under different test conditions.
+### Statistics aggregation
+All previous examples focused on visualizing a single frame from a single stream. The following examples show how to compute aggregated stats across an arbitrary number of AVM streams. A typical use case might be to compare how bits are spent in CTC frames under different test conditions.
 
-This example script takes one or more glob paths and will extract all frames from all streams found:
+Each of the following examples uses the `aggregate_from_extractor.py` script to plot different types of data from the streams, in addition to dumping that data as a .csv file.
+
+### Block size distribution (A5, QP=235, 10 frames); Plot Intra vs Inter
 ```bash
-python3 ${AOM_ROOT}/tools/py_stats/examples/aggregate_prediction_modes.py \
-    --stream_glob "/path/to/some/interesting/streams/*.ivf" \
-    --stream_glob "/path/to/some/other/streams/*.ivf" \
-    --extract_proto_bin ${AOM_BUILD_DIR}/extract_proto \
-    --output_csv /tmp/aggregate_dump.csv
+python3 ${AOM_ROOT}/tools/py_stats/examples/aggregate_from_extractor.py \
+  --extract_proto_bin ${AOM_BUILD_DIR}/extract_proto \
+  --stream_glob "${CTC_STREAMS}/A5_Natural_270p/LowDelay/*_QP_235.bin" \
+  --threads 32 \
+  --frame_limit 10 \
+  --extractor "partition_type" \
+  --group_by block_size,partition_type,is_intra_frame \
+  --output_csv /tmp/aggregate_block_sizes.csv \
+  --plot 'title:"Intra Block Sizes", field:block_size, filter:"is_intra_frame"' \
+  --plot 'title:"Inter Block Sizes", field:block_size, filter:"not is_intra_frame"'
 ```
+![](img/aggregation_block_sizes.png "Sample output from aggregate_from_extractor.py with the partition_type extractor using block sizes.")
 
-The script will produce three different plots:
-1. The overall distribution of block sizes, comparing intra and inter frames:
-![](img/block_size_distribution.png "Sample output from aggregate_prediction_modes.py showing block size distribution")
 
-2. The overall distribution of prediction modes, comparing intra and inter frames:
-![](img/prediction_mode_distribution.png "Sample output from aggregate_prediction_modes.py showing prediction mode distribution")
+### Prediction mode distribution (A5, QP=235, 10 frames); Plot Intra vs Inter
+```bash
+python3 ${AOM_ROOT}/tools/py_stats/examples/aggregate_from_extractor.py \
+  --extract_proto_bin ${AOM_BUILD_DIR}/extract_proto \
+  --stream_glob "${CTC_STREAMS}/A5_Natural_270p/LowDelay/*_QP_235.bin" \
+  --threads 32 \
+  --frame_limit 10 \
+  --extractor "prediction_mode" \
+  --group_by mode,is_intra_frame \
+  --output_csv /tmp/prediction_modes.csv \
+  --plot 'title:"Intra Prediction Modes", field:mode, filter:"is_intra_frame"' \
+  --plot 'title:"Inter Prediction Modes", field:mode, filter:"not is_intra_frame"'
+```
+![](img/aggregation_prediction_modes.png "Sample output from aggregate_from_extractor.py with the prediction_mode extractor counting each mode.")
 
-3. Prediction mode distribution, weighted by the number of bits used to code each mode, comparing intra and inter frames:
-![](img/prediction_mode_distribution_by_bits.png "Sample output from aggregate_prediction_modes.py showing prediction mode distribution weighted by bits")
 
-The script also takes an optional `--output_csv` argument that will dump the final Pandas dataframe to a CSV file.
+### Prediction modes weighted by bits used (A5, QP=235, 10 frames); Plot Intra vs Inter
+```bash
+python3 ${AOM_ROOT}/tools/py_stats/examples/aggregate_from_extractor.py \
+  --extract_proto_bin ${AOM_BUILD_DIR}/extract_proto \
+  --stream_glob "${CTC_STREAMS}/A5_Natural_270p/LowDelay/*_QP_235.bin" \
+  --threads 32 \
+  --frame_limit 10 \
+  --extractor "prediction_mode" \
+  --aggregated_field mode_bits \
+  --group_by mode,is_intra_frame \
+  --output_csv /tmp/prediction_mode_bits.csv \
+  --plot 'title:"Intra Prediction Modes by bits", field:mode, filter:"is_intra_frame"' \
+  --plot 'title:"Inter Prediction Modes by bits", field:mode, filter:"not is_intra_frame"'
+```
+![](img/aggregation_prediction_modes_by_bits.png "Sample output from aggregate_from_extractor.py with the prediction_mode extractor weighting by number of bits.")
+
+### TX types (A5, QP=235, 10 frames); Plot Intra vs Inter
+```bash
+python3 ${AOM_ROOT}/tools/py_stats/examples/aggregate_from_extractor.py \
+  --extract_proto_bin ${AOM_BUILD_DIR}/extract_proto \
+  --stream_glob "${CTC_STREAMS}/A5_Natural_270p/LowDelay/*_QP_235.bin" \
+  --threads 32 \
+  --frame_limit 10 \
+  --extractor "tx_type" \
+  --group_by tx_type,is_intra_frame \
+  --output_csv /tmp/aggregate_tx_types.csv \
+  --plot 'title:"Intra TX Types", field:tx_type, filter:"is_intra_frame"' \
+  --plot 'title:"Inter TX Types", field:tx_type, filter:"not is_intra_frame"'
+```
+![](img/aggregation_tx_types.png "Sample output from aggregate_from_extractor.py with the tx_type extractor.")
+
+### Intra partition types (A5, QP=210, 10 frames); Block sizes 64x64 vs 32x32
+```bash
+python3 ${AOM_ROOT}/tools/py_stats/examples/aggregate_from_extractor.py \
+  --extract_proto_bin ${AOM_BUILD_DIR}/extract_proto \
+  --stream_glob "${CTC_STREAMS}/A5_Natural_270p/AllIntra/*_QP_210.bin" \
+  --threads 32 \
+  --frame_limit 10 \
+  --extractor "partition_type" \
+  --group_by partition_type,block_size \
+  --output_csv /tmp/aggregate_partition_types.csv \
+  --plot 'title:"Partition types (64x64)", field:partition_type, filter:block_size=="64x64"' \
+  --plot 'title:"Partition types (32x32)", field:partition_type, filter:block_size=="32x32"'
+```
+![](img/aggregation_partition_types.png "Sample output from aggregate_from_extractor.py with the partition_type extractor.")
+
+### Top 10 symbols types weighted by bits used (A5, QP=235, 10 frames); Intra vs Inter frames
+```bash
+python3 ${AOM_ROOT}/tools/py_stats/examples/aggregate_from_extractor.py \
+  --extract_proto_bin ${AOM_BUILD_DIR}/extract_proto \
+  --stream_glob "${CTC_STREAMS}/A5_Natural_270p/LowDelay/*_QP_210.bin" \
+  --threads 32 \
+  --frame_limit 10 \
+  --extractor "symbol_bits" \
+  --aggregated_field bits \
+  --group_by symbol_name,is_intra_frame \
+  --output_csv /tmp/aggregate_symbols.csv \
+  --plot 'title:"Symbols (Intra frames)", field:symbol_name, filter:"is_intra_frame", limit:10' \
+  --plot 'title:"Symbols (Inter frames)", field:symbol_name, filter:"not is_intra_frame", limit:10'
+```
+![](img/aggregation_symbols.png "Sample output from aggregate_from_extractor.py with the symbol_bits extractor.")
+
 
 ### Launch an example Jupyter notebook
 This demonstrates many of the same visualizations listed above, but in a single Jupyter notebook.
