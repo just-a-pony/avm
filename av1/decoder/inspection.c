@@ -72,11 +72,16 @@ int ifd_inspect_superblock(insp_frame_data *fd, void *decoder) {
     ifd_init_mi_rc(fd, mi_params->mi_cols, mi_params->mi_rows);
   }
 
+  int frame_type = pbi->common.current_frame.frame_type;
   int sb_size = cm->seq_params.sb_size;
+  // 256x256 superblocks are disabled for intra frames.
+  if (sb_size == BLOCK_256X256 && frame_type == 0) {
+    sb_size = BLOCK_128X128;
+  }
   int sb_width = mi_size_wide[sb_size];
   int sb_height = mi_size_high[sb_size];
 
-  int sb_row = pbi->td.dcb.xd.sbi->mi_row / sb_height;
+  int sb_row = pbi->td.dcb.xd.sbi->mi_row / sb_height; 
   int sb_col = pbi->td.dcb.xd.sbi->mi_col / sb_width;
 
   PARTITION_TREE *luma_tree = pbi->td.dcb.xd.sbi->ptree_root[0];
@@ -122,7 +127,14 @@ int ifd_inspect(insp_frame_data *fd, void *decoder, int skip_not_transform) {
   fd->show_frame = cm->show_frame;
   fd->frame_type = cm->current_frame.frame_type;
   fd->base_qindex = quant_params->base_qindex;
-  fd->superblock_size = cm->seq_params.sb_size;
+
+  int sb_size = cm->seq_params.sb_size;
+  // 256x256 superblocks are disabled for intra frames.
+  if (sb_size == BLOCK_256X256 && fd->frame_type == 0) {
+    sb_size = BLOCK_128X128;
+  }
+
+  fd->superblock_size = sb_size;
   // Set width and height of the first tile until generic support can be added
   TileInfo tile_info;
   av1_tile_set_row(&tile_info, cm, 0);
