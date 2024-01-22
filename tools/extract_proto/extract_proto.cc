@@ -85,6 +85,8 @@ ABSL_FLAG(std::vector<std::string>, encoder_args, {},
           "Comma-separated list of encoder arguments.");
 ABSL_FLAG(int, limit, -1,
           "Stop after N frames are decoded (default: all frames).");
+ABSL_FLAG(bool, show_progress, true,
+          "Print progress as each frame is decoded.");
 
 namespace {
 constexpr std::string_view kY4mFrameMarker = "FRAME\n";
@@ -113,6 +115,7 @@ struct ExtractProtoContext {
   int decode_count;
   bool is_y4m_file;
   OutputConfig output_config;
+  bool show_progress;
 };
 
 BlockSize MakeBlockSize(BLOCK_SIZE raw_size) {
@@ -636,7 +639,9 @@ void InspectFrame(void *pbi, void *data) {
       LOG(QFATAL) << "Failed to write proto file: " << output_path;
     }
   }
-  LOG(INFO) << "Wrote " << output_path;
+  if (ctx->show_progress) {
+    std::cout << absl::StrFormat("Wrote: %s\n", output_path) << std::flush;
+  }
   if (ctx->output_config.limit != -1 &&
       ctx->decode_count >= ctx->output_config.limit) {
     exit(EXIT_SUCCESS);
@@ -789,7 +794,9 @@ int main(int argc, char **argv) {
                               .stream_path = stream_path,
                               .decode_count = 0,
                               .is_y4m_file = is_y4m_file,
-                              .output_config = output_config };
+                              .output_config = output_config,
+                              .show_progress =
+                                  absl::GetFlag(FLAGS_show_progress) };
   CHECK_OK(OpenStream(&ctx));
 
   params.set_width(ctx.info->frame_width);
