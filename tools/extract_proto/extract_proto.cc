@@ -83,6 +83,8 @@ ABSL_FLAG(bool, output_as_text, false,
           "Proto will be output as text (.textproto) instead of binary (.pb)");
 ABSL_FLAG(std::vector<std::string>, encoder_args, {},
           "Comma-separated list of encoder arguments.");
+ABSL_FLAG(int, limit, -1,
+          "Stop after N frames are decoded (default: all frames).");
 
 namespace {
 constexpr std::string_view kY4mFrameMarker = "FRAME\n";
@@ -95,6 +97,7 @@ struct OutputConfig {
   std::filesystem::path output_folder;
   std::string_view output_prefix;
   bool output_as_text_proto;
+  int limit;
 };
 
 struct ExtractProtoContext {
@@ -619,6 +622,10 @@ void InspectFrame(void *pbi, void *data) {
     }
   }
   LOG(INFO) << "Wrote " << output_path;
+  if (ctx->output_config.limit != -1 &&
+      ctx->decode_count >= ctx->output_config.limit) {
+    exit(EXIT_SUCCESS);
+  }
 }
 
 void SetupInspectCallbacks(ExtractProtoContext *ctx) {
@@ -752,8 +759,8 @@ int main(int argc, char **argv) {
   OutputConfig output_config = {
     .output_folder = output_folder,
     .output_prefix = absl::GetFlag(FLAGS_output_prefix),
-    .output_as_text_proto = absl::GetFlag(FLAGS_output_as_text)
-
+    .output_as_text_proto = absl::GetFlag(FLAGS_output_as_text),
+    .limit = absl::GetFlag(FLAGS_limit),
   };
 
   ExtractProtoContext ctx = { .frame_data = {},
