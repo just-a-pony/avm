@@ -175,6 +175,8 @@ int ifd_inspect(insp_frame_data *fd, void *decoder, int skip_not_transform) {
       // Reference Frames
       mi->ref_frame[0] = mbmi->ref_frame[0];
       mi->ref_frame[1] = mbmi->ref_frame[1];
+      mi->angle_delta = mbmi->angle_delta[0];
+      mi->uv_angle_delta = mbmi->angle_delta[1];
       // Prediction Mode
       mi->mode = mbmi->mode;
       mi->intrabc = (int16_t)mbmi->use_intrabc[0];

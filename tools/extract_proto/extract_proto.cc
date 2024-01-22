@@ -153,7 +153,9 @@ void GetCodingUnit(CodingUnit *coding_unit, insp_frame_data *frame_data,
   coding_unit->set_cdef_strength(mi->cdef_strength);
   auto *pred = coding_unit->mutable_prediction_mode();
   pred->set_mode(mi->mode);
+  pred->set_angle_delta(mi->angle_delta);
   pred->set_uv_mode(mi->uv_mode);
+  pred->set_uv_angle_delta(mi->uv_angle_delta);
   pred->set_cfl_alpha_idx(mi->cfl_alpha_idx);
   pred->set_cfl_alpha_sign(mi->cfl_alpha_sign);
   pred->set_compound_type(mi->compound_type);

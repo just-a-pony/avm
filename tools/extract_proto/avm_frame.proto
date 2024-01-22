@@ -110,6 +110,7 @@ message PredictionParams {
   int32 interpolation_filter = 10;
   int32 cfl_alpha_idx = 11;
   int32 cfl_alpha_sign = 12;
+  int32 uv_angle_delta = 13;
 }
 
 message PixelBuffer {
