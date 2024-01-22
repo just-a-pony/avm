@@ -565,9 +565,12 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
       dcb->qcoeff_block[plane] + dcb->cb_offset[plane];
   tran_low_t *const dequant_values =
       dcb->dequant_values[plane] + dcb->cb_offset[plane];
-  memset(tcoeffs_copy, 0, sizeof(tran_low_t) * width * height);
-  memset(quant_coeffs, 0, sizeof(tran_low_t) * width * height);
-  memset(dequant_values, 0, sizeof(tran_low_t) * width * height);
+  // For TX sizes > 32x32, all coeffs are zero except for top-left 32x32.
+  const int coeff_width = AOMMIN(width, 32);
+  const int coeff_height = AOMMIN(height, 32);
+  memset(tcoeffs_copy, 0, sizeof(tran_low_t) * coeff_width * coeff_height);
+  memset(quant_coeffs, 0, sizeof(tran_low_t) * coeff_width * coeff_height);
+  memset(dequant_values, 0, sizeof(tran_low_t) * coeff_width * coeff_height);
 #endif  // CONFIG_INSPECTION
   int cul_level = 0;
   int dc_val = 0;
@@ -719,9 +722,12 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       dcb->qcoeff_block[plane] + dcb->cb_offset[plane];
   tran_low_t *const dequant_values =
       dcb->dequant_values[plane] + dcb->cb_offset[plane];
-  memset(tcoeffs_copy, 0, sizeof(tran_low_t) * width * height);
-  memset(quant_coeffs, 0, sizeof(tran_low_t) * width * height);
-  memset(dequant_values, 0, sizeof(tran_low_t) * width * height);
+  // For TX sizes > 32x32, all coeffs are zero except for top-left 32x32.
+  const int coeff_width = AOMMIN(width, 32);
+  const int coeff_height = AOMMIN(height, 32);
+  memset(tcoeffs_copy, 0, sizeof(tran_low_t) * coeff_width * coeff_height);
+  memset(quant_coeffs, 0, sizeof(tran_low_t) * coeff_width * coeff_height);
+  memset(dequant_values, 0, sizeof(tran_low_t) * coeff_width * coeff_height);
 #endif  // CONFIG_INSPECTION
   int cul_level = 0;
   int dc_val = 0;

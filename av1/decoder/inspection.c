@@ -203,6 +203,7 @@ int ifd_inspect(insp_frame_data *fd, void *decoder, int skip_not_transform) {
       mi->dual_filter_type = mi->filter[0] * 3 + mi->filter[1];
 
       // Transform
+      // TODO(comc): Should use partition type here!
       const BLOCK_SIZE bsize = mbmi->sb_type[0];
       const int c = i % mi_size_wide[bsize];
       const int r = j % mi_size_high[bsize];
@@ -214,6 +215,7 @@ int ifd_inspect(insp_frame_data *fd, void *decoder, int skip_not_transform) {
 
       if (skip_not_transform && mi->skip) mi->tx_size = -1;
 
+      // TODO(comc): chroma tx_type uses lookup table based on mode for intra, and the same as luma for inter.
       const int tx_type_row = j - j % tx_size_high_unit[mi->tx_size];
       const int tx_type_col = i - i % tx_size_wide_unit[mi->tx_size];
       const int tx_type_map_idx =

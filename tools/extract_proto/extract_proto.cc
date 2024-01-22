@@ -177,8 +177,15 @@ void GetCodingUnit(CodingUnit *coding_unit, insp_frame_data *frame_data,
   }
   pred->set_use_intrabc(mi->intrabc);
   // TODO(comc): Handle transform partition trees
-  int tx_height = tx_size_high_unit[mi->tx_size];
-  int tx_width = tx_size_wide_unit[mi->tx_size];
+  int tx_size = mi->tx_size;
+  int tx_height = tx_size_high_unit[tx_size];
+  int tx_width = tx_size_wide_unit[tx_size];
+  if (part_type == PartitionType::kChromaOnly) {
+    tx_size = sb_type;
+    tx_width = std::min(width, 32);
+    tx_height = std::min(height, 32);
+  }
+
   int tx_cols = width / tx_width;
   int tx_rows = height / tx_height;
   int plane_start = (part_type == PartitionType::kChromaOnly) ? 1 : 0;
@@ -197,26 +204,34 @@ void GetCodingUnit(CodingUnit *coding_unit, insp_frame_data *frame_data,
         auto *tu = tx_plane->add_transform_units();
         tu->mutable_position()->set_y(tx_mi_row * MI_SIZE);
         tu->mutable_position()->set_x(tx_mi_col * MI_SIZE);
-        tu->set_tx_type(tx_mi->tx_type);
         tu->mutable_size()->set_height(tx_height * MI_SIZE);
         tu->mutable_size()->set_width(tx_width * MI_SIZE);
-        tu->mutable_size()->set_enum_value(mi->tx_size);
+        tu->mutable_size()->set_enum_value(tx_size);
+        bool skip = (tx_mi_row >= frame_data->mi_rows ||
+                     tx_mi_col >= frame_data->mi_cols || tx_mi->skip);
+        // For TX sizes > 32x32, all coeffs are zero except for top-left 32x32.
+        int coeffs_width = std::min(32, tx_width * MI_SIZE);
+        int coeffs_height = std::min(32, tx_height * MI_SIZE);
         // TODO(comc): Resolve skip/skip_mode ambiguity
-        tu->set_skip(tx_mi->skip);
-        if (tx_mi->skip) {
-          continue;
-        }
-        for (int ty = 0; ty < tx_height * MI_SIZE; ty++) {
-          for (int tx = 0; tx < tx_width * MI_SIZE; tx++) {
-            int dequant_val = sb_data->dequant_values[plane][coeff_idx[plane]];
-            tu->add_dequantizer_values(dequant_val);
-            int qcoeff = sb_data->qcoeff[plane][coeff_idx[plane]];
-            tu->add_quantized_coeffs(qcoeff);
-            int dqcoeff = sb_data->dqcoeff[plane][coeff_idx[plane]];
-            tu->add_dequantized_coeffs(dqcoeff);
-            coeff_idx[plane] += 1;
+        tu->set_skip(skip);
+        if (!skip) {
+          tu->set_tx_type(tx_mi->tx_type);
+          int index = coeff_idx[plane];
+          // TODO(comc): Fix transform coeffs for large blocks: Only upper 32x32
+          // (or maybe this has changed) is signaled, everything else is 0.
+          for (int ty = 0; ty < coeffs_width; ty++) {
+            for (int tx = 0; tx < coeffs_height; tx++) {
+              int dequant_val = sb_data->dequant_values[plane][index];
+              tu->add_dequantizer_values(dequant_val);
+              int qcoeff = sb_data->qcoeff[plane][index];
+              tu->add_quantized_coeffs(qcoeff);
+              int dqcoeff = sb_data->dqcoeff[plane][index];
+              tu->add_dequantized_coeffs(dqcoeff);
+              index += 1;
+            }
           }
         }
+        coeff_idx[plane] += (tx_width * MI_SIZE) * (tx_height * MI_SIZE);
       }
     }
   }
@@ -650,6 +665,7 @@ absl::Status OpenStream(ExtractProtoContext *ctx) {
   }
   LOG(INFO) << "Using " << aom_codec_iface_name(decoder);
   ctx->stream_params->set_avm_version(aom_codec_iface_name(decoder));
+  ctx->stream_params->set_stream_name(ctx->stream_path.filename());
   if (aom_codec_dec_init(&ctx->codec, decoder, nullptr, 0)) {
     return absl::InternalError("Failed to initialize decoder.");
   }
