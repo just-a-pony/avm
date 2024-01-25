@@ -1,0 +1,4 @@
+reorder_imports = true
+format_strings = true
+indent_style = "Visual"
+max_width = 120

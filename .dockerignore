@@ -1,0 +1,7 @@
+**/target
+**/.vscode
+**/.git
+**/dist
+**/Dockerfile*
+**/*.sh
+!tools/avm_analyzer/build_avm.sh
