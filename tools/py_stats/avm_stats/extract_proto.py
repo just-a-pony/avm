@@ -42,6 +42,7 @@ def extract_proto(
     output_path: pathlib.Path,
     skip_if_output_already_exists: bool = False,
     yuv_path: pathlib.Path | None = None,
+    frame_limit: int | None = None
 ) -> ExtractProtoResult:
   if (
       skip_if_output_already_exists
@@ -68,6 +69,11 @@ def extract_proto(
     extract_proto_args.extend([
         "--orig_yuv",
         str(yuv_path),
+    ])
+  if frame_limit is not None:
+    extract_proto_args.extend([
+        "--limit",
+        str(frame_limit),
     ])
   logging.info("Running:\n %s", " ".join(extract_proto_args))
 
@@ -101,6 +107,7 @@ def extract_and_load_protos(
     output_path: pathlib.Path,
     skip_if_output_already_exists: bool = False,
     yuv_path: pathlib.Path | None = None,
+    frame_limit: int | None = None
 ) -> Iterator[proto_helpers.Frame]:
   result = extract_proto(
       extract_proto_path=extract_proto_path,
@@ -108,5 +115,6 @@ def extract_and_load_protos(
       output_path=output_path,
       skip_if_output_already_exists=skip_if_output_already_exists,
       yuv_path=yuv_path,
+      frame_limit=frame_limit
   )
   yield from load_protos(result.output_path)

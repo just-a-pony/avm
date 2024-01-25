@@ -6,6 +6,8 @@ description = "Helper library to work with AVM stats protobufs."
 authors = ["Conor McCullough <comc@google.com>"]
 license = "BSD-3-Clause"
 readme = "README.md"
+# By default Poetry will use .gitignore, which excludes the generated protobuf bindings.
+include = ["*.py"]
 
 [tool.poetry.dependencies]
 absl-py = "^2.0.0"

@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import abc
+from absl import logging
 from collections.abc import Iterable, Iterator
 from typing import Generic, TypeVar
 
@@ -68,6 +69,7 @@ def aggregate_frames(
     frames: Iterable[proto_helpers.Frame], extractor: Extractor
 ) -> Iterator[_TData]:
   for frame in frames:
+    logging.info(f"Processing {frame.proto.stream_params.stream_name} - frame {frame.proto.frame_params.decode_index}")
     yield from extractor.extract(frame)
 
 
