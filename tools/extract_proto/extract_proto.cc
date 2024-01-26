@@ -297,8 +297,6 @@ void PopulateEnumMapping(google::protobuf::Map<int, std::string> *map,
 }
 
 void PopulateEnumMappings(EnumMappings *mappings) {
-  // TODO(comc): Add enum mappings for interpolation_filter,
-  // entropy_coding_mode, frame_type
   PopulateEnumMapping(mappings->mutable_transform_type_mapping(), kTxTypeMap);
   PopulateEnumMapping(mappings->mutable_prediction_mode_mapping(),
                       kPredictionModeMap);
@@ -309,6 +307,11 @@ void PopulateEnumMappings(EnumMappings *mappings) {
   PopulateEnumMapping(mappings->mutable_block_size_mapping(), kBlockSizeMap);
   PopulateEnumMapping(mappings->mutable_partition_type_mapping(),
                       kPartitionTypeMap);
+  PopulateEnumMapping(mappings->mutable_interpolation_filter_mapping(),
+                      kInterpFilterMap);
+  PopulateEnumMapping(mappings->mutable_entropy_coding_mode_mapping(),
+                      kSymbolCodingModeMap);
+  PopulateEnumMapping(mappings->mutable_frame_type_mapping(), kFrameTypeMap);
 }
 
 bool BlockContains(Position pos, BlockSize size, int x, int y) {

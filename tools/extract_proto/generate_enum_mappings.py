@@ -19,7 +19,7 @@ from collections.abc import Sequence
 import re
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--enums_header", required=True)
+parser.add_argument("--enums_header", action="append", required=True)
 parser.add_argument("--output", required=True)
 
 # AVM enum definitions start with an optional typedef, the enum keyword, and
@@ -65,7 +65,10 @@ ENUM_HEADER_TEMPLATE = """
 #define AOM_TOOLS_EXTRACT_PROTO_ENUM_MAPPINGS_H_
 #include <string_view>
 
+#include "av1/common/blockd.h"
 #include "av1/common/enums.h"
+#include "av1/common/filter.h"
+#include "av1/decoder/accounting.h"
 #include "config/aom_config.h"
 #include "absl/container/flat_hash_map.h"
 
@@ -88,37 +91,43 @@ def strip_comments(s: str) -> str:
   s = re.sub(r"//.*", "", s)
   return s
 
+def remove_backslashes(s: str) -> str:
+  s = re.sub(r"\\\n", "", s, flags=re.DOTALL)
+  return s
 
 # TODO(comc) Unit test this, and its helper functions.
-def create_enum_mapping(input_header_path: str, output_header_path: str):
-  with open(input_header_path, "r") as f:
-    header = f.read()
-  header = strip_comments(header)
-  output_lines = []
-  current_enum_index = None
-  for line in header.split("\n"):
-    line = line.strip()
-    if any(line.startswith(s) for s in PASSTHROUGH_DIRECTIVES):
-      output_lines.append(line)
-    elif any(line.startswith(s) for s in SKIP_DIRECTIVES):
-      # To simplify parsing, when we encounter #ifdef / #ifndef, just replace it
-      # with `#if 1` so the corresponding #endif still works.
-      output_lines.append("#if 1")
-    elif re.fullmatch(ENUM_START_REGEX, line):
-      current_enum_index = len(output_lines)
-      output_lines.append(ENUM_MAP_TEMPLATE)
-    elif current_enum_index is not None:
-      if variant := re.fullmatch(ENUM_VARIANT_REGEX, line.strip()):
-        name = variant.group(1)
-        output_lines.append(f'    {{{name}, "{name}"}},')
-      elif enum_name := re.fullmatch(ENUM_END_REGEX, line):
-        output_lines[current_enum_index] = ENUM_MAP_TEMPLATE.format(
-            name_camel=snake_to_camel_case(enum_name.group(2))
-        )
-        current_enum_index = None
-        output_lines.append("};")
-  enum_definitions = "\n".join(output_lines)
-  enum_header = ENUM_HEADER_TEMPLATE.format(enum_definitions=enum_definitions)
+def create_enum_mapping(input_header_paths: Sequence[str], output_header_path: str):
+  enum_definitions = []
+  for input_header_path in input_header_paths:
+    with open(input_header_path, "r") as f:
+      header = f.read()
+    header = strip_comments(header)
+    header = remove_backslashes(header)
+    output_lines = []
+    current_enum_index = None
+    for line in header.split("\n"):
+      line = line.strip()
+      if any(line.startswith(s) for s in PASSTHROUGH_DIRECTIVES):
+        output_lines.append(line)
+      elif any(line.startswith(s) for s in SKIP_DIRECTIVES):
+        # To simplify parsing, when we encounter #ifdef / #ifndef, just replace it
+        # with `#if 1` so the corresponding #endif still works.
+        output_lines.append("#if 1")
+      elif re.fullmatch(ENUM_START_REGEX, line):
+        current_enum_index = len(output_lines)
+        output_lines.append(ENUM_MAP_TEMPLATE)
+      elif current_enum_index is not None:
+        if variant := re.fullmatch(ENUM_VARIANT_REGEX, line.strip()):
+          name = variant.group(1)
+          output_lines.append(f'    {{{name}, "{name}"}},')
+        elif enum_name := re.fullmatch(ENUM_END_REGEX, line):
+          output_lines[current_enum_index] = ENUM_MAP_TEMPLATE.format(
+              name_camel=snake_to_camel_case(enum_name.group(2))
+          )
+          current_enum_index = None
+          output_lines.append("};")
+    enum_definitions.append("\n".join(output_lines))
+  enum_header = ENUM_HEADER_TEMPLATE.format(enum_definitions="\n".join(enum_definitions))
   with open(output_header_path, "w") as f:
     f.write(enum_header)
 

@@ -462,8 +462,11 @@ if(CONFIG_AV1_DECODER AND ENABLE_EXAMPLES)
       COMMAND
         ${Python_EXECUTABLE}
         "${AOM_ROOT}/tools/extract_proto/generate_enum_mappings.py"
-        --enums_header "${AOM_ROOT}/av1/common/enums.h" --output
-        "${AOM_ROOT}/tools/extract_proto/enum_mappings.h"
+        --enums_header "${AOM_ROOT}/av1/common/blockd.h" 
+        --enums_header "${AOM_ROOT}/av1/common/enums.h" 
+        --enums_header "${AOM_ROOT}/av1/common/filter.h"
+        --enums_header "${AOM_ROOT}/av1/decoder/accounting.h"
+        --output "${AOM_ROOT}/tools/extract_proto/enum_mappings.h"
       OUTPUT_FILE ${EXTRACT_PROTO_ENUMS_MAPPING_HEADER})
     add_executable(
       extract_proto
