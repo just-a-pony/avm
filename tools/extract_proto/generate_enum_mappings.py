@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-## Copyright (c) 2023, Alliance for Open Media. All rights reserved
+# Copyright (c) 2023, Alliance for Open Media. All rights reserved
 ##
-## This source code is subject to the terms of the BSD 3-Clause Clear License and the
-## Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
-## not distributed with this source code in the LICENSE file, you can obtain it
-## at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
-## License 1.0 was not distributed with this source code in the PATENTS file, you
-## can obtain it at aomedia.org/license/patent-license/.
+# This source code is subject to the terms of the BSD 3-Clause Clear License and the
+# Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear License was
+# not distributed with this source code in the LICENSE file, you can obtain it
+# at aomedia.org/license/software-license/bsd-3-c-c/.  If the Alliance for Open Media Patent
+# License 1.0 was not distributed with this source code in the PATENTS file, you
+# can obtain it at aomedia.org/license/patent-license/.
 ##
 """Creates enum value to name mapping header for AVM.
 
@@ -28,13 +28,13 @@ ENUM_START_REGEX = re.compile(r"(?:typedef )?enum (?:ATTRIBUTE_PACKED )?\{")
 # AVM enum definitions optionally end with the macro UENUM1BYTE or SENUM1BYTE
 # and the enum name.
 ENUM_END_REGEX = re.compile(r"} ([US]ENUM[12]BYTE\()?(\w+)(?(1)\)|);")
-# Some enum variants have a defined value; we don't care about these ones, and
-# only want to handle the ones with auto-incremented values. The
-# auto-incremented variants actually appear as symbols in the stream; the
-# others are defined just for convenience to mark the start and endpoints of
-# meaningful groups of enums, e.g. INTRA_MODE_START / INTRA_MODE_END are used to
-# mark which prediction modes are intra (rather than inter).
-ENUM_VARIANT_REGEX = re.compile(r"(\w+),")
+# Some enum variants are defined based on another variant; we don't care about
+# these ones, and only want to handle the ones with unique values. These variants
+# typically appear as actual symbols in the stream; the others are defined just
+# for convenience to mark the start and endpoints of meaningful groups of enums,
+# e.g. INTRA_MODE_START / INTRA_MODE_END are used to mark which prediction modes
+# are intra (rather than inter).
+ENUM_VARIANT_REGEX = re.compile(r"(\w+)(=(\d+))?,")
 # String template for each enum mapping.
 ENUM_MAP_TEMPLATE = """static absl::flat_hash_map<int, std::string_view> k{name_camel}Map = {{"""
 # These preprocessor directives are replaced with dummy conditions to simplify
@@ -65,9 +65,11 @@ ENUM_HEADER_TEMPLATE = """
 #define AOM_TOOLS_EXTRACT_PROTO_ENUM_MAPPINGS_H_
 #include <string_view>
 
+#include "av1/common/av1_common_int.h"
 #include "av1/common/blockd.h"
 #include "av1/common/enums.h"
 #include "av1/common/filter.h"
+#include "av1/common/mv.h"
 #include "av1/decoder/accounting.h"
 #include "config/aom_config.h"
 #include "absl/container/flat_hash_map.h"
@@ -90,6 +92,7 @@ def strip_comments(s: str) -> str:
   s = re.sub(r"\/\*.+?\*\/", "", s, flags=re.DOTALL)
   s = re.sub(r"//.*", "", s)
   return s
+
 
 def remove_backslashes(s: str) -> str:
   s = re.sub(r"\\\n", "", s, flags=re.DOTALL)
@@ -117,7 +120,7 @@ def create_enum_mapping(input_header_paths: Sequence[str], output_header_path: s
         current_enum_index = len(output_lines)
         output_lines.append(ENUM_MAP_TEMPLATE)
       elif current_enum_index is not None:
-        if variant := re.fullmatch(ENUM_VARIANT_REGEX, line.strip()):
+        if variant := re.fullmatch(ENUM_VARIANT_REGEX, line.replace(" ", "")):
           name = variant.group(1)
           output_lines.append(f'    {{{name}, "{name}"}},')
         elif enum_name := re.fullmatch(ENUM_END_REGEX, line):
@@ -127,7 +130,8 @@ def create_enum_mapping(input_header_paths: Sequence[str], output_header_path: s
           current_enum_index = None
           output_lines.append("};")
     enum_definitions.append("\n".join(output_lines))
-  enum_header = ENUM_HEADER_TEMPLATE.format(enum_definitions="\n".join(enum_definitions))
+  enum_header = ENUM_HEADER_TEMPLATE.format(
+      enum_definitions="\n".join(enum_definitions))
   with open(output_header_path, "w") as f:
     f.write(enum_header)
 

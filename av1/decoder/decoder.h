@@ -313,6 +313,8 @@ typedef struct AV1Decoder {
   aom_inspect_cb inspect_cb;
   // Inspection callback at the end of each superblock.
   aom_inspect_cb inspect_sb_cb;
+  // Inspection callback when a TIP frame is output.
+  aom_inspect_cb inspect_tip_cb;
   void *inspect_ctx;
 #endif
   int operating_point;

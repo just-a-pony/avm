@@ -44,6 +44,10 @@ typedef struct insp_mi_data insp_mi_data;
 struct insp_mi_data {
   insp_mv mv[2];
   int16_t ref_frame[2];
+  int16_t ref_frame_order_hint[2];
+  int16_t ref_frame_is_inter[2];
+  int16_t ref_frame_is_tip[2];
+  int16_t mv_precision;
   int16_t mode;
   int16_t uv_mode;
   int16_t sb_type;
@@ -95,6 +99,7 @@ struct insp_frame_data {
   int show_frame;
   int frame_type;
   int base_qindex;
+  int tip_frame_mode;
   int mi_rows;
   int mi_cols;
   int tile_mi_rows;

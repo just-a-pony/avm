@@ -81,7 +81,7 @@ int ifd_inspect_superblock(insp_frame_data *fd, void *decoder) {
   int sb_width = mi_size_wide[sb_size];
   int sb_height = mi_size_high[sb_size];
 
-  int sb_row = pbi->td.dcb.xd.sbi->mi_row / sb_height; 
+  int sb_row = pbi->td.dcb.xd.sbi->mi_row / sb_height;
   int sb_col = pbi->td.dcb.xd.sbi->mi_col / sb_width;
 
   PARTITION_TREE *luma_tree = pbi->td.dcb.xd.sbi->ptree_root[0];
@@ -127,6 +127,7 @@ int ifd_inspect(insp_frame_data *fd, void *decoder, int skip_not_transform) {
   fd->show_frame = cm->show_frame;
   fd->frame_type = cm->current_frame.frame_type;
   fd->base_qindex = quant_params->base_qindex;
+  fd->tip_frame_mode = cm->features.tip_frame_mode;
 
   int sb_size = cm->seq_params.sb_size;
   // 256x256 superblocks are disabled for intra frames.
@@ -167,14 +168,21 @@ int ifd_inspect(insp_frame_data *fd, void *decoder, int skip_not_transform) {
       insp_mi_data *mi = &fd->mi_grid[j * mi_params->mi_cols + i];
       // Segment
       mi->segment_id = mbmi->segment_id;
-      // Motion Vectors
-      mi->mv[0].row = mbmi->mv[0].as_mv.row;
-      mi->mv[0].col = mbmi->mv[0].as_mv.col;
-      mi->mv[1].row = mbmi->mv[1].as_mv.row;
-      mi->mv[1].col = mbmi->mv[1].as_mv.col;
-      // Reference Frames
-      mi->ref_frame[0] = mbmi->ref_frame[0];
-      mi->ref_frame[1] = mbmi->ref_frame[1];
+      for (int mv = 0; mv < 2; mv++) {
+        // Motion Vectors
+        mi->mv[mv].row = mbmi->mv[mv].as_mv.row;
+        mi->mv[mv].col = mbmi->mv[mv].as_mv.col;
+        // Reference Frames
+        mi->ref_frame[mv] = mbmi->ref_frame[mv];
+        mi->ref_frame_is_tip[mv] = is_tip_ref_frame(mbmi->ref_frame[mv]);
+        mi->ref_frame_is_inter[mv] = is_inter_ref_frame(mbmi->ref_frame[mv]);
+        RefCntBuffer *buf = get_ref_frame_buf(cm, mbmi->ref_frame[mv]);
+        if (buf != NULL) {
+          mi->ref_frame_order_hint[mv] = buf->order_hint;
+        }
+      }
+      mi->mv_precision = mbmi->pb_mv_precision;
+
       mi->angle_delta = mbmi->angle_delta[0];
       mi->uv_angle_delta = mbmi->angle_delta[1];
       // Prediction Mode
@@ -215,7 +223,8 @@ int ifd_inspect(insp_frame_data *fd, void *decoder, int skip_not_transform) {
 
       if (skip_not_transform && mi->skip) mi->tx_size = -1;
 
-      // TODO(comc): chroma tx_type uses lookup table based on mode for intra, and the same as luma for inter.
+      // TODO(comc): chroma tx_type uses lookup table based on mode for intra,
+      // and the same as luma for inter.
       const int tx_type_row = j - j % tx_size_high_unit[mi->tx_size];
       const int tx_type_col = i - i % tx_size_wide_unit[mi->tx_size];
       const int tx_type_map_idx =

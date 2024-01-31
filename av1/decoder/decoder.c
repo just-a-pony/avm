@@ -618,7 +618,13 @@ int av1_receive_compressed_data(AV1Decoder *pbi, size_t size,
 
   int frame_decoded =
       aom_decode_frame_from_obus(pbi, source, source + size, psource);
-
+#if CONFIG_INSPECTION
+  if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
+    if (pbi->inspect_tip_cb != NULL) {
+      (*pbi->inspect_tip_cb)(pbi, pbi->inspect_ctx);
+    }
+  }
+#endif
   if (frame_decoded < 0) {
     assert(cm->error.error_code != AOM_CODEC_OK);
     release_current_frame(pbi);

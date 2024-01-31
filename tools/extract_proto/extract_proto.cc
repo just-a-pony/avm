@@ -37,6 +37,7 @@
 #include "aom/aom_decoder.h"
 #include "aom/aomdx.h"
 #include "av1/common/av1_common_int.h"
+#include "av1/decoder/decoder.h"
 #include "av1/decoder/accounting.h"
 #include "av1/decoder/inspection.h"
 #include "common/args.h"
@@ -116,6 +117,10 @@ struct ExtractProtoContext {
   bool is_y4m_file;
   OutputConfig output_config;
   bool show_progress;
+  // Offset to convert relative display index to absolute display index.
+  int display_index_offset;
+  // Largest display index seen so far.
+  int max_display_index;
 };
 
 BlockSize MakeBlockSize(BLOCK_SIZE raw_size) {
@@ -177,8 +182,12 @@ void GetCodingUnit(CodingUnit *coding_unit, insp_frame_data *frame_data,
     mv->set_dx(mi->mv[i].col);
     mv->set_dy(mi->mv[i].row);
     mv->set_ref_frame(mi->ref_frame[i]);
+    mv->set_ref_frame_order_hint(mi->ref_frame_order_hint[i]);
+    mv->set_ref_frame_is_tip(mi->ref_frame_is_tip[i]);
+    mv->set_ref_frame_is_inter(mi->ref_frame_is_inter[i]);
   }
   pred->set_use_intrabc(mi->intrabc);
+  pred->set_motion_vector_precision(mi->mv_precision);
   // TODO(comc): Handle transform partition trees
   int tx_size = mi->tx_size;
   int tx_height = tx_size_high_unit[tx_size];
@@ -312,6 +321,9 @@ void PopulateEnumMappings(EnumMappings *mappings) {
   PopulateEnumMapping(mappings->mutable_entropy_coding_mode_mapping(),
                       kSymbolCodingModeMap);
   PopulateEnumMapping(mappings->mutable_frame_type_mapping(), kFrameTypeMap);
+  PopulateEnumMapping(mappings->mutable_tip_mode_mapping(), kTipFrameModeMap);
+  PopulateEnumMapping(mappings->mutable_motion_vector_precision_mapping(),
+                      kMvSubpelPrecisionMap);
 }
 
 bool BlockContains(Position pos, BlockSize size, int x, int y) {
@@ -368,6 +380,101 @@ void InspectSuperblock(void *pbi, void *data) {
   ifd_inspect_superblock(&ctx->frame_data, pbi);
 }
 
+void WriteProto(const ExtractProtoContext *ctx, const Frame &frame) {
+  auto &frame_params = frame.frame_params();
+  std::string_view file_ext =
+      ctx->output_config.output_as_text_proto ? kTextProtoExt : kBinaryProtoExt;
+  std::string file_prefix = std::string(ctx->output_config.output_prefix);
+  if (file_prefix.empty()) {
+    file_prefix = ctx->stream_path.stem();
+  }
+  std::string file_name = absl::StrFormat(
+      "%s_frame_%04d.%s", file_prefix, frame_params.decode_index(), file_ext);
+  std::filesystem::path output_path =
+      ctx->output_config.output_folder / file_name;
+
+  if (ctx->output_config.output_as_text_proto) {
+    std::string text_proto;
+    CHECK(google::protobuf::TextFormat::PrintToString(frame, &text_proto));
+    std::ofstream output_file(output_path);
+    output_file << text_proto;
+    if (output_file.fail()) {
+      LOG(QFATAL) << "Failed to write proto file: " << output_path;
+    }
+  } else {
+    std::ofstream output_file(output_path, std::ofstream::binary);
+    frame.SerializeToOstream(&output_file);
+    if (output_file.fail()) {
+      LOG(QFATAL) << "Failed to write proto file: " << output_path;
+    }
+  }
+  if (ctx->show_progress) {
+    std::cout << absl::StrFormat("Wrote: %s\n", output_path) << std::flush;
+  }
+  if (ctx->output_config.limit != -1 &&
+      ctx->decode_count >= ctx->output_config.limit) {
+    exit(EXIT_SUCCESS);
+  }
+}
+
+// See:
+// https://gitlab.com/AOMediaCodec/avm/-/blob/4664aa8a08dce15e914093d2c85bcc25d2c8026f/av1/decoder/decodeframe.c#L6899
+const int kMaxLagInFrames = 35;
+int get_absolute_display_index(ExtractProtoContext *ctx,
+                               int raw_display_index) {
+  int display_index = ctx->display_index_offset + raw_display_index;
+  if (ctx->max_display_index - display_index >= kMaxLagInFrames) {
+    ctx->display_index_offset = ctx->max_display_index + 1;
+    display_index = ctx->display_index_offset + raw_display_index;
+  }
+  ctx->max_display_index = std::max(ctx->max_display_index, display_index);
+  return display_index;
+}
+
+// TODO(comc): Original YUV pixels for TIP.
+void InspectTipFrame(void *pbi, void *data) {
+  auto *ctx = static_cast<ExtractProtoContext *>(data);
+  AV1Decoder *decoder = (AV1Decoder *)pbi;
+  AV1_COMMON *const cm = &decoder->common;
+  StreamParams *stream_params = ctx->stream_params;
+  Frame frame;
+  *frame.mutable_stream_params() = *stream_params;
+  const int width = cm->width;
+  const int height = cm->height;
+  const int bit_depth = cm->seq_params.bit_depth;
+  auto *frame_params = frame.mutable_frame_params();
+  frame_params->set_display_index(
+      get_absolute_display_index(ctx, cm->current_frame.frame_number));
+  frame_params->set_raw_display_index(cm->current_frame.frame_number);
+  frame_params->set_decode_index(ctx->decode_count++);
+  frame_params->set_width(width);
+  frame_params->set_height(height);
+  frame_params->set_bit_depth(bit_depth);
+  frame_params->set_frame_type(cm->current_frame.frame_type);
+  frame_params->set_show_frame(cm->show_frame);
+  PopulateEnumMappings(frame.mutable_enum_mappings());
+  auto *tip_frame = frame.mutable_tip_frame_params();
+  tip_frame->set_tip_mode(TIP_FRAME_AS_OUTPUT);
+  RefCntBuffer *buf = cm->cur_frame;
+  for (int plane = 0; plane < 3; ++plane) {
+    int plane_width = buf->buf.crop_widths[!!plane];
+    int plane_height = buf->buf.crop_heights[!!plane];
+    int stride = buf->buf.strides[!!plane];
+    auto *pixels = tip_frame->add_pixel_data();
+    pixels->set_plane(plane);
+    pixels->mutable_reconstruction()->set_width(plane_width);
+    pixels->mutable_reconstruction()->set_height(plane_height);
+    pixels->mutable_reconstruction()->set_bit_depth(bit_depth);
+    for (int y = 0; y < plane_height; ++y) {
+      for (int x = 0; x < plane_width; ++x) {
+        int16_t recon_pixel = buf->buf.buffers[plane][y * stride + x];
+        pixels->mutable_reconstruction()->add_pixels(recon_pixel);
+      }
+    }
+  }
+  WriteProto(ctx, frame);
+}
+
 absl::Status AdvanceToNextY4mMarker(std::ifstream *orig_yuv_file) {
   int64_t pos = orig_yuv_file->tellg();
   if (orig_yuv_file->fail()) {
@@ -387,6 +494,11 @@ absl::Status AdvanceToNextY4mMarker(std::ifstream *orig_yuv_file) {
   if (orig_yuv_file->fail()) {
     return absl::UnknownError("Seek failed on YUV file.");
   }
+  return absl::OkStatus();
+}
+
+// TODO(comc): Handle YUVs for non-LD streams.
+absl::Status CopyFrameFromOriginalYuv(std::ifstream *orig_yuv_file) {
   return absl::OkStatus();
 }
 
@@ -414,13 +526,17 @@ void InspectFrame(void *pbi, void *data) {
   const int frame_size_bytes = luma_size_bytes + 2 * chroma_size_bytes;
 
   auto *frame_params = frame.mutable_frame_params();
-  frame_params->set_display_index(frame_data.frame_number);
+  frame_params->set_display_index(
+      get_absolute_display_index(ctx, frame_data.frame_number));
+  frame_params->set_raw_display_index(frame_data.frame_number);
   frame_params->set_decode_index(ctx->decode_count++);
   frame_params->set_show_frame(frame_data.show_frame);
   frame_params->set_base_qindex(frame_data.base_qindex);
   frame_params->set_width(luma_width);
   frame_params->set_height(luma_height);
 
+  auto *tip_frame = frame.mutable_tip_frame_params();
+  tip_frame->set_tip_mode(frame_data.tip_frame_mode);
   const int sb_width_mi = mi_size_wide[frame_data.superblock_size];
   const int sb_height_mi = mi_size_high[frame_data.superblock_size];
   const int sb_width_px = sb_width_mi * MI_SIZE;
@@ -536,8 +652,6 @@ void InspectFrame(void *pbi, void *data) {
           }
         }
 
-        // TODO(comc): Decode to display order mapping for non-LD
-        // streams.
         if (!orig_yuv.empty()) {
           pixels->mutable_original()->set_width(sb_plane_width_px);
           pixels->mutable_original()->set_height(sb_plane_height_px);
@@ -615,46 +729,14 @@ void InspectFrame(void *pbi, void *data) {
       relative_index += 1;
     }
   }
-
-  std::string_view file_ext =
-      ctx->output_config.output_as_text_proto ? kTextProtoExt : kBinaryProtoExt;
-  std::string file_prefix = std::string(ctx->output_config.output_prefix);
-  if (file_prefix.empty()) {
-    file_prefix = ctx->stream_path.stem();
-  }
-  std::string file_name = absl::StrFormat(
-      "%s_frame_%04d.%s", file_prefix, frame_params->decode_index(), file_ext);
-  std::filesystem::path output_path =
-      ctx->output_config.output_folder / file_name;
-
-  if (ctx->output_config.output_as_text_proto) {
-    std::string text_proto;
-    CHECK(google::protobuf::TextFormat::PrintToString(frame, &text_proto));
-    std::ofstream output_file(output_path);
-    output_file << text_proto;
-    if (output_file.fail()) {
-      LOG(QFATAL) << "Failed to write proto file: " << output_path;
-    }
-  } else {
-    std::ofstream output_file(output_path, std::ofstream::binary);
-    frame.SerializeToOstream(&output_file);
-    if (output_file.fail()) {
-      LOG(QFATAL) << "Failed to write proto file: " << output_path;
-    }
-  }
-  if (ctx->show_progress) {
-    std::cout << absl::StrFormat("Wrote: %s\n", output_path) << std::flush;
-  }
-  if (ctx->output_config.limit != -1 &&
-      ctx->decode_count >= ctx->output_config.limit) {
-    exit(EXIT_SUCCESS);
-  }
+  WriteProto(ctx, frame);
 }
 
 void SetupInspectCallbacks(ExtractProtoContext *ctx) {
   aom_inspect_init ii;
   ii.inspect_cb = InspectFrame;
   ii.inspect_sb_cb = InspectSuperblock;
+  ii.inspect_tip_cb = InspectTipFrame;
   ii.inspect_ctx = static_cast<void *>(ctx);
   aom_codec_control(&ctx->codec, AV1_SET_INSPECTION_CALLBACK, &ii);
 }
@@ -684,7 +766,6 @@ absl::Status OpenStream(ExtractProtoContext *ctx) {
 
 // Note: TIP can mean the number of decoded frames is significantly less than
 // the number of displayed frames.
-// TODO(comc): Handle TIP frames.
 absl::Status ReadFrames(ExtractProtoContext *ctx) {
   bool have_frame = false;
   const uint8_t *frame;
@@ -692,32 +773,22 @@ absl::Status ReadFrames(ExtractProtoContext *ctx) {
   size_t frame_size = 0;
   int frame_count = 0;
   while (true) {
-    Av1DecodeReturn adr;
-    do {
-      if (!have_frame) {
-        if (!aom_video_reader_read_frame(ctx->reader)) {
-          return absl::OkStatus();
-        }
-        frame = aom_video_reader_get_frame(ctx->reader, &frame_size);
-
-        have_frame = true;
-        end_frame = frame + frame_size;
-      }
-
-      if (aom_codec_decode(&ctx->codec, frame, (unsigned int)frame_size,
-                           &adr) != AOM_CODEC_OK) {
-        return absl::InternalError(absl::StrFormat(
-            "Failed to decode frame: %s", aom_codec_error(&ctx->codec)));
-      }
-
-      frame = adr.buf;
-      frame_size = end_frame - frame;
-      if (frame == end_frame) have_frame = false;
-    } while (adr.show_existing);
+    if (!aom_video_reader_read_frame(ctx->reader)) {
+      return absl::OkStatus();
+    }
+    frame = aom_video_reader_get_frame(ctx->reader, &frame_size);
+    end_frame = frame + frame_size;
+    // TODO(comc): Check handling of non-display frames; user_priv=nullptr
+    // bypasses the custom decoder_inspect logic in av1_dx_iface.c.
+    if (aom_codec_decode(&ctx->codec, frame, (unsigned int)frame_size,
+                         nullptr) != AOM_CODEC_OK) {
+      return absl::InternalError(absl::StrFormat("Failed to decode frame: %s",
+                                                 aom_codec_error(&ctx->codec)));
+    }
 
     bool got_any_frames = false;
     av1_ref_frame ref_dec;
-    ref_dec.idx = adr.idx;
+    ref_dec.idx = -1;
 
     aom_image_t *img = nullptr;
     (void)img;
@@ -726,8 +797,9 @@ absl::Status ReadFrames(ExtractProtoContext *ctx) {
     // way to see the frame is aom_codec_get_frame.
     if (ref_dec.idx == -1) {
       aom_codec_iter_t iter = nullptr;
-      img = aom_codec_get_frame(&ctx->codec, &iter);
-      ++frame_count;
+      while ((img = aom_codec_get_frame(&ctx->codec, &iter)) != nullptr) {
+        ++frame_count;
+      }
       got_any_frames = true;
     } else if (!aom_codec_control(&ctx->codec, AV1_GET_REFERENCE, &ref_dec)) {
       img = &ref_dec.img;
@@ -787,19 +859,21 @@ int main(int argc, char **argv) {
     .limit = absl::GetFlag(FLAGS_limit),
   };
 
-  ExtractProtoContext ctx = { .frame_data = {},
-                              .codec = {},
-                              .reader = nullptr,
-                              .info = nullptr,
-                              .stream_params = &params,
-                              .orig_yuv_file =
-                                  have_orig_yuv ? &orig_yuv_file : nullptr,
-                              .stream_path = stream_path,
-                              .decode_count = 0,
-                              .is_y4m_file = is_y4m_file,
-                              .output_config = output_config,
-                              .show_progress =
-                                  absl::GetFlag(FLAGS_show_progress) };
+  ExtractProtoContext ctx = {
+    .frame_data = {},
+    .codec = {},
+    .reader = nullptr,
+    .info = nullptr,
+    .stream_params = &params,
+    .orig_yuv_file = have_orig_yuv ? &orig_yuv_file : nullptr,
+    .stream_path = stream_path,
+    .decode_count = 0,
+    .is_y4m_file = is_y4m_file,
+    .output_config = output_config,
+    .show_progress = absl::GetFlag(FLAGS_show_progress),
+    .display_index_offset = 0,
+    .max_display_index = 0,
+  };
   CHECK_OK(OpenStream(&ctx));
 
   params.set_width(ctx.info->frame_width);

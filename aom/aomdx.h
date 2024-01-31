@@ -69,6 +69,8 @@ typedef struct aom_inspect_init {
   aom_inspect_cb inspect_cb;
   /*! Inspection callback (per superblock). */
   aom_inspect_cb inspect_sb_cb;
+  /*! Inspection callback (per TIP frame). */
+  aom_inspect_cb inspect_tip_cb;
 
   /*! Inspection context. */
   void *inspect_ctx;
