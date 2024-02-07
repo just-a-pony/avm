@@ -28,14 +28,26 @@ extern "C" {
 #define RDDIV_BITS 7
 #define RD_EPB_SHIFT 6
 
+// Compute RD cost (Rate-distortion cost) given distortion in 8-bit scale.
+// This assumes that the given input parameters are as follows:
+// - Rate `R` is (rate_in_bits << AV1_PROB_COST_SHIFT)
+// - Distortion `D` is distortion in 8-bit scale computed as follows:
+//   * D_NATIVE_BD = SSE << 4              <-- Distortion at native bitdepth
+//   * D = D_NATIVE_BD >> (2 * (BD - 8))   <-- Distortion at 8-bit
 #define RDCOST(RM, R, D)                                            \
   (ROUND_POWER_OF_TWO(((int64_t)(R)) * (RM), AV1_PROB_COST_SHIFT) + \
    ((D) * (1 << RDDIV_BITS)))
 
+// Similar to RDCOST(), but for special case where rate `R` is negative.
 #define RDCOST_NEG_R(RM, R, D) \
   (((D) * (1 << RDDIV_BITS)) - \
    ROUND_POWER_OF_TWO(((int64_t)(R)) * (RM), AV1_PROB_COST_SHIFT))
 
+// Compute RD cost at double precision given distortion at native bitdepth.
+// This differs from RDCOST() in a few ways:
+// - Rate `R` is assumed to be (rate_in_bits << (AV1_PROB_COST_SHIFT - 4))
+// - Distortion `D` is assumed to be unscaled SSE at native bitdepth.
+// - Outputs RD cost at double precision floating point instead of an integer.
 #define RDCOST_DBL_WITH_NATIVE_BD_DIST(RM, R, D, BD)               \
   (((((double)(R)) * (RM)) / (double)(1 << AV1_PROB_COST_SHIFT)) + \
    ((double)((D) >> (2 * (BD - 8))) * (1 << RDDIV_BITS)))
