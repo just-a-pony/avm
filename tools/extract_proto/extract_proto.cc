@@ -420,10 +420,11 @@ void WriteProto(const ExtractProtoContext *ctx, const Frame &frame) {
 // See:
 // https://gitlab.com/AOMediaCodec/avm/-/blob/4664aa8a08dce15e914093d2c85bcc25d2c8026f/av1/decoder/decodeframe.c#L6899
 const int kMaxLagInFrames = 35;
-int get_absolute_display_index(ExtractProtoContext *ctx,
-                               int raw_display_index) {
+int get_absolute_display_index(ExtractProtoContext *ctx, int raw_display_index,
+                               FRAME_TYPE frame_type) {
   int display_index = ctx->display_index_offset + raw_display_index;
-  if (ctx->max_display_index - display_index >= kMaxLagInFrames) {
+  if (ctx->max_display_index - display_index >= kMaxLagInFrames ||
+      frame_type == KEY_FRAME) {
     ctx->display_index_offset = ctx->max_display_index + 1;
     display_index = ctx->display_index_offset + raw_display_index;
   }
@@ -443,8 +444,8 @@ void InspectTipFrame(void *pbi, void *data) {
   const int height = cm->height;
   const int bit_depth = cm->seq_params.bit_depth;
   auto *frame_params = frame.mutable_frame_params();
-  frame_params->set_display_index(
-      get_absolute_display_index(ctx, cm->current_frame.frame_number));
+  frame_params->set_display_index(get_absolute_display_index(
+      ctx, cm->current_frame.frame_number, cm->current_frame.frame_type));
   frame_params->set_raw_display_index(cm->current_frame.frame_number);
   frame_params->set_decode_index(ctx->decode_count++);
   frame_params->set_width(width);
@@ -526,8 +527,8 @@ void InspectFrame(void *pbi, void *data) {
   const int frame_size_bytes = luma_size_bytes + 2 * chroma_size_bytes;
 
   auto *frame_params = frame.mutable_frame_params();
-  frame_params->set_display_index(
-      get_absolute_display_index(ctx, frame_data.frame_number));
+  frame_params->set_display_index(get_absolute_display_index(
+      ctx, frame_data.frame_number, frame_data.frame_type));
   frame_params->set_raw_display_index(frame_data.frame_number);
   frame_params->set_decode_index(ctx->decode_count++);
   frame_params->set_show_frame(frame_data.show_frame);
@@ -872,7 +873,7 @@ int main(int argc, char **argv) {
     .output_config = output_config,
     .show_progress = absl::GetFlag(FLAGS_show_progress),
     .display_index_offset = 0,
-    .max_display_index = 0,
+    .max_display_index = -1,
   };
   CHECK_OK(OpenStream(&ctx));
 
