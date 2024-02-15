@@ -477,10 +477,6 @@ void InspectTipFrame(void *pbi, void *data) {
 }
 
 absl::Status AdvanceToNextY4mMarker(std::ifstream *orig_yuv_file) {
-  int64_t pos = orig_yuv_file->tellg();
-  if (orig_yuv_file->fail()) {
-    return absl::UnknownError("Tell failed on YUV file.");
-  }
   std::string y4m_data;
   y4m_data.resize(kY4mReadahead);
   orig_yuv_file->read(y4m_data.data(), kY4mReadahead);
@@ -491,7 +487,8 @@ absl::Status AdvanceToNextY4mMarker(std::ifstream *orig_yuv_file) {
   if (next_marker == std::string::npos) {
     return absl::UnknownError("Unable to find y4m frame marker.");
   }
-  orig_yuv_file->seekg(pos + next_marker + kY4mFrameMarker.size());
+  orig_yuv_file->seekg(next_marker + kY4mFrameMarker.size(),
+                       std::ios_base::cur);
   if (orig_yuv_file->fail()) {
     return absl::UnknownError("Seek failed on YUV file.");
   }
@@ -499,7 +496,25 @@ absl::Status AdvanceToNextY4mMarker(std::ifstream *orig_yuv_file) {
 }
 
 // TODO(comc): Handle YUVs for non-LD streams.
-absl::Status CopyFrameFromOriginalYuv(std::ifstream *orig_yuv_file) {
+absl::Status SeekYuvFileToFrame(ExtractProtoContext *ctx,
+                                size_t frame_display_index, size_t frame_size_bytes) {
+  if (ctx->is_y4m_file) {
+    ctx->orig_yuv_file->seekg(0);
+    if (ctx->orig_yuv_file->fail()) {
+      return absl::UnknownError("Seek failed on YUV file.");
+    }
+    for (size_t i = 0; i < frame_display_index; i++) {
+      CHECK_OK(AdvanceToNextY4mMarker(ctx->orig_yuv_file));
+      if (i + 1 < frame_display_index) {
+        ctx->orig_yuv_file->seekg(frame_size_bytes, std::ios_base::cur);
+      }
+    }
+  } else {
+    ctx->orig_yuv_file->seekg(frame_size_bytes * frame_display_index);
+    if (ctx->orig_yuv_file->fail()) {
+      return absl::UnknownError("Seek failed on YUV file.");
+    }
+  }
   return absl::OkStatus();
 }
 
@@ -516,15 +531,15 @@ void InspectFrame(void *pbi, void *data) {
   StreamParams *stream_params = ctx->stream_params;
   Frame frame;
   *frame.mutable_stream_params() = *stream_params;
-  const int luma_width = frame_data.width;
-  const int luma_height = frame_data.height;
+  const int64_t luma_width = frame_data.width;
+  const int64_t luma_height = frame_data.height;
   // Round up in the case of odd frame dimensions:
-  const int chroma_width = (luma_width + 1) / 2;
-  const int chroma_height = (luma_height + 1) / 2;
-  const int bytes_per_sample = (frame_data.bit_depth == 8) ? 1 : 2;
-  const int luma_size_bytes = luma_width * luma_height * bytes_per_sample;
-  const int chroma_size_bytes = chroma_width * chroma_height * bytes_per_sample;
-  const int frame_size_bytes = luma_size_bytes + 2 * chroma_size_bytes;
+  const int64_t chroma_width = (luma_width + 1) / 2;
+  const int64_t chroma_height = (luma_height + 1) / 2;
+  const int64_t bytes_per_sample = (frame_data.bit_depth == 8) ? 1 : 2;
+  const int64_t luma_size_bytes = luma_width * luma_height * bytes_per_sample;
+  const int64_t chroma_size_bytes = chroma_width * chroma_height * bytes_per_sample;
+  const int64_t frame_size_bytes = luma_size_bytes + 2 * chroma_size_bytes;
 
   auto *frame_params = frame.mutable_frame_params();
   frame_params->set_display_index(get_absolute_display_index(
@@ -552,9 +567,7 @@ void InspectFrame(void *pbi, void *data) {
 
   std::string orig_yuv = "";
   if (ctx->orig_yuv_file != nullptr) {
-    if (ctx->is_y4m_file) {
-      CHECK_OK(AdvanceToNextY4mMarker(ctx->orig_yuv_file));
-    }
+    SeekYuvFileToFrame(ctx, frame_params->display_index(), frame_size_bytes);
     orig_yuv.resize(frame_size_bytes);
     ctx->orig_yuv_file->read(orig_yuv.data(), frame_size_bytes);
     if (ctx->orig_yuv_file->fail()) {
@@ -709,26 +722,26 @@ void InspectFrame(void *pbi, void *data) {
   const int num_syms = accounting->syms.num_syms;
   for (int i = 0; i < num_syms; i++) {
     auto *symbol = &accounting->syms.syms[i];
-    // TODO(comc): Do something with symbols outside of first SB's
-    // context.
-    if (symbol->context.x >= 0 && symbol->context.y >= 0) {
-      bool is_chroma = symbol->context.tree_type == CHROMA_PART;
-      int sb_col = symbol->context.x / sb_width_mi;
-      int sb_row = symbol->context.y / sb_height_mi;
-      int sb_i = sb_row * sb_cols + sb_col;
-      if (sb_i != prev_sb_i) {
-        relative_index = 0;
-      }
-      auto *sb = frame.mutable_superblocks(sb_i);
-      UpdateSymbolRangesSb(sb, relative_index, symbol->context.x * MI_SIZE,
-                           symbol->context.y * MI_SIZE, is_chroma);
-      auto *sym = sb->add_symbols();
-      sym->set_bits(symbol->bits / (float)(1 << AOM_ACCT_BITRES));
-      sym->set_value(symbol->value);
-      sym->set_info_id(symbol->id);
-      prev_sb_i = sb_i;
-      relative_index += 1;
+    if (symbol->context.x == -1 || symbol->context.y == -1) {
+      symbol->context.x = 0;
+      symbol->context.y = 0;
     }
+    bool is_chroma = symbol->context.tree_type == CHROMA_PART;
+    int sb_col = symbol->context.x / sb_width_mi;
+    int sb_row = symbol->context.y / sb_height_mi;
+    int sb_i = sb_row * sb_cols + sb_col;
+    if (sb_i != prev_sb_i) {
+      relative_index = 0;
+    }
+    auto *sb = frame.mutable_superblocks(sb_i);
+    UpdateSymbolRangesSb(sb, relative_index, symbol->context.x * MI_SIZE,
+                         symbol->context.y * MI_SIZE, is_chroma);
+    auto *sym = sb->add_symbols();
+    sym->set_bits(symbol->bits / (float)(1 << AOM_ACCT_BITRES));
+    sym->set_value(symbol->value);
+    sym->set_info_id(symbol->id);
+    prev_sb_i = sb_i;
+    relative_index += 1;
   }
   WriteProto(ctx, frame);
 }
