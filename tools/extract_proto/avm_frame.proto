@@ -238,13 +238,14 @@ message StreamParams {
   string stream_hash = 1;
   string stream_name = 2;
   float frame_rate = 3;
-  // Note: these are present both here and in FrameParms. For most streams we
+  // Note: these are present both here and in FrameParams. For most streams we
   // care about, the frame dimensions will be the same across every frame. For
   // streams with variable-sized frames, these fields can be omitted.
   int32 width = 4;
   int32 height = 5;
   string avm_version = 6;
   map<string, string> encoder_args = 7;
+  string stream_path = 8;
 }
 
 message TipFrameParams {

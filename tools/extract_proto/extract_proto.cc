@@ -93,6 +93,10 @@ ABSL_FLAG(bool, show_progress, true,
           "Print progress as each frame is decoded.");
 ABSL_FLAG(bool, ignore_y4m_header, false,
           "Ignore dimensions and colorspace in Y4M header.");
+ABSL_FLAG(int, preserve_stream_path_depth, 0,
+          "Preserve this many levels of directory hierarchy of the stream's "
+          "path. -1 will preserve the entire absolute path. 0 will keep only "
+          "the filename. 1 will keep just the direct parent, etc...");
 
 namespace {
 constexpr std::string_view kY4mFrameMarker = "FRAME\n";
@@ -130,6 +134,7 @@ struct ExtractProtoContext {
   std::ifstream *orig_yuv_file;
   int orig_yuv_bit_depth;
   std::filesystem::path stream_path;
+  int preserve_stream_path_depth;
   int decode_count;
   bool is_y4m_file;
   std::optional<Y4mHeader> y4m_header;
@@ -894,6 +899,23 @@ void SetupInspectCallbacks(ExtractProtoContext *ctx) {
   aom_codec_control(&ctx->codec, AV1_SET_INSPECTION_CALLBACK, &ii);
 }
 
+void PopulateStreamPath(ExtractProtoContext *ctx) {
+  auto absolute_path = std::filesystem::absolute(ctx->stream_path);
+  std::filesystem::path relative_path;
+  if (ctx->preserve_stream_path_depth == -1) {
+    relative_path = absolute_path;
+  } else {
+    int index = std::distance(absolute_path.begin(), absolute_path.end());
+    for (const auto &part : absolute_path) {
+      index -= 1;
+      if (index <= ctx->preserve_stream_path_depth) {
+        relative_path /= part;
+      }
+    }
+  }
+  ctx->stream_params->set_stream_path(relative_path.make_preferred());
+}
+
 absl::Status OpenStream(ExtractProtoContext *ctx) {
   ctx->reader = aom_video_reader_open(ctx->stream_path.c_str());
   if (ctx->reader == nullptr) {
@@ -909,6 +931,7 @@ absl::Status OpenStream(ExtractProtoContext *ctx) {
   LOG(INFO) << "Using " << aom_codec_iface_name(decoder);
   ctx->stream_params->set_avm_version(aom_codec_iface_name(decoder));
   ctx->stream_params->set_stream_name(ctx->stream_path.filename());
+  PopulateStreamPath(ctx);
   if (aom_codec_dec_init(&ctx->codec, decoder, nullptr, 0)) {
     return absl::InternalError("Failed to initialize decoder.");
   }
@@ -1034,6 +1057,8 @@ int main(int argc, char **argv) {
     .orig_yuv_file = have_orig_yuv ? &orig_yuv_file : nullptr,
     .orig_yuv_bit_depth = orig_yuv_bit_depth,
     .stream_path = stream_path,
+    .preserve_stream_path_depth =
+        absl::GetFlag(FLAGS_preserve_stream_path_depth),
     .decode_count = 0,
     .is_y4m_file = is_y4m_file,
     .y4m_header = y4m_header,
