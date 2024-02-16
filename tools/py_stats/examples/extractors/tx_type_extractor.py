@@ -19,11 +19,11 @@ from avm_stats.stats_aggregation import *
 class TxTypeExtractor(CodingUnitExtractor):
   TxSize = collections.namedtuple(
       "TxSize",
-      ["width", "height", "tx_size", "tx_type", "is_intra_frame", "stream_name"],
+      ["width", "height", "tx_size", "tx_type", "is_intra_frame", "stream_path"],
   )
 
   def sample(self, coding_unit: CodingUnit):
-    stream_name = coding_unit.frame.proto.stream_params.stream_name.removesuffix(".bin")
+    stream_path = coding_unit.frame.proto.stream_params.stream_path
     # Luma only
     is_chroma = len(coding_unit.proto.transform_planes) == 2
     if is_chroma:
@@ -36,4 +36,4 @@ class TxTypeExtractor(CodingUnitExtractor):
       # TODO(comc): Add method on transform_unit for this.
       tx_type = transform_unit.tx_type & 0xF
       tx_type_name = coding_unit.frame.proto.enum_mappings.transform_type_mapping[tx_type]
-      yield self.TxSize(width, height, tx_size, tx_type_name, is_intra_frame, stream_name)
+      yield self.TxSize(width, height, tx_size, tx_type_name, is_intra_frame, stream_path)

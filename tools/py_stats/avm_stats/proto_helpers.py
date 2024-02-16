@@ -160,9 +160,13 @@ def _copy_samples_from_proto(
     pixels_width = superblock_plane.width
     pixels_height = superblock_plane.height
 
-    superblock_samples = np.array(superblock_plane.pixels).reshape(
+    superblock_samples = np.array(superblock_plane.pixels, dtype=dtype).reshape(
         (pixels_height, pixels_width)
     )[:sb_height_clipped, :sb_width_clipped]
+    if superblock_plane.bit_depth > frame.bit_depth:
+      superblock_samples //= int(2 ** (superblock_plane.bit_depth - frame.bit_depth))
+    elif superblock_plane.bit_depth < frame.bit_depth:
+      superblock_samples *= int(2 ** (frame.bit_depth - superblock_plane.bit_depth))
 
     samples[sb_y: sb_y + sb_height_clipped, sb_x: sb_x + sb_width_clipped] = (
         superblock_samples
@@ -194,11 +198,11 @@ def _create_plane_buffer(frame: Frame, plane: Plane) -> PlaneBuffer:
   assert reconstruction is not None
   # Even for 8-bit frames, 16 bits are needed for the deltas, since the range is
   # [-255, 255].
-  residual = pre_filtered.astype(np.int16) - prediction
-  filter_delta = reconstruction.astype(np.int16) - pre_filtered
+  residual = pre_filtered.astype(np.int16) - prediction.astype(np.int16)
+  filter_delta = reconstruction.astype(np.int16) - pre_filtered.astype(np.int16)
   # Since distortion is computed from the original, this might also be None.
   distortion = (
-      original.astype(np.int16) - reconstruction
+      original.astype(np.int16) - reconstruction.astype(np.int16)
       if original is not None
       else None
   )
@@ -563,13 +567,22 @@ class Frame:
     return self.proto.frame_params.bit_depth
 
   @property
+  def pixel_scale(self) -> int:
+    if self.bit_depth == 8:
+      return 1
+    elif self.bit_depth == 10:
+      return 4
+    else:
+      raise RuntimeError(f"Unsupported bit depth: {self.bit_depth}")
+
+  @property
   def is_intra_frame(self) -> bool:
     return self.proto.frame_params.frame_type == 0
 
   @property
   def pixels(self) -> list[PlaneBuffer]:
     if self._pixels is None:
-      self.pixels = [
+      self._pixels = [
           _create_plane_buffer(self, p) for p in (Plane.Y, Plane.U, Plane.V)
       ]
     return self._pixels
@@ -578,9 +591,9 @@ class Frame:
   def original_rgb(self) -> np.ndarray:
     if self._original_rgb is None and self.pixels[0].original is not None:
       self._original_rgb = yuv_tools.yuv_to_rgb(
-          self.pixels[0].original,
-          yuv_tools.upscale(self.pixels[1].original, 2),
-          yuv_tools.upscale(self.pixels[2].original, 2),
+          self.pixels[0].original // self.pixel_scale,
+          yuv_tools.upscale(self.pixels[1].original, 2) // self.pixel_scale,
+          yuv_tools.upscale(self.pixels[2].original, 2) // self.pixel_scale,
       )
     return self._original_rgb
 
@@ -588,9 +601,11 @@ class Frame:
   def reconstruction_rgb(self) -> np.ndarray:
     if self._reconstruction_rgb is None:
       self._reconstruction_rgb = yuv_tools.yuv_to_rgb(
-          self.pixels[0].reconstruction,
-          yuv_tools.upscale(self.pixels[1].reconstruction, 2),
-          yuv_tools.upscale(self.pixels[2].reconstruction, 2),
+          self.pixels[0].reconstruction // self.pixel_scale,
+          yuv_tools.upscale(
+              self.pixels[1].reconstruction, 2) // self.pixel_scale,
+          yuv_tools.upscale(
+              self.pixels[2].reconstruction, 2) // self.pixel_scale,
       )
     return self._reconstruction_rgb
 

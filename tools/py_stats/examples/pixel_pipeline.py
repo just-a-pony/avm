@@ -57,6 +57,7 @@ def main(argv: Sequence[str]) -> None:
         output_path=tmp_path,
         skip_if_output_already_exists=False,
         yuv_path=yuv_path,
+        frame_limit=_FRAME.value,
     )
     seq = list(frames)
     num_frames = len(seq)

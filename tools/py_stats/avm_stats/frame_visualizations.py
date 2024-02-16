@@ -108,8 +108,9 @@ class YuvPlaneLayer(VisualizationLayer):
     pixels = getattr(frame.pixels[self.plane], self.pixels_attribute)
     width = frame.width
     height = frame.height
+    vmax = 2 ** frame.bit_depth - 1
     ax.imshow(
-        pixels, cmap="gray", vmin=0, vmax=255, extent=[0, width, height, 0]
+        pixels, cmap="gray", vmin=0, vmax=vmax, extent=[0, width, height, 0]
     )
 
 
@@ -160,7 +161,8 @@ class YuvDeltaLayer(VisualizationLayer):
     pixels = self.get_pixels(frame)
     pixel_min = np.min(pixels)
     pixel_max = np.max(pixels)
-    vmin, vmax = -255, 255
+    vmax = 2 ** frame.bit_depth - 1
+    vmin = -vmax
     annotation = "Relative" if self.show_relative else "Absolute"
     if self.show_relative:
       vmin, vmax = pixel_min, pixel_max

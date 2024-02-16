@@ -15,32 +15,16 @@ from avm_stats.frame_visualizations import *
 from avm_stats.proto_helpers import *
 from avm_stats.stats_aggregation import *
 
-CTC_CLASSES = [
-  2160,
-  1080,
-  720,
-  360,
-  270,
-]
-
 class SymbolBitsExtractor(SuperblockExtractor):
   SymbolBits = collections.namedtuple(
       "SymbolBits",
-      ["symbol_name", "symbol_tags", "bits", "is_intra_frame", "stream_name", "qp", "ctc_class", "ctc_config"],
+      ["symbol_name", "symbol_tags", "bits", "is_intra_frame", "stream_path"],
   )
 
   def sample(self, superblock: Superblock):
-    stream_name = superblock.frame.proto.stream_params.stream_name.removesuffix(".bin")
-    qp = stream_name.split("_")[-1]
-    ctc_config = stream_name.split("_")[-3]
-    ctc_class = None
-    for i, c in enumerate(CTC_CLASSES):
-      if str(c) in stream_name:
-        assert ctc_class is None
-        ctc_class = f"A{i+1}"
-    assert ctc_class is not None
+    stream_path = superblock.frame.proto.stream_params.stream_path
     is_intra_frame = superblock.frame.is_intra_frame
     for symbol in superblock.proto.symbols:
       symbol_info = superblock.frame.proto.symbol_info[symbol.info_id]
       symbol_tags = "/".join(symbol_info.tags)
-      yield self.SymbolBits(symbol_info.source_function, symbol_tags, symbol.bits, is_intra_frame, stream_name, qp, ctc_class, ctc_config)
+      yield self.SymbolBits(symbol_info.source_function, symbol_tags, symbol.bits, is_intra_frame, stream_path)

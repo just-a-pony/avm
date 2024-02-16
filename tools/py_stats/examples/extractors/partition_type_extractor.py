@@ -24,11 +24,11 @@ def iter_partitions(partition_block):
 class PartitionTypeExtractor(SuperblockExtractor):
   PartitionType = collections.namedtuple(
       "PartitionType",
-      ["width", "height", "block_size", "partition_type", "is_intra_frame", "stream_name"],
+      ["width", "height", "block_size", "partition_type", "is_intra_frame", "stream_path"],
   )
 
   def sample(self, superblock: Superblock):
-    stream_name = superblock.frame.proto.stream_params.stream_name.removesuffix(".bin")
+    stream_path = superblock.frame.proto.stream_params.stream_path
     is_intra_frame = superblock.frame.is_intra_frame
     for partition_block in iter_partitions(superblock.proto.luma_partition_tree):
       width = partition_block.size.width
@@ -36,4 +36,4 @@ class PartitionTypeExtractor(SuperblockExtractor):
       block_size = f"{width}x{height}"
       partition_type = partition_block.partition_type
       partition_type_name = superblock.frame.proto.enum_mappings.partition_type_mapping[partition_type]
-      yield self.PartitionType(width, height, block_size, partition_type_name, is_intra_frame, stream_name)
+      yield self.PartitionType(width, height, block_size, partition_type_name, is_intra_frame, stream_path)

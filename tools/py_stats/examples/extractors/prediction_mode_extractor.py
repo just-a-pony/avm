@@ -26,11 +26,11 @@ def prediction_mode_symbol_filter(symbol: Symbol):
 class PredictionModeExtractor(CodingUnitExtractor):
   PredictionMode = collections.namedtuple(
       "PredictionMode",
-      ["width", "height", "block_size", "mode", "mode_bits", "is_intra_frame", "stream_name"],
+      ["width", "height", "block_size", "mode", "mode_bits", "is_intra_frame", "stream_path"],
   )
 
   def sample(self, coding_unit: CodingUnit):
-    stream_name = coding_unit.frame.proto.stream_params.stream_name.removesuffix(".bin")
+    stream_path = coding_unit.frame.proto.stream_params.stream_path
     width = coding_unit.rect.width
     height = coding_unit.rect.height
     block_size = f"{width}x{height}"
@@ -40,4 +40,4 @@ class PredictionModeExtractor(CodingUnitExtractor):
         for sym in coding_unit.get_symbols(prediction_mode_symbol_filter)
     )
     is_intra_frame = coding_unit.frame.is_intra_frame
-    yield self.PredictionMode(width, height, block_size, mode, mode_bits, is_intra_frame, stream_name)
+    yield self.PredictionMode(width, height, block_size, mode, mode_bits, is_intra_frame, stream_path)

@@ -29,14 +29,12 @@ import matplotlib.pyplot as plt
 import multiprocessing
 import pandas as pd
 
-from extractors.partition_similarity_extractor import PartitionSimilarityExtractor
 from extractors.partition_type_extractor import PartitionTypeExtractor
 from extractors.prediction_mode_extractor import PredictionModeExtractor
 from extractors.symbol_bits_extractor import SymbolBitsExtractor
 from extractors.tx_type_extractor import TxTypeExtractor
 
 _EXTRACTORS = {
-    "partition_similarity": PartitionSimilarityExtractor,
     "partition_type": PartitionTypeExtractor,
     "prediction_mode": PredictionModeExtractor,
     "symbol_bits": SymbolBitsExtractor,
@@ -163,7 +161,9 @@ def extract_to_temp_dir(stream_path: pathlib.Path, frame_limit: int | None = Non
         extract_proto_path=extract_proto_path,
         stream_path=stream_path,
         output_path=output_path,
-        frame_limit=frame_limit
+        frame_limit=frame_limit,
+        # Preserve the entire stream path so that the CTC config and class can be retrieved if available from the path.
+        extra_args = ["--preserve_stream_path_depth", "-1"]
     )
 
 
