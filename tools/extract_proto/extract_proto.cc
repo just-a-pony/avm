@@ -54,6 +54,7 @@
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
@@ -66,6 +67,7 @@ using ::avm::tools::EnumMappings;
 using ::avm::tools::Frame;
 using ::avm::tools::FrameParams;
 using ::avm::tools::Partition;
+using ::avm::tools::PixelBuffer;
 using ::avm::tools::Position;
 using ::avm::tools::StreamParams;
 using ::avm::tools::Superblock;
@@ -75,6 +77,7 @@ using ::avm::tools::SymbolInfo;
 ABSL_FLAG(std::string, stream, "", "Input AV2 stream");
 ABSL_FLAG(std::string, orig_yuv, "",
           "Source (pre-encode) YUV file (.yuv or .y4m)");
+ABSL_FLAG(int, orig_yuv_bit_depth, -1, "Bit depth of original YUV.");
 ABSL_FLAG(std::string, output_folder, "", "Output folder");
 ABSL_FLAG(std::string, output_prefix, "",
           "Prefix added to output filenames, e.g. "
@@ -88,6 +91,8 @@ ABSL_FLAG(int, limit, -1,
           "Stop after N frames are decoded (default: all frames).");
 ABSL_FLAG(bool, show_progress, true,
           "Print progress as each frame is decoded.");
+ABSL_FLAG(bool, ignore_y4m_header, false,
+          "Ignore dimensions and colorspace in Y4M header.");
 
 namespace {
 constexpr std::string_view kY4mFrameMarker = "FRAME\n";
@@ -103,6 +108,17 @@ struct OutputConfig {
   int limit;
 };
 
+struct Y4mHeader {
+  size_t width;
+  size_t height;
+  size_t bit_depth;
+};
+
+static absl::flat_hash_map<std::string_view, int> kSupportedColorspaces = {
+  { "C420", 8 },     { "C420jpeg", 8 }, { "C420mpeg2", 8 }, { "C420p10", 10 },
+  { "C420p12", 12 }, { "C420p14", 14 }, { "C420p16", 16 },
+};
+
 struct ExtractProtoContext {
   insp_frame_data frame_data;
   aom_codec_ctx_t codec;
@@ -112,9 +128,11 @@ struct ExtractProtoContext {
   // Note: Original YUV may not always be available (e.g. we have only an .ivf
   // file by itself)
   std::ifstream *orig_yuv_file;
+  int orig_yuv_bit_depth;
   std::filesystem::path stream_path;
   int decode_count;
   bool is_y4m_file;
+  std::optional<Y4mHeader> y4m_header;
   OutputConfig output_config;
   bool show_progress;
   // Offset to convert relative display index to absolute display index.
@@ -420,8 +438,8 @@ void WriteProto(const ExtractProtoContext *ctx, const Frame &frame) {
 // See:
 // https://gitlab.com/AOMediaCodec/avm/-/blob/4664aa8a08dce15e914093d2c85bcc25d2c8026f/av1/decoder/decodeframe.c#L6899
 const int kMaxLagInFrames = 35;
-int get_absolute_display_index(ExtractProtoContext *ctx, int raw_display_index,
-                               FRAME_TYPE frame_type) {
+int GetAbsoluteDisplayIndex(ExtractProtoContext *ctx, int raw_display_index,
+                            FRAME_TYPE frame_type) {
   int display_index = ctx->display_index_offset + raw_display_index;
   if (ctx->max_display_index - display_index >= kMaxLagInFrames ||
       frame_type == KEY_FRAME) {
@@ -432,7 +450,186 @@ int get_absolute_display_index(ExtractProtoContext *ctx, int raw_display_index,
   return display_index;
 }
 
-// TODO(comc): Original YUV pixels for TIP.
+absl::Status AdvanceToNextY4mMarker(std::ifstream *orig_yuv_file) {
+  size_t pos = orig_yuv_file->tellg();
+  if (orig_yuv_file->fail()) {
+    return absl::UnknownError("Tell failed on YUV file.");
+  }
+  std::string y4m_data;
+  y4m_data.resize(kY4mReadahead);
+  orig_yuv_file->read(y4m_data.data(), kY4mReadahead);
+  if (orig_yuv_file->fail()) {
+    return absl::UnknownError("Read failed on YUV file.");
+  }
+  size_t next_marker = y4m_data.find(kY4mFrameMarker);
+  if (next_marker == std::string::npos) {
+    return absl::UnknownError("Unable to find y4m frame marker.");
+  }
+  orig_yuv_file->seekg(pos + next_marker + kY4mFrameMarker.size());
+  if (orig_yuv_file->fail()) {
+    return absl::UnknownError("Seek failed on YUV file.");
+  }
+  return absl::OkStatus();
+}
+
+absl::StatusOr<Y4mHeader> ParseY4mHeader(std::ifstream *orig_yuv_file) {
+  auto status = AdvanceToNextY4mMarker(orig_yuv_file);
+  if (!status.ok()) {
+    return status;
+  }
+  size_t header_end = orig_yuv_file->tellg();
+  header_end -= kY4mFrameMarker.size() + 1;
+  std::string y4m_header_raw;
+  y4m_header_raw.resize(header_end);
+  orig_yuv_file->seekg(0);
+  orig_yuv_file->read(y4m_header_raw.data(), header_end);
+  auto parts = absl::StrSplit(y4m_header_raw, ' ');
+  size_t width = 0;
+  size_t height = 0;
+  size_t bit_depth = 0;
+  for (auto &part : parts) {
+    if (part.at(0) == 'W') {
+      if (!absl::SimpleAtoi(part.substr(1), &width)) {
+        return absl::UnknownError(
+            absl::StrCat("Invalid width in Y4M header: ", part));
+      }
+    } else if (part.at(0) == 'H') {
+      if (!absl::SimpleAtoi(part.substr(1), &height)) {
+        return absl::UnknownError(
+            absl::StrCat("Invalid height in Y4M header: ", part));
+      }
+    } else if (part.at(0) == 'C') {
+      if (!kSupportedColorspaces.contains(part)) {
+        return absl::UnknownError(
+            absl::StrCat("Unsupported Y4M colorspace: ", part));
+      }
+      bit_depth = kSupportedColorspaces[part];
+    }
+  }
+  if (width == 0 || height == 0 || bit_depth == 0) {
+    return absl::UnknownError("Invalid Y4M header.");
+  }
+  return Y4mHeader{
+    .width = width,
+    .height = height,
+    .bit_depth = bit_depth,
+  };
+}
+
+struct YuvFrameSizeInfo {
+  size_t frame_width;
+  size_t frame_height;
+  size_t plane_width[3];
+  size_t plane_height[3];
+  size_t bytes_per_sample;
+  size_t frame_size_bytes;
+  size_t plane_size_bytes[3];
+  size_t plane_offset_bytes[3];
+  size_t plane_stride_bytes[3];
+};
+
+YuvFrameSizeInfo GetYuvFrameSizeInfo(int bit_depth, size_t frame_width,
+                                     size_t frame_height) {
+  const size_t bytes_per_sample = (bit_depth == 8) ? 1 : 2;
+  const size_t luma_size_bytes = frame_width * frame_height * bytes_per_sample;
+  // Round up in the case of odd frame dimensions:
+  const size_t chroma_width = (frame_width + 1) / 2;
+  const size_t chroma_height = (frame_height + 1) / 2;
+  const size_t chroma_size_bytes =
+      chroma_width * chroma_height * bytes_per_sample;
+  const size_t frame_size_bytes = luma_size_bytes + 2 * chroma_size_bytes;
+  return YuvFrameSizeInfo {
+    .frame_width = frame_width,
+    .frame_height = frame_height,
+    .plane_width = {frame_width, chroma_width, chroma_width},
+    .plane_height = {frame_height, chroma_height, chroma_height},
+    .bytes_per_sample = bytes_per_sample,
+    .frame_size_bytes = frame_size_bytes,
+    .plane_size_bytes = {
+      luma_size_bytes,
+      chroma_size_bytes,
+      chroma_size_bytes,
+    },
+    .plane_offset_bytes = {
+      0,
+      luma_size_bytes,
+      luma_size_bytes + chroma_size_bytes,
+    },
+    .plane_stride_bytes = {
+      frame_width * bytes_per_sample,
+      chroma_width * bytes_per_sample,
+      chroma_width * bytes_per_sample,
+    },
+  };
+}
+
+absl::Status ReadFrameFromYuvFile(ExtractProtoContext *ctx,
+                                  size_t frame_display_index,
+                                  const YuvFrameSizeInfo &frame_size_info,
+                                  std::string &yuv_frame) {
+  if (ctx->is_y4m_file) {
+    if (ctx->y4m_header.has_value()) {
+      if (ctx->y4m_header.value().width != frame_size_info.frame_width ||
+          ctx->y4m_header.value().height != frame_size_info.frame_height) {
+        LOG(QFATAL) << absl::StrFormat(
+            "Y4M dimensions do not match stream: Stream: %dx%d, Y4M: %dx%d",
+            frame_size_info.frame_width, frame_size_info.frame_height,
+            ctx->y4m_header.value().width, ctx->y4m_header.value().height);
+      }
+    }
+
+    ctx->orig_yuv_file->seekg(0);
+    if (ctx->orig_yuv_file->fail()) {
+      return absl::UnknownError("Seek failed on YUV file.");
+    }
+    for (size_t i = 0; i <= frame_display_index; i++) {
+      CHECK_OK(AdvanceToNextY4mMarker(ctx->orig_yuv_file));
+      if (i < frame_display_index) {
+        ctx->orig_yuv_file->seekg(frame_size_info.frame_size_bytes,
+                                  std::ios_base::cur);
+      }
+    }
+  } else {
+    ctx->orig_yuv_file->seekg(frame_size_info.frame_size_bytes *
+                              frame_display_index);
+    if (ctx->orig_yuv_file->fail()) {
+      return absl::UnknownError("Seek failed on YUV file.");
+    }
+  }
+
+  yuv_frame.resize(frame_size_info.frame_size_bytes);
+  ctx->orig_yuv_file->read(yuv_frame.data(), frame_size_info.frame_size_bytes);
+  if (ctx->orig_yuv_file->fail()) {
+    CHECK_OK(absl::UnknownError("Read failed on YUV file."));
+  }
+
+  return absl::OkStatus();
+}
+
+void CopyFromYuvFile(PixelBuffer *pixel_buffer, const std::string &orig_yuv,
+                     int plane, const YuvFrameSizeInfo &frame_size_info,
+                     size_t offset_x, size_t offset_y) {
+  for (size_t y = offset_y; y < pixel_buffer->height() + offset_y; y++) {
+    for (size_t x = offset_x; x < pixel_buffer->width() + offset_x; x++) {
+      uint16_t pixel = 0;
+      bool in_bounds = x < frame_size_info.plane_width[plane] &&
+                       y < frame_size_info.plane_height[plane];
+      if (in_bounds) {
+        size_t pixel_offset_bytes =
+            y * frame_size_info.plane_stride_bytes[plane] +
+            x * frame_size_info.bytes_per_sample;
+        size_t index =
+            frame_size_info.plane_offset_bytes[plane] + pixel_offset_bytes;
+        pixel = (uint8_t)orig_yuv[index];
+        if (frame_size_info.bytes_per_sample > 1) {
+          pixel |= (uint8_t)orig_yuv[index + 1] << 8;
+        }
+      }
+      pixel_buffer->add_pixels(pixel);
+    }
+  }
+}
+
 void InspectTipFrame(void *pbi, void *data) {
   auto *ctx = static_cast<ExtractProtoContext *>(data);
   AV1Decoder *decoder = (AV1Decoder *)pbi;
@@ -440,16 +637,22 @@ void InspectTipFrame(void *pbi, void *data) {
   StreamParams *stream_params = ctx->stream_params;
   Frame frame;
   *frame.mutable_stream_params() = *stream_params;
-  const int width = cm->width;
-  const int height = cm->height;
   const int bit_depth = cm->seq_params.bit_depth;
+  if (ctx->orig_yuv_bit_depth == -1) {
+    ctx->orig_yuv_bit_depth = bit_depth;
+  }
+  const size_t frame_width = cm->width;
+  const size_t frame_height = cm->height;
+  YuvFrameSizeInfo frame_size_info =
+      GetYuvFrameSizeInfo(ctx->orig_yuv_bit_depth, frame_width, frame_height);
+
   auto *frame_params = frame.mutable_frame_params();
-  frame_params->set_display_index(get_absolute_display_index(
+  frame_params->set_display_index(GetAbsoluteDisplayIndex(
       ctx, cm->current_frame.frame_number, cm->current_frame.frame_type));
   frame_params->set_raw_display_index(cm->current_frame.frame_number);
   frame_params->set_decode_index(ctx->decode_count++);
-  frame_params->set_width(width);
-  frame_params->set_height(height);
+  frame_params->set_width(frame_width);
+  frame_params->set_height(frame_height);
   frame_params->set_bit_depth(bit_depth);
   frame_params->set_frame_type(cm->current_frame.frame_type);
   frame_params->set_show_frame(cm->show_frame);
@@ -457,10 +660,17 @@ void InspectTipFrame(void *pbi, void *data) {
   auto *tip_frame = frame.mutable_tip_frame_params();
   tip_frame->set_tip_mode(TIP_FRAME_AS_OUTPUT);
   RefCntBuffer *buf = cm->cur_frame;
+
+  std::string orig_yuv = "";
+  if (ctx->orig_yuv_file != nullptr) {
+    CHECK_OK(ReadFrameFromYuvFile(ctx, frame_params->display_index(),
+                                  frame_size_info, orig_yuv));
+  }
+
   for (int plane = 0; plane < 3; ++plane) {
-    int plane_width = buf->buf.crop_widths[!!plane];
-    int plane_height = buf->buf.crop_heights[!!plane];
-    int stride = buf->buf.strides[!!plane];
+    int plane_width = buf->buf.crop_widths[plane > 0];
+    int plane_height = buf->buf.crop_heights[plane > 0];
+    int stride = buf->buf.strides[plane > 0];
     auto *pixels = tip_frame->add_pixel_data();
     pixels->set_plane(plane);
     pixels->mutable_reconstruction()->set_width(plane_width);
@@ -472,50 +682,16 @@ void InspectTipFrame(void *pbi, void *data) {
         pixels->mutable_reconstruction()->add_pixels(recon_pixel);
       }
     }
+
+    if (!orig_yuv.empty()) {
+      auto original = pixels->mutable_original();
+      original->set_width(plane_width);
+      original->set_height(plane_height);
+      original->set_bit_depth(ctx->orig_yuv_bit_depth);
+      CopyFromYuvFile(original, orig_yuv, plane, frame_size_info, 0, 0);
+    }
   }
   WriteProto(ctx, frame);
-}
-
-absl::Status AdvanceToNextY4mMarker(std::ifstream *orig_yuv_file) {
-  std::string y4m_data;
-  y4m_data.resize(kY4mReadahead);
-  orig_yuv_file->read(y4m_data.data(), kY4mReadahead);
-  if (orig_yuv_file->fail()) {
-    return absl::UnknownError("Read failed on YUV file.");
-  }
-  size_t next_marker = y4m_data.find(kY4mFrameMarker);
-  if (next_marker == std::string::npos) {
-    return absl::UnknownError("Unable to find y4m frame marker.");
-  }
-  orig_yuv_file->seekg(next_marker + kY4mFrameMarker.size(),
-                       std::ios_base::cur);
-  if (orig_yuv_file->fail()) {
-    return absl::UnknownError("Seek failed on YUV file.");
-  }
-  return absl::OkStatus();
-}
-
-// TODO(comc): Handle YUVs for non-LD streams.
-absl::Status SeekYuvFileToFrame(ExtractProtoContext *ctx,
-                                size_t frame_display_index, size_t frame_size_bytes) {
-  if (ctx->is_y4m_file) {
-    ctx->orig_yuv_file->seekg(0);
-    if (ctx->orig_yuv_file->fail()) {
-      return absl::UnknownError("Seek failed on YUV file.");
-    }
-    for (size_t i = 0; i < frame_display_index; i++) {
-      CHECK_OK(AdvanceToNextY4mMarker(ctx->orig_yuv_file));
-      if (i + 1 < frame_display_index) {
-        ctx->orig_yuv_file->seekg(frame_size_bytes, std::ios_base::cur);
-      }
-    }
-  } else {
-    ctx->orig_yuv_file->seekg(frame_size_bytes * frame_display_index);
-    if (ctx->orig_yuv_file->fail()) {
-      return absl::UnknownError("Seek failed on YUV file.");
-    }
-  }
-  return absl::OkStatus();
 }
 
 void InspectFrame(void *pbi, void *data) {
@@ -531,25 +707,19 @@ void InspectFrame(void *pbi, void *data) {
   StreamParams *stream_params = ctx->stream_params;
   Frame frame;
   *frame.mutable_stream_params() = *stream_params;
-  const int64_t luma_width = frame_data.width;
-  const int64_t luma_height = frame_data.height;
-  // Round up in the case of odd frame dimensions:
-  const int64_t chroma_width = (luma_width + 1) / 2;
-  const int64_t chroma_height = (luma_height + 1) / 2;
-  const int64_t bytes_per_sample = (frame_data.bit_depth == 8) ? 1 : 2;
-  const int64_t luma_size_bytes = luma_width * luma_height * bytes_per_sample;
-  const int64_t chroma_size_bytes = chroma_width * chroma_height * bytes_per_sample;
-  const int64_t frame_size_bytes = luma_size_bytes + 2 * chroma_size_bytes;
-
+  const size_t frame_width = frame_data.width;
+  const size_t frame_height = frame_data.height;
+  YuvFrameSizeInfo frame_size_info =
+      GetYuvFrameSizeInfo(ctx->orig_yuv_bit_depth, frame_width, frame_height);
   auto *frame_params = frame.mutable_frame_params();
-  frame_params->set_display_index(get_absolute_display_index(
+  frame_params->set_display_index(GetAbsoluteDisplayIndex(
       ctx, frame_data.frame_number, frame_data.frame_type));
   frame_params->set_raw_display_index(frame_data.frame_number);
   frame_params->set_decode_index(ctx->decode_count++);
   frame_params->set_show_frame(frame_data.show_frame);
   frame_params->set_base_qindex(frame_data.base_qindex);
-  frame_params->set_width(luma_width);
-  frame_params->set_height(luma_height);
+  frame_params->set_width(frame_width);
+  frame_params->set_height(frame_height);
 
   auto *tip_frame = frame.mutable_tip_frame_params();
   tip_frame->set_tip_mode(frame_data.tip_frame_mode);
@@ -562,19 +732,17 @@ void InspectFrame(void *pbi, void *data) {
   frame_params->mutable_superblock_size()->set_enum_value(
       frame_data.superblock_size);
   frame_params->set_frame_type(frame_data.frame_type);
-  frame_params->set_bit_depth(frame_data.bit_depth);
+  int bit_depth = frame_data.bit_depth;
+  if (ctx->orig_yuv_bit_depth == -1) {
+    ctx->orig_yuv_bit_depth = bit_depth;
+  }
+  frame_params->set_bit_depth(bit_depth);
   PopulateEnumMappings(frame.mutable_enum_mappings());
-
   std::string orig_yuv = "";
   if (ctx->orig_yuv_file != nullptr) {
-    SeekYuvFileToFrame(ctx, frame_params->display_index(), frame_size_bytes);
-    orig_yuv.resize(frame_size_bytes);
-    ctx->orig_yuv_file->read(orig_yuv.data(), frame_size_bytes);
-    if (ctx->orig_yuv_file->fail()) {
-      CHECK_OK(absl::UnknownError("Read failed on YUV file."));
-    }
+    CHECK_OK(ReadFrameFromYuvFile(ctx, frame_params->display_index(),
+                                  frame_size_info, orig_yuv));
   }
-
   const Accounting *accounting = frame_data.accounting;
   const int num_symbol_types = accounting->syms.dictionary.num_strs;
   auto *symbol_info = frame.mutable_symbol_info();
@@ -595,36 +763,27 @@ void InspectFrame(void *pbi, void *data) {
   for (int sb_row = 0; sb_row < sb_rows; sb_row++) {
     for (int sb_col = 0; sb_col < sb_cols; sb_col++) {
       auto *sb = frame.add_superblocks();
-      int sb_x_px = sb_col * sb_width_px;
-      int sb_y_px = sb_row * sb_height_px;
-      sb->mutable_position()->set_x(sb_x_px);
-      sb->mutable_position()->set_y(sb_y_px);
+      int sb_x_offset_px = sb_col * sb_width_px;
+      int sb_y_offset_px = sb_row * sb_height_px;
+      sb->mutable_position()->set_x(sb_x_offset_px);
+      sb->mutable_position()->set_y(sb_y_offset_px);
       sb->mutable_size()->set_width(sb_width_px);
       sb->mutable_size()->set_height(sb_height_px);
       sb->mutable_size()->set_enum_value(frame_data.superblock_size);
       // TODO(comc): Add special case for monochrome
       for (int plane = 0; plane < 3; plane++) {
-        int sb_plane_width_px;
-        int sb_plane_height_px;
-        int cropped_sb_plane_width_px;
-        int cropped_sb_plane_height_px;
-        if (plane == 0) {
-          int remaining_width = luma_width - sb_x_px;
-          int remaining_height = luma_height - sb_y_px;
-          sb_plane_width_px = sb_width_px;
-          sb_plane_height_px = sb_height_px;
-          cropped_sb_plane_width_px = std::min(sb_width_px, remaining_width);
-          cropped_sb_plane_height_px = std::min(sb_height_px, remaining_height);
-        } else {
-          int remaining_width = chroma_width - sb_x_px / 2;
-          int remaining_height = chroma_height - sb_y_px / 2;
-          sb_plane_width_px = sb_width_px / 2;
-          sb_plane_height_px = sb_height_px / 2;
-          cropped_sb_plane_width_px =
-              std::min(sb_width_px / 2, remaining_width);
-          cropped_sb_plane_height_px =
-              std::min(sb_height_px / 2, remaining_height);
-        }
+        int sb_plane_x_offset_px = plane ? sb_x_offset_px / 2 : sb_x_offset_px;
+        int sb_plane_y_offset_px = plane ? sb_y_offset_px / 2 : sb_y_offset_px;
+        int sb_plane_width_px = plane ? sb_width_px / 2 : sb_width_px;
+        int sb_plane_height_px = plane ? sb_height_px / 2 : sb_height_px;
+        int remaining_width =
+            frame_size_info.plane_width[plane] - sb_plane_x_offset_px;
+        int remaining_height =
+            frame_size_info.plane_height[plane] - sb_plane_y_offset_px;
+        int cropped_sb_plane_width_px =
+            std::min(sb_plane_width_px, remaining_width);
+        int cropped_sb_plane_height_px =
+            std::min(sb_plane_height_px, remaining_height);
         auto *pixels = sb->add_pixel_data();
         pixels->set_plane(plane);
         pixels->mutable_reconstruction()->set_width(sb_plane_width_px);
@@ -641,8 +800,8 @@ void InspectFrame(void *pbi, void *data) {
         for (int px_y = 0; px_y < sb_plane_height_px; px_y++) {
           for (int px_x = 0; px_x < sb_plane_width_px; px_x++) {
             int stride = frame_data.recon_frame_buffer.strides[plane > 0];
-            int pixel_y = sb_row * sb_plane_height_px + px_y;
-            int pixel_x = sb_col * sb_plane_width_px + px_x;
+            int pixel_y = sb_plane_y_offset_px + px_y;
+            int pixel_x = sb_plane_x_offset_px + px_x;
             int pixel_offset = pixel_y * stride + pixel_x;
             bool in_bounds = px_y < cropped_sb_plane_height_px &&
                              px_x < cropped_sb_plane_width_px;
@@ -667,32 +826,12 @@ void InspectFrame(void *pbi, void *data) {
         }
 
         if (!orig_yuv.empty()) {
-          pixels->mutable_original()->set_width(sb_plane_width_px);
-          pixels->mutable_original()->set_height(sb_plane_height_px);
-          pixels->mutable_original()->set_bit_depth(frame_data.bit_depth);
-          for (int px_y = 0; px_y < sb_plane_height_px; px_y++) {
-            for (int px_x = 0; px_x < sb_plane_width_px; px_x++) {
-              int plane_width = (plane == 0) ? luma_width : chroma_width;
-              int plane_height = (plane == 0) ? luma_height : chroma_height;
-              int plane_offset_bytes = 0;
-              if (plane >= 1) plane_offset_bytes += luma_size_bytes;
-              if (plane == 2) plane_offset_bytes += chroma_size_bytes;
-              int stride_bytes = plane_width * bytes_per_sample;
-              int pixel_y = sb_row * sb_plane_height_px + px_y;
-              int pixel_x = sb_col * sb_plane_width_px + px_x;
-              uint16_t pixel = 0;
-              if (pixel_x < plane_width && pixel_y < plane_height) {
-                int pixel_offset_bytes =
-                    pixel_y * stride_bytes + pixel_x * bytes_per_sample;
-                int index = plane_offset_bytes + pixel_offset_bytes;
-                pixel = (uint8_t)orig_yuv[index];
-                if (bytes_per_sample > 1) {
-                  pixel |= (uint8_t)orig_yuv[index + 1] << 8;
-                }
-              }
-              pixels->mutable_original()->add_pixels(pixel);
-            }
-          }
+          auto original = pixels->mutable_original();
+          original->set_width(sb_plane_width_px);
+          original->set_height(sb_plane_height_px);
+          original->set_bit_depth(ctx->orig_yuv_bit_depth);
+          CopyFromYuvFile(original, orig_yuv, plane, frame_size_info,
+                          sb_plane_x_offset_px, sb_plane_y_offset_px);
         }
       }
       insp_sb_data *sb_data =
@@ -781,9 +920,7 @@ absl::Status OpenStream(ExtractProtoContext *ctx) {
 // Note: TIP can mean the number of decoded frames is significantly less than
 // the number of displayed frames.
 absl::Status ReadFrames(ExtractProtoContext *ctx) {
-  bool have_frame = false;
   const uint8_t *frame;
-  const uint8_t *end_frame;
   size_t frame_size = 0;
   int frame_count = 0;
   while (true) {
@@ -791,7 +928,6 @@ absl::Status ReadFrames(ExtractProtoContext *ctx) {
       return absl::OkStatus();
     }
     frame = aom_video_reader_get_frame(ctx->reader, &frame_size);
-    end_frame = frame + frame_size;
     // TODO(comc): Check handling of non-display frames; user_priv=nullptr
     // bypasses the custom decoder_inspect logic in av1_dx_iface.c.
     if (aom_codec_decode(&ctx->codec, frame, (unsigned int)frame_size,
@@ -853,7 +989,7 @@ int main(int argc, char **argv) {
     if (ext == ".y4m") {
       is_y4m_file = true;
     } else if (ext != ".yuv") {
-      LOG(FATAL)
+      LOG(QFATAL)
           << "Invalid YUV file extension (expected either .y4m or .yuv): "
           << orig_yuv_path;
     }
@@ -873,6 +1009,22 @@ int main(int argc, char **argv) {
     .limit = absl::GetFlag(FLAGS_limit),
   };
 
+  int orig_yuv_bit_depth = absl::GetFlag(FLAGS_orig_yuv_bit_depth);
+  std::optional<Y4mHeader> y4m_header = std::nullopt;
+  if (is_y4m_file && !absl::GetFlag(FLAGS_ignore_y4m_header)) {
+    auto y4m_reader_status = ParseY4mHeader(&orig_yuv_file);
+    if (y4m_reader_status.ok()) {
+      y4m_header = y4m_reader_status.value();
+      if (orig_yuv_bit_depth != -1) {
+        LOG(WARNING) << absl::StrFormat(
+            "orig_yuv_bit_depth was manually specified, but overridden by the "
+            "y4m header.");
+      }
+      orig_yuv_bit_depth = y4m_header.value().bit_depth;
+    } else {
+      LOG(QFATAL) << y4m_reader_status.status();
+    }
+  }
   ExtractProtoContext ctx = {
     .frame_data = {},
     .codec = {},
@@ -880,9 +1032,11 @@ int main(int argc, char **argv) {
     .info = nullptr,
     .stream_params = &params,
     .orig_yuv_file = have_orig_yuv ? &orig_yuv_file : nullptr,
+    .orig_yuv_bit_depth = orig_yuv_bit_depth,
     .stream_path = stream_path,
     .decode_count = 0,
     .is_y4m_file = is_y4m_file,
+    .y4m_header = y4m_header,
     .output_config = output_config,
     .show_progress = absl::GetFlag(FLAGS_show_progress),
     .display_index_offset = 0,
@@ -890,6 +1044,7 @@ int main(int argc, char **argv) {
   };
   CHECK_OK(OpenStream(&ctx));
 
+  // TODO(comc): These are sometimes 0 after the OpenStream call.
   params.set_width(ctx.info->frame_width);
   params.set_height(ctx.info->frame_height);
   for (const auto &enc_arg : absl::GetFlag(FLAGS_encoder_args)) {

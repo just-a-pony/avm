@@ -485,6 +485,7 @@ if(CONFIG_AV1_DECODER AND ENABLE_EXAMPLES)
               absl::log_globals
               absl::log_initialize
               absl::status
+              absl::statusor
               absl::strings
               ${Protobuf_LIBRARIES})
 
