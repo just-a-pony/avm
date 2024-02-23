@@ -107,7 +107,7 @@ constexpr std::string_view kTextProtoExt = "textproto";
 
 struct OutputConfig {
   std::filesystem::path output_folder;
-  std::string_view output_prefix;
+  std::string output_prefix;
   bool output_as_text_proto;
   int limit;
 };
