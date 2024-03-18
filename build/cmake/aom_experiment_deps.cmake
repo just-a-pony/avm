@@ -144,4 +144,9 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_MVP_SIMPLIFY 0 !CONFIG_MVP_IMPROVEMENT)
   endif()
 
+  # CONFIG_TMVP_IMPROVE depends on CONFIG_MVP_IMPROVEMENT
+  if(NOT CONFIG_MVP_IMPROVEMENT AND CONFIG_TMVP_IMPROVE)
+    change_config_and_warn(CONFIG_TMVP_IMPROVE 0 !CONFIG_MVP_IMPROVEMENT)
+  endif()
+
 endmacro()

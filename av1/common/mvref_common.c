@@ -1696,7 +1696,6 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     return 0;
   }
 
-  const uint16_t weight_unit = 1;  // mi_size_wide[BLOCK_8X8];
 #if CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
   const int cur_frame_index = cm->cur_frame->display_order_hint;
 #else
@@ -1722,7 +1721,19 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   lower_mv_precision(&this_refmv.as_mv, fr_mv_precision);
 #endif  // !CONFIG_C071_SUBBLK_WARPMV
 
+#if CONFIG_TMVP_IMPROVE
+  uint16_t weight_unit = 1;  // mi_size_wide[BLOCK_8X8];
+#else
+  const uint16_t weight_unit = 1;  // mi_size_wide[BLOCK_8X8];
+#endif  // CONFIG_TMVP_IMPROVE
+
   if (rf[1] == NONE_FRAME) {
+#if CONFIG_TMVP_IMPROVE
+    if (abs(cur_offset_0) <= 2) {
+      weight_unit = 3;
+    }
+#endif  // CONFIG_TMVP_IMPROVE
+
 #if !CONFIG_C076_INTER_MOD_CTX
     if (blk_row == 0 && blk_col == 0) {
       if (abs(this_refmv.as_mv.row - gm_mv_candidates[0].as_mv.row) >= 16 ||
@@ -1763,6 +1774,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 #endif  // CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
     const int cur_offset_1 = get_relative_dist(&cm->seq_params.order_hint_info,
                                                cur_frame_index, frame1_index);
+
     int_mv comp_refmv;
     get_mv_projection(&comp_refmv.as_mv, prev_frame_mvs->mfmv0.as_mv,
                       cur_offset_1, prev_frame_mvs->ref_frame_offset);
@@ -2341,11 +2353,13 @@ static AOM_INLINE void setup_ref_mv_list(
 #if !CONFIG_C076_INTER_MOD_CTX
   const uint8_t nearest_match = (row_match_count > 0) + (col_match_count > 0);
 #endif  //! CONFIG_C076_INTER_MOD_CTX
+#if !CONFIG_MVP_IMPROVEMENT || !CONFIG_TMVP_IMPROVE
   const uint8_t nearest_refmv_count = *refmv_count;
 
   // TODO(yunqing): for comp_search, do it for all 3 cases.
   for (int idx = 0; idx < nearest_refmv_count; ++idx)
     ref_mv_weight[idx] += REF_CAT_LEVEL;
+#endif  // !CONFIG_MVP_IMPROVEMENT || !CONFIG_TMVP_IMPROVE
 
 #if CONFIG_IBC_SR_EXT
   if (cm->features.allow_ref_frame_mvs &&
@@ -2502,6 +2516,15 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // !CONFIG_MVP_IMPROVEMENT
 #endif  // CONFIG_MVP_SIMPLIFY
   }
+
+#if CONFIG_TMVP_IMPROVE
+  const uint8_t nearest_refmv_count = *refmv_count;
+
+  // TODO(yunqing): for comp_search, do it for all 3 cases.
+  for (int idx = 0; idx < nearest_refmv_count; ++idx) {
+    ref_mv_weight[idx] += REF_CAT_LEVEL;
+  }
+#endif  // CONFIG_TMVP_IMPROVE
 
 #if !CONFIG_MVP_SIMPLIFY
   uint8_t dummy_newmv_count = 0;
