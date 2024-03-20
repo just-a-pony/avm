@@ -1010,7 +1010,7 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
 #endif  //! CONFIG_DERIVED_MVD_SIGN || CONFIG_VQ_MVD_CODING
   int max_shell_idx = (2 * MV_MAX) >> start_lsb;
 
-#if CONFIG_DEBUG
+#ifndef NDEBUG
   const int num_mv_class = get_default_num_shell_class(precision);
 #endif
 
