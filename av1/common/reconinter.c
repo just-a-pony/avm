@@ -6583,6 +6583,7 @@ int is_pb_mv_precision_active(const AV1_COMMON *const cm,
          cm->features.use_pb_mv_precision &&
          have_newmv_in_inter_mode(mbmi->mode);
 }
+
 #if CONFIG_REFINEMV
 // Copy mv0 and mv1 to the sub-blocks
 // submi is the top-left corner of the sub-block need to fill
