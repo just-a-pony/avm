@@ -84,7 +84,7 @@ set_aom_config_var(CONFIG_SHARED 0 "Build shared libs.")
 set_aom_config_var(CONFIG_WEBM_IO 1 "Enables WebM support.")
 
 # Debugging flags.
-set_aom_config_var(CONFIG_DEBUG 0 "Debug build flag.")
+set_aom_config_var(CONFIG_DEBUG 0 "Enable debug-only code.")
 set_aom_config_var(CONFIG_MISMATCH_DEBUG 0 "Mismatch debugging flag.")
 set_aom_config_var(CONFIG_EXCLUDE_SIMD_MISMATCH 1
                    "Exclude mismatch in SIMD functions for testing/debugging.")
