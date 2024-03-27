@@ -718,11 +718,11 @@ static AOM_INLINE void write_motion_mode(
 
   if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
     aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
-#if CONFIG_D149_CTX_MODELING_OPT
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
                      xd->tile_ctx->warped_causal_cdf,
 #else
                      xd->tile_ctx->warped_causal_cdf[bsize],
-#endif  // CONFIG_D149_CTX_MODELING_OPT
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
                      2);
 
     if (motion_mode == WARPED_CAUSAL) {

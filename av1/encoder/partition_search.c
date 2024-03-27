@@ -1643,7 +1643,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 
       if (continue_motion_mode_signaling &&
           (allowed_motion_modes & (1 << WARPED_CAUSAL))) {
-#if CONFIG_D149_CTX_MODELING_OPT
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
 #if CONFIG_ENTROPY_STATS
         counts->warped_causal[motion_mode == WARPED_CAUSAL]++;
 #endif
@@ -1654,7 +1654,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif
         update_cdf(fc->warped_causal_cdf[bsize], motion_mode == WARPED_CAUSAL,
                    2);
-#endif  // CONFIG_D149_CTX_MODELING_OPT
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
         if (motion_mode == WARPED_CAUSAL) {
           continue_motion_mode_signaling = false;
         }
