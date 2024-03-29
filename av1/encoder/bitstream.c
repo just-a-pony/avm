@@ -3452,12 +3452,7 @@ static AOM_INLINE void write_modes_sb(
       get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
   for (int plane = plane_start; plane < plane_end; ++plane) {
     int rcol0, rcol1, rrow0, rrow1;
-#if CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
-    if ((cm->rst_info[plane].frame_restoration_type != RESTORE_NONE ||
-         cm->rst_info[plane].frame_cross_restoration_type != RESTORE_NONE) &&
-#else
     if (cm->rst_info[plane].frame_restoration_type != RESTORE_NONE &&
-#endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
         av1_loop_restoration_corners_in_sb(cm, plane, mi_row, mi_col, bsize,
                                            &rcol0, &rcol1, &rrow0, &rrow1)) {
       const int rstride = cm->rst_info[plane].horz_units_per_tile;
@@ -3803,13 +3798,7 @@ static AOM_INLINE void encode_restoration_mode(
 #endif  // CONFIG_LR_IMPROVEMENTS
   for (int p = 0; p < num_planes; ++p) {
     RestorationInfo *rsi = &cm->rst_info[p];
-#if CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
-    if (rsi->frame_restoration_type != RESTORE_NONE ||
-        rsi->frame_cross_restoration_type != RESTORE_NONE) {
-      if (p == 0) assert(rsi->frame_cross_restoration_type == RESTORE_NONE);
-#else
     if (rsi->frame_restoration_type != RESTORE_NONE) {
-#endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
 #if CONFIG_LR_IMPROVEMENTS
       luma_none &= p > 0;
 #else
@@ -3877,12 +3866,6 @@ static AOM_INLINE void encode_restoration_mode(
       default: assert(0);
     }
 #endif  // CONFIG_LR_IMPROVEMENTS
-
-#if CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
-    if (p > 0) {
-      aom_wb_write_bit(wb, rsi->frame_cross_restoration_type != RESTORE_NONE);
-    }
-#endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
   }
 #if CONFIG_LR_IMPROVEMENTS
   int size = cm->rst_info[0].max_restoration_unit_size;
@@ -4116,13 +4099,9 @@ static int check_and_write_merge_info(
 static AOM_INLINE void write_wienerns_filter(
     MACROBLOCKD *xd, int plane, const WienerNonsepInfo *wienerns_info,
     WienerNonsepInfoBank *bank, aom_writer *wb) {
+  const int is_uv = plane > 0;
   const WienernsFilterParameters *nsfilter_params =
-#if CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
-      get_wienerns_parameters(xd->current_base_qindex, plane != AOM_PLANE_Y,
-                              wienerns_info->is_cross_filter);
-#else
       get_wienerns_parameters(xd->current_base_qindex, plane != AOM_PLANE_Y);
-#endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
   int skip_filter_write_for_class[WIENERNS_MAX_CLASSES] = { 0 };
   int ref_for_class[WIENERNS_MAX_CLASSES] = { 0 };
 #if CONFIG_LR_MERGE_COEFFS
@@ -4135,11 +4114,8 @@ static AOM_INLINE void write_wienerns_filter(
 #endif  // CONFIG_LR_MERGE_COEFFS
   const int num_classes = wienerns_info->num_classes;
   assert(num_classes <= WIENERNS_MAX_CLASSES);
-  const int beg_feat = 0;
-  const int end_feat = nsfilter_params->ncoeffs;
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;
 
-  int reduce_step[WIENERNS_REDUCE_STEPS];
   for (int c_id = 0; c_id < num_classes; ++c_id) {
     if (skip_filter_write_for_class[c_id]) continue;
     const int ref = ref_for_class[c_id];
@@ -4149,61 +4125,34 @@ static AOM_INLINE void write_wienerns_filter(
         const_nsfilter_taps(wienerns_info, c_id);
     const int16_t *ref_wienerns_info_nsfilter =
         const_nsfilter_taps(ref_wienerns_info, c_id);
-    memset(reduce_step, 0, sizeof(reduce_step));
-    if (end_feat - beg_feat > 1 && wienerns_info_nsfilter[end_feat - 1] == 0) {
-      reduce_step[WIENERNS_REDUCE_STEPS - 1] = 1;
-      if (end_feat - beg_feat > 2 &&
-          wienerns_info_nsfilter[end_feat - 2] == 0) {
-        reduce_step[WIENERNS_REDUCE_STEPS - 2] = 1;
-        if (end_feat - beg_feat > 3 &&
-            wienerns_info_nsfilter[end_feat - 3] == 0) {
-          reduce_step[WIENERNS_REDUCE_STEPS - 3] = 1;
-          if (end_feat - beg_feat > 4 &&
-              wienerns_info_nsfilter[end_feat - 4] == 0) {
-            reduce_step[WIENERNS_REDUCE_STEPS - 4] = 1;
-            if (end_feat - beg_feat > 5 &&
-                wienerns_info_nsfilter[end_feat - 5] == 0) {
-              reduce_step[WIENERNS_REDUCE_STEPS - 5] = 1;
-            }
-          }
+
+    const int beg_feat = 0;
+    int end_feat = nsfilter_params->ncoeffs;
+    if (end_feat > 6) {
+      // Decide whether to signal a short (0) or long (1) filter
+      int filter_length_bit = 0;
+      for (int i = 6; i < end_feat; i++) {
+        if (wienerns_info_nsfilter[i] != 0) {
+          filter_length_bit = 1;
         }
       }
+      aom_write_symbol(wb, filter_length_bit,
+                       xd->tile_ctx->wienerns_length_cdf[is_uv], 2);
+      end_feat = filter_length_bit ? nsfilter_params->ncoeffs : 6;
     }
-    // Whether the number of taps is odd or even. For luma
-    // the #taps can be either odd or even. If odd, the last
-    // tap corresponds to dc offset. For chroma, the #taps is
-    // assumed to be always even.
-    // if #taps is odd, the exit points for signaling are:
-    // #total_taps - 1, #total_taps - 3, #total_taps - 5.
-    // If #taps is even, the exit points for signaling are:
-    // #total_taps - 2, #total_taps - 4, #total_taps - 6.
-    const int rodd = plane ? 0 : (end_feat & 1);
+    assert((end_feat & 1) == 0);
+
+    int uv_sym = 0;
+    if (is_uv && end_feat > 6) {
+      uv_sym = 1;
+      for (int i = 6; i < end_feat; i += 2) {
+        if (wienerns_info_nsfilter[i + 1] != wienerns_info_nsfilter[i])
+          uv_sym = 0;
+      }
+      aom_write_symbol(wb, uv_sym, xd->tile_ctx->wienerns_uv_sym_cdf, 2);
+    }
+
     for (int i = beg_feat; i < end_feat; ++i) {
-      if (rodd && i == end_feat - 5 && i != beg_feat) {
-        aom_write_symbol(wb, reduce_step[0],
-                         xd->tile_ctx->wienerns_reduce_cdf[0], 2);
-        if (reduce_step[0]) break;
-      }
-      if (!rodd && i == end_feat - 4 && i != beg_feat) {
-        aom_write_symbol(wb, reduce_step[1],
-                         xd->tile_ctx->wienerns_reduce_cdf[1], 2);
-        if (reduce_step[1]) break;
-      }
-      if (rodd && i == end_feat - 3 && i != beg_feat) {
-        aom_write_symbol(wb, reduce_step[2],
-                         xd->tile_ctx->wienerns_reduce_cdf[2], 2);
-        if (reduce_step[2]) break;
-      }
-      if (!rodd && i == end_feat - 2 && i != beg_feat) {
-        aom_write_symbol(wb, reduce_step[3],
-                         xd->tile_ctx->wienerns_reduce_cdf[3], 2);
-        if (reduce_step[3]) break;
-      }
-      if (rodd && i == end_feat - 1 && i != beg_feat) {
-        aom_write_symbol(wb, reduce_step[4],
-                         xd->tile_ctx->wienerns_reduce_cdf[4], 2);
-        if (reduce_step[4]) break;
-      }
 #if ENABLE_LR_4PART_CODE
       aom_write_4part_wref(
           wb,
@@ -4223,6 +4172,11 @@ static AOM_INLINE void write_wienerns_filter(
           wienerns_info_nsfilter[i] -
               wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID]);
 #endif  // ENABLE_LR_4PART_CODE
+      if (uv_sym && i >= 6) {
+        // Don't code symmetrical taps
+        assert(wienerns_info_nsfilter[i + 1] == wienerns_info_nsfilter[i]);
+        i += 1;
+      }
     }
     av1_add_to_wienerns_bank(bank, wienerns_info, c_id);
   }
@@ -4235,25 +4189,13 @@ static AOM_INLINE void loop_restoration_write_sb_coeffs(
     aom_writer *const w, int plane, FRAME_COUNTS *counts) {
   const RestorationInfo *rsi = cm->rst_info + plane;
   RestorationType frame_rtype = rsi->frame_restoration_type;
-#if CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
-  RestorationType frame_cross_rtype = rsi->frame_cross_restoration_type;
-  RestorationType unit_cross_rtype = rui->cross_restoration_type;
-  assert(frame_rtype != RESTORE_NONE || frame_cross_rtype != RESTORE_NONE);
-#else
   assert(frame_rtype != RESTORE_NONE);
-#endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
 
   (void)counts;
   assert(!cm->features.all_lossless);
 
   const int wiener_win = (plane > 0) ? WIENER_WIN_CHROMA : WIENER_WIN;
   RestorationType unit_rtype = rui->restoration_type;
-#if CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
-  WienerNonsepInfo *info = (WienerNonsepInfo *)&rui->wienerns_info;
-  info->is_cross_filter = 0;
-  info = (WienerNonsepInfo *)&rui->wienerns_cross_info;
-  info->is_cross_filter = 1;
-#endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
 #if CONFIG_LR_IMPROVEMENTS
   assert(((cm->features.lr_tools_disable_mask[plane] >> rui->restoration_type) &
           1) == 0);
@@ -4339,19 +4281,6 @@ static AOM_INLINE void loop_restoration_write_sb_coeffs(
     }
 #endif  // CONFIG_LR_IMPROVEMENTS
   }
-#if CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
-  if (frame_cross_rtype == RESTORE_WIENER_NONSEP) {
-    aom_write_symbol(w, unit_cross_rtype != RESTORE_NONE,
-                     xd->tile_ctx->wienerns_restore_cdf, 2);
-#if CONFIG_ENTROPY_STATS
-    ++counts->wienerns_restore[unit_cross_rtype != RESTORE_NONE];
-#endif  // CONFIG_ENTROPY_STATS
-    if (unit_cross_rtype != RESTORE_NONE) {
-      write_wienerns_filter(xd, plane, &rui->wienerns_cross_info,
-                            &xd->wienerns_cross_info[plane], w);
-    }
-  }
-#endif  // CONFIG_HIGH_PASS_CROSS_WIENER_FILTER
 }
 
 static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,

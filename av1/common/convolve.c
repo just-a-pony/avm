@@ -893,7 +893,7 @@ void av1_convolve_nonsep_highbd(const uint16_t *dgd, int width, int height,
         const int pos = nsfilter->config[k][NONSEP_BUF_POS];
         const int r = nsfilter->config[k][NONSEP_ROW_ID];
         const int c = nsfilter->config[k][NONSEP_COL_ID];
-        if (r == 0 && c == 0) {
+        if (nsfilter->subtract_center && r == 0 && c == 0) {
           tmp += filter[pos];
           continue;
         }
@@ -903,9 +903,15 @@ void av1_convolve_nonsep_highbd(const uint16_t *dgd, int width, int height,
         const int jc = nsfilter->strict_bounds
                            ? AOMMAX(AOMMIN(j + c, width - 1), 0)
                            : j + c;
-        int16_t diff = clip_base(
-            (int16_t)dgd[(ir)*stride + (jc)] - (int16_t)dgd[dgd_id], bit_depth);
-        tmp += filter[pos] * diff;
+        int16_t sample;
+        if (nsfilter->subtract_center) {
+          sample =
+              clip_base((int16_t)dgd[(ir)*stride + (jc)] - (int16_t)dgd[dgd_id],
+                        bit_depth);
+        } else {
+          sample = (int16_t)dgd[(ir)*stride + (jc)];
+        }
+        tmp += filter[pos] * sample;
       }
       tmp = ROUND_POWER_OF_TWO_SIGNED(tmp, nsfilter->prec_bits);
       dst[dst_id] = (uint16_t)clip_pixel_highbd(tmp, bit_depth);
@@ -1210,7 +1216,9 @@ void av1_convolve_symmetric_dual_highbd_c(
     int block_col_end) {
   assert(!filter_config->subtract_center);
   const int num_sym_taps = filter_config->num_pixels / 2;
-  const int num_sym_taps_dual = filter_config->num_pixels2 / 2;
+  // Remove singleton tap from num_taps_dual if present, as this is handled
+  // separately to the main taps
+  const int num_taps_dual = filter_config->num_pixels2 & ~1;
   int32_t singleton_tap = 1 << filter_config->prec_bits;
   if (filter_config->num_pixels % 2) {
     // Center-tap is unconstrained.
@@ -1234,12 +1242,13 @@ void av1_convolve_symmetric_dual_highbd_c(
     const int diff = r * dgd_stride + c;
     pixel_offset_diffs[k] = diff;
   }
-  assert(num_sym_taps_dual <= 24);
+  // The cross-plane (dual) channel is not necessarily symmetric.
+  assert(num_taps_dual <= 24);
   int16_t compute_buffer_dual[24];
   int pixel_offset_diffs_dual[24];
-  for (int k = 0; k < num_sym_taps_dual; ++k) {
-    const int r = filter_config->config2[2 * k][NONSEP_ROW_ID];
-    const int c = filter_config->config2[2 * k][NONSEP_COL_ID];
+  for (int k = 0; k < num_taps_dual; ++k) {
+    const int r = filter_config->config2[k][NONSEP_ROW_ID];
+    const int c = filter_config->config2[k][NONSEP_COL_ID];
     const int diff = r * dgd_dual_stride + c;
     pixel_offset_diffs_dual[k] = diff;
   }
@@ -1273,16 +1282,11 @@ void av1_convolve_symmetric_dual_highbd_c(
         const int16_t tmp_sum = dgd[dgd_id + diff];
         compute_buffer[k] += tmp_sum;  // 16-bit arithmetic.
       }
-      // Two loops for a potential data cache miss.
-      for (int k = 0; k < num_sym_taps_dual; ++k) {
-        const int diff = pixel_offset_diffs_dual[k];
-        const int16_t tmp_sum = dgd_dual[dgd_dual_id - diff];
-        compute_buffer_dual[k] = tmp_sum;  // 16-bit
-      }
-      for (int k = 0; k < num_sym_taps_dual; ++k) {
+      // Cross-plane part
+      for (int k = 0; k < num_taps_dual; ++k) {
         const int diff = pixel_offset_diffs_dual[k];
         const int16_t tmp_sum = dgd_dual[dgd_dual_id + diff];
-        compute_buffer_dual[k] += tmp_sum;  // 16-bit arithmetic.
+        compute_buffer_dual[k] = tmp_sum;  // 16-bit arithmetic.
       }
 
       // Handle singleton tap.
@@ -1293,8 +1297,8 @@ void av1_convolve_symmetric_dual_highbd_c(
       }
 
       tmp += singleton_tap_dual * dgd_dual[dgd_dual_id];
-      for (int k = 0; k < num_sym_taps_dual; ++k) {
-        const int pos = filter_config->config2[2 * k][NONSEP_BUF_POS];
+      for (int k = 0; k < num_taps_dual; ++k) {
+        const int pos = filter_config->config2[k][NONSEP_BUF_POS];
         tmp += (int32_t)filter[pos] *
                compute_buffer_dual[k];  // 32-bit arithmetic.
       }
@@ -1327,7 +1331,9 @@ void av1_convolve_symmetric_dual_subtract_center_highbd_c(
     int block_col_end) {
   assert(filter_config->subtract_center);
   const int num_sym_taps = filter_config->num_pixels / 2;
-  const int num_sym_taps_dual = filter_config->num_pixels2 / 2;
+  // Remove singleton tap from num_taps_dual if present, as this is handled
+  // separately to the main taps
+  const int num_taps_dual = filter_config->num_pixels2 & ~1;
   int32_t singleton_tap = 1 << filter_config->prec_bits;
   int32_t dc_offset = 0;
   if (filter_config->num_pixels % 2) {
@@ -1353,16 +1359,13 @@ void av1_convolve_symmetric_dual_subtract_center_highbd_c(
             clip_base(dgd[i * dgd_stride + j - diff] - dgd[dgd_id], bit_depth);
         tmp += filter[pos] * tmp_sum;
       }
-      for (int k = 0; k < num_sym_taps_dual; ++k) {
-        const int pos = filter_config->config2[2 * k][NONSEP_BUF_POS];
-        const int r = filter_config->config2[2 * k][NONSEP_ROW_ID];
-        const int c = filter_config->config2[2 * k][NONSEP_COL_ID];
+      for (int k = 0; k < num_taps_dual; ++k) {
+        const int pos = filter_config->config2[k][NONSEP_BUF_POS];
+        const int r = filter_config->config2[k][NONSEP_ROW_ID];
+        const int c = filter_config->config2[k][NONSEP_COL_ID];
         const int diff = r * dgd_dual_stride + c;
-        int16_t tmp_sum = clip_base(
+        const int16_t tmp_sum = clip_base(
             dgd_dual[i * dgd_dual_stride + j + diff] - dgd_dual[dgd_dual_id],
-            bit_depth);
-        tmp_sum += clip_base(
-            dgd_dual[i * dgd_dual_stride + j - diff] - dgd_dual[dgd_dual_id],
             bit_depth);
 
         tmp += filter[pos] * tmp_sum;
@@ -1392,8 +1395,9 @@ void av1_convolve_nonsep_dual_highbd(const uint16_t *dgd, int width, int height,
                                      int dst_stride, int bit_depth) {
 #if USE_CONV_SYM_VERSIONS
   assert(nsfilter->strict_bounds == false);
+  assert(!nsfilter->subtract_center);
   if (nsfilter->subtract_center)
-    av1_convolve_symmetric_dual_subtract_center_highbd(
+    av1_convolve_symmetric_dual_subtract_center_highbd_c(
         dgd, stride, dgd2, stride2, nsfilter, filter, dst, dst_stride,
         bit_depth, 0, height, 0, width);
   else
@@ -1411,7 +1415,7 @@ void av1_convolve_nonsep_dual_highbd(const uint16_t *dgd, int width, int height,
         const int pos = nsfilter->config[k][NONSEP_BUF_POS];
         const int r = nsfilter->config[k][NONSEP_ROW_ID];
         const int c = nsfilter->config[k][NONSEP_COL_ID];
-        if (r == 0 && c == 0) {
+        if (nsfilter->subtract_center && r == 0 && c == 0) {
           tmp += filter[pos];
           continue;
         }
@@ -1421,9 +1425,15 @@ void av1_convolve_nonsep_dual_highbd(const uint16_t *dgd, int width, int height,
         const int jc = nsfilter->strict_bounds
                            ? AOMMAX(AOMMIN(j + c, width - 1), 0)
                            : j + c;
-        int16_t diff = clip_base(
-            (int16_t)dgd[(ir)*stride + (jc)] - (int16_t)dgd[dgd_id], bit_depth);
-        tmp += filter[pos] * diff;
+        int16_t sample;
+        if (nsfilter->subtract_center) {
+          sample =
+              clip_base((int16_t)dgd[(ir)*stride + (jc)] - (int16_t)dgd[dgd_id],
+                        bit_depth);
+        } else {
+          sample = (int16_t)dgd[(ir)*stride + (jc)];
+        }
+        tmp += filter[pos] * sample;
       }
       for (int k = 0; k < nsfilter->num_pixels2; ++k) {
         const int pos = nsfilter->config2[k][NONSEP_BUF_POS];
@@ -1435,10 +1445,15 @@ void av1_convolve_nonsep_dual_highbd(const uint16_t *dgd, int width, int height,
         const int jc = nsfilter->strict_bounds
                            ? AOMMAX(AOMMIN(j + c, width - 1), 0)
                            : j + c;
-        int16_t diff = clip_base(
-            (int16_t)dgd2[(ir)*stride2 + (jc)] - (int16_t)dgd2[dgd2_id],
-            bit_depth);
-        tmp += filter[pos] * diff;
+        int16_t sample;
+        if (nsfilter->subtract_center) {
+          sample = clip_base(
+              (int16_t)dgd2[(ir)*stride2 + (jc)] - (int16_t)dgd2[dgd2_id],
+              bit_depth);
+        } else {
+          sample = (int16_t)dgd2[(ir)*stride2 + (jc)];
+        }
+        tmp += filter[pos] * sample;
       }
       tmp = ROUND_POWER_OF_TWO_SIGNED(tmp, nsfilter->prec_bits);
       dst[dst_id] = (uint16_t)clip_pixel_highbd(tmp, bit_depth);
