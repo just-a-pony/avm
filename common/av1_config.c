@@ -270,6 +270,9 @@ int parse_sequence_header_beyond_av1(struct aom_read_bit_buffer *reader,
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_ccso);
 #endif
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_pef);
+#if CONFIG_LF_SUB_PU
+  AV1C_READ_BIT_OR_RETURN_ERROR(enable_lf_sub_pu);
+#endif  // CONFIG_LF_SUB_PU
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_orip);
 #if CONFIG_IDIF
   AV1C_READ_BIT_OR_RETURN_ERROR(enable_idif);

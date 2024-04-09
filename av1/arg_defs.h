@@ -141,6 +141,9 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t enable_ccso;
 #endif
   arg_def_t enable_pef;
+#if CONFIG_LF_SUB_PU
+  arg_def_t enable_lf_sub_pu;
+#endif  // CONFIG_LF_SUB_PU
   arg_def_t disable_ml_partition_speed_features;
 #if CONFIG_EXT_RECUR_PARTITIONS
   arg_def_t erp_pruning_level;

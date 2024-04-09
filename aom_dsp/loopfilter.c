@@ -225,9 +225,16 @@ static INLINE int filt_choice_highbd(uint16_t *s, int pitch, int max_filt,
 
 void aom_highbd_lpf_horizontal_generic_c(uint16_t *s, int pitch, int filt_width,
                                          const uint16_t *q_thresh,
-                                         const uint16_t *side_thresh, int bd) {
+                                         const uint16_t *side_thresh, int bd
+#if CONFIG_LF_SUB_PU
+                                         ,
+                                         const int count
+#endif  // CONFIG_LF_SUB_PU
+) {
   int i;
+#if !CONFIG_LF_SUB_PU
   int count = 4;
+#endif  // !CONFIG_LF_SUB_PU
 
 #if EDGE_DECISION
   const int filter0 =
@@ -255,9 +262,16 @@ void aom_highbd_lpf_horizontal_generic_c(uint16_t *s, int pitch, int filt_width,
 
 void aom_highbd_lpf_vertical_generic_c(uint16_t *s, int pitch, int filt_width,
                                        const uint16_t *q_thresh,
-                                       const uint16_t *side_thresh, int bd) {
+                                       const uint16_t *side_thresh, int bd
+#if CONFIG_LF_SUB_PU
+                                       ,
+                                       const int count
+#endif  // CONFIG_LF_SUB_PU
+) {
   int i;
+#if !CONFIG_LF_SUB_PU
   int count = 4;
+#endif  // CONFIG_LF_SUB_PU
 
 #if EDGE_DECISION
   const int filter0 =

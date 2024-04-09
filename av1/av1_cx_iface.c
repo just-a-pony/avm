@@ -78,6 +78,9 @@ struct av1_extracfg {
   unsigned int enable_ccso;
 #endif
   unsigned int enable_pef;
+#if CONFIG_LF_SUB_PU
+  unsigned int enable_lf_sub_pu;
+#endif  // CONFIG_LF_SUB_PU
   unsigned int force_video_mode;
   unsigned int enable_obmc;
   unsigned int enable_trellis_quant;
@@ -413,7 +416,12 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_CCSO
   1,  // enable_ccso
 #endif
-  1,                            // enable_pef
+#if CONFIG_LF_SUB_PU
+  0,  // enable_pef
+  1,  // enable_lf_sub_pu
+#else
+  1,                        // enable_pef
+#endif                          // CONFIG_LF_SUB_PU
   0,                            // force_video_mode
   0,                            // enable_obmc
   3,                            // enable_trellis_quant
@@ -956,6 +964,9 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_ccso = extra_cfg->enable_ccso;
 #endif
   cfg->enable_pef = extra_cfg->enable_pef;
+#if CONFIG_LF_SUB_PU
+  cfg->enable_lf_sub_pu = extra_cfg->enable_lf_sub_pu;
+#endif  // CONFIG_LF_SUB_PU
   cfg->superblock_size =
       (extra_cfg->superblock_size == AOM_SUPERBLOCK_SIZE_64X64)     ? 64
       : (extra_cfg->superblock_size == AOM_SUPERBLOCK_SIZE_128X128) ? 128
@@ -1079,6 +1090,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_ccso = cfg->enable_ccso;
 #endif
   extra_cfg->enable_pef = cfg->enable_pef;
+#if CONFIG_LF_SUB_PU
+  extra_cfg->enable_lf_sub_pu = cfg->enable_lf_sub_pu;
+#endif  // CONFIG_LF_SUB_PU
   extra_cfg->superblock_size =
       (cfg->superblock_size == 64)    ? AOM_SUPERBLOCK_SIZE_64X64
       : (cfg->superblock_size == 128) ? AOM_SUPERBLOCK_SIZE_128X128
@@ -1397,6 +1411,17 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
       tool_cfg->enable_pef = 0;
     }
   }
+#if CONFIG_LF_SUB_PU
+  tool_cfg->enable_lf_sub_pu = extra_cfg->enable_lf_sub_pu;
+  if (tool_cfg->enable_lf_sub_pu) {
+    if (cfg->g_lag_in_frames == 0) {
+      tool_cfg->enable_lf_sub_pu = 0;
+    }
+    if (cfg->kf_max_dist == 0) {
+      tool_cfg->enable_lf_sub_pu = 0;
+    }
+  }
+#endif  // CONFIG_LF_SUB_PU
   tool_cfg->enable_adaptive_mvd = extra_cfg->enable_adaptive_mvd;
   tool_cfg->enable_flex_mvres = extra_cfg->enable_flex_mvres;
 
@@ -3758,6 +3783,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_pef, argv,
                               err_string)) {
     extra_cfg.enable_pef = arg_parse_int_helper(&arg, err_string);
+#if CONFIG_LF_SUB_PU
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_lf_sub_pu,
+                              argv, err_string)) {
+    extra_cfg.enable_lf_sub_pu = arg_parse_uint_helper(&arg, err_string);
+#endif  // CONFIG_LF_SUB_PU
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.force_video_mode,
                               argv, err_string)) {
     extra_cfg.force_video_mode = arg_parse_uint_helper(&arg, err_string);
@@ -4439,7 +4469,12 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_CCSO
         1,
 #endif
-        1, 1,   1,
+#if CONFIG_LF_SUB_PU
+        0, 1,
+#else
+        1,
+#endif  // CONFIG_LF_SUB_PU
+        1, 1,
 #if CONFIG_EXTENDED_WARP_PREDICTION
         1, 1,   1,
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION

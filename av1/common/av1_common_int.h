@@ -520,7 +520,10 @@ typedef struct SequenceHeader {
 #if CONFIG_CCSO
   uint8_t enable_ccso;  // To turn on/off CCSO
 #endif
-  uint8_t enable_pef;        // To turn on/off prediction enhancement filter
+  uint8_t enable_pef;  // To turn on/off prediction enhancement filter
+#if CONFIG_LF_SUB_PU
+  uint8_t enable_lf_sub_pu;  // To turn on/off sub-block deblocking
+#endif                       // CONFIG_LF_SUB_PU
   uint8_t enable_refmvbank;  // To turn on/off Ref MV Bank
 #if CONFIG_LR_IMPROVEMENTS
   uint8_t lr_tools_disable_mask[2];  // mask of lr tool(s) to disable.
@@ -737,6 +740,12 @@ typedef struct {
    * Enables/disables prediction enhancement filter
    */
   bool allow_pef;
+#if CONFIG_LF_SUB_PU
+  /*!
+   * Enables/disables loop filtering on sub block
+   */
+  bool allow_lf_sub_pu;
+#endif  // CONFIG_LF_SUB_PU
   /*!
    * Enables/disables parity hiding.
    */

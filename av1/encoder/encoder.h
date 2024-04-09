@@ -847,6 +847,10 @@ typedef struct {
 #endif
   // Indicates if prediction enhancement filter should be enabled.
   bool enable_pef;
+#if CONFIG_LF_SUB_PU
+  bool enable_lf_sub_pu;
+  // Indicates if deblocking on sub block should be enabled.
+#endif  // CONFIG_LF_SUB_PU
   // Indicates if adaptive MVD resolution should be enabled.
   bool enable_adaptive_mvd;
 

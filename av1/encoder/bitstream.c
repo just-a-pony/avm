@@ -5243,8 +5243,17 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->enable_ccso);
 #endif
   aom_wb_write_bit(wb, seq_params->enable_pef);
+#if CONFIG_LF_SUB_PU
+  aom_wb_write_bit(wb, seq_params->enable_lf_sub_pu);
+#endif  // CONFIG_LF_SUB_PU
 #if CONFIG_TIP_IMPLICIT_QUANT
-  if (seq_params->enable_tip == 1 && seq_params->enable_pef) {
+  if (seq_params->enable_tip == 1 &&
+#if CONFIG_LF_SUB_PU
+      seq_params->enable_lf_sub_pu
+#else
+        seq_params->enable_pef
+#endif  // CONFIG_LF_SUB_PU
+  ) {
     aom_wb_write_bit(wb, seq_params->enable_tip_explicit_qp);
   }
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
@@ -5799,6 +5808,11 @@ static AOM_INLINE void write_uncompressed_header_obu(
           aom_wb_write_bit(wb, cm->pef_params.pef_delta - 1);
         }
       }
+#if CONFIG_LF_SUB_PU
+      if (cm->seq_params.enable_lf_sub_pu) {
+        aom_wb_write_bit(wb, features->allow_lf_sub_pu);
+      }
+#endif  // CONFIG_LF_SUB_PU
       if (cm->seq_params.enable_tip) {
         assert(IMPLIES(av1_superres_scaled(cm),
                        features->tip_frame_mode != TIP_FRAME_AS_OUTPUT));
@@ -5806,6 +5820,14 @@ static AOM_INLINE void write_uncompressed_header_obu(
         if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {
           aom_wb_write_bit(wb, features->allow_tip_hole_fill);
         }
+#if CONFIG_LF_SUB_PU
+        if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT &&
+            cm->seq_params.enable_lf_sub_pu && features->allow_lf_sub_pu) {
+          aom_wb_write_bit(wb, cm->lf.tip_filter_level);
+          if (cm->lf.tip_filter_level)
+            aom_wb_write_literal(wb, cm->lf.tip_delta_idx, 2);
+        }
+#endif  // CONFIG_LF_SUB_PU
 
 #if CONFIG_TIP_DIRECT_FRAME_MV
         if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {

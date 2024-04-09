@@ -473,6 +473,9 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_ccso,
 #endif
   &g_av1_codec_arg_defs.enable_pef,
+#if CONFIG_LF_SUB_PU
+  &g_av1_codec_arg_defs.enable_lf_sub_pu,
+#endif  // CONFIG_LF_SUB_PU
 #if CONFIG_IBC_SR_EXT
   &g_av1_codec_arg_defs.enable_intrabc_ext,
 #endif  // CONFIG_IBC_SR_EXT
@@ -688,7 +691,12 @@ static void init_config(cfg_options_t *config) {
 #if CONFIG_CCSO
   config->enable_ccso = 1;
 #endif
+#if CONFIG_LF_SUB_PU
+  config->enable_pef = 0;
+  config->enable_lf_sub_pu = 1;
+#else
   config->enable_pef = 1;
+#endif  // CONFIG_LF_SUB_PU
   config->enable_obmc = 0;
   config->enable_warped_motion = 1;
 #if CONFIG_EXTENDED_WARP_PREDICTION

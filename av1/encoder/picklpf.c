@@ -588,3 +588,73 @@ void av1_pick_filter_level(const YV12_BUFFER_CONFIG *sd, AV1_COMP *cpi,
 #endif  // DF_DUAL
   }
 }
+#if CONFIG_LF_SUB_PU
+// Try deblocking filter on TIP frame with a given filter strength
+static double try_filter_tip_frame(AV1_COMP *const cpi, int tip_delta) {
+  AV1_COMMON *const cm = &cpi->common;
+  const int num_planes = 1;
+  double filter_cost = 0;
+  int64_t filter_sse = 0;
+  cm->lf.tip_filter_level = 1;
+  cm->lf.tip_delta = tip_delta;
+
+  init_tip_lf_parameter(cm, 0, num_planes);
+  loop_filter_tip_frame(cm, 0, num_planes);
+
+  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+  for (int i = 0; i < num_planes; i++) {
+    int64_t cur_sse = aom_get_sse_plane(cpi->source, tip_frame_buf, i);
+    filter_sse += cur_sse;
+  }
+
+  filter_cost += RDCOST_DBL_WITH_NATIVE_BD_DIST(
+      cpi->td.mb.rdmult, 3, filter_sse, cm->seq_params.bit_depth);
+
+  // Re-instate the unfiltered frame
+  for (int i = 0; i < num_planes; i++) {
+    yv12_copy_plane(&cpi->last_frame_uf, &cm->tip_ref.tip_frame->buf, i);
+  }
+  return filter_cost;
+}
+
+// Search deblocking filter strength for TIP frame
+void search_tip_filter_level(AV1_COMP *cpi, struct AV1Common *cm) {
+  const int num_planes = 1;
+  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+  for (int i = 0; i < num_planes; i++) {
+    yv12_copy_plane(tip_frame_buf, &cpi->last_frame_uf, i);
+  }
+
+  // check unfiltered cost
+  int64_t unfilter_sse = 0;
+  for (int i = 0; i < num_planes; i++) {
+    int64_t cur_sse = aom_get_sse_plane(cpi->source, tip_frame_buf, i);
+    unfilter_sse += cur_sse;
+  }
+  double unfilter_cost = RDCOST_DBL_WITH_NATIVE_BD_DIST(
+      cpi->td.mb.rdmult, 1, unfilter_sse, cm->seq_params.bit_depth);
+
+  // check filtered cost
+  int best_delta_idx = 0;
+  double best_filter_cost = DBL_MAX;
+  const int tip_delta_idx_to_delta[4] = { -10, 0, 6, 12 };
+  for (int cur_idx = 0; cur_idx <= 3; ++cur_idx) {
+    double cur_cost =
+        try_filter_tip_frame(cpi, tip_delta_idx_to_delta[cur_idx]);
+    if (cur_cost < best_filter_cost) {
+      best_delta_idx = cur_idx;
+      best_filter_cost = cur_cost;
+    }
+  }
+
+  if (best_filter_cost < unfilter_cost) {
+    cm->lf.tip_filter_level = 1;
+    cm->lf.tip_delta_idx = best_delta_idx;
+    cm->lf.tip_delta = tip_delta_idx_to_delta[best_delta_idx];
+  } else {
+    cm->lf.tip_filter_level = 0;
+    cm->lf.tip_delta_idx = 0;
+    cm->lf.tip_delta = 0;
+  }
+}
+#endif  // CONFIG_LF_SUB_PU

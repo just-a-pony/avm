@@ -450,6 +450,12 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_pef;
+#if CONFIG_LF_SUB_PU
+  /*!\brief enable loop filter on sub-block
+   *
+   */
+  unsigned int enable_lf_sub_pu;
+#endif  // CONFIG_LF_SUB_PU
   /*!\brief enable OBMC
    *
    */
