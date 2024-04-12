@@ -81,8 +81,7 @@ static INLINE int get_padded_idx_left(const int idx, const int bwl) {
  This function returns the base range coefficient coding context index
  for forward skip residual coding for a given coefficient index.
  It assumes padding from left and sums left and above level
- samples: levels[pos - 1] + levels[pos - stride] and adds an
- appropriate offset depending on row and column.
+ samples: levels[pos - 1] + levels[pos - stride].
 */
 static AOM_FORCE_INLINE int get_br_ctx_skip(const uint8_t *const levels,
                                             const int c, const int bwl) {
@@ -98,8 +97,12 @@ static AOM_FORCE_INLINE int get_br_ctx_skip(const uint8_t *const levels,
   mag += levels[pos - stride];
 #endif  // CONFIG_COEFF_HR_LR1
   mag = AOMMIN(mag, 6);
+#if CONFIG_IMPROVEIDTX_CTXS
+  return mag;
+#else
   if ((row < 2) && (col < (2 + TX_PAD_LEFT))) return mag;
   return mag + 7;
+#endif  // CONFIG_IMPROVEIDTX_CTXS
 }
 
 static INLINE int get_br_ctx_2d(const uint8_t *const levels,
@@ -343,7 +346,12 @@ static AOM_FORCE_INLINE int get_nz_mag_skip(const uint8_t *const levels,
                                             const int bwl) {
   int mag = clip_max3[levels[-1]];                      // { 0, -1 }
   mag += clip_max3[levels[-(1 << bwl) - TX_PAD_LEFT]];  // { -1, 0 }
+#if CONFIG_IMPROVEIDTX_CTXS
+  const int ctx = AOMMIN(mag, 6);
+  return ctx;
+#else
   return mag;
+#endif  // CONFIG_IMPROVEIDTX_CTXS
 }
 
 /*
@@ -355,11 +363,19 @@ static AOM_FORCE_INLINE int get_sign_skip(const int8_t *const signs,
                                           const uint8_t *const levels,
                                           const int bwl) {
   int signc = 0;
+#if CONFIG_IMPROVEIDTX_RDPH
+  if (levels[-1]) signc += signs[-1];  // { 0, -1 }
+  if (levels[-(1 << bwl) - TX_PAD_LEFT])
+    signc += signs[-(1 << bwl) - TX_PAD_LEFT];  // { -1, 0 }
+  if (levels[-(1 << bwl) - TX_PAD_LEFT - 1])
+    signc += signs[-(1 << bwl) - TX_PAD_LEFT - 1];  // { -1, -1 }
+#else
   if (levels[1]) signc += signs[1];  // { 0, +1 }
   if (levels[(1 << bwl) + TX_PAD_LEFT])
     signc += signs[(1 << bwl) + TX_PAD_LEFT];  // { +1, 0 }
   if (levels[(1 << bwl) + TX_PAD_LEFT + 1])
     signc += signs[(1 << bwl) + TX_PAD_LEFT + 1];  // { +1, +1 }
+#endif  // CONFIG_IMPROVEIDTX_RDPH
   if (signc > 2) return 5;
   if (signc < -2) return 6;
   if (signc > 0) return 1;
@@ -371,7 +387,11 @@ static AOM_FORCE_INLINE int get_sign_skip(const int8_t *const signs,
 static INLINE int get_sign_ctx_skip(const int8_t *const signs,
                                     const uint8_t *const levels,
                                     const int coeff_idx, const int bwl) {
+#if CONFIG_IMPROVEIDTX_RDPH
+  const int8_t *const signs_pt = signs + get_padded_idx_left(coeff_idx, bwl);
+#else
   const int8_t *const signs_pt = signs + get_padded_idx(coeff_idx, bwl);
+#endif  // CONFIG_IMPROVEIDTX_RDPH
   const uint8_t *const level_pt = levels + get_padded_idx_left(coeff_idx, bwl);
   int sign_ctx = get_sign_skip(signs_pt, level_pt, bwl);
   if (level_pt[0] > COEFF_BASE_RANGE && sign_ctx != 0) sign_ctx += 2;
@@ -669,10 +689,14 @@ static INLINE int get_upper_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
   mag = AOMMIN(levels[-1], 3);                          // { 0, -1 }
   mag += AOMMIN(levels[-(1 << bwl) - TX_PAD_LEFT], 3);  // { -1, 0 }
   const int ctx = AOMMIN(mag, 6);
+#if CONFIG_IMPROVEIDTX_CTXS
+  return ctx;
+#else
   const int row = (coeff_idx >> bwl);
   const int col = (coeff_idx - (row << bwl)) + TX_PAD_LEFT;
   if ((row < 2) && (col < (2 + TX_PAD_LEFT))) return ctx;
   return ctx + 7;
+#endif  // CONFIG_IMPROVEIDTX_CTXS
 }
 
 #if CONFIG_LCCHROMA
@@ -830,6 +854,22 @@ static AOM_FORCE_INLINE int get_lower_levels_ctx(const uint8_t *levels,
 #endif  // CONFIG_CHROMA_TX_COEFF_CODING
   );
 }
+
+#if CONFIG_IMPROVEIDTX_RDPH
+// This function determines the context index for 2D IDTX residual coding
+// used primarily by the trellis optimization for IDTX.
+static INLINE int get_upper_levels_ctx_general(int is_first, int scan_idx,
+                                               int bwl, int height,
+                                               const uint8_t *levels,
+                                               int coeff_idx) {
+  if (is_first) {
+    if (scan_idx <= (height << bwl) / 8) return 0;
+    if (scan_idx <= (height << bwl) / 4) return 1;
+    return 2;
+  }
+  return get_upper_levels_ctx_2d(levels, coeff_idx, bwl);
+}
+#endif  // CONFIG_IMPROVEIDTX_RDPH
 
 static INLINE int get_lower_levels_ctx_general(int is_last, int scan_idx,
                                                int bwl, int height,
