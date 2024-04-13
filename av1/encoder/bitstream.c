@@ -1495,7 +1495,7 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
     intra_dir =
         fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode];
   else
-    intra_dir = mbmi->mode;
+    intra_dir = get_intra_mode(mbmi, AOM_PLANE_Y);
   const FeatureFlags *const features = &cm->features;
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   if (get_ext_tx_types(tx_size, is_inter, features->reduced_tx_set_used) > 1 &&
@@ -1574,7 +1574,7 @@ static void write_sec_tx_set(FRAME_CONTEXT *ec_ctx, aom_writer *w,
   assert(stx_set_flag <= IST_SET_SIZE - 1);
   if (get_primary_tx_type(tx_type) == ADST_ADST) stx_set_flag -= IST_DIR_SIZE;
   assert(stx_set_flag < IST_DIR_SIZE);
-  uint8_t intra_mode = mbmi->mode;
+  uint8_t intra_mode = get_intra_mode(mbmi, PLANE_TYPE_Y);
   uint8_t stx_set_ctx = stx_transpose_mapping[intra_mode];
   assert(stx_set_ctx < IST_DIR_SIZE);
   aom_write_symbol(w, stx_set_flag, ec_ctx->stx_set_cdf[stx_set_ctx],

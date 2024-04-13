@@ -1293,7 +1293,7 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
           mbmi->filter_intra_mode_info.use_filter_intra
               ? fimode_to_intradir[mbmi->filter_intra_mode_info
                                        .filter_intra_mode]
-              : mbmi->mode;
+              : get_intra_mode(mbmi, PLANE_TYPE_Y);
       const int size_info = av1_size_class[tx_size];
       *tx_type = av1_tx_idx_to_type(
           aom_read_symbol(
@@ -1354,7 +1354,7 @@ void av1_read_cctx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 // This function reads a 'secondary tx set' from the bitstream
 static void read_secondary_tx_set(FRAME_CONTEXT *ec_ctx, aom_reader *r,
                                   MB_MODE_INFO *mbmi, TX_TYPE *tx_type) {
-  uint8_t intra_mode = mbmi->mode;
+  uint8_t intra_mode = get_intra_mode(mbmi, PLANE_TYPE_Y);
   uint8_t stx_set_ctx = stx_transpose_mapping[intra_mode];
   assert(stx_set_ctx < IST_DIR_SIZE);
   TX_TYPE stx_set_flag =

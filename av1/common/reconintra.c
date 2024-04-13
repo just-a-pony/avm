@@ -1526,6 +1526,10 @@ static void build_intra_predictors_high(
 
   int apply_sub_block_based_refinement_filter =
       seq_intra_pred_filter_flag && (mrl_index == 0);
+#if CONFIG_WAIP
+  xd->mi[0]->is_wide_angle[plane > 0] = 0;
+  xd->mi[0]->mapped_intra_mode[plane > 0] = DC_PRED;
+#endif  // CONFIG_WAIP
   if (is_dr_mode) {
     p_angle = mode_to_angle_map[mode] + angle_delta;
 #if CONFIG_IMPROVED_INTRA_DIR_PRED
@@ -1533,6 +1537,16 @@ static void build_intra_predictors_high(
     p_angle += mrl_index_to_delta[mrl_index];
     assert(p_angle > 0 && p_angle < 270);
 #endif  // CONFIG_IMPROVED_INTRA_DIR_PRED
+#if CONFIG_WAIP
+    if (!is_inter_block(xd->mi[0], xd->tree_type))
+      p_angle =
+          wide_angle_mapping(xd->mi[0], angle_delta, tx_size, mode, plane);
+    else {
+      MB_MODE_INFO *mbmi = xd->mi[0];
+      mbmi->is_wide_angle[plane > 0] = 0;
+      mbmi->mapped_intra_mode[plane > 0] = DC_PRED;
+    }
+#endif  // CONFIG_WAIP
     if (p_angle <= 90)
       need_above = 1, need_left = 0, need_above_left = 1;
     else if (p_angle < 180)

@@ -389,6 +389,13 @@ typedef struct CHROMA_REF_INFO {
 #define TXK_TYPE_BUF_LEN 64
 /*!\endcond */
 
+#if CONFIG_WAIP
+#define WAIP_WH_RATIO_2_THRES 61
+#define WAIP_WH_RATIO_4_THRES 73
+#define WAIP_WH_RATIO_8_THRES 82
+#define WAIP_WH_RATIO_16_THRES 86
+#endif  // CONFIG_WAIP
+
 /*! \brief Stores the prediction/txfm mode of the current coding block
  */
 typedef struct MB_MODE_INFO {
@@ -531,6 +538,12 @@ typedef struct MB_MODE_INFO {
   PALETTE_MODE_INFO palette_mode_info;
   /*! \brief Reference line index for multiple reference line selection. */
   uint8_t mrl_index;
+#if CONFIG_WAIP
+  /*! \brief Whether this luma/chroma mode is wide angle mode. */
+  uint8_t is_wide_angle[2];
+  /*! \brief The mapped luma/chroma prediction mode */
+  PREDICTION_MODE mapped_intra_mode[2];
+#endif  // CONFIG_WAIP
 #if CONFIG_AIMC
   /*! \brief mode index of y mode and y delta angle after re-ordering. */
   uint8_t y_mode_idx;
@@ -756,6 +769,24 @@ static INLINE int is_tip_ref_frame(MV_REFERENCE_FRAME ref_frame) {
 static INLINE int is_inter_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return is_intrabc_block(mbmi, tree_type) ||
          is_inter_ref_frame(mbmi->ref_frame[0]);
+}
+
+// Get the intra mode for luma or chroma plane depending on whether it needs to
+// be mapped.
+static INLINE int get_intra_mode(const MB_MODE_INFO *mbmi, int plane) {
+  if (plane == AOM_PLANE_Y)
+#if CONFIG_WAIP
+    return mbmi->is_wide_angle[0] ? mbmi->mapped_intra_mode[0] : mbmi->mode;
+#else
+    return mbmi->mode;
+#endif  // CONFIG_WAIP
+  else
+#if CONFIG_WAIP
+    return mbmi->is_wide_angle[1] ? get_uv_mode(mbmi->mapped_intra_mode[1])
+                                  : get_uv_mode(mbmi->uv_mode);
+#else
+    return get_uv_mode(mbmi->uv_mode);
+#endif  // CONFIG_WAIP
 }
 
 #if CONFIG_DERIVED_MVD_SIGN || CONFIG_VQ_MVD_CODING
@@ -2565,8 +2596,7 @@ static TX_TYPE intra_mode_to_tx_type(const MB_MODE_INFO *mbmi,
     DCT_ADST,   // SMOOTH_H_PRED
     ADST_ADST,  // PAETH_PRED
   };
-  const PREDICTION_MODE mode =
-      (plane_type == PLANE_TYPE_Y) ? mbmi->mode : get_uv_mode(mbmi->uv_mode);
+  const PREDICTION_MODE mode = get_intra_mode(mbmi, plane_type);
   assert(mode < INTRA_MODES);
   return _intra_mode_to_tx_type[mode];
 }

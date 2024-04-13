@@ -278,6 +278,49 @@ static INLINE int av1_get_dy(int angle) {
     return 1;
   }
 }
+
+#if CONFIG_WAIP
+// Check whether one angular intra prediction needs to be mapped to wide angles.
+// If it needs to be mapped, either add or subtract 180 degrees to make it wide
+// angles.
+static INLINE int wide_angle_mapping(MB_MODE_INFO *mbmi, int angle_delta,
+                                     TX_SIZE tx_size, PREDICTION_MODE mode,
+                                     const int plane) {
+  const int txwpx = tx_size_wide[tx_size];
+  const int txhpx = tx_size_high[tx_size];
+  int mrl_index = (plane == AOM_PLANE_Y ? mbmi->mrl_index : 0);
+  const int is_dr_mode = av1_is_directional_mode(mode);
+  mbmi->is_wide_angle[plane > 0] = 0;
+  mbmi->mapped_intra_mode[plane > 0] = DC_PRED;
+  int p_angle = 0;
+  if (is_dr_mode) {
+    p_angle = mode_to_angle_map[mode] + angle_delta;
+#if CONFIG_IMPROVED_INTRA_DIR_PRED
+    const int mrl_index_to_delta[4] = { 0, 1, -1, 0 };
+    p_angle += mrl_index_to_delta[mrl_index];
+    assert(p_angle > 0 && p_angle < 270);
+#endif  // CONFIG_IMPROVED_INTRA_DIR_PRED
+    if ((txhpx == 2 * txwpx && p_angle < WAIP_WH_RATIO_2_THRES) ||
+        (txhpx == 4 * txwpx && p_angle < WAIP_WH_RATIO_4_THRES) ||
+        (txhpx == 8 * txwpx && p_angle < WAIP_WH_RATIO_8_THRES) ||
+        (txhpx == 16 * txwpx && p_angle < WAIP_WH_RATIO_16_THRES)) {
+      p_angle = 180 + p_angle;
+      mbmi->is_wide_angle[plane > 0] = 1;
+      mbmi->mapped_intra_mode[plane > 0] = D203_PRED;
+    } else if ((txwpx == 2 * txhpx && p_angle > 270 - WAIP_WH_RATIO_2_THRES) ||
+               (txwpx == 4 * txhpx && p_angle > 270 - WAIP_WH_RATIO_4_THRES) ||
+               (txwpx == 8 * txhpx && p_angle > 270 - WAIP_WH_RATIO_8_THRES) ||
+               (txwpx == 16 * txhpx &&
+                p_angle > 270 - WAIP_WH_RATIO_16_THRES)) {
+      p_angle = p_angle - 180;
+      mbmi->is_wide_angle[plane > 0] = 1;
+      mbmi->mapped_intra_mode[plane > 0] = D45_PRED;
+    }
+  }
+  return p_angle;
+}
+#endif  // CONFIG_WAIP
+
 #if CONFIG_ENABLE_MHCCP
 // fetch neighboring luma samples for multi hypothesis cross component
 // prediction

@@ -2139,7 +2139,7 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
     intra_dir =
         fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode];
   else
-    intra_dir = mbmi->mode;
+    intra_dir = get_intra_mode(mbmi, AOM_PLANE_Y);
   const TxfmSearchParams *txfm_params = &x->txfm_search_params;
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   const int fast_tx_search = ftxs_mode & FTXS_DCT_AND_1D_DCT_ONLY;
@@ -2669,8 +2669,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                      !mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
                      !xd->lossless[mbmi->segment_id];
 
-    const PREDICTION_MODE intra_mode =
-        (plane == AOM_PLANE_Y) ? mbmi->mode : get_uv_mode(mbmi->uv_mode);
+    const PREDICTION_MODE intra_mode = get_intra_mode(mbmi, plane);
     const int filter = mbmi->filter_intra_mode_info.use_filter_intra;
     const int is_depth0 = tx_size_is_depth0(tx_size, plane_bsize);
 
