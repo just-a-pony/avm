@@ -12,48 +12,26 @@ __author__ = "maggie.sun@intel.com, ryanlei@meta.com"
 
 import os
 import sys
-import xlsxwriter
 import argparse
 
 from EncDecUpscale import Run_EncDec_Upscale, GetBsReconFileName
 from VideoScaler import GetDownScaledOutFile, DownScaling
 from CalculateQualityMetrics import CalculateQualityMetric, GatherQualityMetrics
-from Utils import GetShortContentName, CreateChart_Scatter,\
-     AddSeriesToChart_Scatter, InsertChartsToSheet, CreateNewSubfolder,\
-     SetupLogging, UpdateChart, AddSeriesToChart_Scatter_Rows,\
+from Utils import GetShortContentName, CreateNewSubfolder, SetupLogging, \
      Cleanfolder, CreateClipList, Clip, GatherPerfInfo, GetEncLogFile, \
      GetRDResultCsvFile, GatherPerframeStat, GatherInstrCycleInfo, \
      Interpolate_Bilinear, Interpolate_PCHIP, convex_hull, DeleteFile, md5
-from PostAnalysis_Summary import GenerateSumRDExcelFile,\
-     GenerateSumCvxHullExcelFile
-from ScalingTest import Run_Scaling_Test, SaveScalingResultsToExcel
+from ScalingTest import Run_Scaling_Test
 import Utils
-from Config import LogLevels, FrameNum, QPs, CvxH_WtCols,\
-     CvxH_WtRows, QualityList, LineColors, SummaryOutPath, WorkPath, \
-     Path_RDResults, DnScalingAlgos, UpScalingAlgos, ConvexHullColor, \
-     EncodeMethods, CodecNames, LoggerName, DnScaleRatio, TargetQtyMetrics, \
-     CvxHDataRows, CvxHDataStartRow, CvxHDataStartCol, CvxHDataNum, \
-     Int_ConvexHullColor, EnablePreInterpolation, AS_DOWNSCALE_ON_THE_FLY,\
+from Config import LogLevels, FrameNum, QPs, QualityList, WorkPath, \
+     Path_RDResults, DnScalingAlgos, UpScalingAlgos, \
+     EncodeMethods, CodecNames, LoggerName, DnScaleRatio, \
+     EnablePreInterpolation, AS_DOWNSCALE_ON_THE_FLY,\
      UsePerfUtil, ScaleMethods, EnableTimingInfo, InterpolatePieces, EnableMD5, \
      UsePCHIPInterpolation, HEVC_QPs
 
 ###############################################################################
 ##### Helper Functions ########################################################
-def CleanIntermediateFiles():
-    folders = [Path_DecodedYuv, Path_CfgFiles]
-    if not KeepUpscaledOutput:
-        folders += [Path_DecUpScaleYuv, Path_UpScaleYuv]
-
-    for folder in folders:
-        Cleanfolder(folder)
-
-def GetRDResultExcelFile(clip):
-    contentBaseName = GetShortContentName(clip.file_name, False)
-    filename = "RDResults_%s_%s_%s_%s.xlsx" % (contentBaseName, EncodeMethod,
-                                               CodecName, EncodePreset)
-    file = os.path.join(Path_RDResults, filename)
-    return file
-
 def setupWorkFolderStructure():
     global Path_Bitstreams, Path_DecodedYuv, Path_UpScaleYuv, Path_DnScaleYuv, \
     Path_QualityLog, Path_TestLog, Path_CfgFiles, Path_DecUpScaleYuv, Path_PerfLog, \
@@ -69,104 +47,6 @@ def setupWorkFolderStructure():
     Path_PerfLog = CreateNewSubfolder(WorkPath, "perfLogs")
     Path_EncLog = CreateNewSubfolder(WorkPath, "encLogs")
     Path_CmdLog = CreateNewSubfolder(WorkPath, "cmdLogs")
-
-def LookUpQPAndResInCvxHull(qtyvals, qtyhull, qtycvhQPs, qtycvhRes):
-    cvhqtys = [h[1] for h in qtyhull]
-    qtyQPs = []; qtyRes = []
-    for val in qtyvals:
-        closest_idx = min(range(len(cvhqtys)), key=lambda i: abs(cvhqtys[i] - val))
-        if (closest_idx == 0 and val > cvhqtys[0]) or \
-           (closest_idx == (len(qtyvals) - 1) and val < cvhqtys[-1]):
-            Utils.Logger.info("the give value of quality metric is out of range"\
-                              "of convex hull test quality values.")
-
-        qtyQPs.append(qtycvhQPs[closest_idx])
-        qtyRes.append(qtycvhRes[closest_idx])
-
-    return qtyQPs, qtyRes
-
-
-def AddConvexHullCurveToCharts(sht, charts, rdPoints, dnScaledRes, tgtqmetrics,
-                               EnablePreInterpolation = False, int_rdPoints = None):
-    if EnablePreInterpolation:
-        assert int_rdPoints is not None
-
-    shtname = sht.get_name()
-    sht.write(CvxHDataStartRow, CvxHDataStartCol, "ConvexHull Data")
-
-    hull = {}; cvh_QPs = {}; cvh_Res_txt = {}; int_hull = {}
-    max_len = 0
-
-    for qty, idx, row in zip(QualityList, range(len(QualityList)), CvxHDataRows):
-        lower, upper = convex_hull(rdPoints[idx])
-        hull[qty] = upper
-        max_len = max(max_len, len(upper))
-        sht.write(row, CvxHDataStartCol, qty)
-        sht.write(row + 1, CvxHDataStartCol, "Bitrate(kbps)")
-        sht.write(row + 2, CvxHDataStartCol, "QP")
-        sht.write(row + 3, CvxHDataStartCol, 'Resolution')
-        if EnablePreInterpolation:
-            lower, upper = convex_hull(int_rdPoints[idx])
-            int_hull[qty] = upper
-            sht.write(row + 4, CvxHDataStartCol, "Int_" + qty)
-            sht.write(row + 5, CvxHDataStartCol, "Int_Bitrate(kbps)")
-
-        brts = [h[0] for h in hull[qty]]
-        qtys = [h[1] for h in hull[qty]]
-        sht.write_row(row, CvxHDataStartCol + 1, qtys)
-        sht.write_row(row + 1, CvxHDataStartCol + 1, brts)
-
-        cvh_idxs = [rdPoints[idx].index((brt, qty)) for brt, qty in zip(brts, qtys)]
-        cvh_QPs[qty] = [QPs['AS'][i % len(QPs['AS'])] for i in cvh_idxs]
-        cvh_Res = [dnScaledRes[i // len(QPs['AS'])] for i in cvh_idxs]
-        cvh_Res_txt[qty] = ["%sx%s" % (x, y) for (x, y) in cvh_Res]
-        sht.write_row(row + 2, CvxHDataStartCol + 1, cvh_QPs[qty])
-        sht.write_row(row + 3, CvxHDataStartCol + 1, cvh_Res_txt[qty])
-        if EnablePreInterpolation:
-            int_brts = [h[0] for h in int_hull[qty]]
-            int_qtys = [h[1] for h in int_hull[qty]]
-            sht.write_row(row + 4, CvxHDataStartCol + 1, int_qtys)
-            sht.write_row(row + 5, CvxHDataStartCol + 1, int_brts)
-
-        cols = [CvxHDataStartCol + 1 + i for i in range(len(hull[qty]))]
-        AddSeriesToChart_Scatter_Rows(shtname, cols, row, row + 1, charts[idx],
-                                      'ConvexHull', ConvexHullColor)
-        if EnablePreInterpolation:
-            int_cols = [CvxHDataStartCol + 1 + i for i in range(len(int_hull[qty]))]
-            AddSeriesToChart_Scatter_Rows(shtname, int_cols, row + 4, row + 5,
-                                          charts[idx], 'Int_ConvexHull',
-                                          Int_ConvexHullColor)
-    endrow = CvxHDataRows[-1] + CvxHDataNum
-
-    # find out QP/resolution for given qty metric and qty value
-    startrow_fdout = endrow + 1
-    sht.write(startrow_fdout, CvxHDataStartCol,
-              "  Find out QP/resolution for given quality metrics:")
-    numitem_fdout = 4  # qtymetric values, QP, resolution, one empty row
-    startrows_fdout = [startrow_fdout + 1 + i * numitem_fdout
-                       for i in range(len(tgtqmetrics))]
-
-    for metric, idx in zip(tgtqmetrics, range(len(tgtqmetrics))):
-        if metric not in QualityList:
-            Utils.Logger.error("wrong qty metric name. should be one of the" \
-                               " name in QualityList.")
-            return endrow
-
-        qtyvals = tgtqmetrics[metric]
-        qtyQPs, qtyRes = LookUpQPAndResInCvxHull(qtyvals, hull[metric],
-                                                 cvh_QPs[metric],
-                                                 cvh_Res_txt[metric])
-        # write the look up result into excel file
-        startrow = startrows_fdout[idx]
-        sht.write(startrow, CvxHDataStartCol, metric)
-        sht.write_row(startrow, 1, qtyvals)
-        sht.write(startrow + 1, CvxHDataStartCol, 'QP')
-        sht.write_row(startrow + 1, CvxHDataStartCol + 1, qtyQPs)
-        sht.write(startrow + 2, CvxHDataStartCol, 'Resolution')
-        sht.write_row(startrow + 2, CvxHDataStartCol + 1, qtyRes)
-        endrow = startrow + 3
-
-    return endrow
 
 ###############################################################################
 ######### Major Functions #####################################################
@@ -196,8 +76,6 @@ def Run_ConvexHull_Test(clip, dnScalAlgo, upScalAlgo, ScaleMethod, LogCmdOnly = 
                        clip.file_class, DnScaledW, DnScaledH, clip.fmt, clip.fps_num,
                        clip.fps_denom, clip.bit_depth)
         QPSet = QPs['AS']
-        if CodecName == "hevc":
-            QPSet = HEVC_QPs['AS']
         for QP in QPSet:
             Utils.Logger.info("start encode and upscale for QP %d" % QP)
             JobName = '%s_%s_%s_%s_%dx%d_Preset_%s_QP_%d' % \
@@ -228,68 +106,48 @@ def Run_ConvexHull_Test(clip, dnScalAlgo, upScalAlgo, ScaleMethod, LogCmdOnly = 
         Utils.Logger.info("finish running encode test.")
     Utils.Logger.info("finish running encode test.")
 
-def SaveConvexHullResultsToExcel(content, ScaleMethod, dnScAlgos, upScAlgos, csv, perframe_csv,
+def SaveConvexHullResults(content, ScaleMethod, dnScAlgos, upScAlgos, csv, perframe_csv,
                                  EnablePreInterpolation=False):
     Utils.Logger.info("start saving RD results to excel file.......")
     missing = open("AS_Missing.log", 'wt')
     if not os.path.exists(Path_RDResults):
         os.makedirs(Path_RDResults)
     
-    excFile = GetRDResultExcelFile(clip)
-    wb = xlsxwriter.Workbook(excFile)
-    shts = []
-    for i in range(len(dnScAlgos)):
-        shtname = dnScAlgos[i] + '--' + upScAlgos[i]
-        shts.append(wb.add_worksheet(shtname))
-
     QPSet = QPs['AS']
-    if CodecName == "hevc":
-        QPSet = HEVC_QPs['AS']
+    total_frames = FrameNum['AS']
 
     DnScaledRes = [(int(clip.width / ratio), int(clip.height / ratio))
                    for ratio in DnScaleRatio]
     contentname = GetShortContentName(clip.file_name)
-    for sht, indx in zip(shts, list(range(len(dnScAlgos)))):
-        # write QP
-        sht.write(1, 0, "QP")
-        sht.write_column(CvxH_WtRows[0], 0, QPSet)
-        shtname = sht.get_name()
-
-        charts = [];  y_mins = {}; y_maxs = {}; RDPoints = {}; Int_RDPoints = {}
-        for qty, x in zip(QualityList, range(len(QualityList))):
-            chart_title = 'RD Curves - %s with %s' % (contentname, shtname)
-            xaxis_name = 'Bitrate - Kbps'
-            chart = CreateChart_Scatter(wb, chart_title, xaxis_name, qty)
-            charts.append(chart)
-            y_mins[x] = []; y_maxs[x] = []; RDPoints[x] = []; Int_RDPoints[x] = []
-
+    for indx in list(range(len(dnScAlgos))):
         # write RD data
-        for col, i in zip(CvxH_WtCols, range(len(DnScaledRes))):
+        for i in range(len(DnScaledRes)):
             DnScaledW = DnScaledRes[i][0]
             DnScaledH = DnScaledRes[i][1]
-            sht.write(0, col, "resolution=%dx%d" % (DnScaledW, DnScaledH))
-            sht.write(1, col, "Bitrate(kbps)")
-            sht.write_row(1, col + 1, QualityList)
-
+            
             bitratesKbps = []; qualities = []
 
             for qp in QPSet:
                 bs, reconyuv = GetBsReconFileName(EncodeMethod, CodecName, 'AS',
                                                   EncodePreset, clip, DnScaledW,
                                                   DnScaledH, ScaleMethod, dnScAlgos[indx],
-                                                  upScAlgos[indx], qp,
+                                                  upScAlgos[indx], qp, 0, total_frames, 
                                                   Path_Bitstreams, False, i)
 
                 if not os.path.exists(bs):
+                    print("%s is missing" % bs)
                     missing.write("\n%s is missing" % bs)
                     continue
 
                 bitrate = round((os.path.getsize(bs) * 8 * (clip.fps_num / clip.fps_denom)
                            / FrameNum['AS']) / 1000.0, 6)
                 bitratesKbps.append(bitrate)
+
                 quality, perframe_vmaf_log = GatherQualityMetrics(reconyuv, Path_QualityLog)
+                
                 if not quality:
-                    missing.write("\n%s is missing" % bs)
+                    print("%s quality metrics is missing" % bs)
+                    missing.write("\n%s quality metrics is missing" % bs)
                     continue
 
                 qualities.append(quality)
@@ -323,47 +181,7 @@ def SaveConvexHullResultsToExcel(content, ScaleMethod, dnScAlgos, upScAlgos, csv
                     GatherPerframeStat("AS", EncodeMethod, CodecName, EncodePreset, clip, GetShortContentName(bs),
                                        DnScaledW, DnScaledH, qp, enc_log, perframe_csv,
                                        perframe_vmaf_log)
-            """
-            sht.write_column(CvxH_WtRows[0], col, bitratesKbps)
-            for qs, row in zip(qualities, CvxH_WtRows):
-                sht.write_row(row, col + 1, qs)
-
-            seriname = "resolution %dx%d" % (DnScaledW, DnScaledH)
-            for x in range(len(QualityList)):
-                # add RD curves of current resolution to each quality chart
-                AddSeriesToChart_Scatter(shtname, CvxH_WtRows, col + 1 + x, col,
-                                         charts[x], seriname, LineColors[i])
-                # get min and max of y-axis
-                qs = [row[x] for row in qualities]
-                y_mins[x].append(min(qs))
-                y_maxs[x].append(max(qs))
-                # get RD points - (bitrate, quality) for each quality metrics
-                rdpnts = [(brt, qty) for brt, qty in zip(bitratesKbps, qs)]
-                RDPoints[x] = RDPoints[x] + rdpnts
-                if EnablePreInterpolation:
-                    if UsePCHIPInterpolation:
-                        int_rdpnts = Interpolate_PCHIP(rdpnts, QPSet[:], InterpolatePieces, True)
-                    else:
-                        int_rdpnts = Interpolate_Bilinear(rdpnts, QPSet[:], InterpolatePieces, True)
-                    Int_RDPoints[x] = Int_RDPoints[x] + int_rdpnts
-
-        # add convexhull curve to charts
-        endrow = AddConvexHullCurveToCharts(sht, charts, RDPoints, DnScaledRes,
-                                            TargetQtyMetrics, EnablePreInterpolation,
-                                            Int_RDPoints)
-
-        #update RD chart with approprate y axis range
-        for qty, x in zip(QualityList, range(len(QualityList))):
-            ymin = min(y_mins[x])
-            ymax = max(y_maxs[x])
-            margin = 0.1  # add 10% on min and max value for y_axis range
-            num_precsn = 5 if 'MS-SSIM' in qty else 3
-            UpdateChart(charts[x], ymin, ymax, margin, qty, num_precsn)
-
-        startrow = endrow + 2; startcol = 1
-        InsertChartsToSheet(sht, startrow, startcol, charts)
-        """
-    wb.close()
+            
     missing.close()
     Utils.Logger.info("finish export convex hull results to excel file.")
 
@@ -374,10 +192,10 @@ def ParseArguments(raw_args):
                                      description='')
     parser.add_argument('-f', '--function', dest='Function', type=str,
                         required=True, metavar='',
-                        choices=["clean", "scaling", "sumscaling", "encode",
-                                 "convexhull", "summary"],
-                        help="function to run: clean, scaling, sumscaling, encode,"
-                             " convexhull, summary")
+                        choices=["clean", "scaling","encode",
+                                 "convexhull"],
+                        help="function to run: clean, scaling, encode,"
+                             " convexhull")
     parser.add_argument('-k', "--KeepUpscaleOutput", dest='KeepUpscaledOutput',
                         type=bool, default=False, metavar='',
                         help="in function clean, if keep upscaled yuv files. It"
@@ -457,9 +275,6 @@ if __name__ == "__main__":
             Cleanfolder(Path_DnScaleYuv)
             if not KeepUpscaledOutput:
                 Cleanfolder(Path_UpScaleYuv)
-    elif Function == 'sumscaling':
-        SaveScalingResultsToExcel(ScaleMethod, DnScalingAlgos, UpScalingAlgos, clip_list,
-                                  Path_QualityLog)
     elif Function == 'encode':
         for clip in clip_list:
             for dnScalAlgo, upScalAlgo in zip(DnScalingAlgos, UpScalingAlgos):
@@ -492,24 +307,9 @@ if __name__ == "__main__":
         perframe_csv.write('\n')
 
         for clip in clip_list:
-            SaveConvexHullResultsToExcel(clip, ScaleMethod, DnScalingAlgos, UpScalingAlgos, csv, perframe_csv,
+            SaveConvexHullResults(clip, ScaleMethod, DnScalingAlgos, UpScalingAlgos, csv, perframe_csv,
                                          EnablePreInterpolation)
         csv.close()
         perframe_csv.close()
-    elif Function == 'summary':
-        RDResultFilesGenerated = []
-        for clip in clip_list:
-            RDResultFilesGenerated.append(GetRDResultExcelFile(clip))
-
-        RDsmfile = GenerateSumRDExcelFile(EncodeMethod, CodecName, EncodePreset,
-                                          SummaryOutPath, RDResultFilesGenerated,
-                                          clip_list)
-        Utils.Logger.info("RD data summary file generated: %s" % RDsmfile)
-
-        CvxHsmfile = GenerateSumCvxHullExcelFile(EncodeMethod, CodecName,
-                                                 EncodePreset, SummaryOutPath,
-                                                 RDResultFilesGenerated,
-                                                 EnablePreInterpolation)
-        Utils.Logger.info("Convex hull summary file generated: %s" % CvxHsmfile)
     else:
         Utils.Logger.error("invalid parameter value of Function")

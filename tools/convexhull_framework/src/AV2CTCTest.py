@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import argparse
+import subprocess
 from CalculateQualityMetrics import CalculateQualityMetric, GatherQualityMetrics
 from Utils import GetShortContentName, CreateNewSubfolder, SetupLogging, \
      Cleanfolder, CreateClipList, GetEncLogFile, GatherPerfInfo, \
@@ -205,21 +206,6 @@ def Run_Concatenate_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = Fal
             else:
                 subprocess.call(cmd, shell=True)
 
-#TODO: This function needs to be revised later
-def GetTempLayerID(poc):
-    temp_layer_id = 0; mod = poc % MIN_GOP_LENGTH
-    if (mod == 0):
-        temp_layer_id = 0
-    elif (mod == 8):
-        temp_layer_id = 1
-    elif (mod == 4 or mod == 12):
-        temp_layer_id = 2
-    elif (mod == 2 or mod == 6 or mod == 10 or mod == 14):
-        temp_layer_id = 3
-    else:
-        temp_layer_id = 5
-    return temp_layer_id
-
 def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
                               test_cfg, clip_list, log_path, missing):
     Utils.Logger.info("start saving RD results to excel file.......")
@@ -251,15 +237,12 @@ def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
     perframe_csv.write('\n')
 
     QPSet = QPs[test_cfg]
-    if CodecName == "hevc":
-        QPSet = HEVC_QPs[test_cfg]
-
-
     for clip in clip_list:
         for qp in QPSet:
             bs, dec = GetBsReconFileName(EncodeMethod, CodecName, EncodePreset,
                                          test_cfg, clip, qp)
             if not os.path.exists(bs):
+                print("%s is missing" % bs)
                 missing.write("\n%s is missing" % bs)
                 continue
 
@@ -269,6 +252,7 @@ def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
 
             quality, perframe_vmaf_log = GatherQualityMetrics(dec, Path_QualityLog)
             if not quality:
+                print("%s is missing" % bs)
                 missing.write("\n%s is missing" % bs)
                 continue
 
