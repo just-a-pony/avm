@@ -3851,7 +3851,7 @@ static AOM_INLINE void init_allowed_partitions(
       is_bsize_geq(vert_subsize, blk_params->min_partition_size) &&
       is_vert_size_valid;
 
-  const int ext_partition_allowed = part_search_state->ext_partition_allowed =
+  const int ext_partition_allowed =
       part_search_state->is_block_splittable &&
       part_cfg->enable_ext_partitions &&
       is_ext_partition_allowed_at_bsize(bsize, tree_type);
@@ -3887,9 +3887,9 @@ static AOM_INLINE void init_allowed_partitions(
       ;
 
   const int uneven_4way_partition_allowed =
-      part_search_state->ext_partition_allowed =
-          part_cfg->enable_ext_partitions &&
-          is_uneven_4way_partition_allowed_at_bsize(bsize, tree_type);
+      part_search_state->is_block_splittable &&
+      part_cfg->enable_ext_partitions &&
+      is_uneven_4way_partition_allowed_at_bsize(bsize, tree_type);
   part_search_state->partition_4a_allowed[HORZ] =
       uneven_4way_partition_allowed &&
       get_partition_subsize(bsize, PARTITION_HORZ_4A) != BLOCK_INVALID &&

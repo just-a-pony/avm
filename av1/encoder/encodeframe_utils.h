@@ -203,7 +203,6 @@ typedef struct PartitionSearchState {
 #if CONFIG_ML_PART_SPLIT
   bool prune_partition_split;
 #endif  // CONFIG_ML_PART_SPLIT
-  bool ext_partition_allowed;
   bool partition_3_allowed[NUM_RECT_PARTS];
   bool prune_partition_3[NUM_RECT_PARTS];
   bool partition_4a_allowed[NUM_RECT_PARTS];
