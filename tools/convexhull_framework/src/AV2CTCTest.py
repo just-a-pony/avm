@@ -21,8 +21,9 @@ from Utils import GetShortContentName, CreateNewSubfolder, SetupLogging, \
 import Utils
 from Config import LogLevels, FrameNum, TEST_CONFIGURATIONS, QPs, WorkPath, \
      Path_RDResults, LoggerName, QualityList, MIN_GOP_LENGTH, UsePerfUtil, \
-     EnableTimingInfo, CodecNames, EnableMD5, HEVC_QPs, SUFFIX
-from EncDecUpscale import Encode, Decode
+     EnableTimingInfo, CodecNames, EnableMD5, HEVC_QPs, SUFFIX, EnableParallelGopEncoding, \
+     GOP_SIZE
+from EncDecUpscale import Encode, Decode, GetBitstreamFile
 
 ###############################################################################
 ##### Helper Functions ########################################################
@@ -72,14 +73,15 @@ def Run_Encode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = False):
     for QP in QPSet:
         Utils.Logger.info("start encode with QP %d" % (QP))
         #encode
+        total_frame = FrameNum[test_cfg]
         JobName = '%s_%s_%s_%s_Preset_%s_QP_%d' % \
-                  (GetShortContentName(clip.file_name, False),
-                   method, codec, test_cfg, preset, QP)
+                    (GetShortContentName(clip.file_name, False),
+                    method, codec, test_cfg, preset, QP)
         if LogCmdOnly:
             Utils.CmdLogger.write("============== %s Job Start =================\n"%JobName)
         bsFile = Encode(method, codec, preset, clip, test_cfg, QP,
-                        FrameNum[test_cfg], Path_Bitstreams, Path_TimingLog,
-                        Path_EncLog, LogCmdOnly)
+                        total_frame, Path_Bitstreams, Path_TimingLog,
+                        Path_EncLog, 0, LogCmdOnly)
         Utils.Logger.info("start decode file %s" % os.path.basename(bsFile))
         #decode
         decodedYUV = Decode(clip, method, test_cfg, codec, bsFile, Path_DecodedYuv, Path_TimingLog,
@@ -87,13 +89,121 @@ def Run_Encode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = False):
         #calcualte quality distortion
         Utils.Logger.info("start quality metric calculation")
         CalculateQualityMetric(clip.file_path, FrameNum[test_cfg], decodedYUV,
-                               clip.fmt, clip.width, clip.height, clip.bit_depth,
-                               Path_QualityLog, LogCmdOnly)
+                                clip.fmt, clip.width, clip.height, clip.bit_depth,
+                                Path_QualityLog, LogCmdOnly)
         if SaveMemory:
             DeleteFile(decodedYUV, LogCmdOnly)
         Utils.Logger.info("finish running encode with QP %d" % (QP))
         if LogCmdOnly:
             Utils.CmdLogger.write("============== %s Job End ===================\n\n"%JobName)
+
+def Run_Parallel_Encode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = False):
+    if EnableParallelGopEncoding:
+        Utils.Logger.info("start running %s encode tests with %s"
+                          % (test_cfg, clip.file_name))
+        QPSet = QPs[test_cfg]
+        if codec == "hevc":
+            QPSet = HEVC_QPs[test_cfg]
+
+        for QP in QPSet:
+            Utils.Logger.info("start encode with QP %d" % (QP))
+            total_frame = FrameNum[test_cfg]    
+            # Encode
+            start_frame = 0
+            while start_frame < total_frame:
+                #encode
+                num_frames = GOP_SIZE
+                if (start_frame + num_frames) > total_frame:
+                    num_frames = total_frame - start_frame
+
+                JobName = '%s_%s_%s_%s_Preset_%s_QP_%d_start_%d_frames_%d' % \
+                          (GetShortContentName(clip.file_name, False),
+                          method, codec, test_cfg, preset, QP, start_frame, num_frames)
+                if LogCmdOnly:
+                    Utils.CmdLogger.write("============== %s Job Start =================\n"%JobName)
+                
+                bsFile = Encode(method, codec, preset, clip, test_cfg, QP,
+                                num_frames, Path_Bitstreams, Path_TimingLog,
+                                Path_EncLog, start_frame, LogCmdOnly)
+                start_frame += num_frames
+
+                if LogCmdOnly:
+                    Utils.CmdLogger.write("============== %s Job End ===================\n\n"%JobName)
+    else:
+        Utils.Logger.error("parallel encode function can only be used with Parallel Gop Encoding mode")
+
+def Run_Decode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = False):
+    if EnableParallelGopEncoding:
+        Utils.Logger.info("start running %s decode tests with %s"
+                          % (test_cfg, clip.file_name))
+        QPSet = QPs[test_cfg]
+        if codec == "hevc":
+            QPSet = HEVC_QPs[test_cfg]
+
+        for QP in QPSet:
+            Utils.Logger.info("start decode  with QP %d" % (QP))
+            total_frame = FrameNum[test_cfg]   
+            # decode
+            JobName = '%s_%s_%s_%s_Preset_%s_QP_%d' % \
+                          (GetShortContentName(clip.file_name, False),
+                          method, codec, test_cfg, preset, QP)
+            if LogCmdOnly:
+                Utils.CmdLogger.write("============== %s Job Start =================\n"%JobName)
+            
+            bsfile = '%s/%s_%s_%s_%s_Preset_%s_QP_%d.obu' % \
+                    (Path_Bitstreams, GetShortContentName(clip.file_name, False),
+                    method, codec, test_cfg, preset, QP)
+
+            decodedYUV = Decode(clip, method, test_cfg, codec, bsfile, Path_DecodedYuv, Path_TimingLog,
+                                False, LogCmdOnly)
+            #calcualte quality distortion
+            Utils.Logger.info("start quality metric calculation")
+            CalculateQualityMetric(clip.file_path, FrameNum[test_cfg], decodedYUV,
+                                   clip.fmt, clip.width, clip.height, clip.bit_depth,
+                                   Path_QualityLog, LogCmdOnly)
+            if SaveMemory:
+                DeleteFile(decodedYUV, LogCmdOnly)
+            Utils.Logger.info("finish running encode with QP %d" % (QP))
+            if LogCmdOnly:
+                Utils.CmdLogger.write("============== %s Job End ===================\n\n"%JobName)
+    else:
+        Utils.Logger.error("decode function can only be used with Parallel Gop Encoding mode")
+
+def Run_Concatenate_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = False):
+    if EnableParallelGopEncoding:
+        Utils.Logger.info("start running %s concatenate tests with %s"
+                      % (test_cfg, clip.file_name))
+        QPSet = QPs[test_cfg]
+        if codec == "hevc":
+            QPSet = HEVC_QPs[test_cfg]
+
+        for QP in QPSet:
+            Utils.Logger.info("start encode with QP %d" % (QP))
+            total_frame = FrameNum[test_cfg]; start_frame = 0
+            JobName = '%s_%s_%s_%s_Preset_%s_QP_%d' % \
+                          (GetShortContentName(clip.file_name, False),
+                          method, codec, test_cfg, preset, QP)
+            cmd = "cat "    
+            while start_frame < total_frame:
+                num_frames = GOP_SIZE
+                if (start_frame + num_frames) > total_frame:
+                    num_frames = total_frame - start_frame
+
+                bsfile = GetBitstreamFile(method, codec, test_cfg, preset, clip.file_path,
+                              QP, start_frame, num_frames, Path_Bitstreams)
+                cmd += " %s " % bsfile
+                start_frame += num_frames
+            
+            bsfile = '%s_%s_%s_%s_Preset_%s_QP_%d.obu' % \
+                          (GetShortContentName(clip.file_name, False),
+                          method, codec, test_cfg, preset, QP)
+                
+            cmd += " > %s/%s" % (Path_Bitstreams, bsfile)
+
+            if LogCmdOnly:
+                Utils.CmdLogger.write("%s\n" % cmd)
+            else:
+                subprocess.call(cmd, shell=True)
 
 #TODO: This function needs to be revised later
 def GetTempLayerID(poc):
@@ -109,7 +219,6 @@ def GetTempLayerID(poc):
     else:
         temp_layer_id = 5
     return temp_layer_id
-
 
 def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
                               test_cfg, clip_list, log_path, missing):
@@ -174,7 +283,10 @@ def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
 
             for qty in quality:
                 csv.write(",%f"%qty)
-            if UsePerfUtil:
+            
+            if test_cfg == "RA" and EnableParallelGopEncoding:
+                csv.write(",,,")
+            elif UsePerfUtil:
                 enc_time, dec_time, enc_instr, dec_instr, enc_cycles, dec_cycles = GatherInstrCycleInfo(bs, Path_TimingLog)
                 csv.write(",%.2f,%.2f,%s,%s,%s,%s," % (enc_time,dec_time,enc_instr,dec_instr,enc_cycles,dec_cycles))
             elif EnableTimingInfo:
@@ -190,9 +302,10 @@ def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
             csv.write("\n")
 
             if (EncodeMethod == 'aom'):
-                enc_log = GetEncLogFile(bs, log_path)
-                GatherPerframeStat(test_cfg,EncodeMethod,CodecName,EncodePreset,clip,clip.file_name, clip.width,
-                                   clip.height, qp,enc_log,perframe_csv, perframe_vmaf_log)
+                if test_cfg != "RA" or not EnableParallelGopEncoding:
+                    enc_log = GetEncLogFile(bs, log_path)
+                    GatherPerframeStat(test_cfg,EncodeMethod,CodecName,EncodePreset,clip,clip.file_name, clip.width,
+                                        clip.height, qp,enc_log,perframe_csv, perframe_vmaf_log)
     csv.close()
     perframe_csv.close()
     Utils.Logger.info("finish export RD results to file.")
@@ -204,8 +317,8 @@ def ParseArguments(raw_args):
                                      description='')
     parser.add_argument('-f', '--function', dest='Function', type=str,
                         required=True, metavar='',
-                        choices=["clean", "encode", "summary"],
-                        help="function to run: clean, encode, summary")
+                        choices=["clean", "encode", "summary", "concatenate", "decode"],
+                        help="function to run: clean, encode, summary, concatenate, decode")
     parser.add_argument('-s', "--SaveMemory", dest='SaveMemory', type=bool,
                         default=True, metavar='',
                         help="save memory mode will delete most files in"
@@ -262,9 +375,28 @@ if __name__ == "__main__":
         for test_cfg in TEST_CONFIGURATIONS:
             clip_list = CreateClipList(test_cfg)
             for clip in clip_list:
-                Run_Encode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
+                if test_cfg == "RA" and EnableParallelGopEncoding:
+                    Run_Parallel_Encode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
+                else:
+                    Run_Encode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
         if SaveMemory:
             Cleanfolder(Path_DecodedYuv)
+    elif Function == 'concatenate':
+        test_cfg = "RA"
+        clip_list = CreateClipList(test_cfg)
+        for clip in clip_list:
+            if EnableParallelGopEncoding:
+                Run_Concatenate_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
+            else:
+                Utils.Logger.error("concatenate function can only be used with Parallel Gop Encoding mode and RA configuration")
+    elif Function == 'decode':
+        test_cfg = "RA"
+        clip_list = CreateClipList(test_cfg)
+        for clip in clip_list:
+            if EnableParallelGopEncoding:
+                Run_Decode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
+            else :
+                Utils.Logger.error("decode function can only be used with Parallel Gop Encoding mode and RA configuration")
     elif Function == 'summary':
         Missing = open("Missing.log", 'wt')
         for test_cfg in TEST_CONFIGURATIONS:

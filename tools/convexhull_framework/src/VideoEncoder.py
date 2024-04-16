@@ -30,12 +30,14 @@ def get_qindex_from_QP(QP):
     return quantizer_to_qindex[QP]
 
 def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
-                      enc_log, LogCmdOnly=False):
+                      enc_log, start_frame=0, LogCmdOnly=False):
     args = " --verbose --codec=av1 -v --psnr --obu --frame-parallel=0" \
-           " --cpu-used=%s --limit=%d --passes=1 --end-usage=q --i%s " \
-           " --use-fixed-qp-offsets=1 --deltaq-mode=0 " \
-           " --enable-tpl-model=0 --fps=%d/%d -w %d -h %d" \
-           % (preset, framenum, clip.fmt, clip.fps_num, clip.fps_denom, clip.width, clip.height)
+           " --cpu-used=%s --limit=%d --skip=%d --passes=1 --end-usage=q --i%s " \
+           " --use-fixed-qp-offsets=1 --deltaq-mode=0 --enable-imp-msk-bld=0 " \
+           " --enable-tpl-model=0 --fps=%d/%d " \
+           " --input-bit-depth=%d --bit-depth=%d -w %d -h %d" \
+           % (preset, framenum, start_frame, clip.fmt, clip.fps_num, clip.fps_denom,
+              clip.bit_depth, clip.bit_depth, clip.width, clip.height)
 
     # config enoding bitdepth
     if ((CTC_VERSION in ['6.0']) and (clip.file_class in ['A2', 'A4', 'B1'])):
@@ -75,7 +77,7 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
     # CWG-D082
     if CTC_VERSION in ['6.0']:
         if clip.file_class in ['B2']:
-            args += " --tune-content=screen"
+            args += " --tune-content=screen --enable-intrabc-ext=1"
         else:
             args += " --enable-intrabc-ext=2"
 
@@ -114,7 +116,7 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
     ExecuteCmd(cmd, LogCmdOnly)
 
 def EncodeWithAOM_AV1(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
-                      enc_log, LogCmdOnly=False):
+                      enc_log, start_frame=0, LogCmdOnly=False):
     args = " --verbose --codec=av1 -v --psnr --obu --frame-parallel=0" \
            " --cpu-used=%s --limit=%d --passes=1 --end-usage=q --i%s " \
            " --use-fixed-qp-offsets=1 --deltaq-mode=0 " \
@@ -174,7 +176,7 @@ def EncodeWithAOM_AV1(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
     ExecuteCmd(cmd, LogCmdOnly)
 
 def EncodeWithSVT_AV1(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
-                      enc_log, LogCmdOnly=False):
+                      enc_log, start_frame=0, LogCmdOnly=False):
     #TODO: update svt parameters
     # -enable-tpl-la 0 to disable the content based per layer QP adjustment(i.e.use
     # fixed offsets @ QP scaling ), and the content based per block QP adjustment(i.e.TPL
@@ -228,7 +230,7 @@ def EncodeWithSVT_AV1(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
 
 
 def EncodeWithHM_HEVC(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
-                      enc_log, LogCmdOnly=False):
+                      enc_log, start_frame=0, LogCmdOnly=False):
     input_yuv_file = GetShortContentName(outfile, False) + ".yuv"
     bs_path = os.path.dirname(outfile)
     input_yuv_file = os.path.join(bs_path, input_yuv_file)
@@ -277,25 +279,25 @@ def EncodeWithHM_HEVC(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
     DeleteFile(input_yuv_file, LogCmdOnly)
 
 def VideoEncode(EncodeMethod, CodecName, clip, test_cfg, QP, framenum, outfile,
-                preset, enc_perf, enc_log, LogCmdOnly=False):
+                preset, enc_perf, enc_log, start_frame=0, LogCmdOnly=False):
     Utils.CmdLogger.write("::Encode\n")
     if CodecName == 'av2':
         if EncodeMethod == "aom":
             EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset,
-                              enc_perf, enc_log, LogCmdOnly)
+                              enc_perf, enc_log, start_frame, LogCmdOnly)
     elif CodecName == 'av1':
         if EncodeMethod == 'aom':
             EncodeWithAOM_AV1(clip, test_cfg, QP, framenum, outfile, preset,
-                              enc_perf, enc_log, LogCmdOnly)
+                              enc_perf, enc_log, start_frame, LogCmdOnly)
         elif EncodeMethod == "svt":
             EncodeWithSVT_AV1(clip, test_cfg, QP, framenum, outfile, preset,
-                              enc_perf, enc_log, LogCmdOnly)
+                              enc_perf, enc_log, start_frame, LogCmdOnly)
         else:
             raise ValueError("invalid parameter for encode.")
     elif CodecName == 'hevc':
         if EncodeMethod == 'hm':
             EncodeWithHM_HEVC(clip, test_cfg, QP, framenum, outfile, preset,
-                              enc_perf, enc_log, LogCmdOnly)
+                              enc_perf, enc_log, start_frame, LogCmdOnly)
         else:
             raise ValueError("invalid parameter for encode.")
     else:

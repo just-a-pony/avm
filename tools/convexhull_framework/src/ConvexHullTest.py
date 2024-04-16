@@ -231,8 +231,10 @@ def Run_ConvexHull_Test(clip, dnScalAlgo, upScalAlgo, ScaleMethod, LogCmdOnly = 
 def SaveConvexHullResultsToExcel(content, ScaleMethod, dnScAlgos, upScAlgos, csv, perframe_csv,
                                  EnablePreInterpolation=False):
     Utils.Logger.info("start saving RD results to excel file.......")
+    missing = open("AS_Missing.log", 'wt')
     if not os.path.exists(Path_RDResults):
         os.makedirs(Path_RDResults)
+    
     excFile = GetRDResultExcelFile(clip)
     wb = xlsxwriter.Workbook(excFile)
     shts = []
@@ -278,10 +280,18 @@ def SaveConvexHullResultsToExcel(content, ScaleMethod, dnScAlgos, upScAlgos, csv
                                                   upScAlgos[indx], qp,
                                                   Path_Bitstreams, False, i)
 
+                if not os.path.exists(bs):
+                    missing.write("\n%s is missing" % bs)
+                    continue
+
                 bitrate = round((os.path.getsize(bs) * 8 * (clip.fps_num / clip.fps_denom)
                            / FrameNum['AS']) / 1000.0, 6)
                 bitratesKbps.append(bitrate)
                 quality, perframe_vmaf_log = GatherQualityMetrics(reconyuv, Path_QualityLog)
+                if not quality:
+                    missing.write("\n%s is missing" % bs)
+                    continue
+
                 qualities.append(quality)
 
                 #"TestCfg,EncodeMethod,CodecName,EncodePreset,Class,OrigRes,Name,FPS,BitDepth,CodedRes,QP,Bitrate(kbps)")
@@ -313,6 +323,7 @@ def SaveConvexHullResultsToExcel(content, ScaleMethod, dnScAlgos, upScAlgos, csv
                     GatherPerframeStat("AS", EncodeMethod, CodecName, EncodePreset, clip, GetShortContentName(bs),
                                        DnScaledW, DnScaledH, qp, enc_log, perframe_csv,
                                        perframe_vmaf_log)
+            """
             sht.write_column(CvxH_WtRows[0], col, bitratesKbps)
             for qs, row in zip(qualities, CvxH_WtRows):
                 sht.write_row(row, col + 1, qs)
@@ -351,8 +362,9 @@ def SaveConvexHullResultsToExcel(content, ScaleMethod, dnScAlgos, upScAlgos, csv
 
         startrow = endrow + 2; startcol = 1
         InsertChartsToSheet(sht, startrow, startcol, charts)
-
+        """
     wb.close()
+    missing.close()
     Utils.Logger.info("finish export convex hull results to excel file.")
 
 

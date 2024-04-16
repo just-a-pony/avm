@@ -14,7 +14,7 @@ import os
 from VideoEncoder import VideoEncode
 from VideoDecoder import VideoDecode
 from VideoScaler import UpScaling, GetDownScaledOutFile, GetUpScaledOutFile
-from Config import SUFFIX, LoggerName
+from Config import SUFFIX, LoggerName, EnableParallelGopEncoding
 from Utils import GetShortContentName, Clip, GetEncLogFile, GetDecPerfFile, \
      GetEncPerfFile, DeleteFile
 import logging
@@ -25,11 +25,15 @@ logger = logging.getLogger(loggername)
 
 ################################################################################
 ##################### Internal Helper Functions ################################
-def GetBitstreamFile(method, codec, test_cfg, preset, yuvfile, qp, outpath):
+def GetBitstreamFile(method, codec, test_cfg, preset, yuvfile, qp, start_frame, num, outpath):
     bs_suffix = SUFFIX[codec]
     Prefix_EncodeCfg = '_%s_%s_%s_Preset_%s' % (method, codec, test_cfg, preset)
-    filename = GetShortContentName(yuvfile, False) + Prefix_EncodeCfg + "_QP_"\
-               + str(qp) + bs_suffix
+    if test_cfg == "RA" and EnableParallelGopEncoding:
+        filename = GetShortContentName(yuvfile, False) + Prefix_EncodeCfg + "_QP_"\
+                    + str(qp) + "_start_" + str(start_frame) + "_frames_" + str(num) + bs_suffix
+    else:
+        filename = GetShortContentName(yuvfile, False) + Prefix_EncodeCfg + "_QP_"\
+                    + str(qp) + bs_suffix
     filename = os.path.join(outpath, filename)
     return filename
 
@@ -42,14 +46,14 @@ def GetDecodedFile(bsfile, outpath, decode_to_yuv):
 ################################################################################
 ##################### Major Functions ##########################################
 def Encode(method, codec, preset, clip, test_cfg, qp, num, bs_path, perf_path,
-           log_path, LogCmdOnly=False):
+           log_path, start_frame = 0, LogCmdOnly=False):
     bsfile = GetBitstreamFile(method, codec, test_cfg, preset, clip.file_path,
-                              qp, bs_path)
+                              qp, start_frame, num, bs_path)
     enc_perf = GetEncPerfFile(bsfile, perf_path)
     enc_log = GetEncLogFile(bsfile, log_path)
     # call VideoEncoder to do the encoding
     VideoEncode(method, codec, clip, test_cfg, qp, num, bsfile, preset, enc_perf,
-                enc_log, LogCmdOnly)
+                enc_log, start_frame, LogCmdOnly)
     return bsfile
 
 def Decode(clip, method, test_cfg, codec, bsfile, path, perf_path, decode_to_yuv, LogCmdOnly=False):
@@ -66,7 +70,7 @@ def Run_EncDec_Upscale(method, codec, preset, clip, test_cfg, QP, num, outw,
     logger.info("%s %s start encode file %s with QP = %d" %
                 (method, codec, clip.file_name, QP))
     bsFile = Encode(method, codec, preset, clip, test_cfg, QP, num, path_bs,
-                    path_perf, path_enc_log, LogCmdOnly)
+                    path_perf, path_enc_log, 0, LogCmdOnly)
     logger.info("start decode file %s" % os.path.basename(bsFile))
     decodedYUV = Decode(clip, method, test_cfg, codec, bsFile, path_decoded, path_perf, False,
                         LogCmdOnly)

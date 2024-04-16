@@ -33,7 +33,7 @@ FrameNum = {
     "STILL" : 1,
 }
 EnableTimingInfo = True
-UsePerfUtil = False
+UsePerfUtil = True
 EnableMD5 = True
 EnableOpenGOP = False
 EnableTemporalFilter = False
@@ -129,6 +129,7 @@ QualityList = ['PSNR_Y','PSNR_U','PSNR_V','SSIM_Y(dB)','MS-SSIM_Y(dB)','VMAF_Y',
 CalcBDRateInExcel = True
 EnablePreInterpolation = True
 UsePCHIPInterpolation = False
+EnableParallelGopEncoding = True
 #InterpolatePieces - 1 is the number of interpolated points generated between two qp points.
 InterpolatePieces = 8
 

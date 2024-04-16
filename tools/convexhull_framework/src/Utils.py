@@ -502,18 +502,22 @@ def GatherPerframeStat(test_cfg,EncodeMethod,CodecName,EncodePreset,clip, name, 
     enc_list = [''] * len(perframe_vmaf_log)
     flog = open(enc_log, 'r')
 
-    for line in flog:
-        if line.startswith("POC"):
-            #POC:     0 [ KEY ][Q:143]:      40272 Bytes, 1282.9ms, 36.5632 dB(Y), 45.1323 dB(U), 46.6284 dB(V), 38.0736 dB(Avg)    [  0,  0,  0,  0,  0,  0,  0,]
-            m = re.search(r"POC:\s+(\d+)\s+\[( KEY |INTER)\]\[Level:(\d+)\]\[Q:\s*(\d+)\]:\s+(\d+)\s+Bytes,",line)
-            if m:
-                POC = m.group(1)
-                frame_type = m.group(2)
-                pyd_level = m.group(3)
-                qindex = m.group(4)
-                frame_size = m.group(5)
-                if enc_list[int(POC)] == '':
-                    enc_list[int(POC)] = "%s,%s,%s,%s,%s"%(POC,frame_type,pyd_level,qindex,frame_size)
+    try:
+        for line in flog:
+            if line.startswith("POC"):
+                #POC:     0 [ KEY ][Q:143]:      40272 Bytes, 1282.9ms, 36.5632 dB(Y), 45.1323 dB(U), 46.6284 dB(V), 38.0736 dB(Avg)    [  0,  0,  0,  0,  0,  0,  0,]
+                m = re.search(r"POC:\s+(\d+)\s+\[( KEY |INTER)\]\[Level:(\d+)\]\[Q:\s*(\d+)\]:\s+(\d+)\s+Bytes,",line)
+                if m:
+                    POC = m.group(1)
+                    frame_type = m.group(2)
+                    pyd_level = m.group(3)
+                    qindex = m.group(4)
+                    frame_size = m.group(5)
+                    if enc_list[int(POC)] == '':
+                        enc_list[int(POC)] = "%s,%s,%s,%s,%s"%(POC,frame_type,pyd_level,qindex,frame_size)
+    except:
+        print("error with %s POC = %s" % (enc_log, POC))
+        exit(-1)
 
     for i in range(len(enc_list)):
         #"TestCfg,EncodeMethod,CodecName,EncodePreset,Class,Name,Res,FPS,BitDepth,QP,POC,FrameType,Level,qindex,FrameSize")
