@@ -2787,11 +2787,15 @@ static INLINE void set_blk_offsets(const CommonModeInfoParams *const mi_params,
 // Currently this is set to BLOCK_128X128 (e.g. chroma always follows luma at
 // BLOCK_128X128, but can be de-coupled later).
 static AOM_INLINE bool is_bsize_above_decoupled_thresh(BLOCK_SIZE bsize) {
+#if CONFIG_INTRA_SDP_LATENCY_FIX
+  return bsize >= BLOCK_64X64 && bsize <= BLOCK_LARGEST;
+#else
 #if CONFIG_BLOCK_256
   return bsize >= BLOCK_128X128 && bsize <= BLOCK_256X256;
 #else
   return bsize == BLOCK_128X128;
 #endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
 }
 
 // Whether the partition tree contains a block size that is strictly smaller
@@ -2819,9 +2823,18 @@ static AOM_INLINE bool is_luma_chroma_share_same_partition(
       !is_bsize_above_decoupled_thresh(bsize)) {
     return false;
   }
+
+#if CONFIG_INTRA_SDP_LATENCY_FIX
+  if (bsize > BLOCK_64X64) {
+    assert(bsize <= BLOCK_LARGEST);
+    return true;
+  }
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
+
   if (ptree_luma->partition == PARTITION_NONE) {
     return false;
   }
+
   // For now, follow the logic in baseline SDP. i.e. we will force the current
   // chroma partition to follow the luma split iff all the luma subblocks
   // split further into blocks that's strictly smaller than half of the current
