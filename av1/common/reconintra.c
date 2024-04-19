@@ -1552,8 +1552,13 @@ static void build_intra_predictors_high(
   int apply_sub_block_based_refinement_filter =
       seq_intra_pred_filter_flag && (mrl_index == 0);
 #if CONFIG_WAIP
+#if CONFIG_TX_PARTITION_TYPE_EXT
+  xd->mi[0]->is_wide_angle[plane > 0][xd->mi[0]->txb_idx] = 0;
+  xd->mi[0]->mapped_intra_mode[plane > 0][xd->mi[0]->txb_idx] = DC_PRED;
+#else
   xd->mi[0]->is_wide_angle[plane > 0] = 0;
   xd->mi[0]->mapped_intra_mode[plane > 0] = DC_PRED;
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
 #endif  // CONFIG_WAIP
   if (is_dr_mode) {
     p_angle = mode_to_angle_map[mode] + angle_delta;
@@ -1564,28 +1569,17 @@ static void build_intra_predictors_high(
 #endif  // CONFIG_IMPROVED_INTRA_DIR_PRED
 #if CONFIG_WAIP
     if (!is_inter_block(xd->mi[0], xd->tree_type)) {
-#if CONFIG_TX_PARTITION_TYPE_EXT
-      // wide_angle_mapping is only supported for uniform txfm block sizes (i.e,
-      // all txfm block sizes are the same in a coding block) for now.
-      // Temporarily disable it in non-uniform txfm block case. TODO: add
-      // support for non-uniform txfm blocks.
-      if (xd->mi[0]->tx_partition_type[0] != TX_PARTITION_HORZ_M &&
-          xd->mi[0]->tx_partition_type[0] != TX_PARTITION_VERT_M) {
-        p_angle =
-            wide_angle_mapping(xd->mi[0], angle_delta, tx_size, mode, plane);
-      } else {
-        MB_MODE_INFO *mbmi = xd->mi[0];
-        mbmi->is_wide_angle[plane > 0] = 0;
-        mbmi->mapped_intra_mode[plane > 0] = DC_PRED;
-      }
-#else
       p_angle =
           wide_angle_mapping(xd->mi[0], angle_delta, tx_size, mode, plane);
-#endif  // CONFIG_TX_PARTITION_TYPE_EXT
     } else {
       MB_MODE_INFO *mbmi = xd->mi[0];
+#if CONFIG_TX_PARTITION_TYPE_EXT
+      mbmi->is_wide_angle[plane > 0][mbmi->txb_idx] = 0;
+      mbmi->mapped_intra_mode[plane > 0][mbmi->txb_idx] = DC_PRED;
+#else
       mbmi->is_wide_angle[plane > 0] = 0;
       mbmi->mapped_intra_mode[plane > 0] = DC_PRED;
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
     }
 #endif  // CONFIG_WAIP
     if (p_angle <= 90)

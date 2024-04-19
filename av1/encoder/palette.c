@@ -426,7 +426,12 @@ void av1_rd_pick_palette_intra_sby(
   mbmi->mrl_index = 0;
 
 #if CONFIG_WAIP
+#if CONFIG_TX_PARTITION_TYPE_EXT
+  memset(mbmi->is_wide_angle, 0, sizeof(mbmi->is_wide_angle));
+  memset(mbmi->mapped_intra_mode, DC_PRED, sizeof(mbmi->mapped_intra_mode));
+#else
   mbmi->is_wide_angle[0] = 0;
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
 #endif  // CONFIG_WAIP
 
   mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = 0;

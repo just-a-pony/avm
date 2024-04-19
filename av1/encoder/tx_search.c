@@ -4052,10 +4052,15 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
       av1_copy_array(best_txk_type_map, xd->tx_type_map, num_blks);
       best_tx_size = cur_tx_size;
 #if CONFIG_WAIP
+#if CONFIG_TX_PARTITION_TYPE_EXT
+      is_wide_angle_mapped = mbmi->is_wide_angle[0][mbmi->txb_idx];
+      mapped_wide_angle = mbmi->mapped_intra_mode[0][mbmi->txb_idx];
+#else
       // Because transform partitioning is only allowed for luma component, but
       // disallowed for chroma component. So, only index 0 is stored.
       is_wide_angle_mapped = mbmi->is_wide_angle[0];
       mapped_wide_angle = mbmi->mapped_intra_mode[0];
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
 #endif  // CONFIG_WAIP
       best_tx_partition_type = type;
       best_rd = cur_rd;
@@ -4068,10 +4073,15 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
     mbmi->tx_size = best_tx_size;
 
 #if CONFIG_WAIP
+#if CONFIG_TX_PARTITION_TYPE_EXT
+    mbmi->is_wide_angle[0][mbmi->txb_idx] = is_wide_angle_mapped;
+    mbmi->mapped_intra_mode[0][mbmi->txb_idx] = mapped_wide_angle;
+#else
     // Because transform partitioning is only allowed for luma component, but
     // disallowed for chroma component. So, only index 0 is reset.
     mbmi->is_wide_angle[0] = is_wide_angle_mapped;
     mbmi->mapped_intra_mode[0] = mapped_wide_angle;
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
 #endif  // CONFIG_WAIP
 
 #if CONFIG_TX_PARTITION_TYPE_EXT

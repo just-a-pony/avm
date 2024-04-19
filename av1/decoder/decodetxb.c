@@ -514,28 +514,20 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
 #if !CONFIG_INSPECTION
   MB_MODE_INFO *mbmi = xd->mi[0];
 #endif  // !CONFIG_INSPECTION
+
   if (is_inter_block(mbmi, xd->tree_type)) {
+#if CONFIG_TX_PARTITION_TYPE_EXT
+    mbmi->is_wide_angle[plane > 0][mbmi->txb_idx] = 0;
+    mbmi->mapped_intra_mode[plane > 0][mbmi->txb_idx] = DC_PRED;
+#else
     mbmi->is_wide_angle[plane > 0] = 0;
     mbmi->mapped_intra_mode[plane > 0] = DC_PRED;
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
   } else {
     PREDICTION_MODE mode = (plane == PLANE_TYPE_Y ? mbmi->mode : mbmi->uv_mode);
     const int angle_delta =
         mbmi->angle_delta[plane != AOM_PLANE_Y] * ANGLE_STEP;
-#if CONFIG_TX_PARTITION_TYPE_EXT
-    // wide_angle_mapping is only supported for uniform txfm block sizes (i.e,
-    // all txfm block sizes are the same in a coding block) for now. Temporarily
-    // disable it in non-uniform txfm block case. TODO: add support for
-    // non-uniform txfm blocks.
-    if (xd->mi[0]->tx_partition_type[0] != TX_PARTITION_HORZ_M &&
-        xd->mi[0]->tx_partition_type[0] != TX_PARTITION_VERT_M) {
-      wide_angle_mapping(mbmi, angle_delta, tx_size, mode, plane);
-    } else {
-      mbmi->is_wide_angle[plane > 0] = 0;
-      mbmi->mapped_intra_mode[plane > 0] = DC_PRED;
-    }
-#else
     wide_angle_mapping(mbmi, angle_delta, tx_size, mode, plane);
-#endif  // CONFIG_TX_PARTITION_TYPE_EXT
   }
 #endif  // CONFIG_WAIP
 

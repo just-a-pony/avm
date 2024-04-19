@@ -1432,7 +1432,9 @@ void av1_write_intra_coeffs_mb(const AV1_COMMON *const cm, MACROBLOCK *x,
             const int step = stepr * stepc;
             int blk_row = row + txb_pos.row_offset[txb_idx];
             int blk_col = col + txb_pos.col_offset[txb_idx];
-
+#if CONFIG_TX_PARTITION_TYPE_EXT
+            xd->mi[0]->txb_idx = txb_idx;
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
             if (blk_row >= plane_unit_height || blk_col >= plane_unit_width)
               continue;
 
@@ -4571,8 +4573,13 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
           intra_dir = fimode_to_intradir[mbmi->filter_intra_mode_info
                                              .filter_intra_mode];
 #if CONFIG_WAIP
+#if CONFIG_TX_PARTITION_TYPE_EXT
+        else if (mbmi->is_wide_angle[0][mbmi->txb_idx])
+          intra_dir = mbmi->mapped_intra_mode[0][mbmi->txb_idx];
+#else
         else if (mbmi->is_wide_angle[0])
           intra_dir = mbmi->mapped_intra_mode[0];
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
 #endif  // CONFIG_WAIP
         else
           intra_dir = mbmi->mode;
@@ -5821,7 +5828,9 @@ void av1_update_intra_mb_txb_context(const AV1_COMP *cpi, ThreadData *td,
           for (int txb_idx = 0; txb_idx < mbmi->txb_pos.n_partitions;
                ++txb_idx) {
             TX_SIZE sub_tx_size = mbmi->sub_txs[txb_idx];
-
+#if CONFIG_TX_PARTITION_TYPE_EXT
+            mbmi->txb_idx = txb_idx;
+#endif  // CONFIG_TX_PARTITION_TYPE_EXT
             const uint8_t txw_unit = tx_size_wide_unit[sub_tx_size];
             const uint8_t txh_unit = tx_size_high_unit[sub_tx_size];
             const int step = txw_unit * txh_unit;
