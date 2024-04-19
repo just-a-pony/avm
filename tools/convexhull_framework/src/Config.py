@@ -24,13 +24,7 @@ TEST_CONFIGURATIONS = ["LD", "RA", "AI", "STILL"]
 RootPath = ".."
 BinPath = os.path.join(RootPath, 'bin')
 WorkPath = os.path.join(RootPath, 'test')
-FrameNum = {
-    "LD" : 130,
-    "RA" : 130,
-    "AI" : 30,
-    "AS" : 130,
-    "STILL" : 1,
-}
+
 EnableTimingInfo = True
 UsePerfUtil = True
 EnableMD5 = True
@@ -44,7 +38,7 @@ APSNR_Y_WEIGHT = 4.0
 APSNR_U_WEIGHT = 1.0
 APSNR_V_WEIGHT = 1.0
 
-if CTC_VERSION in ['5.0', '6.0']:
+if CTC_VERSION in ['5.0', '6.0', '7.0']:
     CTC_RegularXLSTemplate = os.path.join(BinPath, 'AOM_CWG_Regular_CTCv4_v7.4.5.xlsm')
     CTC_ASXLSTemplate = os.path.join(BinPath, 'AOM_CWG_AS_CTC_v10.0.xlsm')
 elif CTC_VERSION == '4.0':
@@ -89,7 +83,7 @@ HMENC = os.path.join(BinPath, "TAppEncoderStatic")
 VMAF = os.path.join(BinPath, 'vmaf')
 HEVCCfgFile = os.path.join(BinPath, "s2-hm-01.cfg")
 
-if CTC_VERSION in ["2.0", "3.0", "4.0", "5.0", "6.0"]:
+if CTC_VERSION in ["2.0", "3.0", "4.0", "5.0", "6.0", "7.0"]:
     QPs = {
         "LD": [110, 135, 160, 185, 210, 235],
         "RA": [110, 135, 160, 185, 210, 235],
@@ -125,8 +119,26 @@ QualityList = ['PSNR_Y','PSNR_U','PSNR_V','SSIM_Y(dB)','MS-SSIM_Y(dB)','VMAF_Y',
 EnablePreInterpolation = True
 UsePCHIPInterpolation = False
 EnableParallelGopEncoding = True
+EnableVerificationTestConfig = False
 #InterpolatePieces - 1 is the number of interpolated points generated between two qp points.
 InterpolatePieces = 8
+
+if ((CTC_VERSION in ["7.0"]) and (EnableVerificationTestConfig == False)):
+    FrameNum = {
+        "LD" : 130,
+        "RA" : 130,
+        "AI" : 15,
+        "AS" : 130,
+        "STILL" : 1,
+    }
+else:
+    FrameNum = {
+        "LD" : 130,
+        "RA" : 130,
+        "AI" : 30,
+        "AS" : 130,
+        "STILL" : 1,
+    }
 
 ######################## post analysis #########################################
 PostAnalysis_Path = os.path.join(RootPath, 'analysis')

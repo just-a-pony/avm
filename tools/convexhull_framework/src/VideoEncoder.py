@@ -14,7 +14,7 @@ import os
 import math
 import Utils
 from Config import AOMENC, AV1ENC, SVTAV1, EnableTimingInfo, Platform, UsePerfUtil, CTC_VERSION, HEVCCfgFile, \
-     HMENC, EnableOpenGOP, GOP_SIZE, SUB_GOP_SIZE, EnableTemporalFilter
+     HMENC, EnableOpenGOP, GOP_SIZE, SUB_GOP_SIZE, EnableTemporalFilter, EnableVerificationTestConfig
 from Utils import ExecuteCmd, ConvertY4MToYUV, DeleteFile, GetShortContentName
 
 def get_qindex_from_QP(QP):
@@ -31,22 +31,26 @@ def get_qindex_from_QP(QP):
 
 def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
                       enc_log, start_frame=0, LogCmdOnly=False):
+    cpu_used = preset
+    if ((CTC_VERSION in ['7.0']) and (test_cfg == "LD") and (clip.file_class in ['A2', 'B1'])):
+        cpu_used = '1'
+
     args = " --verbose --codec=av1 -v --psnr --obu --frame-parallel=0" \
            " --cpu-used=%s --limit=%d --skip=%d --passes=1 --end-usage=q --i%s " \
            " --use-fixed-qp-offsets=1 --deltaq-mode=0 --enable-imp-msk-bld=0 " \
            " --enable-tpl-model=0 --fps=%d/%d " \
            " --input-bit-depth=%d --bit-depth=%d -w %d -h %d" \
-           % (preset, framenum, start_frame, clip.fmt, clip.fps_num, clip.fps_denom,
+           % (cpu_used, framenum, start_frame, clip.fmt, clip.fps_num, clip.fps_denom,
               clip.bit_depth, clip.bit_depth, clip.width, clip.height)
 
     # config enoding bitdepth
-    if ((CTC_VERSION in ['6.0']) and (clip.file_class in ['A2', 'A4', 'B1'])):
+    if ((CTC_VERSION in ['6.0', '7.0']) and (clip.file_class in ['A2', 'A4', 'B1'])):
         # CWG-D088
         args += " --input-bit-depth=%d --bit-depth=10" % (clip.bit_depth)
     else:
         args += " --input-bit-depth=%d --bit-depth=%d" % (clip.bit_depth, clip.bit_depth)
 
-    if CTC_VERSION in ['2.0', '3.0', '4.0', '5.0', '6.0']:
+    if CTC_VERSION in ['2.0', '3.0', '4.0', '5.0', '6.0', '7.0']:
         args += " --qp=%d" % QP
     else:
         args += " --use-16bit-internal --cq-level=%d" % QP
@@ -59,10 +63,36 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
         args += " --tile-rows=1 --tile-columns=1 --threads=4 --row-mt=0 "
     elif ((CTC_VERSION in ['6.0']) and (clip.file_class in ['E', 'G1']) and (test_cfg == "RA")):
         args += " --tile-rows=1 --tile-columns=1 --threads=4 --row-mt=0 "
+    elif (CTC_VERSION in ['7.0']):
+        if EnableVerificationTestConfig:
+            args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
+        elif (test_cfg == "RA"):
+            if (clip.file_class in ['A1', 'E', 'G1']):
+                # 4 tiles should be used
+                args += " --tile-rows=1 --tile-columns=1 --threads=4 --row-mt=0 "
+            elif (clip.file_class in ['A2', 'B1']):
+                # 2 tiles should be used
+                args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
+            else:
+                # 1 tile should be used
+                args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
+        elif (test_cfg == "LD"):
+            if (clip.file_class in ['A2', 'B1']):
+                # 8 tiles should be used
+                args += " --tile-rows=1 --tile-columns=2 --threads=8 --row-mt=0 "
+            elif (clip.file_class in ['A3']):
+                # 2 tiles should be used
+                args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
+            else:
+                # 1 tile should be used
+                args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
+        elif (test_cfg in ['AI', 'STILL', 'AS']) and (clip.width >= 3840 and clip.height >= 2160):
+            # 2 tiles should be used
+            args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
     elif (clip.width >= 3840 and clip.height >= 2160):
-        args += " --tile-columns=1 --threads=2 --row-mt=0 "
+        args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
     else:
-        args += " --tile-columns=0 --threads=1 "
+        args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
 
     if EnableOpenGOP:
         args += " --enable-fwd-kf=1 "
@@ -75,7 +105,7 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
         args += " --enable-keyframe-filtering=0 "
 
     # CWG-D082
-    if CTC_VERSION in ['6.0']:
+    if CTC_VERSION in ['6.0', '7.0']:
         if clip.file_class in ['B2']:
             args += " --tune-content=screen --enable-intrabc-ext=1"
         else:

@@ -258,7 +258,7 @@ if __name__ == "__main__":
     # preparation for executing functions
     setupWorkFolderStructure()
     if Function != 'clean':
-        SetupLogging(LogLevel, LogCmdOnly, LoggerName, Path_CmdLog, Path_TestLog)
+        SetupLogging(LogLevel, LogCmdOnly, LoggerName, WorkPath, Path_TestLog)
         clip_list = CreateClipList('AS')
 
     # execute functions

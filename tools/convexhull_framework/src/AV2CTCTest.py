@@ -68,9 +68,6 @@ def Run_Encode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = False):
     Utils.Logger.info("start running %s encode tests with %s"
                       % (test_cfg, clip.file_name))
     QPSet = QPs[test_cfg]
-    if codec == "hevc":
-        QPSet = HEVC_QPs[test_cfg]
-
     for QP in QPSet:
         Utils.Logger.info("start encode with QP %d" % (QP))
         #encode
@@ -103,9 +100,6 @@ def Run_Parallel_Encode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly =
         Utils.Logger.info("start running %s encode tests with %s"
                           % (test_cfg, clip.file_name))
         QPSet = QPs[test_cfg]
-        if codec == "hevc":
-            QPSet = HEVC_QPs[test_cfg]
-
         for QP in QPSet:
             Utils.Logger.info("start encode with QP %d" % (QP))
             total_frame = FrameNum[test_cfg]    
@@ -350,7 +344,7 @@ if __name__ == "__main__":
     # preparation for executing functions
     setupWorkFolderStructure()
     if Function != 'clean':
-        SetupLogging(LogLevel, LogCmdOnly, LoggerName, Path_CmdLog, Path_TestLog)
+        SetupLogging(LogLevel, LogCmdOnly, LoggerName, WorkPath, Path_TestLog)
 
     # execute functions
     if Function == 'clean':
@@ -359,7 +353,8 @@ if __name__ == "__main__":
         for test_cfg in TEST_CONFIGURATIONS:
             clip_list = CreateClipList(test_cfg)
             for clip in clip_list:
-                if test_cfg == "RA" and EnableParallelGopEncoding:
+                total_frame = FrameNum[test_cfg]  
+                if test_cfg == "RA" and EnableParallelGopEncoding and total_frame > GOP_SIZE:
                     Run_Parallel_Encode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
                 else:
                     Run_Encode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
