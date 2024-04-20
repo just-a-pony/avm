@@ -34,6 +34,10 @@
 #include "av1/decoder/decodeframe.h"
 #include "av1/decoder/obu.h"
 
+#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
+#include "aom_dsp/bitwriter_buffer.h"
+#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
+
 #include "av1/av1_iface_common.h"
 
 struct aom_codec_alg_priv {
@@ -496,7 +500,14 @@ static aom_codec_err_t init_decoder(aom_codec_alg_priv_t *ctx) {
   worker->hook = frame_worker_hook;
 
   init_buffer_callbacks(ctx);
-
+#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
+  for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
+    frame_worker_data->pbi->common.remapped_ref_idx[i] = INVALID_IDX;
+  }
+  for (int i = 0; i < REF_FRAMES; i++) {
+    frame_worker_data->pbi->common.ref_frame_map[i] = NULL;
+  }
+#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   return AOM_CODEC_OK;
 }
 
@@ -600,6 +611,61 @@ static aom_codec_err_t decoder_inspect(aom_codec_alg_priv_t *ctx,
 }
 #endif
 
+#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
+// This function writes (a proxy) show_existing_frame OBU header.
+static void av1_write_show_existing_frame_obu(uint8_t *const dst,
+                                              int existing_fb_idx_to_show) {
+  struct aom_write_bit_buffer wb = { dst, 0 };
+  int obu_type = OBU_FRAME_HEADER;
+
+  aom_wb_write_literal(&wb, 0, 1);         // forbidden bit.
+  aom_wb_write_literal(&wb, obu_type, 4);  // obu type
+  aom_wb_write_literal(&wb, 0, 1);         // extention flag
+  aom_wb_write_literal(&wb, 1, 1);         // obu_has_payload_length_field
+  aom_wb_write_literal(&wb, 0, 1);         // reserved
+  aom_wb_write_literal(&wb, 0x01, 8);      // obu_size 1
+  aom_wb_write_bit(&wb, 1);                // show_existing_frame
+  aom_wb_write_literal(&wb, existing_fb_idx_to_show,
+                       3);            // signal frame to be output
+  aom_wb_write_literal(&wb, 0x8, 4);  // trailing bits
+}
+
+// This function outputs all frames from the frame buffers that are showable but
+// have not yet been output.
+static aom_codec_err_t flush_showable_frames(aom_codec_alg_priv_t *ctx,
+                                             void *user_priv) {
+  aom_codec_err_t res = AOM_CODEC_OK;
+  AVxWorker *const worker = ctx->frame_worker;
+  FrameWorkerData *const frame_worker_data = (FrameWorkerData *)worker->data1;
+  struct AV1Decoder *pbi = frame_worker_data->pbi;
+  unsigned int display_order = 0;
+  int target_idx = -1;
+  for (int idx = 0; idx < REF_FRAMES; idx++) {
+    if (is_frame_eligible_for_output(pbi->common.ref_frame_map[idx]) &&
+        pbi->common.ref_frame_map[idx]->display_order_hint > display_order) {
+      display_order = pbi->common.ref_frame_map[idx]->display_order_hint;
+      target_idx = idx;
+    }
+  }
+
+  // Here, we generate a virtual OBU with show existing frame == 1 to trigger
+  // the output of frames that are showable but have not yet been output.
+  // The OBU instructs the decoder to show the frame with the highest display
+  // order that is present in the buffer (and has not been output).  This
+  // triggers the output of the other frames when enable_frame_output_order is
+  // true. Of course, other implementations are possible.
+  if (target_idx >= 0) {
+    uint8_t generated_data[3];
+    const uint8_t *data_start = (const uint8_t *)generated_data;
+    av1_write_show_existing_frame_obu((uint8_t *const)data_start, target_idx);
+    data_start = (const uint8_t *)generated_data;
+    ctx->flushed = 0;
+    res = decode_one(ctx, &data_start, 3, user_priv);
+  }
+  return res;
+}
+#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
+
 static aom_codec_err_t decoder_decode(aom_codec_alg_priv_t *ctx,
                                       const uint8_t *data, size_t data_sz,
                                       void *user_priv) {
@@ -645,6 +711,18 @@ static aom_codec_err_t decoder_decode(aom_codec_alg_priv_t *ctx,
       ctx->grain_image_frame_buffers[j].priv = NULL;
     }
     ctx->num_grain_image_frame_buffers = 0;
+#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
+    // When enable_frame_order_output == 1, output any frames in the buffer
+    // that have showable_frame == 1 but have not yet been output.  This is
+    // useful when OBUs are lost due to channel errors or removed for temporal
+    // scalability.
+    if (data == NULL && data_sz == 0 &&
+        pbi->common.seq_params.order_hint_info.enable_order_hint &&
+        pbi->common.seq_params.enable_frame_output_order) {
+      res = flush_showable_frames(ctx, user_priv);
+      return res;
+    }
+#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   }
 
   /* Sanity checks */
