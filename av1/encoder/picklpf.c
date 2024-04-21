@@ -82,7 +82,11 @@ static int64_t try_filter_frame(const YV12_BUFFER_CONFIG *sd,
 
   // TODO(any): please enable multi-thread and remove the flag when loop
   // filter mask is compatible with multi-thread.
-  if (num_workers > 1)
+  if (num_workers > 1
+#if CONFIG_LF_SUB_PU
+      && !cm->features.allow_lf_sub_pu
+#endif  // CONFIG_LF_SUB_PU
+  )
     av1_loop_filter_frame_mt(&cm->cur_frame->buf, cm, &cpi->td.mb.e_mbd, plane,
                              plane + 1, partial_frame,
 #if CONFIG_LPF_MASK
