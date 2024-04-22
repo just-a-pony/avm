@@ -76,6 +76,17 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
             else:
                 # 1 tile should be used
                 args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
+        elif (test_cfg == "AS"):
+            # use the same configuration as RA
+            if ((clip.width == 3840 and clip.height == 2160) or (clip.width == 2560 and clip.height == 1440)):
+                # 4 tiles should be used
+                args += " --tile-rows=1 --tile-columns=1 --threads=4 --row-mt=0 "
+            elif (clip.width == 1920 and clip.height == 1080):
+                # 2 tiles should be used
+                args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
+            else:
+                # 1 tile should be used
+                args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
         elif (test_cfg == "LD"):
             if (clip.file_class in ['A2', 'B1']):
                 # 8 tiles should be used
