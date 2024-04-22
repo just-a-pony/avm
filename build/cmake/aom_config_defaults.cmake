@@ -392,6 +392,9 @@ set_aom_config_var(CONFIG_SUBBLK_REF_EXT 1
 set_aom_config_var(CONFIG_SUBBLK_REF_DS 1
                    "Enable sad downsampling for subblock MV refinement.")
 
+set_aom_config_var(CONFIG_SUBBLK_PAD 1
+                   "Enable subblock padding for subblock mv refinement.")
+
 #
 # Variables in this section control optional features of the build system.
 #

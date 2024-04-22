@@ -5082,15 +5082,18 @@ static void build_inter_predictors_8x8_and_bigger(
         opt_gx1[2 * REFINEMV_SUBBLOCK_WIDTH * REFINEMV_SUBBLOCK_HEIGHT]);
 
     ReferenceArea ref_area[2];
+#if !CONFIG_SUBBLK_PAD
 #if CONFIG_TIP_REF_PRED_MERGING
     av1_get_reference_area_with_padding(cm, xd, plane, mi, mi_mv, bw, bh, mi_x,
                                         mi_y, ref_area, pu_width, pu_height);
 #else
-      av1_get_reference_area_with_padding(cm, xd, plane, mi, bw, bh, mi_x, mi_y,
-                                          ref_area, 0, 0);
-
-      int dst_stride = dst_buf->stride;
+    av1_get_reference_area_with_padding(cm, xd, plane, mi, bw, bh, mi_x, mi_y,
+                                        ref_area, 0, 0);
 #endif  // CONFIG_TIP_REF_PRED_MERGING
+#endif  //! CONFIG_SUBBLK_PAD
+#if !CONFIG_TIP_REF_PRED_MERGING
+    int dst_stride = dst_buf->stride;
+#endif  // !CONFIG_TIP_REF_PRED_MERGING
     CONV_BUF_TYPE *tmp_conv_dst = xd->tmp_conv_dst;
     assert(bw % refinemv_sb_size_width == 0);
     assert(bh % refinemv_sb_size_height == 0);
@@ -5127,6 +5130,22 @@ static void build_inter_predictors_8x8_and_bigger(
           chroma_refined_mv[0] = refinemv_subinfo->refinemv[0].as_mv;
           chroma_refined_mv[1] = refinemv_subinfo->refinemv[1].as_mv;
         }
+#if CONFIG_SUBBLK_PAD
+        // sub_mi_x, and sub_mi_y are the top-left position of the luma samples
+        // of the sub-block
+        const int sub_mi_x = mi_x + w * (1 << pd->subsampling_x);
+        const int sub_mi_y = mi_y + h * (1 << pd->subsampling_y);
+#if CONFIG_TIP_REF_PRED_MERGING
+        av1_get_reference_area_with_padding(
+            cm, xd, plane, mi, mi_mv, refinemv_sb_size_width,
+            refinemv_sb_size_height, sub_mi_x, sub_mi_y, ref_area, pu_width,
+            pu_height);
+#else
+        av1_get_reference_area_with_padding(
+            cm, xd, plane, mi, refinemv_sb_size_width, refinemv_sb_size_height,
+            sub_mi_x, sub_mi_y, ref_area, 0, 0);
+#endif  // CONFIG_TIP_REF_PRED_MERGING
+#endif  // CONFIG_SUBBLK_PAD
 #if CONFIG_TIP_REF_PRED_MERGING
         // mi_x, and mi_y are the top-left position of the luma samples of the
         // sub-block
