@@ -599,7 +599,8 @@ static INLINE void divide_and_round_array(int64_t *sol, int64_t den,
   assert(den != 0);
   if (den < 0) {
     for (int i = 0; i < dim; i++) sol[i] = -sol[i];
-    return divide_and_round_array(sol, -den, dim, shifts);
+    divide_and_round_array(sol, -den, dim, shifts);
+    return;
   }
   // TODO(kslu) use resolve_divisor_32
   int16_t den_shift = 0;
