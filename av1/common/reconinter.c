@@ -5655,7 +5655,11 @@ static AOM_INLINE void get_tip_mv(const AV1_COMMON *cm, MV *block_mv,
       blk_row * mvs_stride + blk_col + blk_to_tip_frame_offset;
   const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + tpl_offset;
 
-  if (tpl_mvs->mfmv0.as_int != 0) {
+  if (tpl_mvs->mfmv0.as_int != 0
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+      && tpl_mvs->mfmv0.as_int != INVALID_MV
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+  ) {
     tip_get_mv_projection(&tip_mv[0], tpl_mvs->mfmv0.as_mv,
                           cm->tip_ref.ref_frames_offset_sf[0]);
     tip_get_mv_projection(&tip_mv[1], tpl_mvs->mfmv0.as_mv,

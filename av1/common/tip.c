@@ -235,10 +235,77 @@ static void tip_temporal_scale_motion_field(AV1_COMMON *cm,
         tpl_mvs->mfmv0.as_int = this_refmv.as_int;
         tpl_mvs->ref_frame_offset = ref_frames_offset;
       }
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+      else {
+        tpl_mvs->ref_frame_offset = ref_frames_offset;
+      }
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
     }
   }
 }
 
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+// Compute number of rows/columns/stride in TMVP unit (8x8)
+static void compute_tmvp_mi_info(const AV1_COMMON *cm, int *mvs_rows,
+                                 int *mvs_cols, int *mvs_stride,
+                                 int *sb_tmvp_size) {
+  *mvs_rows = ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
+  *mvs_cols = ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+  *mvs_stride = *mvs_cols;
+
+  const SequenceHeader *const seq_params = &cm->seq_params;
+  const int mf_sb_size_log2 =
+      AOMMIN(seq_params->mib_size_log2, mi_size_high_log2[BLOCK_128X128]) +
+      MI_SIZE_LOG2;
+  const int mf_sb_size = (1 << mf_sb_size_log2);
+  *sb_tmvp_size = (mf_sb_size >> TMVP_MI_SZ_LOG2);
+}
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+static void tip_fill_motion_field_holes(AV1_COMMON *cm) {
+  int mvs_rows = 0;
+  int mvs_cols = 0;
+  int mvs_stride = 0;
+  int sb_tmvp_size = 0;
+
+  compute_tmvp_mi_info(cm, &mvs_rows, &mvs_cols, &mvs_stride, &sb_tmvp_size);
+
+  const int dirs[4][2] = { { -1, 0 }, { 0, -1 }, { 1, 0 }, { 0, 1 } };
+  TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
+  for (int sb_row = 0; sb_row < mvs_rows; sb_row += sb_tmvp_size) {
+    const int start_row = sb_row;
+    const int end_row = AOMMIN(sb_row + sb_tmvp_size, mvs_rows);
+    for (int sb_col = 0; sb_col < mvs_cols; sb_col += sb_tmvp_size) {
+      const int start_col = sb_col;
+      const int end_col = AOMMIN(sb_col + sb_tmvp_size, mvs_cols);
+      for (int row = start_row; row < end_row; row++) {
+        for (int col = start_col; col < end_col; col++) {
+          const int cur_tpl_offset = row * mvs_stride + col;
+          const TPL_MV_REF *cur_tpl_mvs = tpl_mvs_base + cur_tpl_offset;
+          if (cur_tpl_mvs->mfmv0.as_int != INVALID_MV) {
+            for (int dir = 0; dir < 4; ++dir) {
+              const int neighbor_row = row + dirs[dir][0];
+              const int neighbor_col = col + dirs[dir][1];
+              const int neighbor_tpl_offset =
+                  neighbor_row * mvs_stride + neighbor_col;
+              if (neighbor_row >= start_row && neighbor_row < end_row &&
+                  neighbor_col >= start_col && neighbor_col < end_col &&
+                  tpl_mvs_base[neighbor_tpl_offset].mfmv0.as_int ==
+                      INVALID_MV) {
+                tpl_mvs_base[neighbor_tpl_offset].mfmv0.as_int =
+                    cur_tpl_mvs->mfmv0.as_int;
+                tpl_mvs_base[neighbor_tpl_offset].ref_frame_offset =
+                    cur_tpl_mvs->ref_frame_offset;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+#else
 static void tip_fill_motion_field_holes(AV1_COMMON *cm) {
   TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
   const int mvs_rows =
@@ -294,7 +361,110 @@ static void tip_fill_motion_field_holes(AV1_COMMON *cm) {
     read_pos = end;
   }
 }
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
 
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
+  int mvs_rows = 0;
+  int mvs_cols = 0;
+  int mvs_stride = 0;
+  int sb_tmvp_size = 0;
+
+  compute_tmvp_mi_info(cm, &mvs_rows, &mvs_cols, &mvs_stride, &sb_tmvp_size);
+
+#define DIV_SHIFT_BITS 16
+  // Avoid the division operation. Maximum 5 MVs would be used for MV smoothing.
+  // weight_div_mult[i] where i is the number of MVs are available.
+  // The value of weight_div_mult[i] is to implement 1/i without division with
+  // the shift of (weight_div_mult[i] >> 16)
+  const int weight_div_mult[6] = { 0, 65536, 32768, 21845, 16384, 13107 };
+  const int sb_stride = MAX_SB_TMVP_SIZE;
+  int_mv tpl_mfs[MAX_SB_TMVP_SIZE * MAX_SB_TMVP_SIZE];
+  TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
+  for (int sb_row = 0; sb_row < mvs_rows; sb_row += sb_tmvp_size) {
+    const int start_row = sb_row;
+    const int end_row = AOMMIN(sb_row + sb_tmvp_size, mvs_rows);
+    for (int sb_col = 0; sb_col < mvs_cols; sb_col += sb_tmvp_size) {
+      const int start_col = sb_col;
+      const int end_col = AOMMIN(sb_col + sb_tmvp_size, mvs_cols);
+      for (int row = start_row; row < end_row; row++) {
+        const int i0 = row - 1;
+        const int i1 = row + 1;
+        for (int col = start_col; col < end_col; col++) {
+          const int j0 = col - 1;
+          const int j1 = col + 1;
+          int weights = 0;
+          int sum_mv_row = 0;
+          int sum_mv_col = 0;
+          const int cur_pos = row * mvs_stride + col;
+          if (tpl_mvs_base[cur_pos].mfmv0.as_int != INVALID_MV) {
+            weights++;
+            sum_mv_row += tpl_mvs_base[cur_pos].mfmv0.as_mv.row;
+            sum_mv_col += tpl_mvs_base[cur_pos].mfmv0.as_mv.col;
+          }
+
+          if (i0 >= start_row) {
+            const int top_pos = i0 * mvs_stride + col;
+            if (tpl_mvs_base[top_pos].mfmv0.as_int != INVALID_MV) {
+              weights++;
+              sum_mv_row += tpl_mvs_base[top_pos].mfmv0.as_mv.row;
+              sum_mv_col += tpl_mvs_base[top_pos].mfmv0.as_mv.col;
+            }
+          }
+
+          if (i1 < end_row) {
+            const int bottom_pos = i1 * mvs_stride + col;
+            if (tpl_mvs_base[bottom_pos].mfmv0.as_int != INVALID_MV) {
+              weights++;
+              sum_mv_row += tpl_mvs_base[bottom_pos].mfmv0.as_mv.row;
+              sum_mv_col += tpl_mvs_base[bottom_pos].mfmv0.as_mv.col;
+            }
+          }
+
+          if (j0 >= start_col) {
+            const int left_pos = row * mvs_stride + j0;
+            if (tpl_mvs_base[left_pos].mfmv0.as_int != INVALID_MV) {
+              weights++;
+              sum_mv_row += tpl_mvs_base[left_pos].mfmv0.as_mv.row;
+              sum_mv_col += tpl_mvs_base[left_pos].mfmv0.as_mv.col;
+            }
+          }
+
+          if (j1 < end_col) {
+            const int right_pos = row * mvs_stride + j1;
+            if (tpl_mvs_base[right_pos].mfmv0.as_int != INVALID_MV) {
+              weights++;
+              sum_mv_row += tpl_mvs_base[right_pos].mfmv0.as_mv.row;
+              sum_mv_col += tpl_mvs_base[right_pos].mfmv0.as_mv.col;
+            }
+          }
+
+          const int blk_pos_in_sb = (row - sb_row) * sb_stride + (col - sb_col);
+          if (weights) {
+            const int scale_factor = weight_div_mult[weights];
+            tpl_mfs[blk_pos_in_sb].as_mv.row =
+                (int16_t)ROUND_POWER_OF_TWO_SIGNED(sum_mv_row * scale_factor,
+                                                   DIV_SHIFT_BITS);
+            tpl_mfs[blk_pos_in_sb].as_mv.col =
+                (int16_t)ROUND_POWER_OF_TWO_SIGNED(sum_mv_col * scale_factor,
+                                                   DIV_SHIFT_BITS);
+          } else {
+            tpl_mfs[blk_pos_in_sb].as_int = INVALID_MV;
+          }
+        }
+      }
+
+      for (int row = start_row; row < end_row; row++) {
+        for (int col = start_col; col < end_col; col++) {
+          const int tpl_offset = row * mvs_stride + col;
+          const int blk_pos_in_sb = (row - sb_row) * sb_stride + (col - sb_col);
+          tpl_mvs_base[tpl_offset].mfmv0.as_int = tpl_mfs[blk_pos_in_sb].as_int;
+        }
+      }
+    }
+  }
+}
+#else
 static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
   TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
   const int mvs_rows =
@@ -355,6 +525,7 @@ static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
     }
   }
 }
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
 
 static INLINE MV tip_clamp_tip_mv_to_umv_border_sb(
     const MV *src_mv, int bw, int bh, int ss_x, int ss_y, int dist_to_left_edge,
@@ -443,7 +614,11 @@ static void tip_motion_field_within_frame(AV1_COMMON *cm) {
             tip_check_motion_field(cm, &this_mv, tpl_col, tpl_row, TMVP_MI_SIZE,
                                    TMVP_MI_SIZE, width, height);
       } else {
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+        mf_need_clamp[cur_pos] = 0;
+#else
         tpl_mvs_base[cur_pos].mfmv0.as_int = 0;
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
       }
     }
   }
@@ -1317,7 +1492,11 @@ static void tip_setup_tip_frame_plane(
       blk_col += (offset - step);
 
       MV mv[2];
-      if (tpl_mvs->mfmv0.as_int != 0) {
+      if (tpl_mvs->mfmv0.as_int != 0
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+          && tpl_mvs->mfmv0.as_int != INVALID_MV
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+      ) {
         tip_get_mv_projection(&mv[0], tpl_mvs->mfmv0.as_mv,
                               tip_ref->ref_frames_offset_sf[0]);
         tip_get_mv_projection(&mv[1], tpl_mvs->mfmv0.as_mv,
@@ -1562,7 +1741,11 @@ static void tip_setup_tip_plane_blocks(
       blk_col += (offset - step);
 
       MV mv[2];
-      if (tpl_mvs->mfmv0.as_int != 0) {
+      if (tpl_mvs->mfmv0.as_int != 0
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+          && tpl_mvs->mfmv0.as_int != INVALID_MV
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+      ) {
         tip_get_mv_projection(&mv[0], tpl_mvs->mfmv0.as_mv,
                               tip_ref->ref_frames_offset_sf[0]);
         tip_get_mv_projection(&mv[1], tpl_mvs->mfmv0.as_mv,

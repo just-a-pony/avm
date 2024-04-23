@@ -310,6 +310,11 @@ set_aom_config_var(
 set_aom_config_var(CONFIG_D072_SKIP_MODE_IMPROVE 1
                    "Enable to improve skip mode")
 
+set_aom_config_var(CONFIG_MF_HOLE_FILL_SIMPLIFY 1
+                   "Simplify motion field hole filling")
+set_aom_config_var(CONFIG_MF_HOLE_FILL_ALWAYS_ENABLE 1
+                   "Always enable motion field hole filling")
+
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
                    "Enable a sufficient MV search range.")

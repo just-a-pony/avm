@@ -228,7 +228,12 @@ void av1_copy_frame_mvs_tip_frame_mode(const AV1_COMMON *const cm,
 #endif  // CONFIG_TIP_REF_PRED_MERGING
 
           const TPL_MV_REF *tip_tpl_mv = tpl_mv + blk_to_tip_frame_offset;
-          if (tip_tpl_mv->mfmv0.as_int == 0) {
+          if (tip_tpl_mv->mfmv0.as_int == 0
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+              // TMVP invalid MV is treated as zero mv when interpolate TIP
+              || tip_tpl_mv->mfmv0.as_int == INVALID_MV
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+          ) {
             mv->ref_frame[0] = tip_ref->ref_frame[0];
             mv->ref_frame[1] = tip_ref->ref_frame[1];
 
@@ -249,12 +254,15 @@ void av1_copy_frame_mvs_tip_frame_mode(const AV1_COMMON *const cm,
 
             mv->mv[0].as_int = this_mv[0].as_int;
             mv->mv[1].as_int = this_mv[1].as_int;
-          } else {
+          }
+#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
+          else {
             mv->ref_frame[0] = NONE_FRAME;
             mv->ref_frame[1] = NONE_FRAME;
             mv->mv[0].as_int = 0;
             mv->mv[1].as_int = 0;
           }
+#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
           break;
         }
       }
@@ -578,16 +586,28 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
   const int offset = ref_blk_row * frame_mvs_stride + ref_blk_col;
 #endif  // CONFIG_TIP_REF_PRED_MERGING
   const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + offset;
+#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
   if (tpl_mvs->mfmv0.as_int == INVALID_MV) {
     return;
   }
+#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
 
   const int_mv mf_mv = tpl_mvs->mfmv0;
   int_mv this_mv[2];
-  tip_get_mv_projection(&this_mv[0].as_mv, mf_mv.as_mv,
-                        cm->tip_ref.ref_frames_offset_sf[0]);
-  tip_get_mv_projection(&this_mv[1].as_mv, mf_mv.as_mv,
-                        cm->tip_ref.ref_frames_offset_sf[1]);
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+  if (mf_mv.as_int == INVALID_MV) {
+    // TMVP invalid MV is treated as zero mv when interpolate TIP
+    this_mv[0].as_int = 0;
+    this_mv[1].as_int = 0;
+  } else {
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+    tip_get_mv_projection(&this_mv[0].as_mv, mf_mv.as_mv,
+                          cm->tip_ref.ref_frames_offset_sf[0]);
+    tip_get_mv_projection(&this_mv[1].as_mv, mf_mv.as_mv,
+                          cm->tip_ref.ref_frames_offset_sf[1]);
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+  }
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
 
   int_mv ref_mv[2];
   ref_mv[0].as_mv.row = cand_mv.as_mv.row + this_mv[0].as_mv.row;

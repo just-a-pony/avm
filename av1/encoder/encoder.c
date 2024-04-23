@@ -1671,6 +1671,16 @@ static void set_mv_search_params(AV1_COMP *cpi) {
 static void set_hole_fill_decision(AV1_COMP *cpi, int width, int height,
                                    int blk_w, int blk_h, int counts_1,
                                    int counts_2) {
+#if CONFIG_MF_HOLE_FILL_ALWAYS_ENABLE
+  (void)width;
+  (void)height;
+  (void)blk_w;
+  (void)blk_h;
+  (void)counts_1;
+  (void)counts_2;
+  AV1_COMMON *const cm = &cpi->common;
+  cm->seq_params.enable_tip_hole_fill = 1;
+#else
   AV1_COMMON *const cm = &cpi->common;
   const bool is_720p_or_larger = AOMMIN(cm->width, cm->height) >= 720;
   const bool is_4k_or_larger = AOMMIN(cm->width, cm->height) >= 2160;
@@ -1691,6 +1701,7 @@ static void set_hole_fill_decision(AV1_COMP *cpi, int width, int height,
       cm->seq_params.enable_tip_hole_fill = 0;
     }
   }
+#endif  // CONFIG_MF_HOLE_FILL_ALWAYS_ENABLE
 }
 
 #if CONFIG_IMPROVED_CFL
