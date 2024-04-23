@@ -679,12 +679,12 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
       eob_data->max_scan_line = AOMMAX(eob_data->max_scan_line, pos);
       int idtx_sign_ctx = get_sign_ctx_skip(signs, levels, pos, bwl);
 #if CONFIG_IMPROVEIDTX_CTXS
-      sign =
-          aom_read_symbol(r, ec_ctx->idtx_sign_cdf[size_ctx][idtx_sign_ctx], 2,
+      sign = aom_read_symbol(r, ec_ctx->idtx_sign_cdf[size_ctx][idtx_sign_ctx],
+                             2, ACCT_INFO("sign"));
 #else
       sign = aom_read_symbol(r, ec_ctx->idtx_sign_cdf[idtx_sign_ctx], 2,
+                             ACCT_INFO("sign"));
 #endif  // CONFIG_IMPROVEIDTX_CTXS
-                          ACCT_INFO("sign"));
       signs[sign_idx] = sign > 0 ? -1 : 1;
       if (level >= MAX_BASE_BR_RANGE) {
         level += read_golomb(xd, r);
