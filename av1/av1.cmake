@@ -288,6 +288,18 @@ if(CONFIG_OPTICAL_FLOW_API)
        "${AOM_ROOT}/av1/encoder/optical_flow.h")
 endif()
 
+if(CONFIG_ML_PART_SPLIT)
+  list(
+    APPEND
+    AOM_AV1_ENCODER_SOURCES
+    "${AOM_ROOT}/av1/encoder/simple_intrapred_tflite.cc"
+    "${AOM_ROOT}/av1/encoder/simple_intrapred_tflite.h"
+    "${AOM_ROOT}/av1/encoder/simple_intrapred_tflite_model_128x128.h"
+    "${AOM_ROOT}/av1/encoder/simple_intrapred_tflite_model_64x64.h"
+    "${AOM_ROOT}/av1/encoder/simple_intrapred_tflite_model_32x32.h"
+    "${AOM_ROOT}/av1/encoder/simple_intrapred_tflite_model_16x16.h")
+endif()
+
 list(
   APPEND AOM_AV1_COMMON_INTRIN_SSE2 "${AOM_ROOT}/av1/common/cdef_block_sse2.c"
   "${AOM_ROOT}/av1/common/x86/cfl_sse2.c"

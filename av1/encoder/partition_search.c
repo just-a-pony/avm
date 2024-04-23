@@ -4073,6 +4073,9 @@ static void init_partition_search_state_params(
 #if CONFIG_EXT_RECUR_PARTITIONS
   part_search_state->partition_boundaries = NULL;
   part_search_state->prune_partition_none = false;
+#if CONFIG_ML_PART_SPLIT
+  part_search_state->prune_partition_split = false;
+#endif  // CONFIG_ML_PART_SPLIT
   av1_zero(part_search_state->prune_partition_3);
   av1_zero(part_search_state->prune_partition_4a);
   av1_zero(part_search_state->prune_partition_4b);
@@ -4251,7 +4254,12 @@ static void rd_pick_rect_partition(
     BLOCK_SIZE bsize, const int is_not_edge_block[NUM_RECT_PARTS],
     SB_MULTI_PASS_MODE multi_pass_mode, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, bool *both_blocks_skippable,
-    int max_recursion_depth) {
+    int max_recursion_depth
+#if CONFIG_ML_PART_SPLIT
+    ,
+    int next_force_prune_flags[3]
+#endif  // CONFIG_ML_PART_SPLIT
+) {
   const PARTITION_TYPE partition_type = rect_partition_type[rect_type];
   RD_STATS *sum_rdc = &part_search_state->sum_rdc;
 
@@ -4269,7 +4277,12 @@ static void rd_pick_rect_partition(
       mi_pos_rect[rect_type][0][1], bsize, &this_rdc, best_remain_rdcost,
       sub_tree[0], get_partition_subtree_const(ptree_luma, 0),
       get_partition_subtree_const(template_tree, 0), max_recursion_depth, NULL,
-      NULL, multi_pass_mode, NULL);
+      NULL, multi_pass_mode, NULL
+#if CONFIG_ML_PART_SPLIT
+      ,
+      next_force_prune_flags
+#endif  // CONFIG_ML_PART_SPLIT
+  );
   av1_rd_cost_update(x->rdmult, &this_rdc);
   if (!partition_found) {
     av1_invalid_rd_stats(sum_rdc);
@@ -4289,7 +4302,12 @@ static void rd_pick_rect_partition(
         mi_pos_rect[rect_type][1][1], bsize, &this_rdc, best_remain_rdcost,
         sub_tree[1], get_partition_subtree_const(ptree_luma, 1),
         get_partition_subtree_const(template_tree, 1), max_recursion_depth,
-        NULL, NULL, multi_pass_mode, NULL);
+        NULL, NULL, multi_pass_mode, NULL
+#if CONFIG_ML_PART_SPLIT
+        ,
+        next_force_prune_flags
+#endif  // CONFIG_ML_PART_SPLIT
+    );
     av1_rd_cost_update(x->rdmult, &this_rdc);
     part_search_state->rect_part_rd[rect_type][1] = this_rdc.rdcost;
 
@@ -4379,7 +4397,12 @@ static void rectangular_partition_search(
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
     LevelBanksRDO *level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-    int64_t part_none_rd) {
+    int64_t part_none_rd
+#if CONFIG_ML_PART_SPLIT
+    ,
+    int next_force_prune_flags[2][3]
+#endif  // CONFIG_ML_PART_SPLIT
+) {
   const AV1_COMMON *const cm = &cpi->common;
   PartitionBlkParams blk_params = part_search_state->part_blk_params;
   RD_STATS *sum_rdc = &part_search_state->sum_rdc;
@@ -4520,7 +4543,12 @@ static void rectangular_partition_search(
         cpi, td, tile_data, tp, x, pc_tree, part_search_state, best_rdc, i,
         mi_pos_rect, blk_params.subsize, is_not_edge_block, multi_pass_mode,
         track_ptree_luma ? ptree_luma : NULL, template_tree,
-        &both_blocks_skippable, max_recursion_depth);
+        &both_blocks_skippable, max_recursion_depth
+#if CONFIG_ML_PART_SPLIT
+        ,
+        next_force_prune_flags[i]
+#endif  // CONFIG_ML_PART_SPLIT
+    );
 #else
     int sub_part_idx = 0;
     for (int j = 0; j < SUB_PARTITIONS_RECT; j++) {
@@ -5431,6 +5459,11 @@ static void split_partition_search(
       part_search_state->forced_partition != PARTITION_SPLIT) {
     return;
   }
+#if CONFIG_ML_PART_SPLIT
+  if (part_search_state->prune_partition_split) {
+    return;
+  }
+#endif  // CONFIG_ML_PART_SPLIT
   if (max_recursion_depth < 0) {
     return;
   }
@@ -5500,12 +5533,20 @@ static void split_partition_search(
     // If the RD cost exceeds the best cost then do not
     // evaluate other split sub-partitions.
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_ML_PART_SPLIT
+    int force_prune_flags[3] = { 0, 0, 0 };
+#endif  // CONFIG_ML_PART_SPLIT
     if (!av1_rd_pick_partition(
             cpi, td, tile_data, tp, mi_row + y_idx, mi_col + x_idx, subsize,
             &part_search_state->this_rdc, best_remain_rdcost, sub_tree[idx],
             track_ptree_luma ? ptree_luma->sub_tree[idx] : NULL,
             get_partition_subtree_const(template_tree, idx),
-            max_recursion_depth, NULL, NULL, multi_pass_mode, NULL)) {
+            max_recursion_depth, NULL, NULL, multi_pass_mode, NULL
+#if CONFIG_ML_PART_SPLIT
+            ,
+            force_prune_flags
+#endif  // CONFIG_ML_PART_SPLIT
+            )) {
       break;
     }
 #else
@@ -5642,11 +5683,19 @@ static int rd_try_subblock_new(AV1_COMP *const cpi, ThreadData *td,
   av1_rd_stats_subtraction(x->rdmult, &best_rdcost, sum_rdc, &rdcost_remaining);
   RD_STATS this_rdc;
 
+#if CONFIG_ML_PART_SPLIT
+  int force_prune_flags[3] = { 0, 0, 0 };
+#endif  // CONFIG_ML_PART_SPLIT
   if (!av1_rd_pick_partition(cpi, td, tile_data, tp, mi_row, mi_col, bsize,
                              &this_rdc, rdcost_remaining, rdo_data->pc_tree,
                              rdo_data->ptree_luma, rdo_data->template_tree,
                              max_recursion_depth, NULL, NULL, multi_pass_mode,
-                             NULL)) {
+                             NULL
+#if CONFIG_ML_PART_SPLIT
+                             ,
+                             force_prune_flags
+#endif  // CONFIG_ML_PART_SPLIT
+                             )) {
     av1_invalid_rd_stats(sum_rdc);
     return 0;
   }
@@ -7301,6 +7350,11 @@ partition outperforms previously tested partitions
 * best partition found.
 */
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+
+#if CONFIG_ML_PART_SPLIT
+enum { PRUNE_OTHER = 0, PRUNE_VERT = 1, PRUNE_HORZ = 2 };
+#endif  // CONFIG_ML_PART_SPLIT
+
 bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
                            TileDataEnc *tile_data, TokenExtra **tp, int mi_row,
                            int mi_col, BLOCK_SIZE bsize, RD_STATS *rd_cost,
@@ -7312,7 +7366,12 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
                            SIMPLE_MOTION_DATA_TREE *sms_tree, int64_t *none_rd,
                            SB_MULTI_PASS_MODE multi_pass_mode,
-                           RD_RECT_PART_WIN_INFO *rect_part_win_info) {
+                           RD_RECT_PART_WIN_INFO *rect_part_win_info
+#if CONFIG_ML_PART_SPLIT
+                           ,
+                           int force_prune_flags[3]
+#endif  // CONFIG_ML_PART_SPLIT
+) {
   const AV1_COMMON *const cm = &cpi->common;
   const int num_planes = av1_num_planes(cm);
   TileInfo *const tile_info = &tile_data->tile_info;
@@ -7551,11 +7610,77 @@ BEGIN_PARTITION_SEARCH:
 #else
     reset_part_limitations(cpi, &part_search_state);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_ML_PART_SPLIT
+    part_search_state.prune_rect_part[HORZ] = 0;
+    part_search_state.prune_rect_part[VERT] = 0;
+    part_search_state.prune_partition_none = 0;
+    part_search_state.prune_partition_split = 0;
+#endif  // CONFIG_ML_PART_SPLIT
   }
 
   // Partition block source pixel variance.
   unsigned int pb_source_variance = UINT_MAX;
+#if CONFIG_ML_PART_SPLIT
+  int next_force_prune_flags[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
+  // Don't use ML pruning if this is the second attempt to find a valid
+  // partition.
+  if (cpi->sf.part_sf.prune_split_with_ml &&
+      part_search_state.forced_partition == PARTITION_INVALID &&
+      !x->must_find_valid_partition &&
+      is_partition_point(bsize
+#if CONFIG_CB1TO4_SPLIT
+                         ,
+                         blk_params.parent_bsize
+#endif  // CONFIG_CB1TO4_SPLIT
+                         )) {
+    part_search_state.prune_partition_none |= force_prune_flags[PRUNE_OTHER];
+    part_search_state.prune_partition_3[0] |= force_prune_flags[PRUNE_OTHER];
+    part_search_state.prune_partition_3[1] |= force_prune_flags[PRUNE_OTHER];
+    part_search_state.prune_partition_4a[0] |= force_prune_flags[PRUNE_OTHER];
+    part_search_state.prune_partition_4a[1] |= force_prune_flags[PRUNE_OTHER];
+    part_search_state.prune_partition_4b[0] |= force_prune_flags[PRUNE_OTHER];
+    part_search_state.prune_partition_4b[1] |= force_prune_flags[PRUNE_OTHER];
+    part_search_state.prune_rect_part[HORZ] |= force_prune_flags[PRUNE_HORZ];
+    part_search_state.prune_rect_part[VERT] |= force_prune_flags[PRUNE_VERT];
 
+    // Don't want to run ML in the second stage of the forced split. Want the
+    // force split to carry out without interference.
+    // Note1: might still be some interference during prune split.
+    // Note2: prune split doesn't mean prune both splits on l2, it means
+    //        prune either one or both.
+    if (!force_prune_flags[PRUNE_OTHER]) {
+      int ml_result =
+          av1_ml_part_split_infer(cpi, x, mi_row, mi_col, bsize, pc_tree);
+      if (ml_result == ML_PART_FORCE_SPLIT) {
+        part_search_state.prune_partition_none = 1;
+        part_search_state.prune_partition_3[0] = 1;
+        part_search_state.prune_partition_3[1] = 1;
+        part_search_state.prune_partition_4a[0] = 1;
+        part_search_state.prune_partition_4a[1] = 1;
+        part_search_state.prune_partition_4b[0] = 1;
+        part_search_state.prune_partition_4b[1] = 1;
+        if (is_square_split_eligible(bsize, cm->sb_size)) {
+          part_search_state.prune_rect_part[VERT] = 1;
+          part_search_state.prune_rect_part[HORZ] = 1;
+        } else {
+          // 64x64 and smaller
+          next_force_prune_flags[HORZ][PRUNE_OTHER] = 1;
+          next_force_prune_flags[VERT][PRUNE_OTHER] = 1;
+          next_force_prune_flags[HORZ][PRUNE_HORZ] = 1;
+          next_force_prune_flags[VERT][PRUNE_VERT] = 1;
+          // left with HORZ,VERT and VERT,HORZ
+        }
+      } else if (ml_result == ML_PART_PRUNE_SPLIT) {
+        if (is_square_split_eligible(bsize, cm->sb_size)) {
+          part_search_state.prune_partition_split = 1;
+        } else {
+          next_force_prune_flags[HORZ][PRUNE_VERT] = 1;
+          next_force_prune_flags[VERT][PRUNE_HORZ] = 1;
+        }
+      }
+    }
+  }
+#endif  // CONFIG_ML_PART_SPLIT
   // PARTITION_NONE search stage.
   int64_t part_none_rd = INT64_MAX;
   if (!search_none_after_rect && !search_none_after_split) {
@@ -7662,7 +7787,12 @@ BEGIN_PARTITION_SEARCH:
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
       &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-      part_none_rd);
+      part_none_rd
+#if CONFIG_ML_PART_SPLIT
+      ,
+      next_force_prune_flags
+#endif  // CONFIG_ML_PART_SPLIT
+  );
 
   if (pb_source_variance == UINT_MAX) {
     av1_setup_src_planes(x, cpi->source, mi_row, mi_col, num_planes, NULL);

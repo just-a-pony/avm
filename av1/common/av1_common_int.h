@@ -1829,6 +1829,9 @@ typedef struct AV1Common {
   YV12_BUFFER_CONFIG predicted_pixels;
   YV12_BUFFER_CONFIG prefiltered_pixels;
 #endif  // CONFIG_INSPECTION
+#if CONFIG_ML_PART_SPLIT
+  void *partition_model;
+#endif  // CONFIG_ML_PART_SPLIT
 } AV1_COMMON;
 
 /*!\cond */

@@ -159,4 +159,7 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_CCSO_SIGFIX 0 !CONFIG_CCSO_BO_ONLY_OPTION)
   endif()
 
+  if(CONFIG_ML_PART_SPLIT)
+    change_config_and_warn(CONFIG_TENSORFLOW_LITE 1 CONFIG_ML_PART_SPLIT)
+  endif()
 endmacro()
