@@ -1012,6 +1012,7 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
   const int comp_bh = bh >> ss_y;
 
   MB_MODE_INFO mbmi_buf;
+  av1_zero(mbmi_buf);
   MB_MODE_INFO *mbmi = &mbmi_buf;
 
   int_mv mv_refined[2 * 4];
