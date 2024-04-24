@@ -891,7 +891,14 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
 
   // write sec_tx_type here
   // Only y plane's sec_tx_type is transmitted
+#if CONFIG_INTER_IST
+  if ((plane == AOM_PLANE_Y) &&
+      (is_inter_block(xd->mi[0], xd->tree_type)
+           ? (eob > 3 && cm->seq_params.enable_inter_ist)
+           : (eob != 1 && cm->seq_params.enable_ist))) {
+#else
   if ((plane == AOM_PLANE_Y) && (cm->seq_params.enable_ist) && eob != 1) {
+#endif  // CONFIG_INTER_IST
     av1_write_sec_tx_type(cm, xd, tx_type, tx_size, eob, w);
   }
 
@@ -1658,8 +1665,23 @@ static int get_tx_type_cost(const MACROBLOCK *x, const MACROBLOCKD *xd,
         const int esc_eob = is_fsc ? bob_code : eob;
         const int eob_tx_ctx =
             get_lp2tx_ctx(tx_size, get_txb_bwl(tx_size), esc_eob);
+#if CONFIG_INTER_IST
+        int tx_type_cost = 0;
+        tx_type_cost =
+            x->mode_costs
+                .inter_tx_type_costs[ext_tx_set][eob_tx_ctx][square_tx_size]
+                                    [get_primary_tx_type(tx_type)];
+        if (block_signals_sec_tx_type(xd, tx_size, tx_type, eob) &&
+            xd->enable_ist) {
+          tx_type_cost +=
+              x->mode_costs.stx_flag_cost[is_inter][square_tx_size]
+                                         [get_secondary_tx_type(tx_type)];
+        }
+        return tx_type_cost;
+#else
         return x->mode_costs.inter_tx_type_costs[ext_tx_set][eob_tx_ctx]
                                                 [square_tx_size][tx_type];
+#endif  // CONFIG_INTER_IST
       }
     } else {
       if (ext_tx_set > 0) {
@@ -1691,9 +1713,15 @@ static int get_tx_type_cost(const MACROBLOCK *x, const MACROBLOCKD *xd,
         }
         if (block_signals_sec_tx_type(xd, tx_size, tx_type, eob) &&
             xd->enable_ist) {
+#if CONFIG_INTER_IST
+          tx_type_cost +=
+              x->mode_costs.stx_flag_cost[is_inter][square_tx_size]
+                                         [get_secondary_tx_type(tx_type)];
+#else
           tx_type_cost +=
               x->mode_costs.stx_flag_cost[square_tx_size]
                                          [get_secondary_tx_type(tx_type)];
+#endif  // CONFIG_INTER_IST
 #if CONFIG_IST_SET_FLAG
           if (get_secondary_tx_type(tx_type) > 0)
             tx_type_cost += get_sec_tx_set_cost(x, mbmi, tx_type);
@@ -1702,15 +1730,30 @@ static int get_tx_type_cost(const MACROBLOCK *x, const MACROBLOCKD *xd,
         return tx_type_cost;
       }
     }
+#if CONFIG_INTER_IST
+  } else if (!xd->lossless[xd->mi[0]->segment_id]) {
+#else
   } else if (!is_inter && !xd->lossless[xd->mi[0]->segment_id]) {
+#endif  // CONFIG_INTER_IST
     if (block_signals_sec_tx_type(xd, tx_size, tx_type, eob) &&
         xd->enable_ist) {
+#if CONFIG_INTER_IST
+      int tx_type_cost =
+          x->mode_costs.stx_flag_cost[is_inter][square_tx_size]
+                                     [get_secondary_tx_type(tx_type)];
+#else
       int tx_type_cost =
           x->mode_costs
               .stx_flag_cost[square_tx_size][get_secondary_tx_type(tx_type)];
+#endif  // CONFIG_INTER_IST
 #if CONFIG_IST_SET_FLAG
+#if CONFIG_INTER_IST
+      if (get_secondary_tx_type(tx_type) > 0 && !is_inter)
+        tx_type_cost += get_sec_tx_set_cost(x, mbmi, tx_type);
+#else
       if (get_secondary_tx_type(tx_type) > 0)
         tx_type_cost += get_sec_tx_set_cost(x, mbmi, tx_type);
+#endif  // CONFIG_INTER_IST
 #endif  // CONFIG_IST_SET_FLAG
       return tx_type_cost;
     }
@@ -4575,10 +4618,23 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
         const int eob_tx_ctx =
             get_lp2tx_ctx(tx_size, get_txb_bwl(tx_size), esc_eob);
         if (allow_update_cdf) {
+#if CONFIG_INTER_IST
+          update_cdf(
+              fc->inter_ext_tx_cdf[eset][eob_tx_ctx][txsize_sqr_map[tx_size]],
+              av1_ext_tx_ind[tx_set_type][get_primary_tx_type(tx_type)],
+              av1_num_ext_tx_set[tx_set_type]);
+          // Modified condition for CDF update
+          if (cm->seq_params.enable_inter_ist &&
+              block_signals_sec_tx_type(xd, tx_size, tx_type, eob)) {
+            update_cdf(fc->stx_cdf[is_inter][txsize_sqr_map[tx_size]],
+                       (int8_t)get_secondary_tx_type(tx_type), STX_TYPES);
+          }
+#else
           update_cdf(
               fc->inter_ext_tx_cdf[eset][eob_tx_ctx][txsize_sqr_map[tx_size]],
               av1_ext_tx_ind[tx_set_type][tx_type],
               av1_num_ext_tx_set[tx_set_type]);
+#endif  // CONFIG_INTER_IST
         }
 #if CONFIG_ENTROPY_STATS
         ++counts->inter_ext_tx[eset][eob_tx_ctx][txsize_sqr_map[tx_size]]
@@ -4635,8 +4691,13 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
           // Modified condition for CDF update
           if (cm->seq_params.enable_ist &&
               block_signals_sec_tx_type(xd, tx_size, tx_type, eob)) {
+#if CONFIG_INTER_IST
+            update_cdf(fc->stx_cdf[is_inter][txsize_sqr_map[tx_size]],
+                       (int8_t)get_secondary_tx_type(tx_type), STX_TYPES);
+#else
             update_cdf(fc->stx_cdf[txsize_sqr_map[tx_size]],
                        (int8_t)get_secondary_tx_type(tx_type), STX_TYPES);
+#endif  // CONFIG_INTER_IST
 #if CONFIG_IST_SET_FLAG
             if (get_secondary_tx_type(tx_type) > 0)
               update_sec_tx_set_cdf(fc, mbmi, tx_type);
@@ -4647,18 +4708,38 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
     }
   }
   // CDF update for txsize_sqr_up_map[tx_size] >= TX_32X32
+#if CONFIG_INTER_IST
+  else if (cm->quant_params.base_qindex > 0 &&
+           !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
+           !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP) &&
+           (is_inter ? cm->seq_params.enable_inter_ist
+                     : cm->seq_params.enable_ist) &&
+           block_signals_sec_tx_type(xd, tx_size, tx_type, eob)) {
+    if (eob == 1 && !is_inter && allow_update_cdf) return;
+#else
   else if (!is_inter && cm->quant_params.base_qindex > 0 &&
            !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
            !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP) &&
            cm->seq_params.enable_ist &&
            block_signals_sec_tx_type(xd, tx_size, tx_type, eob)) {
     if (eob == 1 && allow_update_cdf) return;
+#endif  // CONFIG_INTER_IST
     if (allow_update_cdf) {
+#if CONFIG_INTER_IST
+      update_cdf(fc->stx_cdf[is_inter][txsize_sqr_map[tx_size]],
+                 (int8_t)get_secondary_tx_type(tx_type), STX_TYPES);
+#else
       update_cdf(fc->stx_cdf[txsize_sqr_map[tx_size]],
                  (int8_t)get_secondary_tx_type(tx_type), STX_TYPES);
+#endif  // CONFIG_INTER_IST
 #if CONFIG_IST_SET_FLAG
+#if CONFIG_INTER_IST
+      if (get_secondary_tx_type(tx_type) > 0 && !is_inter)
+        update_sec_tx_set_cdf(fc, mbmi, tx_type);
+#else
       if (get_secondary_tx_type(tx_type) > 0)
         update_sec_tx_set_cdf(fc, mbmi, tx_type);
+#endif  // CONFIG_INTER_IST
 #endif  // CONFIG_IST_SET_FLAG
     }
   }

@@ -3470,7 +3470,11 @@ static INLINE int tx_size_to_depth(TX_SIZE tx_size, BLOCK_SIZE bsize) {
  *
  */
 static INLINE void disable_secondary_tx_type(TX_TYPE *tx_type) {
+#if CONFIG_IST_SET_FLAG
+  *tx_type &= 0x000f;
+#else
   *tx_type &= 0x0f;
+#endif
 }
 /*
  * This function masks primary transform type used by the transform block
@@ -3486,7 +3490,11 @@ static INLINE void disable_primary_tx_type(TX_TYPE *tx_type) {
  * This function returns primary transform type used by the transform block
  */
 static INLINE TX_TYPE get_primary_tx_type(TX_TYPE tx_type) {
+#if CONFIG_IST_SET_FLAG
+  return tx_type & 0x000f;
+#else
   return tx_type & 0x0f;
+#endif
 }
 /*
  * This function returns secondary transform type used by the transform block
@@ -3529,14 +3537,20 @@ static INLINE void set_secondary_tx_set(TX_TYPE *tx_type,
 static INLINE int block_signals_sec_tx_type(const MACROBLOCKD *xd,
                                             TX_SIZE tx_size, TX_TYPE tx_type,
                                             int eob) {
+#if CONFIG_INTER_IST
+  int should_return =
+      (is_inter_block(xd->mi[0], xd->tree_type) ? (eob <= 3) : (eob <= 1));
+  if (should_return) return 0;
+#else
   if (eob <= 1) return 0;
+#endif  // CONFIG_INTER_IST
   const MB_MODE_INFO *mbmi = xd->mi[0];
   PREDICTION_MODE intra_dir;
   if (mbmi->filter_intra_mode_info.use_filter_intra) {
     intra_dir =
         fimode_to_intradir[mbmi->filter_intra_mode_info.filter_intra_mode];
   } else {
-    intra_dir = mbmi->mode;
+    intra_dir = get_intra_mode(mbmi, AOM_PLANE_Y);
   }
   const BLOCK_SIZE bs = mbmi->sb_type[PLANE_TYPE_Y];
   const TX_TYPE primary_tx_type = get_primary_tx_type(tx_type);
@@ -3550,10 +3564,22 @@ static INLINE int block_signals_sec_tx_type(const MACROBLOCKD *xd,
     ist_eob = 0;
   }
   const int is_depth0 = tx_size_is_depth0(tx_size, bs);
+#if CONFIG_INTER_IST
+  bool condition = (primary_tx_type == DCT_DCT && width >= 16 && height >= 16);
+  bool mode_dependent_condition =
+      (is_inter_block(mbmi, xd->tree_type)
+           ? condition
+           : (intra_dir < PAETH_PRED &&
+              !(mbmi->filter_intra_mode_info.use_filter_intra)));
+  const int code_stx =
+      (primary_tx_type == DCT_DCT || primary_tx_type == ADST_ADST) &&
+      mode_dependent_condition && is_depth0 && ist_eob;
+#else
   const int code_stx =
       (primary_tx_type == DCT_DCT || primary_tx_type == ADST_ADST) &&
       (intra_dir < PAETH_PRED) &&
       !(mbmi->filter_intra_mode_info.use_filter_intra) && is_depth0 && ist_eob;
+#endif  // CONFIG_INTER_IST
   return code_stx;
 }
 

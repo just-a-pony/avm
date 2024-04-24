@@ -170,6 +170,9 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t enable_idif;
 #endif  // CONFIG_IDIF
   arg_def_t enable_ist;
+#if CONFIG_INTER_IST
+  arg_def_t enable_inter_ist;
+#endif  // CONFIG_INTER_IST
   arg_def_t enable_cctx;
   arg_def_t enable_ibp;
   arg_def_t enable_adaptive_mvd;

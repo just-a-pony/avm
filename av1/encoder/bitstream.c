@@ -1610,10 +1610,17 @@ void av1_write_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
     }
     if (is_inter) {
       const int eob_tx_ctx = get_lp2tx_ctx(tx_size, get_txb_bwl(tx_size), eob);
+#if CONFIG_INTER_IST
+      aom_write_symbol(
+          w, av1_ext_tx_ind[tx_set_type][get_primary_tx_type(tx_type)],
+          ec_ctx->inter_ext_tx_cdf[eset][eob_tx_ctx][square_tx_size],
+          av1_num_ext_tx_set[tx_set_type]);
+#else
       aom_write_symbol(
           w, av1_ext_tx_ind[tx_set_type][tx_type],
           ec_ctx->inter_ext_tx_cdf[eset][eob_tx_ctx][square_tx_size],
           av1_num_ext_tx_set[tx_set_type]);
+#endif  // CONFIG_INTER_IST
     } else {
       if (mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) {
         return;
@@ -1691,26 +1698,52 @@ void av1_write_sec_tx_type(const AV1_COMMON *const cm, const MACROBLOCKD *xd,
       !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP)) {
     FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
     const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];
+#if !CONFIG_INTER_IST
     if (!is_inter) {
+#endif  // CONFIG_INTER_IST
       const TX_TYPE stx_flag = get_secondary_tx_type(tx_type);
       assert(stx_flag <= STX_TYPES - 1);
       if (block_signals_sec_tx_type(xd, tx_size, tx_type, eob)) {
-        aom_write_symbol(w, stx_flag, ec_ctx->stx_cdf[square_tx_size],
+#if CONFIG_INTER_IST
+        aom_write_symbol(w, stx_flag, ec_ctx->stx_cdf[is_inter][square_tx_size],
                          STX_TYPES);
+#else
+      aom_write_symbol(w, stx_flag, ec_ctx->stx_cdf[square_tx_size], STX_TYPES);
+#endif  // CONFIG_INTER_IST
 #if CONFIG_IST_SET_FLAG
+#if CONFIG_INTER_IST
+        if (stx_flag > 0 && !is_inter)
+          write_sec_tx_set(ec_ctx, w, mbmi, tx_type);
+#else
         if (stx_flag > 0) write_sec_tx_set(ec_ctx, w, mbmi, tx_type);
+#endif  // CONFIG_INTER_IST
 #endif  // CONFIG_IST_SET_FLAG
       }
+#if !CONFIG_INTER_IST
     }
+#endif  // CONFIG_INTER_IST
+#if CONFIG_INTER_IST
+  } else if (!xd->lossless[mbmi->segment_id]) {
+#else
   } else if (!is_inter && !xd->lossless[mbmi->segment_id]) {
+#endif  // CONFIG_INTER_IST
     FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
     const TX_SIZE square_tx_size = txsize_sqr_map[tx_size];
     TX_TYPE stx_flag = get_secondary_tx_type(tx_type);
     assert(stx_flag <= STX_TYPES - 1);
     if (block_signals_sec_tx_type(xd, tx_size, tx_type, eob)) {
+#if CONFIG_INTER_IST
+      aom_write_symbol(w, stx_flag, ec_ctx->stx_cdf[is_inter][square_tx_size],
+                       STX_TYPES);
+#else
       aom_write_symbol(w, stx_flag, ec_ctx->stx_cdf[square_tx_size], STX_TYPES);
+#endif  // CONFIG_INTER_IST
 #if CONFIG_IST_SET_FLAG
+#if CONFIG_INTER_IST
+      if (stx_flag > 0 && !is_inter) write_sec_tx_set(ec_ctx, w, mbmi, tx_type);
+#else
       if (stx_flag > 0) write_sec_tx_set(ec_ctx, w, mbmi, tx_type);
+#endif  // CONFIG_INTER_IST
 #endif  // CONFIG_IST_SET_FLAG
     }
   }
@@ -5415,6 +5448,9 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
   aom_wb_write_bit(wb, seq_params->enable_sdp);
   aom_wb_write_bit(wb, seq_params->enable_ist);
+#if CONFIG_INTER_IST
+  aom_wb_write_bit(wb, seq_params->enable_inter_ist);
+#endif  // CONFIG_INTER_IST
   if (!seq_params->monochrome) aom_wb_write_bit(wb, seq_params->enable_cctx);
   aom_wb_write_bit(wb, seq_params->enable_mrls);
   aom_wb_write_literal(wb, seq_params->enable_tip, 2);

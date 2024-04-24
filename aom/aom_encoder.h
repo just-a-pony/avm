@@ -364,6 +364,12 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_ist;
+#if CONFIG_INTER_IST
+  /*!\brief enable Inter secondary transform
+   *
+   */
+  unsigned int enable_inter_ist;
+#endif  // CONFIG_INTER_IST
   /*!\brief enable cross-chroma component transform
    *
    */

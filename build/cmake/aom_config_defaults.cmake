@@ -406,6 +406,7 @@ set_aom_config_var(
 set_aom_config_var(
   CONFIG_INTRA_TX_IST_PARSE 1
   "Parsing dependency removal for intra tx type and IST set signaling.")
+set_aom_config_var(CONFIG_INTER_IST 1 "Enable IST for inter blocks.")
 #
 # Variables in this section control optional features of the build system.
 #
