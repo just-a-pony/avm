@@ -430,6 +430,10 @@ typedef struct MB_MODE_INFO {
   /*! \brief The partition type of the current coding block. */
   PARTITION_TYPE partition;
   /*! \brief The prediction mode used */
+#if CONFIG_EXTENDED_SDP
+  /*! \brief The region type used for the current block. */
+  REGION_TYPE region_type;
+#endif  // CONFIG_EXTENDED_SDP
   PREDICTION_MODE mode;
   /*! \brief The JMVD scaling mode for the current coding block. The supported
    *  scale modes for JOINT_NEWMV mode is 0, 1, 2, 3, and 4. The supported scale
@@ -746,6 +750,12 @@ typedef struct PARTITION_TREE {
   struct PARTITION_TREE *sub_tree[4];
   /*! \brief The partition type used to split the current block. */
   PARTITION_TYPE partition;
+#if CONFIG_EXTENDED_SDP
+  /*! \brief The region type used for the current block. */
+  REGION_TYPE region_type;
+  /*! \brief Whethe SDP is allowed for one block in inter frame. */
+  int inter_sdp_allowed_flag;
+#endif  // CONFIG_EXTENDED_SDP
   /*! \brief Block size of the current block. */
   BLOCK_SIZE bsize;
   /*! \brief Whether the chroma block info is ready. */
@@ -1362,6 +1372,61 @@ static INLINE void initialize_chroma_ref_info(int mi_row, int mi_col,
   info->bsize = bsize;
   info->bsize_base = bsize;
 }
+
+#if CONFIG_EXTENDED_SDP
+static INLINE int is_bsize_allowed_for_inter_sdp(BLOCK_SIZE bsize,
+                                                 PARTITION_TYPE partition) {
+  const int bw = block_size_wide[bsize];
+  const int bh = block_size_high[bsize];
+  return bw <= 32 && bh <= 32 && bw >= 8 && bh >= 8 &&
+         partition < PARTITION_HORZ_4A;
+}
+// Decide whether SDP is allowed for one block in inter frame.
+static INLINE int is_inter_sdp_allowed(BLOCK_SIZE parent_bsize,
+                                       PARTITION_TYPE parent_partition) {
+  const int bw = block_size_wide[parent_bsize];
+  const int bh = block_size_high[parent_bsize];
+  // Check if block width/height is less than 4.
+  const int bw_gt_4 = bw > 4;
+  const int bh_gt_4 = bh > 4;
+  // Check if half block width/height is less than 8.
+  const int hbw_gt_4 = bw > 8;
+  const int hbh_gt_4 = bh > 8;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  // Check if quarter block width/height is less than 16.
+  const int qbw_gt_4 = bw > 16;
+  const int qbh_gt_4 = bh > 16;
+#endif  // !CONFIG_UNEVEN_4WAY || CONFIG_EXT_RECUR_PARTITIONS
+  // Check if one-eighth block width/height is less than 32.
+  const int ebw_gt_4 = bw > 32;
+  const int ebh_gt_4 = bh > 32;
+  switch (parent_partition) {
+    case PARTITION_NONE: return 1;
+    case PARTITION_HORZ: return bw_gt_4 && hbh_gt_4;
+    case PARTITION_VERT: return hbw_gt_4 && bh_gt_4;
+    case PARTITION_SPLIT: return hbw_gt_4 && hbh_gt_4;
+#if CONFIG_EXT_RECUR_PARTITIONS
+    case PARTITION_HORZ_4A:
+    case PARTITION_HORZ_4B: return bw_gt_4 && ebh_gt_4;
+    case PARTITION_VERT_4A:
+    case PARTITION_VERT_4B: return ebw_gt_4 && bh_gt_4;
+    case PARTITION_HORZ_3: return hbw_gt_4 && qbh_gt_4;
+    case PARTITION_VERT_3: return qbw_gt_4 && hbh_gt_4;
+#else   // CONFIG_EXT_RECUR_PARTITIONS
+    case PARTITION_HORZ_A:
+    case PARTITION_HORZ_B:
+    case PARTITION_VERT_A:
+    case PARTITION_VERT_B: return hbw_less_than_4 || hbh_less_than_4;
+    case PARTITION_HORZ_4: return bw_less_than_4 || qbh_less_than_4;
+    case PARTITION_VERT_4: return qbw_less_than_4 || bh_less_than_4;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+    default:
+      assert(0 && "Invalid partition type!");
+      return 0;
+      break;
+  }
+}
+#endif  // CONFIG_EXTENDED_SDP
 
 // Decide whether a block needs coding multiple chroma coding blocks in it at
 // once to get around sub-4x4 coding.
@@ -2334,6 +2399,7 @@ typedef struct macroblockd {
    * This is a pointer into 'left_txfm_context_buffer'.
    */
   TXFM_CONTEXT *left_txfm_context;
+
   /*!
    * left_txfm_context_buffer[i] is the left transform context for ith mi_row
    * in this *superblock*.

@@ -355,6 +355,14 @@ enum {
   TREES_TYPES,
 } UENUM1BYTE(TREE_TYPE);
 
+#if CONFIG_EXTENDED_SDP
+enum {
+  INTRA_REGION = 0,
+  MIXED_INTER_INTRA_REGION = 1,
+  REGION_TYPES = 2,
+} UENUM1BYTE(REGION_TYPE);
+#endif  // CONFIG_EXTENDED_SDP
+
 #if CONFIG_BLOCK_256
 // 4X4, 8X8, 16X16, 32X32, 64X64, 128X128, 256X256
 #define SQR_BLOCK_SIZES 7
@@ -478,6 +486,13 @@ typedef char PARTITION_CONTEXT;
 #else
 #define PARTITION_BLOCK_SIZES 5
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+
+#if CONFIG_EXTENDED_SDP
+// Extended SDP is only allowed for block samples >= 64 and <= 1024. The allowed
+// block size group is 64, 128, 256, 512, 1024, so the number of block size
+// group is 5 in total.
+#define INTER_SDP_BSIZE_GROUP 5
+#endif  // CONFIG_EXTENDED_SDP
 
 #define PARTITION_CONTEXTS (PARTITION_BLOCK_SIZES * PARTITION_PLOFFSET)
 
@@ -1145,6 +1160,10 @@ enum {
 #define TXFM_PARTITION_CONTEXTS ((TX_SIZES - TX_8X8) * 6 - 3)
 #endif  // CONFIG_NEW_TX_PARTITION
 typedef uint16_t TXFM_CONTEXT;
+
+#if CONFIG_EXTENDED_SDP
+typedef uint8_t INTRA_REGION_CONTEXT;
+#endif  // CONFIG_EXTENDED_SDP
 
 #define TIP_CONTEXTS 3
 

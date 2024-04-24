@@ -358,7 +358,7 @@ void av1_enc_build_inter_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,
 
 #if CONFIG_MORPH_PRED
   if (mbmi->morph_pred) {
-    assert(av1_allow_intrabc(cm));
+    assert(av1_allow_intrabc(cm, xd));
     assert(is_intrabc_block(mbmi, xd->tree_type));
     av1_build_morph_pred(cm, xd, bsize, mi_row, mi_col);
   }

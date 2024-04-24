@@ -566,6 +566,13 @@ static AOM_INLINE void perform_one_partition_pass(
     PC_TREE *const pc_root =
         av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col, sb_size, NULL,
                                PARTITION_NONE, 0, 1, ss_x, ss_y);
+#if CONFIG_EXTENDED_SDP
+    if (!frame_is_intra_only(cm)) {
+      pc_root->region_type = MIXED_INTER_INTRA_REGION;
+    } else {
+      pc_root->region_type = INTRA_REGION;
+    }
+#endif  // CONFIG_EXTENDED_SDP
 #if CONFIG_EXT_RECUR_PARTITIONS
     const PARTITION_TREE *template_tree =
         multi_pass_params ? multi_pass_params->template_tree : NULL;
@@ -579,8 +586,11 @@ static AOM_INLINE void perform_one_partition_pass(
     int force_prune_flags[3] = { 0, 0, 0 };
 #endif  // CONFIG_ML_PART_SPLIT
     av1_rd_pick_partition(
-        cpi, td, tile_data, tp, mi_row, mi_col, sb_size, &dummy_rdc, dummy_rdc,
-        pc_root,
+        cpi, td, tile_data, tp, mi_row, mi_col, sb_size,
+#if CONFIG_EXTENDED_SDP
+        PARTITION_NONE,
+#endif  // CONFIG_EXTENDED_SDP
+        &dummy_rdc, dummy_rdc, pc_root,
 #if CONFIG_EXT_RECUR_PARTITIONS
         xd->tree_type == CHROMA_PART ? xd->sbi->ptree_root[0] : NULL,
         template_tree, INT_MAX,

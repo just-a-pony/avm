@@ -521,6 +521,8 @@ static TX_SIZE set_lpf_parameters(
   params->filter_length = 0;
 
   TREE_TYPE tree_type = SHARED_PART;
+
+#if !CONFIG_EXTENDED_SDP
   const bool is_sdp_eligible = frame_is_intra_only(cm) &&
                                !cm->seq_params.monochrome &&
                                cm->seq_params.enable_sdp;
@@ -528,6 +530,7 @@ static TX_SIZE set_lpf_parameters(
     tree_type = (plane == AOM_PLANE_Y) ? LUMA_PART : CHROMA_PART;
   }
   const int plane_type = is_sdp_eligible && plane > 0;
+#endif  // !CONFIG_EXTENDED_SDP
 
   // no deblocking is required
   const uint32_t width = plane_ptr->dst.width;
@@ -552,6 +555,16 @@ static TX_SIZE set_lpf_parameters(
   // filtering. One example is that if this tile is not coded, then its mbmi
   // it not set up.
   if (mbmi == NULL) return TX_INVALID;
+
+#if CONFIG_EXTENDED_SDP
+  const bool is_sdp_eligible = cm->seq_params.enable_sdp &&
+                               !cm->seq_params.monochrome &&
+                               mbmi->region_type == INTRA_REGION;
+  if (is_sdp_eligible) {
+    tree_type = (plane == AOM_PLANE_Y) ? LUMA_PART : CHROMA_PART;
+  }
+  const int plane_type = is_sdp_eligible && plane > 0;
+#endif  // CONFIG_EXTENDED_SDP
 
 #if CONFIG_LF_SUB_PU
   TX_SIZE ts = get_transform_size(xd, mi[0], edge_dir, mi_row, mi_col, plane,
@@ -595,9 +608,28 @@ static TX_SIZE set_lpf_parameters(
           const int pv_col =
               (VERT_EDGE == edge_dir) ? (mi_col - (1 << scale_horz)) : (mi_col);
 
+#if CONFIG_EXTENDED_SDP
+          TREE_TYPE prev_tree_type = SHARED_PART;
+          const bool is_prev_sdp_eligible =
+              cm->seq_params.enable_sdp && !cm->seq_params.monochrome &&
+              mi_prev->region_type == INTRA_REGION;
+          // With SDP in inter frames, the tree type of current block can be
+          // different with previous block, so we can't copy the tree type of
+          // current block to previous block, and we need to fetch the tree type
+          // of a previous block.
+          if (is_prev_sdp_eligible) {
+            prev_tree_type = (plane == AOM_PLANE_Y) ? LUMA_PART : CHROMA_PART;
+          }
+          const TX_SIZE pv_ts =
+              get_transform_size(xd, mi_prev, edge_dir, pv_row, pv_col, plane,
+                                 prev_tree_type, plane_ptr);
+#else
+
           const TX_SIZE pv_ts =
               get_transform_size(xd, mi_prev, edge_dir, pv_row, pv_col, plane,
                                  tree_type, plane_ptr);
+#endif  // CONFIG_EXTENDED_SDP
+
           const uint32_t pv_q =
               av1_get_filter_q(&cm->lf_info, edge_dir, plane, mi_prev);
           const uint32_t pv_side =

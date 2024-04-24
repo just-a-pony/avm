@@ -888,7 +888,10 @@ static int read_intra_segment_id(AV1_COMMON *const cm,
                                  aom_reader *r, int skip) {
   struct segmentation *const seg = &cm->seg;
   if (!seg->enabled) return 0;  // Default for disabled segmentation
-  assert(seg->update_map && !seg->temporal_update);
+#if CONFIG_EXTENDED_SDP
+  if (frame_is_intra_only(cm))
+#endif  // CONFIG_EXTENDED_SDP
+    assert(seg->update_map && !seg->temporal_update);
 
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const int mi_row = xd->mi_row;
@@ -1888,7 +1891,11 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
 
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
-  if (seg->segid_preskip)
+  if (seg->segid_preskip
+#if CONFIG_EXTENDED_SDP
+      && !(!frame_is_intra_only(cm) && xd->tree_type == CHROMA_PART)
+#endif  // CONFIG_EXTENDED_SDP
+  )
     mbmi->segment_id = read_intra_segment_id(cm, xd, bsize, r, 0);
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT
@@ -1899,7 +1906,7 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
 #endif  // CONFIG_MORPH_PRED
 
 #if CONFIG_SKIP_TXFM_OPT
-  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd) && xd->tree_type != CHROMA_PART) {
 #if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
     mbmi->use_intrabc[1] = 0;
@@ -1923,9 +1930,17 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
       read_skip_txfm(cm, xd, mbmi->segment_id, r);
 #endif  // CONFIG_SKIP_TXFM_OPT
 
-  if (!seg->segid_preskip)
+  if (!seg->segid_preskip
+#if CONFIG_EXTENDED_SDP
+      && !(!frame_is_intra_only(cm) && xd->tree_type == CHROMA_PART)
+#endif  // CONFIG_EXTENDED_SDP
+  )
     mbmi->segment_id = read_intra_segment_id(
         cm, xd, bsize, r, mbmi->skip_txfm[xd->tree_type == CHROMA_PART]);
+
+#if CONFIG_EXTENDED_SDP
+  mbmi->seg_id_predicted = 0;
+#endif  // CONFIG_EXTENDED_SDP
 
   if (xd->tree_type != CHROMA_PART) read_cdef(cm, r, xd);
 
@@ -1958,7 +1973,7 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
   xd->left_txfm_context =
       xd->left_txfm_context_buffer + (mi_row & MAX_MIB_MASK);
 #endif  // !CONFIG_TX_PARTITION_CTX
-  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd) && xd->tree_type != CHROMA_PART) {
     read_intrabc_info(cm, dcb, r);
     if (is_intrabc_block(mbmi, xd->tree_type)) {
 #if CONFIG_LOSSLESS_DPCM
@@ -4309,7 +4324,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 #endif  // CONFIG_REFINEMV
 
   mbmi->segment_id = read_inter_segment_id(cm, xd, 1, r);
-
   mbmi->skip_mode = read_skip_mode(cm, xd, mbmi->segment_id, r);
 
   mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
@@ -4336,7 +4350,8 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   }
 
 #if CONFIG_IBC_SR_EXT
-  if (!inter_block && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (!inter_block && av1_allow_intrabc(cm, xd) &&
+      xd->tree_type != CHROMA_PART) {
 #if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
     mbmi->use_intrabc[1] = 0;
@@ -4408,7 +4423,8 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 #endif  // !CONFIG_TX_PARTITION_CTX
 
 #if CONFIG_IBC_SR_EXT
-  if (!inter_block && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (!inter_block && av1_allow_intrabc(cm, xd) &&
+      xd->tree_type != CHROMA_PART) {
     mbmi->ref_frame[0] = INTRA_FRAME;
     mbmi->ref_frame[1] = NONE_FRAME;
     mbmi->palette_mode_info.palette_size[0] = 0;
@@ -4465,7 +4481,11 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
   if (xd->tree_type == SHARED_PART)
     mi->sb_type[PLANE_TYPE_UV] = mi->sb_type[PLANE_TYPE_Y];
 
-  if (frame_is_intra_only(cm)) {
+  if (frame_is_intra_only(cm)
+#if CONFIG_EXTENDED_SDP
+      || mi->region_type == INTRA_REGION
+#endif  // CONFIG_EXTENDED_SDP
+  ) {
     read_intra_frame_mode_info(cm, dcb, r);
 #if CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank) {

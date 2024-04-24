@@ -173,6 +173,11 @@ typedef struct PartitionSearchState {
   // Pointer to partition cost buffer
   const int *partition_cost;
 
+#if CONFIG_EXTENDED_SDP
+  // Pointer to region type cost buffer
+  int *region_type_cost;
+#endif  // CONFIG_EXTENDED_SDP
+
   // RD costs for different partition types.
   int64_t none_rd;
   int64_t split_rd[SUB_PARTITIONS_SPLIT];

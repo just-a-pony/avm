@@ -1252,6 +1252,10 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
   set_offsets(cm, xd, bsize, mi_row, mi_col, bw, bh, x_mis, y_mis, parent,
               index);
   xd->mi[0]->partition = partition;
+#if CONFIG_EXTENDED_SDP
+  // set region_type for each mbmi
+  xd->mi[0]->region_type = parent->region_type;
+#endif  // CONFIG_EXTENDED_SDP
   av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
 
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -1354,7 +1358,7 @@ static AOM_INLINE void dec_build_inter_predictor(const AV1_COMMON *cm,
 
 #if CONFIG_MORPH_PRED
   if (mbmi->morph_pred) {
-    assert(av1_allow_intrabc(cm));
+    assert(av1_allow_intrabc(cm, xd));
     assert(is_intrabc_block(mbmi, xd->tree_type));
     av1_build_morph_pred(cm, xd, bsize, mi_row, mi_col);
   }
@@ -2295,6 +2299,7 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
   AV1_COMMON *cm = &pbi->common;
   const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *mbmi = xd->mi[0];
+
   int inter_block_tx = is_inter_block(mbmi, xd->tree_type) ||
                        is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type != CHROMA_PART) {
@@ -2711,6 +2716,18 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
                                                      parse_decode_block };
   const int is_sb_root = bsize == cm->sb_size;
 
+#if CONFIG_EXTENDED_SDP
+  if (is_sb_root) {
+    if (!frame_is_intra_only(cm)) {
+      ptree->region_type = MIXED_INTER_INTRA_REGION;
+      ptree->inter_sdp_allowed_flag = 1;
+    } else {
+      ptree->region_type = INTRA_REGION;
+      ptree->inter_sdp_allowed_flag = 0;
+    }
+  }
+#endif  // CONFIG_EXTENDED_SDP
+
   if (parse_decode_flag & 1) {
     if (is_sb_root) {
       set_sb_mv_precision(sbi, pbi);
@@ -2766,6 +2783,30 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
     ptree->partition = partition;
+
+#if CONFIG_EXTENDED_SDP
+    if (!is_sb_root && parent) {
+      if (parent->inter_sdp_allowed_flag == 1)
+        ptree->inter_sdp_allowed_flag =
+            is_inter_sdp_allowed(parent->bsize, parent->partition);
+      else
+        ptree->inter_sdp_allowed_flag = 0;
+      if (!frame_is_intra_only(cm) && ptree->partition &&
+          parent->region_type != INTRA_REGION &&
+          ptree->inter_sdp_allowed_flag &&
+          is_bsize_allowed_for_inter_sdp(bsize, ptree->partition)) {
+        const int ctx = get_intra_region_context(bsize);
+        ptree->region_type =
+            aom_read_symbol(reader, xd->tile_ctx->region_type_cdf[ctx],
+                            REGION_TYPES, ACCT_INFO("region_type"));
+        if (ptree->region_type == INTRA_REGION) xd->tree_type = LUMA_PART;
+      } else if (!frame_is_intra_only(cm)) {
+        ptree->region_type = parent->region_type;
+      } else {
+        ptree->region_type = INTRA_REGION;
+      }
+    }
+#endif  // CONFIG_EXTENDED_SDP
 
     switch (partition) {
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -3030,6 +3071,21 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0 && "Invalid partition type");
   }
+
+#if CONFIG_EXTENDED_SDP
+  PARTITION_TREE *parent = ptree->parent;
+  if (!is_sb_root && parent) {
+    if (!frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
+        ptree->partition && parent->region_type != INTRA_REGION &&
+        ptree->region_type == INTRA_REGION) {
+      // decode chroma part in one intra region
+      xd->tree_type = CHROMA_PART;
+      DEC_BLOCK(mi_row, mi_col, bsize, 0);
+      // reset back to shared part
+      xd->tree_type = SHARED_PART;
+    }
+  }
+#endif  // CONFIG_EXTENDED_SDP
 
 #undef DEC_PARTITION
 #undef DEC_BLOCK
@@ -8411,7 +8467,7 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
       (uint32_t)aom_rb_bytes_read(rb);  // Size of the uncompressed header
   YV12_BUFFER_CONFIG *new_fb = &cm->cur_frame->buf;
   xd->cur_buf = new_fb;
-  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd) && xd->tree_type != CHROMA_PART) {
     av1_setup_scale_factors_for_frame(
         &cm->sf_identity, xd->cur_buf->y_crop_width, xd->cur_buf->y_crop_height,
         xd->cur_buf->y_crop_width, xd->cur_buf->y_crop_height);

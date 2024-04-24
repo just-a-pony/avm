@@ -1967,6 +1967,16 @@ static INLINE int frame_is_intra_only(const AV1_COMMON *const cm) {
          cm->current_frame.frame_type == INTRA_ONLY_FRAME;
 }
 
+#if CONFIG_EXTENDED_SDP
+// Check whether this is chroma component of an intra region in inter frame
+static INLINE int is_inter_sdp_chroma(const AV1_COMMON *const cm,
+                                      REGION_TYPE cur_region_type,
+                                      TREE_TYPE cur_tree_type) {
+  return !frame_is_intra_only(cm) && cur_region_type == INTRA_REGION &&
+         cur_tree_type == CHROMA_PART;
+}
+#endif  // CONFIG_EXTENDED_SDP
+
 static INLINE int frame_is_sframe(const AV1_COMMON *cm) {
   return cm->current_frame.frame_type == S_FRAME;
 }
@@ -2575,6 +2585,24 @@ static INLINE void update_ext_partition_context(MACROBLOCKD *xd, int mi_row,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
+#if CONFIG_EXTENDED_SDP
+static INLINE int get_intra_region_context(BLOCK_SIZE bsize) {
+  const int width = block_size_wide[bsize];
+  const int height = block_size_high[bsize];
+  const int num_samples = width * height;
+  if (num_samples <= 64)
+    return 0;
+  else if (num_samples <= 128)
+    return 1;
+  else if (num_samples <= 256)
+    return 2;
+  else if (num_samples <= 512)
+    return 3;
+  else
+    return 4;
+}
+#endif  // CONFIG_EXTENDED_SDP
+
 #if CONFIG_BLOCK_256
 /*!\brief Returns the context used by \ref PARTITION_SPLIT. */
 static INLINE int square_split_context(const MACROBLOCKD *xd, int mi_row,
@@ -2672,6 +2700,7 @@ static INLINE void av1_zero_above_context(AV1_COMMON *const cm,
   }
   av1_zero_array(above_contexts->partition[0][tile_row] + mi_col_start,
                  aligned_width);
+
   if (num_planes > 1) {
     if (above_contexts->partition[1][tile_row] &&
         above_contexts->partition[2][tile_row]) {

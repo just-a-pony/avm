@@ -586,12 +586,11 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   }
 
   if (!dry_run) {
-    if (av1_allow_intrabc(cm) && is_intrabc_block(mbmi, xd->tree_type))
+    if (av1_allow_intrabc(cm, xd) && is_intrabc_block(mbmi, xd->tree_type))
       td->intrabc_used = 1;
 #if CONFIG_MORPH_PRED
     if (mbmi->morph_pred) {
-      assert(av1_allow_intrabc(cm));
-      assert(is_intrabc_block(mbmi, xd->tree_type));
+      assert(av1_allow_intrabc(cm, xd));
     }
 #endif  // CONFIG_MORPH_PRED
     if (txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
@@ -653,12 +652,21 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
       } else {
         intra_tx_size = mbmi->tx_size;
       }
-
-      for (j = 0; j < mi_height; j++)
-        for (i = 0; i < mi_width; i++)
-          if (mi_col + i < cm->mi_params.mi_cols &&
-              mi_row + j < cm->mi_params.mi_rows)
-            mi_4x4[mis * j + i]->tx_size = intra_tx_size;
+#if CONFIG_EXTENDED_SDP
+      // Since transform partitioning is only allowed for luma component,
+      // and tx_size variable represents the transform size of the luma
+      // component in one coded block, so chroma block should not change the
+      // tx_size.
+      if (xd->tree_type != CHROMA_PART || frame_is_intra_only(cm)) {
+#endif  // CONFIG_EXTENDED_SDP
+        for (j = 0; j < mi_height; j++)
+          for (i = 0; i < mi_width; i++)
+            if (mi_col + i < cm->mi_params.mi_cols &&
+                mi_row + j < cm->mi_params.mi_rows)
+              mi_4x4[mis * j + i]->tx_size = intra_tx_size;
+#if CONFIG_EXTENDED_SDP
+      }
+#endif  // CONFIG_EXTENDED_SDP
 
       if (intra_tx_size != max_txsize_rect_lookup[bsize])
         ++x->txfm_search_info.txb_split_count;
@@ -844,6 +852,11 @@ void av1_set_offsets(const AV1_COMP *const cpi, const TileInfo *const tile,
   av1_set_offsets_without_segment_id(cpi, tile, x, mi_row, mi_col, bsize,
                                      chroma_ref_info);
 
+#if CONFIG_EXTENDED_SDP
+  // Don't set up segment ID for chroma part in SDP of inter frame
+  if (!frame_is_intra_only(cm) && xd->tree_type == CHROMA_PART) return;
+#endif  // CONFIG_EXTENDED_SDP
+
   // Setup segment ID.
   mbmi = xd->mi[0];
   mbmi->segment_id = 0;
@@ -881,6 +894,7 @@ void av1_set_offsets(const AV1_COMP *const cpi, const TileInfo *const tile,
  * \param[in]    rd_cost        Pointer to structure holding rate and distortion
  *                              stats for the current block
  * \param[in]    partition      Partition mode of the parent block
+ * \param[in]    cur_region_type      Region type of the current block
  * \param[in]    bsize          Current block size
  * \param[in]    ctx            Pointer to structure holding coding contexts and
  *                              chosen modes for the current block
@@ -894,6 +908,9 @@ void av1_set_offsets(const AV1_COMP *const cpi, const TileInfo *const tile,
 static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
                           MACROBLOCK *const x, int mi_row, int mi_col,
                           RD_STATS *rd_cost, PARTITION_TYPE partition,
+#if CONFIG_EXTENDED_SDP
+                          REGION_TYPE cur_region_type,
+#endif  // CONFIG_EXTENDED_SDP
                           BLOCK_SIZE bsize, PICK_MODE_CONTEXT *ctx,
                           RD_STATS best_rd) {
   if (best_rd.rdcost < 0) {
@@ -911,6 +928,10 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
 
   av1_set_offsets(cpi, &tile_data->tile_info, x, mi_row, mi_col, bsize,
                   &ctx->chroma_ref_info);
+
+#if CONFIG_EXTENDED_SDP
+  xd->mi[0]->region_type = cur_region_type;
+#endif  // CONFIG_EXTENDED_SDP
 
   if (ctx->rd_mode_is_ready) {
     assert(ctx->mic.sb_type[plane_type] == bsize);
@@ -998,7 +1019,11 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
 
   // Find best coding mode & reconstruct the MB so it is available
   // as a predictor for MBs that follow in the SB
-  if (frame_is_intra_only(cm)) {
+  if (frame_is_intra_only(cm)
+#if CONFIG_EXTENDED_SDP
+      || mbmi->region_type == INTRA_REGION
+#endif  // CONFIG_EXTENDED_SDP
+  ) {
 #if CONFIG_COLLECT_COMPONENT_TIMING
     start_timing(cpi, av1_rd_pick_intra_mode_sb_time);
 #endif
@@ -1280,6 +1305,9 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   const int seg_ref_active = 0;
 
   if (current_frame->skip_mode_info.skip_mode_flag && !seg_ref_active &&
+#if CONFIG_EXTENDED_SDP
+      mbmi->region_type != INTRA_REGION &&
+#endif  // CONFIG_EXTENDED_SDP
       is_comp_ref_allowed(bsize)) {
     const int skip_mode_ctx = av1_get_skip_mode_context(xd);
 #if CONFIG_ENTROPY_STATS
@@ -1291,15 +1319,19 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #if CONFIG_SKIP_TXFM_OPT
   const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   if (!seg_ref_active) {
-    if (!mbmi->skip_mode && !frame_is_intra_only(cm)) {
+    if (!mbmi->skip_mode && !frame_is_intra_only(cm)
+#if CONFIG_EXTENDED_SDP
+        && mbmi->region_type != INTRA_REGION
+#endif  // CONFIG_EXTENDED_SDP
+    ) {
       const int intra_inter_ctx = av1_get_intra_inter_context(xd);
 #if CONFIG_ENTROPY_STATS
       td->counts->intra_inter[intra_inter_ctx][inter_block]++;
 #endif  // CONFIG_ENTROPY_STATS
       update_cdf(fc->intra_inter_cdf[intra_inter_ctx], inter_block, 2);
     }
-
-    if (!inter_block && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+    if (!inter_block && av1_allow_intrabc(cm, xd) &&
+        xd->tree_type != CHROMA_PART) {
 #if CONFIG_NEW_CONTEXT_MODELING
       const int intrabc_ctx = get_intrabc_ctx(xd);
       update_cdf(fc->intrabc_cdf[intrabc_ctx], use_intrabc, 2);
@@ -1393,7 +1425,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   if (!is_inter_block(mbmi, xd->tree_type)) {
     av1_sum_intra_stats(cm, td->counts, xd, mbmi);
   }
-  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd) && xd->tree_type != CHROMA_PART) {
 #if !CONFIG_SKIP_TXFM_OPT
     const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
 #if CONFIG_NEW_CONTEXT_MODELING
@@ -2806,6 +2838,21 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
     ptree->bsize = bsize;
     ptree->mi_row = mi_row;
     ptree->mi_col = mi_col;
+#if CONFIG_EXTENDED_SDP
+    ptree->region_type = pc_tree->region_type;
+    const int is_sb_root = bsize == cm->sb_size;
+    ptree->inter_sdp_allowed_flag = pc_tree->inter_sdp_allowed_flag;
+    if (!frame_is_intra_only(cm) && !is_sb_root &&
+        partition != PARTITION_NONE && parent &&
+        parent->region_type != INTRA_REGION && xd->tree_type != CHROMA_PART &&
+        ptree->inter_sdp_allowed_flag &&
+        is_bsize_allowed_for_inter_sdp(bsize, partition)) {
+      assert(xd->tree_type != CHROMA_PART);
+      const int intra_region_ctx = get_intra_region_context(bsize);
+      update_cdf(xd->tile_ctx->region_type_cdf[intra_region_ctx],
+                 ptree->region_type, REGION_TYPES);
+    }
+#endif  // CONFIG_EXTENDED_SDP
     const int ss_x = xd->plane[1].subsampling_x;
     const int ss_y = xd->plane[1].subsampling_y;
     set_chroma_ref_info(
@@ -2860,19 +2907,45 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
     }
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+  // encode both the luma and chroma blocks in one intra region
+  int encode_sdp_intra_region_yuv = 0;
+  if (!frame_is_intra_only(cm) && xd->tree_type == SHARED_PART &&
+      pc_tree->region_type == INTRA_REGION) {
+    encode_sdp_intra_region_yuv = 1;
+    xd->tree_type = LUMA_PART;
+  }
+#endif  // CONFIG_EXTENDED_SDP
   switch (partition) {
     case PARTITION_NONE:
       encode_b(cpi, tile_data, td, tp, mi_row, mi_col, dry_run, subsize,
-               partition, pc_tree->none, rate);
+               partition,
+#if CONFIG_EXTENDED_SDP
+               pc_tree->none[pc_tree->region_type],
+#else
+               pc_tree->none,
+#endif  // CONFIG_EXTENDED_SDP
+               rate);
       break;
     case PARTITION_VERT:
 #if CONFIG_EXT_RECUR_PARTITIONS
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, dry_run, subsize,
-                pc_tree->vertical[0], sub_tree[0],
-                track_ptree_luma ? ptree_luma->sub_tree[0] : NULL, rate);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->vertical[pc_tree->region_type][0],
+#else
+                pc_tree->vertical[0],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[0], track_ptree_luma ? ptree_luma->sub_tree[0] : NULL,
+                rate);
       if (mi_col + hbs_w < cm->mi_params.mi_cols) {
         encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + hbs_w, dry_run,
-                  subsize, pc_tree->vertical[1], sub_tree[1],
+                  subsize,
+#if CONFIG_EXTENDED_SDP
+                  pc_tree->vertical[pc_tree->region_type][1],
+#else
+                  pc_tree->vertical[1],
+#endif  // CONFIG_EXTENDED_SDP
+                  sub_tree[1],
                   track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
       }
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -2887,11 +2960,22 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
     case PARTITION_HORZ:
 #if CONFIG_EXT_RECUR_PARTITIONS
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, dry_run, subsize,
-                pc_tree->horizontal[0], sub_tree[0],
-                track_ptree_luma ? ptree_luma->sub_tree[0] : NULL, rate);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->horizontal[pc_tree->region_type][0],
+#else
+                pc_tree->horizontal[0],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[0], track_ptree_luma ? ptree_luma->sub_tree[0] : NULL,
+                rate);
       if (mi_row + hbs_h < cm->mi_params.mi_rows) {
         encode_sb(cpi, td, tile_data, tp, mi_row + hbs_h, mi_col, dry_run,
-                  subsize, pc_tree->horizontal[1], sub_tree[1],
+                  subsize,
+#if CONFIG_EXTENDED_SDP
+                  pc_tree->horizontal[pc_tree->region_type][1],
+#else
+                  pc_tree->horizontal[1],
+#endif  // CONFIG_EXTENDED_SDP
+                  sub_tree[1],
                   track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
       }
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -2909,20 +2993,41 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_HORZ][bsize_med]);
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, dry_run, subsize,
-                pc_tree->horizontal4a[0], sub_tree[0],
-                track_ptree_luma ? ptree_luma->sub_tree[0] : NULL, rate);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->horizontal4a[pc_tree->region_type][0],
+#else
+                pc_tree->horizontal4a[0],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[0], track_ptree_luma ? ptree_luma->sub_tree[0] : NULL,
+                rate);
       if (mi_row + ebs_h >= cm->mi_params.mi_rows) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row + ebs_h, mi_col, dry_run,
-                bsize_med, pc_tree->horizontal4a[1], sub_tree[1],
-                track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row + ebs_h, mi_col, dry_run, bsize_med,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal4a[pc_tree->region_type][1],
+#else
+          pc_tree->horizontal4a[1],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[1], track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
       if (mi_row + 3 * ebs_h >= cm->mi_params.mi_rows) break;
       encode_sb(cpi, td, tile_data, tp, mi_row + 3 * ebs_h, mi_col, dry_run,
-                bsize_big, pc_tree->horizontal4a[2], sub_tree[2],
-                track_ptree_luma ? ptree_luma->sub_tree[2] : NULL, rate);
+                bsize_big,
+#if CONFIG_EXTENDED_SDP
+                pc_tree->horizontal4a[pc_tree->region_type][2],
+#else
+                pc_tree->horizontal4a[2],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[2], track_ptree_luma ? ptree_luma->sub_tree[2] : NULL,
+                rate);
       if (mi_row + 7 * ebs_h >= cm->mi_params.mi_rows) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row + 7 * ebs_h, mi_col, dry_run,
-                subsize, pc_tree->horizontal4a[3], sub_tree[3],
-                track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row + 7 * ebs_h, mi_col, dry_run, subsize,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal4a[pc_tree->region_type][3],
+#else
+          pc_tree->horizontal4a[3],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[3], track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
       break;
     }
     case PARTITION_HORZ_4B: {
@@ -2930,20 +3035,41 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_HORZ][bsize_med]);
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, dry_run, subsize,
-                pc_tree->horizontal4b[0], sub_tree[0],
-                track_ptree_luma ? ptree_luma->sub_tree[0] : NULL, rate);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->horizontal4b[pc_tree->region_type][0],
+#else
+                pc_tree->horizontal4b[0],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[0], track_ptree_luma ? ptree_luma->sub_tree[0] : NULL,
+                rate);
       if (mi_row + ebs_h >= cm->mi_params.mi_rows) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row + ebs_h, mi_col, dry_run,
-                bsize_big, pc_tree->horizontal4b[1], sub_tree[1],
-                track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row + ebs_h, mi_col, dry_run, bsize_big,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal4b[pc_tree->region_type][1],
+#else
+          pc_tree->horizontal4b[1],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[1], track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
       if (mi_row + 5 * ebs_h >= cm->mi_params.mi_rows) break;
       encode_sb(cpi, td, tile_data, tp, mi_row + 5 * ebs_h, mi_col, dry_run,
-                bsize_med, pc_tree->horizontal4b[2], sub_tree[2],
-                track_ptree_luma ? ptree_luma->sub_tree[2] : NULL, rate);
+                bsize_med,
+#if CONFIG_EXTENDED_SDP
+                pc_tree->horizontal4b[pc_tree->region_type][2],
+#else
+                pc_tree->horizontal4b[2],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[2], track_ptree_luma ? ptree_luma->sub_tree[2] : NULL,
+                rate);
       if (mi_row + 7 * ebs_h >= cm->mi_params.mi_rows) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row + 7 * ebs_h, mi_col, dry_run,
-                subsize, pc_tree->horizontal4b[3], sub_tree[3],
-                track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row + 7 * ebs_h, mi_col, dry_run, subsize,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal4b[pc_tree->region_type][3],
+#else
+          pc_tree->horizontal4b[3],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[3], track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
       break;
     }
     case PARTITION_VERT_4A: {
@@ -2951,20 +3077,41 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_VERT][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_VERT][bsize_med]);
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, dry_run, subsize,
-                pc_tree->vertical4a[0], sub_tree[0],
-                track_ptree_luma ? ptree_luma->sub_tree[0] : NULL, rate);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->vertical4a[pc_tree->region_type][0],
+#else
+                pc_tree->vertical4a[0],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[0], track_ptree_luma ? ptree_luma->sub_tree[0] : NULL,
+                rate);
       if (mi_col + ebs_w >= cm->mi_params.mi_cols) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + ebs_w, dry_run,
-                bsize_med, pc_tree->vertical4a[1], sub_tree[1],
-                track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row, mi_col + ebs_w, dry_run, bsize_med,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical4a[pc_tree->region_type][1],
+#else
+          pc_tree->vertical4a[1],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[1], track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
       if (mi_col + 3 * ebs_w >= cm->mi_params.mi_cols) break;
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + 3 * ebs_w, dry_run,
-                bsize_big, pc_tree->vertical4a[2], sub_tree[2],
-                track_ptree_luma ? ptree_luma->sub_tree[2] : NULL, rate);
+                bsize_big,
+#if CONFIG_EXTENDED_SDP
+                pc_tree->vertical4a[pc_tree->region_type][2],
+#else
+                pc_tree->vertical4a[2],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[2], track_ptree_luma ? ptree_luma->sub_tree[2] : NULL,
+                rate);
       if (mi_col + 7 * ebs_w >= cm->mi_params.mi_cols) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + 7 * ebs_w, dry_run,
-                subsize, pc_tree->vertical4a[3], sub_tree[3],
-                track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row, mi_col + 7 * ebs_w, dry_run, subsize,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical4a[pc_tree->region_type][3],
+#else
+          pc_tree->vertical4a[3],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[3], track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
       break;
     }
     case PARTITION_VERT_4B: {
@@ -2972,20 +3119,41 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_VERT][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_VERT][bsize_med]);
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, dry_run, subsize,
-                pc_tree->vertical4b[0], sub_tree[0],
-                track_ptree_luma ? ptree_luma->sub_tree[0] : NULL, rate);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->vertical4b[pc_tree->region_type][0],
+#else
+                pc_tree->vertical4b[0],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[0], track_ptree_luma ? ptree_luma->sub_tree[0] : NULL,
+                rate);
       if (mi_col + ebs_w >= cm->mi_params.mi_cols) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + ebs_w, dry_run,
-                bsize_big, pc_tree->vertical4b[1], sub_tree[1],
-                track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row, mi_col + ebs_w, dry_run, bsize_big,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical4b[pc_tree->region_type][1],
+#else
+          pc_tree->vertical4b[1],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[1], track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
       if (mi_col + 5 * ebs_w >= cm->mi_params.mi_cols) break;
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + 5 * ebs_w, dry_run,
-                bsize_med, pc_tree->vertical4b[2], sub_tree[2],
-                track_ptree_luma ? ptree_luma->sub_tree[2] : NULL, rate);
+                bsize_med,
+#if CONFIG_EXTENDED_SDP
+                pc_tree->vertical4b[pc_tree->region_type][2],
+#else
+                pc_tree->vertical4b[2],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[2], track_ptree_luma ? ptree_luma->sub_tree[2] : NULL,
+                rate);
       if (mi_col + 7 * ebs_w >= cm->mi_params.mi_cols) break;
-      encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + 7 * ebs_w, dry_run,
-                subsize, pc_tree->vertical4b[3], sub_tree[3],
-                track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row, mi_col + 7 * ebs_w, dry_run, subsize,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical4b[pc_tree->region_type][3],
+#else
+          pc_tree->vertical4b[3],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[3], track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
       break;
     }
     case PARTITION_HORZ_3:
@@ -2997,9 +3165,15 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
         const int offset_c = get_h_partition_offset_mi_col(bsize, i, partition);
         const int this_mi_row = mi_row + offset_r;
         const int this_mi_col = mi_col + offset_c;
-        PC_TREE *this_pc_tree = partition == PARTITION_HORZ_3
-                                    ? pc_tree->horizontal3[i]
-                                    : pc_tree->vertical3[i];
+        PC_TREE *this_pc_tree =
+            partition == PARTITION_HORZ_3
+#if CONFIG_EXTENDED_SDP
+                ? pc_tree->horizontal3[pc_tree->region_type][i]
+                : pc_tree->vertical3[pc_tree->region_type][i];
+#else
+                ? pc_tree->horizontal3[i]
+                : pc_tree->vertical3[i];
+#endif  // CONFIG_EXTENDED_SDP
 
         if (partition == PARTITION_HORZ_3) {
           if (this_mi_row >= cm->mi_params.mi_rows) break;
@@ -3014,17 +3188,38 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
     }
     case PARTITION_SPLIT:
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, dry_run, subsize,
-                pc_tree->split[0], sub_tree[0],
-                track_ptree_luma ? ptree_luma->sub_tree[0] : NULL, rate);
-      encode_sb(cpi, td, tile_data, tp, mi_row, mi_col + hbs_w, dry_run,
-                subsize, pc_tree->split[1], sub_tree[1],
-                track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
-      encode_sb(cpi, td, tile_data, tp, mi_row + hbs_h, mi_col, dry_run,
-                subsize, pc_tree->split[2], sub_tree[2],
-                track_ptree_luma ? ptree_luma->sub_tree[2] : NULL, rate);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->split[pc_tree->region_type][0],
+#else
+                pc_tree->split[0],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[0], track_ptree_luma ? ptree_luma->sub_tree[0] : NULL,
+                rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row, mi_col + hbs_w, dry_run, subsize,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->split[pc_tree->region_type][1],
+#else
+          pc_tree->split[1],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[1], track_ptree_luma ? ptree_luma->sub_tree[1] : NULL, rate);
+      encode_sb(
+          cpi, td, tile_data, tp, mi_row + hbs_h, mi_col, dry_run, subsize,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->split[pc_tree->region_type][2],
+#else
+          pc_tree->split[2],
+#endif  // CONFIG_EXTENDED_SDP
+          sub_tree[2], track_ptree_luma ? ptree_luma->sub_tree[2] : NULL, rate);
       encode_sb(cpi, td, tile_data, tp, mi_row + hbs_h, mi_col + hbs_w, dry_run,
-                subsize, pc_tree->split[3], sub_tree[3],
-                track_ptree_luma ? ptree_luma->sub_tree[3] : NULL, rate);
+                subsize,
+#if CONFIG_EXTENDED_SDP
+                pc_tree->split[pc_tree->region_type][3],
+#else
+                pc_tree->split[3],
+#endif  // CONFIG_EXTENDED_SDP
+                sub_tree[3], track_ptree_luma ? ptree_luma->sub_tree[3] : NULL,
+                rate);
       break;
 #else   // CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_SPLIT:
@@ -3090,6 +3285,16 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0 && "Invalid partition type."); break;
   }
+
+#if CONFIG_EXTENDED_SDP
+  // encode the chroma blocks under one intra region in inter frame
+  if (encode_sdp_intra_region_yuv && !cm->seq_params.monochrome) {
+    xd->tree_type = CHROMA_PART;
+    encode_b(cpi, tile_data, td, tp, mi_row, mi_col, dry_run, bsize,
+             PARTITION_NONE, pc_tree->none_chroma, rate);
+    xd->tree_type = SHARED_PART;
+  }
+#endif  // CONFIG_EXTENDED_SDP
 
   if (ptree) ptree->is_settled = 1;
   update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);
@@ -3348,12 +3553,40 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
   RD_SEARCH_MACROBLOCK_CONTEXT x_ctx;
   RD_STATS last_part_rdc, invalid_rdc;
 
+#if CONFIG_EXTENDED_SDP
+  if (!frame_is_intra_only(cm))
+    pc_tree->region_type = MIXED_INTER_INTRA_REGION;
+  else
+    pc_tree->region_type = INTRA_REGION;
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+  if (is_inter_sdp_chroma(cm, cur_region_type, x->e_mbd.tree_type)) {
+    if (pc_tree->none_chroma == NULL) {
+      pc_tree->none_chroma =
+          av1_alloc_pmc(cm, xd->tree_type, mi_row, mi_col, bsize, pc_tree,
+                        PARTITION_NONE, 0, ss_x, ss_y, &td->shared_coeff_buf);
+    }
+  } else {
+    if (pc_tree->none[cur_region_type] == NULL) {
+      pc_tree->none[cur_region_type] =
+          av1_alloc_pmc(cm, xd->tree_type, mi_row, mi_col, bsize, pc_tree,
+                        PARTITION_NONE, 0, ss_x, ss_y, &td->shared_coeff_buf);
+    }
+  }
+#else
   if (pc_tree->none == NULL) {
     pc_tree->none =
         av1_alloc_pmc(cm, xd->tree_type, mi_row, mi_col, bsize, pc_tree,
                       PARTITION_NONE, 0, ss_x, ss_y, &td->shared_coeff_buf);
   }
+#endif  // CONFIG_EXTENDED_SDP
+#if CONFIG_EXTENDED_SDP
+  PICK_MODE_CONTEXT *ctx_none =
+      is_inter_sdp_chroma(cm, cur_region_type, x->e_mbd.tree_type)
+          ? pc_tree->none_chroma
+          : pc_tree->none[pc_tree->region_type];
+#else
   PICK_MODE_CONTEXT *ctx_none = pc_tree->none;
+#endif  // CONFIG_EXTENDED_SDP
 
   if (mi_row >= mi_params->mi_rows || mi_col >= mi_params->mi_cols) return;
 
@@ -3398,20 +3631,36 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
   switch (partition) {
     case PARTITION_NONE:
       pick_sb_modes(cpi, tile_data, x, mi_row, mi_col, &last_part_rdc,
-                    PARTITION_NONE, bsize, ctx_none, invalid_rdc);
+                    PARTITION_NONE,
+#if CONFIG_EXTENDED_SDP
+                    pc_tree->region_type,
+#endif  // CONFIG_EXTENDED_SDP
+                    bsize, ctx_none, invalid_rdc);
       break;
     case PARTITION_HORZ:
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+      pc_tree->horizontal[cur_region_type][0] =
+#else
       pc_tree->horizontal[0] =
+#endif  // CONFIG_EXTENDED_SDP
           av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col, subsize,
                                  pc_tree, PARTITION_HORZ, 0, 0, ss_x, ss_y);
+#if CONFIG_EXTENDED_SDP
+      pc_tree->horizontal[cur_region_type][1] =
+#else
       pc_tree->horizontal[1] =
+#endif  // CONFIG_EXTENDED_SDP
           av1_alloc_pc_tree_node(xd->tree_type, mi_row + hbh, mi_col, subsize,
                                  pc_tree, PARTITION_HORZ, 1, 1, ss_x, ss_y);
       av1_rd_use_partition(cpi, td, tile_data, mib, tp, mi_row, mi_col, subsize,
                            &last_part_rdc.rate, &last_part_rdc.dist, 1,
                            ptree ? ptree->sub_tree[0] : NULL,
+#if CONFIG_EXTENDED_SDP
+                           pc_tree->horizontal[cur_region_type][0]);
+#else
                            pc_tree->horizontal[0]);
+#endif  // CONFIG_EXTENDED_SDP
 #else   // CONFIG_EXT_RECUR_PARTITIONS
       for (int i = 0; i < SUB_PARTITIONS_RECT; ++i) {
         if (pc_tree->horizontal[i] == NULL) {
@@ -3429,10 +3678,15 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
         RD_STATS tmp_rdc;
         av1_init_rd_stats(&tmp_rdc);
 #if CONFIG_EXT_RECUR_PARTITIONS
-        av1_rd_use_partition(
-            cpi, td, tile_data, mib + hbh * mi_params->mi_stride, tp,
-            mi_row + hbh, mi_col, subsize, &tmp_rdc.rate, &tmp_rdc.dist, 0,
-            ptree ? ptree->sub_tree[1] : NULL, pc_tree->horizontal[1]);
+        av1_rd_use_partition(cpi, td, tile_data,
+                             mib + hbh * mi_params->mi_stride, tp, mi_row + hbh,
+                             mi_col, subsize, &tmp_rdc.rate, &tmp_rdc.dist, 0,
+                             ptree ? ptree->sub_tree[1] : NULL,
+#if CONFIG_EXTENDED_SDP
+                             pc_tree->horizontal[cur_region_type][1]);
+#else
+                             pc_tree->horizontal[1]);
+#endif  // CONFIG_EXTENDED_SDP
 #else   // CONFIG_EXT_RECUR_PARTITIONS
         const PICK_MODE_CONTEXT *const ctx_h = pc_tree->horizontal[0];
         av1_update_state(cpi, td, ctx_h, mi_row, mi_col, subsize, 1);
@@ -3453,16 +3707,28 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
       break;
     case PARTITION_VERT:
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+      pc_tree->vertical[cur_region_type][0] =
+#else
       pc_tree->vertical[0] =
+#endif  // CONFIG_EXTENDED_SDP
           av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col, subsize,
                                  pc_tree, PARTITION_VERT, 0, 0, ss_x, ss_y);
+#if CONFIG_EXTENDED_SDP
+      pc_tree->vertical[cur_region_type][1] =
+#else
       pc_tree->vertical[1] =
+#endif  // CONFIG_EXTENDED_SDP
           av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col + hbw, subsize,
                                  pc_tree, PARTITION_VERT, 1, 1, ss_x, ss_y);
       av1_rd_use_partition(cpi, td, tile_data, mib, tp, mi_row, mi_col, subsize,
                            &last_part_rdc.rate, &last_part_rdc.dist, 1,
                            ptree ? ptree->sub_tree[0] : NULL,
+#if CONFIG_EXTENDED_SDP
+                           pc_tree->vertical[cur_region_type][0]);
+#else
                            pc_tree->vertical[0]);
+#endif  // CONFIG_EXTENDED_SDP
 #else   // CONFIG_EXT_RECUR_PARTITIONS
       for (int i = 0; i < SUB_PARTITIONS_RECT; ++i) {
         if (pc_tree->vertical[i] == NULL) {
@@ -3482,7 +3748,11 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
         av1_rd_use_partition(
             cpi, td, tile_data, mib + hbw, tp, mi_row, mi_col + hbw, subsize,
             &tmp_rdc.rate, &tmp_rdc.dist, 0, ptree ? ptree->sub_tree[1] : NULL,
+#if CONFIG_EXTENDED_SDP
+            pc_tree->vertical[cur_region_type][1]);
+#else
             pc_tree->vertical[1]);
+#endif  // CONFIG_EXTENDED_SDP
 #else   // CONFIG_EXT_RECUR_PARTITIONS
         const PICK_MODE_CONTEXT *const ctx_v = pc_tree->vertical[0];
         av1_update_state(cpi, td, ctx_v, mi_row, mi_col, subsize, 1);
@@ -3514,17 +3784,27 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
         if ((mi_row + y_idx >= mi_params->mi_rows) ||
             (mi_col + x_idx >= mi_params->mi_cols))
           continue;
-        pc_tree->split[i] = av1_alloc_pc_tree_node(
-            xd->tree_type, mi_row + y_idx, mi_col + x_idx, subsize, pc_tree,
-            PARTITION_SPLIT, i, i == 3, ss_x, ss_y);
+#if CONFIG_EXTENDED_SDP
+        pc_tree->split[cur_region_type][i]
+#else
+        pc_tree->split[i]
+#endif  // CONFIG_EXTENDED_SDP
+            = av1_alloc_pc_tree_node(xd->tree_type, mi_row + y_idx,
+                                     mi_col + x_idx, subsize, pc_tree,
+                                     PARTITION_SPLIT, i, i == 3, ss_x, ss_y);
 
         av1_init_rd_stats(&tmp_rdc);
-        av1_rd_use_partition(
-            cpi, td, tile_data,
-            mib + jj * hbs * mi_params->mi_stride + ii * hbs, tp,
-            mi_row + y_idx, mi_col + x_idx, subsize, &tmp_rdc.rate,
-            &tmp_rdc.dist, i != (SUB_PARTITIONS_SPLIT - 1),
-            ptree ? ptree->sub_tree[i] : NULL, pc_tree->split[i]);
+        av1_rd_use_partition(cpi, td, tile_data,
+                             mib + jj * hbs * mi_params->mi_stride + ii * hbs,
+                             tp, mi_row + y_idx, mi_col + x_idx, subsize,
+                             &tmp_rdc.rate, &tmp_rdc.dist,
+                             i != (SUB_PARTITIONS_SPLIT - 1),
+                             ptree ? ptree->sub_tree[i] : NULL,
+#if CONFIG_EXTENDED_SDP
+                             pc_tree->split[cur_region_type][i]);
+#else
+                             pc_tree->split[i]);
+#endif  // CONFIG_EXTENDED_SDP
         if (tmp_rdc.rate == INT_MAX || tmp_rdc.dist == INT64_MAX) {
           av1_invalid_rd_stats(&last_part_rdc);
           break;
@@ -3686,6 +3966,9 @@ static int rd_try_subblock(AV1_COMP *const cpi, ThreadData *td,
   av1_rd_stats_subtraction(x->rdmult, &best_rdcost, sum_rdc, &rdcost_remaining);
   RD_STATS this_rdc;
   pick_sb_modes(cpi, tile_data, x, mi_row, mi_col, &this_rdc, partition,
+#if CONFIG_EXTENDED_SDP
+                pc_tree->region_type,
+#endif  // CONFIG_EXTENDED_SDP
                 subsize, this_ctx, rdcost_remaining);
 
   if (this_rdc.rate == INT_MAX) {
@@ -3759,6 +4042,12 @@ static bool rd_test_partition3(AV1_COMP *const cpi, ThreadData *td,
   update_best_level_banks(level_banks, &x->e_mbd);
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
   pc_tree->partitioning = partition;
+#if CONFIG_EXTENDED_SDP
+  if (!frame_is_intra_only(cm))
+    pc_tree->region_type = MIXED_INTER_INTRA_REGION;
+  else
+    pc_tree->region_type = INTRA_REGION;
+#endif  // CONFIG_EXTENDED_SDP
   return true;
 }
 #endif  // !CONFIG_EXT_RECUR_PARTITIONS
@@ -3771,6 +4060,9 @@ static AOM_INLINE PARTITION_TYPE get_forced_partition_type(
     BLOCK_SIZE parent_bsize,
 #endif  // CONFIG_CB1TO4_SPLIT
     const PARTITION_TREE *ptree_luma, const PARTITION_TREE *template_tree,
+#if CONFIG_EXTENDED_SDP
+    REGION_TYPE cur_region_type,
+#endif  // CONFIG_EXTENDED_SDP
     const CHROMA_REF_INFO *chroma_ref_info) {
   // Partition types forced by bitstream syntax.
   const MACROBLOCKD *xd = &x->e_mbd;
@@ -3796,6 +4088,9 @@ static AOM_INLINE PARTITION_TYPE get_forced_partition_type(
 #if CONFIG_CB1TO4_SPLIT
       && (parent_bsize == BLOCK_INVALID || parent_bsize <= BLOCK_LARGEST)
 #endif  // CONFIG_CB1TO4_SPLIT
+#if CONFIG_EXTENDED_SDP
+      && !is_inter_sdp_chroma(cm, cur_region_type, xd->tree_type)
+#endif  // CONFIG_EXTENDED_SDP
   ) {
     return av1_get_prev_partition(x, mi_row, mi_col, bsize, cm->sb_size);
   }
@@ -3984,6 +4279,7 @@ static void init_partition_search_state_params(
   blk_params->bsize = bsize;
 
 #if CONFIG_CB1TO4_SPLIT
+  assert(pc_tree != NULL);
   blk_params->parent_bsize =
       pc_tree->parent ? pc_tree->parent->block_size : BLOCK_INVALID;
 #endif  // CONFIG_CB1TO4_SPLIT
@@ -4046,6 +4342,13 @@ static void init_partition_search_state_params(
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
+#if CONFIG_EXTENDED_SDP
+  if (xd->tree_type != CHROMA_PART) {
+    const int ctx = get_intra_region_context(bsize);
+    part_search_state->region_type_cost = mode_costs->region_type_cost[ctx];
+  }
+#endif  // CONFIG_EXTENDED_SDP
+
   // Initialize HORZ and VERT win flags as true for all split partitions.
   for (int i = 0; i < SUB_PARTITIONS_SPLIT; i++) {
     part_search_state->split_part_rect_win[i].rect_part_win[HORZ] = true;
@@ -4085,7 +4388,11 @@ static void init_partition_search_state_params(
 #if CONFIG_CB1TO4_SPLIT
       blk_params->parent_bsize,
 #endif  // CONFIG_CB1TO4_SPLIT
-      ptree_luma, template_tree, &pc_tree->chroma_ref_info);
+      ptree_luma, template_tree,
+#if CONFIG_EXTENDED_SDP
+      (pc_tree ? pc_tree->region_type : MIXED_INTER_INTRA_REGION),
+#endif  // CONFIG_EXTENDED_SDP
+      &pc_tree->chroma_ref_info);
 
   init_allowed_partitions(part_search_state, &cpi->oxcf.part_cfg,
                           &pc_tree->chroma_ref_info, tree_type);
@@ -4228,7 +4535,11 @@ static void rd_pick_rect_partition(AV1_COMP *const cpi, TileDataEnc *tile_data,
 
   // Obtain the best mode for the partition sub-block.
   pick_sb_modes(cpi, tile_data, x, mi_row, mi_col, &part_search_state->this_rdc,
-                partition_type, bsize, cur_partition_ctx, best_remain_rdcost);
+                partition_type,
+#if CONFIG_EXTENDED_SDP
+                pc_tree->region_type,
+#endif  // CONFIG_EXTENDED_SDP
+                bsize, cur_partition_ctx, best_remain_rdcost);
   av1_rd_cost_update(x->rdmult, &part_search_state->this_rdc);
 
   // Update the partition rd cost with the current sub-block rd.
@@ -4254,6 +4565,9 @@ static void rd_pick_rect_partition(
     BLOCK_SIZE bsize, const int is_not_edge_block[NUM_RECT_PARTS],
     SB_MULTI_PASS_MODE multi_pass_mode, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, bool *both_blocks_skippable,
+#if CONFIG_EXTENDED_SDP
+    PARTITION_TYPE parent_partition,
+#endif  // CONFIG_INTER_SDP
     int max_recursion_depth
 #if CONFIG_ML_PART_SPLIT
     ,
@@ -4264,18 +4578,35 @@ static void rd_pick_rect_partition(
   RD_STATS *sum_rdc = &part_search_state->sum_rdc;
 
   sum_rdc->rate = part_search_state->partition_cost[partition_type];
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      is_inter_sdp_allowed(pc_tree->parent->block_size, parent_partition) &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ))
+    sum_rdc->rate +=
+        part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
+#endif  // CONFIG_EXTENDED_SDP
   sum_rdc->rdcost = RDCOST(x->rdmult, sum_rdc->rate, 0);
 
   RD_STATS this_rdc;
   RD_STATS best_remain_rdcost;
+#if CONFIG_EXTENDED_SDP
+  PC_TREE **sub_tree = (rect_type == HORZ)
+                           ? pc_tree->horizontal[pc_tree->region_type]
+                           : pc_tree->vertical[pc_tree->region_type];
+#else
   PC_TREE **sub_tree =
       (rect_type == HORZ) ? pc_tree->horizontal : pc_tree->vertical;
+#endif  // CONFIG_EXTENDED_SDP
   *both_blocks_skippable = true;
   av1_rd_stats_subtraction(x->rdmult, best_rdc, sum_rdc, &best_remain_rdcost);
   bool partition_found = av1_rd_pick_partition(
       cpi, td, tile_data, tp, mi_pos_rect[rect_type][0][0],
-      mi_pos_rect[rect_type][0][1], bsize, &this_rdc, best_remain_rdcost,
-      sub_tree[0], get_partition_subtree_const(ptree_luma, 0),
+      mi_pos_rect[rect_type][0][1], bsize,
+#if CONFIG_EXTENDED_SDP
+      (rect_type == HORZ ? PARTITION_HORZ : PARTITION_VERT),
+#endif  // CONFIG_EXTENDED_SDP
+      &this_rdc, best_remain_rdcost, sub_tree[0],
+      get_partition_subtree_const(ptree_luma, 0),
       get_partition_subtree_const(template_tree, 0), max_recursion_depth, NULL,
       NULL, multi_pass_mode, NULL
 #if CONFIG_ML_PART_SPLIT
@@ -4299,8 +4630,12 @@ static void rd_pick_rect_partition(
     av1_rd_stats_subtraction(x->rdmult, best_rdc, sum_rdc, &best_remain_rdcost);
     partition_found = av1_rd_pick_partition(
         cpi, td, tile_data, tp, mi_pos_rect[rect_type][1][0],
-        mi_pos_rect[rect_type][1][1], bsize, &this_rdc, best_remain_rdcost,
-        sub_tree[1], get_partition_subtree_const(ptree_luma, 1),
+        mi_pos_rect[rect_type][1][1], bsize,
+#if CONFIG_EXTENDED_SDP
+        (rect_type == HORZ ? PARTITION_HORZ : PARTITION_VERT),
+#endif  // CONFIG_EXTENDED_SDP
+        &this_rdc, best_remain_rdcost, sub_tree[1],
+        get_partition_subtree_const(ptree_luma, 1),
         get_partition_subtree_const(template_tree, 1), max_recursion_depth,
         NULL, NULL, multi_pass_mode, NULL
 #if CONFIG_ML_PART_SPLIT
@@ -4397,6 +4732,9 @@ static void rectangular_partition_search(
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
     LevelBanksRDO *level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+#if CONFIG_EXTENDED_SDP
+    PARTITION_TYPE parent_partition,
+#endif  // CONFIG_INTER_SDP
     int64_t part_none_rd
 #if CONFIG_ML_PART_SPLIT
     ,
@@ -4515,7 +4853,13 @@ static void rectangular_partition_search(
       continue;
     }
 
+#if CONFIG_EXTENDED_SDP
+    const REGION_TYPE cur_region_type = pc_tree->region_type;
+    PC_TREE **sub_tree = (i == HORZ) ? pc_tree->horizontal[cur_region_type]
+                                     : pc_tree->vertical[cur_region_type];
+#else
     PC_TREE **sub_tree = (i == HORZ) ? pc_tree->horizontal : pc_tree->vertical;
+#endif  // CONFIG_EXTENDED_SDP
     assert(sub_tree);
 
     const int num_planes = av1_num_planes(cm);
@@ -4543,7 +4887,11 @@ static void rectangular_partition_search(
         cpi, td, tile_data, tp, x, pc_tree, part_search_state, best_rdc, i,
         mi_pos_rect, blk_params.subsize, is_not_edge_block, multi_pass_mode,
         track_ptree_luma ? ptree_luma : NULL, template_tree,
-        &both_blocks_skippable, max_recursion_depth
+        &both_blocks_skippable,
+#if CONFIG_EXTENDED_SDP
+        parent_partition,
+#endif  // CONFIG_INTER_SDP
+        max_recursion_depth
 #if CONFIG_ML_PART_SPLIT
         ,
         next_force_prune_flags[i]
@@ -4965,6 +5313,12 @@ static void rd_pick_4partition(
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
     part_search_state->found_best_partition = true;
     pc_tree->partitioning = partition_type;
+#if CONFIG_EXTENDED_SDP
+    if (!frame_is_intra_only(cm))
+      pc_tree->region_type = MIXED_INTER_INTRA_REGION;
+    else
+      pc_tree->region_type = INTRA_REGION;
+#endif  // CONFIG_EXTENDED_SDP
   }
 #if CONFIG_COLLECT_PARTITION_STATS
   if (partition_timer_on) {
@@ -5078,6 +5432,9 @@ static AOM_INLINE void set_part_none_allowed_flag(
 #if CONFIG_EXT_RECUR_PARTITIONS
     TREE_TYPE tree_type,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+    int sdp_inter_chroma_flag,
+#endif  // CONFIG_EXTENDED_SDP
     PartitionSearchState *part_search_state) {
   PartitionBlkParams blk_params = part_search_state->part_blk_params;
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -5086,6 +5443,12 @@ static AOM_INLINE void set_part_none_allowed_flag(
     return;
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+  if (sdp_inter_chroma_flag) {
+    part_search_state->partition_none_allowed = 1;
+    return;
+  }
+#endif  // CONFIG_EXTENDED_SDP
 #if CONFIG_EXT_RECUR_PARTITIONS
   if (is_bsize_geq(blk_params.min_partition_size, blk_params.bsize) &&
       blk_params.has_rows && blk_params.has_cols)
@@ -5118,15 +5481,37 @@ static void set_none_partition_params(const AV1_COMMON *const cm,
   PartitionBlkParams blk_params = part_search_state->part_blk_params;
   RD_STATS partition_rdcost;
   // Set PARTITION_NONE context.
+#if CONFIG_EXTENDED_SDP
+  if (is_inter_sdp_chroma(cm, pc_tree->region_type, x->e_mbd.tree_type)) {
+    if (pc_tree->none_chroma == NULL) {
+      pc_tree->none_chroma = av1_alloc_pmc(
+          cm, x->e_mbd.tree_type, blk_params.mi_row, blk_params.mi_col,
+          blk_params.bsize, pc_tree, PARTITION_NONE, 0, part_search_state->ss_x,
+          part_search_state->ss_y, &td->shared_coeff_buf);
+    }
+  } else {
+    if (pc_tree->none[pc_tree->region_type] == NULL) {
+      pc_tree->none[pc_tree->region_type] = av1_alloc_pmc(
+          cm, x->e_mbd.tree_type, blk_params.mi_row, blk_params.mi_col,
+          blk_params.bsize, pc_tree, PARTITION_NONE, 0, part_search_state->ss_x,
+          part_search_state->ss_y, &td->shared_coeff_buf);
+    }
+  }
+#else
   if (pc_tree->none == NULL)
     pc_tree->none = av1_alloc_pmc(
         cm, x->e_mbd.tree_type, blk_params.mi_row, blk_params.mi_col,
         blk_params.bsize, pc_tree, PARTITION_NONE, 0, part_search_state->ss_x,
         part_search_state->ss_y, &td->shared_coeff_buf);
+#endif  // CONFIG_EXTENDED_SDP
 
   // Set PARTITION_NONE type cost.
   if (part_search_state->partition_none_allowed) {
-    if (part_search_state->is_block_splittable) {
+    if (part_search_state->is_block_splittable
+#if CONFIG_EXTENDED_SDP
+        && !is_inter_sdp_chroma(cm, pc_tree->region_type, x->e_mbd.tree_type)
+#endif  // CONFIG_EXTENDED_SDP
+    ) {
       *pt_cost = part_search_state->partition_cost[PARTITION_NONE] < INT_MAX
                      ? part_search_state->partition_cost[PARTITION_NONE]
                      : 0;
@@ -5290,6 +5675,50 @@ static void prune_partitions_after_split(
 }
 #endif
 
+#if CONFIG_EXTENDED_SDP
+static void inter_sdp_copy_luma_mode_info(PC_TREE *pc_tree,
+                                          PICK_MODE_CONTEXT *ctx_chroma_none,
+                                          MB_MODE_INFO *mbmi) {
+  PC_TREE *cur_pc_tree = pc_tree;
+  PARTITION_TYPE partition = cur_pc_tree->partitioning;
+  while (partition) {
+    switch (partition) {
+      case PARTITION_HORZ:
+        cur_pc_tree = cur_pc_tree->horizontal[INTRA_REGION][0];
+        break;
+      case PARTITION_VERT:
+        cur_pc_tree = cur_pc_tree->vertical[INTRA_REGION][0];
+        break;
+      case PARTITION_SPLIT:
+        cur_pc_tree = cur_pc_tree->split[INTRA_REGION][0];
+        break;
+      case PARTITION_HORZ_4A:
+        cur_pc_tree = cur_pc_tree->horizontal4a[INTRA_REGION][0];
+        break;
+      case PARTITION_HORZ_4B:
+        cur_pc_tree = cur_pc_tree->horizontal4b[INTRA_REGION][0];
+        break;
+      case PARTITION_VERT_4A:
+        cur_pc_tree = cur_pc_tree->vertical4a[INTRA_REGION][0];
+        break;
+      case PARTITION_VERT_4B:
+        cur_pc_tree = cur_pc_tree->vertical4b[INTRA_REGION][0];
+        break;
+      case PARTITION_VERT_3:
+        cur_pc_tree = cur_pc_tree->vertical3[INTRA_REGION][0];
+        break;
+      case PARTITION_HORZ_3:
+        cur_pc_tree = cur_pc_tree->horizontal3[INTRA_REGION][0];
+        break;
+      default: assert(0 && "Invalid partition type!"); break;
+    }
+    partition = cur_pc_tree->partitioning;
+  }
+  ctx_chroma_none->mic = cur_pc_tree->none[INTRA_REGION]->mic;
+  *mbmi = cur_pc_tree->none[INTRA_REGION]->mic;
+}
+#endif  // CONFIG_EXTENDED_SDP
+
 // PARTITION_NONE search.
 static void none_partition_search(
     AV1_COMP *const cpi, ThreadData *td, TileDataEnc *tile_data, MACROBLOCK *x,
@@ -5315,17 +5744,29 @@ static void none_partition_search(
     return;
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+
+#if CONFIG_EXTENDED_SDP
+  int sdp_inter_chroma_flag =
+      is_inter_sdp_chroma(cm, pc_tree->region_type, x->e_mbd.tree_type);
+#endif  // CONFIG_EXTENDED_SDP
   // Set PARTITION_NONE allowed flag.
   set_part_none_allowed_flag(cpi,
 #if CONFIG_EXT_RECUR_PARTITIONS
                              x->e_mbd.tree_type,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+                             sdp_inter_chroma_flag,
+#endif  // CONFIG_EXTENDED_SDP
                              part_search_state);
   if (!part_search_state->partition_none_allowed) {
     return;
   }
 #if CONFIG_EXT_RECUR_PARTITIONS
-  if (part_search_state->prune_partition_none) {
+  if (part_search_state->prune_partition_none
+#if CONFIG_EXTENDED_SDP
+      && !sdp_inter_chroma_flag
+#endif  // CONFIG_EXTENDED_SDP
+  ) {
     return;
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
@@ -5336,6 +5777,16 @@ static void none_partition_search(
   // Set PARTITION_NONE context and cost.
   set_none_partition_params(cm, td, x, pc_tree, part_search_state,
                             &best_remain_rdcost, best_rdc, &pt_cost);
+
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+  PICK_MODE_CONTEXT *ctx_none = sdp_inter_chroma_flag
+                                    ? pc_tree->none_chroma
+                                    : pc_tree->none[pc_tree->region_type];
+  if (sdp_inter_chroma_flag) {
+    inter_sdp_copy_luma_mode_info(pc_tree, ctx_none, x->e_mbd.mi[0]);
+  }
+#endif  // CONFIG_EXTENDED_SDP
 
 #if CONFIG_COLLECT_PARTITION_STATS
   // Timer start for partition None.
@@ -5353,11 +5804,30 @@ static void none_partition_search(
 
   // PARTITION_NONE evaluation and cost update.
   pick_sb_modes(cpi, tile_data, x, mi_row, mi_col, this_rdc, PARTITION_NONE,
-                bsize, pc_tree->none, best_remain_rdcost);
+#if CONFIG_EXTENDED_SDP
+                pc_tree->region_type,
+#endif  // CONFIG_EXTENDED_SDP
+                bsize,
+#if CONFIG_EXTENDED_SDP
+                ctx_none,
+#else
+                pc_tree->none,
+#endif  // CONFIG_EXTENDED_SDP
+                best_remain_rdcost);
 #if CONFIG_EXT_RECUR_PARTITIONS
   x->inter_mode_cache = NULL;
-  if (this_rdc->rate != INT_MAX) {
-    av1_add_mode_search_context_to_cache(sms_data, pc_tree->none);
+  if (this_rdc->rate != INT_MAX
+#if CONFIG_EXTENDED_SDP
+      && !is_inter_sdp_chroma(cm, cur_region_type, x->e_mbd.tree_type)
+#endif  // CONFIG_EXTENDED_SDP
+  ) {
+    av1_add_mode_search_context_to_cache(sms_data,
+#if CONFIG_EXTENDED_SDP
+                                         pc_tree->none[pc_tree->region_type]
+#else
+                                         pc_tree->none
+#endif  // CONFIG_EXTENDED_SDP
+    );
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   av1_rd_cost_update(x->rdmult, this_rdc);
@@ -5375,21 +5845,44 @@ static void none_partition_search(
   if (none_rd) *none_rd = this_rdc->rdcost;
   part_search_state->none_rd = this_rdc->rdcost;
 #if CONFIG_EXT_RECUR_PARTITIONS
-  pc_tree->none_rd = *this_rdc;
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION ||
+      frame_is_intra_only(cm))
+#endif  // CONFIG_EXTENDED_SDP
+    pc_tree->none_rd = *this_rdc;
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   if (this_rdc->rate != INT_MAX) {
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+    pc_tree->skippable = sdp_inter_chroma_flag
+                             ? pc_tree->none_chroma->skippable
+                             : pc_tree->none[pc_tree->region_type]->skippable;
+#else
     pc_tree->skippable = pc_tree->none->skippable;
+#endif  // CONFIG_EXTENDED_SDP
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
     // Record picked ref frame to prune ref frames for other partition types.
-    if (cpi->sf.inter_sf.prune_ref_frames) {
+    if (cpi->sf.inter_sf.prune_ref_frames
+#if CONFIG_EXTENDED_SDP
+        && x->e_mbd.tree_type != CHROMA_PART
+#endif  // CONFIG_EXTENDED_SDP
+    ) {
+#if CONFIG_EXTENDED_SDP
+      const int ref_type = av1_ref_frame_type(
+          pc_tree->none[pc_tree->region_type]->mic.ref_frame);
+#else
       const int ref_type = av1_ref_frame_type(pc_tree->none->mic.ref_frame);
+#endif  // CONFIG_EXTENDED_SDP
       av1_update_picked_ref_frames_mask(x, ref_type, bsize, cm->mib_size,
                                         mi_row, mi_col);
     }
 
     // Calculate the total cost and update the best partition.
-    if (part_search_state->is_block_splittable) {
+    if (part_search_state->is_block_splittable
+#if CONFIG_EXTENDED_SDP
+        && !sdp_inter_chroma_flag
+#endif  // CONFIG_EXTENDED_SDP
+    ) {
       this_rdc->rate += pt_cost;
       this_rdc->rdcost = RDCOST(x->rdmult, this_rdc->rate, this_rdc->dist);
     }
@@ -5405,14 +5898,26 @@ static void none_partition_search(
         pc_tree->partitioning = PARTITION_NONE;
       }
 #else
-      pc_tree->partitioning = PARTITION_NONE;
+#if CONFIG_EXTENDED_SDP
+      if (!sdp_inter_chroma_flag)
+#endif  // CONFIG_EXTENDED_SDP
+        pc_tree->partitioning = PARTITION_NONE;
 #endif  // !CONFIG_EXT_RECUR_PARTITIONS
 
       // Disable split and rectangular partition search
       // based on PARTITION_NONE cost.
-      prune_partitions_after_none(cpi, x, sms_tree, pc_tree->none,
-                                  part_search_state, best_rdc,
-                                  pb_source_variance);
+#if CONFIG_EXTENDED_SDP
+      if (frame_is_intra_only(cm) || cur_region_type != INTRA_REGION ||
+          x->e_mbd.tree_type != CHROMA_PART)
+#endif  // CONFIG_EXTENDED_SDP
+        prune_partitions_after_none(cpi, x, sms_tree,
+#if CONFIG_EXTENDED_SDP
+                                    pc_tree->none[pc_tree->region_type],
+#else
+                                  pc_tree->none,
+#endif  // CONFIG_EXTENDED_SDP
+                                    part_search_state, best_rdc,
+                                    pb_source_variance);
     }
   }
   av1_restore_context(cm, x, x_ctx, mi_row, mi_col, bsize, av1_num_planes(cm));
@@ -5469,7 +5974,11 @@ static void split_partition_search(
   }
 
   const int num_planes = av1_num_planes(cm);
+#if CONFIG_EXTENDED_SDP
+  PC_TREE **sub_tree = pc_tree->split[pc_tree->region_type];
+#else
   PC_TREE **sub_tree = pc_tree->split;
+#endif  // CONFIG_EXTENDED_SDP
   assert(sub_tree);
   for (int idx = 0; idx < SUB_PARTITIONS_SPLIT; idx++) {
     if (sub_tree[idx]) {
@@ -5509,9 +6018,16 @@ static void split_partition_search(
     if (mi_row + y_idx >= mi_params->mi_rows ||
         mi_col + x_idx >= mi_params->mi_cols)
       continue;
-
+#if CONFIG_EXTENDED_SDP
+    if (pc_tree->split[pc_tree->region_type][idx] == NULL) {
+#else
     if (pc_tree->split[idx] == NULL) {
+#endif  // CONFIG_EXTENDED_SDP
+#if CONFIG_EXTENDED_SDP
+      pc_tree->split[pc_tree->region_type][idx] = av1_alloc_pc_tree_node(
+#else
       pc_tree->split[idx] = av1_alloc_pc_tree_node(
+#endif
           x->e_mbd.tree_type, mi_row + y_idx, mi_col + x_idx, subsize, pc_tree,
           PARTITION_SPLIT, idx, idx == 3, part_search_state->ss_x,
           part_search_state->ss_y);
@@ -5538,6 +6054,9 @@ static void split_partition_search(
 #endif  // CONFIG_ML_PART_SPLIT
     if (!av1_rd_pick_partition(
             cpi, td, tile_data, tp, mi_row + y_idx, mi_col + x_idx, subsize,
+#if CONFIG_EXTENDED_SDP
+            PARTITION_SPLIT,
+#endif  // CONFIG_EXTENDED_SDP
             &part_search_state->this_rdc, best_remain_rdcost, sub_tree[idx],
             track_ptree_luma ? ptree_luma->sub_tree[idx] : NULL,
             get_partition_subtree_const(template_tree, idx),
@@ -5569,8 +6088,21 @@ static void split_partition_search(
 
     // Set split ctx as ready for use.
     if (idx <= 1 && (bsize <= BLOCK_8X8 ||
-                     pc_tree->split[idx]->partitioning == PARTITION_NONE)) {
+#if CONFIG_EXTENDED_SDP
+                     pc_tree->split[pc_tree->region_type][idx]->partitioning ==
+                         PARTITION_NONE
+#else
+                     pc_tree->split[idx]->partitioning == PARTITION_NONE
+#endif  // CONFIG_EXTENDED_SDP
+                     )) {
+#if CONFIG_EXTENDED_SDP
+      const MB_MODE_INFO *const mbmi =
+          &pc_tree->split[pc_tree->region_type][idx]
+               ->none[pc_tree->region_type]
+               ->mic;
+#else
       const MB_MODE_INFO *const mbmi = &pc_tree->split[idx]->none->mic;
+#endif  // CONFIG_EXTENDED_SDP
       const PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
       // Neither palette mode nor cfl predicted.
       if (pmi->palette_size[0] == 0 && pmi->palette_size[1] == 0) {
@@ -5687,6 +6219,9 @@ static int rd_try_subblock_new(AV1_COMP *const cpi, ThreadData *td,
   int force_prune_flags[3] = { 0, 0, 0 };
 #endif  // CONFIG_ML_PART_SPLIT
   if (!av1_rd_pick_partition(cpi, td, tile_data, tp, mi_row, mi_col, bsize,
+#if CONFIG_EXTENDED_SDP
+                             rdo_data->partition,
+#endif  // CONFIG_EXTENDED_SDP
                              &this_rdc, rdcost_remaining, rdo_data->pc_tree,
                              rdo_data->ptree_luma, rdo_data->template_tree,
                              max_recursion_depth, NULL, NULL, multi_pass_mode,
@@ -5739,6 +6274,9 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
   const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
   switch (partition) {
     case PARTITION_NONE:
       for (int col = 0; col < mi_width; col++) {
@@ -5751,52 +6289,113 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
       }
       break;
     case PARTITION_HORZ:
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal[0],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal[cur_region_type][0],
+#else
+                               pc_tree->horizontal[0],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col,
                                get_partition_subsize(bsize, PARTITION_HORZ));
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal[1],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal[cur_region_type][1],
+#else
+                               pc_tree->horizontal[1],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row + mi_height / 2, mi_col,
                                get_partition_subsize(bsize, PARTITION_HORZ));
       break;
     case PARTITION_VERT:
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical[0],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical[cur_region_type][0],
+#else
+                               pc_tree->vertical[0],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col,
                                get_partition_subsize(bsize, PARTITION_VERT));
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical[1],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical[cur_region_type][1],
+#else
+                               pc_tree->vertical[1],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col + mi_width / 2,
                                get_partition_subsize(bsize, PARTITION_VERT));
       break;
     case PARTITION_HORZ_3:
       trace_partition_boundary(
-          partition_boundaries, pc_tree->horizontal3[0], mi_row, mi_col,
-          get_h_partition_subsize(bsize, 0, PARTITION_HORZ_3));
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal3[cur_region_type][0],
+#else
+          pc_tree->horizontal3[0],
+#endif  // CONFIG_EXTENDED_SDP
+          mi_row, mi_col, get_h_partition_subsize(bsize, 0, PARTITION_HORZ_3));
       trace_partition_boundary(
-          partition_boundaries, pc_tree->horizontal3[1], mi_row + mi_height / 4,
-          mi_col, get_h_partition_subsize(bsize, 1, PARTITION_HORZ_3));
-      trace_partition_boundary(
-          partition_boundaries, pc_tree->horizontal3[2], mi_row + mi_height / 4,
-          mi_col + mi_width / 2,
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal3[cur_region_type][1],
+#else
+          pc_tree->horizontal3[1],
+#endif  // CONFIG_EXTENDED_SDP
+          mi_row + mi_height / 4, mi_col,
           get_h_partition_subsize(bsize, 1, PARTITION_HORZ_3));
       trace_partition_boundary(
-          partition_boundaries, pc_tree->horizontal3[3],
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal3[cur_region_type][2],
+#else
+          pc_tree->horizontal3[2],
+#endif  // CONFIG_EXTENDED_SDP
+          mi_row + mi_height / 4, mi_col + mi_width / 2,
+          get_h_partition_subsize(bsize, 1, PARTITION_HORZ_3));
+      trace_partition_boundary(
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal3[cur_region_type][3],
+#else
+          pc_tree->horizontal3[3],
+#endif  // CONFIG_EXTENDED_SDP
           mi_row + 3 * mi_height / 4, mi_col,
           get_h_partition_subsize(bsize, 0, PARTITION_HORZ_3));
       break;
     case PARTITION_VERT_3:
       trace_partition_boundary(
-          partition_boundaries, pc_tree->vertical3[0], mi_row, mi_col,
-          get_h_partition_subsize(bsize, 0, PARTITION_VERT_3));
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical3[cur_region_type][0],
+#else
+          pc_tree->vertical3[0],
+#endif  // CONFIG_EXTENDED_SDP
+          mi_row, mi_col, get_h_partition_subsize(bsize, 0, PARTITION_VERT_3));
       trace_partition_boundary(
-          partition_boundaries, pc_tree->vertical3[1], mi_row,
-          mi_col + mi_width / 4,
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical3[cur_region_type][1],
+#else
+          pc_tree->vertical3[1],
+#endif  // CONFIG_EXTENDED_SDP
+          mi_row, mi_col + mi_width / 4,
           get_h_partition_subsize(bsize, 1, PARTITION_VERT_3));
       trace_partition_boundary(
-          partition_boundaries, pc_tree->vertical3[2], mi_row + mi_height / 2,
-          mi_col + mi_width / 4,
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical3[cur_region_type][2],
+#else
+          pc_tree->vertical3[2],
+#endif  // CONFIG_EXTENDED_SDP
+          mi_row + mi_height / 2, mi_col + mi_width / 4,
           get_h_partition_subsize(bsize, 1, PARTITION_VERT_3));
       trace_partition_boundary(
-          partition_boundaries, pc_tree->vertical3[3], mi_row,
-          mi_col + 3 * mi_width / 4,
+          partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical3[cur_region_type][3],
+#else
+          pc_tree->vertical3[3],
+#endif  // CONFIG_EXTENDED_SDP
+          mi_row, mi_col + 3 * mi_width / 4,
           get_h_partition_subsize(bsize, 0, PARTITION_VERT_3));
       break;
     case PARTITION_HORZ_4A: {
@@ -5804,13 +6403,33 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
       assert(bsize_big < BLOCK_SIZES_ALL);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_HORZ][bsize_med]);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4a[0],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4a[cur_region_type][0],
+#else
+                               pc_tree->horizontal4a[0],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col, subsize);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4a[1],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4a[cur_region_type][1],
+#else
+                               pc_tree->horizontal4a[1],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row + ebs_h, mi_col, bsize_med);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4a[2],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4a[cur_region_type][2],
+#else
+                               pc_tree->horizontal4a[2],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row + 3 * ebs_h, mi_col, bsize_big);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4a[3],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4a[cur_region_type][3],
+#else
+                               pc_tree->horizontal4a[3],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row + 7 * ebs_h, mi_col, subsize);
       break;
     }
@@ -5819,13 +6438,33 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
       assert(bsize_big < BLOCK_SIZES_ALL);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_HORZ][bsize_med]);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4b[0],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4b[cur_region_type][0],
+#else
+                               pc_tree->horizontal4b[0],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col, subsize);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4b[1],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4b[cur_region_type][1],
+#else
+                               pc_tree->horizontal4b[1],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row + ebs_h, mi_col, bsize_big);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4b[2],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4b[cur_region_type][2],
+#else
+                               pc_tree->horizontal4b[2],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row + 5 * ebs_h, mi_col, bsize_med);
-      trace_partition_boundary(partition_boundaries, pc_tree->horizontal4b[3],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->horizontal4b[cur_region_type][3],
+#else
+                               pc_tree->horizontal4b[3],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row + 7 * ebs_h, mi_col, subsize);
       break;
     }
@@ -5834,13 +6473,33 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
       assert(bsize_big < BLOCK_SIZES_ALL);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_VERT][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_VERT][bsize_med]);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4a[0],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4a[cur_region_type][0],
+#else
+                               pc_tree->vertical4a[0],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col, subsize);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4a[1],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4a[cur_region_type][1],
+#else
+                               pc_tree->vertical4a[1],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col + ebs_w, bsize_med);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4a[2],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4a[cur_region_type][2],
+#else
+                               pc_tree->vertical4a[2],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col + 3 * ebs_w, bsize_big);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4a[3],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4a[cur_region_type][3],
+#else
+                               pc_tree->vertical4a[3],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col + 7 * ebs_w, subsize);
       break;
     }
@@ -5849,13 +6508,33 @@ static AOM_INLINE void trace_partition_boundary(bool *partition_boundaries,
       assert(bsize_big < BLOCK_SIZES_ALL);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_VERT][bsize_big];
       assert(subsize == subsize_lookup[PARTITION_VERT][bsize_med]);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4b[0],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4b[cur_region_type][0],
+#else
+                               pc_tree->vertical4b[0],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col, subsize);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4b[1],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4b[cur_region_type][1],
+#else
+                               pc_tree->vertical4b[1],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col + ebs_w, bsize_big);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4b[2],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4b[cur_region_type][2],
+#else
+                               pc_tree->vertical4b[2],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col + 5 * ebs_w, bsize_med);
-      trace_partition_boundary(partition_boundaries, pc_tree->vertical4b[3],
+      trace_partition_boundary(partition_boundaries,
+#if CONFIG_EXTENDED_SDP
+                               pc_tree->vertical4b[cur_region_type][3],
+#else
+                               pc_tree->vertical4b[3],
+#endif  // CONFIG_EXTENDED_SDP
                                mi_row, mi_col + 7 * ebs_w, subsize);
       break;
     }
@@ -6058,6 +6737,10 @@ static AOM_INLINE void prune_ext_partitions_3way(
     return;
   }
 
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
+
   // Prune horz 3 with speed features
   if (part_search_state->partition_3_allowed[HORZ] &&
       !frame_is_intra_only(cm) && forced_partition != PARTITION_HORZ_3) {
@@ -6070,13 +6753,29 @@ static AOM_INLINE void prune_ext_partitions_3way(
       // Prune if the best partition is rect but the subtrees did not further
       // split in horz
       if (pc_tree->partitioning == PARTITION_HORZ &&
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal[cur_region_type][0] &&
+          pc_tree->horizontal[cur_region_type][1] &&
+          !node_uses_horz(pc_tree->horizontal[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->horizontal[cur_region_type][1])
+#else
           !node_uses_horz(pc_tree->horizontal[0]) &&
-          !node_uses_horz(pc_tree->horizontal[1])) {
+          !node_uses_horz(pc_tree->horizontal[1])
+#endif  // CONFIG_EXTENDED_SDP
+      ) {
         part_search_state->prune_partition_3[HORZ] = 1;
       }
       if (pc_tree->partitioning == PARTITION_VERT &&
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical[cur_region_type][0] &&
+          pc_tree->vertical[cur_region_type][1] &&
+          !node_uses_horz(pc_tree->vertical[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->vertical[cur_region_type][1])
+#else
           !node_uses_horz(pc_tree->vertical[0]) &&
-          !node_uses_horz(pc_tree->vertical[1])) {
+          !node_uses_horz(pc_tree->vertical[1])
+#endif  // CONFIG_EXTENDED_SDP
+      ) {
         part_search_state->prune_partition_3[HORZ] = 1;
       }
     }
@@ -6093,13 +6792,29 @@ static AOM_INLINE void prune_ext_partitions_3way(
       // Prune if the best partition is rect but the subtrees did not further
       // split in vert
       if (pc_tree->partitioning == PARTITION_VERT &&
+#if CONFIG_EXTENDED_SDP
+          pc_tree->vertical[cur_region_type][0] &&
+          pc_tree->vertical[cur_region_type][1] &&
+          !node_uses_vert(pc_tree->vertical[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->vertical[cur_region_type][1])
+#else
           !node_uses_vert(pc_tree->vertical[0]) &&
-          !node_uses_vert(pc_tree->vertical[1])) {
+          !node_uses_vert(pc_tree->vertical[1])
+#endif  // CONFIG_EXTENDED_SDP
+      ) {
         part_search_state->prune_partition_3[VERT] = 1;
       }
       if (pc_tree->partitioning == PARTITION_HORZ &&
+#if CONFIG_EXTENDED_SDP
+          pc_tree->horizontal[cur_region_type][0] &&
+          pc_tree->horizontal[cur_region_type][1] &&
+          !node_uses_vert(pc_tree->horizontal[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->horizontal[cur_region_type][1])
+#else
           !node_uses_vert(pc_tree->horizontal[0]) &&
-          !node_uses_vert(pc_tree->horizontal[1])) {
+          !node_uses_vert(pc_tree->horizontal[1])
+#endif  // CONFIG_EXTENDED_SDP
+      ) {
         part_search_state->prune_partition_3[VERT] = 1;
       }
     }
@@ -6126,6 +6841,205 @@ static AOM_INLINE void prune_ext_partitions_3way(
   }
 }
 
+#if CONFIG_EXTENDED_SDP
+// Early termination of SDP for intra blocks in inter frames
+static INLINE void early_termination_inter_sdp(PC_TREE *pc_tree,
+                                               float *total_count,
+                                               float *inter_mode_count) {
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+  if (pc_tree->partitioning == PARTITION_NONE) {
+    if (pc_tree->none[cur_region_type] == NULL) return;
+    const MB_MODE_INFO *const mi = &(pc_tree->none[cur_region_type])->mic;
+    if (mi == NULL) return;
+    *total_count += 1;
+    if (mi->mode >= NEARMV && mi->mode < MB_MODE_COUNT) *inter_mode_count += 1;
+    return;
+  }
+  switch (pc_tree->partitioning) {
+    case PARTITION_HORZ:
+      early_termination_inter_sdp(pc_tree->horizontal[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      break;
+    case PARTITION_VERT:
+      early_termination_inter_sdp(pc_tree->vertical[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      break;
+    case PARTITION_HORZ_4A:
+      early_termination_inter_sdp(pc_tree->horizontal4a[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal4a[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal4a[cur_region_type][2],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal4a[cur_region_type][3],
+                                  total_count, inter_mode_count);
+      break;
+    case PARTITION_HORZ_4B:
+      early_termination_inter_sdp(pc_tree->horizontal4b[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal4b[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal4b[cur_region_type][2],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal4b[cur_region_type][3],
+                                  total_count, inter_mode_count);
+      break;
+    case PARTITION_VERT_4A:
+      early_termination_inter_sdp(pc_tree->vertical4a[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical4a[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical4a[cur_region_type][2],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical4a[cur_region_type][3],
+                                  total_count, inter_mode_count);
+      break;
+    case PARTITION_VERT_4B:
+      early_termination_inter_sdp(pc_tree->vertical4b[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical4b[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical4b[cur_region_type][2],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical4b[cur_region_type][3],
+                                  total_count, inter_mode_count);
+      break;
+    case PARTITION_HORZ_3:
+      early_termination_inter_sdp(pc_tree->horizontal3[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal3[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal3[cur_region_type][2],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->horizontal3[cur_region_type][3],
+                                  total_count, inter_mode_count);
+      break;
+    case PARTITION_VERT_3:
+      early_termination_inter_sdp(pc_tree->vertical3[cur_region_type][0],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical3[cur_region_type][1],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical3[cur_region_type][2],
+                                  total_count, inter_mode_count);
+      early_termination_inter_sdp(pc_tree->vertical3[cur_region_type][3],
+                                  total_count, inter_mode_count);
+      break;
+    default: break;
+  }
+}
+
+// Search SDP for intra blocks in inter frames
+static INLINE void search_intra_region_partitioning(
+    PartitionSearchState *search_state, AV1_COMP *const cpi, ThreadData *td,
+    TileDataEnc *tile_data, TokenExtra **tp, RD_STATS *best_rdc,
+    PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
+    const PARTITION_TREE *template_tree, RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
+    PartitionSearchState *part_search_state,
+#if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+    LevelBanksRDO *level_banks,
+#endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth,
+    PARTITION_TYPE parent_partition) {
+  const AV1_COMMON *const cm = &cpi->common;
+  MACROBLOCK *const x = &td->mb;
+  const int num_planes = av1_num_planes(cm);
+  MACROBLOCKD *const xd = &x->e_mbd;
+
+  // Add one encoder fast method for early terminating inter-sdp
+  float total_count = 0;
+  float inter_mode_count = 0;
+  early_termination_inter_sdp(pc_tree, &total_count, &inter_mode_count);
+  // if over 60% of the coded blocks under this region are inter coded blocks,
+  // skip the rdo for inter-sdp
+  if (total_count * 0.7 < inter_mode_count) return;
+
+  pc_tree->region_type = INTRA_REGION;
+  // store the current best partitioning
+  PARTITION_TYPE cur_best_partitioning = pc_tree->partitioning;
+  pc_tree->partitioning = PARTITION_NONE;
+
+  RD_STATS *sum_rdc = &part_search_state->sum_rdc;
+  av1_init_rd_stats(sum_rdc);
+
+  sum_rdc->rate = part_search_state->region_type_cost[pc_tree->region_type];
+  sum_rdc->rdcost = RDCOST(x->rdmult, sum_rdc->rate, 0);
+
+  RD_STATS best_remain_rdcost;
+
+  av1_rd_stats_subtraction(x->rdmult, best_rdc, sum_rdc, &best_remain_rdcost);
+
+  const PartitionBlkParams *blk_params = &search_state->part_blk_params;
+  const int mi_row = blk_params->mi_row, mi_col = blk_params->mi_col;
+  const BLOCK_SIZE bsize = blk_params->bsize;
+
+  RD_STATS this_rdc;
+  av1_init_rd_stats(&this_rdc);
+
+  // Encoder RDO for luma component in intra region
+  xd->tree_type = LUMA_PART;
+  if (!av1_rd_pick_partition(cpi, td, tile_data, tp, mi_row, mi_col, bsize,
+#if CONFIG_EXTENDED_SDP
+                             parent_partition,
+#endif  // CONFIG_EXTENDED_SDP
+                             &this_rdc, best_remain_rdcost, pc_tree, ptree_luma,
+                             template_tree, max_recursion_depth, NULL, NULL,
+                             multi_pass_mode, NULL)) {
+    av1_invalid_rd_stats(&this_rdc);
+    av1_invalid_rd_stats(sum_rdc);
+  }
+  // Encoder RDO for chroma component in intra region
+  if (this_rdc.rdcost != INT64_MAX && !cm->seq_params.monochrome) {
+    sum_rdc->rate += this_rdc.rate;
+    sum_rdc->dist += this_rdc.dist;
+    av1_rd_cost_update(x->rdmult, sum_rdc);
+    xd->tree_type = CHROMA_PART;
+    av1_rd_stats_subtraction(x->rdmult, best_rdc, sum_rdc, &best_remain_rdcost);
+    av1_init_rd_stats(&this_rdc);
+    if (!av1_rd_pick_partition(cpi, td, tile_data, tp, mi_row, mi_col, bsize,
+#if CONFIG_EXTENDED_SDP
+                               parent_partition,
+#endif  // CONFIG_EXTENDED_SDP
+                               &this_rdc, best_remain_rdcost, pc_tree,
+                               ptree_luma, template_tree, max_recursion_depth,
+                               NULL, NULL, multi_pass_mode, NULL)) {
+      av1_invalid_rd_stats(&this_rdc);
+      av1_invalid_rd_stats(sum_rdc);
+    }
+    if (this_rdc.rdcost != INT64_MAX) {
+      sum_rdc->rate += this_rdc.rate;
+      sum_rdc->dist += this_rdc.dist;
+      av1_rd_cost_update(x->rdmult, sum_rdc);
+    }
+  }
+  // reset tree_type to shared_part
+  xd->tree_type = SHARED_PART;
+  // compare current rd cost with best rd cost
+  if (sum_rdc->rdcost < best_rdc->rdcost) {
+#if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+    update_best_level_banks(level_banks, &x->e_mbd);
+#endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+    *best_rdc = *sum_rdc;
+    search_state->found_best_partition = true;
+#if CONFIG_EXTENDED_SDP
+    pc_tree->region_type = INTRA_REGION;
+#endif  // CONFIG_EXTENDED_SDP
+  } else {
+    // set back to the previous stored region_type and partitioning type
+    pc_tree->region_type = MIXED_INTER_INTRA_REGION;
+    pc_tree->partitioning = cur_best_partitioning;
+  }
+
+  av1_restore_context(cm, x, x_ctx, mi_row, mi_col, bsize, num_planes);
+#if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+  restore_level_banks(&x->e_mbd, level_banks);
+#endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+}
+#endif  // CONFIG_EXTENDED_SDP
+
 // Pruning logic for PARTITION_HORZ_4A/B and PARTITION_VERT_4A/B.
 static AOM_INLINE void prune_ext_partitions_4way(
     AV1_COMP *const cpi, PC_TREE *pc_tree,
@@ -6133,6 +7047,10 @@ static AOM_INLINE void prune_ext_partitions_4way(
   const AV1_COMMON *const cm = &cpi->common;
   const PARTITION_SPEED_FEATURES *part_sf = &cpi->sf.part_sf;
   const PARTITION_TYPE forced_partition = part_search_state->forced_partition;
+
+#if CONFIG_EXTENDED_SDP
+  const int cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
 
   // Prune HORZ 4A with speed features
   if (part_search_state->partition_4a_allowed[HORZ] &&
@@ -6147,27 +7065,47 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition is rect but subtrees did not further split
       // in horz
       if (pc_tree->partitioning == PARTITION_HORZ &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->horizontal[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->horizontal[cur_region_type][1])) {
+#else
           !node_uses_horz(pc_tree->horizontal[0]) &&
           !node_uses_horz(pc_tree->horizontal[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4a[HORZ] = 1;
       }
       if (pc_tree->partitioning == PARTITION_VERT &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->vertical[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->vertical[cur_region_type][1])) {
+#else
           !node_uses_horz(pc_tree->vertical[0]) &&
           !node_uses_horz(pc_tree->vertical[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4a[HORZ] = 1;
       }
     }
     if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
       if (pc_tree->partitioning == PARTITION_HORZ_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->horizontal3[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->horizontal3[cur_region_type][3])) {
+#else
           !node_uses_horz(pc_tree->horizontal3[0]) &&
           !node_uses_horz(pc_tree->horizontal3[3])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is horizontal H, but first and last
         // subpartitions did not further split in horizontal direction.
         part_search_state->prune_partition_4a[HORZ] = 1;
       }
       if (pc_tree->partitioning == PARTITION_VERT_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->vertical3[cur_region_type][1]) &&
+          !node_uses_horz(pc_tree->vertical3[cur_region_type][2])) {
+#else
           !node_uses_horz(pc_tree->vertical3[1]) &&
           !node_uses_horz(pc_tree->vertical3[2])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is vertical H, but middle two
         // subpartitions did not further split in horizontal direction.
         part_search_state->prune_partition_4a[HORZ] = 1;
@@ -6211,27 +7149,47 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition is rect but subtrees did not further split
       // in horz
       if (pc_tree->partitioning == PARTITION_HORZ &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->horizontal[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->horizontal[cur_region_type][1])) {
+#else
           !node_uses_horz(pc_tree->horizontal[0]) &&
           !node_uses_horz(pc_tree->horizontal[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4b[HORZ] = 1;
       }
       if (pc_tree->partitioning == PARTITION_VERT &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->vertical[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->vertical[cur_region_type][1])) {
+#else
           !node_uses_horz(pc_tree->vertical[0]) &&
           !node_uses_horz(pc_tree->vertical[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4b[HORZ] = 1;
       }
     }
     if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
       if (pc_tree->partitioning == PARTITION_HORZ_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->horizontal3[cur_region_type][0]) &&
+          !node_uses_horz(pc_tree->horizontal3[cur_region_type][3])) {
+#else
           !node_uses_horz(pc_tree->horizontal3[0]) &&
           !node_uses_horz(pc_tree->horizontal3[3])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is horizontal H, but first and last
         // subpartitions did not further split in horizontal direction.
         part_search_state->prune_partition_4b[HORZ] = 1;
       }
       if (pc_tree->partitioning == PARTITION_VERT_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_horz(pc_tree->vertical3[cur_region_type][1]) &&
+          !node_uses_horz(pc_tree->vertical3[cur_region_type][2])) {
+#else
           !node_uses_horz(pc_tree->vertical3[1]) &&
           !node_uses_horz(pc_tree->vertical3[2])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is vertical H, but middle two
         // subpartitions did not further split in horizontal direction.
         part_search_state->prune_partition_4b[HORZ] = 1;
@@ -6275,27 +7233,47 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition is rect but subtrees did not further split
       // in vert
       if (pc_tree->partitioning == PARTITION_VERT &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->vertical[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->vertical[cur_region_type][1])) {
+#else
           !node_uses_vert(pc_tree->vertical[0]) &&
           !node_uses_vert(pc_tree->vertical[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4a[VERT] = 1;
       }
       if (pc_tree->partitioning == PARTITION_HORZ &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->horizontal[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->horizontal[cur_region_type][1])) {
+#else
           !node_uses_vert(pc_tree->horizontal[0]) &&
           !node_uses_vert(pc_tree->horizontal[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4a[VERT] = 1;
       }
     }
     if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
       if (pc_tree->partitioning == PARTITION_VERT_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->vertical3[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->vertical3[cur_region_type][3])) {
+#else
           !node_uses_vert(pc_tree->vertical3[0]) &&
           !node_uses_vert(pc_tree->vertical3[3])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is vertical H, but first and last
         // subpartitions did not further split in vertical direction.
         part_search_state->prune_partition_4a[VERT] = 1;
       }
       if (pc_tree->partitioning == PARTITION_HORZ_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->horizontal3[cur_region_type][1]) &&
+          !node_uses_vert(pc_tree->horizontal3[cur_region_type][2])) {
+#else
           !node_uses_vert(pc_tree->horizontal3[1]) &&
           !node_uses_vert(pc_tree->horizontal3[2])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is horizontal H, but middle two
         // subpartitions did not further split in vertical direction.
         part_search_state->prune_partition_4a[VERT] = 1;
@@ -6339,27 +7317,47 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition is rect but subtrees did not further split
       // in vert
       if (pc_tree->partitioning == PARTITION_VERT &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->vertical[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->vertical[cur_region_type][1])) {
+#else
           !node_uses_vert(pc_tree->vertical[0]) &&
           !node_uses_vert(pc_tree->vertical[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4b[VERT] = 1;
       }
       if (pc_tree->partitioning == PARTITION_HORZ &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->horizontal[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->horizontal[cur_region_type][1])) {
+#else
           !node_uses_vert(pc_tree->horizontal[0]) &&
           !node_uses_vert(pc_tree->horizontal[1])) {
+#endif  // CONFIG_EXTENDED_SDP
         part_search_state->prune_partition_4b[VERT] = 1;
       }
     }
     if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
       if (pc_tree->partitioning == PARTITION_VERT_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->vertical3[cur_region_type][0]) &&
+          !node_uses_vert(pc_tree->vertical3[cur_region_type][3])) {
+#else
           !node_uses_vert(pc_tree->vertical3[0]) &&
           !node_uses_vert(pc_tree->vertical3[3])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is vertical H, but first and last
         // subpartitions did not further split in vertical direction.
         part_search_state->prune_partition_4b[VERT] = 1;
       }
       if (pc_tree->partitioning == PARTITION_HORZ_3 &&
+#if CONFIG_EXTENDED_SDP
+          !node_uses_vert(pc_tree->horizontal3[cur_region_type][1]) &&
+          !node_uses_vert(pc_tree->horizontal3[cur_region_type][2])) {
+#else
           !node_uses_vert(pc_tree->horizontal3[1]) &&
           !node_uses_vert(pc_tree->horizontal3[2])) {
+#endif  // CONFIG_EXTENDED_SDP
         // Prune if best partition is horizontal H, but middle two
         // subpartitions did not further split in vertical direction.
         part_search_state->prune_partition_4b[VERT] = 1;
@@ -6468,6 +7466,14 @@ static INLINE void search_partition_horz_4a(
   const int eighth_step = mi_size_high[bsize] / 8;
 
   sum_rdc.rate = search_state->partition_cost[PARTITION_HORZ_4A];
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      is_inter_sdp_allowed(pc_tree->parent->block_size,
+                           pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ_4A))
+    sum_rdc.rate +=
+        part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
+#endif  // CONFIG_EXTENDED_SDP
   sum_rdc.rdcost = RDCOST(x->rdmult, sum_rdc.rate, 0);
 
   const BLOCK_SIZE sml_subsize =
@@ -6480,7 +7486,22 @@ static INLINE void search_partition_horz_4a(
   const BLOCK_SIZE subblock_sizes[4] = { sml_subsize, med_subsize, big_subsize,
                                          sml_subsize };
 
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
+
   for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+    if (pc_tree->horizontal4a[cur_region_type][idx]) {
+      av1_free_pc_tree_recursive(pc_tree->horizontal4a[cur_region_type][idx],
+                                 num_planes, 0, 0);
+      pc_tree->horizontal4a[cur_region_type][idx] = NULL;
+    }
+    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers[idx];
+    pc_tree->horizontal4a[cur_region_type][idx] = av1_alloc_pc_tree_node(
+        xd->tree_type, this_mi_row, mi_col, subblock_sizes[idx], pc_tree,
+        PARTITION_HORZ_4A, idx, idx == 3, ss_x, ss_y);
+#else
     if (pc_tree->horizontal4a[idx]) {
       av1_free_pc_tree_recursive(pc_tree->horizontal4a[idx], num_planes, 0, 0);
       pc_tree->horizontal4a[idx] = NULL;
@@ -6489,6 +7510,7 @@ static INLINE void search_partition_horz_4a(
     pc_tree->horizontal4a[idx] = av1_alloc_pc_tree_node(
         xd->tree_type, this_mi_row, mi_col, subblock_sizes[idx], pc_tree,
         PARTITION_HORZ_4A, idx, idx == 3, ss_x, ss_y);
+#endif  // CONFIG_EXTENDED_SDP
   }
 
   bool skippable = true;
@@ -6497,14 +7519,19 @@ static INLINE void search_partition_horz_4a(
 
     if (i > 0 && this_mi_row >= cm->mi_params.mi_rows) break;
 
-    SUBBLOCK_RDO_DATA rdo_data = { pc_tree->horizontal4a[i],
-                                   get_partition_subtree_const(ptree_luma, i),
-                                   get_partition_subtree_const(template_tree,
-                                                               i),
-                                   this_mi_row,
-                                   mi_col,
-                                   subblock_sizes[i],
-                                   PARTITION_HORZ_4A };
+    SUBBLOCK_RDO_DATA rdo_data = {
+#if CONFIG_EXTENDED_SDP
+      pc_tree->horizontal4a[cur_region_type][i],
+#else
+      pc_tree->horizontal4a[i],
+#endif
+      get_partition_subtree_const(ptree_luma, i),
+      get_partition_subtree_const(template_tree, i),
+      this_mi_row,
+      mi_col,
+      subblock_sizes[i],
+      PARTITION_HORZ_4A
+    };
     if (!rd_try_subblock_new(cpi, td, tile_data, tp, &rdo_data, *best_rdc,
                              &sum_rdc, multi_pass_mode, &skippable,
                              max_recursion_depth)) {
@@ -6551,6 +7578,10 @@ static INLINE void search_partition_horz_4b(
   const int mi_row = blk_params->mi_row, mi_col = blk_params->mi_col;
   const BLOCK_SIZE bsize = blk_params->bsize;
 
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif
+
   if (is_part_pruned_by_forced_partition(part_search_state,
                                          PARTITION_HORZ_4B) ||
       !part_search_state->partition_4b_allowed[HORZ] ||
@@ -6575,6 +7606,14 @@ static INLINE void search_partition_horz_4b(
   const int eighth_step = mi_size_high[bsize] / 8;
 
   sum_rdc.rate = search_state->partition_cost[PARTITION_HORZ_4B];
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      is_inter_sdp_allowed(pc_tree->parent->block_size,
+                           pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ_4A))
+    sum_rdc.rate +=
+        part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
+#endif  // CONFIG_EXTENDED_SDP
   sum_rdc.rdcost = RDCOST(x->rdmult, sum_rdc.rate, 0);
 
   const BLOCK_SIZE sml_subsize =
@@ -6588,6 +7627,17 @@ static INLINE void search_partition_horz_4b(
                                          sml_subsize };
 
   for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+    if (pc_tree->horizontal4b[cur_region_type][idx]) {
+      av1_free_pc_tree_recursive(pc_tree->horizontal4b[cur_region_type][idx],
+                                 num_planes, 0, 0);
+      pc_tree->horizontal4b[cur_region_type][idx] = NULL;
+    }
+    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers[idx];
+    pc_tree->horizontal4b[cur_region_type][idx] = av1_alloc_pc_tree_node(
+        xd->tree_type, this_mi_row, mi_col, subblock_sizes[idx], pc_tree,
+        PARTITION_HORZ_4B, idx, idx == 3, ss_x, ss_y);
+#else
     if (pc_tree->horizontal4b[idx]) {
       av1_free_pc_tree_recursive(pc_tree->horizontal4b[idx], num_planes, 0, 0);
       pc_tree->horizontal4b[idx] = NULL;
@@ -6596,6 +7646,7 @@ static INLINE void search_partition_horz_4b(
     pc_tree->horizontal4b[idx] = av1_alloc_pc_tree_node(
         xd->tree_type, this_mi_row, mi_col, subblock_sizes[idx], pc_tree,
         PARTITION_HORZ_4B, idx, idx == 3, ss_x, ss_y);
+#endif  // CONFIG_EXTENDED_SDP
   }
 
   bool skippable = true;
@@ -6604,14 +7655,19 @@ static INLINE void search_partition_horz_4b(
 
     if (i > 0 && this_mi_row >= cm->mi_params.mi_rows) break;
 
-    SUBBLOCK_RDO_DATA rdo_data = { pc_tree->horizontal4b[i],
-                                   get_partition_subtree_const(ptree_luma, i),
-                                   get_partition_subtree_const(template_tree,
-                                                               i),
-                                   this_mi_row,
-                                   mi_col,
-                                   subblock_sizes[i],
-                                   PARTITION_HORZ_4B };
+    SUBBLOCK_RDO_DATA rdo_data = {
+#if CONFIG_EXTENDED_SDP
+      pc_tree->horizontal4b[cur_region_type][i],
+#else
+      pc_tree->horizontal4b[i],
+#endif  // CONFIG_EXTENDED_SDP
+      get_partition_subtree_const(ptree_luma, i),
+      get_partition_subtree_const(template_tree, i),
+      this_mi_row,
+      mi_col,
+      subblock_sizes[i],
+      PARTITION_HORZ_4B
+    };
     if (!rd_try_subblock_new(cpi, td, tile_data, tp, &rdo_data, *best_rdc,
                              &sum_rdc, multi_pass_mode, &skippable,
                              max_recursion_depth)) {
@@ -6658,6 +7714,10 @@ static INLINE void search_partition_vert_4a(
   const int mi_row = blk_params->mi_row, mi_col = blk_params->mi_col;
   const BLOCK_SIZE bsize = blk_params->bsize;
 
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
+
   if (is_part_pruned_by_forced_partition(part_search_state,
                                          PARTITION_VERT_4A) ||
       !part_search_state->partition_4a_allowed[VERT] ||
@@ -6682,6 +7742,14 @@ static INLINE void search_partition_vert_4a(
   const int eighth_step = mi_size_wide[bsize] / 8;
 
   sum_rdc.rate = search_state->partition_cost[PARTITION_VERT_4A];
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      is_inter_sdp_allowed(pc_tree->parent->block_size,
+                           pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_VERT_4A))
+    sum_rdc.rate +=
+        part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
+#endif  // CONFIG_EXTENDED_SDP
   sum_rdc.rdcost = RDCOST(x->rdmult, sum_rdc.rate, 0);
 
   const BLOCK_SIZE sml_subsize =
@@ -6695,6 +7763,17 @@ static INLINE void search_partition_vert_4a(
                                          sml_subsize };
 
   for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+    if (pc_tree->vertical4a[cur_region_type][idx]) {
+      av1_free_pc_tree_recursive(pc_tree->vertical4a[cur_region_type][idx],
+                                 num_planes, 0, 0);
+      pc_tree->vertical4a[cur_region_type][idx] = NULL;
+    }
+    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers[idx];
+    pc_tree->vertical4a[cur_region_type][idx] = av1_alloc_pc_tree_node(
+        xd->tree_type, mi_row, this_mi_col, subblock_sizes[idx], pc_tree,
+        PARTITION_VERT_4A, idx, idx == 3, ss_x, ss_y);
+#else
     if (pc_tree->vertical4a[idx]) {
       av1_free_pc_tree_recursive(pc_tree->vertical4a[idx], num_planes, 0, 0);
       pc_tree->vertical4a[idx] = NULL;
@@ -6703,6 +7782,7 @@ static INLINE void search_partition_vert_4a(
     pc_tree->vertical4a[idx] = av1_alloc_pc_tree_node(
         xd->tree_type, mi_row, this_mi_col, subblock_sizes[idx], pc_tree,
         PARTITION_VERT_4A, idx, idx == 3, ss_x, ss_y);
+#endif  // CONFIG_EXTENDED_SDP
   }
 
   bool skippable = true;
@@ -6711,14 +7791,19 @@ static INLINE void search_partition_vert_4a(
 
     if (i > 0 && this_mi_col >= cm->mi_params.mi_cols) break;
 
-    SUBBLOCK_RDO_DATA rdo_data = { pc_tree->vertical4a[i],
-                                   get_partition_subtree_const(ptree_luma, i),
-                                   get_partition_subtree_const(template_tree,
-                                                               i),
-                                   mi_row,
-                                   this_mi_col,
-                                   subblock_sizes[i],
-                                   PARTITION_VERT_4A };
+    SUBBLOCK_RDO_DATA rdo_data = {
+#if CONFIG_EXTENDED_SDP
+      pc_tree->vertical4a[cur_region_type][i],
+#else
+      pc_tree->vertical4a[i],
+#endif  // CONFIG_EXTENDED_SDP
+      get_partition_subtree_const(ptree_luma, i),
+      get_partition_subtree_const(template_tree, i),
+      mi_row,
+      this_mi_col,
+      subblock_sizes[i],
+      PARTITION_VERT_4A
+    };
     if (!rd_try_subblock_new(cpi, td, tile_data, tp, &rdo_data, *best_rdc,
                              &sum_rdc, multi_pass_mode, &skippable,
                              max_recursion_depth)) {
@@ -6765,6 +7850,10 @@ static INLINE void search_partition_vert_4b(
   const int mi_row = blk_params->mi_row, mi_col = blk_params->mi_col;
   const BLOCK_SIZE bsize = blk_params->bsize;
 
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
+
   if (is_part_pruned_by_forced_partition(part_search_state,
                                          PARTITION_VERT_4B) ||
       !part_search_state->partition_4b_allowed[VERT] ||
@@ -6789,6 +7878,14 @@ static INLINE void search_partition_vert_4b(
   const int eighth_step = mi_size_wide[bsize] / 8;
 
   sum_rdc.rate = search_state->partition_cost[PARTITION_VERT_4B];
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      is_inter_sdp_allowed(pc_tree->parent->block_size,
+                           pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_VERT_4A))
+    sum_rdc.rate +=
+        part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
+#endif  // CONFIG_EXTENDED_SDP
   sum_rdc.rdcost = RDCOST(x->rdmult, sum_rdc.rate, 0);
 
   const BLOCK_SIZE sml_subsize =
@@ -6802,6 +7899,17 @@ static INLINE void search_partition_vert_4b(
                                          sml_subsize };
 
   for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+    if (pc_tree->vertical4b[cur_region_type][idx]) {
+      av1_free_pc_tree_recursive(pc_tree->vertical4b[cur_region_type][idx],
+                                 num_planes, 0, 0);
+      pc_tree->vertical4b[cur_region_type][idx] = NULL;
+    }
+    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers[idx];
+    pc_tree->vertical4b[cur_region_type][idx] = av1_alloc_pc_tree_node(
+        xd->tree_type, mi_row, this_mi_col, subblock_sizes[idx], pc_tree,
+        PARTITION_VERT_4B, idx, idx == 3, ss_x, ss_y);
+#else
     if (pc_tree->vertical4b[idx]) {
       av1_free_pc_tree_recursive(pc_tree->vertical4b[idx], num_planes, 0, 0);
       pc_tree->vertical4b[idx] = NULL;
@@ -6810,6 +7918,7 @@ static INLINE void search_partition_vert_4b(
     pc_tree->vertical4b[idx] = av1_alloc_pc_tree_node(
         xd->tree_type, mi_row, this_mi_col, subblock_sizes[idx], pc_tree,
         PARTITION_VERT_4B, idx, idx == 3, ss_x, ss_y);
+#endif  // CONFIG_EXTENDED_SDP
   }
 
   bool skippable = true;
@@ -6818,14 +7927,19 @@ static INLINE void search_partition_vert_4b(
 
     if (i > 0 && this_mi_col >= cm->mi_params.mi_cols) break;
 
-    SUBBLOCK_RDO_DATA rdo_data = { pc_tree->vertical4b[i],
-                                   get_partition_subtree_const(ptree_luma, i),
-                                   get_partition_subtree_const(template_tree,
-                                                               i),
-                                   mi_row,
-                                   this_mi_col,
-                                   subblock_sizes[i],
-                                   PARTITION_VERT_4B };
+    SUBBLOCK_RDO_DATA rdo_data = {
+#if CONFIG_EXTENDED_SDP
+      pc_tree->vertical4b[cur_region_type][i],
+#else
+      pc_tree->vertical4b[i],
+#endif  // CONFIG_EXTENDED_SDP
+      get_partition_subtree_const(ptree_luma, i),
+      get_partition_subtree_const(template_tree, i),
+      mi_row,
+      this_mi_col,
+      subblock_sizes[i],
+      PARTITION_VERT_4B
+    };
     if (!rd_try_subblock_new(cpi, td, tile_data, tp, &rdo_data, *best_rdc,
                              &sum_rdc, multi_pass_mode, &skippable,
                              max_recursion_depth)) {
@@ -6873,6 +7987,10 @@ static INLINE void search_partition_horz_3(
   const int mi_row = blk_params->mi_row, mi_col = blk_params->mi_col;
   const BLOCK_SIZE bsize = blk_params->bsize;
 
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
+
   if (is_part_pruned_by_forced_partition(part_search_state, PARTITION_HORZ_3) ||
       !part_search_state->partition_3_allowed[HORZ] ||
       part_search_state->prune_partition_3[HORZ]) {
@@ -6899,6 +8017,14 @@ static INLINE void search_partition_horz_3(
   const int quarter_step = mi_size_high[bsize] / 4;
 
   sum_rdc.rate = search_state->partition_cost[PARTITION_HORZ_3];
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      is_inter_sdp_allowed(pc_tree->parent->block_size,
+                           pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ_3))
+    sum_rdc.rate +=
+        part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
+#endif  // CONFIG_EXTENDED_SDP
   sum_rdc.rdcost = RDCOST(x->rdmult, sum_rdc.rate, 0);
 
   const BLOCK_SIZE sml_subsize =
@@ -6911,6 +8037,18 @@ static INLINE void search_partition_horz_3(
   const int offset_mc[4] = { 0, 0, mi_size_wide[bsize] / 2, 0 };
 
   for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+    if (pc_tree->horizontal3[cur_region_type][idx]) {
+      av1_free_pc_tree_recursive(pc_tree->horizontal3[cur_region_type][idx],
+                                 num_planes, 0, 0);
+      pc_tree->horizontal3[cur_region_type][idx] = NULL;
+    }
+
+    pc_tree->horizontal3[cur_region_type][idx] = av1_alloc_pc_tree_node(
+        xd->tree_type, mi_row + offset_mr[idx], mi_col + offset_mc[idx],
+        subblock_sizes[idx], pc_tree, PARTITION_HORZ_3, idx, idx == 3, ss_x,
+        ss_y);
+#else
     if (pc_tree->horizontal3[idx]) {
       av1_free_pc_tree_recursive(pc_tree->horizontal3[idx], num_planes, 0, 0);
       pc_tree->horizontal3[idx] = NULL;
@@ -6920,6 +8058,7 @@ static INLINE void search_partition_horz_3(
         xd->tree_type, mi_row + offset_mr[idx], mi_col + offset_mc[idx],
         subblock_sizes[idx], pc_tree, PARTITION_HORZ_3, idx, idx == 3, ss_x,
         ss_y);
+#endif
   }
 
   bool skippable = true;
@@ -6929,14 +8068,19 @@ static INLINE void search_partition_horz_3(
 
     if (i > 0 && this_mi_row >= cm->mi_params.mi_rows) break;
 
-    SUBBLOCK_RDO_DATA rdo_data = { pc_tree->horizontal3[i],
-                                   get_partition_subtree_const(ptree_luma, i),
-                                   get_partition_subtree_const(template_tree,
-                                                               i),
-                                   this_mi_row,
-                                   this_mi_col,
-                                   subblock_sizes[i],
-                                   PARTITION_HORZ_3 };
+    SUBBLOCK_RDO_DATA rdo_data = {
+#if CONFIG_EXTENDED_SDP
+      pc_tree->horizontal3[cur_region_type][i],
+#else
+      pc_tree->horizontal3[i],
+#endif  // CONFIG_EXTENDED_SDP
+      get_partition_subtree_const(ptree_luma, i),
+      get_partition_subtree_const(template_tree, i),
+      this_mi_row,
+      this_mi_col,
+      subblock_sizes[i],
+      PARTITION_HORZ_3
+    };
     if (!rd_try_subblock_new(cpi, td, tile_data, tp, &rdo_data, *best_rdc,
                              &sum_rdc, multi_pass_mode, &skippable,
                              max_recursion_depth)) {
@@ -6984,6 +8128,10 @@ static INLINE void search_partition_vert_3(
   const int mi_row = blk_params->mi_row, mi_col = blk_params->mi_col;
   const BLOCK_SIZE bsize = blk_params->bsize;
 
+#if CONFIG_EXTENDED_SDP
+  REGION_TYPE cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
+
   if (is_part_pruned_by_forced_partition(part_search_state, PARTITION_VERT_3) ||
       !part_search_state->partition_3_allowed[VERT] ||
       part_search_state->prune_partition_3[VERT]) {
@@ -7011,6 +8159,14 @@ static INLINE void search_partition_vert_3(
   const int quarter_step = mi_size_wide[bsize] / 4;
 
   sum_rdc.rate = search_state->partition_cost[PARTITION_VERT_3];
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      is_inter_sdp_allowed(pc_tree->parent->block_size,
+                           pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_VERT_3))
+    sum_rdc.rate +=
+        part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
+#endif  // CONFIG_EXTENDED_SDP
   sum_rdc.rdcost = RDCOST(x->rdmult, sum_rdc.rate, 0);
 
   const BLOCK_SIZE sml_subsize =
@@ -7023,6 +8179,18 @@ static INLINE void search_partition_vert_3(
   const int offset_mc[4] = { 0, quarter_step, quarter_step, 3 * quarter_step };
 
   for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+    if (pc_tree->vertical3[cur_region_type][idx]) {
+      av1_free_pc_tree_recursive(pc_tree->vertical3[cur_region_type][idx],
+                                 num_planes, 0, 0);
+      pc_tree->vertical3[cur_region_type][idx] = NULL;
+    }
+
+    pc_tree->vertical3[cur_region_type][idx] = av1_alloc_pc_tree_node(
+        xd->tree_type, mi_row + offset_mr[idx], mi_col + offset_mc[idx],
+        subblock_sizes[idx], pc_tree, PARTITION_VERT_3, idx, idx == 3, ss_x,
+        ss_y);
+#else
     if (pc_tree->vertical3[idx]) {
       av1_free_pc_tree_recursive(pc_tree->vertical3[idx], num_planes, 0, 0);
       pc_tree->vertical3[idx] = NULL;
@@ -7032,6 +8200,7 @@ static INLINE void search_partition_vert_3(
         xd->tree_type, mi_row + offset_mr[idx], mi_col + offset_mc[idx],
         subblock_sizes[idx], pc_tree, PARTITION_VERT_3, idx, idx == 3, ss_x,
         ss_y);
+#endif
   }
 
   bool skippable = true;
@@ -7041,14 +8210,19 @@ static INLINE void search_partition_vert_3(
 
     if (i > 0 && this_mi_col >= cm->mi_params.mi_cols) break;
 
-    SUBBLOCK_RDO_DATA rdo_data = { pc_tree->vertical3[i],
-                                   get_partition_subtree_const(ptree_luma, i),
-                                   get_partition_subtree_const(template_tree,
-                                                               i),
-                                   this_mi_row,
-                                   this_mi_col,
-                                   subblock_sizes[i],
-                                   PARTITION_VERT_3 };
+    SUBBLOCK_RDO_DATA rdo_data = {
+#if CONFIG_EXTENDED_SDP
+      pc_tree->vertical3[cur_region_type][i],
+#else
+      pc_tree->vertical3[i],
+#endif  // CONFIG_EXTENDED_SDP
+      get_partition_subtree_const(ptree_luma, i),
+      get_partition_subtree_const(template_tree, i),
+      this_mi_row,
+      this_mi_col,
+      subblock_sizes[i],
+      PARTITION_VERT_3
+    };
     if (!rd_try_subblock_new(cpi, td, tile_data, tp, &rdo_data, *best_rdc,
                              &sum_rdc, multi_pass_mode, &skippable,
                              max_recursion_depth)) {
@@ -7079,69 +8253,134 @@ static AOM_INLINE int get_partition_depth(const PC_TREE *pc_tree,
                                           int curr_depth) {
   const PARTITION_TYPE partition = pc_tree->partitioning;
   int max_depth = curr_depth;
+#if CONFIG_EXTENDED_SDP
+  int cur_region_type = pc_tree->region_type;
+#endif  // CONFIG_EXTENDED_SDP
   switch (partition) {
     case PARTITION_NONE: break;
     case PARTITION_SPLIT:
       for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth = AOMMAX(
+            max_depth, get_partition_depth(pc_tree->split[cur_region_type][idx],
+                                           curr_depth + 2));
+#else
         max_depth = AOMMAX(max_depth, get_partition_depth(pc_tree->split[idx],
                                                           curr_depth + 2));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
 #if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ:
       for (int idx = 0; idx < 2; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth = AOMMAX(
+            max_depth,
+            get_partition_depth(pc_tree->horizontal[cur_region_type][idx],
+                                curr_depth + 1));
+#else
         max_depth = AOMMAX(
             max_depth,
             get_partition_depth(pc_tree->horizontal[idx], curr_depth + 1));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
     case PARTITION_VERT:
       for (int idx = 0; idx < 2; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth =
+            AOMMAX(max_depth,
+                   get_partition_depth(pc_tree->vertical[cur_region_type][idx],
+                                       curr_depth + 1));
+#else
         max_depth =
             AOMMAX(max_depth,
                    get_partition_depth(pc_tree->vertical[idx], curr_depth + 1));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
     case PARTITION_HORZ_3:
       for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth = AOMMAX(
+            max_depth,
+            get_partition_depth(pc_tree->horizontal3[cur_region_type][idx],
+                                curr_depth + 1));
+#else
         max_depth = AOMMAX(
             max_depth,
             get_partition_depth(pc_tree->horizontal3[idx], curr_depth + 1));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
     case PARTITION_VERT_3:
       for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth =
+            AOMMAX(max_depth,
+                   get_partition_depth(pc_tree->vertical3[cur_region_type][idx],
+                                       curr_depth + 1));
+#else
         max_depth = AOMMAX(
             max_depth,
             get_partition_depth(pc_tree->vertical3[idx], curr_depth + 1));
+#endif
       }
       break;
     case PARTITION_HORZ_4A:
       for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth = AOMMAX(
+            max_depth,
+            get_partition_depth(pc_tree->horizontal4a[cur_region_type][idx],
+                                curr_depth + 1));
+#else
         max_depth = AOMMAX(
             max_depth,
             get_partition_depth(pc_tree->horizontal4a[idx], curr_depth + 1));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
     case PARTITION_HORZ_4B:
       for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth = AOMMAX(
+            max_depth,
+            get_partition_depth(pc_tree->horizontal4b[cur_region_type][idx],
+                                curr_depth + 1));
+#else
         max_depth = AOMMAX(
             max_depth,
             get_partition_depth(pc_tree->horizontal4b[idx], curr_depth + 1));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
     case PARTITION_VERT_4A:
       for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth = AOMMAX(
+            max_depth,
+            get_partition_depth(pc_tree->vertical4a[cur_region_type][idx],
+                                curr_depth + 1));
+#else
         max_depth = AOMMAX(
             max_depth,
             get_partition_depth(pc_tree->vertical4a[idx], curr_depth + 1));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
     case PARTITION_VERT_4B:
       for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+        max_depth = AOMMAX(
+            max_depth,
+            get_partition_depth(pc_tree->vertical4b[cur_region_type][idx],
+                                curr_depth + 1));
+#else
         max_depth = AOMMAX(
             max_depth,
             get_partition_depth(pc_tree->vertical4b[idx], curr_depth + 1));
+#endif  // CONFIG_EXTENDED_SDP
       }
       break;
     default: assert(0); break;
@@ -7241,13 +8480,25 @@ static AOM_INLINE void prune_none_with_rect_results(
   PC_TREE *const *tree = NULL;
   int num_sub_parts = 0;
   if (cur_best_partition == PARTITION_SPLIT) {
+#if CONFIG_EXTENDED_SDP
+    tree = pc_tree->split[pc_tree->region_type];
+#else
     tree = pc_tree->split;
+#endif  // CONFIG_EXTENDED_SDP
     num_sub_parts = SUB_PARTITIONS_SPLIT;
   } else if (cur_best_partition == PARTITION_HORZ) {
+#if CONFIG_EXTENDED_SDP
+    tree = pc_tree->horizontal[pc_tree->region_type];
+#else
     tree = pc_tree->horizontal;
+#endif  // CONFIG_EXTENDED_SDP
     num_sub_parts = NUM_RECT_PARTS;
   } else if (cur_best_partition == PARTITION_VERT) {
+#if CONFIG_EXTENDED_SDP
+    tree = pc_tree->vertical[pc_tree->region_type];
+#else
     tree = pc_tree->vertical;
+#endif  // CONFIG_EXTENDED_SDP
     num_sub_parts = NUM_RECT_PARTS;
   } else {
     assert(0 &&
@@ -7284,6 +8535,7 @@ of MI_SIZE
 * \param[in]    mi_col             Column coordinate of the block in a step
 size of MI_SIZE
 * \param[in]    bsize              Current block size
+* \param[in]    parent_partition   Partition of the parent block
 * \param[in]    rd_cost            Pointer to the final rd cost of the block
 * \param[in]    best_rdc           Upper bound of rd cost of a valid partition
 * \param[in]    pc_tree            Pointer to the PC_TREE node storing the
@@ -7357,8 +8609,12 @@ enum { PRUNE_OTHER = 0, PRUNE_VERT = 1, PRUNE_HORZ = 2 };
 
 bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
                            TileDataEnc *tile_data, TokenExtra **tp, int mi_row,
-                           int mi_col, BLOCK_SIZE bsize, RD_STATS *rd_cost,
-                           RD_STATS best_rdc, PC_TREE *pc_tree,
+                           int mi_col, BLOCK_SIZE bsize,
+#if CONFIG_EXTENDED_SDP
+                           PARTITION_TYPE parent_partition,
+#endif  // CONFIG_EXTENDED_SDP
+                           RD_STATS *rd_cost, RD_STATS best_rdc,
+                           PC_TREE *pc_tree,
 #if CONFIG_EXT_RECUR_PARTITIONS
                            const PARTITION_TREE *ptree_luma,
                            const PARTITION_TREE *template_tree,
@@ -7380,6 +8636,13 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
   RD_SEARCH_MACROBLOCK_CONTEXT x_ctx;
   const TokenExtra *const tp_orig = *tp;
   PartitionSearchState part_search_state;
+
+#if CONFIG_EXTENDED_SDP
+  if (frame_is_intra_only(cm) && pc_tree) {
+    pc_tree->region_type = INTRA_REGION;
+  }
+#endif  // CONFIG_EXTENDED_SDP
+
   // Initialization of state variables used in partition search.
   init_partition_search_state_params(x, cpi, &part_search_state,
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -7402,6 +8665,7 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
   // different partition path. If yes directly copy the RDO decision made for
   // the counterpart.
   PC_TREE *counterpart_block = av1_look_for_counterpart_block(pc_tree);
+  assert(pc_tree != NULL);
   if (counterpart_block
 #if CONFIG_CB1TO4_SPLIT
       &&
@@ -7412,6 +8676,10 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
                               ? counterpart_block->parent->block_size
                               : BLOCK_INVALID))
 #endif  // CONFIG_CB1TO4_SPLIT
+#if CONFIG_EXTENDED_SDP
+      && (pc_tree->region_type == counterpart_block->region_type &&
+          (pc_tree->region_type != INTRA_REGION || frame_is_intra_only(cm)))
+#endif  // CONFIG_EXTENDED_SDP
   ) {
     if (counterpart_block->rd_cost.rate != INT_MAX) {
       av1_copy_pc_tree_recursive(xd, cm, pc_tree, counterpart_block,
@@ -7568,7 +8836,11 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
 #if CONFIG_CB1TO4_SPLIT
         blk_params.parent_bsize,
 #endif  // CONFIG_CB1TO4_SPLIT
-        ptree_luma, template_tree, &pc_tree->chroma_ref_info);
+        ptree_luma, template_tree,
+#if CONFIG_EXTENDED_SDP
+        pc_tree->region_type,
+#endif  // CONFIG_EXTENDED_SDP
+        &pc_tree->chroma_ref_info);
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
@@ -7683,7 +8955,19 @@ BEGIN_PARTITION_SEARCH:
 #endif  // CONFIG_ML_PART_SPLIT
   // PARTITION_NONE search stage.
   int64_t part_none_rd = INT64_MAX;
+#if CONFIG_EXTENDED_SDP
+  int partition_none_allowed = 1;
+  if (pc_tree->parent && pc_tree->region_type == INTRA_REGION &&
+      pc_tree->parent->region_type == MIXED_INTER_INTRA_REGION &&
+      xd->tree_type != CHROMA_PART)
+    partition_none_allowed = 0;
+  if (!frame_is_intra_only(cm) && pc_tree->region_type == INTRA_REGION)
+    search_none_after_rect &= (xd->tree_type != CHROMA_PART);
+  if (!search_none_after_rect && !search_none_after_split &&
+      partition_none_allowed) {
+#else
   if (!search_none_after_rect && !search_none_after_split) {
+#endif  // CONFIG_EXTENDED_SDP
     none_partition_search(cpi, td, tile_data, x, pc_tree, sms_tree, &x_ctx,
                           &part_search_state, &best_rdc, &pb_source_variance,
                           none_rd, &part_none_rd
@@ -7693,6 +8977,14 @@ BEGIN_PARTITION_SEARCH:
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
     );
   }
+#if CONFIG_EXTENDED_SDP
+  if (pc_tree->parent && pc_tree->region_type == INTRA_REGION &&
+      pc_tree->parent->region_type == MIXED_INTER_INTRA_REGION &&
+      xd->tree_type == CHROMA_PART) {
+    *rd_cost = best_rdc;
+    return part_search_state.found_best_partition;
+  }
+#endif  // CONFIG_EXTENDED_SDP
 
 #if CONFIG_EXT_RECUR_PARTITIONS
   if (cpi->sf.part_sf.end_part_search_after_consec_failures && x->is_whole_sb &&
@@ -7743,17 +9035,35 @@ BEGIN_PARTITION_SEARCH:
     // after rect
     assert(pc_tree->partitioning == PARTITION_SPLIT);
     for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+      const int depth =
+          get_partition_depth(pc_tree->split[pc_tree->region_type][idx], 0);
+#else
       const int depth = get_partition_depth(pc_tree->split[idx], 0);
+#endif  // CONFIG_EXTENDED_SDP
       search_none_after_split &= depth == 0;
     }
   }
   if (cpi->sf.part_sf.prune_rect_with_split_depth && !frame_is_intra_only(cm) &&
       part_search_state.forced_partition == PARTITION_INVALID &&
+#if CONFIG_EXTENDED_SDP
+      pc_tree->split[pc_tree->region_type][0] &&
+      pc_tree->split[pc_tree->region_type][1] &&
+      pc_tree->split[pc_tree->region_type][2] &&
+      pc_tree->split[pc_tree->region_type][3]
+#else
       pc_tree->split[0] && pc_tree->split[1] && pc_tree->split[2] &&
-      pc_tree->split[3]) {
+      pc_tree->split[3]
+#endif  // CONFIG_EXTENDED_SDP
+  ) {
     int min_depth = INT_MAX, max_depth = 0;
     for (int idx = 0; idx < 4; idx++) {
+#if CONFIG_EXTENDED_SDP
+      const int depth =
+          get_partition_depth(pc_tree->split[pc_tree->region_type][idx], 0);
+#else
       const int depth = get_partition_depth(pc_tree->split[idx], 0);
+#endif  // CONFIG_EXTENDED_SDP
       min_depth = AOMMIN(min_depth, depth);
       max_depth = AOMMAX(max_depth, depth);
     }
@@ -7765,6 +9075,9 @@ BEGIN_PARTITION_SEARCH:
   }
 
   if (part_search_state.forced_partition == PARTITION_INVALID &&
+#if CONFIG_EXTENDED_SDP
+      partition_none_allowed &&
+#endif  // CONFIG_EXTENDED_SDP
       search_none_after_split) {
     none_partition_search(cpi, td, tile_data, x, pc_tree, sms_tree, &x_ctx,
                           &part_search_state, &best_rdc, &pb_source_variance,
@@ -7787,6 +9100,9 @@ BEGIN_PARTITION_SEARCH:
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
       &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+#if CONFIG_EXTENDED_SDP
+      parent_partition,
+#endif  // CONFIG_INTER_SDP
       part_none_rd
 #if CONFIG_ML_PART_SPLIT
       ,
@@ -7803,7 +9119,12 @@ BEGIN_PARTITION_SEARCH:
   assert(IMPLIES(!cpi->oxcf.part_cfg.enable_rect_partitions,
                  !part_search_state.do_rectangular_split));
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+  if (search_none_after_rect && !search_none_after_split &&
+      partition_none_allowed) {
+#else
   if (search_none_after_rect && !search_none_after_split) {
+#endif  // CONFIG_EXTENDED_SDP
     prune_none_with_rect_results(&part_search_state, pc_tree);
     none_partition_search(cpi, td, tile_data, x, pc_tree, sms_tree, &x_ctx,
                           &part_search_state, &best_rdc, &pb_source_variance,
@@ -7918,51 +9239,63 @@ BEGIN_PARTITION_SEARCH:
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
                           multi_pass_mode, ext_recur_depth);
 
-  prune_ext_partitions_4way(cpi, pc_tree, &part_search_state,
-                            partition_boundaries);
+#if CONFIG_EXTENDED_SDP
+  if ((pc_tree->region_type != INTRA_REGION || frame_is_intra_only(cm))) {
+#endif  // CONFIG_EXTENDED_SDP
+    prune_ext_partitions_4way(cpi, pc_tree, &part_search_state,
+                              partition_boundaries);
 
-  // PARTITION_HORZ_4A
-  search_partition_horz_4a(&part_search_state, cpi, td, tile_data, tp,
-                           &best_rdc, pc_tree,
-                           track_ptree_luma ? ptree_luma : NULL, template_tree,
-                           &x_ctx, &part_search_state,
+    // PARTITION_HORZ_4A
+    search_partition_horz_4a(&part_search_state, cpi, td, tile_data, tp,
+                             &best_rdc, pc_tree,
+                             track_ptree_luma ? ptree_luma : NULL,
+                             template_tree, &x_ctx, &part_search_state,
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           &level_banks,
+                             &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           multi_pass_mode, ext_recur_depth);
+                             multi_pass_mode, ext_recur_depth);
 
-  // PARTITION_HORZ_4B
-  search_partition_horz_4b(&part_search_state, cpi, td, tile_data, tp,
-                           &best_rdc, pc_tree,
-                           track_ptree_luma ? ptree_luma : NULL, template_tree,
-                           &x_ctx, &part_search_state,
+    // PARTITION_HORZ_4B
+    search_partition_horz_4b(&part_search_state, cpi, td, tile_data, tp,
+                             &best_rdc, pc_tree,
+                             track_ptree_luma ? ptree_luma : NULL,
+                             template_tree, &x_ctx, &part_search_state,
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           &level_banks,
+                             &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           multi_pass_mode, ext_recur_depth);
+                             multi_pass_mode, ext_recur_depth);
 
-  // PARTITION_VERT_4A
-  search_partition_vert_4a(&part_search_state, cpi, td, tile_data, tp,
-                           &best_rdc, pc_tree,
-                           track_ptree_luma ? ptree_luma : NULL, template_tree,
-                           &x_ctx, &part_search_state,
+    // PARTITION_VERT_4A
+    search_partition_vert_4a(&part_search_state, cpi, td, tile_data, tp,
+                             &best_rdc, pc_tree,
+                             track_ptree_luma ? ptree_luma : NULL,
+                             template_tree, &x_ctx, &part_search_state,
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           &level_banks,
+                             &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           multi_pass_mode, ext_recur_depth);
+                             multi_pass_mode, ext_recur_depth);
 
-  // PARTITION_VERT_4B
-  search_partition_vert_4b(&part_search_state, cpi, td, tile_data, tp,
-                           &best_rdc, pc_tree,
-                           track_ptree_luma ? ptree_luma : NULL, template_tree,
-                           &x_ctx, &part_search_state,
+    // PARTITION_VERT_4B
+    search_partition_vert_4b(&part_search_state, cpi, td, tile_data, tp,
+                             &best_rdc, pc_tree,
+                             track_ptree_luma ? ptree_luma : NULL,
+                             template_tree, &x_ctx, &part_search_state,
 #if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           &level_banks,
+                             &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
-                           multi_pass_mode, ext_recur_depth);
+                             multi_pass_mode, ext_recur_depth);
+#if CONFIG_EXTENDED_SDP
+  }
+#endif  // CONFIG_EXTENDED_SDP
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
-  if (bsize == cm->sb_size && !part_search_state.found_best_partition) {
+  if (bsize == cm->sb_size && !part_search_state.found_best_partition
+#if CONFIG_EXTENDED_SDP
+      && ((!frame_is_intra_only(cm) &&
+           pc_tree->region_type == MIXED_INTER_INTRA_REGION) ||
+          ((frame_is_intra_only(cm) && pc_tree->region_type == INTRA_REGION)))
+#endif  // CONFIG_EXTENDED_SDP
+  ) {
     if (x->must_find_valid_partition) {
       aom_internal_error(
           &cpi->common.error, AOM_CODEC_ERROR,
@@ -7990,6 +9323,23 @@ BEGIN_PARTITION_SEARCH:
            mi_row, mi_col, block_size_wide[bsize], block_size_high[bsize]);
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS && !defined(NDEBUG)
+
+#if CONFIG_EXTENDED_SDP
+  if (frame_is_intra_only(cm)) pc_tree->inter_sdp_allowed_flag = 0;
+  if (!frame_is_intra_only(cm) &&
+      pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
+      pc_tree->inter_sdp_allowed_flag == 1 &&
+      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ)) {
+    search_intra_region_partitioning(
+        &part_search_state, cpi, td, tile_data, tp, &best_rdc, pc_tree,
+        track_ptree_luma ? ptree_luma : NULL, template_tree, &x_ctx,
+        &part_search_state,
+#if CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+        &level_banks,
+#endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
+        multi_pass_mode, ext_recur_depth, parent_partition);
+  }
+#endif  // CONFIG_EXTENDED_SDP
 
   // Store the final rd cost
   *rd_cost = best_rdc;

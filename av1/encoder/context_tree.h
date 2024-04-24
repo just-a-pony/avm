@@ -71,7 +71,37 @@ typedef struct PICK_MODE_CONTEXT {
 
 typedef struct PC_TREE {
   PARTITION_TYPE partitioning;
+#if CONFIG_EXTENDED_SDP
+  /*! \brief The region type used for the current block. */
+  REGION_TYPE region_type;
+#endif  // CONFIG_EXTENDED_SDP
   BLOCK_SIZE block_size;
+#if CONFIG_EXTENDED_SDP
+  int inter_sdp_allowed_flag;
+  PICK_MODE_CONTEXT *none[REGION_TYPES];
+  // record the chroma information in intra region.
+  PICK_MODE_CONTEXT *none_chroma;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  struct PC_TREE *horizontal[REGION_TYPES][2];
+  struct PC_TREE *vertical[REGION_TYPES][2];
+  struct PC_TREE *horizontal4a[REGION_TYPES][4];
+  struct PC_TREE *horizontal4b[REGION_TYPES][4];
+  struct PC_TREE *vertical4a[REGION_TYPES][4];
+  struct PC_TREE *vertical4b[REGION_TYPES][4];
+  struct PC_TREE *horizontal3[REGION_TYPES][4];
+  struct PC_TREE *vertical3[REGION_TYPES][4];
+#else
+  PICK_MODE_CONTEXT *horizontal[REGION_TYPES][2];
+  PICK_MODE_CONTEXT *vertical[REGION_TYPES][2];
+  PICK_MODE_CONTEXT *horizontala[REGION_TYPES][3];
+  PICK_MODE_CONTEXT *horizontalb[REGION_TYPES][3];
+  PICK_MODE_CONTEXT *verticala[REGION_TYPES][3];
+  PICK_MODE_CONTEXT *verticalb[REGION_TYPES][3];
+  PICK_MODE_CONTEXT *horizontal4[REGION_TYPES][4];
+  PICK_MODE_CONTEXT *vertical4[REGION_TYPES][4];
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  struct PC_TREE *split[REGION_TYPES][4];
+#else
   PICK_MODE_CONTEXT *none;
 #if CONFIG_EXT_RECUR_PARTITIONS
   struct PC_TREE *horizontal[2];
@@ -93,6 +123,7 @@ typedef struct PC_TREE {
   PICK_MODE_CONTEXT *vertical4[4];
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   struct PC_TREE *split[4];
+#endif  // CONFIG_EXTENDED_SDP
   struct PC_TREE *parent;
   int mi_row;
   int mi_col;

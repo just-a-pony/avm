@@ -2410,7 +2410,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   int ref;
 
   write_inter_segment_id(cpi, w, seg, segp, 0, 1);
-
   write_skip_mode(cm, xd, segment_id, mbmi, w);
 
 #if CONFIG_SKIP_TXFM_OPT
@@ -2418,7 +2417,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
     write_is_inter(cm, xd, mbmi->segment_id, w, is_inter);
 
 #if CONFIG_IBC_SR_EXT
-    if (!is_inter && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+    if (!is_inter && av1_allow_intrabc(cm, xd) &&
+        xd->tree_type != CHROMA_PART) {
       const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
       if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
 #if CONFIG_NEW_CONTEXT_MODELING
@@ -2517,7 +2517,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif  // !CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_IBC_SR_EXT
-  if (!is_inter && av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (!is_inter && av1_allow_intrabc(cm, xd) && xd->tree_type != CHROMA_PART) {
     write_intrabc_info(
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         cm->features.max_bvp_drl_bits,
@@ -3101,11 +3101,15 @@ static AOM_INLINE void write_mb_modes_kf(
   struct segmentation_probs *const segp = &ec_ctx->seg;
   const MB_MODE_INFO *const mbmi = xd->mi[0];
 
-  if (seg->segid_preskip && seg->update_map)
+  if (seg->segid_preskip && seg->update_map
+#if CONFIG_EXTENDED_SDP
+      && !(!frame_is_intra_only(cm) && xd->tree_type == CHROMA_PART)
+#endif  // CONFIG_EXTENDED_SDP
+  )
     write_segment_id(cpi, mbmi, w, seg, segp, 0);
 
 #if CONFIG_SKIP_TXFM_OPT
-  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd) && xd->tree_type != CHROMA_PART) {
     const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
     if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
 #if CONFIG_NEW_CONTEXT_MODELING
@@ -3123,7 +3127,11 @@ static AOM_INLINE void write_mb_modes_kf(
 #else
   const int skip = write_skip(cm, xd, mbmi->segment_id, mbmi, w);
 #endif  // CONFIG_SKIP_TXFM_OPT
-  if (!seg->segid_preskip && seg->update_map)
+  if (!seg->segid_preskip && seg->update_map
+#if CONFIG_EXTENDED_SDP
+      && !(!frame_is_intra_only(cm) && xd->tree_type == CHROMA_PART)
+#endif  // CONFIG_EXTENDED_SDP
+  )
     write_segment_id(cpi, mbmi, w, seg, segp, skip);
 
   if (xd->tree_type != CHROMA_PART) write_cdef(cm, xd, w, skip);
@@ -3140,8 +3148,7 @@ static AOM_INLINE void write_mb_modes_kf(
 #endif
 
   write_delta_q_params(cpi, skip, w);
-
-  if (av1_allow_intrabc(cm) && xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd) && xd->tree_type != CHROMA_PART) {
     write_intrabc_info(
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         cm->features.max_bvp_drl_bits,
@@ -3252,7 +3259,11 @@ static AOM_INLINE void write_mbmi_b(AV1_COMP *cpi, aom_writer *w) {
   MACROBLOCKD *const xd = &cpi->td.mb.e_mbd;
   MB_MODE_INFO *m = xd->mi[0];
 
-  if (frame_is_intra_only(cm)) {
+  if (frame_is_intra_only(cm)
+#if CONFIG_EXTENDED_SDP
+      || m->region_type == INTRA_REGION
+#endif  // CONFIG_EXTENDED_SDP
+  ) {
     write_mb_modes_kf(cpi, xd, cpi->td.mb.mbmi_ext_frame, w);
   } else {
     // has_subpel_mv_component needs the ref frame buffers set up to look
@@ -3713,6 +3724,21 @@ static AOM_INLINE void write_modes_sb(
 #else
   write_partition(cm, xd, mi_row, mi_col, partition, bsize, w);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+#if CONFIG_EXTENDED_SDP
+  const int is_sb_root = bsize == cm->sb_size;
+  PARTITION_TREE *parent = ptree->parent;
+  if (!is_sb_root && !frame_is_intra_only(cm) && parent && partition &&
+      parent->region_type != INTRA_REGION && ptree->inter_sdp_allowed_flag &&
+      is_bsize_allowed_for_inter_sdp(bsize, ptree->partition)) {
+    const int ctx = get_intra_region_context(bsize);
+    assert(xd->tree_type != CHROMA_PART);
+    aom_write_symbol(w, ptree->region_type, xd->tile_ctx->region_type_cdf[ctx],
+                     REGION_TYPES);
+    if (ptree->region_type == INTRA_REGION) {
+      xd->tree_type = LUMA_PART;
+    }
+  }
+#endif  // CONFIG_EXTENDED_SDP
   switch (partition) {
     case PARTITION_NONE:
       write_modes_b(cpi, tile, w, tok, tok_end, mi_row, mi_col);
@@ -3921,6 +3947,17 @@ static AOM_INLINE void write_modes_sb(
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0); break;
   }
+#if CONFIG_EXTENDED_SDP
+  if (!is_sb_root && !frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
+      parent && partition && parent->region_type != INTRA_REGION &&
+      ptree->region_type == INTRA_REGION) {
+    // run chroma part in luma region
+    xd->tree_type = CHROMA_PART;
+    write_modes_b(cpi, tile, w, tok, tok_end, mi_row, mi_col);
+    // reset back to shared part
+    xd->tree_type = SHARED_PART;
+  }
+#endif  // CONFIG_EXTENDED_SDP
 
   // update partition context
   update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);

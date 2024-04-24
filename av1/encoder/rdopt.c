@@ -6595,7 +6595,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
                                        int64_t best_rd) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCKD *const xd = &x->e_mbd;
-  if (!av1_allow_intrabc(cm) || (xd->tree_type == CHROMA_PART) ||
+  if (!av1_allow_intrabc(cm, xd) || (xd->tree_type == CHROMA_PART) ||
       !cpi->oxcf.kf_cfg.enable_intrabc)
     return INT64_MAX;
   const int num_planes = av1_num_planes(cm);
@@ -10584,7 +10584,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   if (search_state.best_skip2 == 0) {
     const int try_intrabc = cpi->oxcf.kf_cfg.enable_intrabc &&
                             cpi->oxcf.kf_cfg.enable_intrabc_ext &&
-                            av1_allow_intrabc(cm) &&
+                            av1_allow_intrabc(cm, xd) &&
                             (xd->tree_type != CHROMA_PART);
     if (try_intrabc) {
       this_rd_cost.rdcost = INT64_MAX;

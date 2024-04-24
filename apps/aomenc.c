@@ -39,6 +39,9 @@
 #include "common/stream_iter.h"
 #include "common/tools_common.h"
 #include "common/warnings.h"
+#if CONFIG_EXTENDED_SDP
+#include "av1/common/blockd.h"
+#endif  // CONFIG_EXTENDED_SDP
 
 #if CONFIG_WEBM_IO
 #include "common/webmenc.h"
