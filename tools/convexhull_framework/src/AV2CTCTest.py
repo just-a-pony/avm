@@ -192,7 +192,7 @@ def Run_Concatenate_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = Fal
             bsfile = '%s_%s_%s_%s_Preset_%s_QP_%d.obu' % \
                           (GetShortContentName(clip.file_name, False),
                           method, codec, test_cfg, preset, QP)
-                
+
             cmd += " > %s/%s" % (Path_Bitstreams, bsfile)
 
             if LogCmdOnly:
