@@ -56,9 +56,21 @@ typedef struct IntraModeSearchState {
   int best_mrl_index;
 
 #if CONFIG_LOSSLESS_DPCM
+  /*!
+   * \brief The best dpcm mode found for Y block
+   */
   int best_dpcm_index;
+  /*!
+   * \brief The best dpcm direction found for Y block
+   */
   int best_dpcm_dir;
+  /*!
+   * \brief The best dpcm mode found for UV block
+   */
   int best_dpcm_uv_index;
+  /*!
+   * \brief The best dpcm direction found for UV block
+   */
   int best_dpcm_uv_dir;
 #endif
   /*!

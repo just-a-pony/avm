@@ -568,15 +568,13 @@ typedef struct MB_MODE_INFO {
 #endif  // CONFIG_WAIP
 
 #if CONFIG_LOSSLESS_DPCM
-  // use_dpcm_y: 0 dpcm mode is not selected for luma blk, 1 dpcm mode is
-  // selected
+  /*! \brief Whether dpcm mode is selected for luma blk*/
   uint8_t use_dpcm_y;
-  // dpcm_mode_y: 0 horizontal, 1 vertical
+  /*! \brief dpcm direction if dpcm is selected for the luma blk*/
   uint8_t dpcm_mode_y;
-  // use_dpcm_uv: 0 dpcm mode is not selected for chroma blk, 1 dpcm mode is
-  // selected
+  /*! \brief Whether dpcm mode is selected for chroma blk*/
   uint8_t use_dpcm_uv;
-  // dpcm_mode_uv: 0 horizontal, 1 vertical
+  /*! \brief dpcm direction if dpcm is selected for the chroma blk*/
   uint8_t dpcm_mode_uv;
 #endif
 

@@ -1322,14 +1322,30 @@ typedef struct {
    */
   int pc_wiener_restore_cost[2];
 #endif  // CONFIG_LR_IMPROVEMENTS
+/**@}*/
 #if CONFIG_LOSSLESS_DPCM
+  /*****************************************************************************
+   * \name DPCM Mode Costs
+   ****************************************************************************/
+  /**@{*/
+  /*!
+   * dpcm_cost
+   */
   int dpcm_cost[2];
+  /*!
+   * dpcm_vert_horz_cost
+   */
   int dpcm_vert_horz_cost[2];
+  /*!
+   * dpcm_uv_cost
+   */
   int dpcm_uv_cost[2];
+  /*!
+   * dpcm_uv_vert_horz_cost
+   */
   int dpcm_uv_vert_horz_cost[2];
-#endif  // CONFIG_LOSSLESS_DPCM
-
   /**@}*/
+#endif  // CONFIG_LOSSLESS_DPCM
 } ModeCosts;
 
 /*! \brief Holds mv costs for encoding and motion search.
@@ -1816,10 +1832,6 @@ typedef struct macroblock {
    */
   TxfmSearchInfo txfm_search_info;
   /**@}*/
-#if CONFIG_LOSSLESS_DPCM
-  // dpcm_flag indicates if the current prediction mode is dpcm
-  uint8_t dpcm_flag;
-#endif
   /*****************************************************************************
    * \name Misc
    ****************************************************************************/
