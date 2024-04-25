@@ -1285,7 +1285,9 @@ AV1_COMP *av1_create_compressor(AV1EncoderConfig *oxcf, BufferPool *const pool,
   cm->superres_upscaled_height = oxcf->frm_dim_cfg.height;
   av1_loop_restoration_precal();
 
-  init_tip_ref_frame(cm);
+  // The buffers related to TIP are not used during LAP stage. Hence,
+  // the allocation is limited to encode stage.
+  if (cpi->compressor_stage == ENCODE_STAGE) init_tip_ref_frame(cm);
 #if CONFIG_OPTFLOW_ON_TIP
   init_optflow_bufs(cm);
 #endif  // CONFIG_OPTFLOW_ON_TIP
@@ -1525,7 +1527,7 @@ void av1_remove_compressor(AV1_COMP *cpi) {
   cpi->ssim_vars = NULL;
 #endif  // CONFIG_INTERNAL_STATS
 
-  free_tip_ref_frame(cm);
+  if (cpi->compressor_stage == ENCODE_STAGE) free_tip_ref_frame(cm);
 #if CONFIG_OPTFLOW_ON_TIP
   free_optflow_bufs(cm);
 #endif  // CONFIG_OPTFLOW_ON_TIP
@@ -2201,7 +2203,7 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
     }
   }
 
-  if (cm->seq_params.enable_tip) {
+  if (!is_stat_generation_stage(cpi) && cm->seq_params.enable_tip) {
     RefCntBuffer *buf = get_ref_frame_buf(cm, TIP_FRAME);
     if (buf == NULL || (buf->buf.y_crop_width != cm->width ||
                         buf->buf.y_crop_height != cm->height)) {
