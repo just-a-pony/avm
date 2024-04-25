@@ -2675,6 +2675,7 @@ typedef struct macroblockd {
   SUBMB_INFO mv_delta[N_OF_OFFSETS];
 #endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
 #if CONFIG_AFFINE_REFINEMENT_SB
+  /** variable to store affine refinement parameters per subblock */
   WarpedMotionParams wm_params_sb[2 * NUM_AFFINE_PARAMS];
 #endif  // CONFIG_AFFINE_REFINEMENT_SB
 } MACROBLOCKD;
