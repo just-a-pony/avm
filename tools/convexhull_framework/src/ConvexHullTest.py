@@ -112,7 +112,7 @@ def SaveConvexHullResults(content, ScaleMethod, dnScAlgos, upScAlgos, csv, perfr
     missing = open("AS_Missing.log", 'wt')
     if not os.path.exists(Path_RDResults):
         os.makedirs(Path_RDResults)
-    
+
     QPSet = QPs['AS']
     total_frames = FrameNum['AS']
 
@@ -124,14 +124,14 @@ def SaveConvexHullResults(content, ScaleMethod, dnScAlgos, upScAlgos, csv, perfr
         for i in range(len(DnScaledRes)):
             DnScaledW = DnScaledRes[i][0]
             DnScaledH = DnScaledRes[i][1]
-            
+
             bitratesKbps = []; qualities = []
 
             for qp in QPSet:
                 bs, reconyuv = GetBsReconFileName(EncodeMethod, CodecName, 'AS',
                                                   EncodePreset, clip, DnScaledW,
                                                   DnScaledH, ScaleMethod, dnScAlgos[indx],
-                                                  upScAlgos[indx], qp, 0, total_frames, 
+                                                  upScAlgos[indx], qp, 0, total_frames,
                                                   Path_Bitstreams, False, i)
 
                 if not os.path.exists(bs):
@@ -144,7 +144,7 @@ def SaveConvexHullResults(content, ScaleMethod, dnScAlgos, upScAlgos, csv, perfr
                 bitratesKbps.append(bitrate)
 
                 quality, perframe_vmaf_log = GatherQualityMetrics(reconyuv, Path_QualityLog)
-                
+
                 if not quality:
                     print("%s quality metrics is missing" % bs)
                     missing.write("\n%s quality metrics is missing" % bs)
@@ -181,7 +181,7 @@ def SaveConvexHullResults(content, ScaleMethod, dnScAlgos, upScAlgos, csv, perfr
                     GatherPerframeStat("AS", EncodeMethod, CodecName, EncodePreset, clip, GetShortContentName(bs),
                                        DnScaledW, DnScaledH, qp, enc_log, perframe_csv,
                                        perframe_vmaf_log)
-            
+
     missing.close()
     Utils.Logger.info("finish export convex hull results to excel file.")
 

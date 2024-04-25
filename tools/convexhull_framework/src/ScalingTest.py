@@ -67,4 +67,3 @@ def Run_Scaling_Test(clip, dnScalAlgo, upScalAlgo, path_dnscl, path_upscl,
         if LogCmdOnly:
             Utils.CmdLogger.write("============== %s Job End =================\n" % JobName)
     logger.info("finish running scaling test.")
-

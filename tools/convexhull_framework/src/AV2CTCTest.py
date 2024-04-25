@@ -102,7 +102,7 @@ def Run_Parallel_Encode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly =
         QPSet = QPs[test_cfg]
         for QP in QPSet:
             Utils.Logger.info("start encode with QP %d" % (QP))
-            total_frame = FrameNum[test_cfg]    
+            total_frame = FrameNum[test_cfg]
             # Encode
             start_frame = 0
             while start_frame < total_frame:
@@ -116,7 +116,7 @@ def Run_Parallel_Encode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly =
                           method, codec, test_cfg, preset, QP, start_frame, num_frames)
                 if LogCmdOnly:
                     Utils.CmdLogger.write("============== %s Job Start =================\n"%JobName)
-                
+
                 bsFile = Encode(method, codec, preset, clip, test_cfg, QP,
                                 num_frames, Path_Bitstreams, Path_TimingLog,
                                 Path_EncLog, start_frame, LogCmdOnly)
@@ -137,14 +137,14 @@ def Run_Decode_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = False):
 
         for QP in QPSet:
             Utils.Logger.info("start decode  with QP %d" % (QP))
-            total_frame = FrameNum[test_cfg]   
+            total_frame = FrameNum[test_cfg]
             # decode
             JobName = '%s_%s_%s_%s_Preset_%s_QP_%d' % \
                           (GetShortContentName(clip.file_name, False),
                           method, codec, test_cfg, preset, QP)
             if LogCmdOnly:
                 Utils.CmdLogger.write("============== %s Job Start =================\n"%JobName)
-            
+
             bsfile = '%s/%s_%s_%s_%s_Preset_%s_QP_%d.obu' % \
                     (Path_Bitstreams, GetShortContentName(clip.file_name, False),
                     method, codec, test_cfg, preset, QP)
@@ -178,7 +178,7 @@ def Run_Concatenate_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = Fal
             JobName = '%s_%s_%s_%s_Preset_%s_QP_%d' % \
                           (GetShortContentName(clip.file_name, False),
                           method, codec, test_cfg, preset, QP)
-            cmd = "cat "    
+            cmd = "cat "
             while start_frame < total_frame:
                 num_frames = GOP_SIZE
                 if (start_frame + num_frames) > total_frame:
@@ -188,7 +188,7 @@ def Run_Concatenate_Test(test_cfg, clip, codec, method, preset, LogCmdOnly = Fal
                               QP, start_frame, num_frames, Path_Bitstreams)
                 cmd += " %s " % bsfile
                 start_frame += num_frames
-            
+
             bsfile = '%s_%s_%s_%s_Preset_%s_QP_%d.obu' % \
                           (GetShortContentName(clip.file_name, False),
                           method, codec, test_cfg, preset, QP)
@@ -261,7 +261,7 @@ def GenerateSummaryRDDataFile(EncodeMethod, CodecName, EncodePreset,
 
             for qty in quality:
                 csv.write(",%f"%qty)
-            
+
             if test_cfg == "RA" and EnableParallelGopEncoding:
                 csv.write(",,,")
             elif UsePerfUtil:
@@ -353,7 +353,7 @@ if __name__ == "__main__":
         for test_cfg in TEST_CONFIGURATIONS:
             clip_list = CreateClipList(test_cfg)
             for clip in clip_list:
-                total_frame = FrameNum[test_cfg]  
+                total_frame = FrameNum[test_cfg]
                 if test_cfg == "RA" and EnableParallelGopEncoding and total_frame > GOP_SIZE:
                     Run_Parallel_Encode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
                 else:
