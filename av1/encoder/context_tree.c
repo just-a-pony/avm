@@ -24,7 +24,7 @@ static const BLOCK_SIZE square[MAX_SB_SIZE_LOG2 - 1] = {
 };
 
 void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
-                           PICK_MODE_CONTEXT *src_ctx) {
+                           PICK_MODE_CONTEXT *src_ctx, int num_planes) {
   dst_ctx->mic = src_ctx->mic;
 #if CONFIG_C071_SUBBLK_WARPMV
   if (is_warp_mode(src_ctx->mic.motion_mode)) {
@@ -37,8 +37,12 @@ void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
   dst_ctx->num_4x4_blk_chroma = src_ctx->num_4x4_blk_chroma;
   dst_ctx->skippable = src_ctx->skippable;
 
-  memcpy(dst_ctx->blk_skip, src_ctx->blk_skip,
-         sizeof(uint8_t) * src_ctx->num_4x4_blk);
+  for (int i = 0; i < num_planes; ++i) {
+    const int num_blk_plane =
+        (i == 0) ? src_ctx->num_4x4_blk : src_ctx->num_4x4_blk_chroma;
+    memcpy(dst_ctx->blk_skip[i], src_ctx->blk_skip[i],
+           sizeof(*src_ctx->blk_skip[i]) * num_blk_plane);
+  }
   av1_copy_array(dst_ctx->tx_type_map, src_ctx->tx_type_map,
                  src_ctx->num_4x4_blk);
   av1_copy_array(dst_ctx->cctx_type_map, src_ctx->cctx_type_map,
@@ -131,8 +135,6 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
   ctx->num_4x4_blk = num_blk;
   ctx->num_4x4_blk_chroma = num_pix_chroma / 16;
 
-  AOM_CHECK_MEM_ERROR(&error, ctx->blk_skip,
-                      aom_calloc(num_blk, sizeof(*ctx->blk_skip)));
   AOM_CHECK_MEM_ERROR(&error, ctx->tx_type_map,
                       aom_calloc(num_blk, sizeof(*ctx->tx_type_map)));
 #if CONFIG_C071_SUBBLK_WARPMV
@@ -154,6 +156,8 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
 #else
     const int num_blk_plane = ctx->num_4x4_blk;
 #endif  // CONFIG_FLEX_PARTITION
+    AOM_CHECK_MEM_ERROR(&error, ctx->blk_skip[i],
+                        aom_calloc(num_blk_plane, sizeof(*ctx->blk_skip[i])));
     AOM_CHECK_MEM_ERROR(
         &error, ctx->eobs[i],
         aom_memalign(32, num_blk_plane * sizeof(*ctx->eobs[i])));
@@ -185,8 +189,10 @@ void av1_free_pmc(PICK_MODE_CONTEXT *ctx, int num_planes) {
     free(ctx->submic);
   }
 #endif  // CONFIG_C071_SUBBLK_WARPMV
-  aom_free(ctx->blk_skip);
-  ctx->blk_skip = NULL;
+  for (int i = 0; i < MAX_MB_PLANE; ++i) {
+    aom_free(ctx->blk_skip[i]);
+    ctx->blk_skip[i] = NULL;
+  }
   aom_free(ctx->tx_type_map);
   aom_free(ctx->cctx_type_map);
   for (int i = 0; i < num_planes; ++i) {
@@ -596,7 +602,7 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
       dst->none_chroma =
           av1_alloc_pmc(cm, tree_type, mi_row, mi_col, bsize, dst,
                         PARTITION_NONE, 0, ss_x, ss_y, shared_bufs);
-      av1_copy_tree_context(dst->none_chroma, src->none_chroma);
+      av1_copy_tree_context(dst->none_chroma, src->none_chroma, num_planes);
     }
   }
 #endif  // CONFIG_EXTENDED_SDP
@@ -613,7 +619,7 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
             av1_alloc_pmc(cm, tree_type, mi_row, mi_col, bsize, dst,
                           PARTITION_NONE, 0, ss_x, ss_y, shared_bufs);
         av1_copy_tree_context(dst->none[cur_region_type],
-                              src->none[cur_region_type]);
+                              src->none[cur_region_type], num_planes);
 #if CONFIG_MVP_IMPROVEMENT
         if (is_inter_block(&src->none[cur_region_type]->mic, xd->tree_type)) {
 #if WARP_CU_BANK
@@ -631,7 +637,7 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
       if (src->none) {
         dst->none = av1_alloc_pmc(cm, tree_type, mi_row, mi_col, bsize, dst,
                                   PARTITION_NONE, 0, ss_x, ss_y, shared_bufs);
-        av1_copy_tree_context(dst->none, src->none);
+        av1_copy_tree_context(dst->none, src->none, num_planes);
 #if CONFIG_MVP_IMPROVEMENT
         if (is_inter_block(&src->none->mic, xd->tree_type)) {
 #if WARP_CU_BANK

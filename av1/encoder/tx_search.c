@@ -410,8 +410,8 @@ static AOM_INLINE void fetch_tx_rd_info(int n4,
   MACROBLOCKD *const xd = &x->e_mbd;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   mbmi->tx_size = tx_rd_info->tx_size;
-  memcpy(x->txfm_search_info.blk_skip, tx_rd_info->blk_skip,
-         sizeof(tx_rd_info->blk_skip[0]) * n4);
+  memcpy(x->txfm_search_info.blk_skip[AOM_PLANE_Y], tx_rd_info->blk_skip,
+         sizeof(*tx_rd_info->blk_skip) * n4);
   av1_copy(mbmi->inter_tx_size, tx_rd_info->inter_tx_size);
 #if CONFIG_NEW_TX_PARTITION
   av1_copy(mbmi->tx_partition_type, tx_rd_info->tx_partition_type);
@@ -571,7 +571,7 @@ static AOM_INLINE void set_skip_txfm(MACROBLOCK *x, RD_STATS *rd_stats,
 #endif  // CONFIG_NEW_TX_PARTITION
   mbmi->tx_size = tx_size;
   for (int i = 0; i < n4; ++i)
-    set_blk_skip(x->txfm_search_info.blk_skip, 0, i, 1);
+    set_blk_skip(x->txfm_search_info.blk_skip[0], i, 1);
   rd_stats->skip_txfm = 1;
   dist = ROUND_POWER_OF_TWO(dist, (xd->bd - 8) * 2);
   rd_stats->dist = rd_stats->sse = (dist << 4);
@@ -630,8 +630,8 @@ static AOM_INLINE void save_tx_rd_info(int n4, uint32_t hash,
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   tx_rd_info->hash_value = hash;
   tx_rd_info->tx_size = mbmi->tx_size;
-  memcpy(tx_rd_info->blk_skip, x->txfm_search_info.blk_skip,
-         sizeof(tx_rd_info->blk_skip[0]) * n4);
+  memcpy(tx_rd_info->blk_skip, x->txfm_search_info.blk_skip[AOM_PLANE_Y],
+         sizeof(*tx_rd_info->blk_skip) * n4);
   av1_copy(tx_rd_info->inter_tx_size, mbmi->inter_tx_size);
 #if CONFIG_NEW_TX_PARTITION
   av1_copy(tx_rd_info->tx_partition_type, mbmi->tx_partition_type);
@@ -3436,7 +3436,7 @@ static AOM_INLINE void try_tx_block_no_split(
     update_txk_array(xd, blk_row, blk_col, tx_size, DCT_DCT);
   }
   rd_stats->skip_txfm = pick_skip_txfm;
-  set_blk_skip(x->txfm_search_info.blk_skip, 0, blk_row * bw + blk_col,
+  set_blk_skip(x->txfm_search_info.blk_skip[0], blk_row * bw + blk_col,
                pick_skip_txfm);
 
 #if !CONFIG_NEW_TX_PARTITION
@@ -3817,7 +3817,7 @@ static void select_tx_partition_type(
     mbmi->inter_tx_size[index] = tx_size_selected;
     update_txk_array(xd, offsetr, offsetc, sub_tx,
                      best_partition_tx_types[txb_idx]);
-    set_blk_skip(x->txfm_search_info.blk_skip, 0, offsetr * bw + offsetc,
+    set_blk_skip(x->txfm_search_info.blk_skip[0], offsetr * bw + offsetc,
                  full_blk_skip[txb_idx]);
     block += sub_step;
   }
@@ -3850,7 +3850,7 @@ static void select_tx_partition_type(
       mbmi->tx_size = tx_size_selected;
       update_txk_array(xd, offsetr, offsetc, sub_tx,
                        best_partition_tx_types[cur_partition]);
-      set_blk_skip(x->txfm_search_info.blk_skip, 0, offsetr * bw + offsetc,
+      set_blk_skip(x->txfm_search_info.blk_skip[0], offsetr * bw + offsetc,
                    full_blk_skip[cur_partition]);
       block += sub_step;
       cur_partition++;
@@ -3949,7 +3949,7 @@ static AOM_INLINE void select_tx_block(
     mbmi->tx_size = tx_size;
     update_txk_array(xd, blk_row, blk_col, tx_size, no_split.tx_type);
     const int bw = mi_size_wide[plane_bsize];
-    set_blk_skip(x->txfm_search_info.blk_skip, 0, blk_row * bw + blk_col,
+    set_blk_skip(x->txfm_search_info.blk_skip[0], blk_row * bw + blk_col,
                  rd_stats->skip_txfm);
   } else {
     *rd_stats = split_rd_stats;
@@ -4120,7 +4120,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
                                   cur_tx_size, FTXS_NONE, 0);
 
     if (cur_rd < best_rd) {
-      av1_copy_array(best_blk_skip, txfm_info->blk_skip, num_blks);
+      av1_copy_array(best_blk_skip, txfm_info->blk_skip[AOM_PLANE_Y], num_blks);
       av1_copy_array(best_txk_type_map, xd->tx_type_map, num_blks);
       best_tx_size = cur_tx_size;
 #if CONFIG_WAIP
@@ -4167,7 +4167,7 @@ static void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
     mbmi->tx_partition_type[0] = best_tx_partition_type;
 #endif  // CONFIG_TX_PARTITION_TYPE_EXT
     av1_copy_array(xd->tx_type_map, best_txk_type_map, num_blks);
-    av1_copy_array(txfm_info->blk_skip, best_blk_skip, num_blks);
+    av1_copy_array(txfm_info->blk_skip[AOM_PLANE_Y], best_blk_skip, num_blks);
   }
 }
 #else
@@ -4327,10 +4327,10 @@ static AOM_INLINE void block_rd_txfm(int plane, int block, int blk_row,
 
   TxfmSearchInfo *txfm_info = &x->txfm_search_info;
   if (plane == 0)
-    set_blk_skip(txfm_info->blk_skip, plane, blk_idx,
+    set_blk_skip(txfm_info->blk_skip[plane], blk_idx,
                  x->plane[plane].eobs[block] == 0);
   else
-    set_blk_skip(txfm_info->blk_skip, plane, blk_idx, 0);
+    set_blk_skip(txfm_info->blk_skip[plane], blk_idx, 0);
 
   int64_t rd;
   if (is_inter) {
@@ -4488,13 +4488,13 @@ static AOM_INLINE void tx_block_yrd(
       rd_stats->rate = zero_blk_rate;
       rd_stats->dist = rd_stats->sse;
       rd_stats->skip_txfm = 1;
-      set_blk_skip(txfm_info->blk_skip, 0, blk_row * mi_width + blk_col, 1);
+      set_blk_skip(txfm_info->blk_skip[0], blk_row * mi_width + blk_col, 1);
       x->plane[0].eobs[block] = 0;
       x->plane[0].txb_entropy_ctx[block] = 0;
       update_txk_array(xd, blk_row, blk_col, tx_size, DCT_DCT);
     } else {
       rd_stats->skip_txfm = 0;
-      set_blk_skip(txfm_info->blk_skip, 0, blk_row * mi_width + blk_col, 0);
+      set_blk_skip(txfm_info->blk_skip[0], blk_row * mi_width + blk_col, 0);
     }
     if (tx_size > TX_4X4 && depth < MAX_VARTX_DEPTH)
       rd_stats->rate += x->mode_costs.txfm_partition_cost[ctx][0];
@@ -4673,7 +4673,7 @@ static AOM_INLINE void block_rd_txfm_joint_uv(int dummy_plane, int block,
     const int blk_idx =
         blk_row * (block_size_wide[plane_bsize] >> MI_SIZE_LOG2) + blk_col;
     TxfmSearchInfo *txfm_info = &x->txfm_search_info;
-    set_blk_skip(txfm_info->blk_skip, plane, blk_idx, 0);
+    set_blk_skip(txfm_info->blk_skip[plane], blk_idx, 0);
 
     int64_t rd;
     if (is_inter) {
@@ -5296,7 +5296,7 @@ int av1_txfm_search(const AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
            sizeof(mbmi->tx_partition_type));
 #endif  // CONFIG_NEW_TX_PARTITION
     for (int i = 0; i < xd->height * xd->width; ++i)
-      set_blk_skip(x->txfm_search_info.blk_skip, 0, i, rd_stats_y->skip_txfm);
+      set_blk_skip(x->txfm_search_info.blk_skip[0], i, rd_stats_y->skip_txfm);
   }
 
   if (rd_stats_y->rate == INT_MAX) return 0;

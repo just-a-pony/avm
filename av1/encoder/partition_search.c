@@ -5198,12 +5198,14 @@ static void ab_partitions_search(
     // Copy of mode search results if the ctx is ready.
     if (is_ctx_ready[ab_part_type][0]) {
       av1_copy_tree_context(cur_part_ctxs[ab_part_type][0],
-                            mode_srch_ctx[ab_part_type][0][0]);
+                            mode_srch_ctx[ab_part_type][0][0],
+                            av1_num_planes(cm));
       cur_part_ctxs[ab_part_type][0]->mic.partition = part_type;
       cur_part_ctxs[ab_part_type][0]->rd_mode_is_ready = 1;
       if (is_ctx_ready[ab_part_type][1]) {
         av1_copy_tree_context(cur_part_ctxs[ab_part_type][1],
-                              mode_srch_ctx[ab_part_type][1][0]);
+                              mode_srch_ctx[ab_part_type][1][0],
+                              av1_num_planes(cm));
         cur_part_ctxs[ab_part_type][1]->mic.partition = part_type;
         cur_part_ctxs[ab_part_type][1]->rd_mode_is_ready = 1;
       }
@@ -8738,12 +8740,15 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
 
 #ifndef NDEBUG
   // Nothing should rely on the default value of this array (which is just
-  // leftover from encoding the previous block. Setting it to fixed pattern
+  // leftover from encoding the previous block). Setting it to fixed pattern
   // when debugging.
-  // bit 0, 1, 2 are blk_skip of each plane
-  // bit 4, 5, 6 are initialization checking of each plane
-  memset(x->txfm_search_info.blk_skip, 0x77,
-         sizeof(x->txfm_search_info.blk_skip));
+  // bit 0 is blk_skip of each plane.
+  // bit 4 is initialization checking bit (1 = uninitialized).
+  // See related logic in `set_blk_skip` and `is_blk_skip`.
+  for (int i = (xd->tree_type == CHROMA_PART); i < num_planes; ++i) {
+    memset(x->txfm_search_info.blk_skip[i], 0x11,
+           sizeof(x->txfm_search_info.blk_skip[i]));
+  }
 #endif  // NDEBUG
 
   assert(bsize < BLOCK_SIZES_ALL);

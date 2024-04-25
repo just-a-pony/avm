@@ -2082,7 +2082,7 @@ static int64_t motion_mode_rd(
   const int rate2_nocoeff = rd_stats->rate;
   int best_xskip_txfm = 0;
   RD_STATS best_rd_stats, best_rd_stats_y, best_rd_stats_uv;
-  uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  uint8_t best_blk_skip[MAX_MB_PLANE][MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   CctxType best_cctx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   const int rate_mv0 =
@@ -3218,8 +3218,13 @@ static int64_t motion_mode_rd(
           best_rd_stats_y = *rd_stats_y;
           best_rate_mv = tmp_rate_mv;
           if (num_planes > 1) best_rd_stats_uv = *rd_stats_uv;
-          memcpy(best_blk_skip, txfm_info->blk_skip,
-                 sizeof(txfm_info->blk_skip[0]) * xd->height * xd->width);
+          for (int i = 0; i < num_planes; ++i) {
+            const int num_blk_plane =
+                (xd->plane[i].height * xd->plane[i].width) >>
+                (2 * MI_SIZE_LOG2);
+            memcpy(best_blk_skip[i], txfm_info->blk_skip[i],
+                   sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+          }
           av1_copy_array(best_tx_type_map, xd->tx_type_map,
                          xd->height * xd->width);
           av1_copy_array(
@@ -3248,8 +3253,12 @@ static int64_t motion_mode_rd(
   *rd_stats = best_rd_stats;
   *rd_stats_y = best_rd_stats_y;
   if (num_planes > 1) *rd_stats_uv = best_rd_stats_uv;
-  memcpy(txfm_info->blk_skip, best_blk_skip,
-         sizeof(txfm_info->blk_skip[0]) * xd->height * xd->width);
+  for (int i = 0; i < num_planes; ++i) {
+    const int num_blk_plane =
+        (xd->plane[i].height * xd->plane[i].width) >> (2 * MI_SIZE_LOG2);
+    memcpy(txfm_info->blk_skip[i], best_blk_skip[i],
+           sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+  }
   av1_copy_array(xd->tx_type_map, best_tx_type_map, xd->height * xd->width);
   av1_copy_array(
       xd->cctx_type_map, best_cctx_type_map,
@@ -5035,7 +5044,7 @@ static int64_t handle_inter_mode(
   int64_t ret_val = INT64_MAX;
   RD_STATS best_rd_stats, best_rd_stats_y, best_rd_stats_uv;
   int64_t best_rd = INT64_MAX;
-  uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  uint8_t best_blk_skip[MAX_MB_PLANE][MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   CctxType best_cctx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   MB_MODE_INFO best_mbmi = *mbmi;
@@ -6295,8 +6304,13 @@ static int64_t handle_inter_mode(
                       }
 #endif  // CONFIG_C071_SUBBLK_WARPMV
                       best_xskip_txfm = txfm_info->skip_txfm;
-                      memcpy(best_blk_skip, txfm_info->blk_skip,
-                             sizeof(best_blk_skip[0]) * xd->height * xd->width);
+                      for (i = 0; i < num_planes; ++i) {
+                        const int num_blk_plane =
+                            (xd->plane[i].height * xd->plane[i].width) >>
+                            (2 * MI_SIZE_LOG2);
+                        memcpy(best_blk_skip[i], txfm_info->blk_skip[i],
+                               sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+                      }
                       av1_copy_array(best_tx_type_map, xd->tx_type_map,
                                      xd->height * xd->width);
                       av1_copy_array(
@@ -6368,8 +6382,12 @@ static int64_t handle_inter_mode(
   txfm_info->skip_txfm = best_xskip_txfm;
   assert(IMPLIES(mbmi->comp_group_idx == 1,
                  mbmi->interinter_comp.type != COMPOUND_AVERAGE));
-  memcpy(txfm_info->blk_skip, best_blk_skip,
-         sizeof(best_blk_skip[0]) * xd->height * xd->width);
+  for (i = 0; i < num_planes; ++i) {
+    const int num_blk_plane =
+        (xd->plane[i].height * xd->plane[i].width) >> (2 * MI_SIZE_LOG2);
+    memcpy(txfm_info->blk_skip[i], best_blk_skip[i],
+           sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+  }
   av1_copy_array(xd->tx_type_map, best_tx_type_map, xd->height * xd->width);
   av1_copy_array(
       xd->cctx_type_map, best_cctx_type_map,
@@ -6693,7 +6711,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
 #endif  // CONFIG_MORPH_PRED
   MB_MODE_INFO best_mbmi = *mbmi;
   RD_STATS best_rdstats = *rd_stats;
-  uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE] = { 0 };
+  uint8_t best_blk_skip[MAX_MB_PLANE][MAX_MIB_SIZE * MAX_MIB_SIZE] = { 0 };
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
   CctxType best_cctx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
@@ -7070,8 +7088,12 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
         best_rd = rd_stats_yuv.rdcost;
         best_mbmi = *mbmi;
         best_rdstats = rd_stats_yuv;
-        memcpy(best_blk_skip, txfm_info->blk_skip,
-               sizeof(txfm_info->blk_skip[0]) * xd->height * xd->width);
+        for (int i = 0; i < num_planes; ++i) {
+          const int num_blk_plane =
+              (xd->plane[i].height * xd->plane[i].width) >> (2 * MI_SIZE_LOG2);
+          memcpy(best_blk_skip[i], txfm_info->blk_skip[i],
+                 sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+        }
         av1_copy_array(best_tx_type_map, xd->tx_type_map,
                        xd->height * xd->width);
         av1_copy_array(best_cctx_type_map, xd->cctx_type_map,
@@ -7089,8 +7111,12 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
       best_rd = rd_stats_yuv.rdcost;
       best_mbmi = *mbmi;
       best_rdstats = rd_stats_yuv;
-      memcpy(best_blk_skip, txfm_info->blk_skip,
-             sizeof(txfm_info->blk_skip[0]) * xd->height * xd->width);
+      for (int i = 0; i < num_planes; ++i) {
+        const int num_blk_plane =
+            (xd->plane[i].height * xd->plane[i].width) >> (2 * MI_SIZE_LOG2);
+        memcpy(best_blk_skip[i], txfm_info->blk_skip[i],
+               sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+      }
       av1_copy_array(best_tx_type_map, xd->tx_type_map, xd->height * xd->width);
       av1_copy_array(
           best_cctx_type_map, xd->cctx_type_map,
@@ -7108,8 +7134,12 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
 #endif  // CONFIG_IBC_BV_IMPROVEMENT
 
   *rd_stats = best_rdstats;
-  memcpy(txfm_info->blk_skip, best_blk_skip,
-         sizeof(txfm_info->blk_skip[0]) * xd->height * xd->width);
+  for (int i = 0; i < num_planes; ++i) {
+    const int num_blk_plane =
+        (xd->plane[i].height * xd->plane[i].width) >> (2 * MI_SIZE_LOG2);
+    memcpy(txfm_info->blk_skip[i], best_blk_skip[i],
+           sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+  }
   av1_copy_array(xd->tx_type_map, best_tx_type_map, ctx->num_4x4_blk);
   av1_copy_array(xd->cctx_type_map, best_cctx_type_map,
                  ctx->num_4x4_blk_chroma);
@@ -7161,8 +7191,8 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
       // Set up the tx variables for reproducing the y predictions in case we
       // need it for chroma-from-luma.
       if (xd->is_chroma_ref && store_cfl_required_rdo(cm, x)) {
-        memcpy(txfm_info->blk_skip, ctx->blk_skip,
-               sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+        memcpy(txfm_info->blk_skip[AOM_PLANE_Y], ctx->blk_skip[AOM_PLANE_Y],
+               sizeof(*txfm_info->blk_skip[AOM_PLANE_Y]) * ctx->num_4x4_blk);
         av1_copy_array(xd->tx_type_map, ctx->tx_type_map, ctx->num_4x4_blk);
       }
       const TX_SIZE max_uv_tx_size = av1_get_tx_size(AOM_PLANE_U, xd);
@@ -7191,8 +7221,12 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
     best_rd = rd_cost->rdcost;
   if (rd_pick_intrabc_mode_sb(cpi, x, ctx, rd_cost, bsize, best_rd) < best_rd) {
     ctx->rd_stats.skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
-    memcpy(ctx->blk_skip, txfm_info->blk_skip,
-           sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+    for (int i = 0; i < num_planes; ++i) {
+      const int num_blk_plane =
+          (i == AOM_PLANE_Y) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
+      memcpy(ctx->blk_skip[i], txfm_info->blk_skip[i],
+             sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+    }
     assert(rd_cost->rate != INT_MAX);
   }
   if (rd_cost->rate == INT_MAX) return;
@@ -7648,8 +7682,12 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
         restore_dst_buf(xd, orig_dst, num_planes);
       } else {
         x->txfm_search_info.skip_txfm = 0;
-        memcpy(ctx->blk_skip, txfm_info->blk_skip,
-               sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+        for (int i = 0; i < num_planes; ++i) {
+          const int num_blk_plane =
+              (i == AOM_PLANE_Y) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
+          memcpy(ctx->blk_skip[i], txfm_info->blk_skip[i],
+                 sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+        }
         av1_copy_array(ctx->tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
         av1_copy_array(ctx->cctx_type_map, xd->cctx_type_map,
                        ctx->num_4x4_blk_chroma);
@@ -8003,7 +8041,7 @@ static AOM_INLINE void refine_winner_mode_tx(
           memset(mbmi->inter_tx_size, mbmi->tx_size,
                  sizeof(mbmi->inter_tx_size));
           for (int i = 0; i < xd->height * xd->width; ++i)
-            set_blk_skip(txfm_info->blk_skip, 0, i, rd_stats_y.skip_txfm);
+            set_blk_skip(txfm_info->blk_skip[0], i, rd_stats_y.skip_txfm);
         }
       } else {
         av1_pick_uniform_tx_size_type_yrd(cpi, x, &rd_stats_y, bsize,
@@ -8048,7 +8086,12 @@ static AOM_INLINE void refine_winner_mode_tx(
           RDCOST(x->rdmult, this_rate, (rd_stats_y.dist + rd_stats_uv.dist));
       if (best_rd > this_rd) {
         *best_mbmode = *mbmi;
-        av1_copy_array(ctx->blk_skip, txfm_info->blk_skip, ctx->num_4x4_blk);
+        for (int i = 0; i < num_planes; ++i) {
+          const int num_blk_plane =
+              (i == AOM_PLANE_Y) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
+          av1_copy_array(ctx->blk_skip[i], txfm_info->blk_skip[i],
+                         num_blk_plane);
+        }
         av1_copy_array(ctx->tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
         av1_copy_array(ctx->cctx_type_map, xd->cctx_type_map,
                        ctx->num_4x4_blk_chroma);
@@ -9287,8 +9330,12 @@ static INLINE void update_search_state(
 #endif  // CONFIG_SKIP_TXFM_OPT
     search_state->best_rate_uv = new_best_rd_stats_uv->rate;
   }
-  memcpy(ctx->blk_skip, txfm_info->blk_skip,
-         sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+  for (int i = 0; i < av1_num_planes(cm); ++i) {
+    const int num_blk_plane =
+        (i == AOM_PLANE_Y) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
+    memcpy(ctx->blk_skip[i], txfm_info->blk_skip[i],
+           sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+  }
   av1_copy_array(ctx->tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
   av1_copy_array(ctx->cctx_type_map, xd->cctx_type_map,
                  ctx->num_4x4_blk_chroma);
@@ -10561,8 +10608,12 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       search_state.best_mbmode = *mbmi;
       search_state.best_skip2 = 0;
       search_state.best_mode_skippable = this_skippable;
-      memcpy(ctx->blk_skip, txfm_info->blk_skip,
-             sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+      for (i = 0; i < num_planes; ++i) {
+        const int num_blk_plane =
+            (i == AOM_PLANE_Y) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
+        memcpy(ctx->blk_skip[i], txfm_info->blk_skip[i],
+               sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+      }
       av1_copy_array(ctx->tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
       av1_copy_array(ctx->cctx_type_map, xd->cctx_type_map,
                      ctx->num_4x4_blk_chroma);
@@ -10617,8 +10668,13 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         search_state.best_skip2 = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
         search_state.best_mode_skippable =
             mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
-        memcpy(ctx->blk_skip, txfm_info->blk_skip,
-               sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+
+        for (i = 0; i < num_planes; ++i) {
+          const int num_blk_plane =
+              (i == AOM_PLANE_Y) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
+          memcpy(ctx->blk_skip[i], txfm_info->blk_skip[i],
+                 sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+        }
         av1_copy_array(ctx->tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
         av1_copy_array(ctx->cctx_type_map, xd->cctx_type_map,
                        ctx->num_4x4_blk_chroma);

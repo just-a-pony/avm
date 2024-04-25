@@ -755,11 +755,10 @@ typedef struct {
   /*! \brief Whether to skip transform and quantization on a txfm block level.
    *
    * Skips transform and quantization on a transform block level inside the
-   * current partition block. Each element of this array is used as a bit-field.
-   * So for example, the we are skipping on the luma plane, then the last bit
-   * would be set to 1.
+   * current partition block. For each plane, when we are skipping transform and
+   * quantization, the last bit will be set to 1.
    */
-  uint8_t blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
+  uint8_t blk_skip[MAX_MB_PLANE][MAX_MIB_SIZE * MAX_MIB_SIZE];
 
   /*! \brief Transform types inside the partition block
    *
@@ -1929,31 +1928,26 @@ static INLINE int is_rect_tx_allowed(const MACROBLOCKD *xd,
          !xd->lossless[mbmi->segment_id];
 }
 
-static INLINE void set_blk_skip(uint8_t txb_skip[], int plane, int blk_idx,
-                                int skip) {
+static INLINE void set_blk_skip(uint8_t txb_skip[], int blk_idx, int skip) {
   if (skip)
-    txb_skip[blk_idx] |= 1UL << plane;
+    txb_skip[blk_idx] |= 1UL;
   else
-    txb_skip[blk_idx] &= ~(1UL << plane);
+    txb_skip[blk_idx] &= ~(1UL);
 #ifndef NDEBUG
-  // Set chroma planes to uninitialized states when luma is set to check if
-  // it will be set later
-  if (plane == 0) {
-    txb_skip[blk_idx] |= 1UL << (1 + 4);
-    txb_skip[blk_idx] |= 1UL << (2 + 4);
-  }
-
-  // Clear the initialization checking bit
-  txb_skip[blk_idx] &= ~(1UL << (plane + 4));
+  // Mark this block as initialized (0).
+  txb_skip[blk_idx] &= ~(1UL << 4);
 #endif
 }
 
-static INLINE int is_blk_skip(uint8_t *txb_skip, int plane, int blk_idx) {
+static INLINE int is_blk_skip(uint8_t *txb_skip, int blk_idx) {
 #ifndef NDEBUG
-  // The magic number is 0x77, this is to test if there is garbage data
-  assert((txb_skip[blk_idx] & 0x88) == 0);
+  // Ensure that this block is initialized.
+  assert((txb_skip[blk_idx] & (1U << 4)) == 0);
+  // These were initialized to fixed pattern 0x11 in `av1_rd_pick_partition`.
+  // Ensure other bits are 0 to make sure there is no garbage data.
+  assert((txb_skip[blk_idx] & 0xEE) == 0);
 #endif
-  return (txb_skip[blk_idx] >> plane) & 1;
+  return txb_skip[blk_idx] & 1;
 }
 
 #if CONFIG_EXT_RECUR_PARTITIONS

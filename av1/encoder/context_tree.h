@@ -40,7 +40,7 @@ typedef struct PICK_MODE_CONTEXT {
 #endif  // CONFIG_C071_SUBBLK_WARPMV
   MB_MODE_INFO_EXT_FRAME mbmi_ext_best;
   uint8_t *color_index_map[2];
-  uint8_t *blk_skip;
+  uint8_t *blk_skip[MAX_MB_PLANE];
 
   tran_low_t *coeff[MAX_MB_PLANE];
   tran_low_t *qcoeff[MAX_MB_PLANE];
@@ -180,7 +180,7 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
                                  PC_TREE_SHARED_BUFFERS *shared_bufs);
 void av1_free_pmc(PICK_MODE_CONTEXT *ctx, int num_planes);
 void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
-                           PICK_MODE_CONTEXT *src_ctx);
+                           PICK_MODE_CONTEXT *src_ctx, int num_planes);
 
 void av1_setup_sms_tree(struct AV1_COMP *const cpi, struct ThreadData *td);
 void av1_free_sms_tree(struct ThreadData *td);

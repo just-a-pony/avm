@@ -297,8 +297,9 @@ static AOM_INLINE void palette_rd_y(
     memcpy(best_palette_color_map, color_map,
            block_width * block_height * sizeof(color_map[0]));
     *best_mbmi = *mbmi;
-    memcpy(blk_skip, x->txfm_search_info.blk_skip,
-           sizeof(x->txfm_search_info.blk_skip[0]) * ctx->num_4x4_blk);
+    memcpy(
+        blk_skip, x->txfm_search_info.blk_skip[AOM_PLANE_Y],
+        sizeof(*x->txfm_search_info.blk_skip[AOM_PLANE_Y]) * ctx->num_4x4_blk);
     av1_copy_array(tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
     if (rate) *rate = this_rate;
     if (rate_tokenonly) *rate_tokenonly = tokenonly_rd_stats.rate;

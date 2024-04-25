@@ -288,8 +288,12 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
 #endif  // CONFIG_SEP_COMP_DRL
     );
 
-  memcpy(txfm_info->blk_skip, ctx->blk_skip,
-         sizeof(txfm_info->blk_skip[0]) * ctx->num_4x4_blk);
+  for (i = 0; i < num_planes; ++i) {
+    const int num_blk_plane =
+        (i == AOM_PLANE_Y) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
+    memcpy(txfm_info->blk_skip[i], ctx->blk_skip[i],
+           sizeof(*txfm_info->blk_skip[i]) * num_blk_plane);
+  }
 
   txfm_info->skip_txfm = ctx->rd_stats.skip_txfm;
   if (xd->tree_type != CHROMA_PART) {

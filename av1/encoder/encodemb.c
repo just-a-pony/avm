@@ -757,7 +757,7 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
   CctxType cctx_type =
       plane ? av1_get_cctx_type(xd, blk_row, blk_col) : CCTX_NONE;
 
-  if (!is_blk_skip(x->txfm_search_info.blk_skip, plane,
+  if (!is_blk_skip(x->txfm_search_info.blk_skip[plane],
                    blk_row * bw + blk_col) &&
       (plane < AOM_PLANE_V || !is_cctx_allowed(cm, xd) ||
 #if CCTX_C2_DROPPED
@@ -1343,7 +1343,7 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
   }
 #endif
 
-  if (plane == 0 && is_blk_skip(x->txfm_search_info.blk_skip, plane,
+  if (plane == 0 && is_blk_skip(x->txfm_search_info.blk_skip[plane],
                                 blk_row * bw + blk_col)) {
     *eob = 0;
     *bob_code = 0;
