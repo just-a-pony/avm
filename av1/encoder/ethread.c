@@ -585,6 +585,20 @@ static AOM_INLINE void create_enc_workers(AV1_COMP *cpi, int num_workers) {
           cm, thread_data->td->tmp_conv_dst,
           aom_memalign(32, MAX_SB_SIZE * MAX_SB_SIZE *
                                sizeof(*thread_data->td->tmp_conv_dst)));
+      // Temporary buffers used during the DMVR and OPFL processing.
+      CHECK_MEM_ERROR(
+          cm, thread_data->td->opfl_vxy_bufs,
+          aom_memalign(
+              32, N_OF_OFFSETS * 4 * sizeof(*thread_data->td->opfl_vxy_bufs)));
+      CHECK_MEM_ERROR(
+          cm, thread_data->td->opfl_gxy_bufs,
+          aom_memalign(
+              32, MAX_SB_SQUARE * 4 * sizeof(*thread_data->td->opfl_gxy_bufs)));
+      CHECK_MEM_ERROR(
+          cm, thread_data->td->opfl_dst_bufs,
+          aom_memalign(
+              32, MAX_SB_SQUARE * 2 * sizeof(*thread_data->td->opfl_dst_bufs)));
+
       for (int j = 0; j < 2; ++j) {
         CHECK_MEM_ERROR(
             cm, thread_data->td->tmp_pred_bufs[j],
@@ -805,12 +819,25 @@ static AOM_INLINE void prepare_enc_workers(AV1_COMP *cpi, AVxWorkerHook hook,
       thread_data->td->mb.palette_buffer = thread_data->td->palette_buffer;
       thread_data->td->mb.comp_rd_buffer = thread_data->td->comp_rd_buffer;
       thread_data->td->mb.tmp_conv_dst = thread_data->td->tmp_conv_dst;
+      // Temporary buffers used during the DMVR and OPFL processing.
+      thread_data->td->mb.opfl_vxy_bufs = thread_data->td->opfl_vxy_bufs;
+      thread_data->td->mb.opfl_gxy_bufs = thread_data->td->opfl_gxy_bufs;
+      thread_data->td->mb.opfl_dst_bufs = thread_data->td->opfl_dst_bufs;
+
       for (int j = 0; j < 2; ++j) {
         thread_data->td->mb.tmp_pred_bufs[j] =
             thread_data->td->tmp_pred_bufs[j];
       }
 
       thread_data->td->mb.e_mbd.tmp_conv_dst = thread_data->td->mb.tmp_conv_dst;
+      // Temporary buffers used during the DMVR and OPFL processing.
+      thread_data->td->mb.e_mbd.opfl_vxy_bufs =
+          thread_data->td->mb.opfl_vxy_bufs;
+      thread_data->td->mb.e_mbd.opfl_gxy_bufs =
+          thread_data->td->mb.opfl_gxy_bufs;
+      thread_data->td->mb.e_mbd.opfl_dst_bufs =
+          thread_data->td->mb.opfl_dst_bufs;
+
       for (int j = 0; j < 2; ++j) {
         thread_data->td->mb.e_mbd.tmp_obmc_bufs[j] =
             thread_data->td->mb.tmp_pred_bufs[j];

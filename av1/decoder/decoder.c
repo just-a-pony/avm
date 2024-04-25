@@ -289,6 +289,7 @@ void av1_decoder_remove(AV1Decoder *pbi) {
     for (int worker_idx = 0; worker_idx < pbi->max_threads - 1; worker_idx++) {
       DecWorkerData *const thread_data = pbi->thread_data + worker_idx;
       av1_free_mc_tmp_buf(thread_data->td);
+      av1_free_opfl_tmp_bufs(thread_data->td);
       aom_free(thread_data->td);
     }
     aom_free(pbi->thread_data);
@@ -331,6 +332,7 @@ void av1_decoder_remove(AV1Decoder *pbi) {
   aom_accounting_clear(&pbi->accounting);
 #endif
   av1_free_mc_tmp_buf(&pbi->td);
+  av1_free_opfl_tmp_bufs(&pbi->td);
   aom_img_metadata_array_free(pbi->metadata);
 
 #if DEBUG_EXTQUANT

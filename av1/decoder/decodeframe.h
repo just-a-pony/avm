@@ -94,6 +94,7 @@ struct aom_read_bit_buffer *av1_init_read_bit_buffer(
     const uint8_t *data_end);
 
 void av1_free_mc_tmp_buf(struct ThreadData *thread_data);
+void av1_free_opfl_tmp_bufs(struct ThreadData *thread_data);
 
 void av1_set_single_tile_decoding_mode(AV1_COMMON *const cm);
 

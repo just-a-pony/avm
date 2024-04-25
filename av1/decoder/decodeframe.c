@@ -5235,6 +5235,11 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
   td->dcb.mc_buf[0] = td->mc_buf[0];
   td->dcb.mc_buf[1] = td->mc_buf[1];
   td->dcb.xd.tmp_conv_dst = td->tmp_conv_dst;
+
+  // Temporary buffers used during the DMVR and OPFL processing.
+  td->dcb.xd.opfl_vxy_bufs = td->opfl_vxy_bufs;
+  td->dcb.xd.opfl_gxy_bufs = td->opfl_gxy_bufs;
+  td->dcb.xd.opfl_dst_bufs = td->opfl_dst_bufs;
   for (int j = 0; j < 2; ++j) {
     td->dcb.xd.tmp_obmc_bufs[j] = td->tmp_obmc_bufs[j];
   }
@@ -5816,6 +5821,35 @@ void av1_free_mc_tmp_buf(ThreadData *thread_data) {
   }
 }
 
+// Free-up the temporary buffers created for DMVR and OPFL processing.
+void av1_free_opfl_tmp_bufs(ThreadData *thread_data) {
+  aom_free(thread_data->opfl_vxy_bufs);
+  thread_data->opfl_vxy_bufs = NULL;
+
+  aom_free(thread_data->opfl_gxy_bufs);
+  thread_data->opfl_gxy_bufs = NULL;
+
+  aom_free(thread_data->opfl_dst_bufs);
+  thread_data->opfl_dst_bufs = NULL;
+}
+
+// Allocate memory for temporary buffers used during the DMVR and OPFL
+// processing.
+static AOM_INLINE void allocate_opfl_tmp_bufs(AV1_COMMON *const cm,
+                                              ThreadData *thread_data) {
+  CHECK_MEM_ERROR(
+      cm, thread_data->opfl_vxy_bufs,
+      aom_memalign(32, N_OF_OFFSETS * 4 * sizeof(*thread_data->opfl_vxy_bufs)));
+
+  CHECK_MEM_ERROR(cm, thread_data->opfl_gxy_bufs,
+                  aom_memalign(32, MAX_SB_SQUARE * 4 *
+                                       sizeof(*thread_data->opfl_gxy_bufs)));
+
+  CHECK_MEM_ERROR(cm, thread_data->opfl_dst_bufs,
+                  aom_memalign(32, MAX_SB_SQUARE * 2 *
+                                       sizeof(*thread_data->opfl_dst_bufs)));
+}
+
 static AOM_INLINE void allocate_mc_tmp_buf(AV1_COMMON *const cm,
                                            ThreadData *thread_data,
                                            int buf_size) {
@@ -5857,6 +5891,11 @@ static AOM_INLINE void reset_dec_workers(AV1Decoder *pbi,
     thread_data->td->dcb.mc_buf[0] = thread_data->td->mc_buf[0];
     thread_data->td->dcb.mc_buf[1] = thread_data->td->mc_buf[1];
     thread_data->td->dcb.xd.tmp_conv_dst = thread_data->td->tmp_conv_dst;
+    // Temporary buffers used during the DMVR and OPFL processing.
+    thread_data->td->dcb.xd.opfl_vxy_bufs = thread_data->td->opfl_vxy_bufs;
+    thread_data->td->dcb.xd.opfl_gxy_bufs = thread_data->td->opfl_gxy_bufs;
+    thread_data->td->dcb.xd.opfl_dst_bufs = thread_data->td->opfl_dst_bufs;
+
     for (int j = 0; j < 2; ++j) {
       thread_data->td->dcb.xd.tmp_obmc_bufs[j] =
           thread_data->td->tmp_obmc_bufs[j];
@@ -5954,7 +5993,10 @@ static AOM_INLINE void decode_mt_init(AV1Decoder *pbi) {
     DecWorkerData *const thread_data = pbi->thread_data + worker_idx;
     if (thread_data->td->mc_buf_size != buf_size) {
       av1_free_mc_tmp_buf(thread_data->td);
+      av1_free_opfl_tmp_bufs(thread_data->td);
+
       allocate_mc_tmp_buf(cm, thread_data->td, buf_size);
+      allocate_opfl_tmp_bufs(cm, thread_data->td);
     }
   }
 }
@@ -8537,7 +8579,10 @@ static AOM_INLINE void setup_frame_info(AV1Decoder *pbi) {
   const int buf_size = MC_TEMP_BUF_PELS << 1;
   if (pbi->td.mc_buf_size != buf_size) {
     av1_free_mc_tmp_buf(&pbi->td);
+    av1_free_opfl_tmp_bufs(&pbi->td);
+
     allocate_mc_tmp_buf(cm, &pbi->td, buf_size);
+    allocate_opfl_tmp_bufs(cm, &pbi->td);
   }
 }
 

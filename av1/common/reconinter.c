@@ -2129,7 +2129,13 @@ void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride,
   suw = ROUND_POWER_OF_TWO_SIGNED_64(suw, redbit);
   svw = ROUND_POWER_OF_TWO_SIGNED_64(svw, redbit);
   const int64_t det = su2 * sv2 - suv * suv;
-  if (det <= 0) return;
+  if (det <= 0) {
+    *vx0 = 0;
+    *vy0 = 0;
+    *vx1 = 0;
+    *vy1 = 0;
+    return;
+  }
 
   int64_t sol[2] = { sv2 * suw - suv * svw, su2 * svw - suv * suw };
 
@@ -2138,7 +2144,13 @@ void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride,
   *vy0 = (int)-sol[1];
 #else
   const int64_t det = su2 * sv2 - suv * suv;
-  if (det <= 0) return;
+  if (det <= 0) {
+    *vx0 = 0;
+    *vy0 = 0;
+    *vx1 = 0;
+    *vy1 = 0;
+    return;
+  }
   const int64_t det_x = (suv * svw - sv2 * suw) * (1 << bits);
   const int64_t det_y = (suv * suw - su2 * svw) * (1 << bits);
 
@@ -4564,9 +4576,9 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
     int subblk_start_x, int subblk_start_y,
 #endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
     int pu_width, int pu_height, uint16_t *dst0_16_refinemv,
-    uint16_t *dst1_16_refinemv, int16_t *opt_gx0, int16_t *opt_gx1,
-    int row_start, int col_start, MV *sb_refined_mv, MV *chroma_refined_mv,
-    int build_for_refine_mv_only, ReferenceArea ref_area[2]
+    uint16_t *dst1_16_refinemv, int row_start, int col_start, MV *sb_refined_mv,
+    MV *chroma_refined_mv, int build_for_refine_mv_only,
+    ReferenceArea ref_area[2]
 #if CONFIG_TIP_REF_PRED_MERGING
     ,
     int_mv *mv_refined
@@ -4700,15 +4712,6 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
                  cm->features.opfl_refine_type == REFINE_ALL));
 #endif  // CONFIG_TIP_REF_PRED_MERGING
 
-  // Arrays to hold optical flow offsets.
-  int vx0[N_OF_OFFSETS] = { 0 };
-  int vx1[N_OF_OFFSETS] = { 0 };
-  int vy0[N_OF_OFFSETS] = { 0 };
-  int vy1[N_OF_OFFSETS] = { 0 };
-
-  // Pointers to gradient and dst buffers
-  int16_t *gx0, *gy0, *gx1, *gy1;
-  uint16_t *dst0 = NULL, *dst1 = NULL;
 #if CONFIG_TIP_REF_PRED_MERGING
   int use_4x4 = tip_ref_frame ? 0 : 1;
 #endif
@@ -4739,11 +4742,17 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
 #endif  // CONFIG_AFFINE_REFINEMENT
 
   if (use_optflow_refinement && plane == 0) {
-    // Allocate gradient and dst buffers
-    gx0 = &opt_gx0[0];
-    gx1 = &opt_gx1[0];
-    gy0 = gx0 + (REFINEMV_SUBBLOCK_WIDTH * REFINEMV_SUBBLOCK_HEIGHT);
-    gy1 = gx1 + (REFINEMV_SUBBLOCK_WIDTH * REFINEMV_SUBBLOCK_HEIGHT);
+    // Pointers to hold optical flow MV offsets.
+    int *vx0 = xd->opfl_vxy_bufs;
+    int *vx1 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 1);
+    int *vy0 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 2);
+    int *vy1 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 3);
+
+    // Pointers to hold gradient and dst buffers.
+    int16_t *gx0 = xd->opfl_gxy_bufs;
+    int16_t *gx1 = xd->opfl_gxy_bufs + (MAX_SB_SQUARE * 1);
+    int16_t *gy0 = xd->opfl_gxy_bufs + (MAX_SB_SQUARE * 2);
+    int16_t *gy1 = xd->opfl_gxy_bufs + (MAX_SB_SQUARE * 3);
 
     // Initialize refined mv
     const MV mv0 = best_mv_ref[0];
@@ -4757,9 +4766,8 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
 #endif
     // Refine MV using optical flow. The final output MV will be in 1/16
     // precision.
-    dst0 = &dst0_16_refinemv[0];
-    dst1 = &dst1_16_refinemv[0];
-
+    uint16_t *dst0 = xd->opfl_dst_bufs;
+    uint16_t *dst1 = xd->opfl_dst_bufs + MAX_SB_SQUARE;
 #if CONFIG_TIP_REF_PRED_MERGING
     if (tip_ref_frame) {
       use_optflow_refinement = !skip_opfl_refine_with_tip(
@@ -5074,12 +5082,6 @@ static void build_inter_predictors_8x8_and_bigger(
       uint16_t
           dst1_16_refinemv[REFINEMV_SUBBLOCK_WIDTH * REFINEMV_SUBBLOCK_HEIGHT];
 #endif  // CONFIG_SUBBLK_REF_EXT
-    DECLARE_ALIGNED(
-        32, int16_t,
-        opt_gx0[2 * REFINEMV_SUBBLOCK_WIDTH * REFINEMV_SUBBLOCK_HEIGHT]);
-    DECLARE_ALIGNED(
-        32, int16_t,
-        opt_gx1[2 * REFINEMV_SUBBLOCK_WIDTH * REFINEMV_SUBBLOCK_HEIGHT]);
 
     ReferenceArea ref_area[2];
 #if !CONFIG_SUBBLK_PAD
@@ -5157,9 +5159,9 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
             w, h,
 #endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
-            pu_width, pu_height, dst0_16_refinemv, dst1_16_refinemv, opt_gx0,
-            opt_gx1, row_start, col_start, plane == 0 ? luma_refined_mv : NULL,
-            chroma_refined_mv, build_for_refine_mv_only, ref_area, mv_refined);
+            pu_width, pu_height, dst0_16_refinemv, dst1_16_refinemv, row_start,
+            col_start, plane == 0 ? luma_refined_mv : NULL, chroma_refined_mv,
+            build_for_refine_mv_only, ref_area, mv_refined);
 
         if (plane == 0 && !tip_ref_frame) {
 #else
@@ -5173,9 +5175,9 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
               w, h,
 #endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
-              bw, bh, dst0_16_refinemv, dst1_16_refinemv, opt_gx0, opt_gx1,
-              row_start, col_start, plane == 0 ? luma_refined_mv : NULL,
-              chroma_refined_mv, build_for_refine_mv_only, ref_area);
+              bw, bh, dst0_16_refinemv, dst1_16_refinemv, row_start, col_start,
+              plane == 0 ? luma_refined_mv : NULL, chroma_refined_mv,
+              build_for_refine_mv_only, ref_area);
 
           if (plane == 0) {
 #endif  // CONFIG_TIP_REF_PRED_MERGING
@@ -5300,15 +5302,15 @@ static void build_inter_predictors_8x8_and_bigger(
 #endif  // CONFIG_AFFINE_REFINEMENT_SB
 #endif  // CONFIG_AFFINE_REFINEMENT
 
-  // Arrays to hold optical flow offsets.
-  int vx0[N_OF_OFFSETS] = { 0 };
-  int vx1[N_OF_OFFSETS] = { 0 };
-  int vy0[N_OF_OFFSETS] = { 0 };
-  int vy1[N_OF_OFFSETS] = { 0 };
-
   // Pointers to gradient and dst buffers
 
   if (use_optflow_refinement && plane == 0) {
+    // Pointers to hold optical flow MV offsets.
+    int *vx0 = xd->opfl_vxy_bufs;
+    int *vx1 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 1);
+    int *vy0 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 2);
+    int *vy1 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 3);
+
 #if CONFIG_AFFINE_REFINEMENT
     assert(mi->comp_refine_type > COMP_REFINE_NONE);
     assert(IMPLIES(mi->comp_refine_type >= COMP_AFFINE_REFINE_START,
@@ -5327,13 +5329,10 @@ static void build_inter_predictors_8x8_and_bigger(
 #endif  // CONFIG_OPTFLOW_ON_TIP
     );
     const int n_blocks = (bw / n) * (bh / n);
-    int16_t *gx0, *gy0, *gx1, *gy1;
-    DECLARE_ALIGNED(32, int16_t, g0_buf[2 * MAX_SB_SQUARE]);
-    DECLARE_ALIGNED(32, int16_t, g1_buf[2 * MAX_SB_SQUARE]);
-    gx0 = g0_buf;
-    gx1 = g1_buf;
-    gy0 = g0_buf + MAX_SB_SQUARE;
-    gy1 = g1_buf + MAX_SB_SQUARE;
+    int16_t *gx0 = xd->opfl_gxy_bufs;
+    int16_t *gx1 = xd->opfl_gxy_bufs + (MAX_SB_SQUARE * 1);
+    int16_t *gy0 = xd->opfl_gxy_bufs + (MAX_SB_SQUARE * 2);
+    int16_t *gy1 = xd->opfl_gxy_bufs + (MAX_SB_SQUARE * 3);
 
     // Initialize refined mv
 #if CONFIG_REFINEMV
@@ -5351,7 +5350,9 @@ static void build_inter_predictors_8x8_and_bigger(
 #endif
     // Refine MV using optical flow. The final output MV will be in 1/16
     // precision.
-    uint16_t dst0[MAX_SB_SQUARE], dst1[MAX_SB_SQUARE];
+    uint16_t *dst0 = xd->opfl_dst_bufs;
+    uint16_t *dst1 = xd->opfl_dst_bufs + MAX_SB_SQUARE;
+
 #if CONFIG_TIP_REF_PRED_MERGING
     if (tip_ref_frame) {
       use_optflow_refinement = !skip_opfl_refine_with_tip(
@@ -5387,11 +5388,22 @@ static void build_inter_predictors_8x8_and_bigger(
 #endif  // CONFIG_REFINEMV
       );
 #if CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
-      for (int mvi = 0; mvi < N_OF_OFFSETS; mvi++) {
+      for (int mvi = 0; mvi < n_blocks; mvi++) {
         xd->mv_delta[mvi].mv[0].as_mv.row = vy0[mvi];
         xd->mv_delta[mvi].mv[0].as_mv.col = vx0[mvi];
         xd->mv_delta[mvi].mv[1].as_mv.row = vy1[mvi];
         xd->mv_delta[mvi].mv[1].as_mv.col = vx1[mvi];
+      }
+
+      // TODO(any): The memset is required as the MV delta offsets of optical
+      // flow refinement stored in 'mv_delta' buffer is accessed beyond n_blocks
+      // when 'AFFINE_CHROMA_REFINE_METHOD' is enabled. Recheck if access beyond
+      // n_blocks of 'mv_delta' buffer is valid.
+      for (int mvi = n_blocks; mvi < N_OF_OFFSETS; mvi++) {
+        xd->mv_delta[mvi].mv[0].as_mv.row = 0;
+        xd->mv_delta[mvi].mv[0].as_mv.col = 0;
+        xd->mv_delta[mvi].mv[1].as_mv.row = 0;
+        xd->mv_delta[mvi].mv[1].as_mv.col = 0;
       }
 #endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
 #if CONFIG_AFFINE_REFINEMENT_SB

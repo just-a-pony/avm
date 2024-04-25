@@ -1960,6 +1960,13 @@ typedef struct ThreadData {
   PALETTE_BUFFER *palette_buffer;
   CompoundTypeRdBuffers comp_rd_buffer;
   CONV_BUF_TYPE *tmp_conv_dst;
+  // Temporary buffers used to store the OPFL MV offsets.
+  int *opfl_vxy_bufs;
+  // Temporary buffers used to store the OPFL gradient information.
+  int16_t *opfl_gxy_bufs;
+  // Temporary buffers used to store intermediate prediction data calculated
+  // during the OPFL/DMVR.
+  uint16_t *opfl_dst_bufs;
   uint16_t *tmp_pred_bufs[2];
   int intrabc_used;
   int deltaq_used;

@@ -833,6 +833,27 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
         aom_memalign(32, MAX_SB_SIZE * MAX_SB_SIZE * sizeof(*x->tmp_conv_dst)));
     x->e_mbd.tmp_conv_dst = x->tmp_conv_dst;
   }
+
+  // Temporary buffers used during the DMVR and OPFL processing.
+  if (x->opfl_vxy_bufs == NULL) {
+    CHECK_MEM_ERROR(
+        cm, x->opfl_vxy_bufs,
+        aom_memalign(32, N_OF_OFFSETS * 4 * sizeof(*x->opfl_vxy_bufs)));
+    x->e_mbd.opfl_vxy_bufs = x->opfl_vxy_bufs;
+  }
+  if (x->opfl_gxy_bufs == NULL) {
+    CHECK_MEM_ERROR(
+        cm, x->opfl_gxy_bufs,
+        aom_memalign(32, MAX_SB_SQUARE * 4 * sizeof(*x->opfl_gxy_bufs)));
+    x->e_mbd.opfl_gxy_bufs = x->opfl_gxy_bufs;
+  }
+  if (x->opfl_dst_bufs == NULL) {
+    CHECK_MEM_ERROR(
+        cm, x->opfl_dst_bufs,
+        aom_memalign(32, MAX_SB_SQUARE * 2 * sizeof(*x->opfl_dst_bufs)));
+    x->e_mbd.opfl_dst_bufs = x->opfl_dst_bufs;
+  }
+
   for (int i = 0; i < 2; ++i) {
     if (x->tmp_pred_bufs[i] == NULL) {
       CHECK_MEM_ERROR(cm, x->tmp_pred_bufs[i],
@@ -1325,6 +1346,11 @@ static AOM_INLINE void free_thread_data(AV1_COMP *cpi) {
     if (t == 0) continue;
     aom_free(thread_data->td->palette_buffer);
     aom_free(thread_data->td->tmp_conv_dst);
+
+    // Temporary buffers used during the DMVR and OPFL processing.
+    aom_free(thread_data->td->opfl_vxy_bufs);
+    aom_free(thread_data->td->opfl_gxy_bufs);
+    aom_free(thread_data->td->opfl_dst_bufs);
     release_compound_type_rd_buffers(&thread_data->td->comp_rd_buffer);
     for (int j = 0; j < 2; ++j) {
       aom_free(thread_data->td->tmp_pred_bufs[j]);

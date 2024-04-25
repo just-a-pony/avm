@@ -1559,6 +1559,13 @@ typedef struct macroblock {
   //! Buffer to store convolution during averaging process in compound mode.
   CONV_BUF_TYPE *tmp_conv_dst;
 
+  //! Temporary buffers used to store the OPFL MV offsets.
+  int *opfl_vxy_bufs;
+  //! Temporary buffers used to store the OPFL gradient information.
+  int16_t *opfl_gxy_bufs;
+  //! Temporary buffers used to store intermediate prediction data calculated
+  //! during the OPFL/DMVR.
+  uint16_t *opfl_dst_bufs;
   /*! \brief Temporary buffer to hold prediction.
    *
    * Points to a buffer that is used to hold temporary prediction results. This

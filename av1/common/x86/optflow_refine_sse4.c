@@ -423,7 +423,13 @@ static AOM_FORCE_INLINE void calc_mv_process(int64_t su2, int64_t sv2,
   suw = ROUND_POWER_OF_TWO_SIGNED_64(suw, redbit);
   svw = ROUND_POWER_OF_TWO_SIGNED_64(svw, redbit);
   const int64_t det = su2 * sv2 - suv * suv;
-  if (det <= 0) return;
+  if (det <= 0) {
+    *vx0 = 0;
+    *vy0 = 0;
+    *vx1 = 0;
+    *vy1 = 0;
+    return;
+  }
 
   int64_t sol[2] = { sv2 * suw - suv * svw, su2 * svw - suv * suw };
 
@@ -432,7 +438,13 @@ static AOM_FORCE_INLINE void calc_mv_process(int64_t su2, int64_t sv2,
   *vy0 = (int)-sol[1];
 #else
   const int64_t det = su2 * sv2 - suv * suv;
-  if (det <= 0) return;
+  if (det <= 0) {
+    *vx0 = 0;
+    *vy0 = 0;
+    *vx1 = 0;
+    *vy1 = 0;
+    return;
+  }
   const int64_t det_x = (suv * svw - sv2 * suw) * (1 << bits);
   const int64_t det_y = (suv * suw - su2 * svw) * (1 << bits);
 
