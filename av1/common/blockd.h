@@ -757,7 +757,7 @@ typedef struct PARTITION_TREE {
   /*! \brief The region type used for the current block. */
   REGION_TYPE region_type;
   /*! \brief Whethe SDP is allowed for one block in inter frame. */
-  int inter_sdp_allowed_flag;
+  int extended_sdp_allowed_flag;
 #endif  // CONFIG_EXTENDED_SDP
   /*! \brief Block size of the current block. */
   BLOCK_SIZE bsize;
@@ -1377,16 +1377,16 @@ static INLINE void initialize_chroma_ref_info(int mi_row, int mi_col,
 }
 
 #if CONFIG_EXTENDED_SDP
-static INLINE int is_bsize_allowed_for_inter_sdp(BLOCK_SIZE bsize,
-                                                 PARTITION_TYPE partition) {
+static INLINE int is_bsize_allowed_for_extended_sdp(BLOCK_SIZE bsize,
+                                                    PARTITION_TYPE partition) {
   const int bw = block_size_wide[bsize];
   const int bh = block_size_high[bsize];
   return bw <= 32 && bh <= 32 && bw >= 8 && bh >= 8 &&
          partition < PARTITION_HORZ_4A;
 }
 // Decide whether SDP is allowed for one block in inter frame.
-static INLINE int is_inter_sdp_allowed(BLOCK_SIZE parent_bsize,
-                                       PARTITION_TYPE parent_partition) {
+static INLINE int is_extended_sdp_allowed(BLOCK_SIZE parent_bsize,
+                                          PARTITION_TYPE parent_partition) {
   const int bw = block_size_wide[parent_bsize];
   const int bh = block_size_high[parent_bsize];
   // Check if block width/height is less than 4.

@@ -233,13 +233,13 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
 #if CONFIG_EXTENDED_SDP
   if (parent) {
     pc_tree->region_type = parent->region_type;
-    if (parent->inter_sdp_allowed_flag == 1)
-      pc_tree->inter_sdp_allowed_flag =
-          is_inter_sdp_allowed(parent->block_size, parent_partition);
+    if (parent->extended_sdp_allowed_flag)
+      pc_tree->extended_sdp_allowed_flag =
+          is_extended_sdp_allowed(parent->block_size, parent_partition);
     else
-      pc_tree->inter_sdp_allowed_flag = 0;
+      pc_tree->extended_sdp_allowed_flag = 0;
   } else {
-    pc_tree->inter_sdp_allowed_flag = 1;
+    pc_tree->extended_sdp_allowed_flag = 1;
   }
 #endif  // CONFIG_EXTENDED_SDP
   pc_tree->block_size = bsize;
@@ -580,7 +580,7 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
   dst->partitioning = src->partitioning;
 #if CONFIG_EXTENDED_SDP
   dst->region_type = src->region_type;
-  dst->inter_sdp_allowed_flag = src->inter_sdp_allowed_flag;
+  dst->extended_sdp_allowed_flag = src->extended_sdp_allowed_flag;
   REGION_TYPE cur_region_type = src->region_type;
 #endif  // CONFIG_EXTENDED_SDP
   dst->rd_cost = src->rd_cost;

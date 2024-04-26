@@ -77,7 +77,7 @@ typedef struct PC_TREE {
 #endif  // CONFIG_EXTENDED_SDP
   BLOCK_SIZE block_size;
 #if CONFIG_EXTENDED_SDP
-  int inter_sdp_allowed_flag;
+  int extended_sdp_allowed_flag;
   PICK_MODE_CONTEXT *none[REGION_TYPES];
   // record the chroma information in intra region.
   PICK_MODE_CONTEXT *none_chroma;

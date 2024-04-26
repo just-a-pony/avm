@@ -2841,12 +2841,12 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
 #if CONFIG_EXTENDED_SDP
     ptree->region_type = pc_tree->region_type;
     const int is_sb_root = bsize == cm->sb_size;
-    ptree->inter_sdp_allowed_flag = pc_tree->inter_sdp_allowed_flag;
+    ptree->extended_sdp_allowed_flag = pc_tree->extended_sdp_allowed_flag;
     if (!frame_is_intra_only(cm) && !is_sb_root &&
         partition != PARTITION_NONE && parent &&
         parent->region_type != INTRA_REGION && xd->tree_type != CHROMA_PART &&
-        ptree->inter_sdp_allowed_flag &&
-        is_bsize_allowed_for_inter_sdp(bsize, partition)) {
+        cm->seq_params.enable_sdp && ptree->extended_sdp_allowed_flag &&
+        is_bsize_allowed_for_extended_sdp(bsize, partition)) {
       assert(xd->tree_type != CHROMA_PART);
       const int intra_region_ctx = get_intra_region_context(bsize);
       update_cdf(xd->tile_ctx->region_type_cdf[intra_region_ctx],
@@ -4580,8 +4580,9 @@ static void rd_pick_rect_partition(
   sum_rdc->rate = part_search_state->partition_cost[partition_type];
 #if CONFIG_EXTENDED_SDP
   if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      is_inter_sdp_allowed(pc_tree->parent->block_size, parent_partition) &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ))
+      cpi->common.seq_params.enable_sdp &&
+      is_extended_sdp_allowed(pc_tree->parent->block_size, parent_partition) &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_HORZ))
     sum_rdc->rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
@@ -7470,9 +7471,10 @@ static INLINE void search_partition_horz_4a(
   sum_rdc.rate = search_state->partition_cost[PARTITION_HORZ_4A];
 #if CONFIG_EXTENDED_SDP
   if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      is_inter_sdp_allowed(pc_tree->parent->block_size,
-                           pc_tree->parent->partitioning) &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ_4A))
+      cpi->common.seq_params.enable_sdp &&
+      is_extended_sdp_allowed(pc_tree->parent->block_size,
+                              pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_HORZ_4A))
     sum_rdc.rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
@@ -7610,9 +7612,10 @@ static INLINE void search_partition_horz_4b(
   sum_rdc.rate = search_state->partition_cost[PARTITION_HORZ_4B];
 #if CONFIG_EXTENDED_SDP
   if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      is_inter_sdp_allowed(pc_tree->parent->block_size,
-                           pc_tree->parent->partitioning) &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ_4A))
+      cpi->common.seq_params.enable_sdp &&
+      is_extended_sdp_allowed(pc_tree->parent->block_size,
+                              pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_HORZ_4A))
     sum_rdc.rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
@@ -7746,9 +7749,10 @@ static INLINE void search_partition_vert_4a(
   sum_rdc.rate = search_state->partition_cost[PARTITION_VERT_4A];
 #if CONFIG_EXTENDED_SDP
   if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      is_inter_sdp_allowed(pc_tree->parent->block_size,
-                           pc_tree->parent->partitioning) &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_VERT_4A))
+      cpi->common.seq_params.enable_sdp &&
+      is_extended_sdp_allowed(pc_tree->parent->block_size,
+                              pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_VERT_4A))
     sum_rdc.rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
@@ -7882,9 +7886,10 @@ static INLINE void search_partition_vert_4b(
   sum_rdc.rate = search_state->partition_cost[PARTITION_VERT_4B];
 #if CONFIG_EXTENDED_SDP
   if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      is_inter_sdp_allowed(pc_tree->parent->block_size,
-                           pc_tree->parent->partitioning) &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_VERT_4A))
+      cpi->common.seq_params.enable_sdp &&
+      is_extended_sdp_allowed(pc_tree->parent->block_size,
+                              pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_VERT_4A))
     sum_rdc.rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
@@ -8021,9 +8026,10 @@ static INLINE void search_partition_horz_3(
   sum_rdc.rate = search_state->partition_cost[PARTITION_HORZ_3];
 #if CONFIG_EXTENDED_SDP
   if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      is_inter_sdp_allowed(pc_tree->parent->block_size,
-                           pc_tree->parent->partitioning) &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ_3))
+      cpi->common.seq_params.enable_sdp &&
+      is_extended_sdp_allowed(pc_tree->parent->block_size,
+                              pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_HORZ_3))
     sum_rdc.rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
@@ -8163,9 +8169,10 @@ static INLINE void search_partition_vert_3(
   sum_rdc.rate = search_state->partition_cost[PARTITION_VERT_3];
 #if CONFIG_EXTENDED_SDP
   if (pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      is_inter_sdp_allowed(pc_tree->parent->block_size,
-                           pc_tree->parent->partitioning) &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_VERT_3))
+      cpi->common.seq_params.enable_sdp &&
+      is_extended_sdp_allowed(pc_tree->parent->block_size,
+                              pc_tree->parent->partitioning) &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_VERT_3))
     sum_rdc.rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
@@ -9330,11 +9337,11 @@ BEGIN_PARTITION_SEARCH:
 #endif  // CONFIG_EXT_RECUR_PARTITIONS && !defined(NDEBUG)
 
 #if CONFIG_EXTENDED_SDP
-  if (frame_is_intra_only(cm)) pc_tree->inter_sdp_allowed_flag = 0;
+  if (frame_is_intra_only(cm)) pc_tree->extended_sdp_allowed_flag = 0;
   if (!frame_is_intra_only(cm) &&
       pc_tree->region_type == MIXED_INTER_INTRA_REGION && pc_tree->parent &&
-      pc_tree->inter_sdp_allowed_flag == 1 &&
-      is_bsize_allowed_for_inter_sdp(bsize, PARTITION_HORZ)) {
+      cm->seq_params.enable_sdp && pc_tree->extended_sdp_allowed_flag &&
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_HORZ)) {
     search_intra_region_partitioning(
         &part_search_state, cpi, td, tile_data, tp, &best_rdc, pc_tree,
         track_ptree_luma ? ptree_luma : NULL, template_tree, &x_ctx,

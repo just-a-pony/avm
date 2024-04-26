@@ -2720,10 +2720,10 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   if (is_sb_root) {
     if (!frame_is_intra_only(cm)) {
       ptree->region_type = MIXED_INTER_INTRA_REGION;
-      ptree->inter_sdp_allowed_flag = 1;
+      ptree->extended_sdp_allowed_flag = cm->seq_params.enable_sdp;
     } else {
       ptree->region_type = INTRA_REGION;
-      ptree->inter_sdp_allowed_flag = 0;
+      ptree->extended_sdp_allowed_flag = 0;
     }
   }
 #endif  // CONFIG_EXTENDED_SDP
@@ -2786,15 +2786,16 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 
 #if CONFIG_EXTENDED_SDP
     if (!is_sb_root && parent) {
-      if (parent->inter_sdp_allowed_flag == 1)
-        ptree->inter_sdp_allowed_flag =
-            is_inter_sdp_allowed(parent->bsize, parent->partition);
+      if (parent->extended_sdp_allowed_flag)
+        ptree->extended_sdp_allowed_flag =
+            cm->seq_params.enable_sdp &&
+            is_extended_sdp_allowed(parent->bsize, parent->partition);
       else
-        ptree->inter_sdp_allowed_flag = 0;
+        ptree->extended_sdp_allowed_flag = 0;
       if (!frame_is_intra_only(cm) && ptree->partition &&
           parent->region_type != INTRA_REGION &&
-          ptree->inter_sdp_allowed_flag &&
-          is_bsize_allowed_for_inter_sdp(bsize, ptree->partition)) {
+          ptree->extended_sdp_allowed_flag &&
+          is_bsize_allowed_for_extended_sdp(bsize, ptree->partition)) {
         const int ctx = get_intra_region_context(bsize);
         ptree->region_type =
             aom_read_symbol(reader, xd->tile_ctx->region_type_cdf[ctx],
