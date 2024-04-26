@@ -4567,7 +4567,7 @@ static void rd_pick_rect_partition(
     const PARTITION_TREE *template_tree, bool *both_blocks_skippable,
 #if CONFIG_EXTENDED_SDP
     PARTITION_TYPE parent_partition,
-#endif  // CONFIG_INTER_SDP
+#endif  // CONFIG_EXTENDED_SDP
     int max_recursion_depth
 #if CONFIG_ML_PART_SPLIT
     ,
@@ -4734,7 +4734,7 @@ static void rectangular_partition_search(
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
 #if CONFIG_EXTENDED_SDP
     PARTITION_TYPE parent_partition,
-#endif  // CONFIG_INTER_SDP
+#endif  // CONFIG_EXTENDED_SDP
     int64_t part_none_rd
 #if CONFIG_ML_PART_SPLIT
     ,
@@ -4890,7 +4890,7 @@ static void rectangular_partition_search(
         &both_blocks_skippable,
 #if CONFIG_EXTENDED_SDP
         parent_partition,
-#endif  // CONFIG_INTER_SDP
+#endif  // CONFIG_EXTENDED_SDP
         max_recursion_depth
 #if CONFIG_ML_PART_SPLIT
         ,
@@ -9107,7 +9107,7 @@ BEGIN_PARTITION_SEARCH:
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
 #if CONFIG_EXTENDED_SDP
       parent_partition,
-#endif  // CONFIG_INTER_SDP
+#endif  // CONFIG_EXTENDED_SDP
       part_none_rd
 #if CONFIG_ML_PART_SPLIT
       ,
