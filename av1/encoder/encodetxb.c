@@ -4638,7 +4638,8 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
         }
 #if CONFIG_ENTROPY_STATS
         ++counts->inter_ext_tx[eset][eob_tx_ctx][txsize_sqr_map[tx_size]]
-                              [av1_ext_tx_ind[tx_set_type][tx_type]];
+                              [av1_ext_tx_ind[tx_set_type]
+                                             [get_primary_tx_type(tx_type)]];
 #endif  // CONFIG_ENTROPY_STATS
       } else {
         if (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] && allow_update_cdf) {
