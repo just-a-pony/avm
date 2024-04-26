@@ -652,8 +652,13 @@ typedef struct MB_MODE_INFO {
   int_mv ref_bv;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT
 #if CONFIG_MORPH_PRED
+  /*! \brief Flag of the linear intra prediction mode. */
   int morph_pred;
+  /*! \brief Scaling parameter of the linear model:
+   * Y = morph_alpa * X + morph_beta. */
   int morph_alpha;
+  /*! \brief Offset of the linear model:
+   * Y = morph_alpa * X + morph_beta. */
   int morph_beta;
 #endif  // CONFIG_MORPH_PRED
 
