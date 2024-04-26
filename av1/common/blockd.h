@@ -429,11 +429,11 @@ typedef struct MB_MODE_INFO {
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*! \brief The partition type of the current coding block. */
   PARTITION_TYPE partition;
-  /*! \brief The prediction mode used */
 #if CONFIG_EXTENDED_SDP
   /*! \brief The region type used for the current block. */
   REGION_TYPE region_type;
 #endif  // CONFIG_EXTENDED_SDP
+  /*! \brief The prediction mode used */
   PREDICTION_MODE mode;
   /*! \brief The JMVD scaling mode for the current coding block. The supported
    *  scale modes for JOINT_NEWMV mode is 0, 1, 2, 3, and 4. The supported scale
