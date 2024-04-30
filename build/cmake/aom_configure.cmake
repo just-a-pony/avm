@@ -330,6 +330,10 @@ else()
     add_compiler_flag_if_supported("-Werror")
   endif()
 
+  if(ENABLE_ASSERTS)
+    add_compiler_flag_if_supported("-UNDEBUG")
+  endif()
+
   if("${build_type_lowercase}" MATCHES "rel")
     add_compiler_flag_if_supported("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0")
   endif()

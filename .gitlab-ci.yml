@@ -450,6 +450,7 @@ Example Build (x86_64-gcc):
     - git fetch --unshallow
     - cmake -B aom_example_build
         -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        -DENABLE_ASSERTS=1
         -DENABLE_EXAMPLES=1
         -DBUILD_SHARED_LIBS=0
     - cmake --build aom_example_build
@@ -488,6 +489,7 @@ Linux Sanitizers (x86_64-clang):
       SANITIZER_BLACKLIST_FLAG="-fsanitize-blacklist=${PWD}/${SANITIZER_IGNORES_FILE}"
 
       CMAKE_FLAGS="$CMAKE_FLAGS -DSANITIZE=${AOM_SANITIZER_TYPE}"
+      CMAKE_FLAGS="$CMAKE_FLAGS -DENABLE_ASSERTS=1"
       CMAKE_FLAGS="$CMAKE_FLAGS -DAOM_EXTRA_C_FLAGS=${SANITIZER_BLACKLIST_FLAG}"
       CMAKE_FLAGS="$CMAKE_FLAGS -DAOM_EXTRA_CXX_FLAGS=${SANITIZER_BLACKLIST_FLAG}"
       echo "CMake Flags: $CMAKE_FLAGS"
