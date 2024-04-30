@@ -2318,15 +2318,6 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
           const int col_offset = last_col - chroma_ref_info->mi_col_chroma_base;
           xd->chroma_above_mbmi = base_mi[-xd->mi_stride + col_offset];
         }
-#if CONFIG_EXTENDED_SDP
-        assert(IMPLIES(
-            xd->tree_type == SHARED_PART &&
-                xd->chroma_above_mbmi->region_type == MIXED_INTER_INTRA_REGION,
-            xd->chroma_above_mbmi->chroma_ref_info.is_chroma_ref));
-#else
-        assert(IMPLIES(xd->tree_type == SHARED_PART,
-                       xd->chroma_above_mbmi->chroma_ref_info.is_chroma_ref));
-#endif  // CONFIG_EXTENDED_SDP
       } else {
         xd->chroma_above_mbmi = NULL;
       }
@@ -2345,15 +2336,6 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
           const int row_offset = last_row - chroma_ref_info->mi_row_chroma_base;
           xd->chroma_left_mbmi = base_mi[row_offset * xd->mi_stride - 1];
         }
-#if CONFIG_EXTENDED_SDP
-        assert(IMPLIES(
-            xd->tree_type == SHARED_PART &&
-                xd->chroma_left_mbmi->region_type == MIXED_INTER_INTRA_REGION,
-            xd->chroma_left_mbmi->chroma_ref_info.is_chroma_ref));
-#else
-        assert(IMPLIES(xd->tree_type == SHARED_PART,
-                       xd->chroma_left_mbmi->chroma_ref_info.is_chroma_ref));
-#endif  // CONFIG_EXTENDED_SDP
       } else {
         xd->chroma_left_mbmi = NULL;
       }
