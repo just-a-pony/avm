@@ -2433,7 +2433,17 @@ void av1_get_optflow_based_mv(
 #if CONFIG_OPTFLOW_ON_TIP
   }
 #endif  // CONFIG_OPTFLOW_ON_TIP
-  if (d0 == 0 || d1 == 0) return;
+  if (d0 == 0 || d1 == 0) {
+    // Though OPFL is disabled when the distance from either of the reference
+    // frames is zero, the MV offset buffers are still used to update the
+    // mv_delta buffer. Hence, memset the MV offset buffers vx and vy to zero.
+    av1_zero_array(vx0, n_blocks);
+    av1_zero_array(vx1, n_blocks);
+    av1_zero_array(vy0, n_blocks);
+    av1_zero_array(vy1, n_blocks);
+    return;
+  }
+
   reduce_temporal_dist(&d0, &d1);
 
 #if CONFIG_OPTFLOW_ON_TIP
