@@ -31,17 +31,12 @@ def get_qindex_from_QP(QP):
 
 def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
                       enc_log, start_frame=0, LogCmdOnly=False):
-    cpu_used = preset
-    if ((CTC_VERSION in ['7.0']) and (test_cfg == "LD") and (clip.file_class in ['A2', 'B1'])):
-        cpu_used = '1'
-
     args = " --verbose --codec=av1 -v --psnr --obu --frame-parallel=0" \
            " --cpu-used=%s --limit=%d --skip=%d --passes=1 --end-usage=q --i%s " \
-           " --use-fixed-qp-offsets=1 --deltaq-mode=0 --enable-imp-msk-bld=0 " \
-           " --enable-tpl-model=0 --fps=%d/%d " \
-           " --input-bit-depth=%d --bit-depth=%d -w %d -h %d" \
-           % (cpu_used, framenum, start_frame, clip.fmt, clip.fps_num, clip.fps_denom,
-              clip.bit_depth, clip.bit_depth, clip.width, clip.height)
+           " --use-fixed-qp-offsets=1 --deltaq-mode=0 " \
+           " --enable-tpl-model=0 --fps=%d/%d -w %d -h %d" \
+           % (preset, framenum, start_frame, clip.fmt, clip.fps_num, clip.fps_denom,
+              clip.width, clip.height)
 
     # config enoding bitdepth
     if ((CTC_VERSION in ['6.0', '7.0']) and (clip.file_class in ['A2', 'A4', 'B1'])):
@@ -68,10 +63,10 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
             args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
         elif (test_cfg == "RA"):
             if (clip.file_class in ['A1', 'E', 'G1']):
-                # 4 tiles should be used
-                args += " --tile-rows=1 --tile-columns=1 --threads=4 --row-mt=0 "
+                # 4 column tiles should be used
+                args += " --tile-rows=0 --tile-columns=2 --threads=4 --row-mt=0 "
             elif (clip.file_class in ['A2', 'B1']):
-                # 2 tiles should be used
+                # 2 column tiles should be used
                 args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
             else:
                 # 1 tile should be used
@@ -79,10 +74,10 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
         elif (test_cfg == "AS"):
             # use the same configuration as RA
             if ((clip.width == 3840 and clip.height == 2160) or (clip.width == 2560 and clip.height == 1440)):
-                # 4 tiles should be used
-                args += " --tile-rows=1 --tile-columns=1 --threads=4 --row-mt=0 "
+                # 4 column tiles should be used
+                args += " --tile-rows=0 --tile-columns=2 --threads=4 --row-mt=0 "
             elif (clip.width == 1920 and clip.height == 1080):
-                # 2 tiles should be used
+                # 2 column tiles should be used
                 args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
             else:
                 # 1 tile should be used
@@ -92,12 +87,12 @@ def EncodeWithAOM_AV2(clip, test_cfg, QP, framenum, outfile, preset, enc_perf,
                 # 8 tiles should be used
                 args += " --tile-rows=1 --tile-columns=2 --threads=8 --row-mt=0 "
             elif (clip.file_class in ['A3']):
-                # 2 tiles should be used
+                # 2 column tiles should be used
                 args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
             else:
                 # 1 tile should be used
                 args += " --tile-rows=0 --tile-columns=0 --threads=1 --row-mt=0 "
-        elif (test_cfg in ['AI', 'STILL', 'AS']) and (clip.width >= 3840 and clip.height >= 2160):
+        elif (test_cfg in ['AI', 'STILL']) and (clip.width >= 3840 and clip.height >= 2160):
             # 2 tiles should be used
             args += " --tile-rows=0 --tile-columns=1 --threads=2 --row-mt=0 "
     elif (clip.width >= 3840 and clip.height >= 2160):
