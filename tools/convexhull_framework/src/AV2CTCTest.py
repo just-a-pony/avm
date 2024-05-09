@@ -356,7 +356,7 @@ if __name__ == "__main__":
                 total_frame = FrameNum[test_cfg]
                 if (test_cfg == "RA" and total_frame <= GOP_SIZE):
                     EnableParallelGopEncoding = False
-                    
+
                 if test_cfg == "RA" and EnableParallelGopEncoding:
                     Run_Parallel_Encode_Test(test_cfg, clip, CodecName, EncodeMethod, EncodePreset, LogCmdOnly)
                 else:
