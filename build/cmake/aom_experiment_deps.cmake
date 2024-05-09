@@ -162,4 +162,10 @@ macro(fix_experiment_configs)
   if(CONFIG_ML_PART_SPLIT)
     change_config_and_warn(CONFIG_TENSORFLOW_LITE 1 CONFIG_ML_PART_SPLIT)
   endif()
+
+  # CONFIG_DRL_WRL_SIMPLIFY depends on CONFIG_MVP_IMPROVEMENT
+  if(NOT CONFIG_MVP_IMPROVEMENT AND CONFIG_DRL_WRL_SIMPLIFY)
+    change_config_and_warn(CONFIG_DRL_WRL_SIMPLIFY 0 !CONFIG_MVP_IMPROVEMENT)
+  endif()
+
 endmacro()

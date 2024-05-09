@@ -3722,18 +3722,19 @@ static bool ref_mv_idx_early_breakout(
     int ref_mv_idx) {
 #endif
   (void)ref_frame_dist_info;
-  const AV1_COMMON *const cm = &cpi->common;
-  const SPEED_FEATURES *const sf = &cpi->sf;
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
   const MB_MODE_INFO_EXT *const mbmi_ext = x->mbmi_ext;
-  const int8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
   const int is_comp_pred = has_second_ref(mbmi);
 #if CONFIG_IMPROVED_SAME_REF_COMPOUND
   if (is_comp_pred && mbmi->ref_frame[0] == mbmi->ref_frame[1] &&
       mbmi->mode == NEAR_NEARMV && ref_mv_idx[0] >= ref_mv_idx[1])
     return true;
 #endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  const AV1_COMMON *const cm = &cpi->common;
+  const SPEED_FEATURES *const sf = &cpi->sf;
+  const int8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
 #if CONFIG_SEP_COMP_DRL
   if (sf->inter_sf.reduce_inter_modes &&
       (ref_mv_idx[0] > 0 || ref_mv_idx[1] > 0)) {
@@ -3790,6 +3791,7 @@ static bool ref_mv_idx_early_breakout(
       }
     }
   }
+#endif  // !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 
 #if CONFIG_SEP_COMP_DRL
   mbmi->ref_mv_idx[0] = ref_mv_idx[0];

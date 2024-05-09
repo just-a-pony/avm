@@ -26,7 +26,11 @@ typedef struct single_mv_candidate {
 
 #if CONFIG_MVP_SIMPLIFY
 #define TMVP_SEARCH_COUNT 5
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+#define SMVP_COL_SEARCH_COUNT 2
+#else
 #define SMVP_COL_SEARCH_COUNT 3
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 typedef struct mvp_unit_status {
   int is_available;
   int row_offset;
@@ -35,6 +39,18 @@ typedef struct mvp_unit_status {
 #endif  // CONFIG_MVP_SIMPLIFY
 
 #define MFMV_STACK_SIZE 3
+
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+#define ADJACENT_SMVP_WEIGHT 1
+#define OTHER_SMVP_WEIGHT 0
+#define TMVP_WEIGHT 1
+#define HIGH_PRIORITY_TMVP_WEIGHT 2
+#else
+#define ADJACENT_SMVP_WEIGHT 2
+#define OTHER_SMVP_WEIGHT 0
+#define TMVP_WEIGHT 2
+#define HIGH_PRIORITY_TMVP_WEIGHT 6
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 
 #if CONFIG_REFINED_MVS_IN_TMVP
 #define OPFL_MVS_CLAMPED 0
@@ -669,7 +685,9 @@ static AOM_INLINE void add_ref_mv_candidate(
   if (is_intrabc != is_intrabc_block(candidate, SHARED_PART)) return;
 #endif  // CONFIG_IBC_SR_EXT
 
+#if !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
   assert(weight % 2 == 0);
+#endif  // !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
   int index, ref;
 
   const TIP *tip_ref = &cm->tip_ref;
@@ -1153,7 +1171,8 @@ static AOM_INLINE void scan_row_mbmi(
 
 #if CONFIG_MVP_IMPROVEMENT
     // Don't add weight to row_offset < -1 which is in the outer area
-    uint16_t weight = row_offset < -1 ? 0 : 2;
+    uint16_t weight =
+        row_offset < -1 ? OTHER_SMVP_WEIGHT : ADJACENT_SMVP_WEIGHT;
 #else
     uint16_t weight = 2;
 #endif
@@ -1302,7 +1321,8 @@ static AOM_INLINE void scan_col_mbmi(
 
 #if CONFIG_MVP_IMPROVEMENT
     // Don't add weight to col_offset < -1 which is in the outer area
-    uint16_t weight = col_offset < -1 ? 0 : 2;
+    uint16_t weight =
+        col_offset < -1 ? OTHER_SMVP_WEIGHT : ADJACENT_SMVP_WEIGHT;
 #else
     int weight = 2;
 #endif
@@ -1398,6 +1418,11 @@ static AOM_INLINE void scan_blk_mbmi(
     MV_REFERENCE_FRAME ref_frame,
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
     uint8_t *refmv_count) {
+
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  if (*refmv_count >= MAX_REF_MV_STACK_SIZE) return;
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+
   const TileInfo *const tile = &xd->tile;
   POSITION mi_pos;
 
@@ -1412,18 +1437,23 @@ static AOM_INLINE void scan_blk_mbmi(
     const SUBMB_INFO *const submi =
         xd->submi[mi_pos.row * xd->mi_stride + mi_pos.col];
 #endif  // CONFIG_C071_SUBBLK_WARPMV
+#if !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
     const int len = mi_size_wide[BLOCK_8X8];
+#endif  // !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 
 #if CONFIG_MVP_IMPROVEMENT
-#if CONFIG_MVP_SIMPLIFY
-    // Don't add weight to (-1,-1) or col_offset < -1 which is in the outer area
-    const uint16_t weight =
-        ((row_offset == -1 && col_offset == -1) || col_offset < -1) ? 0 : 2;
-#else
+    uint16_t weight = ADJACENT_SMVP_WEIGHT;
     // Don't add weight to (-1,-1) which is in the outer area
-    const uint16_t weight = row_offset == -1 && col_offset == -1 ? 0 : 2;
+    if (row_offset == -1 && col_offset == -1) {
+      weight = OTHER_SMVP_WEIGHT;
+    }
+#if CONFIG_MVP_SIMPLIFY
+    // Don't add weight to col_offset < -1 which is in the outer area
+    if (col_offset < -1) {
+      weight = OTHER_SMVP_WEIGHT;
+    }
 #endif  // CONFIG_MVP_SIMPLIFY
-#endif
+#endif  // CONFIG_MVP_IMPROVEMENT
 
     const int cand_mi_row = xd->mi_row + mi_pos.row;
     const int cand_mi_col = xd->mi_col + mi_pos.col;
@@ -1460,11 +1490,15 @@ static AOM_INLINE void scan_blk_mbmi(
 #if CONFIG_EXTENDED_WARP_PREDICTION
         row_offset, col_offset,
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+        weight
+#else
 #if CONFIG_MVP_IMPROVEMENT
         weight * len
 #else
         2 * len
 #endif
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
         ,
         precision);
   }  // Analyze a single 8x8 block motion information.
@@ -1688,6 +1722,10 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                           int16_t *mode_context
 #endif  // !CONFIG_C076_INTER_MOD_CTX
 ) {
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  if (*refmv_count >= MAX_REF_MV_STACK_SIZE) return 0;
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+
   POSITION mi_pos;
   mi_pos.row = (mi_row & 0x01) ? blk_row : blk_row + 1;
   mi_pos.col = (mi_col & 0x01) ? blk_col : blk_col + 1;
@@ -1734,16 +1772,12 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   lower_mv_precision(&this_refmv.as_mv, fr_mv_precision);
 #endif  // !CONFIG_C071_SUBBLK_WARPMV
 
-#if CONFIG_TMVP_IMPROVE
-  uint16_t weight_unit = 1;  // mi_size_wide[BLOCK_8X8];
-#else
-  const uint16_t weight_unit = 1;  // mi_size_wide[BLOCK_8X8];
-#endif  // CONFIG_TMVP_IMPROVE
+  uint16_t weight = TMVP_WEIGHT;
 
   if (rf[1] == NONE_FRAME) {
 #if CONFIG_TMVP_IMPROVE
     if (abs(cur_offset_0) <= 2) {
-      weight_unit = 3;
+      weight = HIGH_PRIORITY_TMVP_WEIGHT;
     }
 #endif  // CONFIG_TMVP_IMPROVE
 
@@ -1762,7 +1796,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     for (idx = 0; idx < *refmv_count; ++idx)
       if (this_refmv.as_int == ref_mv_stack[idx].this_mv.as_int) break;
 
-    if (idx < *refmv_count) ref_mv_weight[idx] += 2 * weight_unit;
+    if (idx < *refmv_count) ref_mv_weight[idx] += weight;
 
     if (idx == *refmv_count && *refmv_count < MAX_REF_MV_STACK_SIZE) {
       ref_mv_stack[idx].this_mv.as_int = this_refmv.as_int;
@@ -1771,7 +1805,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
       ref_mv_stack[idx].col_offset = OFFSET_NONSPATIAL;
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
       ref_mv_stack[idx].cwp_idx = CWP_EQUAL;
-      ref_mv_weight[idx] = 2 * weight_unit;
+      ref_mv_weight[idx] = weight;
       ++(*refmv_count);
 #if CONFIG_MVP_IMPROVEMENT
       ++(*added_tmvp_cnt);
@@ -1814,7 +1848,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
           break;
       }
 
-      if (idx < *refmv_count) ref_mv_weight[idx] += 2 * weight_unit;
+      if (idx < *refmv_count) ref_mv_weight[idx] += weight;
 
       if (idx == *refmv_count && *refmv_count < MAX_REF_MV_STACK_SIZE) {
         ref_mv_stack[idx].this_mv.as_int = this_refmv.as_int;
@@ -1822,7 +1856,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
         ref_mv_stack[idx].cwp_idx = CWP_EQUAL;
         ref_frame_idx0[idx] = rf[0];
         ref_frame_idx1[idx] = rf[1];
-        ref_mv_weight[idx] = 2 * weight_unit;
+        ref_mv_weight[idx] = weight;
         ++(*refmv_count);
 #if CONFIG_MVP_IMPROVEMENT
         ++(*added_tmvp_cnt);
@@ -1836,7 +1870,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
           break;
       }
 
-      if (idx < *refmv_count) ref_mv_weight[idx] += 2 * weight_unit;
+      if (idx < *refmv_count) ref_mv_weight[idx] += weight;
 
       if (idx == *refmv_count && *refmv_count < MAX_REF_MV_STACK_SIZE) {
         ref_mv_stack[idx].this_mv.as_int = this_refmv.as_int;
@@ -1847,7 +1881,7 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
         ref_mv_stack[idx].col_offset = OFFSET_NONSPATIAL;
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
         ref_mv_stack[idx].cwp_idx = CWP_EQUAL;
-        ref_mv_weight[idx] = 2 * weight_unit;
+        ref_mv_weight[idx] = weight;
         ++(*refmv_count);
 #if CONFIG_MVP_IMPROVEMENT
         ++(*added_tmvp_cnt);
@@ -1941,7 +1975,11 @@ static AOM_INLINE void process_single_ref_mv_candidate(
 
         // TODO(jingning): Set an arbitrary small number here. The weight
         // doesn't matter as long as it is properly initialized.
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+        ref_mv_weight[stack_idx] = 0;
+#else
         ref_mv_weight[stack_idx] = 2;
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
         ++(*refmv_count);
         if (*refmv_count >= MAX_MV_REF_CANDIDATES) return;
       }
@@ -2145,6 +2183,11 @@ static AOM_INLINE void setup_ref_mv_list(
   uint8_t derived_mv_count = 0;
 #endif  // CONFIG_MVP_IMPROVEMENT
 
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  const int width_at_least_two = xd->up_available ? (xd->width > 1) : 0;
+  const int height_at_least_two = xd->left_available ? (xd->height > 1) : 0;
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+
 #if CONFIG_MVP_IMPROVEMENT
   if (xd->left_available) {
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, (xd->height - 1), -1,
@@ -2182,7 +2225,11 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
                   refmv_count);
   }
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  if (height_at_least_two) {
+#else
   if (xd->left_available) {
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, 0, -1, ref_mv_stack,
                   ref_mv_weight, &col_match_count, &newmv_count,
                   gm_mv_candidates,
@@ -2201,7 +2248,11 @@ static AOM_INLINE void setup_ref_mv_list(
     update_processed_cols(xd, mi_row, mi_col, 0, -1, max_col_offset,
                           &processed_cols);
   }
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  if (width_at_least_two) {
+#else
   if (xd->up_available) {
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, 0, ref_mv_stack,
                   ref_mv_weight, &row_match_count, &newmv_count,
                   gm_mv_candidates,
@@ -2252,6 +2303,8 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
                   refmv_count);
   }
+
+#if !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
   if (xd->up_available && xd->left_available) {
     uint8_t dummy_ref_match_count = 0;
     uint8_t dummy_new_mv_count = 0;
@@ -2271,6 +2324,7 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
                   refmv_count);
   }
+
   if (xd->left_available) {
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, (xd->height >> 1), -1,
                   ref_mv_stack, ref_mv_weight, &col_match_count, &newmv_count,
@@ -2290,6 +2344,7 @@ static AOM_INLINE void setup_ref_mv_list(
     update_processed_cols(xd, mi_row, mi_col, (xd->height >> 1), -1,
                           max_col_offset, &processed_cols);
   }
+
   if (xd->up_available) {
     scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, (xd->width >> 1),
                   ref_mv_stack, ref_mv_weight, &row_match_count, &newmv_count,
@@ -2307,6 +2362,7 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
                   refmv_count);
   }
+#endif  // !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 #else
   // Scan the first above row mode info. row_offset = -1;
   if (abs(max_row_offset) >= 1)
@@ -2369,9 +2425,11 @@ static AOM_INLINE void setup_ref_mv_list(
 #if !CONFIG_MVP_IMPROVEMENT || !CONFIG_TMVP_IMPROVE
   const uint8_t nearest_refmv_count = *refmv_count;
 
+#if !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
   // TODO(yunqing): for comp_search, do it for all 3 cases.
   for (int idx = 0; idx < nearest_refmv_count; ++idx)
     ref_mv_weight[idx] += REF_CAT_LEVEL;
+#endif  // !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 #endif  // !CONFIG_MVP_IMPROVEMENT || !CONFIG_TMVP_IMPROVE
 
 #if CONFIG_IBC_SR_EXT
@@ -2530,13 +2588,37 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_MVP_SIMPLIFY
   }
 
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  if (xd->up_available && xd->left_available) {
+    uint8_t dummy_ref_match_count = 0;
+    uint8_t dummy_new_mv_count = 0;
+    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, -1, ref_mv_stack,
+                  ref_mv_weight, &dummy_ref_match_count, &dummy_new_mv_count,
+                  gm_mv_candidates,
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+                  ref_frame_idx0, ref_frame_idx1,
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+#if CONFIG_MVP_IMPROVEMENT
+                  1, single_mv, &single_mv_count, derived_mv_stack,
+                  derived_mv_weight, &derived_mv_count,
+#endif  // CONFIG_MVP_IMPROVEMENT
+#if CONFIG_EXTENDED_WARP_PREDICTION
+                  warp_param_stack, max_num_of_warp_candidates,
+                  valid_num_warp_candidates, ref_frame,
+#endif  // CONFIG_EXTENDED_WARP_PREDICTION
+                  refmv_count);
+  }
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+
 #if CONFIG_TMVP_IMPROVE
   const uint8_t nearest_refmv_count = *refmv_count;
 
+#if !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
   // TODO(yunqing): for comp_search, do it for all 3 cases.
   for (int idx = 0; idx < nearest_refmv_count; ++idx) {
     ref_mv_weight[idx] += REF_CAT_LEVEL;
   }
+#endif  // !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 #endif  // CONFIG_TMVP_IMPROVE
 
 #if !CONFIG_MVP_SIMPLIFY
@@ -2568,7 +2650,9 @@ static AOM_INLINE void setup_ref_mv_list(
       const MVP_UNIT_STATUS col_units_status[SMVP_COL_SEARCH_COUNT] = {
         { 1, (xd->height - 1), col_offset },
         { xd->height > 1, 0, col_offset },
+#if !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
         { xd->height > 2, (xd->height >> 1), col_offset },
+#endif  // !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
       };
       if (abs(col_offset) <= abs(max_col_offset) &&
           abs(col_offset) > processed_cols) {
@@ -2881,7 +2965,7 @@ static AOM_INLINE void setup_ref_mv_list(
     }
 
     // Add a new item to the list.
-    if (idx == *refmv_count && *refmv_count < MAX_REF_MV_STACK_SIZE) {
+    if (idx == *refmv_count) {
       ref_mv_stack[idx].this_mv.as_int = gm_mv_candidates[0].as_int;
       ref_mv_stack[idx].comp_mv.as_int = gm_mv_candidates[1].as_int;
 #if CONFIG_EXTENDED_WARP_PREDICTION
@@ -2983,7 +3067,11 @@ static AOM_INLINE void setup_ref_mv_list(
           ref_frame_idx1[*refmv_count] = rf[1];
         }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+        ref_mv_weight[*refmv_count] = 0;
+#else
         ref_mv_weight[*refmv_count] = 2;
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
         ++*refmv_count;
       } else {
         for (int idx = 0; idx < MAX_MV_REF_CANDIDATES; ++idx) {
@@ -3000,7 +3088,11 @@ static AOM_INLINE void setup_ref_mv_list(
             ref_frame_idx1[*refmv_count] = rf[1];
           }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+#if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+          ref_mv_weight[*refmv_count] = 0;
+#else
           ref_mv_weight[*refmv_count] = 2;
+#endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
           ++*refmv_count;
         }
       }
