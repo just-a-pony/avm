@@ -6595,7 +6595,7 @@ static bool derive_linear_params_from_template(
   const int y_start = mi_row * MI_SIZE;
   if (x_start >= frame_width || y_start >= frame_height) return false;
 
-  int x_max = AOMMIN(template_width + width, frame_width - x_start);
+  int x_max = template_width + AOMMIN(width, frame_width - x_start);
   int y_max = AOMMIN(template_height, frame_height - y_start);
 
   for (int y = 0; y < y_max; ++y) {
