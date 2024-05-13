@@ -319,6 +319,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->intrabc_mode_cdf, 2);
   RESET_CDF_COUNTER(fc->intrabc_drl_idx_cdf, 2);
 #endif  // CONFIG_IBC_BV_IMPROVEMENT
+#if CONFIG_MORPH_PRED
+  RESET_CDF_COUNTER(fc->morph_pred_cdf, 2);
+#endif  // CONFIG_MORPH_PRED
   RESET_CDF_COUNTER(fc->seg.tree_cdf, MAX_SEGMENTS);
   RESET_CDF_COUNTER(fc->seg.pred_cdf, 2);
   RESET_CDF_COUNTER(fc->seg.spatial_pred_seg_cdf, MAX_SEGMENTS);
