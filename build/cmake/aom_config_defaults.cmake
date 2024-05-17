@@ -383,6 +383,8 @@ set_aom_config_var(CONFIG_COMPOUND_4XN 1
 
 set_aom_config_var(CONFIG_TILE_CDFS_AVG_TO_FRAME 1
                    "Average the CDFs from tiles for frame CDF")
+set_aom_config_var(CONFIG_LC_REF_MV_BANK 1
+                   "Enable low complexity refmv bank design")
 
 # This is an encode-only change.
 set_aom_config_var(CONFIG_OPFL_MV_SEARCH 1 "Optical flow based MV search")
