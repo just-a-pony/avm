@@ -670,11 +670,21 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
 #if !CONFIG_MVP_IMPROVEMENT
 #if CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank && is_inter &&
-        !is_intrabc_block(mbmi, xd->tree_type))
+        !is_intrabc_block(mbmi, xd->tree_type)) {
 #else
-    if (cm->seq_params.enable_refmvbank && is_inter)
+    if (cm->seq_params.enable_refmvbank && is_inter) {
 #endif  // CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
-      av1_update_ref_mv_bank(cm, xd, mbmi);
+      av1_update_ref_mv_bank(cm, xd,
+#if CONFIG_BANK_IMPROVE
+                             1,
+#endif  // CONFIG_BANK_IMPROVE
+                             mbmi);
+    }
+#if CONFIG_BANK_IMPROVE
+    else {
+      decide_rmb_unit_update_count(cm, xd, mbmi);
+    }
+#endif  // CONFIG_BANK_IMPROVE
 #endif  // !CONFIG_MVP_IMPROVEMENT
 
 #if CONFIG_EXTENDED_WARP_PREDICTION && !WARP_CU_BANK
@@ -938,11 +948,21 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
     const int is_inter = is_inter_block(&ctx->mic, xd->tree_type);
 #if CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank && is_inter &&
-        !is_intrabc_block(&ctx->mic, xd->tree_type))
+        !is_intrabc_block(&ctx->mic, xd->tree_type)) {
 #else
-    if (cm->seq_params.enable_refmvbank && is_inter)
+    if (cm->seq_params.enable_refmvbank && is_inter) {
 #endif  // CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
-      av1_update_ref_mv_bank(cm, xd, &ctx->mic);
+      av1_update_ref_mv_bank(cm, xd,
+#if CONFIG_BANK_IMPROVE
+                             1,
+#endif  // CONFIG_BANK_IMPROVE
+                             &ctx->mic);
+    }
+#if CONFIG_BANK_IMPROVE
+    else {
+      decide_rmb_unit_update_count(cm, xd, &ctx->mic);
+    }
+#endif  // CONFIG_BANK_IMPROVE
 #endif  // CONFIG_MVP_IMPROVEMENT
 #if WARP_CU_BANK
     if (is_inter) av1_update_warp_param_bank(cm, xd, &ctx->mic);
@@ -1046,11 +1066,21 @@ static void pick_sb_modes(AV1_COMP *const cpi, TileDataEnc *tile_data,
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
 #if CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
   if (cm->seq_params.enable_refmvbank && is_inter &&
-      !is_intrabc_block(mbmi, xd->tree_type))
+      !is_intrabc_block(mbmi, xd->tree_type)) {
 #else
-  if (cm->seq_params.enable_refmvbank && is_inter)
+  if (cm->seq_params.enable_refmvbank && is_inter) {
 #endif  // CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
-    av1_update_ref_mv_bank(cm, xd, mbmi);
+    av1_update_ref_mv_bank(cm, xd,
+#if CONFIG_BANK_IMPROVE
+                           1,
+#endif  // CONFIG_BANK_IMPROVE
+                           mbmi);
+  }
+#if CONFIG_BANK_IMPROVE
+  else {
+    decide_rmb_unit_update_count(cm, xd, mbmi);
+  }
+#endif  // CONFIG_BANK_IMPROVE
 #endif  // CONFIG_MVP_IMPROVEMENT
 
 #if WARP_CU_BANK
@@ -8656,6 +8686,7 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
     av1_invalid_rd_stats(rd_cost);
     return part_search_state.found_best_partition;
   }
+
 #if CONFIG_EXT_RECUR_PARTITIONS
   // Check whether there is a counterpart pc_tree node with the same size
   // and the same neighboring context at the same location but from a
@@ -8702,6 +8733,7 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
     }
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
+
   if (bsize == cm->sb_size) x->must_find_valid_partition = 0;
 
   // Override skipping rectangular partition operations for edge blocks.

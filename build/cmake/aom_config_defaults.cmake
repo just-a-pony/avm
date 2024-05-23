@@ -330,6 +330,8 @@ set_aom_config_var(CONFIG_OPTIMIZE_CTX_TIP_WARP 1
                    "Optimize entropy contexts of TIP, warp extended, TIP DRL")
 set_aom_config_var(CONFIG_CWG_E099_DRL_WRL_SIMPLIFY 1
                    "Enable the simplification of DRL and WRL")
+set_aom_config_var(CONFIG_BANK_IMPROVE 1
+                   "Enable to improve refmv bank and warp parameter bank")
 
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
