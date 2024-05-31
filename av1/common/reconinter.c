@@ -5659,7 +5659,7 @@ static void build_inter_predictors_8x8_and_bigger(
             dst, dst_buf->stride, plane, mv_refined, &inter_pred_params, xd,
             mi_x, mi_y,
 #if CONFIG_AFFINE_REFINEMENT
-            mi->comp_refine_type, wms, &mi->mv[ref], use_affine_opfl,
+            cm, bw, mi->comp_refine_type, wms, &mi->mv[ref], use_affine_opfl,
 #endif  // CONFIG_AFFINE_REFINEMENT
             ref, mc_buf, calc_subpel_params_func
 #if CONFIG_OPTFLOW_ON_TIP
@@ -5667,7 +5667,7 @@ static void build_inter_predictors_8x8_and_bigger(
             1
 #endif  // CONFIG_OPTFLOW_ON_TIP
         );
-#endif
+#endif  // CONFIG_TIP_REF_PRED_MERGING
       continue;
     }
 #endif  // CONFIG_OPTFLOW_REFINEMENT
