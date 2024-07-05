@@ -203,11 +203,23 @@ static void reset_tx_size(MACROBLOCK *x, MB_MODE_INFO *mbmi,
 static INLINE void copy_mbmi_ext_frame_to_mbmi_ext(
     MB_MODE_INFO_EXT *mbmi_ext,
     const MB_MODE_INFO_EXT_FRAME *const mbmi_ext_best, uint8_t ref_frame_type
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+    ,
+    int skip_mode
+#endif
 #if CONFIG_SEP_COMP_DRL
     ,
     PREDICTION_MODE this_mode
 #endif  // CONFIG_SEP_COMP_DRL
 ) {
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  if (skip_mode) {
+    memcpy(&(mbmi_ext->skip_mvp_candidate_list),
+           &(mbmi_ext_best->skip_mvp_candidate_list),
+           sizeof(mbmi_ext->skip_mvp_candidate_list));
+  }
+#endif
+
 #if CONFIG_SEP_COMP_DRL
   MV_REFERENCE_FRAME rf[2];
   av1_set_ref_frame(rf, ref_frame_type);
@@ -282,8 +294,12 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
   if (xd->tree_type != CHROMA_PART)
     copy_mbmi_ext_frame_to_mbmi_ext(x->mbmi_ext, &ctx->mbmi_ext_best,
                                     av1_ref_frame_type(ctx->mic.ref_frame)
-#if CONFIG_SEP_COMP_DRL
+#if CONFIG_SKIP_MODE_ENHANCEMENT
                                         ,
+                                    mi->skip_mode
+#endif
+#if CONFIG_SEP_COMP_DRL
+                                    ,
                                     ctx->mic.mode
 #endif  // CONFIG_SEP_COMP_DRL
     );

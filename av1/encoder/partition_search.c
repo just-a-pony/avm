@@ -2513,32 +2513,7 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   if (xd->tree_type != CHROMA_PART)
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   {
-    if (mbmi->skip_mode) {
-      MV_REFERENCE_FRAME rf[2];
-      const SkipModeInfo *const skip_mode_info =
-          &cpi->common.current_frame.skip_mode_info;
-      rf[0] = skip_mode_info->ref_frame_idx_0;
-      rf[1] = skip_mode_info->ref_frame_idx_1;
-      MV_REFERENCE_FRAME ref_frame_type = av1_ref_frame_type(rf);
-
-      av1_find_mv_refs(&cpi->common, xd, mbmi, ref_frame_type,
-                       x->mbmi_ext->ref_mv_count, xd->ref_mv_stack, xd->weight,
-                       NULL, NULL
-#if !CONFIG_C076_INTER_MOD_CTX
-                       ,
-                       NULL
-#endif  //! CONFIG_C076_INTER_MOD_CTX
-#if CONFIG_EXTENDED_WARP_PREDICTION
-                       ,
-                       NULL, 0, NULL
-#endif  // CONFIG_EXTENDED_WARP_PREDICTION
-      );
-      // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
-      // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
-      av1_copy_usable_ref_mv_stack_and_weight(xd, x->mbmi_ext, ref_frame_type);
-    }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-
     av1_copy_mbmi_ext_to_mbmi_ext_frame(
         x->mbmi_ext_frame, x->mbmi_ext,
 #if CONFIG_SEP_COMP_DRL
