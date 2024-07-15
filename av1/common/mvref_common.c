@@ -197,14 +197,12 @@ void av1_copy_frame_mvs_tip_frame_mode(const AV1_COMMON *const cm,
   const int cur_tpl_col = (mi_col >> TMVP_SHIFT_BITS);
   const int offset = cur_tpl_row * frame_mvs_stride + cur_tpl_col;
   MV_REF *frame_mvs = cm->cur_frame->mvs + offset;
-  const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + offset;
   const TIP *tip_ref = &cm->tip_ref;
   x_inside_boundary = ROUND_POWER_OF_TWO(x_inside_boundary, TMVP_SHIFT_BITS);
   y_inside_boundary = ROUND_POWER_OF_TWO(y_inside_boundary, TMVP_SHIFT_BITS);
 
   for (int h = 0; h < y_inside_boundary; h++) {
     MV_REF *mv = frame_mvs;
-    const TPL_MV_REF *tpl_mv = tpl_mvs;
     for (int w = 0; w < x_inside_boundary; w++) {
       for (int idx = 0; idx < 2; ++idx) {
         mv->ref_frame[idx] = NONE_FRAME;
@@ -218,68 +216,40 @@ void av1_copy_frame_mvs_tip_frame_mode(const AV1_COMMON *const cm,
           mv->ref_frame[idx] = ref_frame;
           mv->mv[idx].as_int = mi->mv[idx].as_int;
         } else if (is_tip_ref_frame(ref_frame)) {
-          if ((abs(mi->mv[idx].as_mv.row) > REFMVS_LIMIT) ||
-              (abs(mi->mv[idx].as_mv.col) > REFMVS_LIMIT))
-            continue;
-
           int_mv this_mv[2] = { { 0 } };
           const MV *blk_mv = &mi->mv[idx].as_mv;
-#if CONFIG_TIP_REF_PRED_MERGING
-          const int blk_to_tip_frame_offset = derive_block_mv_tpl_offset(
-              cm, blk_mv, cur_tpl_row + h, cur_tpl_col + w);
-#else
-          const FULLPEL_MV blk_fullmv =
-              clamp_tip_fullmv(cm, blk_mv, cur_tpl_row + h, cur_tpl_col + w);
-
-          const int blk_to_tip_frame_offset =
-              (blk_fullmv.row >> TMVP_MI_SZ_LOG2) * frame_mvs_stride +
-              (blk_fullmv.col >> TMVP_MI_SZ_LOG2);
-#endif  // CONFIG_TIP_REF_PRED_MERGING
-
-          const TPL_MV_REF *tip_tpl_mv = tpl_mv + blk_to_tip_frame_offset;
-          if (tip_tpl_mv->mfmv0.as_int == 0
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-              // TMVP invalid MV is treated as zero mv when interpolate TIP
-              || tip_tpl_mv->mfmv0.as_int == INVALID_MV
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-          ) {
-            mv->ref_frame[0] = tip_ref->ref_frame[0];
-            mv->ref_frame[1] = tip_ref->ref_frame[1];
-
-            mv->mv[0].as_int = mi->mv[idx].as_int;
-            mv->mv[1].as_int = mi->mv[idx].as_int;
-          } else if (tip_tpl_mv->mfmv0.as_int != INVALID_MV) {
-            tip_get_mv_projection(&this_mv[0].as_mv, tip_tpl_mv->mfmv0.as_mv,
-                                  tip_ref->ref_frames_offset_sf[0]);
-            tip_get_mv_projection(&this_mv[1].as_mv, tip_tpl_mv->mfmv0.as_mv,
-                                  tip_ref->ref_frames_offset_sf[1]);
-            this_mv[0].as_mv.row += blk_mv->row;
-            this_mv[0].as_mv.col += blk_mv->col;
-            this_mv[1].as_mv.row += blk_mv->row;
-            this_mv[1].as_mv.col += blk_mv->col;
-
-            mv->ref_frame[0] = tip_ref->ref_frame[0];
-            mv->ref_frame[1] = tip_ref->ref_frame[1];
-
-            mv->mv[0].as_int = this_mv[0].as_int;
-            mv->mv[1].as_int = this_mv[1].as_int;
-          }
 #if !CONFIG_MF_HOLE_FILL_SIMPLIFY
-          else {
+          const bool is_mfmv_valid =
+#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
+              get_tip_mv(cm, blk_mv, cur_tpl_col + w, cur_tpl_row + h, this_mv);
+#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
+          if (!is_mfmv_valid) {
             mv->ref_frame[0] = NONE_FRAME;
             mv->ref_frame[1] = NONE_FRAME;
             mv->mv[0].as_int = 0;
             mv->mv[1].as_int = 0;
+          } else {
+#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
+            if ((abs(this_mv[0].as_mv.row) <= REFMVS_LIMIT) &&
+                (abs(this_mv[0].as_mv.col) <= REFMVS_LIMIT)) {
+              mv->ref_frame[0] = tip_ref->ref_frame[0];
+              mv->mv[0].as_int = this_mv[0].as_int;
+            }
+
+            if ((abs(this_mv[1].as_mv.row) <= REFMVS_LIMIT) &&
+                (abs(this_mv[1].as_mv.col) <= REFMVS_LIMIT)) {
+              mv->ref_frame[1] = tip_ref->ref_frame[1];
+              mv->mv[1].as_int = this_mv[1].as_int;
+            }
+#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
           }
 #endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
           break;
         }
       }
       mv++;
-      tpl_mv++;
     }
     frame_mvs += frame_mvs_stride;
-    tpl_mvs += frame_mvs_stride;
   }
 }
 
@@ -581,8 +551,6 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
     uint16_t *ref_mv_weight, uint16_t weight) {
   int index = 0;
 
-  const int frame_mvs_stride =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
   const int cand_tpl_row = (mi_row_cand >> TMVP_SHIFT_BITS);
   const int cand_tpl_col = (mi_col_cand >> TMVP_SHIFT_BITS);
 #if CONFIG_C071_SUBBLK_WARPMV
@@ -590,48 +558,15 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
 #else
   int_mv cand_mv = get_block_mv(candidate, 0);
 #endif  // CONFIG_C071_SUBBLK_WARPMV
-#if CONFIG_TIP_REF_PRED_MERGING
-  const int blk_to_tip_frame_offset = derive_block_mv_tpl_offset(
-      cm, &cand_mv.as_mv, cand_tpl_row, cand_tpl_col);
-  const int offset =
-      cand_tpl_row * frame_mvs_stride + cand_tpl_col + blk_to_tip_frame_offset;
-#else
-  const FULLPEL_MV fullmv =
-      clamp_tip_fullmv(cm, &cand_mv.as_mv, cand_tpl_row, cand_tpl_col);
-  const int ref_blk_row = (fullmv.row >> TMVP_MI_SZ_LOG2) + cand_tpl_row;
-  const int ref_blk_col = (fullmv.col >> TMVP_MI_SZ_LOG2) + cand_tpl_col;
-
-  const int offset = ref_blk_row * frame_mvs_stride + ref_blk_col;
-#endif  // CONFIG_TIP_REF_PRED_MERGING
-  const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + offset;
+  int_mv ref_mv[2];
 #if !CONFIG_MF_HOLE_FILL_SIMPLIFY
-  if (tpl_mvs->mfmv0.as_int == INVALID_MV) {
-    return;
-  }
+  const bool is_mfmv_valid =
+#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
+      get_tip_mv(cm, &cand_mv.as_mv, cand_tpl_col, cand_tpl_row, ref_mv);
+#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
+  if (!is_mfmv_valid) return;
 #endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
 
-  const int_mv mf_mv = tpl_mvs->mfmv0;
-  int_mv this_mv[2];
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-  if (mf_mv.as_int == INVALID_MV) {
-    // TMVP invalid MV is treated as zero mv when interpolate TIP
-    this_mv[0].as_int = 0;
-    this_mv[1].as_int = 0;
-  } else {
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-    tip_get_mv_projection(&this_mv[0].as_mv, mf_mv.as_mv,
-                          cm->tip_ref.ref_frames_offset_sf[0]);
-    tip_get_mv_projection(&this_mv[1].as_mv, mf_mv.as_mv,
-                          cm->tip_ref.ref_frames_offset_sf[1]);
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-  }
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-
-  int_mv ref_mv[2];
-  ref_mv[0].as_mv.row = cand_mv.as_mv.row + this_mv[0].as_mv.row;
-  ref_mv[0].as_mv.col = cand_mv.as_mv.col + this_mv[0].as_mv.col;
-  ref_mv[1].as_mv.row = cand_mv.as_mv.row + this_mv[1].as_mv.row;
-  ref_mv[1].as_mv.col = cand_mv.as_mv.col + this_mv[1].as_mv.col;
   clamp_tip_smvp_refmv(cm, &ref_mv[0].as_mv, mi_row, mi_col);
   clamp_tip_smvp_refmv(cm, &ref_mv[1].as_mv, mi_row, mi_col);
 

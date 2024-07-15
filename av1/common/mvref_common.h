@@ -1114,6 +1114,125 @@ int generate_points_from_corners(const MACROBLOCKD *xd, int *pts, int *mvs,
                                  int *np, MV_REFERENCE_FRAME ref_frame);
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
+// Temporal scaling the motion vector
+static AOM_INLINE void tip_get_mv_projection(MV *output, MV ref,
+                                             int scale_factor) {
+  const int mv_row = ROUND_POWER_OF_TWO_SIGNED(ref.row * scale_factor, 14);
+  const int mv_col = ROUND_POWER_OF_TWO_SIGNED(ref.col * scale_factor, 14);
+  const int clamp_max = MV_UPP - 1;
+  const int clamp_min = MV_LOW + 1;
+  output->row = (int16_t)clamp(mv_row, clamp_min, clamp_max);
+  output->col = (int16_t)clamp(mv_col, clamp_min, clamp_max);
+}
+
+#if CONFIG_TIP_REF_PRED_MERGING
+// Compute TMVP unit offset related to block mv
+static AOM_INLINE int derive_block_mv_tpl_offset(const AV1_COMMON *const cm,
+                                                 const MV *mv,
+                                                 const int blk_tpl_row,
+                                                 const int blk_tpl_col) {
+  const int frame_mvs_tpl_cols =
+      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+  const int frame_mvs_tpl_rows =
+      ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
+
+  FULLPEL_MV fullmv = get_fullmv_from_mv(mv);
+  int tpl_row_offset = ROUND_POWER_OF_TWO_SIGNED(fullmv.row, TMVP_MI_SZ_LOG2);
+  int tpl_col_offset = ROUND_POWER_OF_TWO_SIGNED(fullmv.col, TMVP_MI_SZ_LOG2);
+
+  if (blk_tpl_row + tpl_row_offset >= frame_mvs_tpl_rows) {
+    tpl_row_offset = frame_mvs_tpl_rows - 1 - blk_tpl_row;
+  } else if (blk_tpl_row + tpl_row_offset < 0) {
+    tpl_row_offset = -blk_tpl_row;
+  }
+
+  if (blk_tpl_col + tpl_col_offset >= frame_mvs_tpl_cols) {
+    tpl_col_offset = frame_mvs_tpl_cols - 1 - blk_tpl_col;
+  } else if (blk_tpl_col + tpl_col_offset < 0) {
+    tpl_col_offset = -blk_tpl_col;
+  }
+
+  const int tpl_offset = tpl_row_offset * frame_mvs_tpl_cols + tpl_col_offset;
+
+  return tpl_offset;
+}
+#else
+// Convert motion vector to fullpel and clamp the fullpel mv if it is outside
+// of frame boundary
+static AOM_INLINE FULLPEL_MV clamp_tip_fullmv(const AV1_COMMON *const cm,
+                                              const MV *mv, const int blk_row,
+                                              const int blk_col) {
+  const int y_width = cm->tip_ref.ref_frame_buffer[0]->buf.y_width;
+  const int y_height = cm->tip_ref.ref_frame_buffer[0]->buf.y_height;
+
+  FULLPEL_MV fullmv;
+  fullmv = get_fullmv_from_mv(mv);
+  if (fullmv.row + ((blk_row + 1) << TMVP_MI_SZ_LOG2) > y_height) {
+    fullmv.row = y_height - ((blk_row + 1) << TMVP_MI_SZ_LOG2);
+  } else if (fullmv.row + (blk_row << TMVP_MI_SZ_LOG2) < 0) {
+    fullmv.row = -(blk_row << TMVP_MI_SZ_LOG2);
+  }
+
+  if (fullmv.col + ((blk_col + 1) << TMVP_MI_SZ_LOG2) > y_width) {
+    fullmv.col = y_width - ((blk_col + 1) << TMVP_MI_SZ_LOG2);
+  } else if (fullmv.col + (blk_col << TMVP_MI_SZ_LOG2) < 0) {
+    fullmv.col = -(blk_col << TMVP_MI_SZ_LOG2);
+  }
+
+  return fullmv;
+}
+#endif  // CONFIG_TIP_REF_PRED_MERGING
+
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+static AOM_INLINE void get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
+                                  int blk_col, int blk_row, int_mv tip_mv[2]) {
+#else
+static AOM_INLINE bool get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
+                                  int blk_col, int blk_row, int_mv tip_mv[2]) {
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+  const int mvs_stride =
+      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+
+#if CONFIG_TIP_REF_PRED_MERGING
+  const int blk_to_tip_frame_offset =
+      derive_block_mv_tpl_offset(cm, block_mv, blk_row, blk_col);
+#else
+  const FULLPEL_MV blk_fullmv =
+      clamp_tip_fullmv(cm, block_mv, blk_row, blk_col);
+  const int blk_to_tip_frame_offset =
+      (blk_fullmv.row >> TMVP_MI_SZ_LOG2) * mvs_stride +
+      (blk_fullmv.col >> TMVP_MI_SZ_LOG2);
+#endif  // CONFIG_TIP_REF_PRED_MERGING
+  const int tpl_offset =
+      blk_row * mvs_stride + blk_col + blk_to_tip_frame_offset;
+  const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + tpl_offset;
+
+  if (tpl_mvs->mfmv0.as_int != 0
+#if CONFIG_MF_HOLE_FILL_SIMPLIFY
+      && tpl_mvs->mfmv0.as_int != INVALID_MV
+#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
+  ) {
+    tip_get_mv_projection(&tip_mv[0].as_mv, tpl_mvs->mfmv0.as_mv,
+                          cm->tip_ref.ref_frames_offset_sf[0]);
+    tip_get_mv_projection(&tip_mv[1].as_mv, tpl_mvs->mfmv0.as_mv,
+                          cm->tip_ref.ref_frames_offset_sf[1]);
+  } else {
+    tip_mv[0].as_int = 0;
+    tip_mv[1].as_int = 0;
+  }
+  tip_mv[0].as_mv.row = (int16_t)clamp(tip_mv[0].as_mv.row + block_mv->row,
+                                       MV_LOW + 1, MV_UPP - 1);
+  tip_mv[0].as_mv.col = (int16_t)clamp(tip_mv[0].as_mv.col + block_mv->col,
+                                       MV_LOW + 1, MV_UPP - 1);
+  tip_mv[1].as_mv.row = (int16_t)clamp(tip_mv[1].as_mv.row + block_mv->row,
+                                       MV_LOW + 1, MV_UPP - 1);
+  tip_mv[1].as_mv.col = (int16_t)clamp(tip_mv[1].as_mv.col + block_mv->col,
+                                       MV_LOW + 1, MV_UPP - 1);
+#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
+  return (tpl_mvs->mfmv0.as_int != INVALID_MV);
+#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
+}
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

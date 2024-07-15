@@ -5780,38 +5780,6 @@ static void build_inter_predictors_8x8_and_bigger(
 }
 
 #if CONFIG_TIP_REF_PRED_MERGING
-static AOM_INLINE void get_tip_mv(const AV1_COMMON *cm, MV *block_mv,
-                                  int blk_col, int blk_row, MV tip_mv[2]) {
-  const int mvs_stride =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
-
-  const int blk_to_tip_frame_offset =
-      derive_block_mv_tpl_offset(cm, block_mv, blk_row, blk_col);
-  const int tpl_offset =
-      blk_row * mvs_stride + blk_col + blk_to_tip_frame_offset;
-  const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + tpl_offset;
-
-  if (tpl_mvs->mfmv0.as_int != 0
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-      && tpl_mvs->mfmv0.as_int != INVALID_MV
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-  ) {
-    tip_get_mv_projection(&tip_mv[0], tpl_mvs->mfmv0.as_mv,
-                          cm->tip_ref.ref_frames_offset_sf[0]);
-    tip_get_mv_projection(&tip_mv[1], tpl_mvs->mfmv0.as_mv,
-                          cm->tip_ref.ref_frames_offset_sf[1]);
-  } else {
-    MV zero_mv[2];
-    memset(zero_mv, 0, sizeof(zero_mv));
-    tip_mv[0] = zero_mv[0];
-    tip_mv[1] = zero_mv[1];
-  }
-  tip_mv[0].row += block_mv->row;
-  tip_mv[0].col += block_mv->col;
-  tip_mv[1].row += block_mv->row;
-  tip_mv[1].col += block_mv->col;
-}
-
 // Find the start row/col and end row/col for a given TIP prediction block.
 static AOM_INLINE void set_tip_start_end_location(
     int start_pixel_col, int start_pixel_row, int block_width, int block_height,
@@ -5875,9 +5843,12 @@ static void build_inter_predictors_8x8_and_bigger_facade(
         const int ss_x = pd->subsampling_x;
         const int ss_y = pd->subsampling_y;
         MV tip_mv[2];
+        int_mv tip_mv_tmp[2];
 
-        get_tip_mv(cm, &mi->mv[0].as_mv, blk_col, blk_row, tip_mv);
+        get_tip_mv(cm, &mi->mv[0].as_mv, blk_col, blk_row, tip_mv_tmp);
 
+        tip_mv[0] = tip_mv_tmp[0].as_mv;
+        tip_mv[1] = tip_mv_tmp[1].as_mv;
         dst_buf->buf = dst +
                        ((row_offset << TMVP_MI_SZ_LOG2) >> ss_y) * dst_stride +
                        ((col_offset << TMVP_MI_SZ_LOG2) >> ss_x);
