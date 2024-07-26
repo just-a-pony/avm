@@ -50,7 +50,12 @@ list(APPEND AOM_PORTS_SOURCES_PPC "${AOM_ROOT}/aom_ports/ppc.h"
 #
 # * The libaom target must exist before this function is called.
 function(setup_aom_ports_targets)
-  if("${AOM_TARGET_CPU}" MATCHES "^x86")
+  if(XCODE AND "${AOM_TARGET_CPU}" STREQUAL "x86_64")
+    add_asm_library("aom_ports" "AOM_PORTS_ASM_X86")
+    # Xcode is the only one
+    set(aom_ports_is_embedded 1)
+    set(aom_ports_has_symbols 1)
+  elseif("${AOM_TARGET_CPU}" MATCHES "^x86")
     add_asm_library("aom_ports" "AOM_PORTS_ASM_X86")
     set(aom_ports_has_symbols 1)
   elseif("${AOM_TARGET_CPU}" MATCHES "arm")
@@ -68,14 +73,15 @@ function(setup_aom_ports_targets)
     endif()
   endif()
 
+  # Note AOM_PORTS_INCLUDES_X86 are not added to the aom_ports, aom or
+  # aom_static targets to avoid compilation issues in projects that enable ASM
+  # language support in project(). These sources were never included in
+  # libaom_srcs.*; if it becomes necessary for a particular generator another
+  # method should be used.
   if(aom_ports_has_symbols)
-    target_sources(aom_ports PRIVATE ${AOM_PORTS_INCLUDES})
-
-    if("${AOM_TARGET_CPU}" STREQUAL "x86" OR "${AOM_TARGET_CPU}" STREQUAL
-                                             "x86_64")
-      target_sources(aom_ports PRIVATE ${AOM_PORTS_INCLUDES_X86})
+    if(NOT aom_ports_is_embedded)
+      target_sources(aom_ports PRIVATE ${AOM_PORTS_INCLUDES})
     endif()
-
     set(AOM_LIB_TARGETS
         ${AOM_LIB_TARGETS}
         PARENT_SCOPE)
@@ -83,14 +89,6 @@ function(setup_aom_ports_targets)
     target_sources(aom PRIVATE ${AOM_PORTS_INCLUDES})
     if(BUILD_SHARED_LIBS)
       target_sources(aom_static PRIVATE ${AOM_PORTS_INCLUDES})
-    endif()
-
-    if("${AOM_TARGET_CPU}" STREQUAL "x86" OR "${AOM_TARGET_CPU}" STREQUAL
-                                             "x86_64")
-      target_sources(aom PRIVATE ${AOM_PORTS_INCLUDES_X86})
-      if(BUILD_SHARED_LIBS)
-        target_sources(aom_static PRIVATE ${AOM_PORTS_INCLUDES_X86})
-      endif()
     endif()
   endif()
 endfunction()

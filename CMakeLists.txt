@@ -11,7 +11,7 @@
 if(CONFIG_TENSORFLOW_LITE)
   cmake_minimum_required(VERSION 3.16)
 else()
-  cmake_minimum_required(VERSION 3.5)
+  cmake_minimum_required(VERSION 3.9)
 endif()
 
 set(AOM_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -27,7 +27,7 @@ if("${AOM_ROOT}" STREQUAL "${AOM_CONFIG_DIR}")
       "And re-run CMake from the aom_build directory.")
 endif()
 
-project(AVM C CXX)
+project(AVM C CXX ASM)
 
 # GENERATED source property global visibility.
 if(POLICY CMP0118)
@@ -47,6 +47,9 @@ endif()
 # https://www.gnu.org/software/libtool/manual/libtool.html#Updating-version-info
 set(SO_VERSION 2)
 set(SO_FILE_VERSION 2.0.0)
+
+# Enable generators like Xcode and Visual Studio to place projects in folders.
+set_property(GLOBAL PROPERTY USE_FOLDERS TRUE)
 
 include("${AOM_ROOT}/build/cmake/aom_configure.cmake")
 include("${AOM_ROOT}/aom_dsp/aom_dsp.cmake")
@@ -339,19 +342,23 @@ if(ENABLE_EXAMPLES
    OR ENABLE_TESTS
    OR ENABLE_TOOLS)
   add_library(aom_common_app_util OBJECT ${AOM_COMMON_APP_UTIL_SOURCES})
+  set_property(TARGET ${example} PROPERTY FOLDER examples)
   if(CONFIG_AV1_DECODER)
     add_library(aom_decoder_app_util OBJECT ${AOM_DECODER_APP_UTIL_SOURCES})
+    set_property(TARGET ${example} PROPERTY FOLDER examples)
     # obudec depends on internal headers that require *rtcd.h
     add_dependencies(aom_decoder_app_util aom_rtcd)
   endif()
   if(CONFIG_AV1_ENCODER)
     add_library(aom_encoder_app_util OBJECT ${AOM_ENCODER_APP_UTIL_SOURCES})
+    set_property(TARGET ${example} PROPERTY FOLDER examples)
   endif()
 endif()
 
 if((CONFIG_AV1_DECODER OR CONFIG_AV1_ENCODER) AND ENABLE_EXAMPLES)
   add_executable(resize_util "${AOM_ROOT}/examples/resize_util.c"
                              $<TARGET_OBJECTS:aom_common_app_util>)
+  set_property(TARGET ${example} PROPERTY FOLDER examples)
   list(APPEND AOM_APP_TARGETS resize_util)
   add_executable(
     lanczos_resample_y4m
@@ -581,17 +588,17 @@ if(CONFIG_AV1_ENCODER)
   if(CONFIG_TENSORFLOW_LITE)
     include(FetchContent)
 
-    set(TFLITE_TAG "v2.15.0")
+    set(TFLITE_TAG "v2.17.0")
 
     message(STATUS "Fetching TFLite ${TFLITE_TAG}...")
 
     # static linking makes life with TFLite much easier
     set(TFLITE_C_BUILD_SHARED_LIBS OFF)
 
-    # We don't care about comparing against these delegates (yet), and disabling
-    # it reduces compile time meaningfully
-    set(TFLITE_ENABLE_RUY OFF)
-    set(TFLITE_ENABLE_XNNPACK OFF)
+    # Keep RUY on. Ruy is a general GEMM library.
+    set(TFLITE_ENABLE_RUY ON)
+    # Turn XNNPack on.
+    set(TFLITE_ENABLE_XNNPACK ON)
 
     fetchcontent_declare(
       tflite
@@ -932,12 +939,14 @@ endif()
 if(ENABLE_EXAMPLES)
   foreach(example ${AOM_EXAMPLE_TARGETS})
     list(APPEND AOM_DIST_EXAMPLES $<TARGET_FILE:${example}>)
+    set_property(TARGET ${example} PROPERTY FOLDER examples)
   endforeach()
 endif()
 
 if(ENABLE_TOOLS)
   foreach(tool ${AOM_TOOL_TARGETS})
     list(APPEND AOM_DIST_TOOLS $<TARGET_FILE:${tool}>)
+    set_property(TARGET ${tool} PROPERTY FOLDER tools)
   endforeach()
 endif()
 
@@ -970,6 +979,10 @@ foreach(var ${all_cmake_vars})
   endif()
 endforeach()
 
+if(NOT CONFIG_AV1_DECODER)
+  list(FILTER aom_source_vars EXCLUDE REGEX "_DECODER_")
+endif()
+
 # Libaom_srcs.txt generation.
 set(libaom_srcs_txt_file "${AOM_CONFIG_DIR}/libaom_srcs.txt")
 file(WRITE "${libaom_srcs_txt_file}" "# This file is generated. DO NOT EDIT.\n")
@@ -979,6 +992,9 @@ foreach(aom_source_var ${aom_source_vars})
   foreach(file ${${aom_source_var}})
     if(NOT "${file}" MATCHES "${AOM_CONFIG_DIR}")
       string(REPLACE "${AOM_ROOT}/" "" file "${file}")
+      if(NOT CONFIG_AV1_DECODER AND "${file}" MATCHES "aom_decoder")
+        continue()
+      endif()
       file(APPEND "${libaom_srcs_txt_file}" "${file}\n")
     endif()
   endforeach()
@@ -1009,6 +1025,9 @@ foreach(aom_source_var ${aom_source_vars})
     if(NOT "${file}" MATCHES "${AOM_CONFIG_DIR}")
       string(REPLACE "${AOM_ROOT}" "//third_party/libaom/source/libaom" file
                      "${file}")
+      if(NOT CONFIG_AV1_DECODER AND "${file}" MATCHES "aom_decoder")
+        continue()
+      endif()
       file(APPEND "${libaom_srcs_gni_file}" "  \"${file}\",\n")
     endif()
   endforeach()
