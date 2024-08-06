@@ -287,4 +287,89 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(::testing::Values(&av1_txb_init_levels_neon),
                        ::testing::Range(0, static_cast<int>(TX_SIZES_ALL), 1)));
 #endif
+
+typedef void (*av1_txb_init_levels_signs_func)(const tran_low_t *const coeff,
+                                               const int width,
+                                               const int height,
+                                               uint8_t *const levels,
+                                               int8_t *const signs);
+
+typedef std::tuple<av1_txb_init_levels_signs_func, int> TxbInitLevelSignsParam;
+
+class EncodeTxbInitLevelSignsTest
+    : public ::testing::TestWithParam<TxbInitLevelSignsParam> {
+ public:
+  virtual ~EncodeTxbInitLevelSignsTest() {}
+  virtual void TearDown() { libaom_test::ClearSystemState(); }
+  void RunTest(av1_txb_init_levels_signs_func test_func, int tx_size,
+               int is_speed);
+};
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EncodeTxbInitLevelSignsTest);
+
+void EncodeTxbInitLevelSignsTest::RunTest(
+    av1_txb_init_levels_signs_func test_func, int tx_size, int is_speed) {
+  const int width = get_txb_wide((TX_SIZE)tx_size);
+  const int height = get_txb_high((TX_SIZE)tx_size);
+  tran_low_t coeff[MAX_TX_SQUARE];
+
+  uint8_t levels_buf[2][TX_PAD_2D];
+  int8_t signs_buf[2][TX_PAD_2D];
+
+  const int run_times = is_speed ? 1000000 : 1;
+
+  ACMRandom rnd(ACMRandom::DeterministicSeed());
+  for (int i = 0; i < width * height; i++) {
+    coeff[i] = rnd.Rand15Signed() + rnd.Rand15Signed();
+  }
+  aom_usec_timer timer;
+  aom_usec_timer_start(&timer);
+  for (int i = 0; i < run_times; ++i) {
+    av1_txb_init_levels_signs_c(coeff, width, height, levels_buf[0],
+                                signs_buf[0]);
+  }
+  const double t1 = get_time_mark(&timer);
+  aom_usec_timer_start(&timer);
+  for (int i = 0; i < run_times; ++i) {
+    test_func(coeff, width, height, levels_buf[1], signs_buf[1]);
+  }
+  const double t2 = get_time_mark(&timer);
+  if (is_speed) {
+    printf("init %3dx%-3d:%7.2f/%7.2fns", width, height, t1, t2);
+    printf("(%3.2f)\n", t1 / t2);
+  }
+  const int stride = width + TX_PAD_HOR;
+  for (int r = TX_PAD_TOP; r < height + TX_PAD_VER; ++r) {
+    for (int c = 0; c < stride; ++c) {
+      ASSERT_EQ(levels_buf[0][c + r * stride], levels_buf[1][c + r * stride])
+          << "[" << r << "," << c << "] " << run_times << width << "x"
+          << height;
+
+      ASSERT_EQ(signs_buf[0][c + r * stride], signs_buf[1][c + r * stride])
+          << "[" << r << "," << c << "] " << run_times << width << "x"
+          << height;
+    }
+  }
+}
+
+TEST_P(EncodeTxbInitLevelSignsTest, match) {
+  RunTest(GET_PARAM(0), GET_PARAM(1), 0);
+}
+
+TEST_P(EncodeTxbInitLevelSignsTest, DISABLED_Speed) {
+  RunTest(GET_PARAM(0), GET_PARAM(1), 1);
+}
+
+#if HAVE_SSE4_1
+INSTANTIATE_TEST_SUITE_P(
+    SSE4_1, EncodeTxbInitLevelSignsTest,
+    ::testing::Combine(::testing::Values(&av1_txb_init_levels_signs_sse4_1),
+                       ::testing::Range(0, static_cast<int>(TX_SIZES_ALL), 1)));
+#endif
+#if HAVE_AVX2
+INSTANTIATE_TEST_SUITE_P(
+    AVX2, EncodeTxbInitLevelSignsTest,
+    ::testing::Combine(::testing::Values(&av1_txb_init_levels_signs_avx2),
+                       ::testing::Range(0, static_cast<int>(TX_SIZES_ALL), 1)));
+#endif
+
 }  // namespace

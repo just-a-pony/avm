@@ -373,6 +373,9 @@ static void set_good_speed_features_framesize_independent(
 
   sf->intra_sf.intra_pruning_with_hog = 1;
   sf->intra_sf.intra_pruning_with_hog_thresh = -1.2f;
+#if CONFIG_AIMC
+  sf->intra_sf.reuse_uv_mode_rd_info = true;
+#endif  // CONFIG_AIMC
 
   sf->tx_sf.adaptive_txb_search_level = 1;
   sf->tx_sf.intra_tx_size_search_init_depth_sqr = 1;
@@ -863,6 +866,9 @@ static AOM_INLINE void init_intra_sf(INTRA_MODE_SPEED_FEATURES *intra_sf) {
   intra_sf->intra_pruning_with_hog = 0;
   intra_sf->src_var_thresh_intra_skip = 1;
   intra_sf->prune_palette_search_level = 0;
+#if CONFIG_AIMC
+  intra_sf->reuse_uv_mode_rd_info = false;
+#endif  // CONFIG_AIMC
 
   for (int i = 0; i < TX_SIZES; i++) {
     intra_sf->intra_y_mode_mask[i] = INTRA_ALL;
@@ -1319,6 +1325,14 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
   const int is_1080p_or_larger = AOMMIN(cm->width, cm->height) >= 1080;
 
   const int qindex_offset = MAXQ_OFFSET * (cm->seq_params.bit_depth - 8);
+
+  if (cpi->oxcf.mode == GOOD && speed == 0) {
+    const int qindex_thresh = 124 + qindex_offset;
+    if (cm->quant_params.base_qindex <= qindex_thresh) {
+      sf->tx_sf.adaptive_txb_search_level =
+          (boosted || cm->features.allow_screen_content_tools) ? 1 : 2;
+    }
+  }
 
   if (is_720p_or_larger && cpi->oxcf.mode == GOOD && speed == 0) {
     const int qindex_thresh = 124 + qindex_offset;

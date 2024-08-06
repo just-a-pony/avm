@@ -115,10 +115,10 @@ specialize qw/av1_filter_intra_predictor sse4_1 neon/;
 # optical flow interpolation function
 if (aom_config("CONFIG_OPTFLOW_REFINEMENT") eq "yes") {
   add_proto qw/void av1_bicubic_grad_interpolation_highbd/, "const int16_t *pred_src,int16_t *x_grad,int16_t *y_grad,const int blk_width,const int blk_height";
-  specialize qw/av1_bicubic_grad_interpolation_highbd sse4_1/;
+  specialize qw/av1_bicubic_grad_interpolation_highbd sse4_1 avx2/;
 
   add_proto qw/int av1_opfl_mv_refinement_nxn/, " const int16_t *pdiff, int pstride,const int16_t *gx, const int16_t *gy, int gstride, int bw, int bh, int n,int d0, int d1, int grad_prec_bits,int mv_prec_bits, int *vx0, int *vy0,int *vx1, int *vy1";
-  specialize qw/av1_opfl_mv_refinement_nxn sse4_1/;
+  specialize qw/av1_opfl_mv_refinement_nxn sse4_1 avx2/;
 
   add_proto qw/void av1_copy_pred_array_highbd/, "const uint16_t *src1, const uint16_t *src2, int16_t *dst1,int16_t *dst2, int bw, int bh, int d0, int d1, int centered";
   specialize qw/av1_copy_pred_array_highbd sse4_1/;
@@ -510,9 +510,7 @@ if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
   specialize qw/av1_get_nz_map_contexts sse2/;
 
   add_proto qw/void av1_txb_init_levels_signs/, "const tran_low_t *const coeff, const int width, const int height, uint8_t *const levels, int8_t *const signs";
-  if (aom_config("CONFIG_IMPROVEIDTX_RDPH") ne "yes") {
-    specialize qw/av1_txb_init_levels_signs sse4_1 avx2/;
-  }
+  specialize qw/av1_txb_init_levels_signs sse4_1 avx2/;
 
   add_proto qw/void av1_txb_init_levels/, "const tran_low_t *const coeff, const int width, const int height, uint8_t *const levels";
   specialize qw/av1_txb_init_levels sse4_1 avx2 neon/;

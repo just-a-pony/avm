@@ -378,12 +378,10 @@ static AOM_FORCE_INLINE void down_sample(
 }
 #endif  // OPFL_DOWNSAMP_QUINCUNX
 
-static AOM_FORCE_INLINE void calc_mv_process(int64_t su2, int64_t sv2,
-                                             int64_t suv, int64_t suw,
-                                             int64_t svw, const int d0,
-                                             const int d1, const int bits,
-                                             const int rls_alpha, int *vx0,
-                                             int *vy0, int *vx1, int *vy1) {
+void calc_mv_process(int64_t su2, int64_t sv2, int64_t suv, int64_t suw,
+                     int64_t svw, const int d0, const int d1, const int bits,
+                     const int rls_alpha, int *vx0, int *vy0, int *vx1,
+                     int *vy1) {
 #if OPFL_REGULARIZED_LS
   su2 += rls_alpha;
   sv2 += rls_alpha;

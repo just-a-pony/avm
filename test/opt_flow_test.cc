@@ -455,6 +455,12 @@ INSTANTIATE_TEST_SUITE_P(
     SSE4_1, AV1OptFlowBiCubicGradHighbdTest,
     BuildOptFlowHighbdParams(av1_bicubic_grad_interpolation_highbd_sse4_1));
 #endif
+
+#if HAVE_AVX2
+INSTANTIATE_TEST_SUITE_P(
+    AVX2, AV1OptFlowBiCubicGradHighbdTest,
+    BuildOptFlowHighbdParams(av1_bicubic_grad_interpolation_highbd_avx2));
+#endif
 #endif  // OPFL_BICUBIC_GRAD
 
 typedef int (*opfl_mv_refinement)(const int16_t *pdiff, int pstride,
@@ -625,10 +631,12 @@ class AV1OptFlowRefineTest : public AV1OptFlowTest<opfl_mv_refinement> {
     const int total_time_test =
         static_cast<int>(aom_usec_timer_elapsed(&timer_test));
 
-    printf("ref_time = %d \t simd_time = %d \t Gain = %4.2f \n", total_time_ref,
-           total_time_test,
-           (static_cast<float>(total_time_ref) /
-            static_cast<float>(total_time_test)));
+    printf(
+        "Block size: %dx%d \t ref_time = %d \t simd_time = %d \t Gain = %4.2f "
+        "\n",
+        bw, bh, total_time_ref, total_time_test,
+        (static_cast<float>(total_time_ref) /
+         static_cast<float>(total_time_test)));
   }
 
   static constexpr int kVX_0 = 0;
@@ -652,6 +660,12 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SSE4_1, AV1OptFlowRefineTest,
     BuildOptFlowHighbdParams(av1_opfl_mv_refinement_nxn_sse4_1));
+#endif
+
+#if HAVE_AVX2
+INSTANTIATE_TEST_SUITE_P(
+    AVX2, AV1OptFlowRefineTest,
+    BuildOptFlowHighbdParams(av1_opfl_mv_refinement_nxn_avx2));
 #endif
 
 #if OPFL_BILINEAR_GRAD || OPFL_BICUBIC_GRAD

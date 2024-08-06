@@ -1753,4 +1753,985 @@ void av1_avg_pooling_pdiff_gradients_avx2(int16_t *pdiff, const int pstride,
 #endif  // CONFIG_OPFL_MV_SEARCH
 }
 #endif  // CONFIG_OPFL_MV_SEARCH || CONFIG_AFFINE_REFINEMENT
+
+// Masks used to reorder the pixels at the block boundary during gradient
+// calculation.
+DECLARE_ALIGNED(32, static const uint8_t,
+                prev_pixel_mask[32]) = { 0, 1, 2, 3,  0,  1, 2, 3, 4,  5, 6,
+                                         7, 8, 9, 10, 11, 0, 1, 2, 3,  0, 1,
+                                         2, 3, 4, 5,  6,  7, 8, 9, 10, 11 };
+
+DECLARE_ALIGNED(32, static const uint8_t,
+                prev2_pixel_mask[32]) = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2,
+                                          3, 4, 5, 6, 7, 0, 1, 2, 3, 0, 1,
+                                          2, 3, 0, 1, 2, 3, 4, 5, 6, 7 };
+
+DECLARE_ALIGNED(32, static const uint8_t, next_pixel_mask[32]) = {
+  4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 12, 13, 14, 15,
+  4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 12, 13, 14, 15
+};
+
+DECLARE_ALIGNED(32, static const uint8_t, next2_pixel_mask[32]) = {
+  8, 9, 10, 11, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15,
+  8, 9, 10, 11, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15
+};
+
+static AOM_INLINE void sub_mul_add(
+    const __m256i *id_next, const __m256i *id_prev, const __m256i *id_next2,
+    const __m256i *id_prev2, const __m256i *coeff_0, const __m256i *coeff_1,
+#if OPFL_DOWNSAMP_QUINCUNX
+    const __m256i *mask,
+#endif
+    __m256i *temp_reg) {
+  const __m256i sub_0 = _mm256_sub_epi32(*id_next, *id_prev);
+  const __m256i sub_1 = _mm256_sub_epi32(*id_next2, *id_prev2);
+  __m256i temp = _mm256_add_epi32(_mm256_mullo_epi32(sub_0, *coeff_0),
+                                  _mm256_mullo_epi32(sub_1, *coeff_1));
+#if OPFL_DOWNSAMP_QUINCUNX
+  temp = _mm256_mullo_epi32(temp, mask);
+#endif
+  *temp_reg = round_power_of_two_signed_epi32(temp, bicubic_bits);
+}
+
+void av1_bicubic_grad_interpolation_highbd_avx2(const int16_t *pred_src,
+                                                int16_t *x_grad,
+                                                int16_t *y_grad, const int bw,
+                                                const int bh) {
+#if OPFL_BICUBIC_GRAD
+  assert(bw % 8 == 0);
+  assert(bh % 8 == 0);
+  const int16_t *p_src = pred_src;
+  // c00 c01 c10 c11
+  const __m128i coeff_128bit =
+      _mm_loadu_si128((__m128i *)(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS]));
+  // c00 c01 c10 c11 | c00 c01 c10 c11
+  const __m256i coeff_256bit = _mm256_insertf128_si256(
+      _mm256_castsi128_si256(coeff_128bit), coeff_128bit, 1);
+
+  if (bw == 8) {
+    // Calculation of x_grad.
+    {
+      // c00 c00 c00 c01 | c00 c00 c00 c01
+      const __m256i coeffs_0 = _mm256_shuffle_epi32(coeff_256bit, 0x40);
+      // c01 c00 c00 c00 | c01 c00 c00 c00
+      const __m256i coeffs_1 = _mm256_shuffle_epi32(coeff_256bit, 0x01);
+      // c10 c10 c10 c11 | c10 c10 c10 c11
+      const __m256i coeffs_2 = _mm256_shuffle_epi32(coeff_256bit, 0xea);
+      // c11 c10 c10 c10 | c11 c10 c10 c10
+      const __m256i coeffs_3 = _mm256_shuffle_epi32(coeff_256bit, 0xab);
+#if OPFL_DOWNSAMP_QUINCUNX
+      const __m256i mask = _mm256_set_epi32(1, 0, 1, 0, 0, 1, 0, 1);
+#endif
+      const __m256i prev_mask = _mm256_load_si256((__m256i *)prev_pixel_mask);
+      const __m256i prev2_mask = _mm256_load_si256((__m256i *)prev2_pixel_mask);
+      const __m256i next_mask = _mm256_load_si256((__m256i *)next_pixel_mask);
+      const __m256i next2_mask = _mm256_load_si256((__m256i *)next2_pixel_mask);
+      for (int col = 0; col < bh; col += 2) {
+        // s00 s01 s02 s03 s04 s05 s06 s07
+        const __m128i src_128_0 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * col));
+        // s10 s11 s12 s13 s14 s15 s16 s17
+        const __m128i src_128_1 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * col + 8));
+        // s00 s01 s02 s03 s10 s11 s12 s13
+        const __m128i up_lo = _mm_unpacklo_epi64(src_128_0, src_128_1);
+        // s04 s05 s06 s07 s14 s15 s16 s17
+        const __m128i up_hi = _mm_unpackhi_epi64(src_128_0, src_128_1);
+
+        // s00 s01 s02 s03 s10 s11 s12 s13
+        const __m256i src_lo = _mm256_cvtepi16_epi32(up_lo);
+        // s04 s05 s06 s07 s14 s15 s16 s17
+        const __m256i src_hi = _mm256_cvtepi16_epi32(up_hi);
+
+        // s00 s00 s01 s02 s10 s10 s11 s12
+        __m256i id_prev_0 = _mm256_shuffle_epi8(src_lo, prev_mask);
+        // s01 s02 s03 s04 s11 s12 s13 s14
+        __m256i id_next_0 = _mm256_alignr_epi8(src_hi, src_lo, 4);
+        // s00 s00 s00 s01 s10 s10 s10 s11
+        __m256i id_prev2_0 = _mm256_shuffle_epi8(src_lo, prev2_mask);
+        // s02 s03 s04 s05 s12 s13 s14 s15
+        __m256i id_next2_0 = _mm256_alignr_epi8(src_hi, src_lo, 8);
+
+        // s03 s04 s05 s06 s13 s14 s15 s16
+        __m256i id_prev_1 = _mm256_alignr_epi8(src_hi, src_lo, 12);
+        // s05 s06 s07 s07 s15 s16 s17 s17
+        __m256i id_next_1 = _mm256_shuffle_epi8(src_hi, next_mask);
+        // s02 s03 s04 s05 s12 s13 s14 s15
+        __m256i id_prev2_1 = id_next2_0;
+        // s06 s07 s07 s07 s16 s17 s17 s17
+        __m256i id_next2_1 = _mm256_shuffle_epi8(src_hi, next2_mask);
+        __m256i temp_0, temp_1;
+        sub_mul_add(&id_next_0, &id_prev_0, &id_next2_0, &id_prev2_0, &coeffs_1,
+                    &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_0);
+        sub_mul_add(&id_next_1, &id_prev_1, &id_next2_1, &id_prev2_1, &coeffs_0,
+                    &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_1);
+        // t00 t01 t02 t03 t04 t05 t06 t07 | t10 t11 t12 t13 t14 t15 t16 t17
+        _mm256_storeu_si256((__m256i *)(&x_grad[bw * col]),
+                            _mm256_packs_epi32(temp_0, temp_1));
+      }
+    }
+    // Calculation of y_grad.
+    {
+      const __m256i coeffs_0 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][0][1]);
+      const __m256i coeffs_1 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][0][0]);
+      const __m256i coeffs_2 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][1][1]);
+      const __m256i coeffs_3 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][1][0]);
+#if OPFL_DOWNSAMP_QUINCUNX
+      const __m256i mask_0 = _mm256_set_epi32(0, 1, 0, 1, 0, 1, 0, 1);
+      const __m256i mask_1 = _mm256_set_epi32(1, 0, 1, 0, 1, 0, 1, 0);
+#endif
+      // s00 s01 s02 s03 s04 s05 s06 s07
+      const __m128i src_128_0 = _mm_loadu_si128((__m128i *)(p_src));
+      // s10 s11 s12 s13 s14 s15 s16 s17
+      __m128i src_128_1 = _mm_loadu_si128((__m128i *)(p_src + 8));
+      // s20 s21 s22 s23 s24 s25 s26 s27
+      __m128i src_128_2 = _mm_loadu_si128((__m128i *)(p_src + 16));
+      __m256i src_prev2 = _mm256_cvtepi16_epi32(src_128_0);
+      __m256i src_next = _mm256_cvtepi16_epi32(src_128_1);
+      __m256i src_next2 = _mm256_cvtepi16_epi32(src_128_2);
+      __m256i src_prev = src_prev2;
+      __m256i temp_0, temp_1;
+      sub_mul_add(&src_next, &src_prev, &src_next2, &src_prev2, &coeffs_0,
+                  &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                  &mask_0,
+#endif
+                  &temp_0);
+      src_next = src_next2;
+      // s30 s31 s32 s33 s34 s35 s36 s37
+      __m128i src_128_3 = _mm_loadu_si128((__m128i *)(p_src + 24));
+      src_next2 = _mm256_cvtepi16_epi32(src_128_3);
+      sub_mul_add(&src_next, &src_prev, &src_next2, &src_prev2, &coeffs_1,
+                  &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                  &mask_1,
+#endif
+                  &temp_1);
+      // t00 t01 t02 t03 t04 t05 t06 t07 | t10 t11 t12 t13 t14 t15 t16 t17
+      const __m256i temp =
+          _mm256_permute4x64_epi64(_mm256_packs_epi32(temp_0, temp_1), 0xd8);
+      _mm256_storeu_si256((__m256i *)y_grad, temp);
+      for (int col = 2; col < bh - 2; col += 2) {
+        // s00 s01 s02 s03 s04 s05 s06 s07
+        src_prev2 = src_prev;
+        // s10 s11 s12 s13 s14 s15 s16 s17
+        src_128_1 = _mm_loadu_si128((__m128i *)(p_src + (col - 1) * 8));
+        src_prev = _mm256_cvtepi16_epi32(src_128_1);
+        // s30 s31 s32 s33 s34 s35 s36 s37
+        src_next = src_next2;
+        // s40 s41 s42 s43 s44 s45 s46 s47
+        src_128_2 = _mm_loadu_si128((__m128i *)(p_src + (col + 2) * 8));
+        src_next2 = _mm256_cvtepi16_epi32(src_128_2);
+        __m256i temp_2, temp_3;
+        sub_mul_add(&src_next, &src_prev, &src_next2, &src_prev2, &coeffs_1,
+                    &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_0,
+#endif
+                    &temp_2);
+        // s10 s11 s12 s13 s14 s15 s16 s17
+        src_prev2 = src_prev;
+        // s10 s11 s12 s13 s14 s15 s16 s17
+        src_128_3 = _mm_loadu_si128((__m128i *)(p_src + (col)*8));
+        src_prev = _mm256_cvtepi16_epi32(src_128_3);
+        // s40 s41 s42 s43 s44 s45 s46 s47
+        src_next = src_next2;
+        // s50 s51 s52 s53 s54 s55 s56 s57
+        const __m128i src_128_4 =
+            _mm_loadu_si128((__m128i *)(p_src + (col + 3) * 8));
+        src_next2 = _mm256_cvtepi16_epi32(src_128_4);
+        sub_mul_add(&src_next, &src_prev, &src_next2, &src_prev2, &coeffs_1,
+                    &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_0,
+#endif
+                    &temp_3);
+        // t00 t01 t02 t03 t04 t05 t06 t07 | t10 t11 t12 t13 t14 t15 t16 t17
+        const __m256i temp0 =
+            _mm256_permute4x64_epi64(_mm256_packs_epi32(temp_2, temp_3), 0xd8);
+        _mm256_storeu_si256((__m256i *)(&y_grad[col * bw]), temp0);
+      }
+      // s40 s41 s42 s43 s44 s45 s46 s47
+      src_prev2 = src_prev;
+      // s50 s51 s52 s53 s54 s55 s56 s57
+      const __m128i src_128_5 =
+          _mm_loadu_si128((__m128i *)(p_src + (bh - 3) * 8));
+      src_prev = _mm256_cvtepi16_epi32(src_128_5);
+      // s70 s71 s72 s73 s74 s75 s76 s77
+      src_next = src_next2;
+      __m256i temp_4, temp_5;
+      sub_mul_add(&src_next, &src_prev, &src_next2, &src_prev2, &coeffs_1,
+                  &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                  &mask_0,
+#endif
+                  &temp_4);
+      // s50 s51 s52 s53 s54 s55 s56 s57
+      src_prev2 = src_prev;
+      // s60 s61 s62 s63 s64 s65 s66 s67
+      const __m128i src_128_6 =
+          _mm_loadu_si128((__m128i *)(p_src + (bh - 2) * 8));
+      src_prev = _mm256_cvtepi16_epi32(src_128_6);
+      sub_mul_add(&src_next, &src_prev, &src_next2, &src_prev2, &coeffs_0,
+                  &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                  &mask_0,
+#endif
+                  &temp_5);
+      // t60 t61 t62 t63 t64 t65 t67 | t70 t71 t72 t73 t74 t75 t77
+      const __m256i temp0 =
+          _mm256_permute4x64_epi64(_mm256_packs_epi32(temp_4, temp_5), 0xd8);
+      _mm256_storeu_si256((__m256i *)(&y_grad[(bh - 2) * bw]), temp0);
+    }
+  } else {
+    // Calculation of x_grad.
+    const int for_loop_iter = bw / 8;
+    {
+      // c01 c00 c00 c00 | c01 c00 c00 c00
+      const __m256i coeffs_1 = _mm256_shuffle_epi32(coeff_256bit, 0x01);
+      // c00 c00 c00 c00 | c00 c00 c00 c00
+      const __m256i coeffs_4 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][0][0]);
+      // c11 c10 c10 c10 | c11 c10 c10 c10
+      const __m256i coeffs_3 = _mm256_shuffle_epi32(coeff_256bit, 0xab);
+      // c10 c10 c10 c10 | c10 c10 c10 c10
+      const __m256i coeffs_5 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][1][0]);
+#if OPFL_DOWNSAMP_QUINCUNX
+      const __m256i mask = _mm256_set_epi32(1, 0, 1, 0, 0, 1, 0, 1);
+#endif
+      const __m256i prev_mask = _mm256_load_si256((__m256i *)prev_pixel_mask);
+      const __m256i prev2_mask = _mm256_load_si256((__m256i *)prev2_pixel_mask);
+      for (int col = 0; col < bh; col += 2) {
+        // s00 s01 s02 s03 s04 s05 s06 s07
+        const __m128i src_128_0 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * col));
+        // s08 s09 s010 s011 s012 s013 s014 s015
+        const __m128i src_128_1 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * col + 8));
+        // s10 s11 s12 s13 s14 s15 s16 s17
+        const __m128i src_128_2 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * (col + 1)));
+        // s18 s19 s110 s111 s112 s113 s114 s115
+        const __m128i src_128_3 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * (col + 1) + 8));
+        // s00 s01 s02 s03 s10 s11 s12 s13
+        const __m128i up_0 = _mm_unpacklo_epi64(src_128_0, src_128_2);
+        // s04 s05 s06 s07 s14 s15 s16 s17
+        const __m128i up_1 = _mm_unpackhi_epi64(src_128_0, src_128_2);
+        // s08 s09 s010 s011 s18 s19 s110 s111
+        const __m128i up_2 = _mm_unpacklo_epi64(src_128_1, src_128_3);
+
+        // s00 s01 s02 s03 s10 s11 s12 s13
+        const __m256i src_0 = _mm256_cvtepi16_epi32(up_0);
+        // s04 s05 s06 s07 s14 s15 s16 s17
+        const __m256i src_1 = _mm256_cvtepi16_epi32(up_1);
+        // s08 s09 s010 s011 s18 s19 s110 s111
+        const __m256i src_2 = _mm256_cvtepi16_epi32(up_2);
+
+        // s00 s00 s01 s02 s10 s10 s11 s12
+        const __m256i id_prev_0 = _mm256_shuffle_epi8(src_0, prev_mask);
+        // s01 s02 s03 s04 s11 s12 s13 s14
+        const __m256i id_next_0 = _mm256_alignr_epi8(src_1, src_0, 4);
+        // s00 s00 s00 s01 s10 s10 s10 s11
+        const __m256i id_prev2_0 = _mm256_shuffle_epi8(src_0, prev2_mask);
+        // s02 s03 s04 s05 s12 s13 s14 s15
+        const __m256i id_next2_0 = _mm256_alignr_epi8(src_1, src_0, 8);
+
+        // s03 s04 s05 s06 s13 s14 s15 s16
+        const __m256i id_prev_1 = _mm256_alignr_epi8(src_1, src_0, 12);
+        // s05 s06 s07 s08 s15 s16 s17 s18
+        const __m256i id_next_1 = _mm256_alignr_epi8(src_2, src_1, 4);
+        // s02 s03 s04 s05 s12 s13 s14 s15
+        const __m256i id_prev2_1 = id_next2_0;
+        // s06 s07 s08 s09 s16 s17 s18 s19
+        const __m256i id_next2_1 = _mm256_alignr_epi8(src_2, src_1, 8);
+        __m256i temp_0, temp_1;
+        sub_mul_add(&id_next_0, &id_prev_0, &id_next2_0, &id_prev2_0, &coeffs_1,
+                    &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_0);
+        sub_mul_add(&id_next_1, &id_prev_1, &id_next2_1, &id_prev2_1, &coeffs_4,
+                    &coeffs_5,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_1);
+        // t00 t01 t02 t03 t04 t05 t06 t07 | t10 t11 t12 t13 t14 t15 t16 t17
+        const __m256i x_reg_0 = _mm256_packs_epi32(temp_0, temp_1);
+
+        // t00 t01 t02 t03 t04 t05 t06 t07
+        _mm_storeu_si128((__m128i *)(&x_grad[bw * col]),
+                         _mm256_castsi256_si128(x_reg_0));
+        // t10 t11 t12 t13 t14 t15 t16 t17
+        _mm_storeu_si128((__m128i *)(&x_grad[bw * (col + 1)]),
+                         _mm256_extracti128_si256(x_reg_0, 1));
+      }
+    }
+    for (int counter = 0; counter < for_loop_iter - 2; counter++) {
+      const __m256i coeffs_4 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][0][0]);
+      const __m256i coeffs_5 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][1][0]);
+      for (int col = 0; col < bh; col += 2) {
+        __m256i src_0, src_1, src_2;
+        // s06 s07 s08 s09 s010 s011 s012 s013
+        const __m128i src_128_0 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * col + 6 + counter * 8));
+        // s010 s011 s012 s013 s014 s015 s016 s017
+        const __m128i src_128_1 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * col + 10 + counter * 8));
+        // s16 s17 s18 s19 s110 s111 s112 s113
+        const __m128i src_128_2 = _mm_loadu_si128(
+            (__m128i *)(p_src + bw * (col + 1) + 6 + counter * 8));
+        // s110 s111 s112 s113 s114 s115 s116 s117
+        const __m128i src_128_3 = _mm_loadu_si128(
+            (__m128i *)(p_src + bw * (col + 1) + 10 + counter * 8));
+        // s06 s07 s08 s09 s16 s17 s18 s19
+        const __m128i up_0 = _mm_unpacklo_epi64(src_128_0, src_128_2);
+        // s010 s011 s012 s013 s110 s111 s112 s113
+        const __m128i up_1 = _mm_unpackhi_epi64(src_128_0, src_128_2);
+        // s014 s015 s016 s017 s114 s115 s116 s117
+        const __m128i up_2 = _mm_unpackhi_epi64(src_128_1, src_128_3);
+
+        // s06 s07 s08 s09 s16 s17 s18 s19
+        src_0 = _mm256_cvtepi16_epi32(up_0);
+        // s010 s011 s012 s013 s110 s111 s112 s113
+        src_1 = _mm256_cvtepi16_epi32(up_1);
+        // s014 s015 s016 s017 s114 s115 s116 s117
+        src_2 = _mm256_cvtepi16_epi32(up_2);
+
+        // s07 s08 s09 s010 s17 s18 s19 s110
+        const __m256i id_prev_0 = _mm256_alignr_epi8(src_1, src_0, 4);
+        // s09 s010 s011 s012 s19 s110 s111 s112
+        const __m256i id_next_0 = _mm256_alignr_epi8(src_1, src_0, 12);
+        // s06 s07 s08 s09 s16 s17 s18 s19
+        const __m256i id_prev2_0 = src_0;
+        // s010 s011 s012 s013 s110 s111 s112 s113
+        const __m256i id_next2_0 = src_1;
+
+        // s011 s012 s013 s014 s111 s112 s113 s114
+        const __m256i id_prev_1 = _mm256_alignr_epi8(src_2, src_1, 4);
+        // s013 s014 s015 s016 s113 s114 s115 s116
+        const __m256i id_next_1 = _mm256_alignr_epi8(src_2, src_1, 12);
+        // s010 s011 s012 s013 s110 s111 s112 s113
+        const __m256i id_prev2_1 = id_next2_0;
+        // s06 s07 s08 s09 s16 s17 s18 s19
+        const __m256i id_next2_1 = src_2;
+        __m256i temp_0, temp_1;
+        sub_mul_add(&id_next_0, &id_prev_0, &id_next2_0, &id_prev2_0, &coeffs_4,
+                    &coeffs_5,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_0);
+        sub_mul_add(&id_next_1, &id_prev_1, &id_next2_1, &id_prev2_1, &coeffs_4,
+                    &coeffs_5,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_1);
+        // t00 t01 t02 t03 t04 t05 t06 t07 | t10 t11 t12 t13 t14 t15 t16 t17
+        const __m256i x_reg_0 = _mm256_packs_epi32(temp_0, temp_1);
+
+        // t00 t01 t02 t03 t04 t05 t06 t07
+        _mm_storeu_si128((__m128i *)(&x_grad[bw * col + (counter + 1) * 8]),
+                         _mm256_castsi256_si128(x_reg_0));
+        // t10 t11 t12 t13 t14 t15 t16 t17
+        _mm_storeu_si128(
+            (__m128i *)(&x_grad[bw * (col + 1) + (counter + 1) * 8]),
+            _mm256_extracti128_si256(x_reg_0, 1));
+      }
+    }
+    {
+      const __m256i coeffs_0 = _mm256_shuffle_epi32(coeff_256bit, 0x40);
+      const __m256i coeffs_4 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][0][0]);
+      const __m256i coeffs_2 = _mm256_shuffle_epi32(coeff_256bit, 0xea);
+      const __m256i coeffs_5 =
+          _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][1][0]);
+      const __m256i next_mask = _mm256_load_si256((__m256i *)next_pixel_mask);
+      const __m256i next2_mask = _mm256_load_si256((__m256i *)next2_pixel_mask);
+      for (int col = 0; col < bh; col += 2) {
+        __m256i src_0, src_1, src_3;
+        // s022 s023 s024 s025 s026 s027 s028 s029
+        const __m128i src_128_0 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * (col + 1) - 10));
+        // s024 s025 s026 s027 s028 s029 s030 s031
+        const __m128i src_128_1 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * (col + 1) - 8));
+        // s122 s123 s124 s125 s126 s127 s128 s129
+        const __m128i src_128_2 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * (col + 2) - 10));
+        // s124 s125 s126 s127 s128 s129 s130 s131
+        const __m128i src_128_3 =
+            _mm_loadu_si128((__m128i *)(p_src + bw * (col + 2) - 8));
+        // s022 s023 s024 s025 s122 s123 s124 s125
+        const __m128i up_0 = _mm_unpacklo_epi64(src_128_0, src_128_2);
+        // s026 s027 s028 s029 s126 s127 s128 s129
+        const __m128i up_1 = _mm_unpackhi_epi64(src_128_0, src_128_2);
+        // s028 s029 s030 s031 s128 s129 s130 s131
+        const __m128i up_3 = _mm_unpackhi_epi64(src_128_1, src_128_3);
+
+        // s022 s023 s024 s025 s122 s123 s124 s125
+        src_0 = _mm256_cvtepi16_epi32(up_0);
+        // s026 s027 s028 s029 s126 s127 s128 s129
+        src_1 = _mm256_cvtepi16_epi32(up_1);
+        // s028 s029 s030 s031 s128 s129 s130 s131
+        src_3 = _mm256_cvtepi16_epi32(up_3);
+
+        // s023 s024 s025 s026 s023 s024 s025 s026
+        const __m256i id_prev_0 = _mm256_alignr_epi8(src_1, src_0, 4);
+        // s025 s026 s027 s028 s125 s126 s127 s128
+        const __m256i id_next_0 = _mm256_alignr_epi8(src_1, src_0, 12);
+        // s022 s023 s024 s025 s122 s123 s124 s125
+        const __m256i id_prev2_0 = src_0;
+        // s026 s027 s028 s029 s126 s127 s128 s129
+        const __m256i id_next2_0 = src_1;
+
+        //  s030 s031 s031 s031 s130 s131 s131 s131
+        const __m256i id_next2_1 = _mm256_shuffle_epi8(src_3, next2_mask);
+        // s027 s028 s029 s030 s127 s128 s129 s130
+        const __m256i id_prev_1 = _mm256_alignr_epi8(id_next2_1, src_1, 4);
+        // s029 s030 s031 s031 s129 s130 s131 s131
+        const __m256i id_next_1 = _mm256_shuffle_epi8(src_3, next_mask);
+        // s026 s027 s028 s029 s126 s127 s128 s129
+        const __m256i id_prev2_1 = id_next2_0;
+        __m256i temp_0, temp_1;
+        sub_mul_add(&id_next_0, &id_prev_0, &id_next2_0, &id_prev2_0, &coeffs_4,
+                    &coeffs_5,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_0);
+        sub_mul_add(&id_next_1, &id_prev_1, &id_next2_1, &id_prev2_1, &coeffs_0,
+                    &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask,
+#endif
+                    &temp_1);
+        // t024 t025 t026 t027 t028 t029 t030 t031 | t124 t125 t126 t127 t128
+        // t129 t130 t131
+        const __m256i x_reg_0 = _mm256_packs_epi32(temp_0, temp_1);
+
+        // t024 t025 t026 t027 t028 t029 t030 t031
+        _mm_storeu_si128((__m128i *)(&x_grad[bw * (col + 1) - 8]),
+                         _mm256_castsi256_si128(x_reg_0));
+        // t10 t11 t12 t13 t14 t15 t16 t17
+        _mm_storeu_si128((__m128i *)(&x_grad[bw * (col + 2) - 8]),
+                         _mm256_extracti128_si256(x_reg_0, 1));
+      }
+    }
+    // Calculation of y_grad.
+    int inc = 0;
+    do {
+#if OPFL_DOWNSAMP_QUINCUNX
+      const __m256i mask_0 = _mm256_set_epi32(0, 1, 0, 1, 0, 1, 0, 1);
+      const __m256i mask_1 = _mm256_set_epi32(1, 0, 1, 0, 1, 0, 1, 0);
+#endif
+      {
+        const __m256i coeffs_0 =
+            _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][0][1]);
+        const __m256i coeffs_1 =
+            _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][0][0]);
+        const __m256i coeffs_2 =
+            _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][1][1]);
+        const __m256i coeffs_3 =
+            _mm256_set1_epi32(coeffs_bicubic[SUBPEL_GRAD_DELTA_BITS][1][0]);
+        // s00 s01 s02 s03 s04 s05 s06 s07
+        const __m128i src_0_0 = _mm_loadu_si128((__m128i *)(p_src + inc));
+        // s08 s09 s010 s011 s012 s013 s014 s015
+        const __m128i src_0_1 = _mm_loadu_si128((__m128i *)(p_src + inc + 8));
+        // s10 s11 s12 s13 s14 s15 s16 s17
+        const __m128i src_1_0 = _mm_loadu_si128((__m128i *)(p_src + inc + bw));
+        // s18 s19 s110 s111 s112 s113 s114 s115
+        const __m128i src_1_1 =
+            _mm_loadu_si128((__m128i *)(p_src + inc + bw + 8));
+        // s20 s21 s22 s23 s24 s25 s26 s27
+        const __m128i src_2_0 =
+            _mm_loadu_si128((__m128i *)(p_src + inc + 2 * bw));
+        // s28 s29 s210 s211 s212 s213 s214 s215
+        const __m128i src_2_1 =
+            _mm_loadu_si128((__m128i *)(p_src + inc + 2 * bw + 8));
+
+        __m256i src_prev2_0, src_prev2_1, src_prev_0, src_prev_1, src_next_0,
+            src_next_1, src_next2_0, src_next2_1;
+        src_prev_0 = _mm256_cvtepi16_epi32(src_0_0);
+        src_prev_1 = _mm256_cvtepi16_epi32(src_0_1);
+        src_next_0 = _mm256_cvtepi16_epi32(src_1_0);
+        src_next_1 = _mm256_cvtepi16_epi32(src_1_1);
+        src_next2_0 = _mm256_cvtepi16_epi32(src_2_0);
+        src_next2_1 = _mm256_cvtepi16_epi32(src_2_1);
+        src_prev2_0 = src_prev_0;
+        src_prev2_1 = src_prev_1;
+
+        __m256i temp_0, temp_1, temp_2, temp_3;
+        sub_mul_add(&src_next_0, &src_prev_0, &src_next2_0, &src_prev2_0,
+                    &coeffs_0, &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_0,
+#endif
+                    &temp_0);
+        sub_mul_add(&src_next_1, &src_prev_1, &src_next2_1, &src_prev2_1,
+                    &coeffs_0, &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_0,
+#endif
+                    &temp_1);
+        src_next_0 = src_next2_0;
+        src_next_1 = src_next2_1;
+        // s30 s31 s32 s33 s34 s35 s36 s37
+        const __m128i src_3_0 =
+            _mm_loadu_si128((__m128i *)(p_src + 3 * bw + inc));
+        // s38 s39 s310 s311 s312 s313 s314 s315
+        const __m128i src_3_1 =
+            _mm_loadu_si128((__m128i *)(p_src + 3 * bw + 8 + inc));
+        src_next2_0 = _mm256_cvtepi16_epi32(src_3_0);
+        src_next2_1 = _mm256_cvtepi16_epi32(src_3_1);
+        sub_mul_add(&src_next_0, &src_prev_0, &src_next2_0, &src_prev2_0,
+                    &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_1,
+#endif
+                    &temp_2);
+        sub_mul_add(&src_next_1, &src_prev_1, &src_next2_1, &src_prev2_1,
+                    &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_1,
+#endif
+                    &temp_3);
+        // t00 t01 t02 t03 t08 t09 t010 t011 | t04 t05 t06 t07 t14 t15 t16 t17
+        const __m256i y_reg_0 =
+            _mm256_permute4x64_epi64(_mm256_packs_epi32(temp_0, temp_1), 0xd8);
+        // t08 t09 t010 t011 t18 t19 t110 t111 | t012 t013 t014 t015 t112 t113
+        // t114 t115
+        const __m256i y_reg_1 =
+            _mm256_permute4x64_epi64(_mm256_packs_epi32(temp_2, temp_3), 0xd8);
+        _mm256_storeu_si256((__m256i *)&y_grad[0 + inc], y_reg_0);
+        _mm256_storeu_si256((__m256i *)&y_grad[bw + inc], y_reg_1);
+        for (int col = 2; col < bh - 2; col += 2) {
+          // s00 s01 s02 s03 s04 s05 s06 s07
+          src_prev2_0 = src_prev_0;
+          // s08 s09 s010 s011 s012 s013 s014 s015
+          src_prev2_1 = src_prev_1;
+          // s10 s11 s12 s13 s14 s15 s16 s17
+          const __m128i src_128_0 =
+              _mm_loadu_si128((__m128i *)(p_src + (col - 1) * bw + inc));
+          // s18 s19 s110 s111 s112 s113 s114 s115
+          const __m128i src_128_1 =
+              _mm_loadu_si128((__m128i *)(p_src + (col - 1) * bw + 8 + inc));
+          src_prev_0 = _mm256_cvtepi16_epi32(src_128_0);
+          src_prev_1 = _mm256_cvtepi16_epi32(src_128_1);
+          // s30 s31 s32 s33 s34 s35 s36 s37
+          src_next_0 = src_next2_0;
+          // s38 s39 s310 s311 s312 s313 s314 s315
+          src_next_1 = src_next2_1;
+          // s40 s41 s42 s43 s44 s45 s46 s47
+          const __m128i src_128_2 =
+              _mm_loadu_si128((__m128i *)(p_src + (col + 2) * bw + inc));
+          // s48 s49 s410 s411 s412 s413 s414 s415
+          const __m128i src_128_3 =
+              _mm_loadu_si128((__m128i *)(p_src + (col + 2) * bw + 8 + inc));
+          src_next2_0 = _mm256_cvtepi16_epi32(src_128_2);
+          src_next2_1 = _mm256_cvtepi16_epi32(src_128_3);
+          __m256i temp_5, temp_6, temp_7, temp_8;
+          sub_mul_add(&src_next_0, &src_prev_0, &src_next2_0, &src_prev2_0,
+                      &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                      &mask_0,
+#endif
+                      &temp_5);
+          sub_mul_add(&src_next_1, &src_prev_1, &src_next2_1, &src_prev2_1,
+                      &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                      &mask_0,
+#endif
+                      &temp_6);
+          // s10 s11 s12 s13 s14 s15 s16 s17
+          src_prev2_0 = src_prev_0;
+          // s18 s19 s110 s111 s112 s113 s114 s115
+          src_prev2_1 = src_prev_1;
+          // s20 s21 s22 s23 s24 s25 s26 s27
+          const __m128i src_128_4 =
+              _mm_loadu_si128((__m128i *)(p_src + (col)*bw + inc));
+          // s28 s29 s210 s211 s212 s213 s214 s215
+          const __m128i src_128_5 =
+              _mm_loadu_si128((__m128i *)(p_src + (col)*bw + 8 + inc));
+          src_prev_0 = _mm256_cvtepi16_epi32(src_128_4);
+          src_prev_1 = _mm256_cvtepi16_epi32(src_128_5);
+          // s40 s41 s42 s43 s44 s45 s46 s47
+          src_next_0 = src_next2_0;
+          // s48 s49 s410 s411 s412 s413 s414 s415
+          src_next_1 = src_next2_1;
+          // s50 s51 s52 s53 s54 s55 s56 s57
+          const __m128i src_128_6 =
+              _mm_loadu_si128((__m128i *)(p_src + (col + 3) * bw + inc));
+          // s58 s59 s510 s511 s512 s513 s514 s515
+          const __m128i src_128_7 =
+              _mm_loadu_si128((__m128i *)(p_src + (col + 3) * bw + 8 + inc));
+          src_next2_0 = _mm256_cvtepi16_epi32(src_128_6);
+          src_next2_1 = _mm256_cvtepi16_epi32(src_128_7);
+          sub_mul_add(&src_next_0, &src_prev_0, &src_next2_0, &src_prev2_0,
+                      &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                      &mask_1,
+#endif
+                      &temp_7);
+          sub_mul_add(&src_next_1, &src_prev_1, &src_next2_1, &src_prev2_1,
+                      &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                      &mask_1,
+#endif
+                      &temp_8);
+          // t20 t21 t22 t23 t24 t25 t26 t27 | t30 t31 t32 t33 t34 t35 t36 t37
+          const __m256i y_reg_2 = _mm256_permute4x64_epi64(
+              _mm256_packs_epi32(temp_5, temp_6), 0xd8);
+          // t28 t29 t210 t211 t212 t213 t214 t215 | t38 t39 t310 t311 t312 t313
+          // t314 t315
+          const __m256i y_reg_3 = _mm256_permute4x64_epi64(
+              _mm256_packs_epi32(temp_7, temp_8), 0xd8);
+          _mm256_storeu_si256((__m256i *)(&y_grad[col * bw + inc]), y_reg_2);
+          _mm256_storeu_si256((__m256i *)(&y_grad[(col + 1) * bw + inc]),
+                              y_reg_3);
+        }
+        // s40 s41 s42 s43 s44 s45 s46 s47
+        src_prev2_0 = src_prev_0;
+        src_prev2_1 = src_prev_1;
+        // s50 s51 s52 s53 s54 s55 s56 s57
+        const __m128i src_128_8 =
+            _mm_loadu_si128((__m128i *)(p_src + (bh - 3) * bw + inc));
+        // s58 s59 s510 s511 s512 s513 s514 s515
+        const __m128i src_128_9 =
+            _mm_loadu_si128((__m128i *)(p_src + (bh - 3) * bw + 8 + inc));
+        src_prev_0 = _mm256_cvtepi16_epi32(src_128_8);
+        src_prev_1 = _mm256_cvtepi16_epi32(src_128_9);
+        // s70 s71 s72 s73 s74 s75 s76 s77
+        src_next_0 = src_next2_0;
+        // s78 s79 s710 s711 s712 s713 s714 s715
+        src_next_1 = src_next2_1;
+        __m256i temp_9, temp_09, temp_10, temp_11;
+        sub_mul_add(&src_next_0, &src_prev_0, &src_next2_0, &src_prev2_0,
+                    &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_0,
+#endif
+                    &temp_9);
+        sub_mul_add(&src_next_1, &src_prev_1, &src_next2_1, &src_prev2_1,
+                    &coeffs_1, &coeffs_3,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_1,
+#endif
+                    &temp_09);
+        // s50 s51 s52 s53 s54 s55 s56 s57
+        src_prev2_0 = src_prev_0;
+        // s58 s59 s510 s511 s512 s513 s514 s515
+        src_prev2_1 = src_prev_1;
+        // s60 s61 s62 s63 s64 s65 s66 s67
+        const __m128i src_128_10 =
+            _mm_loadu_si128((__m128i *)(p_src + (bh - 2) * bw + inc));
+        // s68 s69 s610 s611 s612 s613 s614 s615
+        const __m128i src_128_11 =
+            _mm_loadu_si128((__m128i *)(p_src + (bh - 2) * bw + 8 + inc));
+        src_prev_0 = _mm256_cvtepi16_epi32(src_128_10);
+        src_prev_1 = _mm256_cvtepi16_epi32(src_128_11);
+        sub_mul_add(&src_next_0, &src_prev_0, &src_next2_0, &src_prev2_0,
+                    &coeffs_0, &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_1,
+#endif
+                    &temp_10);
+        sub_mul_add(&src_next_1, &src_prev_1, &src_next2_1, &src_prev2_1,
+                    &coeffs_0, &coeffs_2,
+#if OPFL_DOWNSAMP_QUINCUNX
+                    &mask_0,
+#endif
+                    &temp_11);
+        // t60 t61 t62 t63 t64 t65 t67 | t70 t71 t72 t73 t74 t75 t77
+        const __m256i y_reg_4 =
+            _mm256_permute4x64_epi64(_mm256_packs_epi32(temp_9, temp_09), 0xd8);
+        const __m256i y_reg_5 = _mm256_permute4x64_epi64(
+            _mm256_packs_epi32(temp_10, temp_11), 0xd8);
+        _mm256_storeu_si256((__m256i *)(&y_grad[(bh - 2) * bw + inc]), y_reg_4);
+        _mm256_storeu_si256((__m256i *)(&y_grad[(bh - 1) * bw + inc]), y_reg_5);
+      }
+      inc += 16;
+    } while (inc < bw);
+  }
+#else
+  (void)pred_src;
+  (void)x_grad;
+  (void)y_grad;
+  (void)bw;
+  (void)bh;
+#endif  // OPFL_BICUBIC_GRAD
+}
+
+static AOM_FORCE_INLINE void multiply(const __m256i a, const __m256i b,
+                                      __m256i *t1, __m256i *t2) {
+  const __m256i lo = _mm256_mullo_epi16(a, b);
+  const __m256i hi = _mm256_mulhi_epi16(a, b);
+  *t1 = _mm256_unpacklo_epi16(lo, hi);
+  *t2 = _mm256_unpackhi_epi16(lo, hi);
+}
+
+#if CONFIG_REFINEMENT_SIMPLIFY
+#define OPFL_OUTPUT_RANGE_CHECK(su2, sv2, suv, suw, svw) \
+  {                                                      \
+    su2 = ROUND_POWER_OF_TWO_SIGNED_64(su2, 1);          \
+    sv2 = ROUND_POWER_OF_TWO_SIGNED_64(sv2, 1);          \
+    suv = ROUND_POWER_OF_TWO_SIGNED_64(suv, 1);          \
+    suw = ROUND_POWER_OF_TWO_SIGNED_64(suw, 1);          \
+    svw = ROUND_POWER_OF_TWO_SIGNED_64(svw, 1);          \
+  }
+
+static AOM_FORCE_INLINE void xx256_storel_32(int32_t *store_lo,
+                                             int32_t *store_hi, const __m256i a,
+                                             const __m256i b) {
+  __m256i sum = _mm256_add_epi32(a, b);
+  sum = _mm256_add_epi32(sum, _mm256_srli_si256(sum, 8));
+  sum = _mm256_add_epi32(sum, _mm256_srli_si256(sum, 4));
+  *store_lo = _mm256_extract_epi32(sum, 0);
+  *store_hi = _mm256_extract_epi32(sum, 4);
+}
+
+static AOM_FORCE_INLINE __m256i round_power_of_two_signed_avx2(
+    const __m256i in, const __m256i rounding_offset, const __m256i round_bits) {
+  // Create a mask for the sign bits of the input vector
+  const __m256i sign_mask = _mm256_srai_epi32(in, 31);
+
+  const __m256i abs_vec = _mm256_abs_epi32(in);
+  const __m256i add_vec = _mm256_add_epi32(abs_vec, rounding_offset);
+  __m256i rounded_vec = _mm256_srav_epi32(add_vec, round_bits);
+
+  // Restore the sign
+  rounded_vec = _mm256_xor_si256(rounded_vec, sign_mask);
+  rounded_vec = _mm256_sub_epi32(rounded_vec, sign_mask);
+  return rounded_vec;
+}
+
+static AOM_FORCE_INLINE void multiply_and_round(const __m256i a,
+                                                const __m256i b,
+                                                __m256i rounding_offset,
+                                                __m256i round_bits, __m256i *t1,
+                                                __m256i *t2) {
+  multiply(a, b, t1, t2);
+  *t1 = round_power_of_two_signed_avx2(*t1, rounding_offset, round_bits);
+  *t2 = round_power_of_two_signed_avx2(*t2, rounding_offset, round_bits);
+}
+#else
+static AOM_FORCE_INLINE void xx256_storel_64(int64_t *store_lo,
+                                             int64_t *store_hi, const __m256i a,
+                                             const __m256i b) {
+  const __m256i lo_0 = _mm256_cvtepi32_epi64(_mm256_castsi256_si128(a));
+  const __m256i hi_0 = _mm256_cvtepi32_epi64(_mm256_extracti128_si256(a, 1));
+  const __m256i lo1 = _mm256_cvtepi32_epi64(_mm256_castsi256_si128(b));
+  const __m256i hi1 = _mm256_cvtepi32_epi64(_mm256_extracti128_si256(b, 1));
+  __m256i sum_lo = _mm256_add_epi64(lo_0, lo1);
+  __m256i sum_hi = _mm256_add_epi64(hi_0, hi1);
+  sum_lo = _mm256_add_epi64(sum_lo, _mm256_srli_si256(sum_lo, 8));
+  sum_hi = _mm256_add_epi64(sum_hi, _mm256_srli_si256(sum_hi, 8));
+  *store_lo = _mm256_extract_epi64(sum_lo, 0) + _mm256_extract_epi64(sum_lo, 2);
+  *store_hi = _mm256_extract_epi64(sum_hi, 0) + _mm256_extract_epi64(sum_hi, 2);
+}
+#endif  // CONFIG_REFINEMENT_SIMPLIFY
+
+static void opfl_mv_refinement_16x8_avx2(const int16_t *pdiff, int pstride,
+                                         const int16_t *gx, const int16_t *gy,
+                                         int gstride, int d0, int d1,
+                                         int grad_prec_bits, int mv_prec_bits,
+                                         int *vx0, int *vy0, int *vx1,
+                                         int *vy1) {
+  int bHeight = 8;
+  int step_size = 1;
+  const int rls_alpha = 4 * OPFL_RLS_PARAM;
+  const int bits = mv_prec_bits + grad_prec_bits;
+  __m256i u2_0, v2_0, uv_0, uw_0, vw_0;
+  __m256i u2_1, v2_1, uv_1, uw_1, vw_1;
+  int64_t su2_hi = 0;
+  int64_t sv2_hi = 0;
+  int64_t suv_hi = 0;
+  int64_t suw_hi = 0;
+  int64_t svw_hi = 0;
+  int64_t su2_lo = 0;
+  int64_t sv2_lo = 0;
+  int64_t suv_lo = 0;
+  int64_t suw_lo = 0;
+  int64_t svw_lo = 0;
+#if CONFIG_REFINEMENT_SIMPLIFY
+  int grad_bits_lo = 0;
+  int grad_bits_hi = 0;
+  const __m256i opfl_samp_min = _mm256_set1_epi16(-OPFL_SAMP_CLAMP_VAL);
+  const __m256i opfl_samp_max = _mm256_set1_epi16(OPFL_SAMP_CLAMP_VAL);
+#endif  // CONFIG_REFINEMENT_SIMPLIFY
+#if OPFL_DOWNSAMP_QUINCUNX
+  step_size = 2;
+  const __m256i even_row =
+      _mm256_set_epi16(0, 0xFFFF, 0, 0xFFFF, 0, 0xFFFF, 0, 0xFFFF, 0, 0xFFFF, 0,
+                       0xFFFF, 0, 0xFFFF, 0, 0xFFFF);
+  const __m256i odd_row =
+      _mm256_set_epi16(0xFFFF, 0, 0xFFFF, 0, 0xFFFF, 0, 0xFFFF, 0, 0xFFFF, 0,
+                       0xFFFF, 0, 0xFFFF, 0, 0xFFFF, 0);
+#endif
+  do {
+    __m256i gradX = _mm256_loadu_si256((const __m256i *)gx);
+    __m256i gradY = _mm256_loadu_si256((const __m256i *)gy);
+    __m256i pred = _mm256_loadu_si256((const __m256i *)pdiff);
+#if OPFL_DOWNSAMP_QUINCUNX
+    const __m256i gradX1 = _mm256_loadu_si256((const __m256i *)(gx + gstride));
+    const __m256i gradY1 = _mm256_loadu_si256((const __m256i *)(gy + gstride));
+    const __m256i pred1 =
+        _mm256_loadu_si256((const __m256i *)(pdiff + pstride));
+    gradX = _mm256_or_si256(_mm256_and_si256(gradX, even_row),
+                            _mm256_and_si256(gradX1, odd_row));
+    gradY = _mm256_or_si256(_mm256_and_si256(gradY, even_row),
+                            _mm256_and_si256(gradY1, odd_row));
+    pred = _mm256_or_si256(_mm256_and_si256(pred, even_row),
+                           _mm256_and_si256(pred1, odd_row));
+#endif
+#if CONFIG_REFINEMENT_SIMPLIFY
+    gradX =
+        _mm256_max_epi16(_mm256_min_epi16(gradX, opfl_samp_max), opfl_samp_min);
+    gradY =
+        _mm256_max_epi16(_mm256_min_epi16(gradY, opfl_samp_max), opfl_samp_min);
+    pred =
+        _mm256_max_epi16(_mm256_min_epi16(pred, opfl_samp_max), opfl_samp_min);
+
+    // Avoid the rounding operation for the cases where both 'grad_bits_lo' and
+    // 'grad_bits_hi' are zeros.
+    if (grad_bits_lo || grad_bits_hi) {
+      const __m256i round_bits = _mm256_setr_epi32(
+          grad_bits_lo, grad_bits_lo, grad_bits_lo, grad_bits_lo, grad_bits_hi,
+          grad_bits_hi, grad_bits_hi, grad_bits_hi);
+      __m256i rounding_offset =
+          _mm256_sllv_epi32(_mm256_set1_epi32(1), round_bits);
+      rounding_offset = _mm256_srai_epi32(rounding_offset, 1);
+
+      multiply_and_round(gradX, gradX, rounding_offset, round_bits, &u2_0,
+                         &u2_1);
+      multiply_and_round(gradY, gradY, rounding_offset, round_bits, &v2_0,
+                         &v2_1);
+      multiply_and_round(gradX, gradY, rounding_offset, round_bits, &uv_0,
+                         &uv_1);
+      multiply_and_round(gradX, pred, rounding_offset, round_bits, &uw_0,
+                         &uw_1);
+      multiply_and_round(gradY, pred, rounding_offset, round_bits, &vw_0,
+                         &vw_1);
+    } else {
+      multiply(gradX, gradX, &u2_0, &u2_1);
+      multiply(gradY, gradY, &v2_0, &v2_1);
+      multiply(gradX, gradY, &uv_0, &uv_1);
+      multiply(gradX, pred, &uw_0, &uw_1);
+      multiply(gradY, pred, &vw_0, &vw_1);
+    }
+
+    int32_t temp_lo, temp_hi;
+    xx256_storel_32(&temp_lo, &temp_hi, u2_0, u2_1);
+    su2_lo += temp_lo;
+    su2_hi += temp_hi;
+    xx256_storel_32(&temp_lo, &temp_hi, v2_0, v2_1);
+    sv2_lo += temp_lo;
+    sv2_hi += temp_hi;
+    xx256_storel_32(&temp_lo, &temp_hi, uv_0, uv_1);
+    suv_lo += temp_lo;
+    suv_hi += temp_hi;
+    xx256_storel_32(&temp_lo, &temp_hi, uw_0, uw_1);
+    suw_lo += temp_lo;
+    suw_hi += temp_hi;
+    xx256_storel_32(&temp_lo, &temp_hi, vw_0, vw_1);
+    svw_lo += temp_lo;
+    svw_hi += temp_hi;
+
+    // For every 8 pixels, do a range check and add a downshift if range is
+    // getting close to the max allowed bit depth
+    if (get_msb_signed_64(AOMMAX(AOMMAX(su2_lo, sv2_lo),
+                                 AOMMAX(llabs(suw_lo), llabs(svw_lo)))) >=
+        MAX_OPFL_AUTOCORR_BITS - 2) {
+      OPFL_OUTPUT_RANGE_CHECK(su2_lo, sv2_lo, suv_lo, suw_lo, svw_lo)
+      grad_bits_lo++;
+    }
+    if (get_msb_signed_64(AOMMAX(AOMMAX(su2_hi, sv2_hi),
+                                 AOMMAX(llabs(suw_hi), llabs(svw_hi)))) >=
+        MAX_OPFL_AUTOCORR_BITS - 2) {
+      OPFL_OUTPUT_RANGE_CHECK(su2_hi, sv2_hi, suv_hi, suw_hi, svw_hi)
+      grad_bits_hi++;
+    }
+#else
+    multiply(gradX, gradX, &u2_0, &u2_1);
+    multiply(gradY, gradY, &v2_0, &v2_1);
+    multiply(gradX, gradY, &uv_0, &uv_1);
+    multiply(gradX, pred, &uw_0, &uw_1);
+    multiply(gradY, pred, &vw_0, &vw_1);
+
+    int64_t temp_lo, temp_hi;
+    xx256_storel_64(&temp_lo, &temp_hi, u2_0, u2_1);
+    su2_lo += temp_lo;
+    su2_hi += temp_hi;
+    xx256_storel_64(&temp_lo, &temp_hi, v2_0, v2_1);
+    sv2_lo += temp_lo;
+    sv2_hi += temp_hi;
+    xx256_storel_64(&temp_lo, &temp_hi, uv_0, uv_1);
+    suv_lo += temp_lo;
+    suv_hi += temp_hi;
+    xx256_storel_64(&temp_lo, &temp_hi, uw_0, uw_1);
+    suw_lo += temp_lo;
+    suw_hi += temp_hi;
+    xx256_storel_64(&temp_lo, &temp_hi, vw_0, vw_1);
+    svw_lo += temp_lo;
+    svw_hi += temp_hi;
+#endif  // CONFIG_REFINEMENT_SIMPLIFY
+
+    gx += gstride * step_size;
+    gy += gstride * step_size;
+    pdiff += pstride * step_size;
+    bHeight -= step_size;
+
+  } while (bHeight != 0);
+  calc_mv_process(su2_lo, sv2_lo, suv_lo, suw_lo, svw_lo, d0, d1, bits,
+                  rls_alpha, vx0, vy0, vx1, vy1);
+  calc_mv_process(su2_hi, sv2_hi, suv_hi, suw_hi, svw_hi, d0, d1, bits,
+                  rls_alpha, vx0 + 1, vy0 + 1, vx1 + 1, vy1 + 1);
+}
+
+int av1_opfl_mv_refinement_nxn_avx2(const int16_t *pdiff, int pstride,
+                                    const int16_t *gx, const int16_t *gy,
+                                    int gstride, int bw, int bh, int n, int d0,
+                                    int d1, int grad_prec_bits,
+                                    int mv_prec_bits, int *vx0, int *vy0,
+                                    int *vx1, int *vy1) {
+  int n_blocks = 0;
+  // Invoke SSE4_1 implementation for blocks with width < 16 and for other block
+  // sizes use AVX2 by processing two 8x8 blocks parallelly.
+  if (bw < 16) {
+    n_blocks = av1_opfl_mv_refinement_nxn_sse4_1(
+        pdiff, pstride, gx, gy, gstride, bw, bh, n, d0, d1, grad_prec_bits,
+        mv_prec_bits, vx0, vy0, vx1, vy1);
+  } else {
+    assert(n == 8 && bw % n == 0 && bh % n == 0);
+    for (int i = 0; i < bh; i += n) {
+      for (int j = 0; j < bw; j += 16) {
+        opfl_mv_refinement_16x8_avx2(
+            pdiff + (i * pstride + j), pstride, gx + (i * gstride + j),
+            gy + (i * gstride + j), gstride, d0, d1, grad_prec_bits,
+            mv_prec_bits, vx0 + n_blocks, vy0 + n_blocks, vx1 + n_blocks,
+            vy1 + n_blocks);
+        n_blocks += 2;
+      }
+    }
+  }
+  return n_blocks;
+}
 #endif  // CONFIG_OPTFLOW_REFINEMENT

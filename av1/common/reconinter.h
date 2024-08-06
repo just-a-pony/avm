@@ -1224,6 +1224,10 @@ unsigned int get_highbd_sad_ds(const uint16_t *src_ptr, int source_stride,
 #endif  // CONFIG_SUBBLK_REF_DS
 
 #if CONFIG_OPTFLOW_REFINEMENT || CONFIG_OPFL_MV_SEARCH
+void calc_mv_process(int64_t su2, int64_t sv2, int64_t suv, int64_t suw,
+                     int64_t svw, const int d0, const int d1, const int bits,
+                     const int rls_alpha, int *vx0, int *vy0, int *vx1,
+                     int *vy1);
 void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride0,
                             const int16_t *gx, const int16_t *gy, int gstride,
                             int bw, int bh, int d0, int d1, int grad_prec_bits,

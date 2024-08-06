@@ -121,6 +121,27 @@ typedef struct IntraModeSearchState {
 } IntraModeSearchState;
 
 #if CONFIG_AIMC
+/*! \brief Holds the rate and distortion information of uv modes and used only
+ * when the speed feature 'reuse_uv_mode_rd_info' is enabled.
+ */
+typedef struct {
+  /*!
+   * For a given partition block, flag to indicate whether the chroma
+   * intra mode in handle_intra_mode() is evaluated or not.
+   */
+  bool mode_evaluated[LUMA_MODE_COUNT];
+  /*!
+   * For a given partition block, save the rate corresponds to each
+   * chroma intra mode in av1_handle_intra_mode().
+   */
+  int rate_info[LUMA_MODE_COUNT];
+  /*!
+   * For a given partition block, save the distortion corresponds
+   * to each chroma intra mode in av1_handle_intra_mode().
+   */
+  int64_t dist_info[LUMA_MODE_COUNT];
+} ModeRDInfoUV;
+
 /*!\brief Get mode cost for chroma channels.
  */
 int get_uv_mode_cost(MB_MODE_INFO *mbmi, const ModeCosts mode_costs,
@@ -162,6 +183,7 @@ int get_uv_mode_cost(MB_MODE_INFO *mbmi, const ModeCosts mode_costs,
  *                                  intra-mode's rd_stats (luma only).
  * \param[in]    rd_stats_uv        Struct to keep track of the current
  *                                  intra-mode's rd_stats (chroma only).
+ * \param[in]    mode_rd_info_uv    Buffer to hold UV modes RD information.
  * \param[in]    best_rd            Best RD seen for this block so far.
  * \param[in]    best_intra_rd      Best intra RD seen for this block so far.
  *
@@ -182,6 +204,9 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
                               BLOCK_SIZE bsize, unsigned int ref_frame_cost,
                               const PICK_MODE_CONTEXT *ctx, RD_STATS *rd_stats,
                               RD_STATS *rd_stats_y, RD_STATS *rd_stats_uv,
+#if CONFIG_AIMC
+                              ModeRDInfoUV *mode_rd_info_uv,
+#endif  // CONFIG_AIMC
                               int64_t best_rd, int64_t *best_intra_rd,
                               int64_t *best_model_rd,
                               int64_t top_intra_model_rd[]);
@@ -323,6 +348,7 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
  * \param[in]    skippable          Whether we can skip txfm process.
  * \param[in]    ctx                Structure to hold the number of 4x4 blks to
  *                                  copy the tx_type and txfm_skip arrays.
+ * \param[in]    mode_rd_info_uv    Buffer to hold UV modes RD information.
  * \param[in]    bsize              Current partition block size.
  * \param[in]    max_tx_size        The maximum tx_size available
  *
@@ -333,7 +359,12 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                                     int *rate, int *rate_tokenonly,
                                     int64_t *distortion, int *skippable,
                                     const PICK_MODE_CONTEXT *ctx,
-                                    BLOCK_SIZE bsize, TX_SIZE max_tx_size);
+                                    BLOCK_SIZE bsize, TX_SIZE max_tx_size
+#if CONFIG_AIMC
+                                    ,
+                                    ModeRDInfoUV *mode_rd_info_uv
+#endif  // CONFIG_AIMC
+);
 
 /*! \brief Return the number of colors in src. Used by palette mode.
  */

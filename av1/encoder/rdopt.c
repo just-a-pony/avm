@@ -7230,9 +7230,13 @@ void av1_rd_pick_intra_mode_sb(const struct AV1_COMP *cpi, struct macroblock *x,
       }
       const TX_SIZE max_uv_tx_size = av1_get_tx_size(AOM_PLANE_U, xd);
       av1_rd_pick_intra_sbuv_mode(cpi, x, &rate_uv, &rate_uv_tokenonly,
-                                  &dist_uv, &uv_skip_txfm,
-
-                                  ctx, bsize, max_uv_tx_size);
+                                  &dist_uv, &uv_skip_txfm, ctx, bsize,
+                                  max_uv_tx_size
+#if CONFIG_AIMC
+                                  ,
+                                  NULL /*ModeRDInfoUV*/
+#endif                                 // CONFIG_AIMC
+      );
       av1_copy_array(ctx->cctx_type_map, xd->cctx_type_map,
                      ctx->num_4x4_blk_chroma);
     }
@@ -10503,6 +10507,15 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
                                            : 1);
          fsc_mode++) {
       uint8_t enable_mrls_flag = cm->seq_params.enable_mrls && !fsc_mode;
+#if CONFIG_AIMC
+      ModeRDInfoUV mode_rd_info_uv = { { false }, { 0 }, { 0 } };
+      // When fsc_mode is enabled, rate of the chroma mode across luma modes is
+      // different. Hence, the reuse of chroma mode rd_info is not applicable
+      // when fsc_mode enabled.
+      if (!xd->lossless[mbmi->segment_id]) {
+        av1_zero(mode_rd_info_uv.mode_evaluated);
+      }
+#endif
       for (int mrl_index = 0;
            mrl_index < (enable_mrls_flag ? MRL_LINE_NUMBER : 1); mrl_index++) {
         mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = fsc_mode;
@@ -10607,8 +10620,12 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           intra_rd_stats.rdcost = av1_handle_intra_mode(
               &search_state.intra_search_state, cpi, x, bsize,
               intra_ref_frame_cost, ctx, &intra_rd_stats, &intra_rd_stats_y,
-              &intra_rd_stats_uv, search_state.best_rd,
-              &search_state.best_intra_rd, &best_model_rd, top_intra_model_rd);
+              &intra_rd_stats_uv,
+#if CONFIG_AIMC
+              &mode_rd_info_uv,
+#endif  // CONFIG_AIMC
+              search_state.best_rd, &search_state.best_intra_rd, &best_model_rd,
+              top_intra_model_rd);
 
           // Collect mode stats for multiwinner mode processing
           const int txfm_search_done = 1;

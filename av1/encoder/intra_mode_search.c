@@ -578,11 +578,57 @@ int get_uv_mode_cost(MB_MODE_INFO *mbmi, const ModeCosts mode_costs,
 }
 #endif  // CONFIG_AIMC
 
+#if CONFIG_AIMC
+// For a given chroma (UV) mode, compute a specific index and use the same to
+// store/fetch rate and distortion information.
+// The below specifies the index given for chroma modes:
+// 0       : for UV_DC_PRED.
+// 1 - 56  : for directional UV modes.
+// 57 - 60 : for non-directional UV modes (i.e., UV_SMOOTH_PRED,
+// UV_SMOOTH_V_PRED, UV_SMOOTH_H_PRED, UV_PAETH_PRED)
+static AOM_INLINE int get_chroma_idx_for_reuse_uvrd(MB_MODE_INFO *mbmi) {
+  const int uv_angle = mbmi->angle_delta[AOM_PLANE_U];
+  int chroma_idx = 0;
+  if (av1_is_directional_mode(get_uv_mode(mbmi->uv_mode))) {
+    chroma_idx = 1;
+    chroma_idx += (mbmi->uv_mode - 1) * TOTAL_ANGLE_DELTA_COUNT;
+    chroma_idx += (uv_angle < 0) ? (abs(uv_angle) + MAX_ANGLE_DELTA) : uv_angle;
+  } else if (mbmi->uv_mode != UV_DC_PRED) {
+    chroma_idx = LUMA_MODE_COUNT - NON_DIRECTIONAL_MODES_COUNT +
+                 (mbmi->uv_mode - DIRECTIONAL_MODES);
+  }
+  assert(chroma_idx >= 0 && chroma_idx < LUMA_MODE_COUNT);
+  return chroma_idx;
+}
+
+// Stores the UV mode RD information during the first evaluation.
+static AOM_INLINE void store_uv_mode_rd_info(ModeRDInfoUV *mode_rd_info_uv,
+                                             RD_STATS *tokenonly_rd_stats,
+                                             const int chroma_idx) {
+  mode_rd_info_uv->dist_info[chroma_idx] = tokenonly_rd_stats->dist;
+  mode_rd_info_uv->rate_info[chroma_idx] = tokenonly_rd_stats->rate;
+  mode_rd_info_uv->mode_evaluated[chroma_idx] = true;
+}
+// Fetch and reuse the UV mode RD information.
+static AOM_INLINE void fetch_uv_mode_rd_info(ModeRDInfoUV *mode_rd_info_uv,
+                                             RD_STATS *tokenonly_rd_stats,
+                                             const int chroma_idx) {
+  av1_init_rd_stats(tokenonly_rd_stats);
+  tokenonly_rd_stats->dist = mode_rd_info_uv->dist_info[chroma_idx];
+  tokenonly_rd_stats->rate = mode_rd_info_uv->rate_info[chroma_idx];
+}
+#endif  // CONFIG_AIMC
+
 int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                                     int *rate, int *rate_tokenonly,
                                     int64_t *distortion, int *skippable,
                                     const PICK_MODE_CONTEXT *ctx,
-                                    BLOCK_SIZE bsize, TX_SIZE max_tx_size) {
+                                    BLOCK_SIZE bsize, TX_SIZE max_tx_size
+#if CONFIG_AIMC
+                                    ,
+                                    ModeRDInfoUV *mode_rd_info_uv
+#endif  // CONFIG_AIMC
+) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
@@ -632,6 +678,11 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
 
   // Search through all non-palette modes.
 #if CONFIG_AIMC
+  // Checks if the best mode chosen needs to be re-evaluated, applicable only
+  // when the sf 'reuse_uv_mode_rd_info' is enabled.
+  const int is_reeval_best_mode =
+      mode_rd_info_uv != NULL && !xd->lossless[mbmi->segment_id];
+  int best_uv_mode_idx = -1;
   get_uv_intra_mode_set(mbmi);
 #if CONFIG_IMPROVED_CFL
 #if CONFIG_ENABLE_MHCCP
@@ -651,8 +702,18 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
        ++dpcm_uv_index) {
     mbmi->use_dpcm_uv = dpcm_uv_index;
 #endif  // CONFIG_LOSSLESS_DPCM
-    for (int mode_idx = 0; mode_idx < UV_INTRA_MODES + implicit_cfl_mode_num;
+    const int mode_loop_count = UV_INTRA_MODES + implicit_cfl_mode_num;
+    for (int mode_idx = 0; mode_idx < mode_loop_count + is_reeval_best_mode;
          ++mode_idx) {
+      // If the best mode is chosen based on stored UV modes RD information, use
+      // the last iteration to re-evaluate the same. This ensures appropriate
+      // update of 'mbmi' and 'cctx_type_map' which may be required for the
+      // computation of recon buffer.
+      const int is_reevaluation = (mode_idx >= mode_loop_count);
+      if (is_reevaluation) {
+        if (best_uv_mode_idx == -1) continue;
+        mode_idx = best_uv_mode_idx;
+      }
 #if CONFIG_LOSSLESS_DPCM
       if (!xd->lossless[mbmi->segment_id] && dpcm_uv_index > 0) {
         continue;
@@ -812,8 +873,26 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
 #else
       mode_cost += cfl_alpha_rate;
 #endif
-      if (!av1_txfm_uvrd(cpi, x, &tokenonly_rd_stats, best_rd)) {
-        continue;
+      // Check if the reuse is enabled. If enabled, save the mode information
+      // (i.e., rate and distortion) when the mode is evaluated for the first
+      // time, else fetch the mode info saved.
+      bool is_mode_rd_info_fetched = false;
+      const int is_reuse_enabled = !xd->lossless[mbmi->segment_id] &&
+                                   mode_rd_info_uv != NULL &&
+                                   mode != UV_CFL_PRED && !is_reevaluation;
+      if (!is_reuse_enabled) {
+        if (!av1_txfm_uvrd(cpi, x, &tokenonly_rd_stats, INT64_MAX)) continue;
+      } else {
+        const int chroma_idx = get_chroma_idx_for_reuse_uvrd(mbmi);
+        if (!mode_rd_info_uv->mode_evaluated[chroma_idx]) {
+          if (!av1_txfm_uvrd(cpi, x, &tokenonly_rd_stats, INT64_MAX)) continue;
+          store_uv_mode_rd_info(mode_rd_info_uv, &tokenonly_rd_stats,
+                                chroma_idx);
+        } else {
+          fetch_uv_mode_rd_info(mode_rd_info_uv, &tokenonly_rd_stats,
+                                chroma_idx);
+          is_mode_rd_info_fetched = true;
+        }
       }
 #else
     const int is_directional_mode = av1_is_directional_mode(get_uv_mode(mode));
@@ -843,7 +922,17 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
       }
       this_rd = RDCOST(x->rdmult, this_rate, tokenonly_rd_stats.dist);
 
-      if (this_rd < best_rd) {
+      if (this_rd < best_rd
+#if CONFIG_AIMC
+          || is_reevaluation
+#endif  // CONFIG_AIMC
+      ) {
+#if CONFIG_AIMC
+        // When the RDCost retrieved using the fetched UV mode information, the
+        // same mode needs to be reevaluated at the end. Hence, capture the best
+        // mode_idx information here.
+        best_uv_mode_idx = is_mode_rd_info_fetched ? mode_idx : -1;
+#endif  // CONFIG_AIMC
         best_mbmi = *mbmi;
         // The buffer 'tmp_cctx_type_map' holds the best cross-chroma txfm type
         // map across the chroma modes.
@@ -855,6 +944,11 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
         *distortion = tokenonly_rd_stats.dist;
         *skippable = tokenonly_rd_stats.skip_txfm;
       }
+#if CONFIG_AIMC
+      // Break the loop so that no further modes are evaluated after the best
+      // mode reevaulation.
+      if (is_reevaluation) break;
+#endif  // CONFIG_AIMC
     }
 #if CONFIG_LOSSLESS_DPCM
   }
@@ -983,7 +1077,12 @@ int av1_search_palette_mode(IntraModeSearchState *intra_search_state,
       av1_rd_pick_intra_sbuv_mode(
           cpi, x, &intra_search_state->rate_uv_intra,
           &intra_search_state->rate_uv_tokenonly, &intra_search_state->dist_uvs,
-          &intra_search_state->skip_uvs, ctx, bsize, uv_tx);
+          &intra_search_state->skip_uvs, ctx, bsize, uv_tx
+#if CONFIG_AIMC
+          ,
+          NULL /*ModeRDInfoUV*/
+#endif         // CONFIG_AIMC
+      );
       intra_search_state->mode_uv = mbmi->uv_mode;
 #if CONFIG_LOSSLESS_DPCM
       if (xd->lossless[mbmi->segment_id]) {
@@ -1193,6 +1292,9 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
                               BLOCK_SIZE bsize, unsigned int ref_frame_cost,
                               const PICK_MODE_CONTEXT *ctx, RD_STATS *rd_stats,
                               RD_STATS *rd_stats_y, RD_STATS *rd_stats_uv,
+#if CONFIG_AIMC
+                              ModeRDInfoUV *mode_rd_info_uv,
+#endif  // CONFIG_AIMC
                               int64_t best_rd, int64_t *best_intra_rd,
                               int64_t *best_model_rd,
                               int64_t top_intra_model_rd[]) {
@@ -1407,7 +1509,12 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
       av1_rd_pick_intra_sbuv_mode(
           cpi, x, &intra_search_state->rate_uv_intra,
           &intra_search_state->rate_uv_tokenonly, &intra_search_state->dist_uvs,
-          &intra_search_state->skip_uvs, ctx, bsize, uv_tx);
+          &intra_search_state->skip_uvs, ctx, bsize, uv_tx
+#if CONFIG_AIMC
+          ,
+          sf->intra_sf.reuse_uv_mode_rd_info ? mode_rd_info_uv : NULL
+#endif  // CONFIG_AIMC
+      );
       intra_search_state->mode_uv = mbmi->uv_mode;
 #if CONFIG_LOSSLESS_DPCM
       if (xd->lossless[mbmi->segment_id]) {
