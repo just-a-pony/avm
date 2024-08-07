@@ -672,12 +672,7 @@ static void write_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   const WarpedMotionParams *params = &mbmi->wm_params[0];
   WarpedMotionParams base_params;
   av1_get_warp_base_params(cm, mbmi, &base_params, NULL,
-#if CONFIG_COMPOUND_WARP_CAUSAL
-                           mbmi_ext_frame->warp_param_stack[0]
-#else
-                           mbmi_ext_frame->warp_param_stack
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL
-  );
+                           mbmi_ext_frame->warp_param_stack);
 
   // The RDO stage should not give us a model which is not warpable.
   // Such models can still be signalled, but are effectively useless
@@ -2780,11 +2775,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
     if (mbmi->mode == WARPMV && mbmi->warpmv_with_mvd_flag) {
       nmv_context *nmvc = &ec_ctx->nmvc;
       WarpedMotionParams ref_warp_model =
-#if CONFIG_COMPOUND_WARP_CAUSAL
-          x->mbmi_ext_frame->warp_param_stack[0][mbmi->warp_ref_idx].wm_params;
-#else
           x->mbmi_ext_frame->warp_param_stack[mbmi->warp_ref_idx].wm_params;
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL
       int_mv ref_mv =
           get_mv_from_wrl(xd, &ref_warp_model, mbmi->pb_mv_precision, bsize,
                           xd->mi_col, xd->mi_row);

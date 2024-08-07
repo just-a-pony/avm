@@ -225,28 +225,27 @@ static INLINE void copy_mbmi_ext_frame_to_mbmi_ext(
   av1_set_ref_frame(rf, ref_frame_type);
   if (has_second_drl_by_mode(this_mode, rf)) {
     memcpy(mbmi_ext->ref_mv_stack[rf[0]], mbmi_ext_best->ref_mv_stack[0],
-           sizeof(mbmi_ext->ref_mv_stack[USABLE_REF_MV_STACK_SIZE]));
+           sizeof(mbmi_ext->ref_mv_stack[0]));
     memcpy(mbmi_ext->weight[rf[0]], mbmi_ext_best->weight[0],
-           sizeof(mbmi_ext->weight[USABLE_REF_MV_STACK_SIZE]));
+           sizeof(mbmi_ext->weight[0]));
     mbmi_ext->ref_mv_count[rf[0]] = mbmi_ext_best->ref_mv_count[0];
     memcpy(mbmi_ext->ref_mv_stack[rf[1]], mbmi_ext_best->ref_mv_stack[1],
-           sizeof(mbmi_ext->ref_mv_stack[USABLE_REF_MV_STACK_SIZE]));
+           sizeof(mbmi_ext->ref_mv_stack[0]));
     memcpy(mbmi_ext->weight[rf[1]], mbmi_ext_best->weight[1],
-           sizeof(mbmi_ext->weight[USABLE_REF_MV_STACK_SIZE]));
+           sizeof(mbmi_ext->weight[0]));
     mbmi_ext->ref_mv_count[rf[1]] = mbmi_ext_best->ref_mv_count[1];
   } else {
     memcpy(mbmi_ext->ref_mv_stack[ref_frame_type],
-           mbmi_ext_best->ref_mv_stack[0],
-           sizeof(mbmi_ext->ref_mv_stack[USABLE_REF_MV_STACK_SIZE]));
+           mbmi_ext_best->ref_mv_stack[0], sizeof(mbmi_ext->ref_mv_stack[0]));
     memcpy(mbmi_ext->weight[ref_frame_type], mbmi_ext_best->weight[0],
-           sizeof(mbmi_ext->weight[USABLE_REF_MV_STACK_SIZE]));
+           sizeof(mbmi_ext->weight[0]));
     mbmi_ext->ref_mv_count[ref_frame_type] = mbmi_ext_best->ref_mv_count[0];
   }
 #else
   memcpy(mbmi_ext->ref_mv_stack[ref_frame_type], mbmi_ext_best->ref_mv_stack,
-         sizeof(mbmi_ext->ref_mv_stack[USABLE_REF_MV_STACK_SIZE]));
+         sizeof(mbmi_ext->ref_mv_stack[0]));
   memcpy(mbmi_ext->weight[ref_frame_type], mbmi_ext_best->weight,
-         sizeof(mbmi_ext->weight[USABLE_REF_MV_STACK_SIZE]));
+         sizeof(mbmi_ext->weight[0]));
   mbmi_ext->ref_mv_count[ref_frame_type] = mbmi_ext_best->ref_mv_count;
 #endif  // CONFIG_SEP_COMP_DRL
   mbmi_ext->mode_context[ref_frame_type] = mbmi_ext_best->mode_context;
@@ -257,7 +256,7 @@ static INLINE void copy_mbmi_ext_frame_to_mbmi_ext(
   if (ref_frame_type < INTER_REFS_PER_FRAME) {
     memcpy(mbmi_ext->warp_param_stack[ref_frame_type],
            mbmi_ext_best->warp_param_stack,
-           sizeof(mbmi_ext->warp_param_stack[MAX_WARP_REF_CANDIDATES]));
+           sizeof(mbmi_ext->warp_param_stack[0]));
   }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 }

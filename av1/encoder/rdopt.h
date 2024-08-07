@@ -346,25 +346,25 @@ static INLINE void av1_copy_mbmi_ext_to_mbmi_ext_frame(
     rf[0] = ref_frame_type;  //????????????? need to know how encoder work,
                              // whether the mode has been set
   memcpy(mbmi_ext_best->ref_mv_stack[0], mbmi_ext->ref_mv_stack[rf[0]],
-         sizeof(mbmi_ext->ref_mv_stack[USABLE_REF_MV_STACK_SIZE]));
+         sizeof(mbmi_ext->ref_mv_stack[0]));
   memcpy(mbmi_ext_best->weight[0], mbmi_ext->weight[rf[0]],
-         sizeof(mbmi_ext->weight[USABLE_REF_MV_STACK_SIZE]));
+         sizeof(mbmi_ext->weight[0]));
   mbmi_ext_best->ref_mv_count[0] = mbmi_ext->ref_mv_count[rf[0]];
 
   if (has_second_drl(mbmi)) {
     assert(rf[0] == mbmi->ref_frame[0]);
     assert(rf[1] == mbmi->ref_frame[1]);
     memcpy(mbmi_ext_best->ref_mv_stack[1], mbmi_ext->ref_mv_stack[rf[1]],
-           sizeof(mbmi_ext->ref_mv_stack[USABLE_REF_MV_STACK_SIZE]));
+           sizeof(mbmi_ext->ref_mv_stack[0]));
     memcpy(mbmi_ext_best->weight[1], mbmi_ext->weight[rf[1]],
-           sizeof(mbmi_ext->weight[USABLE_REF_MV_STACK_SIZE]));
+           sizeof(mbmi_ext->weight[0]));
     mbmi_ext_best->ref_mv_count[1] = mbmi_ext->ref_mv_count[rf[1]];
   }
 #else
   memcpy(mbmi_ext_best->ref_mv_stack, mbmi_ext->ref_mv_stack[ref_frame_type],
-         sizeof(mbmi_ext->ref_mv_stack[USABLE_REF_MV_STACK_SIZE]));
+         sizeof(mbmi_ext->ref_mv_stack[0]));
   memcpy(mbmi_ext_best->weight, mbmi_ext->weight[ref_frame_type],
-         sizeof(mbmi_ext->weight[USABLE_REF_MV_STACK_SIZE]));
+         sizeof(mbmi_ext->weight[0]));
   mbmi_ext_best->ref_mv_count = mbmi_ext->ref_mv_count[ref_frame_type];
 #endif  // CONFIG_SEP_COMP_DRL
   mbmi_ext_best->mode_context = mbmi_ext->mode_context[ref_frame_type];
@@ -375,7 +375,7 @@ static INLINE void av1_copy_mbmi_ext_to_mbmi_ext_frame(
   if (ref_frame_type < INTER_REFS_PER_FRAME) {
     memcpy(mbmi_ext_best->warp_param_stack,
            mbmi_ext->warp_param_stack[ref_frame_type],
-           sizeof(mbmi_ext->warp_param_stack[MAX_WARP_REF_CANDIDATES]));
+           sizeof(mbmi_ext->warp_param_stack[0]));
   }
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 }
