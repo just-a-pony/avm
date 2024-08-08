@@ -647,6 +647,9 @@ enum {
   ADST_1D,
   FLIPADST_1D,
   IDTX_1D,
+#if CONFIG_INTER_DDT
+  DDT_1D,
+#endif  // CONFIG_INTER_DDT
   TX_TYPES_1D,
 } UENUM1BYTE(TX_TYPE_1D);
 
@@ -693,9 +696,9 @@ enum {
   CCTX_START = CCTX_NONE + 1,
 } UENUM1BYTE(CctxType);
 
-#if CONFIG_ADST_TUNED
+#if CONFIG_ADST_TUNED || CONFIG_INTER_DDT
 enum { FWD_TXFM, INV_TXFM, TXFM_DIRECTIONS } UENUM1BYTE(TXFM_DIRECTION);
-#endif  // CONFIG_ADST_TUNED
+#endif  // CONFIG_ADST_TUNED || CONFIG_INTER_DDT
 
 enum {
   REG_REG,
@@ -736,8 +739,11 @@ enum {
 #define EOB_TX_CTXS 3
 #define EXT_TX_SIZES 4       // number of sizes that use extended transforms
 #define EXT_TX_SETS_INTER 4  // Sets of transform selections for INTER
-#define EXT_TX_SETS_INTRA 3  // Sets of transform selections for INTRA
+#define INTER_TX_SET1 16
+#define INTER_TX_SET2 12
+#define INTER_TX_SET3 2
 
+#define EXT_TX_SETS_INTRA 3  // Sets of transform selections for INTRA
 #define INTRA_TX_SET1 7
 #define INTRA_TX_SET2 2
 

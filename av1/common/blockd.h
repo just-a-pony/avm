@@ -2751,6 +2751,18 @@ static const int ph_allowed_tx_types[TX_TYPES] = {
 };
 #endif  // CONFIG_IMPROVEIDTX_RDPH
 
+#if CONFIG_INTER_DDT
+// Determine whether to replace ADST by DDT or not
+static INLINE int replace_adst_by_ddt(const int enable_inter_ddt,
+                                      const int allow_scc_tools,
+                                      const MACROBLOCKD *xd) {
+  if (!enable_inter_ddt) return 0;
+  (void)allow_scc_tools;
+  if (is_intrabc_block(xd->mi[0], xd->tree_type)) return 0;
+  return is_inter_block(xd->mi[0], xd->tree_type);
+}
+#endif  // CONFIG_INTER_DDT
+
 static TX_TYPE intra_mode_to_tx_type(const MB_MODE_INFO *mbmi,
                                      PLANE_TYPE plane_type) {
   static const TX_TYPE _intra_mode_to_tx_type[INTRA_MODES] = {
@@ -2797,7 +2809,7 @@ static const int av1_num_ext_tx_set[EXT_TX_SET_TYPES] = {
 };
 #else
 static const int av1_num_ext_tx_set[EXT_TX_SET_TYPES] = {
-  1, 2, 5, 7, 12, 16,
+  1, 2, 5, 7, 12, 16, 7,
 };
 #endif  // CONFIG_TX_TYPE_FLEX_IMPROVE
 
@@ -2905,7 +2917,7 @@ static const uint16_t av1_ext_tx_used_flag[EXT_TX_SET_TYPES] = {
   0x0E0F,  // 0000 1110 0000 1111
   0x0FFF,  // 0000 1111 1111 1111
   0xFFFF,  // 1111 1111 1111 1111
-  0xFFFF,
+  0xFFFF,  // 1111 1111 1111 1111
 };
 
 static const uint16_t av1_md_trfm_used_flag[EXT_TX_SIZES][INTRA_MODES] = {
@@ -3043,7 +3055,7 @@ static const int ext_tx_set_index[2][EXT_TX_SET_TYPES] = {
   { // Intra
     0, -1, -1, -1, -1, -1, 1 },
   { // Inter
-    0, 3, -1, -1, 2, 1 },
+    0, 3, -1, -1, 2, 1, -1 },
 };
 #endif  // CONFIG_TX_TYPE_FLEX_IMPROVE
 
@@ -3630,10 +3642,11 @@ static INLINE int tx_size_to_depth(TX_SIZE tx_size, BLOCK_SIZE bsize) {
 }
 #endif
 
+#define PRIMARY_TX_BITS 4  // # of bits for primary tx
+
 #if CONFIG_IST_SET_FLAG
 // Number of bits to be taken from TX_TYPE to represent
 // primary tx, secondary tx set, and secondary tx kernel
-#define PRIMARY_TX_BITS 4        // # of bits for primary tx
 #define SECONDARY_TX_SET_BITS 4  // # of bits for secondary tx set
 #define SECONDARY_TX_BITS 2      // # of bits for secondary tx kernel
 // Bit masks to keep only wanted info

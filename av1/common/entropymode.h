@@ -637,6 +637,7 @@ static const int av1_ext_tx_ind[EXT_TX_SET_TYPES][TX_TYPES] = {
   { 1, 5, 6, 4, 0, 0, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0 },
   { 3, 4, 5, 8, 6, 7, 9, 10, 11, 0, 1, 2, 0, 0, 0, 0 },
   { 7, 8, 9, 12, 10, 11, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 
 static const int av1_ext_tx_inv[EXT_TX_SET_TYPES][TX_TYPES] = {
@@ -650,6 +651,7 @@ static const int av1_ext_tx_inv[EXT_TX_SET_TYPES][TX_TYPES] = {
   { 9, 0, 10, 11, 3, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
   { 9, 10, 11, 0, 1, 2, 4, 5, 3, 6, 7, 8, 0, 0, 0, 0 },
   { 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 4, 5, 3, 6, 7, 8 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 
 static const int av1_md_type2idx[EXT_TX_SIZES][INTRA_MODES][TX_TYPES] = {
@@ -715,7 +717,7 @@ static const int av1_md_type2idx[EXT_TX_SIZES][INTRA_MODES][TX_TYPES] = {
   },                                                       // size_class: 3
 };
 
-static const int av1_md_idx2type[EXT_TX_SIZES][INTRA_MODES][TX_TYPES] = {
+static const int av1_md_idx2type[EXT_TX_SIZES][INTRA_MODES][INTRA_TX_SET1] = {
   {
       { 0, 3, 1, 2, 7, 8, 13 },     // mode_class: 0
       { 0, 3, 1, 2, 7, 10, 12 },    // mode_class: 1
