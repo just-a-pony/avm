@@ -8069,7 +8069,7 @@ static AOM_INLINE MB_MODE_INFO *get_winner_mode_stats(
 }
 
 // speed feature: fast intra/inter transform type search
-// Used for speed >= 2
+// Used for speed >= 3
 // When this speed feature is on, in rd mode search, only DCT is used.
 // After the mode is determined, this function is called, to select
 // transform types and get accurate rdcost.
@@ -9638,7 +9638,7 @@ static int skip_inter_mode(AV1_COMP *cpi, MACROBLOCK *x, const BLOCK_SIZE bsize,
 #if CONFIG_OPTFLOW_REFINEMENT
       this_mode < NEAR_NEARMV_OPTFLOW &&
 #endif  // CONFIG_OPTFLOW_REFINEMENT
-      comp_pred) {
+      comp_pred && !has_second_drl(xd->mi[0])) {
     if (compound_skip_by_single_states(cpi, args->search_state, this_mode,
                                        ref_frame, second_ref_frame, x))
       return 1;
@@ -10145,7 +10145,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
                               &inter_cost_info_from_tpl);
   }
   const int do_pruning =
-      (AOMMIN(cm->width, cm->height) > 480 && cpi->speed <= 1) ? 0 : 1;
+      (AOMMIN(cm->width, cm->height) > 480 && cpi->speed <= 2) ? 0 : 1;
   if (do_pruning && sf->intra_sf.skip_intra_in_interframe) {
     // Only consider full SB.
     const BLOCK_SIZE sb_size = cm->sb_size;

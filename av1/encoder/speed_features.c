@@ -27,7 +27,7 @@ static MESH_PATTERN
     good_quality_mesh_patterns[MAX_MESH_SPEED + 1][MAX_MESH_STEP] = {
       { { 64, 8 }, { 28, 4 }, { 15, 1 }, { 7, 1 } },
       { { 64, 8 }, { 28, 4 }, { 15, 1 }, { 7, 1 } },
-      { { 64, 8 }, { 14, 2 }, { 7, 1 }, { 7, 1 } },
+      { { 64, 8 }, { 28, 4 }, { 15, 1 }, { 7, 1 } },
       { { 64, 16 }, { 24, 8 }, { 12, 4 }, { 7, 1 } },
       { { 64, 16 }, { 24, 8 }, { 12, 4 }, { 7, 1 } },
       { { 64, 16 }, { 24, 8 }, { 12, 4 }, { 7, 1 } },
@@ -38,7 +38,7 @@ static MESH_PATTERN
 static MESH_PATTERN intrabc_mesh_patterns[MAX_MESH_SPEED + 1][MAX_MESH_STEP] = {
   { { 256, 1 }, { 256, 1 }, { 0, 0 }, { 0, 0 } },
   { { 256, 1 }, { 256, 1 }, { 0, 0 }, { 0, 0 } },
-  { { 64, 1 }, { 64, 1 }, { 0, 0 }, { 0, 0 } },
+  { { 256, 1 }, { 256, 1 }, { 0, 0 }, { 0, 0 } },
   { { 64, 1 }, { 64, 1 }, { 0, 0 }, { 0, 0 } },
   { { 64, 4 }, { 16, 1 }, { 0, 0 }, { 0, 0 } },
   { { 64, 4 }, { 16, 1 }, { 0, 0 }, { 0, 0 } },
@@ -182,7 +182,7 @@ static void set_good_speed_feature_framesize_dependent(
     sf->mv_sf.use_downsampled_sad = 1;
   }
 
-  if (speed >= 1) {
+  if (speed >= 2) {
     if (is_720p_or_larger) {
       sf->part_sf.use_square_partition_only_threshold = BLOCK_128X128;
     } else if (is_480p_or_larger) {
@@ -209,7 +209,7 @@ static void set_good_speed_feature_framesize_dependent(
     sf->part_sf.ml_early_term_after_part_split_level = 2;
   }
 
-  if (speed >= 2) {
+  if (speed >= 3) {
 #if CONFIG_EXT_RECUR_PARTITIONS
     sf->part_sf.use_square_partition_only_threshold = BLOCK_128X128;
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -221,15 +221,6 @@ static void set_good_speed_feature_framesize_dependent(
       sf->part_sf.use_square_partition_only_threshold = BLOCK_32X32;
     }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
-
-    if (is_720p_or_larger) {
-      sf->part_sf.partition_search_breakout_dist_thr = (1 << 24);
-      sf->part_sf.partition_search_breakout_rate_thr = 120;
-    } else {
-      sf->part_sf.partition_search_breakout_dist_thr = (1 << 22);
-      sf->part_sf.partition_search_breakout_rate_thr = 100;
-    }
-
     if (is_720p_or_larger) {
       sf->inter_sf.prune_obmc_prob_thresh = 16;
     } else {
@@ -239,9 +230,7 @@ static void set_good_speed_feature_framesize_dependent(
     if (is_480p_or_larger) {
       sf->tx_sf.tx_type_search.prune_tx_type_using_stats = 1;
     }
-  }
 
-  if (speed >= 3) {
     sf->part_sf.ml_early_term_after_part_split_level = 0;
 
     if (is_720p_or_larger) {
@@ -398,6 +387,14 @@ static void set_good_speed_features_framesize_independent(
   sf->hl_sf.superres_auto_search_type = SUPERRES_AUTO_DUAL;
 
   if (speed >= 1) {
+    sf->inter_sf.selective_ref_frame = 2;
+
+    sf->tx_sf.adaptive_txb_search_level = 2;
+
+    sf->inter_sf.prune_comp_search_by_single_result = boosted ? 2 : 1;
+  }
+
+  if (speed >= 2) {
 #if CONFIG_EXT_RECUR_PARTITIONS
     sf->part_sf.intra_cnn_split = 0;
 #else   // CONFIG_EXT_RECUR_PARTITIONS
@@ -409,12 +406,16 @@ static void set_good_speed_features_framesize_independent(
     // speed feature accordingly
     sf->part_sf.simple_motion_search_split = allow_screen_content_tools ? 1 : 2;
 
-    sf->mv_sf.exhaustive_searches_thresh <<= 1;
+    if (cpi->twopass.fr_content_type == FC_HIGHMOTION ||
+        cpi->is_screen_content_type) {
+      sf->mv_sf.exhaustive_searches_thresh = (1 << 21);
+    } else {
+      sf->mv_sf.exhaustive_searches_thresh = (1 << 26);
+    }
     sf->mv_sf.obmc_full_pixel_search_level = 1;
     sf->mv_sf.subpel_search_type = USE_4_TAPS;
 
     sf->inter_sf.disable_interinter_wedge_newmv_search = boosted ? 0 : 1;
-    sf->inter_sf.prune_comp_search_by_single_result = boosted ? 2 : 1;
     sf->inter_sf.prune_comp_type_by_comp_avg = 1;
     sf->inter_sf.prune_comp_type_by_model_rd = boosted ? 0 : 1;
     sf->inter_sf.prune_motion_mode_level = 2;
@@ -457,49 +458,19 @@ static void set_good_speed_features_framesize_independent(
     sf->tpl_sf.skip_alike_starting_mv = 1;
   }
 
-  if (speed >= 2) {
-    sf->part_sf.allow_partition_search_skip = 1;
-
-    sf->mv_sf.auto_mv_step_size = 1;
-    sf->mv_sf.subpel_iters_per_step = 1;
-
-    sf->gm_sf.num_refinement_steps = 2;
-
-    // TODO(chiyotsai@google.com): We can get 10% speed up if we move
-    // adaptive_rd_thresh to speed 1. But currently it performs poorly on some
-    // clips (e.g. 5% loss on dinner_1080p). We need to examine the sequence a
-    // bit more closely to figure out why.
-    sf->inter_sf.adaptive_rd_thresh = 1;
-    sf->inter_sf.comp_inter_joint_search_thresh = BLOCK_SIZES_ALL;
-    sf->inter_sf.disable_wedge_search_var_thresh = 100;
-    sf->inter_sf.fast_interintra_wedge_search = 1;
-    sf->inter_sf.prune_comp_search_by_single_result = boosted ? 4 : 1;
-    sf->inter_sf.prune_compound_using_neighbors = 1;
-    sf->inter_sf.prune_comp_type_by_comp_avg = 2;
-    sf->inter_sf.selective_ref_frame = 3;
-
-    // TODO(Sachin): Enable/Enhance this speed feature for speed 2 & 3
-    sf->tx_sf.tx_type_search.skip_stx_search = 1;
-    sf->tx_sf.tx_type_search.skip_cctx_search = 1;
-    sf->intra_sf.disable_smooth_intra =
-        !frame_is_intra_only(&cpi->common) || (cpi->rc.frames_to_key != 1);
-
-    sf->rd_sf.perform_coeff_opt = is_boosted_arf2_bwd_type ? 3 : 4;
-
-    sf->lpf_sf.prune_wiener_based_on_src_var = 1;
-    sf->lpf_sf.prune_sgr_based_on_wiener = 1;
-
-    sf->tpl_sf.prune_ref_frames_in_tpl = 1;
-  }
-
   if (speed >= 3) {
     sf->hl_sf.high_precision_mv_usage = CURRENT_Q;
     sf->hl_sf.recode_loop = ALLOW_RECODE_KFARFGF;
 
+    sf->part_sf.allow_partition_search_skip = 1;
     sf->part_sf.less_rectangular_check_level = 2;
     sf->part_sf.simple_motion_search_prune_agg = 1;
     sf->part_sf.prune_4_partition_using_split_info = 1;
 
+    sf->rd_sf.perform_coeff_opt = is_boosted_arf2_bwd_type ? 3 : 4;
+
+    sf->mv_sf.auto_mv_step_size = 1;
+    sf->mv_sf.subpel_iters_per_step = 1;
     // adaptive_motion_search breaks encoder multi-thread tests.
     // The values in x->pred_mv[] differ for single and multi-thread cases.
     // See aomedia:1778.
@@ -511,6 +482,16 @@ static void set_good_speed_features_framesize_independent(
 
     sf->gm_sf.num_refinement_steps = 0;
 
+    // TODO(chiyotsai@google.com): We can get 10% speed up if we move
+    // adaptive_rd_thresh to speed 2. But currently it performs poorly on some
+    // clips (e.g. 5% loss on dinner_1080p). We need to examine the sequence a
+    // bit more closely to figure out why.
+    sf->inter_sf.adaptive_rd_thresh = 1;
+    sf->inter_sf.comp_inter_joint_search_thresh = BLOCK_SIZES_ALL;
+    sf->inter_sf.disable_wedge_search_var_thresh = 100;
+    sf->inter_sf.fast_interintra_wedge_search = 1;
+    sf->inter_sf.prune_compound_using_neighbors = 1;
+    sf->inter_sf.prune_comp_type_by_comp_avg = 2;
     sf->inter_sf.disable_sb_level_mv_cost_upd = 1;
     // TODO(yunqing): evaluate this speed feature for speed 1 & 2, and combine
     // it with cpi->sf.disable_wedge_search_var_thresh.
@@ -528,8 +509,11 @@ static void set_good_speed_features_framesize_independent(
     sf->inter_sf.txfm_rd_gate_level =
         boosted ? 0 : (is_boosted_arf2_bwd_type ? 1 : 2);
 
+    sf->intra_sf.disable_smooth_intra =
+        !frame_is_intra_only(&cpi->common) || (cpi->rc.frames_to_key != 1);
     sf->intra_sf.prune_palette_search_level = 2;
 
+    sf->tpl_sf.prune_ref_frames_in_tpl = 1;
     sf->tpl_sf.skip_alike_starting_mv = 2;
     sf->tpl_sf.prune_intra_modes = 1;
     sf->tpl_sf.prune_starting_mv = 1;
@@ -537,6 +521,8 @@ static void set_good_speed_features_framesize_independent(
     sf->tpl_sf.subpel_force_stop = QUARTER_PEL;
     sf->tpl_sf.search_method = DIAMOND;
 
+    sf->tx_sf.tx_type_search.skip_stx_search = 1;
+    sf->tx_sf.tx_type_search.skip_cctx_search = 1;
     sf->tx_sf.adaptive_txb_search_level = boosted ? 2 : 3;
     sf->tx_sf.tx_type_search.use_skip_flag_prediction = 2;
 
@@ -754,7 +740,7 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
   part_sf->two_pass_partition_search = 0;
   part_sf->prune_rect_with_ml = 0;
   part_sf->end_part_search_after_consec_failures = 0;
-  part_sf->ext_recur_depth = INT_MAX;
+  part_sf->ext_recur_depth_level = 0;
 #if CONFIG_BLOCK_256
   part_sf->prune_rect_with_split_depth = 0;
   part_sf->search_256_after_128 = 0;
@@ -999,6 +985,7 @@ static AOM_INLINE void set_erp_speed_features_framesize_dependent(
 #endif
   const int is_1080p_or_larger = AOMMIN(cm->width, cm->height) >= 1080;
   const unsigned int erp_pruning_level = cpi->oxcf.part_cfg.erp_pruning_level;
+  const int is_720p_or_lesser = AOMMIN(cm->width, cm->height) <= 720;
 
   switch (erp_pruning_level) {
     case 6: AOM_FALLTHROUGH_INTENDED;
@@ -1031,6 +1018,17 @@ static AOM_INLINE void set_erp_speed_features_framesize_dependent(
     case 1: AOM_FALLTHROUGH_INTENDED;
     case 0: break;
     default: assert(0 && "Invalid ERP pruning level.");
+  }
+
+  if (cpi->speed >= 1) {
+    if (is_720p_or_lesser && !cm->features.allow_screen_content_tools) {
+      sf->part_sf.simple_motion_search_early_term_none =
+          cm->current_frame.pyramid_level > 4 ? 1 : 0;
+    }
+  }
+
+  if (cpi->speed >= 2) {
+    sf->part_sf.simple_motion_search_early_term_none = 1;
   }
 }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
@@ -1074,7 +1072,7 @@ static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
 
   switch (erp_pruning_level) {
     case 6:
-      sf->part_sf.ext_recur_depth = 1;
+      sf->part_sf.ext_recur_depth_level = 2;
       sf->part_sf.simple_motion_search_split = 1;
       sf->part_sf.simple_motion_search_early_term_none = 1;
       AOM_FALLTHROUGH_INTENDED;
@@ -1117,7 +1115,11 @@ static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
 #if CONFIG_EXT_RECUR_PARTITIONS
   if (cpi->speed >= 1) {
     // Emulate erp_pruning_level = 6.
-    sf->part_sf.ext_recur_depth = 1;
+    sf->part_sf.ext_recur_depth_level = 1;
+  }
+
+  if (cpi->speed >= 2) {
+    sf->part_sf.ext_recur_depth_level = 2;
     sf->part_sf.simple_motion_search_split = 1;
     sf->part_sf.simple_motion_search_early_term_none = 1;
   }
@@ -1292,9 +1294,11 @@ static AOM_INLINE void set_erp_speed_features_qindex_dependent(AV1_COMP *cpi) {
   const AV1_COMMON *const cm = &cpi->common;
   const int is_1080p_or_larger = AOMMIN(cm->width, cm->height) >= 1080;
   const unsigned int erp_pruning_level = cpi->oxcf.part_cfg.erp_pruning_level;
+  const int boosted = frame_is_boosted(cpi);
 
   const int qindex_offset = MAXQ_OFFSET * (cm->seq_params.bit_depth - 8);
   const int qindex_thresh2 = 113 + qindex_offset;
+  const int qindex_thresh3 = 135 + qindex_offset;
 
   switch (erp_pruning_level) {
     case 6: AOM_FALLTHROUGH_INTENDED;
@@ -1311,6 +1315,12 @@ static AOM_INLINE void set_erp_speed_features_qindex_dependent(AV1_COMP *cpi) {
     case 1: AOM_FALLTHROUGH_INTENDED;
     case 0: break;
     default: assert(0 && "Invalid ERP pruning level.");
+  }
+
+  if (cpi->speed == 1) {
+    if (!boosted && cm->quant_params.base_qindex < qindex_thresh3) {
+      sf->part_sf.simple_motion_search_split = 1;
+    }
   }
 }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
@@ -1334,7 +1344,7 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
     }
   }
 
-  if (is_720p_or_larger && cpi->oxcf.mode == GOOD && speed == 0) {
+  if (is_720p_or_larger && cpi->oxcf.mode == GOOD && speed <= 1) {
     const int qindex_thresh = 124 + qindex_offset;
     const int qindex_thresh2 = 113 + qindex_offset;
 

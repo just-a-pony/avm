@@ -31,7 +31,7 @@
 
 #define MIN_BOOST_COMBINE_FACTOR 4.0
 #define MAX_BOOST_COMBINE_FACTOR 12.0
-// TODO(urvang): Augment array for FLEX_PARTITION: used in speed >= 2.
+// TODO(urvang): Augment array for FLEX_PARTITION: used in speed >= 3.
 
 const int default_tx_type_probs[FRAME_UPDATE_TYPES][TX_SIZES_ALL][TX_TYPES] = {
   { { 221, 189, 214, 292, 0, 0, 0, 0, 0, 2, 38, 68, 0, 0, 0, 0 },
@@ -753,7 +753,7 @@ BLOCK_SIZE av1_select_sb_size(const AV1_COMP *const cpi) {
   // pass encoding, which is why this heuristic is not configured as a
   // speed-feature.
   if (oxcf->superres_cfg.superres_mode == AOM_SUPERRES_NONE &&
-      oxcf->resize_cfg.resize_mode == RESIZE_NONE && oxcf->speed >= 1) {
+      oxcf->resize_cfg.resize_mode == RESIZE_NONE && oxcf->speed > 1) {
     return AOMMIN(cm->width, cm->height) > 480 ? BLOCK_128X128 : BLOCK_64X64;
   }
 #if CONFIG_BLOCK_256
