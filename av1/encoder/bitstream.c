@@ -3701,8 +3701,14 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
     return;
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
-
+#if CONFIG_PARTITION_CONTEXT_REDUCE
+  const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize, 1);
+  const int rect_type_ctx =
+      partition_plane_context(xd, mi_row, mi_col, bsize, 0);
+#else
   const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize);
+  const int rect_type_ctx = ctx;
+#endif
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -3726,7 +3732,7 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
 #endif  // CONFIG_BLOCK_256
   RECT_PART_TYPE rect_type = get_rect_part_type(p);
   if (rect_type_implied_by_bsize(bsize, xd->tree_type) == RECT_INVALID) {
-    aom_write_symbol(w, rect_type, ec_ctx->rect_type_cdf[plane][ctx],
+    aom_write_symbol(w, rect_type, ec_ctx->rect_type_cdf[plane][rect_type_ctx],
                      NUM_RECT_PARTS);
   }
   const bool ext_partition_allowed =
