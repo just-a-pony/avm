@@ -3697,9 +3697,6 @@ static AOM_INLINE void write_partition(const AV1_COMMON *const cm,
   const PARTITION_TYPE derived_partition =
       av1_get_normative_forced_partition_type(
           &cm->mi_params, xd->tree_type, ssx, ssy, mi_row, mi_col, bsize,
-#if CONFIG_CB1TO4_SPLIT
-          ptree->parent ? ptree->parent->bsize : BLOCK_INVALID,
-#endif  // CONFIG_CB1TO4_SPLIT
           ptree_luma, &ptree->chroma_ref_info);
   if (derived_partition != PARTITION_INVALID) {
     assert(p == derived_partition);
@@ -3915,6 +3912,7 @@ static AOM_INLINE void write_modes_sb(
   if (!is_sb_root && !frame_is_intra_only(cm) && parent && partition &&
       parent->region_type != INTRA_REGION && cm->seq_params.enable_sdp &&
       ptree->extended_sdp_allowed_flag &&
+      is_extended_sdp_allowed(parent->bsize, parent->partition) &&
       is_bsize_allowed_for_extended_sdp(bsize, ptree->partition)) {
     const int ctx = get_intra_region_context(bsize);
     assert(xd->tree_type != CHROMA_PART);
