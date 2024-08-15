@@ -224,6 +224,57 @@ static INLINE const NonsepFilterConfig *get_wienerns_config(int qindex,
 }
 #endif  // CONFIG_LR_IMPROVEMENTS
 
+#if CONFIG_COMBINE_PC_NS_WIENER
+const uint8_t *get_pc_wiener_sub_classifier(int num_classes, int set_index);
+int wienerns_to_pcwiener_tap_config_translator(
+    const NonsepFilterConfig *nsfilter_config, int *tap_translator,
+    int max_num_taps);
+void fill_filter_with_match(WienerNonsepInfo *filter,
+                            const int16_t *frame_filter_dictionary,
+                            int dict_stride, const int *match_indices,
+                            const WienernsFilterParameters *nsfilter_params,
+                            int class_id);
+void fill_first_slot_of_bank_with_filter_match(
+    WienerNonsepInfoBank *bank, const WienerNonsepInfo *reference,
+    const int *match_indices, int base_qindex, int class_id,
+    int16_t *frame_filter_dictionary, int dict_stride);
+
+#define ILLEGAL_MATCH -1
+
+static inline int get_first_match_index(int compound_match_index,
+                                        int num_classes) {
+  assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
+  return compound_match_index &
+         ((1 << num_frame_first_predictor_bits[num_classes]) - 1);
+}
+
+static inline int first_match_bits(int num_classes) {
+  assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
+  return num_frame_first_predictor_bits[num_classes];
+}
+
+static inline int encode_first_match(int compound_match_index, int *num_bits,
+                                     int num_classes) {
+  assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
+  *num_bits = first_match_bits(num_classes);
+  return get_first_match_index(compound_match_index, num_classes);
+}
+
+static inline int decode_first_match(int encoded_match_index) {
+  return encoded_match_index;
+}
+
+static inline int count_match_indices_bits(int num_classes) {
+  assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
+  int total_bits = 0;
+
+  for (int c_id = 0; c_id < num_classes; ++c_id) {
+    total_bits += first_match_bits(num_classes);
+  }
+  return total_bits;
+}
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
+
 // Max of SGRPROJ_TMPBUF_SIZE, DOMAINTXFMRF_TMPBUF_SIZE, WIENER_TMPBUF_SIZE
 #define RESTORATION_TMPBUF_SIZE (SGRPROJ_TMPBUF_SIZE)
 
@@ -316,6 +367,16 @@ typedef struct {
    * Pointer to buffers for pcwiener computations.
    */
   PcwienerBuffers *pcwiener_buffers;
+#if CONFIG_COMBINE_PC_NS_WIENER
+  /*!
+   * Whether classification needs to be computed.
+   */
+  int compute_classification;
+  /*!
+   * Whether filtering with pre-trained filters should be skipped.
+   */
+  int skip_pcwiener_filtering;
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
 #endif  // CONFIG_LR_IMPROVEMENTS
 } RestorationUnitInfo;
 
@@ -436,7 +497,29 @@ typedef struct {
    * Number of classes in the Wienerns filtering calculation.
    */
   int num_filter_classes;
+  /*!
+   * Whether frame-level filters are on or off.
+   */
+  int frame_filters_on;
+  /*!
+   * Frame-level filter taps.
+   */
+  WienerNonsepInfo frame_filters;
+  /*!
+   * Whether frame-level filters are initialized.
+   */
+  int frame_filters_initialized;
 #endif  // CONFIG_LR_IMPROVEMENTS
+#if CONFIG_TEMP_LR
+  /*!
+   * whether frame filter is predicted from a reference picture
+   */
+  uint8_t temporal_pred_flag;
+  /*!
+   * reference picture index for frame level filter prediction
+   */
+  uint8_t rst_ref_pic_idx;
+#endif  // CONFIG_TEMP_LR
 } RestorationInfo;
 
 /*!\cond */
@@ -461,6 +544,15 @@ static INLINE void set_default_wiener(WienerInfo *wiener_info, int chroma) {
 }
 
 #if CONFIG_LR_IMPROVEMENTS
+
+// Clips scale_x to allowed range of Wienerns filter taps.
+static INLINE int16_t clip_to_wienerns_range(int16_t scale_x, int16_t minv,
+                                             int16_t n) {
+  scale_x = AOMMAX(scale_x, minv);
+  scale_x = AOMMIN(scale_x, minv + n - 1);
+  return (int16_t)scale_x;
+}
+
 static INLINE void set_default_wienerns(WienerNonsepInfo *wienerns_info,
                                         int qindex, int num_classes,
                                         int chroma) {
@@ -687,6 +779,12 @@ void av1_lr_sync_write_dummy(void *const lr_sync, int r, int c,
 void set_restoration_unit_size(int width, int height, int sx, int sy,
                                RestorationInfo *rst);
 #endif  // CONFIG_LR_IMPROVEMENTS
+
+#if CONFIG_TEMP_LR
+void av1_copy_rst_frame_filters(RestorationInfo *to,
+                                const RestorationInfo *from);
+#endif  // CONFIG_TEMP_LR
+
 /*!\endcond */
 
 #ifdef __cplusplus

@@ -49,6 +49,11 @@ void av1_free_ref_frame_buffers(BufferPool *pool) {
     aom_free(pool->frame_bufs[i].seg_map);
     pool->frame_bufs[i].seg_map = NULL;
     aom_free_frame_buffer(&pool->frame_bufs[i].buf);
+#if CONFIG_TEMP_LR
+    for (int p = 0; p < MAX_MB_PLANE; ++p) {
+      av1_free_restoration_struct(&pool->frame_bufs[i].rst_info[p]);
+    }
+#endif  // CONFIG_TEMP_LR
   }
 }
 
@@ -57,6 +62,13 @@ void av1_alloc_restoration_buffers(AV1_COMMON *cm) {
   const int num_planes = av1_num_planes(cm);
   for (int p = 0; p < num_planes; ++p)
     av1_alloc_restoration_struct(cm, &cm->rst_info[p], p > 0);
+
+#if CONFIG_COMBINE_PC_NS_WIENER
+  if (cm->frame_filter_dictionary == NULL) {
+    allocate_frame_filter_dictionary(cm);
+    translate_pcwiener_filters_to_wienerns(cm);
+  }
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
 
   if (cm->rst_tmpbuf == NULL) {
     CHECK_MEM_ERROR(cm, cm->rst_tmpbuf,
@@ -127,7 +139,9 @@ void av1_free_restoration_buffers(AV1_COMMON *cm) {
     boundaries->stripe_boundary_above = NULL;
     boundaries->stripe_boundary_below = NULL;
   }
-
+#if CONFIG_COMBINE_PC_NS_WIENER
+  free_frame_filter_dictionary(cm);
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
   aom_free_frame_buffer(&cm->rst_frame);
 }
 

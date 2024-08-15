@@ -293,6 +293,11 @@ typedef struct RefCntBuffer {
   int8_t mode_deltas[MAX_MODE_LF_DELTAS];
 
   FRAME_CONTEXT frame_context;
+
+#if CONFIG_TEMP_LR
+  RestorationInfo rst_info[MAX_MB_PLANE];
+#endif  // CONFIG_TEMP_LR
+
   int base_qindex;
 #if CONFIG_TIP_IMPLICIT_QUANT
   int u_ac_delta_q;
@@ -1643,6 +1648,13 @@ typedef struct AV1Common {
    */
   CdefInfo cdef_info;
 
+#if CONFIG_COMBINE_PC_NS_WIENER
+  int16_t *frame_filter_dictionary;
+  int16_t *translated_pcwiener_filters;
+  int translation_done;
+  int frame_filter_dictionary_stride;
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
+
 #if CONFIG_CCSO
   /*!
    * CCSO (Cross Component Sample Offset) parameters.
@@ -1867,6 +1879,22 @@ typedef struct AV1Common {
 } AV1_COMMON;
 
 /*!\cond */
+#if CONFIG_COMBINE_PC_NS_WIENER
+#define PRINT_FILTER 0
+void translate_pcwiener_filters_to_wienerns(AV1_COMMON *cm);
+void allocate_frame_filter_dictionary(AV1_COMMON *cm);
+void free_frame_filter_dictionary(AV1_COMMON *cm);
+
+// Useful in allowing previous class filters to be used in predicting the
+// filters of the next class.
+void add_filter_to_dictionary(const WienerNonsepInfo *filter, int class_id,
+                              const WienernsFilterParameters *nsfilter_params,
+                              int16_t *frame_filter_dictionary,
+                              int dict_stride);
+void set_frame_filter_dictionary(const AV1_COMMON *cm, int num_classes,
+                                 int16_t *frame_filter_dictionary,
+                                 int dict_stride);
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
 
 #if CONFIG_LR_IMPROVEMENTS
 #define ILLEGAL_TXK_SKIP_VALUE 255

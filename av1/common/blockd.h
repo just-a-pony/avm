@@ -1966,9 +1966,50 @@ typedef struct {
 } SgrprojInfoBank;
 
 #if CONFIG_LR_IMPROVEMENTS
+#if CONFIG_COMBINE_PC_NS_WIENER
+#define WIENERNS_MAX_CLASSES 16
+#define NUM_WIENERNS_CLASS_INIT_LUMA 16
+#define NUM_WIENERNS_CLASS_INIT_CHROMA 1
+
+// ceil(log_2(select_pc_wiener_filters + num_classes))
+// access with num_classes.
+static const int num_frame_first_predictor_bits[WIENERNS_MAX_CLASSES + 1] = {
+  6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+};
+
+static inline int num_dictionary_slots(int num_classes) {
+  return 1 << num_frame_first_predictor_bits[num_classes];
+}
+
+static inline int prev_filters_begin(int num_classes) {
+  (void)num_classes;
+  return 1;
+}
+
+static inline int prev_filters_end(int num_classes) { return num_classes; }
+
+static inline int reference_filters_begin(int num_classes) {
+  return prev_filters_end(num_classes);
+}
+
+static inline int is_match_allowed(int filter_index, int class_id,
+                                   int num_classes) {
+  if (filter_index >= prev_filters_begin(num_classes) &&
+      filter_index < prev_filters_end(num_classes))
+    return filter_index < class_id;
+  return 1;
+}
+
+static inline int max_num_base_filters(int num_classes) {
+  return num_dictionary_slots(num_classes) - num_classes;
+}
+
+int max_dictionary_size();
+#else
 #define WIENERNS_MAX_CLASSES 1
 #define NUM_WIENERNS_CLASS_INIT_LUMA 1
 #define NUM_WIENERNS_CLASS_INIT_CHROMA 1
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
 
 // Need two of the WIENERNS_YUV_MAX to store potential center taps. Adjust
 // accordingly.
@@ -1984,6 +2025,10 @@ typedef struct {
    */
   int num_classes;
   /*!
+   * Whether frame-level filters are on or off.
+   */
+  int frame_filters_on;
+  /*!
    * Filter data - taps
    */
   DECLARE_ALIGNED(16, int16_t,
@@ -1995,6 +2040,17 @@ typedef struct {
 
   int bank_ref_for_class[WIENERNS_MAX_CLASSES];
 #endif  // CONFIG_LR_MERGE_COEFFS
+#if CONFIG_COMBINE_PC_NS_WIENER
+  /*!
+   * Indices of frame filter dictionary filters that will be used to populate
+   * the first bank slot and in turn used as frame filter predictors.
+   */
+  int match_indices[WIENERNS_MAX_CLASSES];
+#if CONFIG_TEMP_LR
+  // whether frame filter is predicted from a reference picture
+  uint8_t temporal_pred_flag;
+#endif  // CONFIG_TEMP_LR
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
 } WienerNonsepInfo;
 
 /*!\brief Parameters related to Nonseparable Wiener Filter Bank */
@@ -2011,6 +2067,13 @@ typedef struct {
    * Pointer to the most current filter for each class.
    */
   int bank_ptr_for_class[WIENERNS_MAX_CLASSES];
+#if CONFIG_COMBINE_PC_NS_WIENER
+  /*!
+   * Whether the bank has been initialized with predictions used to better
+   * code the frame-level filters.
+   */
+  int frame_filter_predictors_are_set;
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
 } WienerNonsepInfoBank;
 
 int16_t *nsfilter_taps(WienerNonsepInfo *nsinfo, int wiener_class_id);
