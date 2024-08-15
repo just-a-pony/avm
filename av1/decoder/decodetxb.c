@@ -13,44 +13,129 @@
 #include "av1/decoder/decodetxb.h"
 
 #include "aom_ports/mem.h"
+#include "av1/common/hr_coding.h"
 #include "av1/common/idct.h"
 #include "av1/common/pred_common.h"
+#include "av1/common/reconintra.h"
 #include "av1/common/scan.h"
 #include "av1/common/txb_common.h"
-#include "av1/common/reconintra.h"
 #include "av1/decoder/decodemv.h"
 
-static int read_golomb(MACROBLOCKD *xd, aom_reader *r) {
-  int x = 1;
-  int length = 0;
-
+/*!\brief Read and decode from bitstream an integer value following Exp-Golomb
+ * coding with order k
+ *
+ * \ingroup coefficient_coding
+ *
+ * This function reads and decodes from the bitstream r an integer value which
+ * was coded in Exp-Golomb with order k
+ *
+ * \param[in]    xd        Pointer to structure holding the data for the
+ *                         current macroblockd
+ * \param[in]    r         Pointer to the bitstream reader
+ * \param[in]    k         Order of Exp-Golomb coding
+ *
+ */
+static int read_exp_golomb(MACROBLOCKD *xd, aom_reader *r, int k) {
 #if CONFIG_BYPASS_IMPROVEMENT
-  length = aom_read_unary(r, 21, ACCT_INFO("length"));
+  int length = aom_read_unary(r, 21, ACCT_INFO("hr"));
   if (length > 20) {
     aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
-                       "Invalid length in read_golomb");
+                       "Invalid length in read_exp_golomb");
   }
-  x = 1 << length;
-  x += aom_read_literal(r, length, ACCT_INFO());
+  length += k;
+  int x = 1 << length;
+  x += aom_read_literal(r, length, ACCT_INFO("hr"));
 #else
+  int x = 1;
+  int length = 0;
   int i = 0;
   while (!i) {
-    i = aom_read_bit(r, ACCT_INFO());
+    i = aom_read_bit(r, ACCT_INFO("hr"));
     ++length;
     if (length > 20) {
       aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
-                         "Invalid length in read_golomb");
+                         "Invalid length in read_exp_golomb");
       break;
     }
   }
+  length += k;
   for (i = 0; i < length - 1; ++i) {
     x <<= 1;
-    x += aom_read_bit(r, ACCT_INFO());
+    x += aom_read_bit(r, ACCT_INFO("hr"));
   }
 #endif  // CONFIG_BYPASS_IMPROVEMENT
 
-  return x - 1;
+  return x - (1 << k);
 }
+
+#if CONFIG_COEFF_HR_ADAPTIVE
+/*!\brief Read and decode from the bitstream a Truncated-Rice coded integer
+ * value.
+ *
+ * \ingroup coefficient_coding
+ *
+ * This function reads and decodes from the bitstream a Truncated-Rice coded
+ * integer value, with Rice parameter m. It first reads and decodes the unary
+ * prefix q from the input bitstream r. Given a shorter prefix (q < cmax), it
+ * decodes the remaining offset of the integer using Golomb-Rice coding;
+ * otherwise (i.e., when q == cmax) it shifts to use Exp-Golomb to decode the
+ * remainder value.
+ *
+ * \param[in]    xd        Pointer to structure holding the data for the
+ *                         current macroblockd
+ * \param[in]    r         Pointer to the reader of the bitstream
+ * \param[in]    m         Parameter of the Rice distribution
+ * \param[in]    k         Order of the Exp-Golomb code
+ * \param[in]    cmax      Maximum unary prefix length above which Exp-Golomb
+ *                         is used instead of Golomb-Rice coding
+ *
+ */
+static int read_truncated_rice(MACROBLOCKD *xd, aom_reader *r, int m, int k,
+                               int cmax) {
+#if CONFIG_BYPASS_IMPROVEMENT
+  int q = aom_read_unary(r, cmax, ACCT_INFO("hr"));
+#else
+  int q = 0;
+  int i = 0;
+  while (!i) {
+    i = aom_read_bit(r, ACCT_INFO("hr"));
+    ++q;
+    if (q > cmax - 1) {
+      aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
+                         "Invalid length in read_truncated_rice");
+      break;
+    }
+  }
+#endif  // CONFIG_BYPASS_IMPROVEMENT
+
+  int rem = (q == cmax) ? read_exp_golomb(xd, r, k)
+                        : aom_read_literal(r, m, ACCT_INFO("hr"));
+  return rem + (q << m);
+}
+
+/*!\brief Read and decode from the bitstream the high range (HR) value of
+ * the coefficient level using adaptive Truncated-Rice coding.
+ *
+ * \ingroup coefficient_coding
+ *
+ * This function reads and decodes from the bitstream the high range (HR)
+ * value of the coefficient level following adaptive Truncated-Rice coding.
+ * It first derives the Rice parameter m from the input context value ctx.
+ * It then invokes the read_truncated_rice function to decode the HR
+ * coefficient value using Rice parameter m, Exp-Golomb order k = m + 1,
+ * and maximum unary prefix lenght cmax = AOMMIN(m + 4, 6).
+ *
+ * \param[in]    xd        Pointer to structure holding the data for the
+ *                         current macroblockd
+ * \param[in]    r         Pointer to the reader of the bitstream
+ * \param[in]    ctx       Context value
+ *
+ */
+static int read_adaptive_hr(MACROBLOCKD *xd, aom_reader *r, int ctx) {
+  int m = get_adaptive_param(ctx);
+  return read_truncated_rice(xd, r, m, m + 1, AOMMIN(m + 4, 6));
+}
+#endif  // CONFIG_COEFF_HR_ADAPTIVE
 
 static INLINE int rec_eob_pos(const int eob_token, const int extra) {
   int eob = av1_eob_group_start[eob_token];
@@ -663,6 +748,9 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
   }
 
   const int bob = av1_get_max_eob(tx_size) - bob_data->eob;
+#if CONFIG_COEFF_HR_ADAPTIVE
+  int hr_level_avg = 0;
+#endif  // CONFIG_COEFF_HR_ADAPTIVE
 #if CONFIG_IMPROVEIDTX_RDPH
   for (int c = bob; c < eob_data->eob; c++) {
 #else
@@ -688,7 +776,13 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
 #endif  // CONFIG_IMPROVEIDTX_CTXS
       signs[sign_idx] = sign > 0 ? -1 : 1;
       if (level >= MAX_BASE_BR_RANGE) {
-        level += read_golomb(xd, r);
+#if CONFIG_COEFF_HR_ADAPTIVE
+        int hr_level = read_adaptive_hr(xd, r, hr_level_avg);
+        level += hr_level;
+        hr_level_avg = (hr_level + hr_level_avg) >> 1;
+#else
+        level += read_exp_golomb(xd, r, 0);
+#endif  // CONFIG_COEFF_HR_ADAPTIVE
       }
       if (c == 0) dc_val = sign ? -level : level;
       // Bitmasking to clamp level to valid range:
@@ -931,7 +1025,7 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
           aom_read_symbol(r, cdf, 3, ACCT_INFO("level", "coeff_base_eob_cdf")) +
           1;
       if (level > NUM_BASE_LEVELS) {
-        const int br_ctx = 0; /* get_lf_ctx_eob */
+        const int br_ctx = 0; /* get_br_ctx_eob */
         cdf = ec_ctx->coeff_br_cdf[plane_type][br_ctx];
         for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
           const int k = aom_read_symbol(r, cdf, BR_CDF_SIZE,
@@ -1039,11 +1133,15 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       }
     }
   }
-#if CONFIG_IMPROVEIDTX_RDPH
+
+#if CONFIG_COEFF_HR_ADAPTIVE
+  int hr_level_avg = 0;
+#endif  // CONFIG_COEFF_HR_ADAPTIVE
+#if CONFIG_IMPROVEIDTX_RDPH || CONFIG_COEFF_HR_ADAPTIVE
   for (int c = *eob - 1; c >= 0; --c) {
 #else
   for (int c = 0; c < *eob; ++c) {
-#endif  // CONFIG_IMPROVEIDTX_RDPH
+#endif  // CONFIG_IMPROVEIDTX_RDPH || CONFIG_COEFF_HR_ADAPTIVE
     const int pos = scan[c];
     uint8_t sign;
     tran_low_t level = levels[get_padded_idx(pos, bwl)];
@@ -1112,7 +1210,13 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       }
       if (is_hidden && c == 0) {
         if (level >= (MAX_BASE_BR_RANGE << 1)) {
-          level += (read_golomb(xd, r) << 1);
+#if CONFIG_COEFF_HR_ADAPTIVE
+          int hr_level = (read_adaptive_hr(xd, r, hr_level_avg >> 1) << 1);
+          level += hr_level;
+          hr_level_avg = (hr_level_avg + hr_level) >> 1;
+#else
+          level += (read_exp_golomb(xd, r, 0) << 1);
+#endif  // CONFIG_COEFF_HR_ADAPTIVE
         }
       } else {
 #if !CONFIG_IMPROVEIDTX_CTXS
@@ -1122,11 +1226,23 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
         int limits = get_lf_limits(row, col, tx_class, plane);
         if (limits) {
           if (level >= LF_MAX_BASE_BR_RANGE) {
-            level += read_golomb(xd, r);
+#if CONFIG_COEFF_HR_ADAPTIVE
+            int hr_level = read_adaptive_hr(xd, r, hr_level_avg);
+            level += hr_level;
+            hr_level_avg = (hr_level_avg + hr_level) >> 1;
+#else
+            level += read_exp_golomb(xd, r, 0);
+#endif  // CONFIG_COEFF_HR_ADAPTIVE
           }
         } else {
           if (level >= MAX_BASE_BR_RANGE) {
-            level += read_golomb(xd, r);
+#if CONFIG_COEFF_HR_ADAPTIVE
+            int hr_level = read_adaptive_hr(xd, r, hr_level_avg);
+            level += hr_level;
+            hr_level_avg = (hr_level_avg + hr_level) >> 1;
+#else
+            level += read_exp_golomb(xd, r, 0);
+#endif  // CONFIG_COEFF_HR_ADAPTIVE
           }
         }
       }
