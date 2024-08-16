@@ -46,8 +46,8 @@ static INLINE unsigned int highbd_sad_ds(const uint16_t *a, int a_stride,
       sad += abs(a[x] - b[x]);
     }
 
-    a += a_stride;
-    b += b_stride;
+    a += a_stride << 1;
+    b += b_stride << 1;
   }
   return sad;
 }
