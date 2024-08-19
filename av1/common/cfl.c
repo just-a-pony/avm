@@ -18,6 +18,10 @@
 
 #include "config/av1_rtcd.h"
 
+#if CONFIG_E125_MHCCP_SIMPLIFY
+#include "av1/common/reconinter.h"
+#endif  // CONFIG_E125_MHCCP_SIMPLIFY
+
 #if CONFIG_IMPROVED_CFL
 #include "av1/common/warped_motion.h"
 #endif
@@ -1060,10 +1064,17 @@ void mhccp_derive_multi_param_hv(MACROBLOCKD *const xd, int plane,
 
   if (count > 0) {
     int64_t ATA[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS];
+#if CONFIG_E125_MHCCP_SIMPLIFY
+    // One more column is added to store the derived parameters
+    int64_t C[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS + 1];
+#endif  // CONFIG_E125_MHCCP_SIMPLIFY
     int64_t Ty[MHCCP_NUM_PARAMS];
     memset(ATA, 0x00,
            sizeof(int64_t) * (MHCCP_NUM_PARAMS) * (MHCCP_NUM_PARAMS));
     memset(Ty, 0x00, sizeof(int64_t) * (MHCCP_NUM_PARAMS));
+#if CONFIG_E125_MHCCP_SIMPLIFY
+    memset(C, 0x00, sizeof(C));
+#endif  // CONFIG_E125_MHCCP_SIMPLIFY
     for (int coli0 = 0; coli0 < (MHCCP_NUM_PARAMS); ++coli0) {
       for (int coli1 = coli0; coli1 < (MHCCP_NUM_PARAMS); ++coli1) {
         int16_t *col0 = A[coli0];
@@ -1084,7 +1095,8 @@ void mhccp_derive_multi_param_hv(MACROBLOCKD *const xd, int plane,
     }
 
     // Scale the matrix and vector to selected dynamic range
-    int matrixShift = 28 - 2 * xd->bd - (int)ceil(log2(count));
+    int matrixShift =
+        (MHCCP_DECIM_BITS + 6) - 2 * xd->bd - (int)ceil(log2(count));
 
     if (matrixShift > 0) {
       for (int coli0 = 0; coli0 < MHCCP_NUM_PARAMS; coli0++)
@@ -1103,6 +1115,10 @@ void mhccp_derive_multi_param_hv(MACROBLOCKD *const xd, int plane,
       for (int coli = 0; coli < MHCCP_NUM_PARAMS; coli++)
         Ty[coli] >>= matrixShift;
     }
+#if CONFIG_E125_MHCCP_SIMPLIFY
+    gauss_elimination_mhccp(ATA, C, Ty, mbmi->mhccp_implicit_param[plane - 1],
+                            MHCCP_NUM_PARAMS, xd->bd);
+#else
     int64_t U[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS];
     int64_t diag[MHCCP_NUM_PARAMS];
     memset(U, 0x00, sizeof(int64_t) * (MHCCP_NUM_PARAMS) * (MHCCP_NUM_PARAMS));
@@ -1110,6 +1126,7 @@ void mhccp_derive_multi_param_hv(MACROBLOCKD *const xd, int plane,
     bool decompOk = ldl_decompose(ATA, U, diag, MHCCP_NUM_PARAMS);
     ldl_solve(U, diag, Ty, mbmi->mhccp_implicit_param[plane - 1],
               MHCCP_NUM_PARAMS, decompOk);
+#endif  // CONFIG_E125_MHCCP_SIMPLIFY
   } else {
     for (int i = 0; i < MHCCP_NUM_PARAMS - 1; ++i) {
       mbmi->mhccp_implicit_param[plane - 1][i] = 0;
@@ -1118,6 +1135,150 @@ void mhccp_derive_multi_param_hv(MACROBLOCKD *const xd, int plane,
         1 << MHCCP_DECIM_BITS;
   }
 }
+
+#if CONFIG_E125_MHCCP_SIMPLIFY
+#define DIV_PREC_BITS 14
+#define DIV_PREC_BITS_POW2 8
+#define DIV_SLOT_BITS 3
+#define DIV_INTR_BITS (DIV_PREC_BITS - DIV_SLOT_BITS)
+#define DIV_INTR_ROUND (1 << DIV_INTR_BITS >> 1)
+
+// Return the number of shifted bits for the denominator
+static inline int floorLog2Uint64(uint64_t x) {
+  if (x == 0) {
+    return 0;
+  }
+  int result = 0;
+  if (x & 0xffffffff00000000) {
+    x >>= 32;
+    result += 32;
+  }
+  if (x & 0xffff0000) {
+    x >>= 16;
+    result += 16;
+  }
+  if (x & 0xff00) {
+    x >>= 8;
+    result += 8;
+  }
+  if (x & 0xf0) {
+    x >>= 4;
+    result += 4;
+  }
+  if (x & 0xc) {
+    x >>= 2;
+    result += 2;
+  }
+  if (x & 0x2) {
+    result += 1;
+  }
+  return result;
+}
+
+void get_division_scale_shift(uint64_t denom, int *scale, uint64_t *round,
+                              int *shift) {
+  // This array stores the coefficients for the quadratic
+  // (squared) term in the polynomial for each of the 8 regions.
+  static const int pow2W[DIV_PREC_BITS_POW2] = { 214, 153, 113, 86,
+                                                 67,  53,  43,  35 };
+  // This array contains the offset values used to adjust
+  //  the normalized denominator for each region.
+  static const int pow2O[DIV_PREC_BITS_POW2] = { 4822, 5952, 6624, 6792,
+                                                 6408, 5424, 3792, 1466 };
+  // This array holds the constant bias term for each region's polynomial.
+  static const int pow2B[DIV_PREC_BITS_POW2] = { 12784, 12054, 11670, 11583,
+                                                 11764, 12195, 12870, 13782 };
+
+  *shift = floorLog2Uint64(denom);
+  if (*shift == 0)
+    *round = 0;
+  else
+    *round = (uint64_t)(1ULL << (*shift) >> 1);
+  int normDiff = 0;
+  if (*shift > DIV_PREC_BITS)
+    normDiff = (int)((denom >> ((*shift) - DIV_PREC_BITS)) &
+                     ((1 << DIV_PREC_BITS) - 1));
+  else
+    normDiff = (int)((denom << (DIV_PREC_BITS - (*shift))) &
+                     ((1 << DIV_PREC_BITS) - 1));
+  // The vale of index is ranging from 0 to 7
+  int index = normDiff >> DIV_INTR_BITS;
+  int normDiff2 = normDiff - pow2O[index];
+
+  *scale = ((pow2W[index] * ((normDiff2 * normDiff2) >> DIV_PREC_BITS)) >>
+            DIV_PREC_BITS_POW2) -
+           (normDiff2 >> 1) + pow2B[index];
+  *scale <<= MHCCP_DECIM_BITS - DIV_PREC_BITS;
+}
+
+void gauss_back_substitute(int64_t *x,
+                           int64_t C[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS + 1],
+                           int numEq, int col) {
+  x[numEq - 1] = C[numEq - 1][col];
+
+  for (int i = numEq - 2; i >= 0; i--) {
+    x[i] = C[i][col];
+
+    for (int j = i + 1; j < numEq; j++) {
+      x[i] -= stable_mult_shift(C[i][j], x[j], MHCCP_DECIM_BITS,
+                                get_msb_signed_64(C[i][j]),
+                                get_msb_signed_64(x[j]), 32, NULL);
+    }
+  }
+}
+
+void gauss_elimination_mhccp(int64_t A[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS],
+                             int64_t C[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS + 1],
+                             int64_t *y0, int64_t *x0, int numEq, int bd) {
+  int colChr0 = numEq;
+
+  int reg = 2 << (bd - 8);
+
+  // Create an [M][M+2] matrix system (could have been done already when
+  // calculating auto/cross-correlations)
+  for (int i = 0; i < numEq; i++) {
+    for (int j = 0; j < numEq; j++) {
+      C[i][j] = j >= i ? A[i][j] : A[j][i];
+    }
+
+    C[i][i] += reg;  // Regularization
+    C[i][colChr0] = y0[i];
+  }
+
+  for (int i = 0; i < numEq; i++) {
+    int64_t *src = C[i];
+    uint64_t diag = src[i] < 1 ? 1 : src[i];
+
+    uint64_t round;
+    int scale, shift;
+    get_division_scale_shift(diag, &scale, &round, &shift);
+
+    for (int j = i + 1; j < numEq + 1; j++) {
+      src[j] =
+          stable_mult_shift(src[j], scale, shift, get_msb_signed_64(src[j]),
+                            get_msb_signed_64(scale), 32, NULL);
+    }
+
+    for (int j = i + 1; j < numEq; j++) {
+      int64_t *dst = C[j];
+      int64_t scale_factor = dst[i];
+
+      // On row j all elements with k < i+1 are now zero (not zeroing those here
+      // as backsubstitution does not need them)
+      for (int k = i + 1; k < numEq + 1; k++) {
+        dst[k] -= stable_mult_shift(scale_factor, src[k], MHCCP_DECIM_BITS,
+                                    get_msb_signed_64(scale_factor),
+                                    get_msb_signed_64(src[k]), 32, NULL);
+      }
+    }
+  }
+
+  // Solve with backsubstitution
+  gauss_back_substitute(x0, C, numEq, colChr0);
+}
+#endif  // CONFIG_E125_MHCCP_SIMPLIFY
+
+#if !CONFIG_E125_MHCCP_SIMPLIFY
 bool ldl_decomp(int64_t A[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS],
                 int64_t U[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS],
                 int64_t diag[MHCCP_NUM_PARAMS], int numEq) {
@@ -1204,13 +1365,24 @@ void ldl_solve(int64_t U[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS],
     memset(x, 0, sizeof(int64_t) * numEq);
   }
 }
+#endif  // !CONFIG_E125_MHCCP_SIMPLIFY
 
 static int16_t convolve(int64_t *params, uint16_t *vector, int16_t numParams) {
   int64_t sum = 0;
   for (int i = 0; i < numParams; i++) {
+#if CONFIG_E125_MHCCP_SIMPLIFY
+    sum += stable_mult_shift(params[i], vector[i], MHCCP_DECIM_BITS,
+                             get_msb_signed_64(params[i]),
+                             get_msb_signed(vector[i]), 32, NULL);
+#else
     sum += params[i] * vector[i];
+#endif  // CONFIG_E125_MHCCP_SIMPLIFY
   }
+#if CONFIG_E125_MHCCP_SIMPLIFY
+  return (int16_t)sum;
+#else
   return (int16_t)((sum + MHCCP_DECIM_ROUND) >> MHCCP_DECIM_BITS);
+#endif  // CONFIG_E125_MHCCP_SIMPLIFY
 }
 
 void mhccp_predict_hv_hbd_c(const uint16_t *input, uint16_t *dst, bool have_top,
