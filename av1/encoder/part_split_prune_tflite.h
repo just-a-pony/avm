@@ -28,6 +28,10 @@ typedef enum {
   MODEL_64X64,
   MODEL_32X32,
   MODEL_16X16,
+  MODEL_INTER_64X64,
+  MODEL_INTER_32X32,
+  MODEL_INTER_16X16,
+  MODEL_INTER_8X8,
 } MODEL_TYPE;
 
 struct ModelParams {
@@ -37,16 +41,12 @@ struct ModelParams {
   int qp_high;
 };
 
-void *av2_simple_intra_prune_none_tflite_init();
-int av2_simple_intra_prune_none_tflite_exec(void *context,
-                                            const float *ml_input,
-                                            int input_len, float *ml_output,
-                                            int output_len,
-                                            MODEL_TYPE model_type);
-void av2_simple_intra_prune_none_tflite_close(void **context);
-int av2_simple_intra_prune_none_tflite_params(MODEL_TYPE model_type,
-                                              int prune_level,
-                                              struct ModelParams *params);
+int av2_part_split_prune_tflite_exec(void **context, const float *ml_input,
+                                     int input_len, float *ml_output,
+                                     int output_len, MODEL_TYPE model_type);
+void av2_part_split_prune_tflite_close(void **context);
+int av2_part_split_prune_tflite_params(MODEL_TYPE model_type, int prune_level,
+                                       struct ModelParams *params);
 
 #ifdef __cplusplus
 }

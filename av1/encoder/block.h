@@ -548,6 +548,7 @@ enum {
 /*! \brief max length of start Mv list
  */
 #define kSMSMaxStartMVs 1
+
 /*! \brief Contains data for simple motion
  */
 typedef struct SimpleMotionData {
@@ -572,6 +573,9 @@ typedef struct SimpleMotionData {
   PARTITION_TYPE prev_partition;           /*!< previous partition */
   struct PICK_MODE_CONTEXT *mode_cache[1]; /*!< mode cache */
   struct SIMPLE_MOTION_DATA_TREE *old_sms; /*!< old sms */
+
+  int ref_frame; /*!< ref frame used */
+  int rdmult;    /*!< rd_mult for the block */
 } SimpleMotionData;
 
 /*!\cond */

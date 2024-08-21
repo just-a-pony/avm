@@ -26,6 +26,7 @@
 #include "av1/encoder/partition_model_weights.h"
 #include "av1/encoder/partition_cnn_weights.h"
 #include "av1/encoder/encoder.h"
+#include "av1/encoder/reconinter_enc.h"
 
 #include "av1/encoder/motion_search_facade.h"
 #include "av1/encoder/partition_search.h"
@@ -36,7 +37,7 @@
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if CONFIG_ML_PART_SPLIT
-#include "av1/encoder/simple_intrapred_tflite.h"
+#include "av1/encoder/part_split_prune_tflite.h"
 #endif  // CONFIG_ML_PART_SPLIT
 
 static AOM_INLINE void simple_motion_search_prune_part_features(
@@ -1803,15 +1804,21 @@ static void compute_sms_data(AV1_COMP *const cpi, const TileInfo *const tile,
     sms_data->dist = 0;
     sms_data->rate = 0;
     sms_data->rdcost = 0;
+    sms_data->ref_frame = -1;
+    sms_data->rdmult = 0;
     sms_data->valid = 1;
     return;
   }
-  av1_set_offsets(cpi, tile, x, mi_row, mi_col, bsize, NULL);
-  // We need to update the rd-mult here to in case we are doing simple motion
-  // search on a subblock of the current coding block.
+  set_offsets_for_motion_search(cpi, x, mi_row, mi_col, bsize);
+  //  We need to update the rd-mult here to in case we are doing simple motion
+  //  search on a subblock of the current coding block.
   const int orig_rdmult = x->rdmult;
   const AQ_MODE aq_mode = cpi->oxcf.q_cfg.aq_mode;
   MB_MODE_INFO *mbmi = x->e_mbd.mi[0];
+  mbmi->mode = NEWMV;
+  mbmi->refinemv_flag = 0;
+  mbmi->pb_mv_precision = MV_PRECISION_ONE_EIGHTH_PEL;
+  mbmi->warpmv_with_mvd_flag = 0;
   setup_block_rdmult(cpi, x, mi_row, mi_col, bsize, aq_mode, mbmi);
   // Set error per bit for current rdmult
   av1_set_error_per_bit(&x->mv_costs, x->rdmult);
@@ -1846,6 +1853,8 @@ static void compute_sms_data(AV1_COMP *const cpi, const TileInfo *const tile,
   sms_data->bsize = bsize;
   sms_data->mi_row = mi_row;
   sms_data->mi_col = mi_col;
+  sms_data->ref_frame = ref_frame;
+  sms_data->rdmult = x->rdmult;
   x->rdmult = orig_rdmult;
   return;
 }
@@ -1914,15 +1923,14 @@ static INLINE void add_start_mv_to_partition(
     subsizes[1] = get_partition_subsize(bsize, PARTITION_VERT);
     subsizes[2] = get_partition_subsize(subsizes[1], PARTITION_VERT);
   }
-  if (partition == PARTITION_HORZ_3) {
-    subsizes[1] = get_h_partition_subsize(sb_size, 1, PARTITION_HORZ_3);
-    subsizes[2] = get_h_partition_subsize(sb_size, 2, PARTITION_HORZ_3);
-  } else if (partition == PARTITION_VERT_3) {
-    subsizes[1] = get_h_partition_subsize(sb_size, 1, PARTITION_VERT_3);
-    subsizes[2] = get_h_partition_subsize(sb_size, 2, PARTITION_VERT_3);
+  if (partition == PARTITION_HORZ_3 || partition == PARTITION_VERT_3) {
+    for (int idx = 0; idx < subblock_count[partition]; idx++) {
+      subsizes[idx] = get_h_partition_subsize(bsize, idx, partition);
+    }
   }
 
   for (int idx = 0; idx < subblock_count[partition]; idx++) {
+    assert(subsizes[idx] != BLOCK_INVALID);
     const int sub_row =
         mi_row + step_multiplier[partition][idx][0] * eighth_step_h / 4;
     const int sub_col =
@@ -2070,44 +2078,89 @@ void av1_gather_erp_rect_features(
 #if CONFIG_ML_PART_SPLIT
 
 enum {
-  FEATURE_LOG_QP_SQUARED = 0,
-  FEATURE_HAS_ABOVE,
-  FEATURE_LOG_ABOVE_WIDTH,
-  FEATURE_LOG_ABOVE_HEIGHT,
-  FEATURE_HAS_LEFT,
-  FEATURE_LOG_LEFT_WIDTH,
-  FEATURE_LOG_LEFT_HEIGHT,
-  FEATURE_NORM_BEST_0_SSE,
-  FEATURE_NORM_BEST_0_VAR,
-  FEATURE_NORM_BEST_1_SSE,
-  FEATURE_NORM_BEST_1_VAR,
-  FEATURE_NORM_BEST_2_SSE,
-  FEATURE_NORM_BEST_2_VAR,
-  FEATURE_NORM_BEST_SSE_0_00,
-  FEATURE_NORM_BEST_VAR_0_00,
-  FEATURE_NORM_BEST_SSE_0_01,
-  FEATURE_NORM_BEST_VAR_0_01,
-  FEATURE_NORM_BEST_SSE_0_10,
-  FEATURE_NORM_BEST_VAR_0_10,
-  FEATURE_NORM_BEST_SSE_0_11,
-  FEATURE_NORM_BEST_VAR_0_11,
-  FEATURE_NORM_BEST_SSE_1_00,
-  FEATURE_NORM_BEST_VAR_1_00,
-  FEATURE_NORM_BEST_SSE_1_01,
-  FEATURE_NORM_BEST_VAR_1_01,
-  FEATURE_NORM_BEST_SSE_1_10,
-  FEATURE_NORM_BEST_VAR_1_10,
-  FEATURE_NORM_BEST_SSE_1_11,
-  FEATURE_NORM_BEST_VAR_1_11,
-  FEATURE_NORM_BEST_SSE_2_00,
-  FEATURE_NORM_BEST_VAR_2_00,
-  FEATURE_NORM_BEST_SSE_2_01,
-  FEATURE_NORM_BEST_VAR_2_01,
-  FEATURE_NORM_BEST_SSE_2_10,
-  FEATURE_NORM_BEST_VAR_2_10,
-  FEATURE_NORM_BEST_SSE_2_11,
-  FEATURE_NORM_BEST_VAR_2_11,
-  FEATURE_MAX
+  FEATURE_INTRA_LOG_QP_SQUARED = 0,
+  FEATURE_INTRA_HAS_ABOVE,
+  FEATURE_INTRA_LOG_ABOVE_WIDTH,
+  FEATURE_INTRA_LOG_ABOVE_HEIGHT,
+  FEATURE_INTRA_HAS_LEFT,
+  FEATURE_INTRA_LOG_LEFT_WIDTH,
+  FEATURE_INTRA_LOG_LEFT_HEIGHT,
+  FEATURE_INTRA_NORM_BEST_0_SSE,
+  FEATURE_INTRA_NORM_BEST_0_VAR,
+  FEATURE_INTRA_NORM_BEST_1_SSE,
+  FEATURE_INTRA_NORM_BEST_1_VAR,
+  FEATURE_INTRA_NORM_BEST_2_SSE,
+  FEATURE_INTRA_NORM_BEST_2_VAR,
+  FEATURE_INTRA_NORM_BEST_SSE_0_00,
+  FEATURE_INTRA_NORM_BEST_VAR_0_00,
+  FEATURE_INTRA_NORM_BEST_SSE_0_01,
+  FEATURE_INTRA_NORM_BEST_VAR_0_01,
+  FEATURE_INTRA_NORM_BEST_SSE_0_10,
+  FEATURE_INTRA_NORM_BEST_VAR_0_10,
+  FEATURE_INTRA_NORM_BEST_SSE_0_11,
+  FEATURE_INTRA_NORM_BEST_VAR_0_11,
+  FEATURE_INTRA_NORM_BEST_SSE_1_00,
+  FEATURE_INTRA_NORM_BEST_VAR_1_00,
+  FEATURE_INTRA_NORM_BEST_SSE_1_01,
+  FEATURE_INTRA_NORM_BEST_VAR_1_01,
+  FEATURE_INTRA_NORM_BEST_SSE_1_10,
+  FEATURE_INTRA_NORM_BEST_VAR_1_10,
+  FEATURE_INTRA_NORM_BEST_SSE_1_11,
+  FEATURE_INTRA_NORM_BEST_VAR_1_11,
+  FEATURE_INTRA_NORM_BEST_SSE_2_00,
+  FEATURE_INTRA_NORM_BEST_VAR_2_00,
+  FEATURE_INTRA_NORM_BEST_SSE_2_01,
+  FEATURE_INTRA_NORM_BEST_VAR_2_01,
+  FEATURE_INTRA_NORM_BEST_SSE_2_10,
+  FEATURE_INTRA_NORM_BEST_VAR_2_10,
+  FEATURE_INTRA_NORM_BEST_SSE_2_11,
+  FEATURE_INTRA_NORM_BEST_VAR_2_11,
+  FEATURE_INTRA_MAX
+};
+
+enum {
+  // final_part_prune_inter_bs6_9_qp_110_135_160_nnz_psnr_32_16_tflite_model
+  FEATURE_INTER_RD_MULT = 0,
+  FEATURE_INTER_FULL_PSNR,
+  FEATURE_INTER_FULL_Q_COEFF_MAX,
+  FEATURE_INTER_FULL_Q_COEFF_NONZ,
+  FEATURE_INTER_SQ_0_PSNR,
+  FEATURE_INTER_SQ_0_Q_COEFF_MAX,
+  FEATURE_INTER_SQ_0_Q_COEFF_NONZ,
+  FEATURE_INTER_SQ_1_PSNR,
+  FEATURE_INTER_SQ_1_Q_COEFF_MAX,
+  FEATURE_INTER_SQ_1_Q_COEFF_NONZ,
+  FEATURE_INTER_SQ_2_PSNR,
+  FEATURE_INTER_SQ_2_Q_COEFF_MAX,
+  FEATURE_INTER_SQ_2_Q_COEFF_NONZ,
+  FEATURE_INTER_SQ_3_PSNR,
+  FEATURE_INTER_SQ_3_Q_COEFF_MAX,
+  FEATURE_INTER_SQ_3_Q_COEFF_NONZ,
+
+  // final_part_prune_inter_bs3_6_9_12_qp_110_135_160_nnz_psnr_vect_satdq_32_16_tflite_model
+  FEATURE_INTER_FULL_LOG_MAG,
+  FEATURE_INTER_FULL_ANGLE_RAD,
+  FEATURE_INTER_SQ_0_LOG_MAG,
+  FEATURE_INTER_SQ_0_ANGLE_RAD,
+  FEATURE_INTER_SQ_1_LOG_MAG,
+  FEATURE_INTER_SQ_1_ANGLE_RAD,
+  FEATURE_INTER_SQ_2_LOG_MAG,
+  FEATURE_INTER_SQ_2_ANGLE_RAD,
+  FEATURE_INTER_SQ_3_LOG_MAG,
+  FEATURE_INTER_SQ_3_ANGLE_RAD,
+  //
+  FEATURE_INTER_FULL_LOG_SATDQ,
+  FEATURE_INTER_SQ_0_LOG_SATDQ,
+  FEATURE_INTER_SQ_1_LOG_SATDQ,
+  FEATURE_INTER_SQ_2_LOG_SATDQ,
+  FEATURE_INTER_SQ_3_LOG_SATDQ,
+  FEATURE_INTER_FULL_LOG_SATD,
+  FEATURE_INTER_SQ_0_LOG_SATD,
+  FEATURE_INTER_SQ_1_LOG_SATD,
+  FEATURE_INTER_SQ_2_LOG_SATD,
+  FEATURE_INTER_SQ_3_LOG_SATD,
+
+  FEATURE_INTER_MAX
 };
 
 #define ZERO_ARRAY(arr) memset(arr, 0, sizeof(arr))
@@ -2209,9 +2262,9 @@ static AOM_INLINE void av1_ml_part_split_features_square(AV1_COMP *const cpi,
               mi_size_wide_log2[subsize_sq] + mi_size_high_log2[subsize_sq] + 4;
           for (int cand = 0; cand < 3; ++cand) {
             int foff = r_idx * 4 + c_idx * 2 + cand * 8;
-            out_features[FEATURE_NORM_BEST_SSE_0_00 + foff] = logf(
+            out_features[FEATURE_INTRA_NORM_BEST_SSE_0_00 + foff] = logf(
                 1.0f + (best_sub_sse[r_idx][c_idx][cand] >> sub_area_log2));
-            out_features[FEATURE_NORM_BEST_VAR_0_00 + foff] = logf(
+            out_features[FEATURE_INTRA_NORM_BEST_VAR_0_00 + foff] = logf(
                 1.0f + (best_sub_var[r_idx][c_idx][cand] >> sub_area_log2));
           }
         }
@@ -2282,17 +2335,17 @@ static AOM_INLINE void av1_ml_part_split_features_none(AV1_COMP *const cpi,
   if (out_features) {
     const int blk_area_log2 =
         mi_size_wide_log2[bsize] + mi_size_high_log2[bsize] + 4;
-    out_features[FEATURE_NORM_BEST_0_SSE] =
+    out_features[FEATURE_INTRA_NORM_BEST_0_SSE] =
         logf(1.0f + (best_sse[0] >> blk_area_log2));
-    out_features[FEATURE_NORM_BEST_0_VAR] =
+    out_features[FEATURE_INTRA_NORM_BEST_0_VAR] =
         logf(1.0f + (best_var[0] >> blk_area_log2));
-    out_features[FEATURE_NORM_BEST_1_SSE] =
+    out_features[FEATURE_INTRA_NORM_BEST_1_SSE] =
         logf(1.0f + (best_sse[1] >> blk_area_log2));
-    out_features[FEATURE_NORM_BEST_1_VAR] =
+    out_features[FEATURE_INTRA_NORM_BEST_1_VAR] =
         logf(1.0f + (best_var[1] >> blk_area_log2));
-    out_features[FEATURE_NORM_BEST_2_SSE] =
+    out_features[FEATURE_INTRA_NORM_BEST_2_SSE] =
         logf(1.0f + (best_sse[2] >> blk_area_log2));
-    out_features[FEATURE_NORM_BEST_2_VAR] =
+    out_features[FEATURE_INTRA_NORM_BEST_2_VAR] =
         logf(1.0f + (best_var[2] >> blk_area_log2));
   }
 }
@@ -2312,7 +2365,7 @@ static AOM_INLINE void av1_ml_part_split_features(AV1_COMP *const cpi,
         av1_dc_quant_QTX(x->qindex, 0, cpi->common.seq_params.base_y_dc_delta_q,
                          xd->bd) >>
         (xd->bd - 8);
-    out_features[FEATURE_LOG_QP_SQUARED] =
+    out_features[FEATURE_INTRA_LOG_QP_SQUARED] =
         logf(1.0f + (float)((int64_t)dc_q * (int64_t)dc_q) /
                         (256 << (2 * QUANT_TABLE_BITS)));
 
@@ -2325,14 +2378,15 @@ static AOM_INLINE void av1_ml_part_split_features(AV1_COMP *const cpi,
     const BLOCK_SIZE left_bsize =
         has_left ? xd->left_mbmi->sb_type[xd->tree_type == CHROMA_PART] : bsize;
 
-    out_features[FEATURE_HAS_ABOVE] = (float)has_above;
-    out_features[FEATURE_LOG_ABOVE_WIDTH] =
+    out_features[FEATURE_INTRA_HAS_ABOVE] = (float)has_above;
+    out_features[FEATURE_INTRA_LOG_ABOVE_WIDTH] =
         (float)mi_size_wide_log2[above_bsize];
-    out_features[FEATURE_LOG_ABOVE_HEIGHT] =
+    out_features[FEATURE_INTRA_LOG_ABOVE_HEIGHT] =
         (float)mi_size_high_log2[above_bsize];
-    out_features[FEATURE_HAS_LEFT] = (float)has_left;
-    out_features[FEATURE_LOG_LEFT_WIDTH] = (float)mi_size_wide_log2[left_bsize];
-    out_features[FEATURE_LOG_LEFT_HEIGHT] =
+    out_features[FEATURE_INTRA_HAS_LEFT] = (float)has_left;
+    out_features[FEATURE_INTRA_LOG_LEFT_WIDTH] =
+        (float)mi_size_wide_log2[left_bsize];
+    out_features[FEATURE_INTRA_LOG_LEFT_HEIGHT] =
         (float)mi_size_high_log2[left_bsize];
   }
 
@@ -2354,28 +2408,262 @@ static AOM_INLINE void av1_ml_part_split_features(AV1_COMP *const cpi,
   aom_clear_system_state();
 }
 
-static MODEL_TYPE get_model_type(BLOCK_SIZE bsize) {
-  switch (bsize) {
-    case BLOCK_128X128: return MODEL_128X128;
-    case BLOCK_64X64: return MODEL_64X64;
-    case BLOCK_32X32: return MODEL_32X32;
-    case BLOCK_16X16: return MODEL_16X16;
-    default: return MODEL_OTHER;
+static MODEL_TYPE get_model_type(BLOCK_SIZE bsize, bool intra) {
+  if (!intra) {
+    switch (bsize) {
+      case BLOCK_64X64: return MODEL_INTER_64X64;
+      case BLOCK_32X32: return MODEL_INTER_32X32;
+      case BLOCK_16X16: return MODEL_INTER_16X16;
+      case BLOCK_8X8: return MODEL_INTER_8X8;
+      default: return MODEL_OTHER;
+    }
+  } else {
+    switch (bsize) {
+      case BLOCK_128X128: return MODEL_128X128;
+      case BLOCK_64X64: return MODEL_64X64;
+      case BLOCK_32X32: return MODEL_32X32;
+      case BLOCK_16X16: return MODEL_16X16;
+      default: return MODEL_OTHER;
+    }
   }
 }
 
+static double log_mag(MV mv) {
+  double mag = sqrt(mv.col * mv.col + mv.row * mv.row);
+  return logf(1.0f + mag);
+}
+
+static double angle_rad(MV mv) {
+  double mag = sqrt(mv.col * mv.col + mv.row * mv.row);
+  return mag == 0 ? 0 : asin(mv.row / mag);
+}
+
+struct ResidualStats {
+  int q_coeff_max;
+  int q_coeff_nonz;
+  double psnr;
+  int satdq;
+  int satd;
+};
+
+// Computes residual stats on a transformed and quantized residual of the
+// block. This is used as ML features for prediction. The information computed
+// is NNZ (Number of Non-Zero coefficients of the transformed and quantized
+// residual), MAX_COEFF, PSNR.
+static struct ResidualStats compute_residual_stats(AV1_COMP *const cpi,
+                                                   ThreadData *td,
+                                                   MACROBLOCK *x,
+                                                   BLOCK_SIZE bsize) {
+  AV1_COMMON *cm = &cpi->common;
+  MACROBLOCKD *const xd = &x->e_mbd;
+  TX_SIZE tx_size = max_txsize_rect_lookup[bsize];
+  const int plane = 0;
+  const int block = 0;
+  struct macroblock_plane *const p = &x->plane[plane];
+  struct macroblockd_plane *const pd = &xd->plane[plane];
+  struct ResidualStats ret;
+  memset(&ret, 0, sizeof(struct ResidualStats));
+
+  av1_subtract_plane(x, bsize, plane);
+
+  const int num_blk = mi_size_wide[bsize] * mi_size_high[bsize];
+  struct aom_internal_error_info error;
+  AOM_CHECK_MEM_ERROR(&error, p->eobs,
+                      aom_memalign(32, num_blk * sizeof(p->eobs[0])));
+  p->coeff = td->shared_coeff_buf.coeff_buf[plane];
+  p->qcoeff = td->shared_coeff_buf.qcoeff_buf[plane];
+  p->dqcoeff = td->shared_coeff_buf.dqcoeff_buf[plane];
+  tran_low_t *const dqcoeff = p->dqcoeff + BLOCK_OFFSET(block);
+  tran_low_t *const qcoeff = p->qcoeff + BLOCK_OFFSET(block);
+  tran_low_t *const coeff = p->coeff + BLOCK_OFFSET(block);
+  AOM_CHECK_MEM_ERROR(&error, p->bobs,
+                      aom_memalign(32, num_blk * sizeof(p->bobs[0])));
+  AOM_CHECK_MEM_ERROR(
+      &error, p->txb_entropy_ctx,
+      aom_memalign(32, num_blk * sizeof(p->txb_entropy_ctx[0])));
+
+  TxfmParam txfm_param;
+  QUANT_PARAM quant_param;
+
+  av1_setup_xform(cm, x, plane, tx_size, DCT_DCT, CCTX_NONE, &txfm_param);
+  av1_setup_quant(tx_size, 0, AV1_XFORM_QUANT_B, cpi->oxcf.q_cfg.quant_b_adapt,
+                  &quant_param);
+  av1_setup_qmatrix(&cm->quant_params, xd, plane, tx_size, DCT_DCT,
+                    &quant_param);
+  av1_xform_quant(cm, x, plane, block, 0, 0, bsize, &txfm_param, &quant_param);
+  const int n_coeffs = av1_get_max_eob(txfm_param.tx_size);
+  for (int i = 0; i < n_coeffs; i++) {
+    int abs_qcoeff = abs(qcoeff[i]);
+    ret.satd += abs(coeff[i]);
+    ret.satdq += abs_qcoeff;
+    ret.q_coeff_max = AOMMAX(ret.q_coeff_max, abs_qcoeff);
+    ret.q_coeff_nonz += qcoeff[i] != 0;
+  }
+
+  if (p->eobs[block]) {
+    txfm_param.eob = p->eobs[block];
+
+    av1_highbd_inv_txfm_add(dqcoeff, pd->dst.buf, pd->dst.stride, &txfm_param);
+  }
+  int sse = 0;
+  for (int i = 0; i < block_size_high[bsize]; i++) {
+    for (int j = 0; j < block_size_wide[bsize]; j++) {
+      int d = pd->dst.buf[i * pd->dst.stride + j] -
+              x->plane[plane].src.buf[i * x->plane[plane].src.stride + j];
+      sse += d * d;
+    }
+  }
+  double mse =
+      ((double)sse) / (block_size_high[bsize] * block_size_wide[bsize]);
+  ret.psnr = sse == 0 ? 70 : AOMMIN(70, 20 * log10(255 / sqrt(mse)));
+
+  // TODO: figure out the way to do it w/o allocations
+  p->coeff = NULL;
+  p->qcoeff = NULL;
+  p->dqcoeff = NULL;
+  aom_free(p->eobs);
+  p->eobs = NULL;
+  aom_free(p->bobs);
+  p->bobs = NULL;
+  aom_free(p->txb_entropy_ctx);
+  p->txb_entropy_ctx = NULL;
+
+  return ret;
+}
+
+static struct ResidualStats compute_motion_data(AV1_COMP *const cpi,
+                                                const TileInfo *const tile,
+                                                ThreadData *td, MACROBLOCK *x,
+                                                SimpleMotionData *sms,
+                                                int mi_row, int mi_col,
+                                                BLOCK_SIZE bsize) {
+  struct ResidualStats ret;
+  memset(&ret, 0, sizeof(struct ResidualStats));
+  const AV1_COMMON *const cm = &cpi->common;
+  MACROBLOCKD *xd = &x->e_mbd;
+  assert(sms->ref_frame >= 0);
+  if (mi_col >= cm->mi_params.mi_cols || mi_row >= cm->mi_params.mi_rows) {
+    return ret;
+  }
+  set_offsets_for_motion_search(cpi, x, mi_row, mi_col, bsize);
+  MB_MODE_INFO *mbmi = xd->mi[0];
+  mbmi->sb_type[0] = mbmi->sb_type[1] = bsize;
+  mbmi->ref_frame[0] = sms->ref_frame;
+  mbmi->ref_frame[1] = NONE_FRAME;
+  mbmi->motion_mode = SIMPLE_TRANSLATION;
+  mbmi->interp_fltr = EIGHTTAP_REGULAR;
+  mbmi->mv[0].as_mv = sms->submv;
+  mbmi->mode = NEWMV;
+  mbmi->refinemv_flag = 0;
+
+  av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize,
+                                AOM_PLANE_Y, AOM_PLANE_Y);
+
+  return compute_residual_stats(cpi, td, x, bsize);
+}
+
+static void blk_features(float *out_features, int o_psnr, int o_log_mag,
+                         int o_satdq, int o_satd, SimpleMotionData *sms,
+                         struct ResidualStats *stats, int blk_area) {
+  out_features[o_psnr + 0] = stats->psnr - 35;
+  out_features[o_psnr + 1] = ((float)stats->q_coeff_max) / 1024;
+  out_features[o_psnr + 2] = ((float)stats->q_coeff_nonz) / blk_area;
+  out_features[o_log_mag + 0] = log_mag(sms->submv);
+  out_features[o_log_mag + 1] = angle_rad(sms->submv);
+  out_features[o_satdq] = logf(1.0f + stats->satdq);
+  out_features[o_satd] = logf(1.0f + stats->satd);
+}
+
+static void av1_ml_part_split_features_inter(AV1_COMP *const cpi, MACROBLOCK *x,
+                                             int mi_row, int mi_col,
+                                             BLOCK_SIZE bsize,
+                                             const TileInfo *tile_info,
+                                             ThreadData *td,
+                                             float *out_features) {
+  if (cpi->common.current_frame.frame_type != INTER_FRAME) return;
+
+  SimpleMotionData *blk_none =
+      av1_get_sms_data(cpi, tile_info, x, mi_row, mi_col, bsize);
+  struct ResidualStats stats_none = compute_motion_data(
+      cpi, tile_info, td, x, blk_none, mi_row, mi_col, bsize);
+
+  BLOCK_SIZE subsize_sq = get_partition_subsize(
+      get_partition_subsize(bsize, PARTITION_HORZ), PARTITION_VERT);
+  if (subsize_sq == BLOCK_INVALID) {
+    subsize_sq = get_partition_subsize(
+        get_partition_subsize(bsize, PARTITION_VERT), PARTITION_HORZ);
+  }
+
+  if (subsize_sq != BLOCK_INVALID) {
+    int w_sub_mi = mi_size_wide[subsize_sq];
+    int h_sub_mi = mi_size_high[subsize_sq];
+    SimpleMotionData *blk_sq_0 =
+        av1_get_sms_data(cpi, tile_info, x, mi_row, mi_col, subsize_sq);
+    struct ResidualStats stats_sq_0 = compute_motion_data(
+        cpi, tile_info, td, x, blk_sq_0, mi_row, mi_col, subsize_sq);
+    SimpleMotionData *blk_sq_1 = av1_get_sms_data(
+        cpi, tile_info, x, mi_row, mi_col + w_sub_mi, subsize_sq);
+    struct ResidualStats stats_sq_1 = compute_motion_data(
+        cpi, tile_info, td, x, blk_sq_1, mi_row, mi_col + w_sub_mi, subsize_sq);
+    SimpleMotionData *blk_sq_2 = av1_get_sms_data(
+        cpi, tile_info, x, mi_row + h_sub_mi, mi_col, subsize_sq);
+    struct ResidualStats stats_sq_2 = compute_motion_data(
+        cpi, tile_info, td, x, blk_sq_2, mi_row + h_sub_mi, mi_col, subsize_sq);
+    SimpleMotionData *blk_sq_3 = av1_get_sms_data(
+        cpi, tile_info, x, mi_row + h_sub_mi, mi_col + w_sub_mi, subsize_sq);
+    struct ResidualStats stats_sq_3 =
+        compute_motion_data(cpi, tile_info, td, x, blk_sq_3, mi_row + h_sub_mi,
+                            mi_col + w_sub_mi, subsize_sq);
+
+    if (out_features) {
+      int blk_area = block_size_wide[bsize] * block_size_high[bsize];
+      out_features[FEATURE_INTER_RD_MULT] = logf(1.0f + blk_none->rdmult);
+
+      blk_features(out_features, FEATURE_INTER_FULL_PSNR,
+                   FEATURE_INTER_FULL_LOG_MAG, FEATURE_INTER_FULL_LOG_SATDQ,
+                   FEATURE_INTER_FULL_LOG_SATD, blk_none, &stats_none,
+                   blk_area);
+      blk_features(out_features, FEATURE_INTER_SQ_0_PSNR,
+                   FEATURE_INTER_SQ_0_LOG_MAG, FEATURE_INTER_SQ_0_LOG_SATDQ,
+                   FEATURE_INTER_SQ_0_LOG_SATD, blk_sq_0, &stats_sq_0,
+                   blk_area);
+      blk_features(out_features, FEATURE_INTER_SQ_1_PSNR,
+                   FEATURE_INTER_SQ_1_LOG_MAG, FEATURE_INTER_SQ_1_LOG_SATDQ,
+                   FEATURE_INTER_SQ_1_LOG_SATD, blk_sq_1, &stats_sq_1,
+                   blk_area);
+      blk_features(out_features, FEATURE_INTER_SQ_2_PSNR,
+                   FEATURE_INTER_SQ_2_LOG_MAG, FEATURE_INTER_SQ_2_LOG_SATDQ,
+                   FEATURE_INTER_SQ_2_LOG_SATD, blk_sq_2, &stats_sq_2,
+                   blk_area);
+      blk_features(out_features, FEATURE_INTER_SQ_3_PSNR,
+                   FEATURE_INTER_SQ_3_LOG_MAG, FEATURE_INTER_SQ_3_LOG_SATDQ,
+                   FEATURE_INTER_SQ_3_LOG_SATD, blk_sq_3, &stats_sq_3,
+                   blk_area);
+    }
+  }
+
+  aom_clear_system_state();
+}
+
 int av1_ml_part_split_infer(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
-                            int mi_col, BLOCK_SIZE bsize, PC_TREE *pc_tree) {
+                            int mi_col, BLOCK_SIZE bsize,
+                            const TileInfo *tile_info, ThreadData *td) {
   const MACROBLOCKD *xd = &x->e_mbd;
   int qp = cpi->common.quant_params.base_qindex;
   bool key_frame = cpi->common.current_frame.frame_type == KEY_FRAME;
-  MODEL_TYPE model_type = get_model_type(bsize);
-  struct ModelParams params;
-  if (model_type != MODEL_OTHER &&
-      av2_simple_intra_prune_none_tflite_params(
-          model_type, cpi->sf.part_sf.prune_split_ml_level, &params)) {
-    printf("Error during inference 2\n");
-    exit(1);
+  MODEL_TYPE model_type[] = { get_model_type(bsize, true),
+                              get_model_type(bsize, false) };
+
+  struct ModelParams params[2];
+  for (int i = 0; i < 2; i++) {
+    int had_error = model_type[i] != MODEL_OTHER &&
+                    av2_part_split_prune_tflite_params(
+                        model_type[i],
+                        key_frame ? cpi->sf.part_sf.prune_split_ml_level
+                                  : cpi->sf.part_sf.prune_split_ml_level_inter,
+                        &params[i]);
+    assert(!had_error);
+    if (had_error) return ML_PART_NOT_SURE;
   }
 
   const AV1_COMMON *const cm = &cpi->common;
@@ -2386,26 +2674,69 @@ int av1_ml_part_split_infer(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
     default: qp_offset = 0; break;
   }
 
-  if (!key_frame || xd->tree_type != LUMA_PART || model_type == MODEL_OTHER ||
-      qp > (qp_offset + params.qp_high) || qp < (qp_offset + params.qp_low))
+  bool model_disabled[2] = { false, false };
+  for (int i = 0; i < 2; i++) {
+    model_disabled[i] = model_type[i] == MODEL_OTHER ||
+                        qp > (params[i].qp_high + qp_offset) ||
+                        qp < (params[i].qp_low + qp_offset);
+  }
+  // use intra model only for key frames for now
+  model_disabled[0] |= !key_frame;
+  model_disabled[1] |= key_frame;
+  if (xd->tree_type == CHROMA_PART || (model_disabled[0] && model_disabled[1]))
     return ML_PART_NOT_SURE;
 
-  float ml_input[FEATURE_MAX] = { 0.0f };
-  av1_ml_part_split_features(cpi, x, mi_row, mi_col, bsize, ml_input);
+  int vote[2] = { ML_PART_NOT_SURE, ML_PART_NOT_SURE };
+  if (!model_disabled[0]) {
+    float ml_input[FEATURE_INTRA_MAX] = { 0.0f };
+    av1_ml_part_split_features(cpi, x, mi_row, mi_col, bsize, ml_input);
 
-  float ml_output[1] = { 0.0f };
+    float ml_output[1] = { 0.0f };
 
-  if (av2_simple_intra_prune_none_tflite_exec(cpi->common.partition_model,
-                                              ml_input, FEATURE_MAX, ml_output,
-                                              1, model_type)) {
-    printf("Error during inference 0\n");
-    exit(1);
+    bool has_error = av2_part_split_prune_tflite_exec(
+        &td->partition_model, ml_input, FEATURE_INTRA_MAX, ml_output, 1,
+        model_type[0]);
+    assert(!has_error);
+    if (has_error)
+      vote[0] = ML_PART_NOT_SURE;
+    else {
+      bool high_test = ml_output[0] > params[0].thresh_high;
+      bool low_test = ml_output[0] < params[0].thresh_low;
+      vote[0] = high_test ? ML_PART_FORCE_SPLIT
+                          : (low_test ? ML_PART_PRUNE_SPLIT : ML_PART_NOT_SURE);
+    }
   }
+  if (!model_disabled[1]) {
+    float ml_output[1] = { 0.0f };
+    float ml_input[FEATURE_INTER_MAX] = { 0.0f };
+    av1_ml_part_split_features_inter(cpi, x, mi_row, mi_col, bsize, tile_info,
+                                     td, ml_input);
+    bool has_error = av2_part_split_prune_tflite_exec(
+        &td->partition_model, ml_input, FEATURE_INTER_MAX, ml_output, 1,
+        model_type[1]);
+    assert(!has_error);
 
-  return ml_output[0] > params.thresh_high
-             ? ML_PART_FORCE_SPLIT
-             : (ml_output[0] < params.thresh_low ? ML_PART_PRUNE_SPLIT
-                                                 : ML_PART_NOT_SURE);
+    if (has_error)
+      vote[1] = ML_PART_NOT_SURE;
+    else {
+      bool high_test = ml_output[0] > params[1].thresh_high;
+      bool low_test = ml_output[0] < params[1].thresh_low;
+      vote[1] = high_test ? ML_PART_FORCE_SPLIT
+                          : (low_test ? ML_PART_PRUNE_SPLIT : ML_PART_NOT_SURE);
+    }
+  }
+  int final_vote = 255;
+  if (vote[0] == ML_PART_NOT_SURE)
+    final_vote = vote[1];
+  else if (vote[1] == ML_PART_NOT_SURE)
+    final_vote = vote[0];
+  else if (vote[0] == vote[1])
+    final_vote = vote[0];
+  else
+    final_vote = ML_PART_FORCE_SPLIT;
+
+  assert(final_vote != 255);
+  return final_vote;
 }
 #endif  // CONFIG_ML_PART_SPLIT
 

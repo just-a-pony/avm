@@ -270,7 +270,6 @@ static INLINE void set_offsets_for_motion_search(const AV1_COMP *const cpi,
   xd->mi_col = mi_col;
 
   // Set up distance of MB to edge of frame in 1/8th pel units.
-  assert(!(mi_col & (mi_width - 1)) && !(mi_row & (mi_height - 1)));
   xd->mb_to_top_edge = -GET_MV_SUBPEL(mi_row * MI_SIZE);
   xd->mb_to_bottom_edge =
       GET_MV_SUBPEL((mi_params->mi_rows - mi_height - mi_row) * MI_SIZE);
@@ -345,6 +344,7 @@ static INLINE int use_auto_max_partition(const AV1_COMP *const cpi,
 #if CONFIG_ML_PART_SPLIT
 enum { ML_PART_NOT_SURE = 0, ML_PART_FORCE_SPLIT, ML_PART_PRUNE_SPLIT };
 int av1_ml_part_split_infer(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
-                            int mi_col, BLOCK_SIZE bsize, PC_TREE *pc_tree);
+                            int mi_col, BLOCK_SIZE bsize,
+                            const TileInfo *tile_info, ThreadData *td);
 #endif  // CONFIG_ML_PART_SPLIT
 #endif  // AOM_AV1_ENCODER_PARTITION_STRATEGY_H_

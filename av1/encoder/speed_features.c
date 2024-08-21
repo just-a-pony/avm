@@ -750,7 +750,8 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
 #if CONFIG_ML_PART_SPLIT
   part_sf->prune_split_with_ml = 0;
   part_sf->prune_split_ml_level = 0;  // default pruning
-#endif                                // CONFIG_ML_PART_SPLIT
+  part_sf->prune_split_ml_level_inter = 2;
+#endif  // CONFIG_ML_PART_SPLIT
 }
 
 static AOM_INLINE void init_mv_sf(MV_SPEED_FEATURES *mv_sf) {
@@ -982,7 +983,7 @@ static AOM_INLINE void set_erp_speed_features_framesize_dependent(
   const AV1_COMMON *const cm = &cpi->common;
 #if CONFIG_ML_PART_SPLIT
   const int is_2k_or_larger = AOMMIN(cm->width, cm->height) >= 2160;
-#endif
+#endif  // CONFIG_ML_PART_SPLIT
   const int is_1080p_or_larger = AOMMIN(cm->width, cm->height) >= 1080;
   const unsigned int erp_pruning_level = cpi->oxcf.part_cfg.erp_pruning_level;
   const int is_720p_or_lesser = AOMMIN(cm->width, cm->height) <= 720;
@@ -1008,7 +1009,8 @@ static AOM_INLINE void set_erp_speed_features_framesize_dependent(
       } else if (is_1080p_or_larger) {
         sf->part_sf.prune_split_ml_level = 2;
       } else {
-        sf->part_sf.prune_split_ml_level = 0;  // default thresh
+        // Not pruning in anything lower than A2
+        sf->part_sf.prune_split_with_ml = 0;
       }
 #endif  // CONFIG_ML_PART_SPLIT
       AOM_FALLTHROUGH_INTENDED;
@@ -1030,6 +1032,9 @@ static AOM_INLINE void set_erp_speed_features_framesize_dependent(
   if (cpi->speed >= 2) {
     sf->part_sf.simple_motion_search_early_term_none = 1;
   }
+#if CONFIG_ML_PART_SPLIT
+  bool key_frame = cpi->common.current_frame.frame_type == KEY_FRAME;
+#endif  // CONFIG_ML_PART_SPLIT
 }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
@@ -1126,8 +1131,12 @@ static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   sf->part_sf.prune_rect_with_ml = cpi->oxcf.part_cfg.use_ml_erp_pruning & 1;
 #if CONFIG_ML_PART_SPLIT
-  sf->part_sf.prune_split_with_ml = cpi->oxcf.part_cfg.use_ml_erp_pruning & 2;
-#endif
+  // Don't work for the screen content
+  if (!cm->features.allow_screen_content_tools) {
+    sf->part_sf.prune_split_with_ml =
+        !!(cpi->oxcf.part_cfg.use_ml_erp_pruning & 2);
+  }
+#endif  // CONFIG_ML_PART_SPLIT
 }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
