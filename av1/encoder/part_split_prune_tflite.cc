@@ -73,6 +73,8 @@ static std::unique_ptr<tflite::Interpreter> create_interpreter(
 }
 
 static void ensure_tflite_init(void **context, MODEL_TYPE model_type) {
+  assert(model_type != MODEL_OTHER);
+
   if (*context == nullptr) *context = new Context();
   Context *ctx = (Context *)*context;
   switch (model_type) {
@@ -124,12 +126,14 @@ static void ensure_tflite_init(void **context, MODEL_TYPE model_type) {
             create_interpreter(sms_part_split_prune_tflite_model_bs3);
       }
       break;
+    default: break;
   }
 }
 
 extern "C" int av2_part_split_prune_tflite_params(MODEL_TYPE model_type,
                                                   int prune_level,
                                                   struct ModelParams *params) {
+  assert(model_type != MODEL_OTHER);
   switch (model_type) {
     case MODEL_128X128:
       *params =
@@ -180,6 +184,8 @@ extern "C" int av2_part_split_prune_tflite_exec(void **context,
                                                 int input_len, float *ml_output,
                                                 int output_len,
                                                 MODEL_TYPE model_type) {
+  assert(model_type != MODEL_OTHER);
+
   ensure_tflite_init(context, model_type);
   Context *ctx = (Context *)*context;
   tflite::Interpreter *interpreter;
