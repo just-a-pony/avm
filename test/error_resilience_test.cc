@@ -25,7 +25,7 @@ const int kMaxErrorResilientFrames = 12;
 const int kMaxNoMFMVFrames = 12;
 const int kMaxPrimRefNoneFrames = 12;
 const int kMaxSFrames = 12;
-const int kCpuUsed = 1;
+const int kCpuUsed = 5;
 
 class ErrorResilienceTestLarge
     : public ::libaom_test::CodecTestWith2Params<libaom_test::TestMode, int>,
@@ -339,7 +339,7 @@ class ErrorResilienceTestLarge
 };
 
 TEST_P(ErrorResilienceTestLarge, OnVersusOff) {
-  SetupEncoder(2000, 10);
+  SetupEncoder(200, 10);
   libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                      cfg_.g_timebase.den, cfg_.g_timebase.num,
                                      0, 12);
@@ -378,7 +378,7 @@ TEST_P(ErrorResilienceTestLarge, DropFramesWithoutRecovery) {
    * fall on an invisible frame.
    */
   if (enable_altref_) return;
-  SetupEncoder(500, 10);
+  SetupEncoder(200, 10);
   libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                      cfg_.g_timebase.den, cfg_.g_timebase.num,
                                      0, 20);
@@ -401,7 +401,7 @@ TEST_P(ErrorResilienceTestLarge, DropFramesWithoutRecovery) {
 // subsequent frames from using MFMV. If frames are dropped before the
 // E frame, all frames starting from the E frame should be parse-able.
 TEST_P(ErrorResilienceTestLarge, ParseAbilityTest) {
-  SetupEncoder(500, 10);
+  SetupEncoder(200, 10);
 
   libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                      cfg_.g_timebase.den, cfg_.g_timebase.num,
@@ -445,7 +445,7 @@ TEST_P(ErrorResilienceTestLarge, ParseAbilityTest) {
 // Encode an S-frame. If frames are dropped before the S-frame, all frames
 // starting from the S frame should be parse-able.
 TEST_P(ErrorResilienceTestLarge, SFrameTest) {
-  SetupEncoder(500, 10);
+  SetupEncoder(200, 10);
 
   libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                      cfg_.g_timebase.den, cfg_.g_timebase.num,
@@ -513,7 +513,7 @@ class SFramePresenceTestLarge
   virtual void PreEncodeFrameHook(::libaom_test::VideoSource *video,
                                   ::libaom_test::Encoder *encoder) {
     if (video->frame() == 0) {
-      encoder->Control(AOME_SET_CPUUSED, 5);
+      encoder->Control(AOME_SET_CPUUSED, kCpuUsed);
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
       encoder->Control(AV1E_SET_FRAME_OUTPUT_ORDER_DERIVATION, 0);
 #endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
