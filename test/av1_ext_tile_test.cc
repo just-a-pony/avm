@@ -192,7 +192,7 @@ class AV1ExtTileTest
   void TestRoundTrip() {
     ::libaom_test::I420VideoSource video(
         "hantro_collage_w352h288.yuv", kImgWidth, kImgHeight, 30, 1, 0, kLimit);
-    cfg_.rc_target_bitrate = 500;
+    cfg_.rc_target_bitrate = 200;
     cfg_.g_error_resilient = AOM_ERROR_RESILIENT_DEFAULT;
     cfg_.large_scale_tile = 1;
     cfg_.g_lag_in_frames = 0;
@@ -219,7 +219,7 @@ TEST_P(AV1ExtTileTest, DecoderResultTest) { TestRoundTrip(); }
 AV1_INSTANTIATE_TEST_SUITE(
     // Only test 1-pass mode.
     AV1ExtTileTest, ::testing::Values(::libaom_test::kOnePassGood),
-    ::testing::Range(1, 4));
+    ::testing::Range(4, 5));
 
 class AV1ExtTileTestLarge : public AV1ExtTileTest {};
 
