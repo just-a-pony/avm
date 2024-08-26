@@ -65,6 +65,7 @@ class AltRefFramePresenceTestLarge
     cfg_.kf_min_dist = altref_test_params_.min_kf_dist;
     cfg_.kf_max_dist = altref_test_params_.max_kf_dist;
     cfg_.g_lag_in_frames = altref_test_params_.lag_in_frames;
+    cfg_.rc_target_bitrate = 200;
   }
 
   virtual bool DoDecode() const { return 1; }
@@ -137,7 +138,7 @@ class GoldenFrameIntervalTestLarge
       : EncoderTest(GET_PARAM(0)), gf_interval_param_(GET_PARAM(1)),
         rc_end_usage_(GET_PARAM(2)) {
     baseline_gf_interval_ = -1;
-    limit_ = 60;
+    limit_ = 30;
     frame_num_ = 0;
   }
   virtual ~GoldenFrameIntervalTestLarge() {}
@@ -154,8 +155,8 @@ class GoldenFrameIntervalTestLarge
     cfg_.kf_min_dist = limit_;
     cfg_.kf_max_dist = limit_;
     cfg_.g_limit = limit_;
-    cfg_.g_lag_in_frames = 35;
-    cfg_.rc_target_bitrate = 1000;
+    cfg_.g_lag_in_frames = 19;
+    cfg_.rc_target_bitrate = 200;
   }
 
   virtual bool DoDecode() const { return 1; }
