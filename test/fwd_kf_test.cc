@@ -144,6 +144,9 @@ class ForwardKeyPresenceTestLarge
     const aom_rational timebase = { 1, 30 };
     cfg_.g_timebase = timebase;
     cfg_.rc_end_usage = end_usage_check_;
+    if (end_usage_check_ == AOM_VBR) {
+      cfg_.rc_target_bitrate = 200;
+    }
     cfg_.g_threads = 1;
     cfg_.kf_min_dist = kf_dist_param_.min_kf_dist;
     cfg_.kf_max_dist = kf_dist_param_.max_kf_dist;
@@ -159,6 +162,9 @@ class ForwardKeyPresenceTestLarge
     if (video->frame() == 0) {
       encoder->Control(AOME_SET_CPUUSED, 5);
       encoder->Control(AOME_SET_ENABLEAUTOALTREF, 1);
+      if (cfg_.rc_end_usage == AOM_Q) {
+        encoder->Control(AOME_SET_QP, 210);
+      }
     }
   }
 
