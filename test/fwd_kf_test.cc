@@ -50,7 +50,6 @@ class ForwardKeyTest
     SetMode(encoding_mode_);
     const aom_rational timebase = { 1, 30 };
     cfg_.g_timebase = timebase;
-    cpu_used_ = 2;
     kf_max_dist_ = kf_max_dist_param_.max_kf_dist;
     psnr_threshold_ = kf_max_dist_param_.psnr_thresh;
     cfg_.rc_end_usage = AOM_VBR;
@@ -76,7 +75,7 @@ class ForwardKeyTest
   virtual void PreEncodeFrameHook(::libaom_test::VideoSource *video,
                                   ::libaom_test::Encoder *encoder) {
     if (video->frame() == 0) {
-      encoder->Control(AOME_SET_CPUUSED, cpu_used_);
+      encoder->Control(AOME_SET_CPUUSED, 5);
       encoder->Control(AOME_SET_ENABLEAUTOALTREF, 1);
       encoder->Control(AOME_SET_ARNR_MAXFRAMES, 7);
       encoder->Control(AOME_SET_ARNR_STRENGTH, 5);
@@ -94,7 +93,6 @@ class ForwardKeyTest
   const FwdKfTestParam kf_max_dist_param_;
   double psnr_threshold_;
   int kf_max_dist_;
-  int cpu_used_;
   int nframes_;
   double psnr_;
 };
