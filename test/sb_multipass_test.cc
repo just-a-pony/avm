@@ -31,7 +31,7 @@ class AV1SBMultipassTest
   AV1SBMultipassTest()
       : EncoderTest(GET_PARAM(0)), set_cpu_used_(GET_PARAM(1)),
         row_mt_(GET_PARAM(2)) {
-    init_flags_ = AOM_CODEC_USE_PSNR;
+    init_flags_ = AOM_CODEC_USE_PSNR | AOM_CODEC_USE_PER_FRAME_STATS;
     aom_codec_dec_cfg_t cfg = aom_codec_dec_cfg_t();
     cfg.w = 1280;
     cfg.h = 720;
@@ -52,7 +52,7 @@ class AV1SBMultipassTest
     SetMode(::libaom_test::kOnePassGood);
 
     cfg_.g_lag_in_frames = 5;
-    cfg_.rc_end_usage = AOM_VBR;
+    cfg_.rc_end_usage = AOM_Q;
     cfg_.rc_max_quantizer = 224;
     cfg_.rc_min_quantizer = 0;
   }
@@ -62,6 +62,7 @@ class AV1SBMultipassTest
     if (video->frame() == 0) {
       SetTileSize(encoder);
       encoder->Control(AOME_SET_CPUUSED, set_cpu_used_);
+      encoder->Control(AOME_SET_QP, 210);
       encoder->Control(AV1E_ENABLE_SB_MULTIPASS_UNIT_TEST, use_multipass_);
       encoder->Control(AV1E_SET_ROW_MT, row_mt_);
 
@@ -115,7 +116,6 @@ class AV1SBMultipassTest
   void DoTest() {
     ::libaom_test::YUVVideoSource video(
         "niklas_640_480_30.yuv", AOM_IMG_FMT_I420, 640, 480, 30, 1, 0, 6);
-    cfg_.rc_target_bitrate = 1000;
 
     // Encode while coding each sb once
     use_multipass_ = false;
