@@ -254,7 +254,6 @@ class ResizeInternalTestLarge : public ResizeTest {
   virtual void PreEncodeFrameHook(libaom_test::VideoSource *video,
                                   libaom_test::Encoder *encoder) {
     if (change_config_) {
-      int new_q = 60;
       if (video->frame() == 0) {
         struct aom_scaling_mode mode = { AOME_ONETWO, AOME_ONETWO };
         encoder->Control(AOME_SET_SCALEMODE, &mode);
@@ -262,7 +261,7 @@ class ResizeInternalTestLarge : public ResizeTest {
       if (video->frame() == 1) {
         struct aom_scaling_mode mode = { AOME_NORMAL, AOME_NORMAL };
         encoder->Control(AOME_SET_SCALEMODE, &mode);
-        cfg_.rc_min_quantizer = cfg_.rc_max_quantizer = new_q;
+        cfg_.rc_min_quantizer = cfg_.rc_max_quantizer = 240;
         encoder->Config(&cfg_);
       }
     } else {
