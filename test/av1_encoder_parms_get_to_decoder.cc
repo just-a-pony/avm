@@ -17,7 +17,7 @@
 #include "test/codec_factory.h"
 #include "test/encode_test_driver.h"
 #include "test/util.h"
-#include "test/y4m_video_source.h"
+#include "test/yuv_video_source.h"
 
 #include "aom/aom_decoder.h"
 #include "av1/decoder/decoder.h"
@@ -33,7 +33,7 @@ struct ParamPassingTestVideo {
 };
 
 const ParamPassingTestVideo kAV1ParamPassingTestVector = {
-  "niklas_1280_720_30.y4m", 1280, 720, 600, 3
+  "niklas_640_480_30.yuv", 640, 480, 600, 3
 };
 
 struct EncodeParameters {
@@ -74,7 +74,7 @@ const EncodeParameters kAV1EncodeParameterSet[] = {
     AOM_CICP_MC_BT_2020_NCL,
     AOM_CR_FULL_RANGE,
     AOM_CSP_RESERVED,
-    { 640, 480 } },
+    { 320, 240 } },
 };
 
 class AVxEncoderParmsGetToDecoder
@@ -91,13 +91,14 @@ class AVxEncoderParmsGetToDecoder
     SetMode(::libaom_test::kOnePassGood);
     cfg_.g_lag_in_frames = 25;
     test_video_ = kAV1ParamPassingTestVector;
-    cfg_.rc_target_bitrate = test_video_.bitrate;
+    cfg_.rc_end_usage = AOM_Q;
   }
 
   virtual void PreEncodeFrameHook(::libaom_test::VideoSource *video,
                                   ::libaom_test::Encoder *encoder) {
     if (video->frame() == 0) {
       encoder->Control(AOME_SET_CPUUSED, 5);
+      encoder->Control(AOME_SET_QP, 210);
       encoder->Control(AV1E_SET_COLOR_PRIMARIES, encode_parms.color_primaries);
       encoder->Control(AV1E_SET_TRANSFER_CHARACTERISTICS,
                        encode_parms.transfer_characteristics);
@@ -151,7 +152,9 @@ TEST_P(AVxEncoderParmsGetToDecoder, BitstreamParms) {
   init_flags_ = AOM_CODEC_USE_PSNR;
 
   std::unique_ptr<libaom_test::VideoSource> video(
-      new libaom_test::Y4mVideoSource(test_video_.name, 0, test_video_.frames));
+      new libaom_test::YUVVideoSource(test_video_.name, AOM_IMG_FMT_I420,
+                                      test_video_.width, test_video_.height, 30,
+                                      1, 0, test_video_.frames));
   ASSERT_TRUE(video.get() != NULL);
 
   ASSERT_NO_FATAL_FAILURE(RunLoop(video.get()));
