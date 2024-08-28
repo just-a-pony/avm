@@ -231,9 +231,6 @@ Test Data Check:
         entropy-stats)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_ENTROPY_STATS=1"
           ;;
-        ml-part-split)
-          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_ML_PART_SPLIT=1"
-          ;;
         bawp-across-scales-fix)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_BAWP_ACROSS_SCALES_FIX=1"
           ;;
@@ -328,16 +325,6 @@ Build (entropy-stats):
     matrix:
       - AOM_BUILD_CONFIG:
           - entropy-stats
-
-Build (ml-part-split):
-  extends: .build-common
-  variables:
-    # Allow build warnings.
-    EXTRA_CMAKE_FLAGS: -DENABLE_WERROR=0
-  parallel:
-    matrix:
-      - AOM_BUILD_CONFIG:
-          - ml-part-split
 
 Build (bawp-across-scales-fix):
   extends: .build-common
