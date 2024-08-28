@@ -160,7 +160,7 @@ class ForwardKeyPresenceTestLarge
     if (video->frame() == 0) {
       encoder->Control(AOME_SET_CPUUSED, 5);
       encoder->Control(AOME_SET_ENABLEAUTOALTREF, 1);
-      if (cfg_.rc_end_usage == AOM_Q) {
+      if (cfg_.rc_end_usage == AOM_Q || cfg_.rc_end_usage == AOM_CQ) {
         encoder->Control(AOME_SET_QP, 210);
       }
     }

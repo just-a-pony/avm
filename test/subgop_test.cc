@@ -231,7 +231,7 @@ class SubGopTestLarge
                                   ::libaom_test::Encoder *encoder) {
     if (video->frame() == 0) {
       encoder->Control(AOME_SET_CPUUSED, kCpuUsed);
-      if (rc_end_usage_ == AOM_Q) {
+      if (rc_end_usage_ == AOM_Q || rc_end_usage_ == AOM_CQ) {
         encoder->Control(AOME_SET_QP, 210);
       }
       encoder->Control(AV1E_ENABLE_SUBGOP_STATS, enable_subgop_stats_);
@@ -801,7 +801,7 @@ class SubGopPSNRCheckTestLarge
                                   ::libaom_test::Encoder *encoder) {
     if (video->frame() == 0) {
       encoder->Control(AOME_SET_CPUUSED, kCpuUsed);
-      if (rc_end_usage_ == AOM_Q) {
+      if (rc_end_usage_ == AOM_Q || rc_end_usage_ == AOM_CQ) {
         encoder->Control(AOME_SET_QP, 210);
       }
       if (enable_subgop_)
@@ -909,6 +909,7 @@ class SubGopSwitchingTestLarge
     SetMode(::libaom_test::kOnePassGood);
     cfg_.g_threads = 1;
     cfg_.rc_end_usage = rc_end_usage_;
+    cfg_.rc_target_bitrate = 200;
     // Keep sufficient distance between keyframes to let subgop configs be used.
     cfg_.kf_min_dist = 65;
     cfg_.kf_max_dist = 9999;
@@ -966,7 +967,7 @@ class SubGopSwitchingTestLarge
                                   ::libaom_test::Encoder *encoder) {
     if (video->frame() == 0) {
       encoder->Control(AOME_SET_CPUUSED, kCpuUsed);
-      if (rc_end_usage_ == AOM_Q) {
+      if (rc_end_usage_ == AOM_Q || rc_end_usage_ == AOM_CQ) {
         encoder->Control(AOME_SET_QP, 210);
       }
       set_subgop_config(encoder);

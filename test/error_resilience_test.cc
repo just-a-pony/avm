@@ -517,7 +517,7 @@ class SFramePresenceTestLarge
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
       encoder->Control(AV1E_SET_FRAME_OUTPUT_ORDER_DERIVATION, 0);
 #endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
-      if (rc_end_usage_ == AOM_Q) {
+      if (rc_end_usage_ == AOM_Q || rc_end_usage_ == AOM_CQ) {
         encoder->Control(AOME_SET_QP, 210);
       }
       encoder->Control(AOME_SET_ENABLEAUTOALTREF, enable_altref_);
