@@ -78,7 +78,7 @@ void CpuSpeedTest::TestQ0() {
   const unsigned int bit_depth = 8;
 
   ::libaom_test::I420VideoSource video("hantro_odd.yuv", width, height, 30, 1,
-                                       0, 10);
+                                       0, 5);
 
   init_flags_ = AOM_CODEC_USE_PSNR;
 
@@ -129,8 +129,7 @@ void CpuSpeedTest::TestEncodeHighBitrate() {
   cfg_.rc_max_quantizer = 40;
   cfg_.rc_min_quantizer = 0;
 
-  ::libaom_test::I420VideoSource video("hantro_odd.yuv", 208, 144, 30, 1, 0,
-                                       10);
+  ::libaom_test::I420VideoSource video("hantro_odd.yuv", 208, 144, 30, 1, 0, 5);
 
   ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
 }
