@@ -210,9 +210,11 @@ TEST_P(ForcedKeyTestLarge, Frame1IsKey) {
     frame_num_ = 0;
     cfg_.g_lag_in_frames = lag_values[i];
     is_kf_placement_violated_ = false;
+    const int lag_mult = fwd_kf_enabled_ ? 2 : 1;
+    const int num_frames = lag_values[i] * lag_mult + 2;
     libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                        timebase.den, timebase.num, 0,
-                                       fwd_kf_enabled_ ? 60 : 30);
+                                       num_frames);
     ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
     ASSERT_EQ(is_kf_placement_violated_, false)
         << "Frame #" << frame_num_ << " isn't a keyframe!";
@@ -230,9 +232,11 @@ TEST_P(ForcedKeyTestLarge, ForcedFrameIsKey) {
     forced_kf_frame_num_ = lag_values[i] - 1;
     cfg_.g_lag_in_frames = lag_values[i];
     is_kf_placement_violated_ = false;
+    const int lag_mult = fwd_kf_enabled_ ? 2 : 1;
+    const int num_frames = lag_values[i] * lag_mult + 2;
     libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                        timebase.den, timebase.num, 0,
-                                       fwd_kf_enabled_ ? 60 : 30);
+                                       num_frames);
     ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
     ASSERT_EQ(is_kf_placement_violated_, false)
         << "Frame #" << frame_num_ << " isn't a keyframe!";
