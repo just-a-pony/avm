@@ -4112,6 +4112,8 @@ static INLINE void check_traj_intersect(AV1_COMMON *cm,
                                         MV_REFERENCE_FRAME end_frame,
                                         const MV *mv, int start_row,
                                         int start_col, int mvs_cols) {
+  const int clamp_max = MV_UPP - 1;
+  const int clamp_min = MV_LOW + 1;
   const int start_offset = start_row * mvs_cols + start_col;
   assert(start_row % cm->tmvp_sample_step == 0);
   assert(start_col % cm->tmvp_sample_step == 0);
@@ -4126,9 +4128,11 @@ static INLINE void check_traj_intersect(AV1_COMMON *cm,
       if (cm->id_offset_map[end_frame][traj_id].as_int == INVALID_MV) {
         // Update trajectory mv
         cm->id_offset_map[end_frame][traj_id].as_mv.row =
-            cm->id_offset_map[start_frame][traj_id].as_mv.row + mv->row;
+            clamp(cm->id_offset_map[start_frame][traj_id].as_mv.row + mv->row,
+                  clamp_min, clamp_max);
         cm->id_offset_map[end_frame][traj_id].as_mv.col =
-            cm->id_offset_map[start_frame][traj_id].as_mv.col + mv->col;
+            clamp(cm->id_offset_map[start_frame][traj_id].as_mv.col + mv->col,
+                  clamp_min, clamp_max);
         // Update reverse mapping
         int end_row = 0, end_col = 0;
         int pos_valid;
@@ -4175,9 +4179,11 @@ static INLINE void check_traj_intersect(AV1_COMMON *cm,
       if (cm->id_offset_map[start_frame][traj_id].as_int == INVALID_MV) {
         // Update trajectory mv
         cm->id_offset_map[start_frame][traj_id].as_mv.row =
-            cm->id_offset_map[end_frame][traj_id].as_mv.row - mv->row;
+            clamp(cm->id_offset_map[end_frame][traj_id].as_mv.row - mv->row,
+                  clamp_min, clamp_max);
         cm->id_offset_map[start_frame][traj_id].as_mv.col =
-            cm->id_offset_map[end_frame][traj_id].as_mv.col - mv->col;
+            clamp(cm->id_offset_map[end_frame][traj_id].as_mv.col - mv->col,
+                  clamp_min, clamp_max);
         // Update reverse mapping
         int new_start_row = 0, new_start_col = 0;
         int new_pos_valid;
@@ -4232,6 +4238,10 @@ static int motion_field_projection_start_target(
 
   int start_to_current_frame_offset =
       get_relative_dist(order_hint_info, start_order_hint, cur_order_hint);
+
+  if (abs(start_to_current_frame_offset) > MAX_FRAME_DISTANCE) {
+    return 0;
+  }
 
   const int is_backward = ref_frame_offset < 0;
   int mv_idx = is_backward ? 1 : 0;
@@ -4869,9 +4879,11 @@ void calc_and_set_avg_lengths(AV1_COMMON *cm, int ref, int side) {
         const int dist =
             abs((int)buf->display_order_hint -
                 (int)buf->ref_display_order_hint[mv_ref->ref_frame[side]]);
-        avg_row += abs(mv_ref->mv[side].as_mv.row * 2 / dist);
-        avg_col += abs(mv_ref->mv[side].as_mv.col * 2 / dist);
-        count++;
+        if (dist != 0) {
+          avg_row += abs(mv_ref->mv[side].as_mv.row * 2 / dist);
+          avg_col += abs(mv_ref->mv[side].as_mv.col * 2 / dist);
+          count++;
+        }
       }
     }
   }
