@@ -3343,10 +3343,6 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
 #if CONFIG_LR_IMPROVEMENTS
     uint8_t plane_lr_tools_disable_mask =
         cm->seq_params.lr_tools_disable_mask[p > 0];
-    // If superres is used turn off PC_WIENER since tx_skip values will
-    // be misaligned.
-    if (av1_superres_scaled(cm))
-      plane_lr_tools_disable_mask |= (1 << RESTORE_PC_WIENER);
     av1_set_lr_tools(plane_lr_tools_disable_mask, p, &cm->features);
     const int ndx = rb_read_uniform(rb, cm->features.lr_frame_tools_count[p]);
     rsi->frame_restoration_type = index_to_frame_restoration_type(cm, p, ndx);

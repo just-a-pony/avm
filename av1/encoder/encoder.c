@@ -3549,10 +3549,6 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
     cm->seq_params.lr_tools_disable_mask[0],
     cm->seq_params.lr_tools_disable_mask[1]
   };
-  if (av1_superres_scaled(cm)) {
-    master_lr_tools_disable_mask[0] |= (1 << RESTORE_PC_WIENER);
-    master_lr_tools_disable_mask[1] |= (1 << RESTORE_PC_WIENER);
-  }
   av1_set_lr_tools(master_lr_tools_disable_mask[0], 0, &cm->features);
   av1_set_lr_tools(master_lr_tools_disable_mask[1], 1, &cm->features);
   av1_set_lr_tools(master_lr_tools_disable_mask[1], 2, &cm->features);

@@ -1349,12 +1349,14 @@ static void init_tskip_feature_accumulator(int col, int tskip_lead,
 // Initializes the accumulators.
 static void initialize_feature_accumulators(int feature_lead, int feature_lag,
                                             int tskip_lead, int tskip_lag,
-                                            PcwienerBuffers *buffers) {
+                                            PcwienerBuffers *buffers,
+                                            bool tskip_zero_flag) {
   av1_zero(buffers->directional_feature_accumulator);
   av1_zero(buffers->tskip_feature_accumulator);
   // Initialize accumulators on the leftmost portion of the line.
   init_directional_feature_accumulator(0, feature_lead, feature_lag, buffers);
-  init_tskip_feature_accumulator(0, tskip_lead, tskip_lag, buffers);
+  if (!tskip_zero_flag)
+    init_tskip_feature_accumulator(0, tskip_lead, tskip_lag, buffers);
 }
 
 // Updates the accumulators.
@@ -1386,6 +1388,7 @@ static void calculate_features(int32_t *feature_vector, int bit_depth, int col,
           ROUND_POWER_OF_TWO_SIGNED(feature_vector[f], bit_depth_shift);
   }
   const int tskip_index = NUM_PC_WIENER_FEATURES;
+  assert(buffers->tskip_feature_accumulator[accum_index] >= 0);
   feature_vector[tskip_index] =
       buffers->tskip_feature_accumulator[accum_index] *
       buffers->feature_normalizers[tskip_index];
@@ -1449,7 +1452,7 @@ static uint8_t get_pcwiener_index(int bit_depth, int32_t *multiplier, int col,
   const int tskip_index = NUM_PC_WIENER_FEATURES;
   const int tskip = feature_vector[tskip_index];
 
-  assert(tskip < 256);
+  assert(tskip >= 0 && tskip < 256);
   for (int i = 0; i < NUM_PC_WIENER_FEATURES; ++i)
     assert(feature_vector[i] >= 0);
 
@@ -1482,7 +1485,8 @@ void apply_pc_wiener_highbd(
     uint8_t *wiener_class_id, int wiener_class_id_stride, bool is_uv,
     int bit_depth, bool classify_only,
     const int16_t (*pcwiener_filters_luma)[NUM_PC_WIENER_TAPS_LUMA],
-    const uint8_t *filter_selector, PcwienerBuffers *buffers) {
+    const uint8_t *filter_selector, PcwienerBuffers *buffers,
+    bool tskip_zero_flag) {
   (void)is_uv;
   const bool skip_filtering = classify_only;
   assert(!is_uv);
@@ -1544,9 +1548,10 @@ void apply_pc_wiener_highbd(
         row - feature_lead, row, dgd, stride, width, feature_lead, feature_lag);
   }
   for (int row = 0; row < tskip_length - 1; ++row) {
-    av1_fill_tskip_sum_buffer(row - tskip_lead, tskip, tskip_stride,
-                              buffers->tskip_sum_buffer, width, height,
-                              tskip_lead, tskip_lag, tskip_strict);
+    if (!tskip_zero_flag)
+      av1_fill_tskip_sum_buffer(row - tskip_lead, tskip, tskip_stride,
+                                buffers->tskip_sum_buffer, width, height,
+                                tskip_lead, tskip_lag, tskip_strict);
   }
   for (int i = 0; i < height; ++i) {
     // Ensure window is three pixels or a potential issue with odd-sized frames.
@@ -1556,9 +1561,10 @@ void apply_pc_wiener_highbd(
         row_to_process, feature_length - 1, dgd, stride, width, feature_lead,
         feature_lag);
 
-    av1_fill_tskip_sum_buffer(i + tskip_lag, tskip, tskip_stride,
-                              buffers->tskip_sum_buffer, width, height,
-                              tskip_lead, tskip_lag, tskip_strict);
+    if (!tskip_zero_flag)
+      av1_fill_tskip_sum_buffer(i + tskip_lag, tskip, tskip_stride,
+                                buffers->tskip_sum_buffer, width, height,
+                                tskip_lead, tskip_lag, tskip_strict);
 #if PC_WIENER_BLOCK_SIZE > 1
     bool skip_row_compute =
         i % PC_WIENER_BLOCK_SIZE != PC_WIENER_BLOCK_ROW_OFFSET;
@@ -1568,7 +1574,7 @@ void apply_pc_wiener_highbd(
     if (!skip_row_compute) {
       // Initialize accumulators on the leftmost portion of the line.
       initialize_feature_accumulators(feature_lead, feature_lag, tskip_lead,
-                                      tskip_lag, buffers);
+                                      tskip_lag, buffers, tskip_zero_flag);
       // Fill accumulators for processing width.
       update_accumulators(feature_lead, feature_lag, tskip_lead, tskip_lag,
                           width, buffers);
@@ -1706,7 +1712,8 @@ static void pc_wiener_stripe_highbd(const RestorationUnitInfo *rui,
         rui->tskip + (j >> MI_SIZE_LOG2), rui->tskip_stride,
         rui->wiener_class_id + (j >> MI_SIZE_LOG2), rui->wiener_class_id_stride,
         rui->plane != AOM_PLANE_Y, bit_depth, classify_only,
-        pcwiener_filters_luma, filter_selector, rui->pcwiener_buffers);
+        pcwiener_filters_luma, filter_selector, rui->pcwiener_buffers,
+        rui->tskip_zero_flag);
   }
 }
 
@@ -1911,7 +1918,7 @@ static void wiener_nsfilter_stripe_highbd(const RestorationUnitInfo *rui,
           rui->tskip + (j >> MI_SIZE_LOG2), rui->tskip_stride,
           rui->wiener_class_id + (j >> MI_SIZE_LOG2),
           rui->wiener_class_id_stride, rui->plane != AOM_PLANE_Y, bit_depth,
-          true, NULL, NULL, rui->pcwiener_buffers);
+          true, NULL, NULL, rui->pcwiener_buffers, rui->tskip_zero_flag);
     }
   }
 #else
@@ -2316,6 +2323,7 @@ static void filter_frame_on_unit(const RestorationTileLimits *limits,
       ctxt->wiener_class_id_stride;
   rsi->unit_info[rest_unit_idx].qindex_offset = ctxt->qindex_offset;
   rsi->unit_info[rest_unit_idx].wiener_class_id_restrict = -1;
+  rsi->unit_info[rest_unit_idx].tskip_zero_flag = ctxt->tskip_zero_flag;
 #endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_COMBINE_PC_NS_WIENER
   rsi->unit_info[rest_unit_idx].compute_classification = 1;
@@ -2376,11 +2384,7 @@ void av1_loop_restoration_filter_frame_init(AV1LrStruct *lr_ctxt,
     lr_plane_ctxt->dst_stride = lr_ctxt->dst->strides[is_uv];
     lr_plane_ctxt->tile_rect = av1_whole_frame_rect(cm, is_uv);
     lr_plane_ctxt->tile_stripe0 = 0;
-
-#if CONFIG_TEMP_LR
-    if (rsi->frame_filters_on)  // temporal solution for decoder crash/mismatch
-      av1_copy_rst_frame_filters(&cm->cur_frame->rst_info[plane], rsi);
-#endif  // CONFIG_TEMP_LR
+    lr_plane_ctxt->tskip_zero_flag = av1_superres_scaled(cm);
   }
 }
 
@@ -2447,6 +2451,7 @@ static void foreach_rest_unit_in_planes(AV1LrStruct *lr_ctxt, AV1_COMMON *cm,
     ctxt[plane].wiener_class_id = cm->mi_params.wiener_class_id[plane];
     ctxt[plane].wiener_class_id_stride =
         cm->mi_params.wiener_class_id_stride[plane];
+    ctxt[plane].tskip_zero_flag = av1_superres_scaled(cm);
 #endif  // CONFIG_LR_IMPROVEMENTS
 
     av1_foreach_rest_unit_in_plane(cm, plane, lr_ctxt->on_rest_unit,

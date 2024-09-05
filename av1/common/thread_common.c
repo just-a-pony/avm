@@ -19,6 +19,7 @@
 #include "av1/common/entropymode.h"
 #include "av1/common/thread_common.h"
 #include "av1/common/reconinter.h"
+#include "av1/common/resize.h"
 
 // Set up nsync by width.
 static INLINE int get_sync_range(int width) {
@@ -903,6 +904,7 @@ static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
     ctxt[plane].wiener_class_id = cm->mi_params.wiener_class_id[plane];
     ctxt[plane].wiener_class_id_stride =
         cm->mi_params.wiener_class_id_stride[plane];
+    ctxt[plane].tskip_zero_flag = av1_superres_scaled(cm);
 #endif  // CONFIG_LR_IMPROVEMENTS
 
     const AV1PixelRect tile_rect = ctxt[plane].tile_rect;

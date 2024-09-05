@@ -192,6 +192,8 @@ typedef struct {
 
   // Temporary storage used by compute_wienerns_filter
   double *wienerns_tmpbuf;
+
+  bool tskip_zero_flag;
 #endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_LR_MERGE_COEFFS
@@ -320,6 +322,7 @@ static AOM_INLINE void init_rsc(const YV12_BUFFER_CONFIG *src,
   rsc->best_num_filter_classes = rsc->num_filter_classes;
   rsc->frame_filters_on = 0;
   rsc->num_wiener_nonsep = 0;
+  rsc->tskip_zero_flag = av1_superres_scaled(cm);
 #endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_COMBINE_PC_NS_WIENER
   rsc->classification_is_buffered = 0;
@@ -1240,6 +1243,7 @@ static void initialize_rui_for_nonsep_search(const RestSearchCtxt *rsc,
   rui->luma_stride = rsc->luma_stride;
   rui->plane = rsc->plane;
   rui->wienerns_info.num_classes = rsc->num_filter_classes;
+  rui->tskip_zero_flag = rsc->tskip_zero_flag;
 #if CONFIG_COMBINE_PC_NS_WIENER
   rui->skip_pcwiener_filtering = 0;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER

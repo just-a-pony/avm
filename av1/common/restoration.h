@@ -367,6 +367,10 @@ typedef struct {
    * Pointer to buffers for pcwiener computations.
    */
   PcwienerBuffers *pcwiener_buffers;
+  /*!
+   * flag to skip accumulating txskip values
+   */
+  bool tskip_zero_flag;
 #if CONFIG_COMBINE_PC_NS_WIENER
   /*!
    * Whether classification needs to be computed.
@@ -618,6 +622,7 @@ typedef struct FilterFrameCtxt {
   int qindex_offset;
   uint8_t *wiener_class_id;
   int wiener_class_id_stride;
+  bool tskip_zero_flag;
 #endif  // CONFIG_LR_IMPROVEMENTS
 } FilterFrameCtxt;
 
