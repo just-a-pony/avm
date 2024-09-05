@@ -1947,8 +1947,11 @@ typedef struct {
 #define NUM_WIENERNS_CLASS_INIT_LUMA 16
 #define NUM_WIENERNS_CLASS_INIT_CHROMA 1
 
-// ceil(log_2(select_pc_wiener_filters + num_classes))
-// access with num_classes.
+// Max number of bits needed (based on the number of slots) is:
+//   ceil(log_2(select_pc_wiener_filters + num_classes))
+// with select_pc_wiener_filters <= NUM_PC_WIENER_FILTERS.
+// Adjust slots by limiting the number of bits, select_pc_wiener_filters will
+// be adjusted accordingly.
 static const int num_frame_first_predictor_bits[WIENERNS_MAX_CLASSES + 1] = {
   6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
 };
@@ -1972,7 +1975,7 @@ static inline int is_match_allowed(int filter_index, int class_id,
                                    int num_classes) {
   if (filter_index >= prev_filters_begin(num_classes) &&
       filter_index < prev_filters_end(num_classes))
-    return filter_index < class_id;
+    return filter_index - prev_filters_begin(num_classes) < class_id;
   return 1;
 }
 
