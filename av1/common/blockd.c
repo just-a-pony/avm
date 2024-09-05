@@ -799,10 +799,8 @@ uint8_t av1_get_txk_skip(const AV1_COMMON *cm, int mi_row, int mi_col,
 
 void av1_alloc_class_id_array(CommonModeInfoParams *mi_params, AV1_COMMON *cm) {
   for (int plane = 0; plane < MAX_MB_PLANE; plane++) {
-    int w = AOMMAX(mi_params->mi_cols << MI_SIZE_LOG2,
-                   cm->seq_params.max_frame_width);
-    int h = AOMMAX(mi_params->mi_rows << MI_SIZE_LOG2,
-                   cm->seq_params.max_frame_height);
+    int w = cm->superres_upscaled_width;
+    int h = cm->superres_upscaled_height;
     w = ((w + MAX_SB_SIZE - 1) >> MAX_SB_SIZE_LOG2) << MAX_SB_SIZE_LOG2;
     h = ((h + MAX_SB_SIZE - 1) >> MAX_SB_SIZE_LOG2) << MAX_SB_SIZE_LOG2;
     w >>= ((plane == 0) ? 0 : cm->seq_params.subsampling_x);

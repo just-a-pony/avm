@@ -608,6 +608,8 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
 
   cm->width = oxcf->frm_dim_cfg.width;
   cm->height = oxcf->frm_dim_cfg.height;
+  cm->superres_upscaled_width = oxcf->frm_dim_cfg.width;
+  cm->superres_upscaled_height = oxcf->frm_dim_cfg.height;
   // set sb size before allocations
   const BLOCK_SIZE sb_size = av1_select_sb_size(cpi);
   set_sb_size(cm, sb_size);
