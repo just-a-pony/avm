@@ -23,9 +23,7 @@
 #include "aom_dsp/entdec.h"
 #include "aom_dsp/prob.h"
 #include "av1/common/odintrin.h"
-#if ENABLE_LR_4PART_CODE
 #include "aom_dsp/recenter.h"
-#endif  // ENABLE_LR_4PART_CODE
 
 #if CONFIG_BITSTREAM_DEBUG
 #include "aom_util/debug_util.h"
@@ -63,13 +61,11 @@
   aom_read_unary_(r, bits ACCT_INFO_ARG(ACCT_INFO_NAME))
 #endif  // CONFIG_BYPASS_IMPROVEMENT
 
-#if ENABLE_LR_4PART_CODE
 #define aom_read_4part(r, cdf, nsymb_bits, ACCT_INFO_NAME) \
   aom_read_4part_(r, cdf, nsymb_bits ACCT_INFO_ARG(ACCT_INFO_NAME))
 #define aom_read_4part_wref(r, ref_symb, cdf, nsymb_bits, ACCT_INFO_NAME) \
   aom_read_4part_wref_(r, ref_symb, cdf,                                  \
                        nsymb_bits ACCT_INFO_ARG(ACCT_INFO_NAME))
-#endif  // ENABLE_LR_4PART_CODE
 
 #ifdef __cplusplus
 extern "C" {
@@ -387,7 +383,6 @@ static INLINE int aom_read_symbol_(aom_reader *r, aom_cdf_prob *cdf,
   return ret;
 }
 
-#if ENABLE_LR_4PART_CODE
 // Implements a code where a symbol with an alphabet size a power of 2 with
 // nsymb_bits bits (with nsymb_bits >= 3), is coded by decomposing the symbol
 // into 4 parts convering 1/8, 1/8, 1/4, 1/2 of the total number of symbols.
@@ -414,7 +409,6 @@ static INLINE int aom_read_4part_wref_(aom_reader *r, int ref_symb,
   const int symb = aom_read_4part(r, cdf, nsymb_bits, ACCT_INFO_NAME);
   return inv_recenter_finite_nonneg(1 << nsymb_bits, ref_symb, symb);
 }
-#endif  // ENABLE_LR_4PART_CODE
 
 #ifdef __cplusplus
 }  // extern "C"

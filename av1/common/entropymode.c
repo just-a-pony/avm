@@ -8376,7 +8376,6 @@ static const aom_cdf_prob default_wienerns_uv_sym_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     16384) };
 #endif  // CONFIG_ENTROPY_PARA
 
-#if ENABLE_LR_4PART_CODE
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob
     default_wienerns_4part_cdf[WIENERNS_4PART_CTX_MAX][CDF_SIZE(4)] = {
@@ -8388,7 +8387,6 @@ static const aom_cdf_prob
       { AOM_CDF4(16384, 24576, 28672) },
     };
 #endif
-#endif  // ENABLE_LR_4PART_CODE
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob default_wienerns_restore_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(6995), 37
@@ -9053,9 +9051,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->wienerns_restore_cdf, default_wienerns_restore_cdf);
   av1_copy(fc->wienerns_length_cdf, default_wienerns_length_cdf);
   av1_copy(fc->wienerns_uv_sym_cdf, default_wienerns_uv_sym_cdf);
-#if ENABLE_LR_4PART_CODE
   av1_copy(fc->wienerns_4part_cdf, default_wienerns_4part_cdf);
-#endif  // ENABLE_LR_4PART_CODE
   av1_copy(fc->pc_wiener_restore_cdf, default_pc_wiener_restore_cdf);
   av1_copy(fc->merged_param_cdf, default_merged_param_cdf);
 #if CONFIG_AIMC

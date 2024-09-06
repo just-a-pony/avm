@@ -91,9 +91,7 @@ extern "C" {
 #endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #define MAX_REFS_ARF 4
 
-#if ENABLE_LR_4PART_CODE
 #define WIENERNS_4PART_CTX_MAX 1
-#endif  // ENABLE_LR_4PART_CODE
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
 // Parameters which determine the warp delta coding
@@ -474,9 +472,7 @@ typedef struct frame_contexts {
   aom_cdf_prob wienerns_restore_cdf[CDF_SIZE(2)];
   aom_cdf_prob wienerns_length_cdf[2][CDF_SIZE(2)];
   aom_cdf_prob wienerns_uv_sym_cdf[CDF_SIZE(2)];
-#if ENABLE_LR_4PART_CODE
   aom_cdf_prob wienerns_4part_cdf[WIENERNS_4PART_CTX_MAX][CDF_SIZE(4)];
-#endif  // ENABLE_LR_4PART_CODE
   aom_cdf_prob pc_wiener_restore_cdf[CDF_SIZE(2)];
   aom_cdf_prob merged_param_cdf[CDF_SIZE(2)];
 #if !CONFIG_AIMC

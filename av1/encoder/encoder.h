@@ -1717,10 +1717,8 @@ typedef struct FRAME_COUNTS {
   unsigned int switchable_restore[RESTORE_SWITCHABLE_TYPES];
   unsigned int wiener_restore[2];
   unsigned int sgrproj_restore[2];
-#if ENABLE_LR_4PART_CODE
   unsigned int wienerns_4part_cnts[WIENERNS_4PART_CTX_MAX]
                                   [CDF_SIZE(4)];  // placeholder
-#endif                                            // ENABLE_LR_4PART_CODE
   unsigned int wienerns_length[2];                // placeholder
   unsigned int merged_param_cnts[2];              // placeholder
   unsigned int pc_wiener_restore[2];

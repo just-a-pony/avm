@@ -913,11 +913,9 @@ void av1_fill_lr_rates(ModeCosts *mode_costs, FRAME_CONTEXT *fc) {
                              fc->wienerns_length_cdf[c], NULL);
   av1_cost_tokens_from_cdf(mode_costs->wienerns_uv_sym_cost,
                            fc->wienerns_uv_sym_cdf, NULL);
-#if ENABLE_LR_4PART_CODE
   for (int c = 0; c < WIENERNS_4PART_CTX_MAX; ++c)
     av1_cost_tokens_from_cdf(mode_costs->wienerns_4part_cost[c],
                              fc->wienerns_4part_cdf[c], NULL);
-#endif  // ENABLE_LR_4PART_CODE
   av1_cost_tokens_from_cdf(mode_costs->pc_wiener_restore_cost,
                            fc->pc_wiener_restore_cdf, NULL);
   // Bit cost for parameter to designate whether unit coeffs are merged.

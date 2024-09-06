@@ -4588,7 +4588,6 @@ static AOM_INLINE void write_wienerns_framefilters(
     }
 
     for (int i = beg_feat; i < end_feat; ++i) {
-#if ENABLE_LR_4PART_CODE
       aom_write_4part_wref(
           wb,
           ref_wienerns_info_nsfilter[i] -
@@ -4598,15 +4597,6 @@ static AOM_INLINE void write_wienerns_framefilters(
           xd->tile_ctx->wienerns_4part_cdf[wienerns_coeffs[i - beg_feat]
                                                           [WIENERNS_PAR_ID]],
           wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID]);
-#else
-      aom_write_primitive_refsubexpfin(
-          wb, (1 << wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID]),
-          wienerns_coeffs[i - beg_feat][WIENERNS_PAR_ID],
-          ref_wienerns_info_nsfilter[i] -
-              wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID],
-          wienerns_info_nsfilter[i] -
-              wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID]);
-#endif  // ENABLE_LR_4PART_CODE
       if (uv_sym && i >= 6) {
         // Don't code symmetrical taps
         assert(wienerns_info_nsfilter[i + 1] == wienerns_info_nsfilter[i]);
@@ -4681,7 +4671,6 @@ static AOM_INLINE void write_wienerns_filter(
     }
 
     for (int i = beg_feat; i < end_feat; ++i) {
-#if ENABLE_LR_4PART_CODE
       aom_write_4part_wref(
           wb,
           ref_wienerns_info_nsfilter[i] -
@@ -4691,15 +4680,6 @@ static AOM_INLINE void write_wienerns_filter(
           xd->tile_ctx->wienerns_4part_cdf[wienerns_coeffs[i - beg_feat]
                                                           [WIENERNS_PAR_ID]],
           wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID]);
-#else
-      aom_write_primitive_refsubexpfin(
-          wb, (1 << wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID]),
-          wienerns_coeffs[i - beg_feat][WIENERNS_PAR_ID],
-          ref_wienerns_info_nsfilter[i] -
-              wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID],
-          wienerns_info_nsfilter[i] -
-              wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID]);
-#endif  // ENABLE_LR_4PART_CODE
       if (uv_sym && i >= 6) {
         // Don't code symmetrical taps
         assert(wienerns_info_nsfilter[i + 1] == wienerns_info_nsfilter[i]);

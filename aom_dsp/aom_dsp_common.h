@@ -94,8 +94,6 @@ static INLINE unsigned int negative_to_zero(int value) {
   return value & ~(value >> (sizeof(value) * 8 - 1));
 }
 
-#define ENABLE_LR_4PART_CODE 1
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif

@@ -3676,7 +3676,6 @@ static void read_wienerns_framefilters(AV1_COMMON *cm, MACROBLOCKD *xd,
     }
 
     for (int i = beg_feat; i < end_feat; ++i) {
-#if ENABLE_LR_4PART_CODE
       wienerns_info_nsfilter[i] =
           aom_read_4part_wref(
               rb,
@@ -3687,16 +3686,6 @@ static void read_wienerns_framefilters(AV1_COMMON *cm, MACROBLOCKD *xd,
               wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID],
               ACCT_INFO("wienerns_info_nsfilter")) +
           wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID];
-#else
-      wienerns_info_nsfilter[i] =
-          aom_read_primitive_refsubexpfin(
-              rb, (1 << wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID]),
-              wienerns_coeffs[i - beg_feat][WIENERNS_PAR_ID],
-              ref_wienerns_info_nsfilter[i] -
-                  wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID],
-              ACCT_INFO("wienerns_info_nsfilter")) +
-          wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID];
-#endif  // ENABLE_LR_4PART_CODE
       if (uv_sym && i >= 6) {
         // Fill in symmetrical tap without reading it
         wienerns_info_nsfilter[i + 1] = wienerns_info_nsfilter[i];
@@ -3773,7 +3762,6 @@ static void read_wienerns_filter(MACROBLOCKD *xd, int is_uv,
     }
 
     for (int i = beg_feat; i < end_feat; ++i) {
-#if ENABLE_LR_4PART_CODE
       wienerns_info_nsfilter[i] =
           aom_read_4part_wref(
               rb,
@@ -3784,16 +3772,6 @@ static void read_wienerns_filter(MACROBLOCKD *xd, int is_uv,
               wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID],
               ACCT_INFO("wienerns_info_nsfilter")) +
           wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID];
-#else
-      wienerns_info_nsfilter[i] =
-          aom_read_primitive_refsubexpfin(
-              rb, (1 << wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID]),
-              wienerns_coeffs[i - beg_feat][WIENERNS_PAR_ID],
-              ref_wienerns_info_nsfilter[i] -
-                  wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID],
-              ACCT_INFO("wienerns_info_nsfilter")) +
-          wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID];
-#endif  // ENABLE_LR_4PART_CODE
       if (uv_sym && i >= 6) {
         // Fill in symmetrical tap without reading it
         wienerns_info_nsfilter[i + 1] = wienerns_info_nsfilter[i];

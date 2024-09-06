@@ -1901,14 +1901,12 @@ int main(int argc, const char **argv) {
                      "[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Filters");
 
-#if ENABLE_LR_4PART_CODE
   cts_each_dim[0] = WIENERNS_4PART_CTX_MAX;
   cts_each_dim[1] = 4;
   optimize_cdf_table(&fc.wienerns_4part_cnts[0][0], probsfile, 2, cts_each_dim,
                      "static const aom_cdf_prob default_wienerns_4part_cdf"
                      "[WIENERNS_4PART_CTX_MAX][CDF_SIZE(4)]",
                      0, &total_count, 0, mem_wanted, "Filters");
-#endif  // ENABLE_LR_4PART_CODE
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.wienerns_restore[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob default_wienerns_restore_cdf"

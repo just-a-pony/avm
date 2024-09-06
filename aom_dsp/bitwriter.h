@@ -20,9 +20,7 @@
 #include "aom_dsp/entenc.h"
 #include "aom_dsp/prob.h"
 #include "aom_dsp_common.h"
-#if ENABLE_LR_4PART_CODE
 #include "aom_dsp/recenter.h"
-#endif  // ENABLE_LR_4PART_CODE
 
 #if CONFIG_RD_DEBUG
 #include "av1/common/blockd.h"
@@ -136,7 +134,6 @@ static INLINE void aom_write_symbol(aom_writer *w, int symb, aom_cdf_prob *cdf,
   if (w->allow_update_cdf) update_cdf(cdf, symb, nsymbs);
 }
 
-#if ENABLE_LR_4PART_CODE
 // Implements a code where a symbol with an alphabet size a power of 2 with
 // nsymb_bits bits (with nsymb_bits >= 3), is coded by decomposing the symbol
 // into 4 parts covering 1/8, 1/8, 1/4, 1/2 of the total number of symbols.
@@ -212,7 +209,6 @@ static INLINE int64_t aom_count_4part_wref(int ref_symb, int symb,
       recenter_finite_nonneg(1 << nsymb_bits, ref_symb, symb);
   return aom_count_4part(recentered_symb, part_cost, nsymb_bits, scale_shift);
 }
-#endif  // ENABLE_LR_4PART_CODE
 
 #ifdef __cplusplus
 }  // extern "C"

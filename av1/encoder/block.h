@@ -1342,12 +1342,10 @@ typedef struct {
    * wienerns_uv_sym_cost
    */
   int wienerns_uv_sym_cost[2];
-#if ENABLE_LR_4PART_CODE
   /*!
    * wienerns_4part_cost
    */
   int wienerns_4part_cost[WIENERNS_4PART_CTX_MAX][4];
-#endif  // ENABLE_LR_4PART_CODE
   /*!
    * pc_wiener_restore_cost
    */

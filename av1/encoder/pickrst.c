@@ -2357,9 +2357,7 @@ static int64_t count_wienerns_bits(
   }
   const int(*length_cost)[2] = mode_costs->wienerns_length_cost;
   const int *uv_sym_cost = mode_costs->wienerns_uv_sym_cost;
-#if ENABLE_LR_4PART_CODE
   const int(*cost_4part)[4] = mode_costs->wienerns_4part_cost;
-#endif  // ENABLE_LR_4PART_CODE
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;
 
   assert(c_id_begin >= 0);
@@ -2401,7 +2399,6 @@ static int64_t count_wienerns_bits(
     }
 
     for (int i = beg_feat; i < end_feat; ++i) {
-#if ENABLE_LR_4PART_CODE
       bits += aom_count_4part_wref(
           ref_wienerns_info_nsfilter[i] -
               wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID],
@@ -2409,16 +2406,6 @@ static int64_t count_wienerns_bits(
               wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID],
           cost_4part[wienerns_coeffs[i - beg_feat][WIENERNS_PAR_ID]],
           wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID], AV1_PROB_COST_SHIFT);
-#else
-      bits += aom_count_primitive_refsubexpfin(
-                  (1 << wienerns_coeffs[i - beg_feat][WIENERNS_BIT_ID]),
-                  wienerns_coeffs[i - beg_feat][WIENERNS_PAR_ID],
-                  ref_wienerns_info_nsfilter[i] -
-                      wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID],
-                  wienerns_info_nsfilter[i] -
-                      wienerns_coeffs[i - beg_feat][WIENERNS_MIN_ID])
-              << AV1_PROB_COST_SHIFT;
-#endif  // ENABLE_LR_4PART_CODE
       if (uv_sym && i >= 6) {
         // Don't code symmetrical taps
         assert(wienerns_info_nsfilter[i + 1] == wienerns_info_nsfilter[i]);
