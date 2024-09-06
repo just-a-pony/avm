@@ -1232,33 +1232,11 @@ class AV1ConvolveNonSep2DHighbdTest
   // and the (iii) filter-tap index that multiplies the pixel at the respective
   // offset.
   const int WienerNonsepConfig_[25][3] = {
-    { 1, 0, 0 },
-    { -1, 0, 0 },
-    { 0, 1, 1 },
-    { 0, -1, 1 },
-    { 2, 0, 2 },
-    { -2, 0, 2 },
-    { 0, 2, 3 },
-    { 0, -2, 3 },
-    { 1, 1, 4 },
-    { -1, -1, 4 },
-    { -1, 1, 5 },
-    { 1, -1, 5 },
-    { 2, 1, 6 },
-    { -2, -1, 6 },
-    { 2, -1, 7 },
-    { -2, 1, 7 },
-    { 1, 2, 8 },
-    { -1, -2, 8 },
-    { 1, -2, 9 },
-    { -1, 2, 9 },
-    { 3, 0, 10 },
-    { -3, 0, 10 },
-    { 0, 3, 11 },
-    { 0, -3, 11 },
-#if USE_CENTER_WIENER_NONSEP
-    { 0, 0, 12 },
-#endif  // USE_CENTER_WIENER_NONSEP
+    { 1, 0, 0 },  { -1, 0, 0 },  { 0, 1, 1 },   { 0, -1, 1 },  { 2, 0, 2 },
+    { -2, 0, 2 }, { 0, 2, 3 },   { 0, -2, 3 },  { 1, 1, 4 },   { -1, -1, 4 },
+    { -1, 1, 5 }, { 1, -1, 5 },  { 2, 1, 6 },   { -2, -1, 6 }, { 2, -1, 7 },
+    { -2, 1, 7 }, { 1, 2, 8 },   { -1, -2, 8 }, { 1, -2, 9 },  { -1, 2, 9 },
+    { 3, 0, 10 }, { -3, 0, 10 }, { 0, 3, 11 },  { 0, -3, 11 },
   };
 
   const int WienerNonsepConfigChroma_[12][3] = {
@@ -1269,19 +1247,13 @@ class AV1ConvolveNonSep2DHighbdTest
 
   // Filters use only the first (2 * kNumSymmetricTaps) taps. Center tap is
   // constrained.
-  const NonsepFilterConfig UnitSumFilterConfig_ = {
-    kMaxPrecisionBeforeOverflow,
-#if USE_CENTER_WIENER_NONSEP
-    2 * kNumSymmetricTaps + 1,
-#else
-    2 * kNumSymmetricTaps,
-#endif  // USE_CENTER_WIENER_NONSEP
-    0,
-    WienerNonsepConfig_,
-    NULL,
-    0,
-    1
-  };
+  const NonsepFilterConfig UnitSumFilterConfig_ = { kMaxPrecisionBeforeOverflow,
+                                                    2 * kNumSymmetricTaps,
+                                                    0,
+                                                    WienerNonsepConfig_,
+                                                    NULL,
+                                                    0,
+                                                    1 };
 
   // Config used for filtering of chroma when CONFIG_WIENER_NONSEP=1.
   const NonsepFilterConfig UnitSumFilterConfigChroma_ = {

@@ -66,9 +66,6 @@ const int wienerns_config_y[][3] = {
   { -1, 1, 5 }, { 1, -1, 5 },  { 2, 1, 6 },   { -2, -1, 6 }, { 2, -1, 7 },
   { -2, 1, 7 }, { 1, 2, 8 },   { -1, -2, 8 }, { 1, -2, 9 },  { -1, 2, 9 },
   { 3, 0, 10 }, { -3, 0, 10 }, { 0, 3, 11 },  { 0, -3, 11 },
-#if USE_CENTER_WIENER_NONSEP
-  { 0, 0, 12 },
-#endif  // USE_CENTER_WIENER_NONSEP
 };
 
 const int wienerns_config_uv_from_uv[][3] = {
@@ -97,9 +94,6 @@ const int wienerns_coeff_y[][WIENERNS_COEFCFG_LEN] = {
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y, 3, -4, 0),
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y, 3, -4, 0),
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y, 3, -4, 0),
-#if USE_CENTER_WIENER_NONSEP
-  AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y, 5, -16, 0),
-#endif  // USE_CENTER_WIENER_NONSEP
 };
 
 #define WIENERNS_PREC_BITS_UV 7
@@ -157,9 +151,6 @@ const int wienerns_config_y2[][3] = {
   { -2, 0, 2 }, { 0, 2, 3 },  { 0, -2, 3 },  { 1, 1, 4 },   { -1, -1, 4 },
   { -1, 1, 5 }, { 1, -1, 5 }, { 2, 1, 6 },   { -2, -1, 6 }, { 2, -1, 7 },
   { -2, 1, 7 }, { 1, 2, 8 },  { -1, -2, 8 }, { 1, -2, 9 },  { -1, 2, 9 },
-#if USE_CENTER_WIENER_NONSEP
-  { 0, 0, 10 },
-#endif  // USE_CENTER_WIENER_NONSEP
 };
 
 const int wienerns_config_uv_from_uv2[][3] = {
@@ -186,9 +177,6 @@ const int wienerns_coeff_y2[][WIENERNS_COEFCFG_LEN] = {
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y2, 3, -4, 2),
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y2, 3, -4, 2),
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y2, 3, -4, 2),
-#if USE_CENTER_WIENER_NONSEP
-  AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y2, 5, -16, 0),
-#endif  // USE_CENTER_WIENER_NONSEP
 };
 
 const WienernsFilterParameters wienerns_filter_y2 = AOM_MAKE_WIENERNS_CONFIG(
@@ -208,9 +196,6 @@ const int wienerns_config_y3[][3] = {
   { -2, 1, 7 },   { 1, 2, 8 },   { -1, -2, 8 }, { 1, -2, 9 },  { -1, 2, 9 },
   { 3, 0, 10 },   { -3, 0, 10 }, { 0, 3, 11 },  { 0, -3, 11 }, { 2, 2, 12 },
   { -2, -2, 12 }, { -2, 2, 13 }, { 2, -2, 13 },
-#if USE_CENTER_WIENER_NONSEP
-  { 0, 0, 14 },
-#endif  // USE_CENTER_WIENER_NONSEP
 };
 
 const int wienerns_config_uv_from_uv3[][3] = {
@@ -241,9 +226,6 @@ const int wienerns_coeff_y3[][WIENERNS_COEFCFG_LEN] = {
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y3, 3, -4, 2),
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y3, 3, -4, 2),
   AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y3, 3, -4, 2),
-#if USE_CENTER_WIENER_NONSEP
-  AOM_WIENERNS_COEFF(WIENERNS_PREC_BITS_Y3, 5, -16, 0),
-#endif  // USE_CENTER_WIENER_NONSEP
 };
 
 const WienernsFilterParameters wienerns_filter_y3 = AOM_MAKE_WIENERNS_CONFIG(

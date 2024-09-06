@@ -200,8 +200,6 @@ extern const WienernsFilterPairParameters wienerns_filters_lowqp;
 extern const WienernsFilterPairParameters wienerns_filters_midqp;
 extern const WienernsFilterPairParameters wienerns_filters_highqp;
 
-#define USE_CENTER_WIENER_NONSEP 0
-
 static INLINE const WienernsFilterParameters *get_wienerns_parameters(
     int qindex, int is_uv) {
   const WienernsFilterPairParameters *pair_nsfilter_params = NULL;
