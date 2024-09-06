@@ -56,7 +56,6 @@ static INLINE uint16_t find_average_highbd(const uint16_t *src, int h_start,
   return (uint16_t)avg;
 }
 
-#if CONFIG_LR_IMPROVEMENTS
 // Checks if the filters in info and ref are identical
 static INLINE int check_wiener_eq(const WienerInfo *info,
                                   const WienerInfo *ref) {
@@ -153,7 +152,6 @@ static INLINE int wienerns_info_diff(
   }
   return diff;
 }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 /*!\brief Algorithm for AV1 loop restoration search and estimation.
  *

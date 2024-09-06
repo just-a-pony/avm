@@ -1853,7 +1853,6 @@ int main(int argc, const char **argv) {
 #endif
 #endif
 
-#if CONFIG_LR_IMPROVEMENTS
   cts_each_dim[0] = MAX_LR_FLEX_SWITCHABLE_BITS;
   cts_each_dim[1] = MAX_MB_PLANE;
   cts_each_dim[2] = 2;
@@ -1863,14 +1862,6 @@ int main(int argc, const char **argv) {
       "default_switchable_flex_restore_cdf[MAX_LR_FLEX_SWITCHABLE_BITS]"
       "[MAX_MB_PLANE][CDF_SIZE(2)]",
       0, &total_count, 0, mem_wanted, "Filters");
-#else
-  cts_each_dim[0] = RESTORE_SWITCHABLE_TYPES;
-  optimize_cdf_table(
-      &fc.switchable_flex_restore_cnts[0], probsfile, 1, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_switchable_restore_cdf[CDF_SIZE(RESTORE_SWITCHABLE_TYPES)]",
-      0, &total_count, 0, mem_wanted, "Filters");
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
@@ -1898,13 +1889,6 @@ int main(int argc, const char **argv) {
                      0, &total_count, 0, mem_wanted, "Intra");
 
   /* restoration type */
-#if !CONFIG_LR_IMPROVEMENTS
-  cts_each_dim[0] = RESTORE_SWITCHABLE_TYPES;
-  optimize_cdf_table(&fc.switchable_restore[0], probsfile, 1, cts_each_dim,
-                     "static const aom_cdf_prob default_switchable_restore_cdf"
-                     "[CDF_SIZE(RESTORE_SWITCHABLE_TYPES)]",
-                     0, &total_count, 0, mem_wanted, "Intra");
-#endif
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.wiener_restore[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob default_wiener_restore_cdf"
@@ -1917,7 +1901,6 @@ int main(int argc, const char **argv) {
                      "[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Filters");
 
-#if CONFIG_LR_IMPROVEMENTS
 #if ENABLE_LR_4PART_CODE
   cts_each_dim[0] = WIENERNS_4PART_CTX_MAX;
   cts_each_dim[1] = 4;
@@ -1948,7 +1931,6 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob default_merged_param_cdf"
                      "[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Filters");
-#endif  // CONFIG_LR_IMPROVEMENTS
 
   /* intra tx size */
 #if !CONFIG_NEW_TX_PARTITION

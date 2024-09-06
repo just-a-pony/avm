@@ -26,7 +26,6 @@
 
 #include "aom_ports/mem.h"
 
-#if CONFIG_LR_IMPROVEMENTS
 // Origin-symmetric taps first then the last singleton tap.
 static const int
     pcwiener_tap_config_luma[2 * NUM_PC_WIENER_TAPS_LUMA - 1][3] = {
@@ -329,8 +328,6 @@ const WienernsFilterPairParameters wienerns_filters_lowqp = {
   &wienerns_filter_y3, &wienerns_filter_uv
 };
 
-#endif  // CONFIG_LR_IMPROVEMENTS
-
 // The 's' values are calculated based on original 'r' and 'e' values in the
 // spec using GenSgrprojVtable().
 // Note: Setting r = 0 skips the filter; with corresponding s = -1 (invalid).
@@ -480,7 +477,6 @@ void av1_loop_restoration_precal() {
 #endif
 }
 
-#if CONFIG_LR_IMPROVEMENTS
 // set up the Minimum and maximum RU size for enacoder search
 // As normative regulation:
 // minimum RU size is equal to RESTORATION_UNITSIZE_MAX >> 2,
@@ -508,7 +504,6 @@ void set_restoration_unit_size(int width, int height, int sx, int sy,
   rst[1].restoration_unit_size = rst[1].min_restoration_unit_size;
   rst[2].restoration_unit_size = rst[2].min_restoration_unit_size;
 }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 static void extend_frame_highbd(uint16_t *data, int width, int height,
                                 int stride, int border_horz, int border_vert) {
@@ -1239,8 +1234,6 @@ void av1_apply_selfguided_restoration_c(const uint16_t *dat, int width,
     }
   }
 }
-
-#if CONFIG_LR_IMPROVEMENTS
 
 // This routine should remain in sync with av1_convert_qindex_to_q.
 // The actual qstep used to quantize coefficients should be:
@@ -2124,7 +2117,6 @@ uint16_t *wienerns_copy_luma_highbd(const uint16_t *dgd, int height_y,
            (width_uv + 2 * border) * sizeof((*luma)[0]));
   return aug_luma;
 }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 static void wiener_filter_stripe_highbd(const RestorationUnitInfo *rui,
                                         int stripe_width, int stripe_height,
@@ -2165,19 +2157,12 @@ typedef void (*stripe_filter_fun)(const RestorationUnitInfo *rui,
                                   int procunit_width, const uint16_t *src,
                                   int src_stride, uint16_t *dst, int dst_stride,
                                   int32_t *tmpbuf, int bit_depth);
-#if CONFIG_LR_IMPROVEMENTS
 #define NUM_STRIPE_FILTERS 4
 
 static const stripe_filter_fun stripe_filters[NUM_STRIPE_FILTERS] = {
   wiener_filter_stripe_highbd, sgrproj_filter_stripe_highbd,
   pc_wiener_stripe_highbd, wiener_nsfilter_stripe_highbd
 };
-#else
-#define NUM_STRIPE_FILTERS 2
-static const stripe_filter_fun stripe_filters[NUM_STRIPE_FILTERS] = {
-  wiener_filter_stripe_highbd, sgrproj_filter_stripe_highbd
-};
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 // Filter one restoration unit
 void av1_loop_restoration_filter_unit(
@@ -2204,7 +2189,6 @@ void av1_loop_restoration_filter_unit(
 
   const int procunit_width = RESTORATION_PROC_UNIT_SIZE >> ss_x;
 
-#if CONFIG_LR_IMPROVEMENTS
   // rui is a pointer to a const but we modify its contents when calling
   // stripe_filter(). Use a temporary.
   RestorationUnitInfo rui_contents = *rui;
@@ -2234,9 +2218,6 @@ void av1_loop_restoration_filter_unit(
         (limits->h_start >> MI_SIZE_LOG2);
     allocate_pcwiener_line_buffers(procunit_width, tmp_rui->pcwiener_buffers);
   }
-#else
-  const RestorationUnitInfo *tmp_rui = rui;
-#endif  // CONFIG_LR_IMPROVEMENTS
 
   // Convolve the whole tile one stripe at a time
   RestorationTileLimits remaining_stripes = *limits;
@@ -2271,7 +2252,6 @@ void av1_loop_restoration_filter_unit(
                                      stride, rlbs, copy_above, copy_below,
                                      optimized_lr);
 
-#if CONFIG_LR_IMPROVEMENTS
     // cross-filter
     tmp_rui->luma =
         enable_cross_buffers ? luma_in_ru + i * rui->luma_stride : NULL;
@@ -2284,7 +2264,6 @@ void av1_loop_restoration_filter_unit(
             ? wiener_class_id_in_ru +
                   (i >> MI_SIZE_LOG2) * rui->wiener_class_id_stride
             : NULL;
-#endif  // CONFIG_LR_IMPROVEMENTS
 
     stripe_filter(tmp_rui, unit_w, h, procunit_width, data_tl + i * stride,
                   stride, dst_tl + i * dst_stride, dst_stride, tmpbuf,
@@ -2296,10 +2275,8 @@ void av1_loop_restoration_filter_unit(
 
     i += h;
   }
-#if CONFIG_LR_IMPROVEMENTS
   if (enable_pcwiener_buffers)
     free_pcwiener_line_buffers(tmp_rui->pcwiener_buffers);
-#endif  // CONFIG_LR_IMPROVEMENTS
 }
 
 static void filter_frame_on_unit(const RestorationTileLimits *limits,
@@ -2311,7 +2288,6 @@ static void filter_frame_on_unit(const RestorationTileLimits *limits,
   FilterFrameCtxt *ctxt = (FilterFrameCtxt *)priv;
   const RestorationInfo *rsi = ctxt->rsi;
 
-#if CONFIG_LR_IMPROVEMENTS
   rsi->unit_info[rest_unit_idx].plane = ctxt->plane;
   rsi->unit_info[rest_unit_idx].base_qindex = ctxt->base_qindex;
   rsi->unit_info[rest_unit_idx].luma = ctxt->luma;
@@ -2324,7 +2300,6 @@ static void filter_frame_on_unit(const RestorationTileLimits *limits,
   rsi->unit_info[rest_unit_idx].qindex_offset = ctxt->qindex_offset;
   rsi->unit_info[rest_unit_idx].wiener_class_id_restrict = -1;
   rsi->unit_info[rest_unit_idx].tskip_zero_flag = ctxt->tskip_zero_flag;
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_COMBINE_PC_NS_WIENER
   rsi->unit_info[rest_unit_idx].compute_classification = 1;
   rsi->unit_info[rest_unit_idx].skip_pcwiener_filtering = 0;
@@ -2409,7 +2384,6 @@ void av1_loop_restoration_copy_planes(AV1LrStruct *loop_rest_ctxt,
 static void foreach_rest_unit_in_planes(AV1LrStruct *lr_ctxt, AV1_COMMON *cm,
                                         int num_planes) {
   FilterFrameCtxt *ctxt = lr_ctxt->ctxt;
-#if CONFIG_LR_IMPROVEMENTS
   uint16_t *luma = NULL;
   uint16_t *luma_buf;
   const YV12_BUFFER_CONFIG *dgd = &cm->cur_frame->buf;
@@ -2429,12 +2403,10 @@ static void foreach_rest_unit_in_planes(AV1LrStruct *lr_ctxt, AV1_COMMON *cm,
 #endif
   );
   assert(luma_buf != NULL);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
   for (int plane = 0; plane < num_planes; ++plane) {
     if (cm->rst_info[plane].frame_restoration_type == RESTORE_NONE) continue;
 
-#if CONFIG_LR_IMPROVEMENTS
     ctxt[plane].plane = plane;
     ctxt[plane].base_qindex = cm->quant_params.base_qindex;
     const int is_uv = (plane != AOM_PLANE_Y);
@@ -2452,15 +2424,12 @@ static void foreach_rest_unit_in_planes(AV1LrStruct *lr_ctxt, AV1_COMMON *cm,
     ctxt[plane].wiener_class_id_stride =
         cm->mi_params.wiener_class_id_stride[plane];
     ctxt[plane].tskip_zero_flag = av1_superres_scaled(cm);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
     av1_foreach_rest_unit_in_plane(cm, plane, lr_ctxt->on_rest_unit,
                                    &ctxt[plane], &ctxt[plane].tile_rect,
                                    cm->rst_tmpbuf, cm->rlbs);
   }
-#if CONFIG_LR_IMPROVEMENTS
   free(luma_buf);
-#endif  // CONFIG_LR_IMPROVEMENTS
 }
 
 void av1_loop_restoration_filter_frame(YV12_BUFFER_CONFIG *frame,

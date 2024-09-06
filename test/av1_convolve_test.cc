@@ -24,9 +24,7 @@
 #include "test/util.h"
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
 
-#if CONFIG_LR_IMPROVEMENTS
 #include "av1/common/restoration.h"
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 namespace {
 
@@ -251,11 +249,9 @@ class AV1ConvolveTest : public ::testing::TestWithParam<TestParam<T>> {
     return RandomInput12(input16_2_, param);
   }
 
-#if CONFIG_LR_IMPROVEMENTS
   const uint16_t *FirstRandomInput16Extreme(const TestParam<T> &param) {
     return RandomInput16Extreme(input16_1_, param);
   }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
  private:
   const uint8_t *RandomInput8(uint8_t *p, const TestParam<T> &param) {
@@ -298,7 +294,6 @@ class AV1ConvolveTest : public ::testing::TestWithParam<TestParam<T>> {
     return value < low ? low : (value > high ? high : value);
   }
 
-#if CONFIG_LR_IMPROVEMENTS
   const uint16_t *RandomInput16Extreme(uint16_t *p, const TestParam<T> &param) {
     // Check that this is only called with high bit-depths.
     EXPECT_TRUE(param.BitDepth() == 10 || param.BitDepth() == 12);
@@ -323,7 +318,6 @@ class AV1ConvolveTest : public ::testing::TestWithParam<TestParam<T>> {
     // There's a bit more entropy in the upper bits of this implementation.
     return (value >> 7) & 0x1;
   }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
   static constexpr int kInputStride = MAX_SB_SIZE + kInputPadding;
 
@@ -1007,7 +1001,6 @@ INSTANTIATE_TEST_SUITE_P(
 // Nonseparable convolve-2d functions (high bit-depth)
 //////////////////////////////////////////////////////////
 
-#if CONFIG_LR_IMPROVEMENTS
 typedef void (*highbd_convolve_nonsep_2d_func)(
     const uint16_t *src, int src_stride,
     const NonsepFilterConfig *filter_config, const int16_t *filter,
@@ -1331,13 +1324,10 @@ INSTANTIATE_TEST_SUITE_P(
     BuildHighbdParams(av1_convolve_symmetric_subtract_center_highbd_avx2));
 #endif
 
-#endif  // CONFIG_LR_IMPROVEMENTS
-
 //////////////////////////////////////////////////////////
 // Nonseparable convolve-2d Dual functions (high bit-depth)
 //////////////////////////////////////////////////////////
 
-#if CONFIG_LR_IMPROVEMENTS
 typedef void (*highbd_convolve_nonsep_dual_2d_func)(
     const uint16_t *dgd, int dgd_stride, const uint16_t *dgd_dual,
     int dgd_dual_stride, const NonsepFilterConfig *filter_config,
@@ -1591,14 +1581,10 @@ INSTANTIATE_TEST_SUITE_P(
     BuildHighbdParams(av1_convolve_symmetric_dual_highbd_avx2));
 #endif
 
-#endif  // CONFIG_LR_IMPROVEMENTS
-
 //////////////////////////////////////////////////////////
 // Unit-test corresponds to buffer accumulations to derive filter
 // index for each block size (pc_wiener_block_size: 4x4)
 //////////////////////////////////////////////////////////
-
-#if CONFIG_LR_IMPROVEMENTS
 
 // Generate the list of all block widths / heights that need to be tested for
 // pc_wiener.
@@ -2286,5 +2272,4 @@ INSTANTIATE_TEST_SUITE_P(
     AVX2, AV1TskipAccumHighbdTest,
     ::testing::Values(av1_fill_tskip_feature_accumulator_avx2));
 #endif  // HAVE_AVX2
-#endif  // CONFIG_LR_IMPROVEMENTS
 }  // namespace

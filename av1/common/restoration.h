@@ -19,9 +19,7 @@
 #include "av1/common/blockd.h"
 #include "av1/common/enums.h"
 
-#if CONFIG_LR_IMPROVEMENTS
 #include "third_party/vector/vector.h"
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,13 +80,10 @@ extern "C" {
    (RESTORATION_PROC_UNIT_SIZE + RESTORATION_BORDER_VERT * 2 + \
     RESTORATION_PADDING))
 
-#if CONFIG_LR_IMPROVEMENTS
 #define RESTORATION_UNITSIZE_MAX 512
 #define NUM_PC_WIENER_TAPS_LUMA 13
 #include "av1/common/pc_wiener_filters.h"
-#else
-#define RESTORATION_UNITSIZE_MAX 256
-#endif  // CONFIG_LR_IMPROVEMENTS
+
 #define RESTORATION_UNITPELS_HORZ_MAX \
   (RESTORATION_UNITSIZE_MAX * 3 / 2 + 2 * RESTORATION_BORDER_HORZ + 16)
 #define RESTORATION_UNITPELS_VERT_MAX                                \
@@ -177,7 +172,6 @@ extern "C" {
 #define WIENER_FILT_TAP1_SUBEXP_K 2
 #define WIENER_FILT_TAP2_SUBEXP_K 3
 
-#if CONFIG_LR_IMPROVEMENTS
 #define WIENERNS_UV_BRD 2  // Max offset for luma used for chorma
 
 #define WIENERNS_MAX 20
@@ -222,7 +216,6 @@ static INLINE const NonsepFilterConfig *get_wienerns_config(int qindex,
       get_wienerns_parameters(qindex, is_uv);
   return &base_nsfilter_params->nsfilter_config;
 }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_COMBINE_PC_NS_WIENER
 const uint8_t *get_pc_wiener_sub_classifier(int num_classes, int set_index);
@@ -315,7 +308,6 @@ typedef struct {
    * Sgrproj filter parameters if restoration_type indicates Sgrproj
    */
   SgrprojInfo sgrproj_info;
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Nonseparable Wiener filter information.
    */
@@ -328,9 +320,7 @@ typedef struct {
    * Stride for luma frame.
    */
   int luma_stride;
-#endif  // CONFIG_LR_IMPROVEMENTS
 
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Plane for filtering.
    */
@@ -381,7 +371,6 @@ typedef struct {
    */
   int skip_pcwiener_filtering;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
-#endif  // CONFIG_LR_IMPROVEMENTS
 } RestorationUnitInfo;
 
 /*!\cond */
@@ -440,7 +429,6 @@ typedef struct {
    */
   int restoration_unit_size;
 
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Maximum restoration unit size
    */
@@ -449,7 +437,6 @@ typedef struct {
    * Minimum restoration unit size
    */
   int min_restoration_unit_size;
-#endif  // CONFIG_LR_IMPROVEMENTS
   /**
    * \name Fields allocated and initialised by av1_alloc_restoration_struct.
    * (horz_)units_per_tile give the number of restoration units in
@@ -492,7 +479,6 @@ typedef struct {
    * are used on the encoder side.
    */
   int optimized_lr;
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Additional tools disable mask in switchable frame mode
    */
@@ -513,7 +499,6 @@ typedef struct {
    * Whether frame-level filters are initialized.
    */
   int frame_filters_initialized;
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_TEMP_LR
   /*!
    * whether frame filter is predicted from a reference picture
@@ -546,8 +531,6 @@ static INLINE void set_default_wiener(WienerInfo *wiener_info, int chroma) {
   wiener_info->vfilter[5] = wiener_info->hfilter[5] = WIENER_FILT_TAP1_MIDV;
   wiener_info->vfilter[6] = wiener_info->hfilter[6] = wiener_filt_tap0_midv;
 }
-
-#if CONFIG_LR_IMPROVEMENTS
 
 // Clips scale_x to allowed range of Wienerns filter taps.
 static INLINE int16_t clip_to_wienerns_range(int16_t scale_x, int16_t minv,
@@ -590,7 +573,6 @@ uint16_t *wienerns_copy_luma_highbd(const uint16_t *dgd, int height_y,
                                     int ds_type
 #endif
 );
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 typedef struct {
   int h_start, h_end, v_start, v_end;
@@ -610,7 +592,6 @@ typedef struct FilterFrameCtxt {
   uint16_t *data8, *dst8;
   int data_stride, dst_stride;
   AV1PixelRect tile_rect;
-#if CONFIG_LR_IMPROVEMENTS
   int plane;
   int base_qindex;
   const uint16_t *luma;
@@ -621,7 +602,6 @@ typedef struct FilterFrameCtxt {
   uint8_t *wiener_class_id;
   int wiener_class_id_stride;
   bool tskip_zero_flag;
-#endif  // CONFIG_LR_IMPROVEMENTS
 } FilterFrameCtxt;
 
 typedef struct AV1LrStruct {
@@ -700,9 +680,7 @@ void av1_loop_restoration_filter_frame(YV12_BUFFER_CONFIG *frame,
                                        void *lr_ctxt);
 /*!\cond */
 
-#if CONFIG_LR_IMPROVEMENTS
 #define DEF_UV_LR_TOOLS_DISABLE_MASK (1 << RESTORE_PC_WIENER)
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 void av1_loop_restoration_precal();
 
@@ -778,10 +756,8 @@ void av1_lr_sync_read_dummy(void *const lr_sync, int r, int c, int plane);
 void av1_lr_sync_write_dummy(void *const lr_sync, int r, int c,
                              const int sb_cols, int plane);
 
-#if CONFIG_LR_IMPROVEMENTS
 void set_restoration_unit_size(int width, int height, int sx, int sy,
                                RestorationInfo *rst);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_COMBINE_PC_NS_WIENER
 static INLINE int to_readwrite_framefilters(const RestorationInfo *rsi,

@@ -857,7 +857,6 @@ static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
                                            AV1LrSync *lr_sync, AV1_COMMON *cm) {
   FilterFrameCtxt *ctxt = lr_ctxt->ctxt;
 
-#if CONFIG_LR_IMPROVEMENTS
   uint16_t *luma = NULL;
   uint16_t *luma_buf;
   const YV12_BUFFER_CONFIG *dgd = &cm->cur_frame->buf;
@@ -877,7 +876,6 @@ static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
 #endif
   );
   assert(luma_buf != NULL);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
   const int num_planes = av1_num_planes(cm);
 
@@ -887,7 +885,6 @@ static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
   for (int plane = 0; plane < num_planes; plane++) {
     if (cm->rst_info[plane].frame_restoration_type == RESTORE_NONE) continue;
 
-#if CONFIG_LR_IMPROVEMENTS
     ctxt[plane].plane = plane;
     ctxt[plane].base_qindex = cm->quant_params.base_qindex;
     const int is_uv = (plane != AOM_PLANE_Y);
@@ -905,7 +902,6 @@ static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
     ctxt[plane].wiener_class_id_stride =
         cm->mi_params.wiener_class_id_stride[plane];
     ctxt[plane].tskip_zero_flag = av1_superres_scaled(cm);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
     const AV1PixelRect tile_rect = ctxt[plane].tile_rect;
     const int max_tile_h = tile_rect.bottom - tile_rect.top;
@@ -956,9 +952,7 @@ static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
     winterface->sync(&workers[i]);
   }
 
-#if CONFIG_LR_IMPROVEMENTS
   free(luma_buf);
-#endif  // CONFIG_LR_IMPROVEMENTS
 }
 
 void av1_loop_restoration_filter_frame_mt(YV12_BUFFER_CONFIG *frame,

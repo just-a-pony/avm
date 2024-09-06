@@ -936,7 +936,6 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
 #endif
     update_txk_array(xd, blk_row, blk_col, tx_size, DCT_DCT);
   }
-#if CONFIG_LR_IMPROVEMENTS
   if (dry_run == OUTPUT_ENABLED && plane == AOM_PLANE_V &&
       is_cctx_allowed(cm, xd) && x->plane[AOM_PLANE_U].eobs[block] == 0) {
     av1_update_txk_skip_array(cm, xd->mi_row, xd->mi_col, xd->tree_type,
@@ -948,7 +947,6 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
                               &mbmi->chroma_ref_info, plane, blk_row, blk_col,
                               tx_size);
   }
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_MISMATCH_DEBUG
   if (dry_run == OUTPUT_ENABLED) {
     int pixel_c, pixel_r;
@@ -1200,7 +1198,6 @@ void av1_encode_sb(const struct AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
   mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-#if CONFIG_LR_IMPROVEMENTS
   if (x->txfm_search_info.skip_txfm && dry_run == OUTPUT_ENABLED) {
     const AV1_COMMON *const cm = &cpi->common;
     const int sb_type = mbmi->sb_type[xd->tree_type == CHROMA_PART];
@@ -1208,7 +1205,6 @@ void av1_encode_sb(const struct AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
                             xd->tree_type, &mbmi->chroma_ref_info, plane_start,
                             plane_end);
   }
-#endif  // CONFIG_LR_IMPROVEMENTS
   if (x->txfm_search_info.skip_txfm) return;
 
   struct optimize_ctx ctx;
@@ -1511,13 +1507,11 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
     update_txk_array(xd, blk_row, blk_col, tx_size, DCT_DCT);
   }
 
-#if CONFIG_LR_IMPROVEMENTS
   if (*eob == 0 && args->dry_run == OUTPUT_ENABLED) {
     av1_update_txk_skip_array(cm, xd->mi_row, xd->mi_col, xd->tree_type,
                               &mbmi->chroma_ref_info, plane, blk_row, blk_col,
                               tx_size);
   }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_MISMATCH_DEBUG
   if (args->dry_run == OUTPUT_ENABLED) {
@@ -1840,7 +1834,6 @@ void av1_encode_block_intra_joint_uv(int block, int blk_row, int blk_col,
         cm->features.reduced_tx_set_used);
   }
 
-#if CONFIG_LR_IMPROVEMENTS
   if (args->dry_run == OUTPUT_ENABLED) {
     if (*eob_c1 == 0)
       av1_update_txk_skip_array(cm, xd->mi_row, xd->mi_col, xd->tree_type,
@@ -1851,7 +1844,6 @@ void av1_encode_block_intra_joint_uv(int block, int blk_row, int blk_col,
                                 &xd->mi[0]->chroma_ref_info, AOM_PLANE_V,
                                 blk_row, blk_col, tx_size);
   }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_MISMATCH_DEBUG
   if (args->dry_run == OUTPUT_ENABLED) {

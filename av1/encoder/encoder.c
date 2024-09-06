@@ -684,7 +684,6 @@ static void set_max_bvp_drl_bits(struct AV1_COMP *cpi) {
 }
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 
-#if CONFIG_LR_IMPROVEMENTS
 static void set_seq_lr_tools_mask(SequenceHeader *const seq_params,
                                   const AV1EncoderConfig *oxcf) {
   const ToolCfg *const tool_cfg = &oxcf->tool_cfg;
@@ -713,7 +712,6 @@ static void set_seq_lr_tools_mask(SequenceHeader *const seq_params,
 
   seq_params->lr_tools_disable_mask[1] |= DEF_UV_LR_TOOLS_DISABLE_MASK;
 }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   AV1_COMMON *const cm = &cpi->common;
@@ -787,9 +785,7 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   cpi->superres_mode = oxcf->superres_cfg.superres_mode == AOM_SUPERRES_AUTO
                            ? AOM_SUPERRES_NONE
                            : oxcf->superres_cfg.superres_mode;  // default
-#if CONFIG_LR_IMPROVEMENTS
   if (seq_params->enable_restoration) set_seq_lr_tools_mask(seq_params, oxcf);
-#endif  // CONFIG_LR_IMPROVEMENTS
   x->e_mbd.bd = (int)seq_params->bit_depth;
   x->e_mbd.global_motion = cm->global_motion;
 
@@ -2079,27 +2075,6 @@ static void init_motion_estimation(AV1_COMP *cpi) {
 }
 
 #define COUPLED_CHROMA_FROM_LUMA_RESTORATION 0
-#if !CONFIG_LR_IMPROVEMENTS
-static void set_restoration_unit_size(int width, int height, int sx, int sy,
-                                      RestorationInfo *rst) {
-  (void)width;
-  (void)height;
-  (void)sx;
-  (void)sy;
-#if COUPLED_CHROMA_FROM_LUMA_RESTORATION
-  int s = AOMMIN(sx, sy);
-#else
-  int s = 0;
-#endif  // !COUPLED_CHROMA_FROM_LUMA_RESTORATION
-
-  if (width * height > 352 * 288)
-    rst[0].restoration_unit_size = RESTORATION_UNITSIZE_MAX;
-  else
-    rst[0].restoration_unit_size = (RESTORATION_UNITSIZE_MAX >> 1);
-  rst[1].restoration_unit_size = rst[0].restoration_unit_size >> s;
-  rst[2].restoration_unit_size = rst[1].restoration_unit_size;
-}
-#endif  // !CONFIG_LR_IMPROVEMENTS
 
 static void init_ref_frame_bufs(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
@@ -3419,7 +3394,7 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
   return AOM_CODEC_OK;
 }
 
-#if CONFIG_PRIMARY_REF_FRAME_OPT && CONFIG_LR_IMPROVEMENTS
+#if CONFIG_PRIMARY_REF_FRAME_OPT
 /*!\brief Parameters for representing LR flexible syntax.
  */
 typedef struct {
@@ -3471,7 +3446,7 @@ static void restore_lr_parameters(AV1_COMMON *const cm,
         lr_params->lr_last_switchable_ndx_0_type[i];
   }
 }
-#endif  // CONFIG_PRIMARY_REF_FRAME_OPT && CONFIG_LR_IMPROVEMENTS
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
 /*!\brief Recode loop or a single loop for encoding one frame, followed by
  * in-loop deblocking filters, CDEF filters, and restoration filters.
@@ -3544,7 +3519,6 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
   cm->cur_frame->buf.render_height = cm->render_height;
   cm->cur_frame->buf.bit_depth = (unsigned int)seq_params->bit_depth;
 
-#if CONFIG_LR_IMPROVEMENTS
   // If superres is used turn off PC_WIENER since tx_skip values will
   // not be aligned.
   uint8_t master_lr_tools_disable_mask[2] = {
@@ -3554,7 +3528,6 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
   av1_set_lr_tools(master_lr_tools_disable_mask[0], 0, &cm->features);
   av1_set_lr_tools(master_lr_tools_disable_mask[1], 1, &cm->features);
   av1_set_lr_tools(master_lr_tools_disable_mask[1], 2, &cm->features);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
   // Pick the loop filter level for the frame.
   if (!is_global_intrabc_allowed(cm)) {
@@ -3604,11 +3577,9 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
     int best_frame_size = INT32_MAX;
     int cur_frame_size = INT32_MAX;
 
-#if CONFIG_LR_IMPROVEMENTS
     // Save LR parameters
     LrParams lr_params = { { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 } };
     store_lr_parameters(cm, &lr_params);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
     for (int i = 0; i < n_refs; ++i) {
       const int temp_map_idx = get_ref_frame_map_idx(cm, i);
@@ -3634,9 +3605,7 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
           AOM_CODEC_OK) {
         return AOM_CODEC_ERROR;
       }
-#if CONFIG_LR_IMPROVEMENTS
       restore_lr_parameters(cm, &lr_params);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
       const int frame_size = (int)(temp_size);
       if (cm->features.primary_ref_frame == i) cur_frame_size = frame_size;

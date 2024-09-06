@@ -207,17 +207,7 @@ set_aom_config_var(CONFIG_EXTENDED_SDP 1
 set_aom_config_var(
   CONFIG_EXTENDED_SDP_64x64 1
   "Enable SDP for intra blocks in inter frame up to 64x64 size")
-# Begin: CWG-C016
-set_aom_config_var(
-  CONFIG_LR_IMPROVEMENTS
-  1
-  "This is a flag which combines
-                   CONFIG_LR_FLEX_SYNTAX: experiment flag to enable LR flexible syntax,
-                   CONFIG_WIENER_NONSEP: nonsep Wiener filter experiment flag,
-                   CONFIG_WIENER_NONSEP_CROSS_FILT: nonsep Wiener cross filter experiment flag,
-                   CONFIG_PC_WIENER: pixel-classified Wiener filter experiment flag,
-                   CONFIG_FLEXIBLE_RU_SIZE: choose RU size between 128x128, 256x256 and 512x512,
-		   and CONFIG_LR_MERGE_COEFFS: enable LR coefficient merging.")
+
 # End: CWG-C016
 set_aom_config_var(
   CONFIG_COMBINE_PC_NS_WIENER 1 NUMBER

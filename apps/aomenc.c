@@ -437,10 +437,8 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_mrls,
   &g_av1_codec_arg_defs.enable_wiener,
   &g_av1_codec_arg_defs.enable_sgrproj,
-#if CONFIG_LR_IMPROVEMENTS
   &g_av1_codec_arg_defs.enable_pc_wiener,
   &g_av1_codec_arg_defs.enable_wiener_nonsep,
-#endif  //  CONFIG_LR_IMPROVEMENTS
   &g_av1_codec_arg_defs.enable_tip,
 #if CONFIG_BAWP
   &g_av1_codec_arg_defs.enable_bawp,
@@ -698,12 +696,10 @@ static void init_config(cfg_options_t *config) {
   config->enable_deblocking = 1;
   config->enable_cdef = 1;
   config->enable_restoration = 1;
-  config->enable_wiener = !CONFIG_LR_IMPROVEMENTS;
+  config->enable_wiener = 0;
   config->enable_sgrproj = 1;
-#if CONFIG_LR_IMPROVEMENTS
   config->enable_pc_wiener = 1;
   config->enable_wiener_nonsep = 1;
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_CCSO
   config->enable_ccso = 1;
 #endif
@@ -1668,22 +1664,14 @@ static void show_stream_config(struct stream_state *stream,
 #if CONFIG_CCSO
           "CCSO (%d), "
 #endif
-#if CONFIG_LR_IMPROVEMENTS
           "LoopRestoration (%d: [%d/%d/%d/%d])\n",
-#else
-          "LoopRestoration (%d: [%d/%d])\n",
-#endif  // CONFIG_LR_IMPROVEMENTS
           encoder_cfg->enable_deblocking, encoder_cfg->enable_cdef,
 #if CONFIG_CCSO
           encoder_cfg->enable_ccso,
 #endif
           encoder_cfg->enable_restoration, encoder_cfg->enable_wiener,
-          encoder_cfg->enable_sgrproj
-#if CONFIG_LR_IMPROVEMENTS
-          ,
-          encoder_cfg->enable_pc_wiener, encoder_cfg->enable_wiener_nonsep
-#endif  // CONFIG_LR_IMPROVEMENTS
-  );
+          encoder_cfg->enable_sgrproj, encoder_cfg->enable_pc_wiener,
+          encoder_cfg->enable_wiener_nonsep);
 
   fprintf(stdout,
           "Tool setting (Others)          : Palette (%d), "

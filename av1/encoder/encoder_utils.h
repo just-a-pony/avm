@@ -95,10 +95,8 @@ static AOM_INLINE void enc_free_mi(CommonModeInfoParams *mi_params) {
   mi_params->tx_type_map = NULL;
   aom_free(mi_params->cctx_type_map);
   mi_params->cctx_type_map = NULL;
-#if CONFIG_LR_IMPROVEMENTS
   av1_dealloc_txk_skip_array(mi_params);
   av1_dealloc_class_id_array(mi_params);
-#endif  // CONFIG_LR_IMPROVEMENTS
 }
 
 static AOM_INLINE void enc_set_mb_mi(CommonModeInfoParams *mi_params, int width,
@@ -127,9 +125,7 @@ static AOM_INLINE void enc_setup_mi(CommonModeInfoParams *mi_params) {
          mi_grid_size * sizeof(*mi_params->tx_type_map));
   memset(mi_params->cctx_type_map, 0,
          mi_grid_size * sizeof(*mi_params->cctx_type_map));
-#if CONFIG_LR_IMPROVEMENTS
   av1_reset_txk_skip_array_using_mi_params(mi_params);
-#endif  // CONFIG_LR_IMPROVEMENTS
 }
 
 static AOM_INLINE void init_buffer_indices(

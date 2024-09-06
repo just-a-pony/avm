@@ -847,12 +847,10 @@ typedef struct {
   bool enable_wiener;
   // Indicates if sgrproj in loop restoration filter should be enabled.
   bool enable_sgrproj;
-#if CONFIG_LR_IMPROVEMENTS
   // Indicates if pc_wiener in loop restoration filter should be enabled.
   bool enable_pc_wiener;
   // Indicates if nonsep wiener in loop restoration filter should be enabled.
   bool enable_wiener_nonsep;
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_CCSO
   // Indicates if ccso should be enabled.
   bool enable_ccso;
@@ -1689,13 +1687,8 @@ typedef struct FRAME_COUNTS {
   unsigned int delta_lf_multi[FRAME_LF_COUNT][DELTA_LF_PROBS][2];
   unsigned int delta_lf[DELTA_LF_PROBS][2];
 
-#if CONFIG_LR_IMPROVEMENTS
   unsigned int switchable_flex_restore_cnts[MAX_LR_FLEX_SWITCHABLE_BITS]
                                            [MAX_MB_PLANE][2];  // placeholder
-#else
-  unsigned int switchable_flex_restore_cnts[MAX_LR_FLEX_SWITCHABLE_BITS]
-                                           [MAX_MB_PLANE][2];  // placeholder
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_CCSO_EXT
   unsigned int default_ccso_cnts[3][2];
@@ -1724,7 +1717,6 @@ typedef struct FRAME_COUNTS {
   unsigned int switchable_restore[RESTORE_SWITCHABLE_TYPES];
   unsigned int wiener_restore[2];
   unsigned int sgrproj_restore[2];
-#if CONFIG_LR_IMPROVEMENTS
 #if ENABLE_LR_4PART_CODE
   unsigned int wienerns_4part_cnts[WIENERNS_4PART_CTX_MAX]
                                   [CDF_SIZE(4)];  // placeholder
@@ -1733,7 +1725,6 @@ typedef struct FRAME_COUNTS {
   unsigned int merged_param_cnts[2];              // placeholder
   unsigned int pc_wiener_restore[2];
   unsigned int wienerns_restore[2];
-#endif  // CONFIG_LR_IMPROVEMENTS
 #endif  // CONFIG_ENTROPY_STATS
   unsigned int switchable_interp[SWITCHABLE_FILTER_CONTEXTS]
                                 [SWITCHABLE_FILTERS];

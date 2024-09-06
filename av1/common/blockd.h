@@ -1864,11 +1864,7 @@ typedef struct macroblockd_plane {
 
 #define BLOCK_OFFSET(i) ((i) << 4)
 
-#if CONFIG_LR_IMPROVEMENTS
 #define LR_BANK_SIZE 4
-#else
-#define LR_BANK_SIZE 1
-#endif  // CONFIG_LR_IMPROVEMENTS
 /*!\endcond */
 
 /*!\brief Parameters related to Wiener Filter */
@@ -1882,12 +1878,10 @@ typedef struct {
    * Horizontal filter kernel.
    */
   DECLARE_ALIGNED(16, InterpKernel, hfilter);
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Best Reference from dynamic bank
    */
   int bank_ref;
-#endif  // CONFIG_LR_IMPROVEMENTS
 } WienerInfo;
 
 /*!\brief Parameters related to Wiener Filter Bank */
@@ -1917,12 +1911,10 @@ typedef struct {
    * Weights for linear combination of filtered versions
    */
   int xqd[2];
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Best Reference from dynamic bank
    */
   int bank_ref;
-#endif  // CONFIG_LR_IMPROVEMENTS
 } SgrprojInfo;
 
 /*!\brief Parameters related to Sgrproj Filter Bank */
@@ -1941,7 +1933,6 @@ typedef struct {
   int bank_ptr;
 } SgrprojInfoBank;
 
-#if CONFIG_LR_IMPROVEMENTS
 #if CONFIG_COMBINE_PC_NS_WIENER
 #define WIENERNS_MAX_CLASSES 16
 #define NUM_WIENERNS_CLASS_INIT_LUMA 16
@@ -2008,13 +1999,11 @@ typedef struct {
    */
   DECLARE_ALIGNED(16, int16_t,
                   allfiltertaps[WIENERNS_MAX_CLASSES * WIENERNS_YUV_MAX]);
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Best Reference from dynamic bank for each class.
    */
 
   int bank_ref_for_class[WIENERNS_MAX_CLASSES];
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_COMBINE_PC_NS_WIENER
   /*!
    * Indices of frame filter dictionary filters that will be used to populate
@@ -2049,7 +2038,6 @@ void copy_nsfilter_taps_for_class(WienerNonsepInfo *to_info,
                                   int wiener_class_id);
 void copy_nsfilter_taps(WienerNonsepInfo *to_info,
                         const WienerNonsepInfo *from_info);
-#endif  // CONFIG_LR_IMPROVEMENTS
 /*!\cond */
 
 #if CONFIG_DEBUG
@@ -2473,12 +2461,10 @@ typedef struct macroblockd {
   /**@{*/
   WienerInfoBank wiener_info[MAX_MB_PLANE];   /*!< Refs for Wiener filter*/
   SgrprojInfoBank sgrproj_info[MAX_MB_PLANE]; /*!< Refs for SGR filter */
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Nonseparable Wiener filter information for all planes.
    */
   WienerNonsepInfoBank wienerns_info[MAX_MB_PLANE];
-#endif  // CONFIG_LR_IMPROVEMENTS
   /**@}*/
 
   /**
@@ -4255,7 +4241,6 @@ const SgrprojInfo *av1_constref_from_sgrproj_bank(const SgrprojInfoBank *bank,
 void av1_upd_to_sgrproj_bank(SgrprojInfoBank *bank, int ndx,
                              const SgrprojInfo *info);
 
-#if CONFIG_LR_IMPROVEMENTS
 // Resets the bank data structure holding LR_BANK_SIZE nonseparable Wiener
 // filters. The bank holds a rootating buffer of filters.
 void av1_reset_wienerns_bank(WienerNonsepInfoBank *bank, int qindex,
@@ -4281,14 +4266,9 @@ const WienerNonsepInfo *av1_constref_from_wienerns_bank(
 void av1_upd_to_wienerns_bank(WienerNonsepInfoBank *bank, int ndx,
                               const WienerNonsepInfo *info,
                               int wiener_class_id);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
-void av1_reset_loop_restoration(MACROBLOCKD *xd, int plane_start, int plane_end
-#if CONFIG_LR_IMPROVEMENTS
-                                ,
-                                const int *num_filter_classes
-#endif  // CONFIG_LR_IMPROVEMENTS
-);
+void av1_reset_loop_restoration(MACROBLOCKD *xd, int plane_start, int plane_end,
+                                const int *num_filter_classes);
 
 typedef void (*foreach_transformed_block_visitor)(int plane, int block,
                                                   int blk_row, int blk_col,

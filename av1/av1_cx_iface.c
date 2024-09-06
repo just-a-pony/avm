@@ -70,10 +70,8 @@ struct av1_extracfg {
   unsigned int enable_restoration;
   unsigned int enable_wiener;
   unsigned int enable_sgrproj;
-#if CONFIG_LR_IMPROVEMENTS
   unsigned int enable_pc_wiener;
   unsigned int enable_wiener_nonsep;
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_CCSO
   unsigned int enable_ccso;
 #endif
@@ -413,12 +411,10 @@ static struct av1_extracfg default_extra_cfg = {
   1,                                         // enable_deblocking
   1,                                         // enable_cdef
   1,                                         // enable_restoration
-  !CONFIG_LR_IMPROVEMENTS,                   // enable_wiener
+  0,                                         // enable_wiener
   1,                                         // enable_sgrproj
-#if CONFIG_LR_IMPROVEMENTS
-  1,    // enable_pc_wiener
-  1,    // enable_wiener_nonsep
-#endif  // CONFIG_LR_IMPROVEMENTS
+  1,                                         // enable_pc_wiener
+  1,                                         // enable_wiener_nonsep
 #if CONFIG_CCSO
   1,  // enable_ccso
 #endif
@@ -972,10 +968,8 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_restoration = extra_cfg->enable_restoration;
   cfg->enable_wiener = extra_cfg->enable_wiener;
   cfg->enable_sgrproj = extra_cfg->enable_sgrproj;
-#if CONFIG_LR_IMPROVEMENTS
   cfg->enable_pc_wiener = extra_cfg->enable_pc_wiener;
   cfg->enable_wiener_nonsep = extra_cfg->enable_wiener_nonsep;
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_CCSO
   cfg->enable_ccso = extra_cfg->enable_ccso;
 #endif
@@ -1104,10 +1098,8 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_restoration = cfg->enable_restoration;
   extra_cfg->enable_wiener = cfg->enable_wiener;
   extra_cfg->enable_sgrproj = cfg->enable_sgrproj;
-#if CONFIG_LR_IMPROVEMENTS
   extra_cfg->enable_pc_wiener = cfg->enable_pc_wiener;
   extra_cfg->enable_wiener_nonsep = cfg->enable_wiener_nonsep;
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_CCSO
   extra_cfg->enable_ccso = cfg->enable_ccso;
 #endif
@@ -1414,7 +1406,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
       tool_cfg->enable_restoration & extra_cfg->enable_wiener;
   tool_cfg->enable_sgrproj =
       tool_cfg->enable_restoration & extra_cfg->enable_sgrproj;
-#if CONFIG_LR_IMPROVEMENTS
   tool_cfg->enable_pc_wiener =
       tool_cfg->enable_restoration & extra_cfg->enable_pc_wiener;
   tool_cfg->enable_wiener_nonsep =
@@ -1422,10 +1413,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   tool_cfg->enable_restoration &=
       (tool_cfg->enable_wiener | tool_cfg->enable_sgrproj |
        tool_cfg->enable_pc_wiener | tool_cfg->enable_wiener_nonsep);
-#else
-  tool_cfg->enable_restoration &=
-      (tool_cfg->enable_wiener | tool_cfg->enable_sgrproj);
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_CCSO
   tool_cfg->enable_ccso = extra_cfg->enable_ccso;
 #endif
@@ -3803,14 +3790,12 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_sgrproj, argv,
                               err_string)) {
     extra_cfg.enable_sgrproj = arg_parse_uint_helper(&arg, err_string);
-#if CONFIG_LR_IMPROVEMENTS
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_pc_wiener,
                               argv, err_string)) {
     extra_cfg.enable_pc_wiener = arg_parse_uint_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_wiener_nonsep,
                               argv, err_string)) {
     extra_cfg.enable_wiener_nonsep = arg_parse_uint_helper(&arg, err_string);
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_CCSO
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ccso, argv,
                               err_string)) {
@@ -4514,10 +4499,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_DERIVED_MVD_SIGN
         1,
 #endif  // CONFIG_DERIVED_MVD_SIGN
-        1, 1,   1,   1, 1, 1,
-#if CONFIG_LR_IMPROVEMENTS
-        1, 1,
-#endif  // CONFIG_LR_IMPROVEMENTS
+        1, 1,   1,   1, 1, 1, 1, 1,
 #if CONFIG_CCSO
         1,
 #endif

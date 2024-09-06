@@ -91,11 +91,9 @@ extern "C" {
 #endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
 #define MAX_REFS_ARF 4
 
-#if CONFIG_LR_IMPROVEMENTS
 #if ENABLE_LR_4PART_CODE
 #define WIENERNS_4PART_CTX_MAX 1
 #endif  // ENABLE_LR_4PART_CODE
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_EXTENDED_WARP_PREDICTION
 // Parameters which determine the warp delta coding
@@ -459,7 +457,6 @@ typedef struct frame_contexts {
   aom_cdf_prob filter_intra_cdfs[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob filter_intra_mode_cdf[CDF_SIZE(FILTER_INTRA_MODES)];
-#if CONFIG_LR_IMPROVEMENTS
 #define MAX_LR_FLEX_MB_PLANE 3  // Needs to match MAX_MB_PLANE.
   // The code for switchable resroration mode is to signal a bit for
   // every allowed restoration type in order from 0 (RESTORE_NONE).
@@ -469,15 +466,11 @@ typedef struct frame_contexts {
   // For disallowed tools, the corresponding bit is skipped.
   aom_cdf_prob switchable_flex_restore_cdf[MAX_LR_FLEX_SWITCHABLE_BITS]
                                           [MAX_LR_FLEX_MB_PLANE][CDF_SIZE(2)];
-#else
-  aom_cdf_prob switchable_restore_cdf[CDF_SIZE(RESTORE_SWITCHABLE_TYPES)];
-#endif  // CONFIG_LR_IMPROVEMENTS
   aom_cdf_prob wiener_restore_cdf[CDF_SIZE(2)];
 #if CONFIG_CCSO_EXT
   aom_cdf_prob ccso_cdf[3][CDF_SIZE(2)];
 #endif
   aom_cdf_prob sgrproj_restore_cdf[CDF_SIZE(2)];
-#if CONFIG_LR_IMPROVEMENTS
   aom_cdf_prob wienerns_restore_cdf[CDF_SIZE(2)];
   aom_cdf_prob wienerns_length_cdf[2][CDF_SIZE(2)];
   aom_cdf_prob wienerns_uv_sym_cdf[CDF_SIZE(2)];
@@ -486,7 +479,6 @@ typedef struct frame_contexts {
 #endif  // ENABLE_LR_4PART_CODE
   aom_cdf_prob pc_wiener_restore_cdf[CDF_SIZE(2)];
   aom_cdf_prob merged_param_cdf[CDF_SIZE(2)];
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if !CONFIG_AIMC
   aom_cdf_prob y_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTRA_MODES)];
   aom_cdf_prob uv_mode_cdf[CFL_ALLOWED_TYPES][INTRA_MODES]

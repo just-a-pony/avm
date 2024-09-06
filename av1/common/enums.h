@@ -1267,9 +1267,7 @@ typedef uint8_t INTRA_REGION_CONTEXT;
 // NONE_FRAME to (MODE_CTX_REF_FRAMES - 1). Hence, it is not defined as an enum.
 typedef int8_t MV_REFERENCE_FRAME;
 
-#if CONFIG_LR_IMPROVEMENTS
 #define MAX_LR_FLEX_SWITCHABLE_BITS 4
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 /*!\endcond */
 
@@ -1277,13 +1275,11 @@ typedef int8_t MV_REFERENCE_FRAME;
  * \brief This enumeration defines various restoration types supported
  */
 typedef enum {
-  RESTORE_NONE,    /**< No restoration */
-  RESTORE_WIENER,  /**< Separable Wiener restoration */
-  RESTORE_SGRPROJ, /**< Selfguided restoration */
-#if CONFIG_LR_IMPROVEMENTS
+  RESTORE_NONE,          /**< No restoration */
+  RESTORE_WIENER,        /**< Separable Wiener restoration */
+  RESTORE_SGRPROJ,       /**< Selfguided restoration */
   RESTORE_PC_WIENER,     /**< Pixel-classified Wiener restoration */
   RESTORE_WIENER_NONSEP, /**< Nonseparable Wiener restoration */
-#endif                   // CONFIG_LR_IMPROVEMENTS
   RESTORE_SWITCHABLE,    /**< Switchable restoration */
   RESTORE_SWITCHABLE_TYPES = RESTORE_SWITCHABLE, /**< Num Switchable types */
   RESTORE_TYPES = RESTORE_SWITCHABLE + 1,        /**< Num Restore types */

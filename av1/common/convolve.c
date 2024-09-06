@@ -713,7 +713,6 @@ void av1_highbd_wiener_convolve_add_src_c(
       filters_y, y0_q4, y_step_q4, w, h, conv_params->round_1, bd);
 }
 
-#if CONFIG_LR_IMPROVEMENTS
 #define USE_CONV_SYM_VERSIONS 1
 
 // Convolves a block of pixels with origin-symmetric, non-separable filters.
@@ -1466,5 +1465,3 @@ void av1_convolve_nonsep_dual_highbd(const uint16_t *dgd, int width, int height,
   }
 #endif  // USE_CONV_SYM_VERSIONS
 }
-
-#endif  // CONFIG_LR_IMPROVEMENTS

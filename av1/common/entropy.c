@@ -351,11 +351,7 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
 #endif  // CONFIG_ENABLE_MHCCP
   RESET_CDF_COUNTER(fc->filter_intra_cdfs, 2);
   RESET_CDF_COUNTER(fc->filter_intra_mode_cdf, FILTER_INTRA_MODES);
-#if CONFIG_LR_IMPROVEMENTS
   RESET_CDF_COUNTER(fc->switchable_flex_restore_cdf, 2);
-#else
-  RESET_CDF_COUNTER(fc->switchable_restore_cdf, RESTORE_SWITCHABLE_TYPES);
-#endif  // CONFIG_LR_IMPROVEMENTS
   RESET_CDF_COUNTER(fc->wiener_restore_cdf, 2);
 #if CONFIG_CCSO_EXT
   for (int plane = 0; plane < MAX_MB_PLANE; plane++) {
@@ -363,18 +359,14 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   }
 #endif
   RESET_CDF_COUNTER(fc->sgrproj_restore_cdf, 2);
-#if CONFIG_LR_IMPROVEMENTS
   RESET_CDF_COUNTER(fc->wienerns_restore_cdf, 2);
   RESET_CDF_COUNTER(fc->wienerns_length_cdf, 2);
   RESET_CDF_COUNTER(fc->wienerns_uv_sym_cdf, 2);
 #if ENABLE_LR_4PART_CODE
   RESET_CDF_COUNTER(fc->wienerns_4part_cdf, 4);
 #endif  // ENABLE_LR_4PART_CODE
-#endif  // CONFIG_LR_IMPROVEMENTS
-#if CONFIG_LR_IMPROVEMENTS
   RESET_CDF_COUNTER(fc->pc_wiener_restore_cdf, 2);
   RESET_CDF_COUNTER(fc->merged_param_cdf, 2);
-#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_AIMC
   RESET_CDF_COUNTER(fc->y_mode_set_cdf, INTRA_MODE_SETS);
   RESET_CDF_COUNTER(fc->y_mode_idx_cdf_0, FIRST_MODE_COUNT);

@@ -898,20 +898,14 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, const MACROBLOCKD *xd,
 }
 
 void av1_fill_lr_rates(ModeCosts *mode_costs, FRAME_CONTEXT *fc) {
-#if CONFIG_LR_IMPROVEMENTS
   for (int c = 0; c < MAX_LR_FLEX_SWITCHABLE_BITS; ++c)
     for (int p = 0; p < MAX_MB_PLANE; ++p)
       av1_cost_tokens_from_cdf(mode_costs->switchable_flex_restore_cost[c][p],
                                fc->switchable_flex_restore_cdf[c][p], NULL);
-#else
-  av1_cost_tokens_from_cdf(mode_costs->switchable_restore_cost,
-                           fc->switchable_restore_cdf, NULL);
-#endif  // CONFIG_LR_IMPROVEMENTS
   av1_cost_tokens_from_cdf(mode_costs->wiener_restore_cost,
                            fc->wiener_restore_cdf, NULL);
   av1_cost_tokens_from_cdf(mode_costs->sgrproj_restore_cost,
                            fc->sgrproj_restore_cdf, NULL);
-#if CONFIG_LR_IMPROVEMENTS
   av1_cost_tokens_from_cdf(mode_costs->wienerns_restore_cost,
                            fc->wienerns_restore_cdf, NULL);
   for (int c = 0; c < 2; ++c)
@@ -929,7 +923,6 @@ void av1_fill_lr_rates(ModeCosts *mode_costs, FRAME_CONTEXT *fc) {
   // Bit cost for parameter to designate whether unit coeffs are merged.
   av1_cost_tokens_from_cdf(mode_costs->merged_param_cost, fc->merged_param_cdf,
                            NULL);
-#endif  // CONFIG_LR_IMPROVEMENTS
 }
 
 // Values are now correlated to quantizer.

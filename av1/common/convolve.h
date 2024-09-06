@@ -36,7 +36,6 @@ typedef struct WienerConvolveParams {
   int round_1;
 } WienerConvolveParams;
 
-#if CONFIG_LR_IMPROVEMENTS
 #define NONSEP_PIXELS_MAX 32
 #define NONSEP_COEFFS_MAX 32
 #define NONSEP_ROW_ID 0
@@ -72,8 +71,6 @@ void av1_convolve_nonsep_dual_highbd(const uint16_t *dgd, int width, int height,
                                      const NonsepFilterConfig *config,
                                      const int16_t *filter, uint16_t *dst,
                                      int dst_stride, int bit_depth);
-
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #define ROUND0_BITS 3
 #define COMPOUND_ROUND1_BITS 7
@@ -174,8 +171,6 @@ void av1_convolve_2d_sobel_y_c(const uint8_t *src, int src_stride, double *dst,
 }  // extern "C"
 #endif
 
-#if CONFIG_LR_IMPROVEMENTS
-
 // Updates the line buffers holding sums of features that in turn enable
 // box-filtering of features. Accomplishes the first step of the update by
 // subtracting the contribution of the out-of-scope line.
@@ -201,6 +196,5 @@ void calc_gradient_in_various_directions_c(int16_t *feature_line_buffers[],
                                            int width, int col_begin,
                                            int col_end, int feature_length,
                                            int buffer_col);
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 #endif  // AOM_AV1_COMMON_CONVOLVE_H_

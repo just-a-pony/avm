@@ -196,19 +196,13 @@ void av1_reset_loop_filter_delta(MACROBLOCKD *xd, int num_planes) {
 
 // Resets the LR decoding state before decoding each coded tile and
 // associated LR coefficients
-void av1_reset_loop_restoration(MACROBLOCKD *xd, int plane_start, int plane_end
-#if CONFIG_LR_IMPROVEMENTS
-                                ,
-                                const int *num_filter_classes
-#endif  // CONFIG_LR_IMPROVEMENTS
-) {
+void av1_reset_loop_restoration(MACROBLOCKD *xd, int plane_start, int plane_end,
+                                const int *num_filter_classes) {
   for (int p = plane_start; p < plane_end; ++p) {
     av1_reset_wiener_bank(&xd->wiener_info[p], p != AOM_PLANE_Y);
     av1_reset_sgrproj_bank(&xd->sgrproj_info[p]);
-#if CONFIG_LR_IMPROVEMENTS
     av1_reset_wienerns_bank(&xd->wienerns_info[p], xd->current_base_qindex,
                             num_filter_classes[p], p != AOM_PLANE_Y);
-#endif  // CONFIG_LR_IMPROVEMENTS
   }
 }
 
@@ -312,7 +306,6 @@ void av1_upd_to_sgrproj_bank(SgrprojInfoBank *bank, int ndx,
   memcpy(av1_ref_from_sgrproj_bank(bank, ndx), info, sizeof(*info));
 }
 
-#if CONFIG_LR_IMPROVEMENTS
 // Initialize bank
 void av1_reset_wienerns_bank(WienerNonsepInfoBank *bank, int qindex,
                              int num_classes, int chroma) {
@@ -422,7 +415,6 @@ void copy_nsfilter_taps(WienerNonsepInfo *to_info,
   memcpy(to_info->bank_ref_for_class, from_info->bank_ref_for_class,
          sizeof(to_info->bank_ref_for_class));
 }
-#endif  // CONFIG_LR_IMPROVEMENTS
 
 void av1_setup_block_planes(MACROBLOCKD *xd, int ss_x, int ss_y,
                             const int num_planes) {
@@ -638,7 +630,6 @@ void add_filter_to_dictionary(const WienerNonsepInfo *filter, int class_id,
 
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
 
-#if CONFIG_LR_IMPROVEMENTS
 void av1_alloc_txk_skip_array(CommonModeInfoParams *mi_params, AV1_COMMON *cm) {
   // Allocate based on the MIN_TX_SIZE, which is a 4x4 block.
   for (int plane = 0; plane < MAX_MB_PLANE; plane++) {
@@ -815,5 +806,3 @@ void av1_dealloc_class_id_array(CommonModeInfoParams *mi_params) {
     mi_params->wiener_class_id[plane] = NULL;
   }
 }
-
-#endif  // CONFIG_LR_IMPROVEMENTS

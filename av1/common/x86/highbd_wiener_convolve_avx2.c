@@ -243,7 +243,6 @@ void av1_highbd_wiener_convolve_add_src_avx2(
   }
 }
 
-#if CONFIG_LR_IMPROVEMENTS
 // 256bit intrinsic implementation of ROUND_POWER_OF_TWO_SIGNED.
 static INLINE __m256i round_power_of_two_signed_avx2(__m256i v_val_d,
                                                      int bits) {
@@ -2822,5 +2821,3 @@ void av1_fill_tskip_feature_accumulator_avx2(
     assert(0);
   }
 }
-
-#endif  // CONFIG_LR_IMPROVEMENTS
