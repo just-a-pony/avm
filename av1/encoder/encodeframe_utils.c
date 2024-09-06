@@ -1705,10 +1705,8 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #endif  // ENABLE_LR_4PART_CODE
   AVERAGE_CDF(ctx_left->pc_wiener_restore_cdf, ctx_tr->pc_wiener_restore_cdf,
               2);
-#endif  // CONFIG_LR_IMPROVEMENTS
-#if CONFIG_LR_MERGE_COEFFS
   AVERAGE_CDF(ctx_left->merged_param_cdf, ctx_tr->merged_param_cdf, 2);
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
   AVERAGE_CDF(ctx_left->fsc_mode_cdf, ctx_tr->fsc_mode_cdf, FSC_MODES);
   AVERAGE_CDF(ctx_left->mrl_index_cdf, ctx_tr->mrl_index_cdf, MRL_LINE_NUMBER);
 

@@ -8415,7 +8415,7 @@ static const aom_cdf_prob default_pc_wiener_restore_cdf[CDF_SIZE(2)] = {
 #endif
 #endif  // CONFIG_LR_IMPROVEMENTS
 
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob default_merged_param_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(14319), 7
@@ -8424,7 +8424,7 @@ static const aom_cdf_prob default_merged_param_cdf[CDF_SIZE(2)] = {
 static const aom_cdf_prob default_merged_param_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     16855) };
 #endif  // CONFIG_ENTROPY_PARA
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
 
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob default_delta_q_cdf[CDF_SIZE(DELTA_Q_PROBS + 1)] = {
@@ -9071,10 +9071,8 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->wienerns_4part_cdf, default_wienerns_4part_cdf);
 #endif  // ENABLE_LR_4PART_CODE
   av1_copy(fc->pc_wiener_restore_cdf, default_pc_wiener_restore_cdf);
-#endif  // CONFIG_LR_IMPROVEMENTS
-#if CONFIG_LR_MERGE_COEFFS
   av1_copy(fc->merged_param_cdf, default_merged_param_cdf);
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_AIMC
   av1_copy(fc->y_mode_set_cdf, default_y_mode_set_cdf);
   av1_copy(fc->y_mode_idx_cdf_0, default_y_first_mode_cdf);

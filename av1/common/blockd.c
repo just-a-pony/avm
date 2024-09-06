@@ -410,10 +410,8 @@ void copy_nsfilter_taps_for_class(WienerNonsepInfo *to_info,
   const int offset = wiener_class_id * WIENERNS_YUV_MAX;
   memcpy(to_info->allfiltertaps + offset, from_info->allfiltertaps + offset,
          WIENERNS_YUV_MAX * sizeof(*to_info->allfiltertaps));
-#if CONFIG_LR_MERGE_COEFFS
   to_info->bank_ref_for_class[wiener_class_id] =
       from_info->bank_ref_for_class[wiener_class_id];
-#endif  // CONFIG_LR_MERGE_COEFFS
 }
 
 void copy_nsfilter_taps(WienerNonsepInfo *to_info,
@@ -421,10 +419,8 @@ void copy_nsfilter_taps(WienerNonsepInfo *to_info,
   assert(to_info->num_classes == from_info->num_classes);
   memcpy(to_info->allfiltertaps, from_info->allfiltertaps,
          sizeof(to_info->allfiltertaps));
-#if CONFIG_LR_MERGE_COEFFS
   memcpy(to_info->bank_ref_for_class, from_info->bank_ref_for_class,
          sizeof(to_info->bank_ref_for_class));
-#endif  // CONFIG_LR_MERGE_COEFFS
 }
 #endif  // CONFIG_LR_IMPROVEMENTS
 

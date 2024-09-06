@@ -4445,7 +4445,7 @@ static AOM_INLINE void write_wiener_filter(MACROBLOCKD *xd, int wiener_win,
                                            const WienerInfo *wiener_info,
                                            WienerInfoBank *bank,
                                            aom_writer *wb) {
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   const int equal_ref = check_wiener_bank_eq(bank, wiener_info);
   const int exact_match = (equal_ref >= 0);
   aom_write_symbol(wb, exact_match, xd->tile_ctx->merged_param_cdf, 2);
@@ -4466,7 +4466,7 @@ static AOM_INLINE void write_wiener_filter(MACROBLOCKD *xd, int wiener_win,
 #else
   const int ref = 0;
   (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
   const WienerInfo *ref_wiener_info = av1_ref_from_wiener_bank(bank, ref);
   if (wiener_win == WIENER_WIN)
     aom_write_primitive_refsubexpfin(
@@ -4514,7 +4514,7 @@ static AOM_INLINE void write_sgrproj_filter(MACROBLOCKD *xd,
                                             const SgrprojInfo *sgrproj_info,
                                             SgrprojInfoBank *bank,
                                             aom_writer *wb) {
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   const int equal_ref = check_sgrproj_bank_eq(bank, sgrproj_info);
   const int exact_match = (equal_ref >= 0);
   aom_write_symbol(wb, exact_match, xd->tile_ctx->merged_param_cdf, 2);
@@ -4535,7 +4535,7 @@ static AOM_INLINE void write_sgrproj_filter(MACROBLOCKD *xd,
 #else
   const int ref = 0;
   (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
   const SgrprojInfo *ref_sgrproj_info = av1_ref_from_sgrproj_bank(bank, ref);
 
   aom_write_literal(wb, sgrproj_info->ep, SGRPROJ_PARAMS_BITS);
@@ -4565,9 +4565,8 @@ static AOM_INLINE void write_sgrproj_filter(MACROBLOCKD *xd,
   av1_add_to_sgrproj_bank(bank, sgrproj_info);
   return;
 }
-#if CONFIG_LR_IMPROVEMENTS
 
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
 static int check_and_write_merge_info(
     const WienerNonsepInfo *wienerns_info, const WienerNonsepInfoBank *bank,
     const WienernsFilterParameters *nsfilter_params, int wiener_class_id,
@@ -4608,7 +4607,6 @@ static int check_and_write_exact_match(
   aom_write_symbol(wb, exact_match, xd->tile_ctx->merged_param_cdf, 2);
   return exact_match;
 }
-#endif  // CONFIG_LR_MERGE_COEFFS
 
 #if CONFIG_COMBINE_PC_NS_WIENER
 static inline void write_match_indices(const WienerNonsepInfo *wienerns_info,
@@ -4640,7 +4638,6 @@ static AOM_INLINE void write_wienerns_framefilters(
   const WienernsFilterParameters *nsfilter_params =
       get_wienerns_parameters(base_qindex, plane != AOM_PLANE_Y);
   int skip_filter_write_for_class[WIENERNS_MAX_CLASSES] = { 0 };
-#if CONFIG_LR_MERGE_COEFFS
 #if CONFIG_TEMP_LR
   assert(!rsi->temporal_pred_flag);
 #endif  // CONFIG_TEMP_LR
@@ -4657,9 +4654,6 @@ static AOM_INLINE void write_wienerns_framefilters(
         &rsi->frame_filters, av1_constref_from_wienerns_bank(&bank, 0, c_id),
         nsfilter_params, c_id, xd, wb);
   }
-#else
-  (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
   assert(num_classes <= WIENERNS_MAX_CLASSES);
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;
 
@@ -4743,7 +4737,6 @@ static AOM_INLINE void write_wienerns_filter(
       get_wienerns_parameters(xd->current_base_qindex, plane != AOM_PLANE_Y);
   int skip_filter_write_for_class[WIENERNS_MAX_CLASSES] = { 0 };
   int ref_for_class[WIENERNS_MAX_CLASSES] = { 0 };
-#if CONFIG_LR_MERGE_COEFFS
 #if CONFIG_COMBINE_PC_NS_WIENER
   if (rsi->frame_filters_on) return;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
@@ -4752,9 +4745,6 @@ static AOM_INLINE void write_wienerns_filter(
     skip_filter_write_for_class[c_id] = check_and_write_merge_info(
         wienerns_info, bank, nsfilter_params, c_id, ref_for_class, xd, wb);
   }
-#else
-  (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
   const int num_classes = wienerns_info->num_classes;
   assert(num_classes <= WIENERNS_MAX_CLASSES);
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;
@@ -4826,7 +4816,6 @@ static AOM_INLINE void write_wienerns_filter(
   }
   return;
 }
-
 #endif  // CONFIG_LR_IMPROVEMENTS
 
 static AOM_INLINE void loop_restoration_write_sb_coeffs(

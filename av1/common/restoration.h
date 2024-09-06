@@ -19,9 +19,9 @@
 #include "av1/common/blockd.h"
 #include "av1/common/enums.h"
 
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
 #include "third_party/vector/vector.h"
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
 
 #ifdef __cplusplus
 extern "C" {
@@ -564,9 +564,7 @@ static INLINE void set_default_wienerns(WienerNonsepInfo *wienerns_info,
       get_wienerns_parameters(qindex, chroma);
   wienerns_info->num_classes = num_classes;
   for (int c_id = 0; c_id < wienerns_info->num_classes; ++c_id) {
-#if CONFIG_LR_MERGE_COEFFS
     wienerns_info->bank_ref_for_class[c_id] = 0;
-#endif  // CONFIG_LR_MERGE_COEFFS
     int16_t *wienerns_info_nsfilter = nsfilter_taps(wienerns_info, c_id);
     for (int i = 0; i < nsfilter_params->ncoeffs; ++i) {
       wienerns_info_nsfilter[i] =

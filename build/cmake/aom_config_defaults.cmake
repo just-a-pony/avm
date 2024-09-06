@@ -216,10 +216,8 @@ set_aom_config_var(
                    CONFIG_WIENER_NONSEP: nonsep Wiener filter experiment flag,
                    CONFIG_WIENER_NONSEP_CROSS_FILT: nonsep Wiener cross filter experiment flag,
                    CONFIG_PC_WIENER: pixel-classified Wiener filter experiment flag,
-                   and CONFIG_FLEXIBLE_RU_SIZE: choose RU size between 128x128, 256x256 and 512x512"
-)
-set_aom_config_var(CONFIG_LR_MERGE_COEFFS 1
-                   "AV2 experiment flag to enable LR coefficient merging")
+                   CONFIG_FLEXIBLE_RU_SIZE: choose RU size between 128x128, 256x256 and 512x512,
+		   and CONFIG_LR_MERGE_COEFFS: enable LR coefficient merging.")
 # End: CWG-C016
 set_aom_config_var(
   CONFIG_COMBINE_PC_NS_WIENER 1 NUMBER

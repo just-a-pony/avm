@@ -1331,13 +1331,11 @@ typedef struct {
   int wiener_restore_cost[2];
   //! sgrproj_restore_cost
   int sgrproj_restore_cost[2];
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   /*!
    * merged_param_cost
    */
   int merged_param_cost[2];
-#endif  // CONFIG_LR_MERGE_COEFFS
-#if CONFIG_LR_IMPROVEMENTS
   /*!
    * wienerns_restore_cost
    */

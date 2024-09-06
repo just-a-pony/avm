@@ -3558,7 +3558,7 @@ static AOM_INLINE void read_wiener_filter(MACROBLOCKD *xd, int wiener_win,
                                           WienerInfo *wiener_info,
                                           WienerInfoBank *bank,
                                           aom_reader *rb) {
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   const int exact_match = aom_read_symbol(rb, xd->tile_ctx->merged_param_cdf, 2,
                                           ACCT_INFO("exact_match"));
   int k;
@@ -3576,7 +3576,7 @@ static AOM_INLINE void read_wiener_filter(MACROBLOCKD *xd, int wiener_win,
 #else
   const int ref = 0;
   (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
   WienerInfo *ref_wiener_info = av1_ref_from_wiener_bank(bank, ref);
   memset(wiener_info->vfilter, 0, sizeof(wiener_info->vfilter));
   memset(wiener_info->hfilter, 0, sizeof(wiener_info->hfilter));
@@ -3645,7 +3645,7 @@ static AOM_INLINE void read_sgrproj_filter(MACROBLOCKD *xd,
                                            SgrprojInfo *sgrproj_info,
                                            SgrprojInfoBank *bank,
                                            aom_reader *rb) {
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   const int exact_match = aom_read_symbol(rb, xd->tile_ctx->merged_param_cdf, 2,
                                           ACCT_INFO("exact_match"));
   int k;
@@ -3663,7 +3663,7 @@ static AOM_INLINE void read_sgrproj_filter(MACROBLOCKD *xd,
 #else
   const int ref = 0;
   (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
   SgrprojInfo *ref_sgrproj_info = av1_ref_from_sgrproj_bank(bank, ref);
 
   sgrproj_info->ep = aom_read_literal(rb, SGRPROJ_PARAMS_BITS, ACCT_INFO("ep"));
@@ -3730,7 +3730,6 @@ static void read_wienerns_framefilters(AV1_COMMON *cm, MACROBLOCKD *xd,
   const int num_classes = rsi->num_filter_classes;
   rsi->frame_filters.num_classes = num_classes;
   assert(num_classes <= WIENERNS_MAX_CLASSES);
-#if CONFIG_LR_MERGE_COEFFS
 #if CONFIG_TEMP_LR
   assert(!rsi->temporal_pred_flag);
 #endif  // CONFIG_TEMP_LR
@@ -3740,9 +3739,6 @@ static void read_wienerns_framefilters(AV1_COMMON *cm, MACROBLOCKD *xd,
                                             2, ACCT_INFO("exact_match"));
     skip_filter_read_for_class[c_id] = exact_match;
   }
-#else
-  (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
   const WienernsFilterParameters *nsfilter_params =
       get_wienerns_parameters(base_qindex, is_uv);
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;
@@ -3828,7 +3824,6 @@ static void read_wienerns_filter(MACROBLOCKD *xd, int is_uv,
   int ref_for_class[WIENERNS_MAX_CLASSES] = { 0 };
   const int num_classes = wienerns_info->num_classes;
   assert(num_classes <= WIENERNS_MAX_CLASSES);
-#if CONFIG_LR_MERGE_COEFFS
 #if CONFIG_COMBINE_PC_NS_WIENER
   if (rsi->frame_filters_on) return;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
@@ -3843,9 +3838,6 @@ static void read_wienerns_filter(MACROBLOCKD *xd, int is_uv,
     skip_filter_read_for_class[c_id] = exact_match;
     ref_for_class[c_id] = ref;
   }
-#else
-  (void)xd;
-#endif  // CONFIG_LR_MERGE_COEFFS
   const WienernsFilterParameters *nsfilter_params =
       get_wienerns_parameters(xd->current_base_qindex, is_uv);
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;

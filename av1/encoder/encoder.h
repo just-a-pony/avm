@@ -1729,16 +1729,8 @@ typedef struct FRAME_COUNTS {
   unsigned int wienerns_4part_cnts[WIENERNS_4PART_CTX_MAX]
                                   [CDF_SIZE(4)];  // placeholder
 #endif                                            // ENABLE_LR_4PART_CODE
-
-#if CONFIG_LR_IMPROVEMENTS
-  unsigned int wienerns_length[2];  // placeholder
-#endif                              // CONFIG_LR_IMPROVEMENTS
-
-#if CONFIG_LR_MERGE_COEFFS
-  unsigned int merged_param_cnts[2];  // placeholder
-#endif                                // CONFIG_LR_MERGE_COEFFS
-#endif                                // CONFIG_LR_IMPROVEMENTS
-#if CONFIG_LR_IMPROVEMENTS
+  unsigned int wienerns_length[2];                // placeholder
+  unsigned int merged_param_cnts[2];              // placeholder
   unsigned int pc_wiener_restore[2];
   unsigned int wienerns_restore[2];
 #endif  // CONFIG_LR_IMPROVEMENTS

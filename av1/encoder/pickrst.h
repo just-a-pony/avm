@@ -56,7 +56,7 @@ static INLINE uint16_t find_average_highbd(const uint16_t *src, int h_start,
   return (uint16_t)avg;
 }
 
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
 // Checks if the filters in info and ref are identical
 static INLINE int check_wiener_eq(const WienerInfo *info,
                                   const WienerInfo *ref) {
@@ -89,7 +89,6 @@ static INLINE int check_sgrproj_bank_eq(const SgrprojInfoBank *bank,
   }
   return -1;
 }
-#if CONFIG_LR_IMPROVEMENTS
 
 static INLINE int check_wienerns_eq(const WienerNonsepInfo *info,
                                     const WienerNonsepInfo *ref, int num_coeffs,
@@ -155,7 +154,6 @@ static INLINE int wienerns_info_diff(
   return diff;
 }
 #endif  // CONFIG_LR_IMPROVEMENTS
-#endif  // CONFIG_LR_MERGE_COEFFS
 
 /*!\brief Algorithm for AV1 loop restoration search and estimation.
  *

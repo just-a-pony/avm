@@ -1864,11 +1864,11 @@ typedef struct macroblockd_plane {
 
 #define BLOCK_OFFSET(i) ((i) << 4)
 
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
 #define LR_BANK_SIZE 4
 #else
 #define LR_BANK_SIZE 1
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
 /*!\endcond */
 
 /*!\brief Parameters related to Wiener Filter */
@@ -1882,12 +1882,12 @@ typedef struct {
    * Horizontal filter kernel.
    */
   DECLARE_ALIGNED(16, InterpKernel, hfilter);
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Best Reference from dynamic bank
    */
   int bank_ref;
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
 } WienerInfo;
 
 /*!\brief Parameters related to Wiener Filter Bank */
@@ -1917,12 +1917,12 @@ typedef struct {
    * Weights for linear combination of filtered versions
    */
   int xqd[2];
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Best Reference from dynamic bank
    */
   int bank_ref;
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
 } SgrprojInfo;
 
 /*!\brief Parameters related to Sgrproj Filter Bank */
@@ -2008,13 +2008,13 @@ typedef struct {
    */
   DECLARE_ALIGNED(16, int16_t,
                   allfiltertaps[WIENERNS_MAX_CLASSES * WIENERNS_YUV_MAX]);
-#if CONFIG_LR_MERGE_COEFFS
+#if CONFIG_LR_IMPROVEMENTS
   /*!
    * Best Reference from dynamic bank for each class.
    */
 
   int bank_ref_for_class[WIENERNS_MAX_CLASSES];
-#endif  // CONFIG_LR_MERGE_COEFFS
+#endif  // CONFIG_LR_IMPROVEMENTS
 #if CONFIG_COMBINE_PC_NS_WIENER
   /*!
    * Indices of frame filter dictionary filters that will be used to populate
