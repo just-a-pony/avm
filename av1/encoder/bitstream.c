@@ -175,11 +175,11 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
       assert(mbmi->mode == NEAR_NEARMV);
   }
 
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   if (!mbmi->skip_mode && mbmi->ref_frame[0] == mbmi->ref_frame[1] &&
       has_second_drl(mbmi) && mbmi->mode == NEAR_NEARMV)
     assert(mbmi->ref_mv_idx[0] < mbmi->ref_mv_idx[1]);
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   if (mbmi->skip_mode)
     assert(mbmi->ref_mv_idx[0] <
@@ -193,11 +193,11 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   if (has_second_drl(mbmi)) assert(mbmi->ref_mv_idx[1] < max_drl_bits + 1);
   for (int ref = 0; ref < 1 + has_second_drl(mbmi); ref++) {
     for (int idx = 0; idx < max_drl_bits; ++idx) {
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
       if (ref && !mbmi->skip_mode && mbmi->ref_frame[0] == mbmi->ref_frame[1] &&
           mbmi->mode == NEAR_NEARMV && idx <= mbmi->ref_mv_idx[0])
         continue;
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
       aom_cdf_prob *drl_cdf = av1_get_drl_cdf(mbmi, ec_ctx, mode_ctx, idx);
       aom_write_symbol(w, mbmi->ref_mv_idx[ref] != idx, drl_cdf, 2);
       if (mbmi->ref_mv_idx[ref] == idx) break;
@@ -1240,35 +1240,29 @@ static AOM_INLINE void write_compound_ref(
   MV_REFERENCE_FRAME ref0 = mbmi->ref_frame[0];
   MV_REFERENCE_FRAME ref1 = mbmi->ref_frame[1];
   const int n_refs = ref_frames_info->num_total_refs;
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   int may_have_same_ref_comp = ref_frames_info->num_same_ref_compound > 0;
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
   if (ref_frames_info->num_same_ref_compound > 0) {
     assert(n_refs >= 1);
     assert(ref0 <= ref1);
   } else {
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
     assert(n_refs >= 2);
     assert(ref0 < ref1);
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   }
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
   int n_bits = 0;
 
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   for (int i = 0;
        (i < n_refs + n_bits - 2 || may_have_same_ref_comp) && n_bits < 2; i++) {
-    const int bit =
-        ((n_bits == 0) && (ref0 == i)) || ((n_bits == 1) && (ref1 == i));
-#elif CONFIG_ALLOW_SAME_REF_COMPOUND
-  for (int i = 0; i < n_refs - 1 && n_bits < 2; i++) {
     const int bit =
         ((n_bits == 0) && (ref0 == i)) || ((n_bits == 1) && (ref1 == i));
 #else
   for (int i = 0; i < n_refs + n_bits - 2 && n_bits < 2; i++) {
     const int bit = ref0 == i || ref1 == i;
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
     // bit_type: -1 for ref0, 0 for opposite sided ref1, 1 for same sided ref1
     const int bit_type =
         n_bits == 0 ? -1
@@ -1280,19 +1274,19 @@ static AOM_INLINE void write_compound_ref(
     //    should only be met when same ref compound is on, where the
     //    following bit may be 0 or 1).
     int implicit_ref_bit = n_bits == 0 && i >= RANKED_REF0_TO_PRUNE - 1;
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
     implicit_ref_bit |= n_bits == 0 && i >= n_refs - 2 &&
                         i + 1 >= ref_frames_info->num_same_ref_compound;
     assert(IMPLIES(n_bits == 0 && i >= n_refs - 2,
                    i < ref_frames_info->num_same_ref_compound));
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
     if (!implicit_ref_bit) {
       aom_write_symbol(
           w, bit,
           av1_get_pred_cdf_compound_ref(xd, i, n_bits, bit_type, n_refs), 2);
     }
     n_bits += bit;
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
     if (i < ref_frames_info->num_same_ref_compound && may_have_same_ref_comp) {
       may_have_same_ref_comp =
           !bit && i + 1 < ref_frames_info->num_same_ref_compound;
@@ -1300,14 +1294,12 @@ static AOM_INLINE void write_compound_ref(
     } else {
       may_have_same_ref_comp = 0;
     }
-#elif CONFIG_ALLOW_SAME_REF_COMPOUND
-    if (i < ref_frames_info->num_same_ref_compound) i -= bit;
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
   }
   assert(IMPLIES(n_bits < 2, ref1 == n_refs - 1));
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   if (ref_frames_info->num_same_ref_compound == 0)
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
     assert(IMPLIES(n_bits < 1, ref0 == n_refs - 2));
 }
 
@@ -5702,9 +5694,9 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->max_reference_frames < 7);
   if (seq_params->max_reference_frames < 7)
     aom_wb_write_literal(wb, seq_params->max_reference_frames - 3, 2);
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   aom_wb_write_literal(wb, seq_params->num_same_ref_compound, 2);
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
   aom_wb_write_bit(wb, seq_params->enable_sdp);
   aom_wb_write_bit(wb, seq_params->enable_ist);
 #if CONFIG_INTER_IST

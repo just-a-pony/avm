@@ -463,10 +463,10 @@ typedef struct SequenceHeader {
                                   // on order hint value
 #endif                            // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT
   int max_reference_frames;       // Number of reference frames allowed
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   int num_same_ref_compound;  // Number of the allowed same reference frames for
                               // the compound mode
-#endif                        // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif                        // CONFIG_SAME_REF_COMPOUND
 
   OrderHintInfo order_hint_info;
 
@@ -1304,12 +1304,12 @@ typedef struct {
    * Number of references with the same order hint.
    */
   int num_cur_refs;
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   /*!
    * Number of references for the compound mode with the same slot.
    */
   int num_same_ref_compound;
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 } RefFramesInfo;
 
 /*!
@@ -4366,11 +4366,11 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     return (allowed_motion_modes & enabled_motion_modes);
   }
 
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   if (mbmi->ref_frame[0] == mbmi->ref_frame[1]) {
     return (allowed_motion_modes & enabled_motion_modes);
   }
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 
   if (xd->cur_frame_force_integer_mv == 0) {
     const TransformationType gm_type =
@@ -4462,9 +4462,9 @@ static INLINE MOTION_MODE motion_mode_allowed(const AV1_COMMON *cm,
 
   if (is_tip_ref_frame(mbmi->ref_frame[0])) return SIMPLE_TRANSLATION;
 
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   if (mbmi->ref_frame[0] == mbmi->ref_frame[1]) return SIMPLE_TRANSLATION;
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 
   if (xd->cur_frame_force_integer_mv == 0) {
     const TransformationType gm_type =

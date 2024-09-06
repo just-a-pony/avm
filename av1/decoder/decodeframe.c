@@ -6896,9 +6896,9 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
   } else {
     seq_params->max_reference_frames = 7;
   }
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   seq_params->num_same_ref_compound = aom_rb_read_literal(rb, 2);
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
   seq_params->enable_sdp = aom_rb_read_bit(rb);
   seq_params->enable_ist = aom_rb_read_bit(rb);
 #if CONFIG_INTER_IST
@@ -7921,11 +7921,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                              "Invalid num_total_refs");
       }
 
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
       cm->ref_frames_info.num_same_ref_compound =
           AOMMIN(cm->seq_params.num_same_ref_compound,
                  cm->ref_frames_info.num_total_refs);
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 
       if (features->primary_ref_frame >= cm->ref_frames_info.num_total_refs &&
           features->primary_ref_frame != PRIMARY_REF_NONE) {

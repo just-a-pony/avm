@@ -1148,11 +1148,11 @@ int av1_encode_strategy(AV1_COMP *const cpi, size_t *const size,
       av1_get_ref_frames(cm, cur_frame_disp, ref_frame_map_pairs);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
     cm->ref_frames_info.num_same_ref_compound =
         AOMMIN(cm->seq_params.num_same_ref_compound,
                cm->ref_frames_info.num_total_refs);
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 #if CONFIG_IMPROVED_GLOBAL_MOTION
     cm->cur_frame->num_ref_frames = cm->ref_frames_info.num_total_refs;
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION

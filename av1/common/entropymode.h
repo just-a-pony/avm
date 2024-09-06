@@ -81,14 +81,10 @@ extern "C" {
 
 #define COMPREF_BIT_TYPES 2
 #define RANKED_REF0_TO_PRUNE 3
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
 // The number of reference pictures for the same reference compound mode
-#if CONFIG_IMPROVED_SAME_REF_COMPOUND
 #define SAME_REF_COMPOUND_PRUNE 2
-#else
-#define SAME_REF_COMPOUND_PRUNE 1
-#endif  // CONFIG_IMPROVED_SAME_REF_COMPOUND
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 #define MAX_REFS_ARF 4
 
 #define WIENERNS_4PART_CTX_MAX 1
@@ -380,7 +376,7 @@ typedef struct frame_contexts {
   aom_cdf_prob comp_inter_cdf[COMP_INTER_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob single_ref_cdf[REF_CONTEXTS][INTER_REFS_PER_FRAME - 1]
                              [CDF_SIZE(2)];
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   aom_cdf_prob comp_ref0_cdf[REF_CONTEXTS][INTER_REFS_PER_FRAME - 1]
                             [CDF_SIZE(2)];
   aom_cdf_prob comp_ref1_cdf[REF_CONTEXTS][COMPREF_BIT_TYPES]
@@ -390,7 +386,7 @@ typedef struct frame_contexts {
                             [CDF_SIZE(2)];
   aom_cdf_prob comp_ref1_cdf[REF_CONTEXTS][COMPREF_BIT_TYPES]
                             [INTER_REFS_PER_FRAME - 2][CDF_SIZE(2)];
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 #if CONFIG_NEW_TX_PARTITION
 #if CONFIG_TX_PARTITION_CTX
 #if CONFIG_IMPROVEIDTX_CTXS

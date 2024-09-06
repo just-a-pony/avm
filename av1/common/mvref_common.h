@@ -332,7 +332,7 @@ static INLINE int find_valid_col_offset(const TileInfo *const tile, int mi_col,
                tile->mi_col_end - mi_col - 1);
 }
 
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
 // Converts a pair of distinct indices (rf) each in [0, n-1],
 // to a combined index in [0, n*(n+1)/2].
 // The order of the combined index is as follows:
@@ -412,7 +412,7 @@ static INLINE void comb2single(int n, int8_t combindex, int8_t *rf) {
   rf[1] = combindex - i + j + rf[0] + 1;
   assert(rf[1] > rf[0]);
 }
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 
 static INLINE int8_t av1_ref_frame_type(const MV_REFERENCE_FRAME *const rf) {
   if (!is_inter_ref_frame(rf[0])) {

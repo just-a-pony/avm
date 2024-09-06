@@ -5844,7 +5844,7 @@ void av1_setup_skip_mode_allowed(AV1_COMMON *cm) {
   )
     return;
 
-#if CONFIG_ALLOW_SAME_REF_COMPOUND
+#if CONFIG_SAME_REF_COMPOUND
   skip_mode_info->skip_mode_allowed = 1;
 
   if (cm->ref_frames_info.num_total_refs > 1) {
@@ -5957,7 +5957,7 @@ void av1_setup_skip_mode_allowed(AV1_COMMON *cm) {
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
     }
   }
-#endif  // CONFIG_ALLOW_SAME_REF_COMPOUND
+#endif  // CONFIG_SAME_REF_COMPOUND
 }
 
 #if CONFIG_BANK_IMPROVE
