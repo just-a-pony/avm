@@ -5114,6 +5114,7 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
   const OrderHintInfo *const order_hint_info = &cm->seq_params.order_hint_info;
 
   memset(cm->ref_frame_side, 0, sizeof(cm->ref_frame_side));
+  memset(cm->ref_frame_relative_dist, 0, sizeof(cm->ref_frame_relative_dist));
   if (!order_hint_info->enable_order_hint) return;
 
   TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
@@ -5498,6 +5499,7 @@ void av1_setup_ref_frame_sides(AV1_COMMON *cm) {
   const OrderHintInfo *const order_hint_info = &cm->seq_params.order_hint_info;
 
   memset(cm->ref_frame_side, 0, sizeof(cm->ref_frame_side));
+  memset(cm->ref_frame_relative_dist, 0, sizeof(cm->ref_frame_relative_dist));
   if (!order_hint_info->enable_order_hint) return;
 
 #if CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
