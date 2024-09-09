@@ -322,27 +322,18 @@ void av1_copy_frame_mvs_tip_frame_mode(const AV1_COMMON *const cm,
         } else if (is_tip_ref_frame(ref_frame)) {
           int_mv this_mv[2] = { { 0 } };
           const MV *blk_mv = &mi->mv[idx].as_mv;
-#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
-          const bool is_mfmv_valid =
-#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
-              get_tip_mv(cm, blk_mv, cur_tpl_col + w, cur_tpl_row + h, this_mv);
-#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
-          if (is_mfmv_valid) {
-#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
-            if ((abs(this_mv[0].as_mv.row) <= REFMVS_LIMIT) &&
-                (abs(this_mv[0].as_mv.col) <= REFMVS_LIMIT)) {
-              mv->ref_frame[0] = tip_ref->ref_frame[0];
-              mv->mv[0].as_int = this_mv[0].as_int;
-            }
-
-            if ((abs(this_mv[1].as_mv.row) <= REFMVS_LIMIT) &&
-                (abs(this_mv[1].as_mv.col) <= REFMVS_LIMIT)) {
-              mv->ref_frame[1] = tip_ref->ref_frame[1];
-              mv->mv[1].as_int = this_mv[1].as_int;
-            }
-#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
+          get_tip_mv(cm, blk_mv, cur_tpl_col + w, cur_tpl_row + h, this_mv);
+          if ((abs(this_mv[0].as_mv.row) <= REFMVS_LIMIT) &&
+              (abs(this_mv[0].as_mv.col) <= REFMVS_LIMIT)) {
+            mv->ref_frame[0] = tip_ref->ref_frame[0];
+            mv->mv[0].as_int = this_mv[0].as_int;
           }
-#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
+
+          if ((abs(this_mv[1].as_mv.row) <= REFMVS_LIMIT) &&
+              (abs(this_mv[1].as_mv.col) <= REFMVS_LIMIT)) {
+            mv->ref_frame[1] = tip_ref->ref_frame[1];
+            mv->mv[1].as_int = this_mv[1].as_int;
+          }
           break;
         }
       }
@@ -695,13 +686,7 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
   int_mv cand_mv = get_block_mv(candidate, 0);
 #endif  // CONFIG_C071_SUBBLK_WARPMV
   int_mv ref_mv[2];
-#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
-  const bool is_mfmv_valid =
-#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
-      get_tip_mv(cm, &cand_mv.as_mv, cand_tpl_col, cand_tpl_row, ref_mv);
-#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
-  if (!is_mfmv_valid) return;
-#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
+  get_tip_mv(cm, &cand_mv.as_mv, cand_tpl_col, cand_tpl_row, ref_mv);
 
   clamp_tip_smvp_refmv(cm, &ref_mv[0].as_mv, mi_row, mi_col);
   clamp_tip_smvp_refmv(cm, &ref_mv[1].as_mv, mi_row, mi_col);

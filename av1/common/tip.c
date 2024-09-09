@@ -234,17 +234,13 @@ static void tip_temporal_scale_motion_field(AV1_COMMON *cm,
                           ref_frames_offset, tpl_mvs->ref_frame_offset);
         tpl_mvs->mfmv0.as_int = this_refmv.as_int;
         tpl_mvs->ref_frame_offset = ref_frames_offset;
-      }
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-      else {
+      } else {
         tpl_mvs->ref_frame_offset = ref_frames_offset;
       }
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
     }
   }
 }
 
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
 // Compute number of rows/columns/stride in TMVP unit (8x8)
 static void compute_tmvp_mi_info(const AV1_COMMON *cm, int *mvs_rows,
                                  int *mvs_cols, int *mvs_stride,
@@ -260,9 +256,7 @@ static void compute_tmvp_mi_info(const AV1_COMMON *cm, int *mvs_rows,
   const int mf_sb_size = (1 << mf_sb_size_log2);
   *sb_tmvp_size = (mf_sb_size >> TMVP_MI_SZ_LOG2);
 }
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
 
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
 static void tip_fill_motion_field_holes(AV1_COMMON *cm) {
   int mvs_rows = 0;
   int mvs_cols = 0;
@@ -319,78 +313,7 @@ static void tip_fill_motion_field_holes(AV1_COMMON *cm) {
     }
   }
 }
-#else
-static void tip_fill_motion_field_holes(AV1_COMMON *cm) {
-  TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
-  const int mvs_rows =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
-  const int mvs_cols =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
-  const int mvs_stride = mvs_cols;
-  const int total_units = mvs_rows * mvs_cols;
-#if CONFIG_TMVP_MEM_OPT
-  int sample = cm->tmvp_sample_step;
-#endif  // CONFIG_TMVP_MEM_OPT
 
-  MV_REF *tmvp_mvs = cm->cur_frame->mvs;
-  int write_pos = 0;
-#if CONFIG_TMVP_MEM_OPT
-  for (int blk_row = 0; blk_row < mvs_rows; blk_row += sample) {
-    for (int blk_col = 0; blk_col < mvs_cols; blk_col += sample) {
-#else
-  for (int blk_row = 0; blk_row < mvs_rows; ++blk_row) {
-    for (int blk_col = 0; blk_col < mvs_cols; ++blk_col) {
-#endif  // CONFIG_TMVP_MEM_OPT
-      const int tpl_offset = blk_row * mvs_stride + blk_col;
-      TPL_MV_REF *tpl_mvs = tpl_mvs_base + tpl_offset;
-      if (tpl_mvs->mfmv0.as_int != INVALID_MV) {
-        tmvp_mvs[write_pos].mv[0].as_mv.row = blk_row;
-        tmvp_mvs[write_pos].mv[0].as_mv.col = blk_col;
-        write_pos++;
-      }
-    }
-  }
-
-#define ITER_DIR 4
-  const int dirs[ITER_DIR][2] = { { -1, 0 }, { 0, -1 }, { 1, 0 }, { 0, 1 } };
-
-  int read_pos = 0;
-  while (read_pos < write_pos && write_pos < total_units) {
-    const int start = read_pos;
-    const int end = write_pos;
-    for (int i = start; i < end; ++i) {
-      const int cur_row = tmvp_mvs[i].mv[0].as_mv.row;
-      const int cur_col = tmvp_mvs[i].mv[0].as_mv.col;
-      const int cur_tpl_offset = cur_row * mvs_stride + cur_col;
-      for (int dir = 0; dir < ITER_DIR; ++dir) {
-#if CONFIG_TMVP_MEM_OPT
-        const int next_row = cur_row + dirs[dir][0] * sample;
-        const int next_col = cur_col + dirs[dir][1] * sample;
-#else
-        const int next_row = cur_row + dirs[dir][0];
-        const int next_col = cur_col + dirs[dir][1];
-#endif  // CONFIG_TMVP_MEM_OPT
-        const int next_tpl_offset = next_row * mvs_stride + next_col;
-        if (next_row < 0 || next_row >= mvs_rows || next_col < 0 ||
-            next_col >= mvs_cols ||
-            tpl_mvs_base[next_tpl_offset].mfmv0.as_int != INVALID_MV) {
-          continue;
-        }
-        tpl_mvs_base[next_tpl_offset].mfmv0.as_int =
-            tpl_mvs_base[cur_tpl_offset].mfmv0.as_int;
-        tpl_mvs_base[next_tpl_offset].ref_frame_offset =
-            tpl_mvs_base[cur_tpl_offset].ref_frame_offset;
-        tmvp_mvs[write_pos].mv[0].as_mv.row = next_row;
-        tmvp_mvs[write_pos].mv[0].as_mv.col = next_col;
-        write_pos++;
-      }
-    }
-    read_pos = end;
-  }
-}
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
 static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
   int mvs_rows = 0;
   int mvs_cols = 0;
@@ -509,85 +432,6 @@ static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
     }
   }
 }
-#else
-static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
-  TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
-  const int mvs_rows =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
-  const int mvs_cols =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
-  const int mvs_stride = mvs_cols;
-#if CONFIG_TMVP_MEM_OPT
-  int sample = cm->tmvp_sample_step;
-#endif  // CONFIG_TMVP_MEM_OPT
-
-  MV_REF *avg_mvs = cm->cur_frame->mvs;
-#if CONFIG_TMVP_MEM_OPT
-  for (int i = 0; i < mvs_rows; i += sample) {
-    const int i0 = i - sample;
-    const int i1 = i + sample;
-    for (int j = 0; j < mvs_cols; j += sample) {
-      const int j0 = j - sample;
-      const int j1 = j + sample;
-#else
-  for (int i = 0; i < mvs_rows; i++) {
-    const int i0 = i - 1;
-    const int i1 = i + 1;
-    for (int j = 0; j < mvs_cols; j++) {
-      const int j0 = j - 1;
-      const int j1 = j + 1;
-#endif  // CONFIG_TMVP_MEM_OPT
-      int count = 1;
-      MV this_mv;
-      const int cur_pos = i * mvs_stride + j;
-      this_mv.row = tpl_mvs_base[cur_pos].mfmv0.as_mv.row;
-      this_mv.col = tpl_mvs_base[cur_pos].mfmv0.as_mv.col;
-      if (i0 >= 0) {
-        count++;
-        const int top_pos = i0 * mvs_stride + j;
-        this_mv.row += tpl_mvs_base[top_pos].mfmv0.as_mv.row;
-        this_mv.col += tpl_mvs_base[top_pos].mfmv0.as_mv.col;
-      }
-
-      if (i1 < mvs_rows) {
-        count++;
-        const int bottom_pos = i1 * mvs_stride + j;
-        this_mv.row += tpl_mvs_base[bottom_pos].mfmv0.as_mv.row;
-        this_mv.col += tpl_mvs_base[bottom_pos].mfmv0.as_mv.col;
-      }
-
-      if (j0 >= 0) {
-        count++;
-        const int left_pos = i * mvs_stride + j0;
-        this_mv.row += tpl_mvs_base[left_pos].mfmv0.as_mv.row;
-        this_mv.col += tpl_mvs_base[left_pos].mfmv0.as_mv.col;
-      }
-
-      if (j1 < mvs_cols) {
-        count++;
-        const int right_pos = i * mvs_stride + j1;
-        this_mv.row += tpl_mvs_base[right_pos].mfmv0.as_mv.row;
-        this_mv.col += tpl_mvs_base[right_pos].mfmv0.as_mv.col;
-      }
-
-      avg_mvs[cur_pos].mv[0].as_mv.row = this_mv.row / count;
-      avg_mvs[cur_pos].mv[0].as_mv.col = this_mv.col / count;
-    }
-  }
-
-#if CONFIG_TMVP_MEM_OPT
-  for (int i = 0; i < mvs_rows; i += sample) {
-    for (int j = 0; j < mvs_cols; j += sample) {
-#else
-  for (int i = 0; i < mvs_rows; i++) {
-    for (int j = 0; j < mvs_cols; j++) {
-#endif  // CONFIG_TMVP_MEM_OPT
-      const int tpl_offset = i * mvs_stride + j;
-      tpl_mvs_base[tpl_offset].mfmv0.as_int = avg_mvs[tpl_offset].mv[0].as_int;
-    }
-  }
-}
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
 
 static INLINE MV tip_clamp_tip_mv_to_umv_border_sb(
     const MV *src_mv, int bw, int bh, int ss_x, int ss_y, int dist_to_left_edge,
@@ -676,11 +520,7 @@ static void tip_motion_field_within_frame(AV1_COMMON *cm) {
             tip_check_motion_field(cm, &this_mv, tpl_col, tpl_row, TMVP_MI_SIZE,
                                    TMVP_MI_SIZE, width, height);
       } else {
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
         mf_need_clamp[cur_pos] = 0;
-#else
-        tpl_mvs_base[cur_pos].mfmv0.as_int = 0;
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
       }
     }
   }
@@ -1584,11 +1424,7 @@ static void tip_setup_tip_frame_plane(
       blk_col += (offset - step);
 
       MV mv[2];
-      if (tpl_mvs->mfmv0.as_int != 0
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-          && tpl_mvs->mfmv0.as_int != INVALID_MV
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-      ) {
+      if (tpl_mvs->mfmv0.as_int != 0 && tpl_mvs->mfmv0.as_int != INVALID_MV) {
         tip_get_mv_projection(&mv[0], tpl_mvs->mfmv0.as_mv,
                               tip_ref->ref_frames_offset_sf[0]);
         tip_get_mv_projection(&mv[1], tpl_mvs->mfmv0.as_mv,
@@ -1833,11 +1669,7 @@ static void tip_setup_tip_plane_blocks(
       blk_col += (offset - step);
 
       MV mv[2];
-      if (tpl_mvs->mfmv0.as_int != 0
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-          && tpl_mvs->mfmv0.as_int != INVALID_MV
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-      ) {
+      if (tpl_mvs->mfmv0.as_int != 0 && tpl_mvs->mfmv0.as_int != INVALID_MV) {
         tip_get_mv_projection(&mv[0], tpl_mvs->mfmv0.as_mv,
                               tip_ref->ref_frames_offset_sf[0]);
         tip_get_mv_projection(&mv[1], tpl_mvs->mfmv0.as_mv,

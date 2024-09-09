@@ -1259,13 +1259,8 @@ static AOM_INLINE FULLPEL_MV clamp_tip_fullmv(const AV1_COMMON *const cm,
 }
 #endif  // CONFIG_TIP_REF_PRED_MERGING
 
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
 static AOM_INLINE void get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
                                   int blk_col, int blk_row, int_mv tip_mv[2]) {
-#else
-static AOM_INLINE bool get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
-                                  int blk_col, int blk_row, int_mv tip_mv[2]) {
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
   const int mvs_stride =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
 
@@ -1283,11 +1278,7 @@ static AOM_INLINE bool get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
       blk_row * mvs_stride + blk_col + blk_to_tip_frame_offset;
   const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + tpl_offset;
 
-  if (tpl_mvs->mfmv0.as_int != 0
-#if CONFIG_MF_HOLE_FILL_SIMPLIFY
-      && tpl_mvs->mfmv0.as_int != INVALID_MV
-#endif  // CONFIG_MF_HOLE_FILL_SIMPLIFY
-  ) {
+  if (tpl_mvs->mfmv0.as_int != 0 && tpl_mvs->mfmv0.as_int != INVALID_MV) {
     tip_get_mv_projection(&tip_mv[0].as_mv, tpl_mvs->mfmv0.as_mv,
                           cm->tip_ref.ref_frames_offset_sf[0]);
     tip_get_mv_projection(&tip_mv[1].as_mv, tpl_mvs->mfmv0.as_mv,
@@ -1304,9 +1295,6 @@ static AOM_INLINE bool get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
                                        MV_LOW + 1, MV_UPP - 1);
   tip_mv[1].as_mv.col = (int16_t)clamp(tip_mv[1].as_mv.col + block_mv->col,
                                        MV_LOW + 1, MV_UPP - 1);
-#if !CONFIG_MF_HOLE_FILL_SIMPLIFY
-  return (tpl_mvs->mfmv0.as_int != INVALID_MV);
-#endif  // !CONFIG_MF_HOLE_FILL_SIMPLIFY
 }
 
 #ifdef __cplusplus
