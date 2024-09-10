@@ -174,8 +174,6 @@ extern "C" {
 
 #define WIENERNS_UV_BRD 2  // Max offset for luma used for chorma
 
-#define WIENERNS_MAX 20
-
 #define WIENERNS_ROW_ID 0
 #define WIENERNS_COL_ID 1
 #define WIENERNS_BUF_POS 2
@@ -191,21 +189,13 @@ typedef struct {
   const int (*coeffs)[WIENERNS_COEFCFG_LEN];
 } WienernsFilterParameters;
 
-typedef struct {
-  const WienernsFilterParameters *y;
-  const WienernsFilterParameters *uv;
-} WienernsFilterPairParameters;
-
-extern const WienernsFilterPairParameters wienerns_filters_lowqp;
-extern const WienernsFilterPairParameters wienerns_filters_midqp;
-extern const WienernsFilterPairParameters wienerns_filters_highqp;
+extern const WienernsFilterParameters wienerns_filter_y;
+extern const WienernsFilterParameters wienerns_filter_uv;
 
 static INLINE const WienernsFilterParameters *get_wienerns_parameters(
     int qindex, int is_uv) {
-  const WienernsFilterPairParameters *pair_nsfilter_params = NULL;
   (void)qindex;
-  pair_nsfilter_params = &wienerns_filters_midqp;
-  return is_uv ? pair_nsfilter_params->uv : pair_nsfilter_params->y;
+  return is_uv ? &wienerns_filter_uv : &wienerns_filter_y;
 }
 
 static INLINE const NonsepFilterConfig *get_wienerns_config(int qindex,
