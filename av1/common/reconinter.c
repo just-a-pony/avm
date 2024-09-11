@@ -322,23 +322,23 @@ DECLARE_ALIGNED(16, static uint8_t,
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, },
   { 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, },
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 /* clang-format on */
 #endif  // !CONFIG_WEDGE_MOD_EXT
@@ -479,11 +479,11 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X32],
     wedge_tmvp_decisions[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X8],
@@ -492,7 +492,7 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
     wedge_tmvp_decisions[BLOCK_16X64] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X16],
     wedge_tmvp_decisions[BLOCK_64X16] },
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X64],
@@ -501,7 +501,7 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
     wedge_tmvp_decisions[BLOCK_64X8] },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #else
 const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
@@ -523,23 +523,23 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X8] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_16X64] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X16] },
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X64] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X8] },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #endif  // CONFIG_WEDGE_TMVP
 #else
@@ -571,25 +571,25 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16_hgtw, wedge_signflip_lookup[BLOCK_8X32],
     wedge_masks[BLOCK_8X32], wedge_tmvp_decisions[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16_hltw, wedge_signflip_lookup[BLOCK_32X8],
     wedge_masks[BLOCK_32X8], wedge_tmvp_decisions[BLOCK_32X8] },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #else
 const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
@@ -618,25 +618,25 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16_hgtw, wedge_signflip_lookup[BLOCK_8X32],
     wedge_masks[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16_hltw, wedge_signflip_lookup[BLOCK_32X8],
     wedge_masks[BLOCK_32X8] },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #endif  // CONFIG_WEDGE_TMVP
 #endif
@@ -992,13 +992,13 @@ static const uint8_t ii_weights1d[MAX_SB_SIZE] = {
 static uint8_t ii_size_scales[BLOCK_SIZES_ALL] = {
     32, 16, 16, 16, 8, 8, 8, 4,
     4,  4,  2,  2,  2, 1, 1, 1,
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
     0,  0,  0,  // unused
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     8,  8,  4,  4,  2, 2,
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
     4,  4,  2,  2,  2, 2,
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 /* clang-format on */
 

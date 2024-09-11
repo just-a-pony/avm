@@ -2522,9 +2522,9 @@ static void update_partition_stats(MACROBLOCKD *const xd,
                                    PARTITION_TYPE partition, const int mi_row,
                                    const int mi_col, BLOCK_SIZE bsize,
                                    const int ctx, BLOCK_SIZE sb_size) {
-#if !CONFIG_BLOCK_256
+#if !CONFIG_EXT_RECUR_PARTITIONS
   (void)sb_size;
-#endif  // !CONFIG_BLOCK_256
+#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   const TREE_TYPE tree_type = xd->tree_type;
   const int plane_index = tree_type == CHROMA_PART;
   FRAME_CONTEXT *fc = xd->tile_ctx;
@@ -2554,7 +2554,6 @@ static void update_partition_stats(MACROBLOCKD *const xd,
     return;
   }
 
-#if CONFIG_BLOCK_256
   const bool do_square_split = partition == PARTITION_SPLIT;
   if (is_square_split_eligible(bsize, sb_size)) {
     const int square_split_ctx =
@@ -2568,7 +2567,6 @@ static void update_partition_stats(MACROBLOCKD *const xd,
   if (do_square_split) {
     return;
   }
-#endif  // CONFIG_BLOCK_256
 
   RECT_PART_TYPE rect_type = get_rect_part_type(partition);
   if (rect_type_implied_by_bsize(bsize, tree_type) == RECT_INVALID) {
@@ -5560,13 +5558,6 @@ static void prune_partitions_after_split(
   const BLOCK_SIZE bsize = blk_params.bsize;
   assert(bsize < BLOCK_SIZES_ALL);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
-  (void)sms_tree;
-  (void)part_none_rd;
-  (void)part_split_rd;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
-
-#if !CONFIG_EXT_RECUR_PARTITIONS
   // Early termination: using the rd costs of PARTITION_NONE and subblocks
   // from PARTITION_SPLIT to determine an early breakout.
   if (cpi->sf.part_sf.ml_early_term_after_part_split_level &&
@@ -5580,7 +5571,6 @@ static void prune_partitions_after_split(
         part_search_state->split_rd, mi_row, mi_col,
         &part_search_state->terminate_partition_search);
   }
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
 
   // Use the rd costs of PARTITION_NONE and subblocks from PARTITION_SPLIT
   // to prune out rectangular partitions in some directions.
@@ -7000,7 +6990,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition does not split
       part_search_state->prune_partition_4a[HORZ] = 1;
     }
-#if CONFIG_FLEX_PARTITION
     if (part_sf->prune_ext_part_with_part_rect) {
       // Prune if the best partition is rect but subtrees did not further split
       // in horz
@@ -7051,24 +7040,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4a[HORZ] = 1;
       }
     }
-#else
-    if (part_sf->prune_ext_part_with_part_rect &&
-        pc_tree->partitioning == PARTITION_HORZ &&
-        !node_uses_horz(pc_tree->horizontal[0]) &&
-        !node_uses_horz(pc_tree->horizontal[1])) {
-      // Prune if the best partition is horz but horz did not further split in
-      // horz
-      part_search_state->prune_partition_4a[HORZ] = 1;
-    }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm) &&
-        pc_tree->partitioning == PARTITION_HORZ_3 &&
-        !node_uses_horz(pc_tree->horizontal3[0]) &&
-        !node_uses_horz(pc_tree->horizontal3[3])) {
-      // Prune is best partition is horizontal H, but first and last
-      // subpartitions did not further split in horizontal direction.
-      part_search_state->prune_partition_4a[HORZ] = 1;
-    }
-#endif  // CONFIG_FLEX_PARTITION
     if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
         pc_tree->partitioning == PARTITION_VERT &&
         part_search_state->partition_rect_allowed[HORZ]) {
@@ -7084,7 +7055,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition does not split
       part_search_state->prune_partition_4b[HORZ] = 1;
     }
-#if CONFIG_FLEX_PARTITION
     if (part_sf->prune_ext_part_with_part_rect) {
       // Prune if the best partition is rect but subtrees did not further split
       // in horz
@@ -7135,24 +7105,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4b[HORZ] = 1;
       }
     }
-#else
-    if (part_sf->prune_ext_part_with_part_rect &&
-        pc_tree->partitioning == PARTITION_HORZ &&
-        !node_uses_horz(pc_tree->horizontal[0]) &&
-        !node_uses_horz(pc_tree->horizontal[1])) {
-      // Prune if the best partition is horz but horz did not further split in
-      // horz
-      part_search_state->prune_partition_4b[HORZ] = 1;
-    }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm) &&
-        pc_tree->partitioning == PARTITION_HORZ_3 &&
-        !node_uses_horz(pc_tree->horizontal3[0]) &&
-        !node_uses_horz(pc_tree->horizontal3[3])) {
-      // Prune is best partition is horizontal H, but first and last
-      // subpartitions did not further split in horizontal direction.
-      part_search_state->prune_partition_4b[HORZ] = 1;
-    }
-#endif  // CONFIG_FLEX_PARTITION
     if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
         pc_tree->partitioning == PARTITION_VERT &&
         part_search_state->partition_rect_allowed[HORZ]) {
@@ -7168,7 +7120,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition does not split
       part_search_state->prune_partition_4a[VERT] = 1;
     }
-#if CONFIG_FLEX_PARTITION
     if (part_sf->prune_ext_part_with_part_rect) {
       // Prune if the best partition is rect but subtrees did not further split
       // in vert
@@ -7219,24 +7170,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4a[VERT] = 1;
       }
     }
-#else
-    if (part_sf->prune_ext_part_with_part_rect &&
-        pc_tree->partitioning == PARTITION_VERT &&
-        !node_uses_vert(pc_tree->vertical[0]) &&
-        !node_uses_vert(pc_tree->vertical[1])) {
-      // Prune if the best partition is vert but vert did not further split in
-      // vert
-      part_search_state->prune_partition_4a[VERT] = 1;
-    }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm) &&
-        pc_tree->partitioning == PARTITION_VERT_3 &&
-        !node_uses_vert(pc_tree->vertical3[0]) &&
-        !node_uses_vert(pc_tree->vertical3[3])) {
-      // Prune is best partition is vertical H, but first and last
-      // subpartitions did not further split in vertical direction.
-      part_search_state->prune_partition_4a[VERT] = 1;
-    }
-#endif  // CONFIG_FLEX_PARTITION
     if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
         pc_tree->partitioning == PARTITION_HORZ &&
         part_search_state->partition_rect_allowed[VERT]) {
@@ -7252,7 +7185,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
       // Prune if the best partition does not split
       part_search_state->prune_partition_4b[VERT] = 1;
     }
-#if CONFIG_FLEX_PARTITION
     if (part_sf->prune_ext_part_with_part_rect) {
       // Prune if the best partition is rect but subtrees did not further split
       // in vert
@@ -7303,24 +7235,6 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4b[VERT] = 1;
       }
     }
-#else
-    if (part_sf->prune_ext_part_with_part_rect &&
-        pc_tree->partitioning == PARTITION_VERT &&
-        !node_uses_vert(pc_tree->vertical[0]) &&
-        !node_uses_vert(pc_tree->vertical[1])) {
-      // Prune if the best partition is vert but vert did not further split in
-      // vert
-      part_search_state->prune_partition_4b[VERT] = 1;
-    }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm) &&
-        pc_tree->partitioning == PARTITION_VERT_3 &&
-        !node_uses_vert(pc_tree->vertical3[0]) &&
-        !node_uses_vert(pc_tree->vertical3[3])) {
-      // Prune is best partition is vertical H, but first and last
-      // subpartitions did not further split in vertical direction.
-      part_search_state->prune_partition_4b[VERT] = 1;
-    }
-#endif  // CONFIG_FLEX_PARTITION
     if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
         pc_tree->partitioning == PARTITION_HORZ &&
         part_search_state->partition_rect_allowed[VERT]) {
@@ -8697,10 +8611,8 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
       search_none_after_rect =
           try_none_after_rect(xd, &cm->mi_params, bsize, mi_row, mi_col);
     }
-#if CONFIG_BLOCK_256
     // For 256X256, always search the subblocks first.
     search_none_after_split |= bsize == BLOCK_256X256;
-#endif  // CONFIG_BLOCK_256
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
@@ -8951,7 +8863,7 @@ BEGIN_PARTITION_SEARCH:
   prune_partitions_after_split(cpi, x, sms_tree, &part_search_state, &best_rdc,
                                part_none_rd, part_split_rd);
 #endif  // !CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
   if (search_none_after_split) {
     // Based on split result, decide if we want to further delay the search to
     // after rect
@@ -9010,7 +8922,7 @@ BEGIN_PARTITION_SEARCH:
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
     );
   }
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   // Rectangular partitions search stage.
   rectangular_partition_search(

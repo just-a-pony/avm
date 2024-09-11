@@ -77,7 +77,7 @@ highbd_sadMxN_ds(12, 12);
 highbd_sadMxN_ds(20, 20);
 #endif  // CONFIG_SUBBLK_REF_DS
 
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
 // 256X256
 highbd_sadMxN(256, 256);
 
@@ -86,7 +86,7 @@ highbd_sadMxN(256, 128);
 
 // 128X256
 highbd_sadMxN(128, 256);
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // 128x128
 highbd_sadMxN(128, 128);
@@ -150,11 +150,11 @@ highbd_sadMxN(32, 8);
 highbd_sadMxN(16, 64);
 highbd_sadMxN(64, 16);
 
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
 highbd_sadMxN(4, 32);
 highbd_sadMxN(32, 4);
 highbd_sadMxN(8, 64);
 highbd_sadMxN(64, 8);
 highbd_sadMxN(4, 64);
 highbd_sadMxN(64, 4);
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS

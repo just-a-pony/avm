@@ -141,20 +141,20 @@ static int8_t estimate_wedge_sign(const AV1_COMP *cpi, const MACROBLOCK *x,
     BLOCK_16X32, BLOCK_32X16, BLOCK_32X32,
     // 64x128,     128x64,        128x128
     BLOCK_32X64, BLOCK_64X32, BLOCK_64X64,
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
     // 128X256,    256X128,       256X256
     BLOCK_64X128, BLOCK_128X64, BLOCK_128X128,
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     // 4X16,       16X4,          8X32
     BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X16,
     // 32X8,       16X64,         64X16
     BLOCK_16X4, BLOCK_8X32, BLOCK_32X8,
-#if CONFIG_FLEX_PARTITION
+#if CONFIG_EXT_RECUR_PARTITIONS
     // 32X4,       4X32,          64X8
     BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X4,
     // 8x64,       4X64,          64X4
     BLOCK_4X32,    BLOCK_INVALID, BLOCK_INVALID,
-#endif  // CONFIG_FLEX_PARTITION
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   };
   /* clang-format on */
   const struct macroblock_plane *const p = &x->plane[0];

@@ -623,10 +623,10 @@ void av1_simple_motion_search_early_term_none(
     ml_mean = av1_simple_motion_search_term_none_mean_16;
     ml_std = av1_simple_motion_search_term_none_std_16;
     ml_model = av1_simple_motion_search_term_none_model_16;
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
   } else if (bsize == BLOCK_256X256) {
     return;
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
   } else {
     assert(0 && "Unexpected block size in simple_motion_term_none");
   }
@@ -1273,9 +1273,9 @@ int av1_ml_predict_breakout(const AV1_COMP *const cpi, BLOCK_SIZE bsize,
       nn_config = &av1_partition_breakout_nnconfig_128;
       thresh = cpi->sf.part_sf.ml_partition_search_breakout_thresh[4];
       break;
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
     case BLOCK_256X256: return 0; break;
-#endif  // CONFIG_BLOCK_256
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0 && "Unexpected bsize.");
   }
   if (!nn_config || thresh < 0) return 0;
@@ -1354,7 +1354,7 @@ void av1_prune_partitions_before_search(
       cpi->sf.part_sf.simple_motion_search_split && *do_square_split &&
       bsize >= BLOCK_8X8 &&
       mi_row + mi_size_high[bsize] <= mi_params->mi_rows &&
-#if CONFIG_BLOCK_256
+#if CONFIG_EXT_RECUR_PARTITIONS
       bsize < BLOCK_256X256 &&
 #endif
       mi_col + mi_size_wide[bsize] <= mi_params->mi_cols &&
@@ -1419,6 +1419,8 @@ void av1_prune_partitions_by_max_min_bsize(
   const int is_le_min_sq_part = is_bsize_geq(sb_enc->min_partition_size, bsize);
   const int is_gt_max_sq_part = (block_height > max_partition_size_1d) ||
                                 (block_width > max_partition_size_1d);
+  (void)do_square_split;
+  (void)is_not_edge_block;
 #else   // CONFIG_EXT_RECUR_PARTITIONS
   const int min_partition_size_1d = block_size_wide[sb_enc->min_partition_size];
   const int bsize_1d = block_size_wide[bsize];
@@ -1427,10 +1429,6 @@ void av1_prune_partitions_by_max_min_bsize(
   assert(min_partition_size_1d <= max_partition_size_1d);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 
-#if CONFIG_EXT_RECUR_PARTITIONS
-  (void)do_square_split;
-  (void)is_not_edge_block;
-#endif
   if (is_gt_max_sq_part) {
     // If current block size is larger than max, only allow split.
     *partition_none_allowed = 0;
@@ -1646,9 +1644,7 @@ void av1_prune_ab_partitions(
 // Gets the number of sms data in a single dimension
 static INLINE int get_sms_count_from_length(int mi_length) {
   switch (mi_length) {
-#if CONFIG_BLOCK_256
     case 64: return BLOCK_256_COUNT;
-#endif  // CONFIG_BLOCK_256
     case 32: return BLOCK_128_COUNT;
     case 16: return BLOCK_64_COUNT;
     case 8: return BLOCK_32_COUNT;
@@ -1687,9 +1683,7 @@ static INLINE SimpleMotionData *get_sms_arr(SimpleMotionDataBufs *sms_bufs,
                                             BLOCK_SIZE bsize) {
   switch (bsize) {
     // Square blocks
-#if CONFIG_BLOCK_256
     MAKE_SMS_ARR_SWITCH_CASE(256, 256);
-#endif  // CONFIG_BLOCK_256
     MAKE_SMS_ARR_SWITCH_CASE(128, 128);
     MAKE_SMS_ARR_SWITCH_CASE(64, 64);
     MAKE_SMS_ARR_SWITCH_CASE(32, 32);
@@ -1698,9 +1692,7 @@ static INLINE SimpleMotionData *get_sms_arr(SimpleMotionDataBufs *sms_bufs,
     MAKE_SMS_ARR_SWITCH_CASE(4, 4);
 
     // 1:2 blocks
-#if CONFIG_BLOCK_256
     MAKE_SMS_ARR_SWITCH_CASE(128, 256);
-#endif  // CONFIG_BLOCK_256
     MAKE_SMS_ARR_SWITCH_CASE(64, 128);
     MAKE_SMS_ARR_SWITCH_CASE(32, 64);
     MAKE_SMS_ARR_SWITCH_CASE(16, 32);
@@ -1708,9 +1700,7 @@ static INLINE SimpleMotionData *get_sms_arr(SimpleMotionDataBufs *sms_bufs,
     MAKE_SMS_ARR_SWITCH_CASE(4, 8);
 
     // 2:1 blocks
-#if CONFIG_BLOCK_256
     MAKE_SMS_ARR_SWITCH_CASE(256, 128);
-#endif  // CONFIG_BLOCK_256
     MAKE_SMS_ARR_SWITCH_CASE(128, 64);
     MAKE_SMS_ARR_SWITCH_CASE(64, 32);
     MAKE_SMS_ARR_SWITCH_CASE(32, 16);
@@ -1727,7 +1717,6 @@ static INLINE SimpleMotionData *get_sms_arr(SimpleMotionDataBufs *sms_bufs,
     MAKE_SMS_ARR_SWITCH_CASE(32, 8);
     MAKE_SMS_ARR_SWITCH_CASE(16, 4);
 
-#if CONFIG_FLEX_PARTITION
     // 1:8 blocks
     MAKE_SMS_ARR_SWITCH_CASE(8, 64);
     MAKE_SMS_ARR_SWITCH_CASE(4, 32);
@@ -1741,7 +1730,6 @@ static INLINE SimpleMotionData *get_sms_arr(SimpleMotionDataBufs *sms_bufs,
 
     // 1:16 blocks
     MAKE_SMS_ARR_SWITCH_CASE(4, 64);
-#endif  // CONFIG_FLEX_PARTITION
 
     default: assert(0 && "Invalid bsize"); return NULL;
   }
