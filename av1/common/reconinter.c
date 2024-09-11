@@ -81,10 +81,8 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
                            InterpFilter interp_filter) {
   inter_pred_params->block_width = block_width;
   inter_pred_params->block_height = block_height;
-#if CONFIG_OPTFLOW_REFINEMENT
   inter_pred_params->orig_block_width = block_width;
   inter_pred_params->orig_block_height = block_height;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 #if CONFIG_REFINEMV
   inter_pred_params->original_pu_width = block_width;
@@ -1138,6 +1136,47 @@ int get_refinemv_sad(uint16_t *src1, uint16_t *src2, int width, int height,
 }
 #endif  // CONFIG_REFINEMV
 
+#if CONFIG_AFFINE_REFINEMENT || CONFIG_E125_MHCCP_SIMPLIFY
+int64_t stable_mult_shift(const int64_t a, const int64_t b, const int shift,
+                          const int msb_a, const int msb_b, const int max_bd,
+                          int *rem_shift) {
+  assert(shift >= 0);
+
+  // Remaining bit shifts (may be used in the next stage of multiplcation)
+  int rem = AOMMAX(0, msb_a + msb_b - shift + 1 - max_bd);
+  if (rem_shift) *rem_shift += rem;
+  if (msb_a + msb_b + 1 <= max_bd)
+    return ROUND_POWER_OF_TWO_SIGNED_64(a * b, shift);
+
+  // To determine s1/s2/s3 in ((a>>s1)*(b>>s2))>>s3, consider the equation
+  //   (1+msb_a-s1)+(1+msb_b-s2)+1 <= max_bd+rem,
+  // where better numerical stability is obtained when
+  //   msb_a-s1 ~= msb_b-s2.
+  // This leads to the following solution
+  int msb_diff = abs(msb_a - msb_b);
+  // Total required shifts (s1 + s2)
+  int s = msb_a + msb_b - max_bd - rem + 3;
+  int diff = AOMMIN(s, msb_diff);
+  int s1 = (s - diff) >> 1;
+  int s2 = s1;
+  if (msb_a >= msb_b)
+    s1 += diff;
+  else
+    s2 += diff;
+
+  assert(s1 >= 0);
+  assert(s2 >= 0);
+  if (shift - s1 - s2 < 0) {
+    // bit depth not large enough to hold the result
+    return ((a > 0) ^ (b > 0)) ? -((1LL << (max_bd - 1)) - 1)
+                               : ((1LL << (max_bd - 1)) - 1);
+  }
+  return ROUND_POWER_OF_TWO_SIGNED_64(
+      ROUND_POWER_OF_TWO_SIGNED_64(a, s1) * ROUND_POWER_OF_TWO_SIGNED_64(b, s2),
+      shift - s1 - s2);
+}
+#endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_E125_MHCCP_SIMPLIFY
+
 #if CONFIG_AFFINE_REFINEMENT
 #if AFFINE_FAST_WARP_METHOD == 2
 #define BICUBIC_PHASE_BITS 6
@@ -1315,7 +1354,6 @@ void av1_warp_plane_bilinear_c(WarpedMotionParams *wm, int bd,
 #endif  // AFFINE_FAST_WARP_METHOD == 3
 }
 
-#if CONFIG_REFINEMENT_SIMPLIFY
 // Obtain the bit depth ranges for each row and column of a square matrix
 void get_mat4d_shifts(const int64_t *mat, int *shifts, const int max_mat_bits) {
   int bits[16] = { 0 };
@@ -1379,46 +1417,6 @@ void swap_rows(int64_t *mat, int64_t *sol, const int i, const int j,
 // For better precision, set this number as minimal bits for intermediate
 // result of Gaussian elimination.
 #define GE_MULT_PREC_BITS 12
-#if CONFIG_REFINEMENT_SIMPLIFY || CONFIG_E125_MHCCP_SIMPLIFY
-int64_t stable_mult_shift(const int64_t a, const int64_t b, const int shift,
-                          const int msb_a, const int msb_b, const int max_bd,
-                          int *rem_shift) {
-  assert(shift >= 0);
-
-  // Remaining bit shifts (may be used in the next stage of multiplcation)
-  int rem = AOMMAX(0, msb_a + msb_b - shift + 1 - max_bd);
-  if (rem_shift) *rem_shift += rem;
-  if (msb_a + msb_b + 1 <= max_bd)
-    return ROUND_POWER_OF_TWO_SIGNED_64(a * b, shift);
-
-  // To determine s1/s2/s3 in ((a>>s1)*(b>>s2))>>s3, consider the equation
-  //   (1+msb_a-s1)+(1+msb_b-s2)+1 <= max_bd+rem,
-  // where better numerical stability is obtained when
-  //   msb_a-s1 ~= msb_b-s2.
-  // This leads to the following solution
-  int msb_diff = abs(msb_a - msb_b);
-  // Total required shifts (s1 + s2)
-  int s = msb_a + msb_b - max_bd - rem + 3;
-  int diff = AOMMIN(s, msb_diff);
-  int s1 = (s - diff) >> 1;
-  int s2 = s1;
-  if (msb_a >= msb_b)
-    s1 += diff;
-  else
-    s2 += diff;
-
-  assert(s1 >= 0);
-  assert(s2 >= 0);
-  if (shift - s1 - s2 < 0) {
-    // bit depth not large enough to hold the result
-    return ((a > 0) ^ (b > 0)) ? -((1LL << (max_bd - 1)) - 1)
-                               : ((1LL << (max_bd - 1)) - 1);
-  }
-  return ROUND_POWER_OF_TWO_SIGNED_64(
-      ROUND_POWER_OF_TWO_SIGNED_64(a, s1) * ROUND_POWER_OF_TWO_SIGNED_64(b, s2),
-      shift - s1 - s2);
-}
-#endif  // CONFIG_REFINEMENT_SIMPLIFY || CONFIG_E125_MHCCP_SIMPLIFY
 
 // Perform Gaussian elimination routine to solve a matrix inverse problem
 int gaussian_elimination(int64_t *mat, int64_t *sol, int *precbits,
@@ -1556,93 +1554,15 @@ int gaussian_elimination(int64_t *mat, int64_t *sol, int *precbits,
 
   return 1;
 }
-#else
-// Compute intermediate results for 4D linear solver.
-void getsub_4d(int64_t *sub, const int64_t *mat, const int64_t *vec) {
-  sub[0] = mat[0] * mat[5] - mat[1] * mat[4];
-  sub[1] = mat[0] * mat[6] - mat[2] * mat[4];
-  sub[2] = mat[0] * mat[7] - mat[3] * mat[4];
-  sub[3] = mat[0] * vec[1] - vec[0] * mat[4];
-  sub[4] = mat[1] * mat[6] - mat[2] * mat[5];
-  sub[5] = mat[1] * mat[7] - mat[3] * mat[5];
-  sub[6] = mat[1] * vec[1] - vec[0] * mat[5];
-  sub[7] = mat[2] * mat[7] - mat[3] * mat[6];
-  sub[8] = mat[2] * vec[1] - vec[0] * mat[6];
-  sub[9] = mat[3] * vec[1] - vec[0] * mat[7];
-}
-
-// Solve a 4-dimensional matrix inverse using inverse determinant method:
-// x = A^(-1) * b, where A: mat, b: vec, x: sol
-int inverse_determinant_4d(int64_t *mat, int64_t *vec, int *precbits,
-                           int64_t *sol) {
-  int64_t a[10], b[10];  // values of 20 2D subdeterminants
-  getsub_4d(&a[0], mat, vec);
-  getsub_4d(&b[0], mat + 8, vec + 2);
-
-  // Flexibly adjust range to avoid overflow without losing precision. This
-  // moves the bit depth of a[] and b[] within 29 so that det and sol will
-  // not overflow
-  int64_t max_el = 0;
-  for (int i = 0; i < 10; i++) {
-    max_el = AOMMAX(max_el, llabs(a[i]));
-    max_el = AOMMAX(max_el, llabs(b[i]));
-  }
-  int max_bits = get_msb_signed_64(max_el);
-  int subdet_reduce_bits = AOMMAX(0, max_bits - 28);
-  for (int i = 0; i < 10; i++) {
-    a[i] = ROUND_POWER_OF_TWO_SIGNED_64(a[i], subdet_reduce_bits);
-    b[i] = ROUND_POWER_OF_TWO_SIGNED_64(b[i], subdet_reduce_bits);
-  }
-
-  int64_t det = a[0] * b[7] + a[7] * b[0] + a[2] * b[4] + a[4] * b[2] -
-                a[5] * b[1] - a[1] * b[5];
-
-  sol[0] = a[5] * b[8] + a[8] * b[5] - a[6] * b[7] - a[7] * b[6] - a[4] * b[9] -
-           a[9] * b[4];
-  sol[1] = a[1] * b[9] + a[9] * b[1] + a[3] * b[7] + a[7] * b[3] - a[2] * b[8] -
-           a[8] * b[2];
-  sol[2] = a[2] * b[6] + a[6] * b[2] - a[0] * b[9] - a[9] * b[0] - a[3] * b[5] -
-           a[5] * b[3];
-  sol[3] = a[0] * b[8] + a[8] * b[0] + a[3] * b[4] + a[4] * b[3] - a[6] * b[1] -
-           a[1] * b[6];
-
-  int max_det_msb = get_msb_signed_64(det);
-  for (int i = 0; i < 4; i++)
-    max_det_msb = AOMMAX(max_det_msb, get_msb_signed_64(sol[i]) + precbits[i]);
-
-  int det_red_bits = AOMMAX(0, max_det_msb - 60);
-  det = ROUND_POWER_OF_TWO_SIGNED_64(det, det_red_bits);
-  if (det <= 0) return 0;
-
-  for (int i = 0; i < 4; i++) {
-    int reduce_bits = det_red_bits - precbits[i];
-    if (reduce_bits >= 0)
-      sol[i] = ROUND_POWER_OF_TWO_SIGNED_64(sol[i], reduce_bits);
-    else
-      sol[i] = clamp64(sol[i] * (1 << (-reduce_bits)), INT64_MIN, INT64_MAX);
-  }
-
-  sol[0] = divide_and_round_signed(sol[0], det);
-  sol[1] = divide_and_round_signed(sol[1], det);
-  sol[2] = divide_and_round_signed(sol[2], det);
-  sol[3] = divide_and_round_signed(sol[3], det);
-  return 1;
-}
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
 
 // Solve a 4-dimensional matrix inverse
 int solver_4d(int64_t *mat, int64_t *vec, int *precbits, int64_t *sol) {
-#if CONFIG_REFINEMENT_SIMPLIFY
   memcpy(sol, vec, 4 * sizeof(int64_t));
   int ret = gaussian_elimination(mat, sol, precbits, 4);
-#else
-  int ret = inverse_determinant_4d(mat, vec, precbits, sol);
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
   return ret;
 }
 #endif  // CONFIG_AFFINE_REFINEMENT
 
-#if CONFIG_OPTFLOW_REFINEMENT
 // Restrict MV delta to 1 or 2 pixels. This restriction would reduce complexity
 // in hardware.
 #define OPFL_CLAMP_MV_DELTA 1
@@ -2094,12 +2014,8 @@ void av1_calc_affine_autocorrelation_matrix_c(const int16_t *pdiff, int pstride,
       a[3] = gy[gidx];
       for (int s = 0; s < 4; ++s)
         a[s] = clamp(a[s], -AFFINE_SAMP_CLAMP_VAL, AFFINE_SAMP_CLAMP_VAL);
-#if CONFIG_REFINEMENT_SIMPLIFY
       const int d = clamp(pdiff[i * pstride + j], -AFFINE_SAMP_CLAMP_VAL,
                           AFFINE_SAMP_CLAMP_VAL);
-#else
-      const int d = pdiff[i * pstride + j];
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
       for (int s = 0; s < 4; ++s) {
         for (int t = 0; t <= s; ++t) {
           mat_a[s * 4 + t] += ROUND_POWER_OF_TWO_SIGNED_64(
@@ -2109,7 +2025,6 @@ void av1_calc_affine_autocorrelation_matrix_c(const int16_t *pdiff, int pstride,
             ROUND_POWER_OF_TWO_SIGNED_64((int64_t)a[s] * (int64_t)d, grad_bits);
       }
     }
-#if CONFIG_REFINEMENT_SIMPLIFY
     // Do a range check and add a downshift if range is getting close to the bit
     // depth cap. This check is done for every 16 pixels so it can be easily
     // replicated in the SIMD version.
@@ -2129,7 +2044,6 @@ void av1_calc_affine_autocorrelation_matrix_c(const int16_t *pdiff, int pstride,
         grad_bits++;
       }
     }
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
   }
   for (int s = 0; s < 4; ++s) {
     for (int t = s + 1; t < 4; ++t) mat_a[s * 4 + t] = mat_a[t * 4 + s];
@@ -2139,17 +2053,6 @@ void av1_calc_affine_autocorrelation_matrix_c(const int16_t *pdiff, int pstride,
   mat_a[5] += rls_alpha;
   mat_a[10] += rls_alpha;
   mat_a[15] += rls_alpha;
-
-#if !CONFIG_REFINEMENT_SIMPLIFY
-  for (int s = 0; s < 4; ++s) {
-    for (int t = 0; t < 4; ++t) {
-      mat_a[s * 4 + t] = clamp64(mat_a[s * 4 + t], -AFFINE_AUTOCORR_CLAMP_VAL,
-                                 AFFINE_AUTOCORR_CLAMP_VAL);
-    }
-    vec_b[s] = clamp64(vec_b[s], -AFFINE_AUTOCORR_CLAMP_VAL,
-                       AFFINE_AUTOCORR_CLAMP_VAL);
-  }
-#endif  // !CONFIG_REFINEMENT_SIMPLIFY
 }
 
 // Derivation of four parameters in the rotation-scale-translation affine model
@@ -2225,25 +2128,18 @@ void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride,
 #if OPFL_DOWNSAMP_QUINCUNX
       if ((i + j) % 2 == 1) continue;
 #endif
-#if CONFIG_REFINEMENT_SIMPLIFY
       const int u =
           clamp(gx[i * gstride + j], -OPFL_SAMP_CLAMP_VAL, OPFL_SAMP_CLAMP_VAL);
       const int v =
           clamp(gy[i * gstride + j], -OPFL_SAMP_CLAMP_VAL, OPFL_SAMP_CLAMP_VAL);
       const int w = clamp(pdiff[i * pstride + j], -OPFL_SAMP_CLAMP_VAL,
                           OPFL_SAMP_CLAMP_VAL);
-#else
-      const int u = gx[i * gstride + j];
-      const int v = gy[i * gstride + j];
-      const int w = pdiff[i * pstride + j];
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
       su2 += ROUND_POWER_OF_TWO_SIGNED_64(u * u, grad_bits);
       suv += ROUND_POWER_OF_TWO_SIGNED_64(u * v, grad_bits);
       sv2 += ROUND_POWER_OF_TWO_SIGNED_64(v * v, grad_bits);
       suw += ROUND_POWER_OF_TWO_SIGNED_64(u * w, grad_bits);
       svw += ROUND_POWER_OF_TWO_SIGNED_64(v * w, grad_bits);
     }
-#if CONFIG_REFINEMENT_SIMPLIFY
     // For every 8 pixels, do a range check and add a downshift if range is
     // getting close to the max allowed bit depth
     if (bw >= 8 || i % 2 == 1) {
@@ -2261,7 +2157,6 @@ void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride,
         grad_bits++;
       }
     }
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
   }
   const int bits = mv_prec_bits + grad_prec_bits;
 #if OPFL_REGULARIZED_LS
@@ -2270,19 +2165,8 @@ void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride,
   sv2 += rls_alpha;
 #endif
 
-#if !CONFIG_REFINEMENT_SIMPLIFY
-  // Clamp su2, sv2, suv, suw, and svw to avoid overflow in det, det_x, and
-  // det_y
-  su2 = clamp64(su2, -OPFL_AUTOCORR_CLAMP_VAL, OPFL_AUTOCORR_CLAMP_VAL);
-  sv2 = clamp64(sv2, -OPFL_AUTOCORR_CLAMP_VAL, OPFL_AUTOCORR_CLAMP_VAL);
-  suv = clamp64(suv, -OPFL_AUTOCORR_CLAMP_VAL, OPFL_AUTOCORR_CLAMP_VAL);
-  suw = clamp64(suw, -OPFL_AUTOCORR_CLAMP_VAL, OPFL_AUTOCORR_CLAMP_VAL);
-  svw = clamp64(svw, -OPFL_AUTOCORR_CLAMP_VAL, OPFL_AUTOCORR_CLAMP_VAL);
-#endif  // !CONFIG_REFINEMENT_SIMPLIFY
-
   // Solve 2x2 matrix inverse: [ su2  suv ]   [ vx0 ]     [ -suw ]
   //                           [ suv  sv2 ] * [ vy0 ]  =  [ -svw ]
-#if CONFIG_REFINEMENT_SIMPLIFY
   int shifts[2] = { bits, bits };
   int msb_su2 = 1 + get_msb_signed_64(su2);
   int msb_sv2 = 1 + get_msb_signed_64(sv2);
@@ -2315,21 +2199,6 @@ void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride,
   divide_and_round_array(sol, det, 2, shifts);
   *vx0 = (int)-sol[0];
   *vy0 = (int)-sol[1];
-#else
-  const int64_t det = su2 * sv2 - suv * suv;
-  if (det <= 0) {
-    *vx0 = 0;
-    *vy0 = 0;
-    *vx1 = 0;
-    *vy1 = 0;
-    return;
-  }
-  const int64_t det_x = (suv * svw - sv2 * suw) * (1 << bits);
-  const int64_t det_y = (suv * suw - su2 * svw) * (1 << bits);
-
-  *vx0 = (int)divide_and_round_signed(det_x, det);
-  *vy0 = (int)divide_and_round_signed(det_y, det);
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
   *vx1 = (*vx0) * d1;
   *vy1 = (*vy0) * d1;
   *vx0 = (*vx0) * d0;
@@ -2725,7 +2594,6 @@ void av1_get_optflow_based_mv(
         clamp(mv_refined[i * 2 + 1].as_mv.col + vx1[i], INT16_MIN, INT16_MAX);
   }
 }
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 #if CONFIG_D071_IMP_MSK_BLD
 int is_out_of_frame_block(const InterPredParams *inter_pred_params,
@@ -2872,7 +2740,6 @@ static
 #endif  // CONFIG_D071_IMP_MSK_BLD
 }
 
-#if CONFIG_OPTFLOW_REFINEMENT
 // Makes the interpredictor for the region by dividing it up into nxn blocks
 // and running the interpredictor code on each one.
 void make_inter_pred_of_nxn(
@@ -3236,7 +3103,6 @@ void av1_opfl_rebuild_inter_predictor(
 #endif  // CONFIG_OPTFLOW_ON_TIP
                          &subpel_params);
 }
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 void av1_build_one_inter_predictor(
     uint16_t *dst, int dst_stride, const MV *const src_mv,
@@ -3245,10 +3111,7 @@ void av1_build_one_inter_predictor(
   SubpelParams subpel_params;
   uint16_t *src;
   int src_stride;
-  calc_subpel_params_func(src_mv, inter_pred_params, xd, mi_x, mi_y, ref,
-#if CONFIG_OPTFLOW_REFINEMENT
-                          0, /* use_optflow_refinement */
-#endif                       // CONFIG_OPTFLOW_REFINEMENT
+  calc_subpel_params_func(src_mv, inter_pred_params, xd, mi_x, mi_y, ref, 0,
                           mc_buf, &src, &subpel_params, &src_stride);
 
 #if CONFIG_D071_IMP_MSK_BLD
@@ -3475,10 +3338,7 @@ void av1_build_one_bawp_inter_predictor(
   SubpelParams subpel_params;
   uint16_t *src;
   int src_stride;
-  calc_subpel_params_func(src_mv, inter_pred_params, xd, mi_x, mi_y, ref,
-#if CONFIG_OPTFLOW_REFINEMENT
-                          0, /* use_optflow_refinement */
-#endif                       // CONFIG_OPTFLOW_REFINEMENT
+  calc_subpel_params_func(src_mv, inter_pred_params, xd, mi_x, mi_y, ref, 0,
                           mc_buf, &src, &subpel_params, &src_stride);
 
   assert(inter_pred_params->comp_mode == UNIFORM_SINGLE);
@@ -3585,11 +3445,8 @@ void av1_build_one_bawp_inter_predictor(
         ref_h = height_p_unscaled - mi_y_p_unscaled;
 
       calc_subpel_params_func(&mbmi->mv[ref].as_mv, inter_pred_params, xd, mi_x,
-                              mi_y, ref,
-#if CONFIG_OPTFLOW_REFINEMENT
-                              0, /* use_optflow_refinement */
-#endif                           // CONFIG_OPTFLOW_REFINEMENT
-                              mc_buf, &ref_buf, &subpel_params, &ref_stride);
+                              mi_y, ref, 0, mc_buf, &ref_buf, &subpel_params,
+                              &ref_stride);
     }
     uint16_t *ref_top = ref_buf - ref_stride * scaled_y_gen(BAWP_REF_LINES, sf);
     uint16_t *ref_left = ref_buf - scaled_x_gen(BAWP_REF_LINES, sf);
@@ -3964,11 +3821,8 @@ void dec_calc_subpel_params(const MV *const src_mv,
                             const MACROBLOCKD *const xd, int mi_x, int mi_y,
                             uint16_t **pre, SubpelParams *subpel_params,
                             int *src_stride, PadBlock *block,
-#if CONFIG_OPTFLOW_REFINEMENT
-                            int use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-                            MV32 *scaled_mv, int *subpel_x_mv,
-                            int *subpel_y_mv) {
+                            int use_optflow_refinement, MV32 *scaled_mv,
+                            int *subpel_x_mv, int *subpel_y_mv) {
   const struct scale_factors *sf = inter_pred_params->scale_factors;
   struct buf_2d *pre_buf = &inter_pred_params->ref_frame_buf;
 
@@ -3977,16 +3831,11 @@ void dec_calc_subpel_params(const MV *const src_mv,
   const int bh = inter_pred_params->original_pu_height;
 #else
 
-#if CONFIG_OPTFLOW_REFINEMENT
   // Use original block size to clamp MV and to extend block boundary
   const int bw = use_optflow_refinement ? inter_pred_params->orig_block_width
                                         : inter_pred_params->block_width;
   const int bh = use_optflow_refinement ? inter_pred_params->orig_block_height
                                         : inter_pred_params->block_height;
-#else
-  const int bw = inter_pred_params->block_width;
-  const int bh = inter_pred_params->block_height;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 #endif  // CONFIG_REFINEMV
 
   const int is_scaled = av1_is_scaled(sf);
@@ -3995,7 +3844,6 @@ void dec_calc_subpel_params(const MV *const src_mv,
     int ssy = inter_pred_params->subsampling_y;
     int orig_pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
     int orig_pos_x = inter_pred_params->pix_col << SUBPEL_BITS;
-#if CONFIG_OPTFLOW_REFINEMENT
     if (use_optflow_refinement) {
       orig_pos_y += ROUND_POWER_OF_TWO_SIGNED(src_mv->row * (1 << SUBPEL_BITS),
                                               MV_REFINE_PREC_BITS + ssy);
@@ -4005,10 +3853,6 @@ void dec_calc_subpel_params(const MV *const src_mv,
       orig_pos_y += src_mv->row * (1 << (1 - ssy));
       orig_pos_x += src_mv->col * (1 << (1 - ssx));
     }
-#else
-    orig_pos_y += src_mv->row * (1 << (1 - ssy));
-    orig_pos_x += src_mv->col * (1 << (1 - ssx));
-#endif  // CONFIG_OPTFLOW_REFINEMENT
     int pos_y = sf->scale_value_y(orig_pos_y, sf);
     int pos_x = sf->scale_value_x(orig_pos_x, sf);
     pos_x += SCALE_EXTRA_OFF;
@@ -4042,12 +3886,9 @@ void dec_calc_subpel_params(const MV *const src_mv,
         1;
 
     MV temp_mv;
-    temp_mv = clamp_mv_to_umv_border_sb(xd, src_mv, bw, bh,
-#if CONFIG_OPTFLOW_REFINEMENT
-                                        use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-                                        inter_pred_params->subsampling_x,
-                                        inter_pred_params->subsampling_y);
+    temp_mv = clamp_mv_to_umv_border_sb(
+        xd, src_mv, bw, bh, use_optflow_refinement,
+        inter_pred_params->subsampling_x, inter_pred_params->subsampling_y);
     *scaled_mv = av1_scale_mv(&temp_mv, mi_x, mi_y, sf);
     scaled_mv->row += SCALE_EXTRA_OFF;
     scaled_mv->col += SCALE_EXTRA_OFF;
@@ -4060,10 +3901,7 @@ void dec_calc_subpel_params(const MV *const src_mv,
     int pos_y = inter_pred_params->pix_row << SUBPEL_BITS;
 
     const MV mv_q4 = clamp_mv_to_umv_border_sb(
-        xd, src_mv, bw, bh,
-#if CONFIG_OPTFLOW_REFINEMENT
-        use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
+        xd, src_mv, bw, bh, use_optflow_refinement,
         inter_pred_params->subsampling_x, inter_pred_params->subsampling_y);
     subpel_params->xs = subpel_params->ys = SCALE_SUBPEL_SHIFTS;
     subpel_params->subpel_x = (mv_q4.col & SUBPEL_MASK) << SCALE_EXTRA_BITS;
@@ -4102,11 +3940,8 @@ void dec_calc_subpel_params(const MV *const src_mv,
 void common_calc_subpel_params_and_extend(
     const MV *const src_mv, InterPredParams *const inter_pred_params,
     MACROBLOCKD *const xd, int mi_x, int mi_y, int ref,
-#if CONFIG_OPTFLOW_REFINEMENT
-    int use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-    uint16_t **mc_buf, uint16_t **pre, SubpelParams *subpel_params,
-    int *src_stride) {
+    int use_optflow_refinement, uint16_t **mc_buf, uint16_t **pre,
+    SubpelParams *subpel_params, int *src_stride) {
   (void)ref;
   (void)mc_buf;
 
@@ -4114,12 +3949,9 @@ void common_calc_subpel_params_and_extend(
   MV32 scaled_mv;
   int subpel_x_mv, subpel_y_mv;
   assert(inter_pred_params->use_ref_padding);
-  dec_calc_subpel_params(src_mv, inter_pred_params, xd, mi_x, mi_y, pre,
-                         subpel_params, src_stride, &block,
-#if CONFIG_OPTFLOW_REFINEMENT
-                         use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-                         &scaled_mv, &subpel_x_mv, &subpel_y_mv);
+  dec_calc_subpel_params(
+      src_mv, inter_pred_params, xd, mi_x, mi_y, pre, subpel_params, src_stride,
+      &block, use_optflow_refinement, &scaled_mv, &subpel_x_mv, &subpel_y_mv);
 
   // printf(" Use ref padding \n");
   const int paded_ref_buf_stride =
@@ -4135,21 +3967,16 @@ void common_calc_subpel_params_and_extend(
 static void get_ref_area_info(const MV *const src_mv,
                               InterPredParams *const inter_pred_params,
                               MACROBLOCKD *const xd, int mi_x, int mi_y,
-#if CONFIG_OPTFLOW_REFINEMENT
-                              int use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-                              uint16_t **pre, SubpelParams *subpel_params,
-                              int *src_stride, ReferenceArea *ref_area) {
+                              int use_optflow_refinement, uint16_t **pre,
+                              SubpelParams *subpel_params, int *src_stride,
+                              ReferenceArea *ref_area) {
   PadBlock block;
   MV32 scaled_mv;
   int subpel_x_mv, subpel_y_mv;
 
-  dec_calc_subpel_params(src_mv, inter_pred_params, xd, mi_x, mi_y, pre,
-                         subpel_params, src_stride, &block,
-#if CONFIG_OPTFLOW_REFINEMENT
-                         use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-                         &scaled_mv, &subpel_x_mv, &subpel_y_mv);
+  dec_calc_subpel_params(
+      src_mv, inter_pred_params, xd, mi_x, mi_y, pre, subpel_params, src_stride,
+      &block, use_optflow_refinement, &scaled_mv, &subpel_x_mv, &subpel_y_mv);
 
   struct buf_2d *const pre_buf = &inter_pred_params->ref_frame_buf;
   int frame_height = pre_buf->height;
@@ -4214,11 +4041,8 @@ void av1_get_reference_area_with_padding(const AV1_COMMON *cm, MACROBLOCKD *xd,
     assert(!inter_pred_params.use_ref_padding);
 
     const MV *src_mv = ref == 0 ? &mv[0] : &mv[1];
-    get_ref_area_info(src_mv, &inter_pred_params, xd, mi_x, mi_y,
-#if CONFIG_OPTFLOW_REFINEMENT
-                      0, /* use_optflow_refinement */
-#endif                   // CONFIG_OPTFLOW_REFINEMENT
-                      &src, &subpel_params, &src_stride, &ref_area[ref]);
+    get_ref_area_info(src_mv, &inter_pred_params, xd, mi_x, mi_y, 0, &src,
+                      &subpel_params, &src_stride, &ref_area[ref]);
   }
 }
 
@@ -4237,11 +4061,7 @@ int av1_refinemv_build_predictors_and_get_sad(
     src_mv->col -= 8 * SUBBLK_REF_EXT_LINES;
 #endif  // CONFIG_SUBBLK_REF_EXT
     calc_subpel_params_func(src_mv, &inter_pred_params[ref], xd, mi_x, mi_y,
-                            ref,
-#if CONFIG_OPTFLOW_REFINEMENT
-                            0, /* use_optflow_refinement */
-#endif                         // CONFIG_OPTFLOW_REFINEMENT
-                            mc_buf, &src, &subpel_params, &src_stride);
+                            ref, 0, mc_buf, &src, &subpel_params, &src_stride);
     assert(inter_pred_params[ref].comp_mode == UNIFORM_SINGLE ||
            inter_pred_params[ref].comp_mode == UNIFORM_COMP);
     av1_make_inter_predictor(src, src_stride, dst_ref, bw,
@@ -4637,7 +4457,6 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
     best_mv_ref[1] = chroma_refined_mv[1];
   }
 
-#if CONFIG_OPTFLOW_REFINEMENT
   if (tip_ref_frame) {
     mv_refined[0].as_mv.row = best_mv_ref[0].row * (1 << (1 - ss_y));
     mv_refined[0].as_mv.col = best_mv_ref[0].col * (1 << (1 - ss_x));
@@ -4769,7 +4588,6 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
 #endif  // CONFIG_AFFINE_REFINEMENT
     }
   }
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 #if CONFIG_D071_IMP_MSK_BLD
   BacpBlockData bacp_block_data[2 * N_OF_OFFSETS];
@@ -4837,11 +4655,10 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
     }
 #endif  // CONFIG_D071_IMP_MSK_BLD
 
-#if CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_AFFINE_REFINEMENT
     if (use_optflow_refinement && (use_affine_opfl || plane == 0)) {
 #else
-    if (use_optflow_refinement && plane == 0) {
+      if (use_optflow_refinement && plane == 0) {
 #endif  // CONFIG_AFFINE_REFINEMENT
       inter_pred_params.interp_filter_params[0] =
           av1_get_interp_filter_params_with_block_size(mi->interp_fltr,
@@ -4866,7 +4683,6 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
       );
       continue;
     }
-#endif  // CONFIG_OPTFLOW_REFINEMENT
     av1_build_one_inter_predictor(dst, dst_stride, &mv, &inter_pred_params, xd,
                                   mi_x, mi_y, ref, mc_buf,
                                   calc_subpel_params_func);
@@ -4880,15 +4696,11 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
        use_affine_opfl);
 #endif  // CONFIG_AFFINE_REFINEMENT
   if (use_optflow_refinement && plane == 0 && !tip_ref_frame) {
-    enhance_prediction(cm, xd, plane, dst, dst_stride, bw, bh
-#if CONFIG_OPTFLOW_REFINEMENT
-                       ,
-                       mv_refined_sb,
+    enhance_prediction(cm, xd, plane, dst, dst_stride, bw, bh, mv_refined_sb,
                        use_optflow_refinement
 #if CONFIG_AFFINE_REFINEMENT
                            && apply_pef_opfl
 #endif  // CONFIG_AFFINE_REFINEMENT
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_REFINEMV
                        ,
                        0, NULL
@@ -5055,7 +4867,6 @@ static void build_inter_predictors_8x8_and_bigger(
         }
       }
     }
-
     xd->tmp_conv_dst = tmp_conv_dst;
     return;
   }
@@ -5083,7 +4894,6 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_REFINEMV
   MV best_mv_ref[2] = { mi_mv[0], mi_mv[1] };
 #endif  // CONFIG_REFINEMV
-#if CONFIG_OPTFLOW_REFINEMENT
   if (tip_ref_frame) {
     mv_refined[0].as_mv.row = best_mv_ref[0].row * (1 << (1 - ss_y));
     mv_refined[0].as_mv.col = best_mv_ref[0].col * (1 << (1 - ss_x));
@@ -5127,14 +4937,14 @@ static void build_inter_predictors_8x8_and_bigger(
   }
 #endif
 #else
-  WarpedMotionParams wms[2];
-  wms[0] = default_warp_params;
-  wms[1] = default_warp_params;
+    WarpedMotionParams wms[2];
+    wms[0] = default_warp_params;
+    wms[1] = default_warp_params;
 #if AFFINE_CHROMA_REFINE_METHOD > 0
-  if (use_optflow_refinement && plane) {
-    wms[0] = mi->wm_params[0];
-    wms[1] = mi->wm_params[1];
-  }
+    if (use_optflow_refinement && plane) {
+      wms[0] = mi->wm_params[0];
+      wms[1] = mi->wm_params[1];
+    }
 #endif
 #endif  // CONFIG_AFFINE_REFINEMENT_SB
 #endif  // CONFIG_AFFINE_REFINEMENT
@@ -5177,8 +4987,8 @@ static void build_inter_predictors_8x8_and_bigger(
     const MV mv0 = best_mv_ref[0];
     const MV mv1 = best_mv_ref[1];
 #else
-      const MV mv0 = mi->mv[0].as_mv;
-      const MV mv1 = mi->mv[1].as_mv;
+    const MV mv0 = mi->mv[0].as_mv;
+    const MV mv1 = mi->mv[1].as_mv;
 #endif  // CONFIG_REFINEMV
     // Refine MV using optical flow. The final output MV will be in 1/16
     // precision.
@@ -5220,9 +5030,9 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_AFFINE_REFINEMENT_SB
       memcpy(xd->wm_params_sb, wms, 2 * NUM_AFFINE_PARAMS * sizeof(wms[0]));
 #elif CONFIG_AFFINE_REFINEMENT
-        // parameters derived are saved here and may be reused by chroma
-        mi->wm_params[0] = wms[0];
-        mi->wm_params[1] = wms[1];
+      // parameters derived are saved here and may be reused by chroma
+      mi->wm_params[0] = wms[0];
+      mi->wm_params[1] = wms[1];
 #endif  // CONFIG_AFFINE_REFINEMENT_SB
     }
   }
@@ -5234,7 +5044,6 @@ static void build_inter_predictors_8x8_and_bigger(
                            use_4x4,
 #endif  // CONFIG_OPTFLOW_ON_TIP
                            &opfl_sub_bw, &opfl_sub_bh);
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 #if CONFIG_D071_IMP_MSK_BLD
   BacpBlockData bacp_block_data[2 * N_OF_OFFSETS];
@@ -5326,17 +5135,16 @@ static void build_inter_predictors_8x8_and_bigger(
       }
     }
 
-#if CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_AFFINE_REFINEMENT
     if (use_optflow_refinement &&
 #if AFFINE_CHROMA_REFINE_METHOD > 0
         (mi->comp_refine_type >= COMP_AFFINE_REFINE_START || plane == 0)
 #else
-        mi->comp_refine_type >= COMP_AFFINE_REFINE_START && plane == 0
+          mi->comp_refine_type >= COMP_AFFINE_REFINE_START && plane == 0
 #endif
     ) {
 #else
-      if (use_optflow_refinement && plane == 0) {
+    if (use_optflow_refinement && plane == 0) {
 #endif  // CONFIG_AFFINE_REFINEMENT
       inter_pred_params.interp_filter_params[0] =
           av1_get_interp_filter_params_with_block_size(mi->interp_fltr,
@@ -5358,7 +5166,6 @@ static void build_inter_predictors_8x8_and_bigger(
       );
       continue;
     }
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_BAWP
 #if CONFIG_BAWP_CHROMA
     if (mi->bawp_flag[0] > 0 && (plane == 0 || mi->bawp_flag[1]) &&
@@ -5507,15 +5314,11 @@ static void build_inter_predictors_8x8_and_bigger_facade(
       damr_refine_subblock(plane, bw, bh, mi->comp_refine_type, opfl_sub_bw,
                            opfl_sub_bh);
 #endif  // CONFIG_AFFINE_REFINEMENT
-  enhance_prediction(cm, xd, plane, dst, dst_stride, bw, bh
-#if CONFIG_OPTFLOW_REFINEMENT
-                     ,
-                     xd->mv_refined,
+  enhance_prediction(cm, xd, plane, dst, dst_stride, bw, bh, xd->mv_refined,
                      use_optflow_refinement
 #if CONFIG_AFFINE_REFINEMENT
                          && apply_pef_opfl
 #endif  // CONFIG_AFFINE_REFINEMENT
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 #if CONFIG_REFINEMV
                      ,
                      apply_sub_block_refinemv, &xd->refinemv_subinfo[0]

@@ -224,14 +224,12 @@ typedef struct InterPredParams {
   const InterpFilterParams *interp_filter_params[2];
   int block_width;
   int block_height;
-#if CONFIG_OPTFLOW_REFINEMENT
   // In optical flow refinement, block_width and block_height will pass the
   // subblock size into av1_make_inter_predictor, while orig_block_width and
   // orig_block_height keep the original block size that is needed by
   // calc_subpel_params_func
   int orig_block_width;
   int orig_block_height;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 #if CONFIG_REFINEMV
   // In refinemV, the prediction is generated maximum 16x16 sub-block basis
@@ -270,7 +268,6 @@ typedef struct InterPredParams {
 #endif  // CONFIG_D071_IMP_MSK_BLD
 } InterPredParams;
 
-#if CONFIG_OPTFLOW_REFINEMENT
 // Apply bilinear and bicubic interpolation for subpel gradient to avoid
 // calls of build_one_inter_predictor function. Bicubic interpolation
 // brings better quality but the speed results are neutral. As such, bilinear
@@ -313,7 +310,6 @@ static const int32_t coeffs_bicubic[4][2][2] = {
   { { 21, 42 }, { -3, -6 } },    // delta = 0.125 (SUBPEL_GRAD_DELTA_BITS = 3)
 };
 #endif
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
                            int block_height, int pix_row, int pix_col,
@@ -360,12 +356,10 @@ static INLINE int enable_adaptive_mvd_resolution(const AV1_COMMON *const cm,
                                                  const MB_MODE_INFO *mbmi) {
   const int mode = mbmi->mode;
 
-  return (mode == NEAR_NEWMV || mode == NEW_NEARMV
-#if CONFIG_OPTFLOW_REFINEMENT
-          || mode == NEAR_NEWMV_OPTFLOW || mode == NEW_NEARMV_OPTFLOW ||
-          mode == JOINT_AMVDNEWMV_OPTFLOW
-#endif
-          || mode == AMVDNEWMV || mode == JOINT_AMVDNEWMV) &&
+  return (mode == NEAR_NEWMV || mode == NEW_NEARMV ||
+          mode == NEAR_NEWMV_OPTFLOW || mode == NEW_NEARMV_OPTFLOW ||
+          mode == JOINT_AMVDNEWMV_OPTFLOW || mode == AMVDNEWMV ||
+          mode == JOINT_AMVDNEWMV) &&
          cm->seq_params.enable_adaptive_mvd;
 }
 
@@ -500,10 +494,7 @@ void av1_make_inter_predictor(const uint16_t *src, int src_stride,
 typedef void (*CalcSubpelParamsFunc)(const MV *const src_mv,
                                      InterPredParams *const inter_pred_params,
                                      MACROBLOCKD *xd, int mi_x, int mi_y,
-                                     int ref,
-#if CONFIG_OPTFLOW_REFINEMENT
-                                     int use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
+                                     int ref, int use_optflow_refinement,
                                      uint16_t **mc_buf, uint16_t **pre,
                                      SubpelParams *subpel_params,
                                      int *src_stride);
@@ -525,7 +516,6 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                 int mi_y, uint16_t **mc_buf,
                                 CalcSubpelParamsFunc calc_subpel_params_func);
 
-#if CONFIG_OPTFLOW_REFINEMENT
 // Precision of refined MV returned, 0 being integer pel. For now, only 1/8 or
 // 1/16-pel can be used.
 #define MV_REFINE_PREC_BITS 4  // (1/16-pel)
@@ -535,7 +525,6 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
 #define OPFL_REGULARIZED_LS 1
 #define OPFL_RLS_PARAM 16
 
-#if CONFIG_REFINEMENT_SIMPLIFY
 // Number of bits allowed for all intermediate results of covariance matrix
 // filling
 #define MAX_OPFL_AUTOCORR_BITS 28
@@ -543,13 +532,6 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
 // unsigned bits. Every sum of 8 u2/v2 use at most 2h+3 unsigned bits, and
 // must not exceed max bd of su2/sv2 minus 2. Thus, 2h+3 <= H-2
 #define OPFL_SAMP_CLAMP_VAL ((1 << ((MAX_OPFL_AUTOCORR_BITS - 6) >> 1)) - 1)
-#else
-// Number of bits allowed for covariance matrix elements (su2, sv2, suv, suw
-// and svw) so that det, det_x, and det_y does not cause overflow issue in
-// int64_t. Its value must be <= (64 - mv_prec_bits - grad_prec_bits) / 2.
-#define MAX_OPFL_AUTOCORR_BITS 28
-#define OPFL_AUTOCORR_CLAMP_VAL (1 << MAX_OPFL_AUTOCORR_BITS)
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
 
 void av1_opfl_build_inter_predictor(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mi,
@@ -598,7 +580,6 @@ void av1_opfl_rebuild_inter_predictor(
 #endif  // CONFIG_OPTFLOW_ON_TIP
 );
 
-#if CONFIG_REFINEMENT_SIMPLIFY
 // We consider this tunable number K=MAX_LS_BITS-1 (sign bit excluded)
 // as the target maximum bit depth of all intermediate results for LS problem.
 #define MAX_LS_BITS 32
@@ -640,63 +621,17 @@ static INLINE void divide_and_round_array(int64_t *sol, int64_t den,
     sol[i] = sign ? sol[i] : -sol[i];
   }
 }
-#else
-// Integer division based on lookup table.
-// num: numerator
-// den: denominator
-// out: output result (num / den)
-static INLINE int32_t divide_and_round_signed(int64_t num, int64_t den) {
-  if (llabs(den) == 1) return (int32_t)(den < 0 ? -num : num);
-  const int optflow_prec_bits = 16;
-  int16_t shift;
-  const int sign_den = (den < 0 ? -1 : 1);
-  uint16_t inverse_den = resolve_divisor_64(llabs(den), &shift);
-  shift -= optflow_prec_bits;
-  if (shift < 0) {
-    inverse_den <<= (-shift);
-    shift = 0;
-  }
-  int32_t out;
-  // Make sure 1) the bits for right shift is < 63 and 2) the bit depth
-  // of num is < 48 to avoid overflow in num * inverse_den
-  if (optflow_prec_bits + shift >= 63 ||
-      ROUND_POWER_OF_TWO_SIGNED_64(num, 63 - optflow_prec_bits) != 0) {
-    int64_t out_tmp = ROUND_POWER_OF_TWO_SIGNED_64(num, optflow_prec_bits);
-    out = (int32_t)ROUND_POWER_OF_TWO_SIGNED_64(
-        out_tmp * (int64_t)inverse_den * sign_den, shift);
-  } else {
-    out = (int32_t)ROUND_POWER_OF_TWO_SIGNED_64(
-        num * (int64_t)inverse_den * sign_den, optflow_prec_bits + shift);
-  }
-#ifndef NDEBUG
-  // Verify that the result is consistent with built-in division.
-  // Quick overflow check
-  int32_t out_div = (llabs(num) + llabs(den) < 0)
-                        ? (int32_t)DIVIDE_AND_ROUND_SIGNED(
-                              ROUND_POWER_OF_TWO_SIGNED_64(num, 2),
-                              ROUND_POWER_OF_TWO_SIGNED_64(den, 2))
-                        : (int32_t)DIVIDE_AND_ROUND_SIGNED(num, den);
-  // check if error is at most 1 at usable values of out_div
-  if (abs(out_div - out) > 1 && abs(out_div) <= 64) {
-    printf("Warning: num = %" PRId64 ", den = %" PRId64
-           ", inverse_den = %d, shift = %d, v0 = %d, v = %d\n",
-           num, den, inverse_den, shift, out_div, out);
-  }
-#endif  // NDEBUG
-  return out;
-}
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
-#if CONFIG_AFFINE_REFINEMENT
-#if CONFIG_REFINEMENT_SIMPLIFY || CONFIG_E125_MHCCP_SIMPLIFY
+#if CONFIG_AFFINE_REFINEMENT || CONFIG_E125_MHCCP_SIMPLIFY
 // This function is a stable version of ROUND_POWER_OF_TWO_SIGNED(a*b, shift),
 // where shifts are partially applied before multiplcation operations to avoid
 // overflow issues, i.e., (a>>s1)*(b>>s2)>>s3, where s1+s2+s3=shift
 int64_t stable_mult_shift(const int64_t a, const int64_t b, const int shift,
                           const int msb_a, const int msb_b, const int max_bd,
                           int *rem_shift);
-#endif  // CONFIG_REFINEMENT_SIMPLIFY || CONFIG_E125_MHCCP_SIMPLIFY
+#endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_E125_MHCCP_SIMPLIFY
+
+#if CONFIG_AFFINE_REFINEMENT
 int solver_4d(int64_t *mat, int64_t *vec, int *precbits, int64_t *sol);
 void av1_avg_pooling_pdiff_gradients_c(int16_t *pdiff, const int pstride,
                                        int16_t *gx, int16_t *gy,
@@ -733,7 +668,6 @@ void av1_calc_affine_autocorrelation_matrix_c(const int16_t *pdiff, int pstride,
 #define AFFINE_AVG_MAX_SIZE_LOG2 4
 #define AFFINE_AVG_MAX_SIZE (1 << AFFINE_AVG_MAX_SIZE_LOG2)
 
-#if CONFIG_REFINEMENT_SIMPLIFY
 // We consider this tunable number H=MAX_AFFINE_AUTOCORR_BITS-1 (sign bit
 // excluded) as the maximum bit depth for autocorrelation matrix filling.
 // This value should not be set lower than 25, since gx*x+gy*y can reach 25
@@ -745,16 +679,6 @@ void av1_calc_affine_autocorrelation_matrix_c(const int16_t *pdiff, int pstride,
 #define AFFINE_SAMP_CLAMP_VAL \
   ((1L << ((MAX_AFFINE_AUTOCORR_BITS - 7) >> 1)) - 1)
 #define AFFINE_COORDS_OFFSET_BITS 2
-#else
-// Number of bits allowed for covariance matrix elements so that determinants
-// do not overflow int64_t. For dim=3, input bit depth must be
-// <= (64 - mv_prec_bits - grad_prec_bits) / 3. For dim=4, input bit depth must
-// be <= (64-1)/2 for the first stage (getsub_4d), and <= 64-3-precbits for
-// the second stage (determinant and divide_and_round_signed).
-#define AFFINE_SAMP_CLAMP_VAL ((1 << 15) - 1)
-#define AFFINE_AUTOCORR_CLAMP_VAL ((1 << 30) - 1)
-#define AFFINE_COORDS_OFFSET_BITS 3
-#endif  // CONFIG_REFINEMENT_SIMPLIFY
 
 // Internal bit depths for affine parameter derivation
 #define AFFINE_GRAD_BITS_THR 32
@@ -895,11 +819,8 @@ void dec_calc_subpel_params(const MV *const src_mv,
                             const MACROBLOCKD *const xd, int mi_x, int mi_y,
                             uint16_t **pre, SubpelParams *subpel_params,
                             int *src_stride, PadBlock *block,
-#if CONFIG_OPTFLOW_REFINEMENT
-                            int use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-                            MV32 *scaled_mv, int *subpel_x_mv,
-                            int *subpel_y_mv);
+                            int use_optflow_refinement, MV32 *scaled_mv,
+                            int *subpel_x_mv, int *subpel_y_mv);
 
 // check if the refinemv mode is allwed for a given blocksize
 static INLINE int is_refinemv_allowed_bsize(BLOCK_SIZE bsize) {
@@ -1122,11 +1043,8 @@ int update_extend_mc_border_params(const struct scale_factors *const sf,
 void common_calc_subpel_params_and_extend(
     const MV *const src_mv, InterPredParams *const inter_pred_params,
     MACROBLOCKD *const xd, int mi_x, int mi_y, int ref,
-#if CONFIG_OPTFLOW_REFINEMENT
-    int use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-    uint16_t **mc_buf, uint16_t **pre, SubpelParams *subpel_params,
-    int *src_stride);
+    int use_optflow_refinement, uint16_t **mc_buf, uint16_t **pre,
+    SubpelParams *subpel_params, int *src_stride);
 #endif  // CONFIG_REFINEMV
 
 #if CONFIG_REFINEMV || CONFIG_OPTFLOW_ON_TIP
@@ -1141,7 +1059,6 @@ unsigned int get_highbd_sad_ds(const uint16_t *src_ptr, int source_stride,
                                int bw, int bh);
 #endif  // CONFIG_SUBBLK_REF_DS
 
-#if CONFIG_OPTFLOW_REFINEMENT || CONFIG_OPFL_MV_SEARCH
 void calc_mv_process(int64_t su2, int64_t sv2, int64_t suv, int64_t suw,
                      int64_t svw, const int d0, const int d1, const int bits,
                      const int rls_alpha, int *vx0, int *vy0, int *vx1,
@@ -1154,15 +1071,12 @@ void av1_opfl_mv_refinement(const int16_t *pdiff, int pstride0,
 void av1_compute_subpel_gradients_interp(int16_t *pred_dst, int bw, int bh,
                                          int *grad_prec_bits, int16_t *x_grad,
                                          int16_t *y_grad);
-#endif  // CONFIG_OPTFLOW_REFINEMENT || CONFIG_OPFL_MV_SEARCH
 
 // TODO(jkoleszar): yet another mv clamping function :-(
 static INLINE MV clamp_mv_to_umv_border_sb(const MACROBLOCKD *xd,
                                            const MV *src_mv, int bw, int bh,
-#if CONFIG_OPTFLOW_REFINEMENT
-                                           int use_optflow_refinement,
-#endif  // CONFIG_OPTFLOW_REFINEMENT
-                                           int ss_x, int ss_y) {
+                                           int use_optflow_refinement, int ss_x,
+                                           int ss_y) {
   // If the MV points so far into the UMV border that no visible pixels
   // are used for reconstruction, the subpel part of the MV can be
   // discarded and the MV limited to 16 pixels with equivalent results.
@@ -1170,7 +1084,6 @@ static INLINE MV clamp_mv_to_umv_border_sb(const MACROBLOCKD *xd,
   const int spel_right = spel_left - SUBPEL_SHIFTS;
   const int spel_top = (AOM_INTERP_EXTEND + bh) << SUBPEL_BITS;
   const int spel_bottom = spel_top - SUBPEL_SHIFTS;
-#if CONFIG_OPTFLOW_REFINEMENT
   MV clamped_mv;
   if (use_optflow_refinement) {
     // optflow refinement always returns MVs with 1/16 precision so it is not
@@ -1183,10 +1096,6 @@ static INLINE MV clamp_mv_to_umv_border_sb(const MACROBLOCKD *xd,
     clamped_mv.row = (int16_t)(src_mv->row * (1 << (1 - ss_y)));
     clamped_mv.col = (int16_t)(src_mv->col * (1 << (1 - ss_x)));
   }
-#else
-  MV clamped_mv = { (int16_t)(src_mv->row * (1 << (1 - ss_y))),
-                    (int16_t)(src_mv->col * (1 << (1 - ss_x))) };
-#endif  // CONFIG_OPTFLOW_REFINEMENT
   assert(ss_x <= 1);
   assert(ss_y <= 1);
   const SubpelMvLimits mv_limits = {
@@ -1287,13 +1196,10 @@ static AOM_INLINE void setup_pred_planes_for_tip(const TIP *tip_ref,
 }
 
 static INLINE void set_default_interp_filters(
-    MB_MODE_INFO *const mbmi,
-#if CONFIG_OPTFLOW_REFINEMENT
-    const AV1_COMMON *cm,
+    MB_MODE_INFO *const mbmi, const AV1_COMMON *cm,
 #if CONFIG_COMPOUND_4XN
     const MACROBLOCKD *xd,
 #endif  // CONFIG_COMPOUND_4XN
-#endif  // CONFIG_OPTFLOW_REFINEMENT
     InterpFilter frame_interp_filter) {
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT
@@ -1302,7 +1208,6 @@ static INLINE void set_default_interp_filters(
     return;
   }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-#if CONFIG_OPTFLOW_REFINEMENT
   mbmi->interp_fltr = (opfl_allowed_for_cur_block(cm,
 #if CONFIG_COMPOUND_4XN
                                                   xd,
@@ -1314,9 +1219,6 @@ static INLINE void set_default_interp_filters(
                        || is_tip_ref_frame(mbmi->ref_frame[0]))
                           ? MULTITAP_SHARP
                           : av1_unswitchable_filter(frame_interp_filter);
-#else
-  mbmi->interp_fltr = av1_unswitchable_filter(frame_interp_filter);
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 }
 
 static INLINE int av1_is_interp_needed(const AV1_COMMON *const cm,
@@ -1329,7 +1231,6 @@ static INLINE int av1_is_interp_needed(const AV1_COMMON *const cm,
   if (mbmi->mode == WARPMV) return 0;
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
-#if CONFIG_OPTFLOW_REFINEMENT
   // No interpolation filter search when optical flow MV refinement is used.
   if (opfl_allowed_for_cur_block(cm,
 #if CONFIG_COMPOUND_4XN
@@ -1337,7 +1238,6 @@ static INLINE int av1_is_interp_needed(const AV1_COMMON *const cm,
 #endif  // CONFIG_COMPOUND_4XN
                                  mbmi))
     return 0;
-#endif  // CONFIG_OPTFLOW_REFINEMENT
 
 #if CONFIG_REFINEMV
   // No interpolation filter search when MV refinement is used.
