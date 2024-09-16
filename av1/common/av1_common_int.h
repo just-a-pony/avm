@@ -1685,11 +1685,20 @@ typedef struct AV1Common {
   TPL_MV_REF *tpl_mvs;
 
 #if CONFIG_TMVP_MEM_OPT
+  /*!
+   * Step size for tmvp sampling. Should be 1 (no sampling) or 2.
+   */
   int tmvp_sample_step;
 #endif  // CONFIG_TMVP_MEM_OPT
 
 #if CONFIG_MV_TRAJECTORY
+  /*!
+   * Mapping table from trajectory id to the offset to the current block.
+   */
   int_mv *id_offset_map[INTER_REFS_PER_FRAME];
+  /*!
+   * Mapping table from block location to trajectory id.
+   */
   int *blk_id_map[INTER_REFS_PER_FRAME];
 #endif  // CONFIG_MV_TRAJECTORY
 
