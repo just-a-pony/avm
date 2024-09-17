@@ -586,11 +586,101 @@ if(CONFIG_AV1_ENCODER)
        ${AOM_ENCODER_TOOL_TARGETS})
 
   if(CONFIG_TENSORFLOW_LITE)
-    include(FetchContent)
+    # Building TFLite from third_party sources. Previously TFLite was fetched
+    # from github as part of the build, using the following syntax:
+    # cmake-format: off
+    # include(FetchContent)
+    # set(TFLITE_TAG "v2.17.0")
+    # fetchcontent_declare(
+    #   tflite
+    #   GIT_REPOSITORY https://github.com/tensorflow/tensorflow
+    #   GIT_TAG ${TFLITE_TAG}
+    #   GIT_SHALLOW TRUE)
+    # fetchcontent_getproperties(tflite)
+    # if(NOT tflite_POPULATED)
+    #   fetchcontent_populate(tflite)
+    #   add_subdirectory(${tflite_SOURCE_DIR}/tensorflow/lite/c
+    #                    ${tflite_BINARY_DIR})
+    # endif()
+    # cmake-format: on
+    #
+    # However some enviroments don't allow internet access during cmake build,
+    # so the new approach is to store all the necessary TFLite dependencies as
+    # archives inside of the third_party directory. These archives are extracted
+    # below and built as sub-projects. The fetchcontent based snippet above can
+    # be used in the future to update the stored archives for the dependencies
+    # should TFlite version be updated,
+    message(STATUS "Building TFLite from local sources...")
+    # These are the paths of the stored TFLite dependencies, use the the
+    # fetchcontent snippet above, then look for messages like: "Performing
+    # download step (download, verify and extract) for 'xyz'" go to
+    # "xyz-source", Then archive the source into "xyz.tar.gz" and and add the
+    # variable "XYZ_SOURCE_DIR" pointing to "third_party/xyz" like below, also
+    # update the command line to extrac the archive below.
 
-    set(TFLITE_TAG "v2.17.0")
+    string(
+      CONCAT
+        EXTRACT_TF_UPDATE_DEPS_CMAKE_CONFIG
+        "cd ${CMAKE_CURRENT_SOURCE_DIR}/third_party;"
+        "tar -xzf tensorflow.tar.gz; "
+        "tar -xzf deps_cmake.tar.gz; "
+        "cp deps_cmake/abseil-cpp.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/cpuinfo.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/eigen.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/farmhash.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/fft2d.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/flatbuffers.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/gemmlowp.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/ml_dtypes.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/neon2sse.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/protobuf.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/ruy.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
+        "cp deps_cmake/xnnpack.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules"
+    )
 
-    message(STATUS "Fetching TFLite ${TFLITE_TAG}...")
+    execute_process(COMMAND bash -c "${EXTRACT_TF_UPDATE_DEPS_CMAKE_CONFIG}")
+    string(
+      CONCAT EXTRACT_DEPS_TO_BUILD
+             "cd ${CMAKE_CURRENT_SOURCE_DIR}/third_party; "
+             "tar -xzf abseil-cpp.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf eigen.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf neon2sse.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf xnnpack.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf ruy.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf farmhash.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf fft2d.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf gemmlowp.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf ml_dtypes.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf cpuinfo.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf protobuf.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf flatbuffers.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf fp16.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf pthreadpool.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf psimd.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf FXdiv.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf benchmark.tar.gz -C ${CMAKE_BINARY_DIR}; "
+             "tar -xzf googletest.tar.gz -C ${CMAKE_BINARY_DIR}")
+
+    execute_process(COMMAND bash -c "${EXTRACT_DEPS_TO_BUILD}")
+
+    set(FP16_SOURCE_DIR ${CMAKE_BINARY_DIR}/fp16)
+    set(PTHREADPOOL_SOURCE_DIR ${CMAKE_BINARY_DIR}/pthreadpool)
+    set(PSIMD_SOURCE_DIR ${CMAKE_BINARY_DIR}/psimd)
+    set(FXDIV_SOURCE_DIR ${CMAKE_BINARY_DIR}/FXdiv)
+    set(GOOGLEBENCHMARK_SOURCE_DIR ${CMAKE_BINARY_DIR}/benchmark)
+    set(GOOGLETEST_SOURCE_DIR ${CMAKE_BINARY_DIR}/googletest)
+    set(abseil-cpp_SOURCE_DIR ${CMAKE_BINARY_DIR}/abseil-cpp)
+    set(CPUINFO_SOURCE_DIR ${CMAKE_BINARY_DIR}/cpuinfo)
+    set(EIGEN_SOURCE_DIR ${CMAKE_BINARY_DIR}/eigen)
+    set(FARMHASH_SOURCE_DIR ${CMAKE_BINARY_DIR}/farmhash)
+    set(FFT2D_SOURCE_DIR ${CMAKE_BINARY_DIR}/fft2d)
+    set(FLATBUFFERS_SOURCE_DIR ${CMAKE_BINARY_DIR}/flatbuffers)
+    set(GEMMLOWP_SOURCE_DIR ${CMAKE_BINARY_DIR}/gemmlowp)
+    set(ML_DTYPES_SOURCE_DIR ${CMAKE_BINARY_DIR}/ml_dtypes)
+    set(PROTOBUF_SOURCE_DIR ${CMAKE_BINARY_DIR}/protobuf)
+    set(RUY_SOURCE_DIR ${CMAKE_BINARY_DIR}/ruy)
+    set(NEON2SSE_SOURCE_DIR ${CMAKE_BINARY_DIR}/neon2sse)
+    set(XNNPACK_SOURCE_DIR ${CMAKE_BINARY_DIR}/XNNPACK)
 
     # static linking makes life with TFLite much easier
     set(TFLITE_C_BUILD_SHARED_LIBS OFF)
@@ -600,30 +690,17 @@ if(CONFIG_AV1_ENCODER)
     # Turn XNNPack on.
     set(TFLITE_ENABLE_XNNPACK ON)
 
-    fetchcontent_declare(
-      tflite
-      GIT_REPOSITORY https://github.com/tensorflow/tensorflow
-      GIT_TAG ${TFLITE_TAG}
-      GIT_SHALLOW TRUE)
-
-    fetchcontent_getproperties(tflite)
-    if(NOT tflite_POPULATED)
-      fetchcontent_populate(tflite)
-      # Some of the subprojects (e.g. Eigen) are very noisy and emit status
-      # messages all the time. Temporary ignore status messages while adding
-      # this to silence it. Ugly but effective.
-      set(OLD_CMAKE_MESSAGE_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL})
-      set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
-      add_subdirectory(${tflite_SOURCE_DIR}/tensorflow/lite/c
-                       ${tflite_BINARY_DIR})
-      set(CMAKE_MESSAGE_LOG_LEVEL ${OLD_CMAKE_MESSAGE_LOG_LEVEL})
-    endif()
+    # Some of the subprojects (e.g. Eigen) are very noisy and emit status
+    # messages all the time. Temporary ignore status messages while adding this
+    # to silence it. Ugly but effective.
+    set(OLD_CMAKE_MESSAGE_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL})
+    set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
+    add_subdirectory(third_party/tensorflow/tensorflow/lite/c)
+    set(CMAKE_MESSAGE_LOG_LEVEL ${OLD_CMAKE_MESSAGE_LOG_LEVEL})
 
     # Disable some noisy warnings in tflite
     target_compile_options(tensorflow-lite PRIVATE -w)
-
-    # tensorflowlite_c is implicitly declared by this FetchContent
-    include_directories(${tflite_SOURCE_DIR})
+    include_directories(${AOM_ROOT}/third_party/tensorflow)
     include_directories("${CMAKE_CURRENT_BINARY_DIR}/flatbuffers/include/")
     add_dependencies(aom_av1_common tensorflow-lite)
   endif()
