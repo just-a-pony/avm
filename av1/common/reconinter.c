@@ -5128,24 +5128,6 @@ static void build_inter_predictors_8x8_and_bigger(
   }
 }
 
-// Find the start row/col and end row/col for a given TIP prediction block.
-static AOM_INLINE void set_tip_start_end_location(
-    int start_pixel_col, int start_pixel_row, int block_width, int block_height,
-    int *tpl_start_col, int *tpl_start_row, int *tpl_end_col,
-    int *tpl_end_row) {
-  // define the block start and end pixel locations
-  const int bw = (block_width << MI_SIZE_LOG2);
-  const int bh = (block_height << MI_SIZE_LOG2);
-  int end_pixel_row = start_pixel_row + bh;
-  int end_pixel_col = start_pixel_col + bw;
-
-  // convert the pixel block location to MV field grid location
-  *tpl_start_row = start_pixel_row >> TMVP_MI_SZ_LOG2;
-  *tpl_end_row = (end_pixel_row + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
-  *tpl_start_col = start_pixel_col >> TMVP_MI_SZ_LOG2;
-  *tpl_end_col = (end_pixel_col + TMVP_MI_SIZE - 1) >> TMVP_MI_SZ_LOG2;
-}
-
 // This function consolidates the prediction process of the TIP ref mode block
 // and the non-TIP ref mode block.
 static void build_inter_predictors_8x8_and_bigger_facade(
@@ -5169,23 +5151,20 @@ static void build_inter_predictors_8x8_and_bigger_facade(
   uint16_t *const dst = dst_buf->buf;
 
   if (tip_ref_frame) {
-    int tpl_start_col, tpl_start_row, tpl_end_col, tpl_end_row;
-    set_tip_start_end_location(mi_x, mi_y, xd->width, xd->height,
-                               &tpl_start_col, &tpl_start_row, &tpl_end_col,
-                               &tpl_end_row);
-
     // TMVP_MI_SIZE_UV is the block size in luma unit for Chroma
     // TIP interpolation, will convert to the step size in TMVP 8x8 unit
     const int unit_blk_size = (plane == 0) ? TMVP_MI_SIZE : TMVP_MI_SIZE_UV;
-    const int step = (unit_blk_size >> TMVP_MI_SZ_LOG2);
+    const int end_pixel_row = mi_y + (xd->height << MI_SIZE_LOG2);
+    const int end_pixel_col = mi_x + (xd->width << MI_SIZE_LOG2);
 
-    for (int blk_row = tpl_start_row; blk_row < tpl_end_row; blk_row += step) {
-      for (int blk_col = tpl_start_col; blk_col < tpl_end_col;
-           blk_col += step) {
-        const int tpl_row = blk_row << TMVP_MI_SZ_LOG2;
-        const int tpl_col = blk_col << TMVP_MI_SZ_LOG2;
-        const int row_offset = (blk_row - tpl_start_row);
-        const int col_offset = (blk_col - tpl_start_col);
+    for (int pixel_row = mi_y; pixel_row < end_pixel_row;
+         pixel_row += unit_blk_size) {
+      for (int pixel_col = mi_x; pixel_col < end_pixel_col;
+           pixel_col += unit_blk_size) {
+        const int tpl_row = pixel_row >> TMVP_MI_SZ_LOG2;
+        const int tpl_col = pixel_col >> TMVP_MI_SZ_LOG2;
+        const int row_offset = (pixel_row - mi_y) >> TMVP_MI_SZ_LOG2;
+        const int col_offset = (pixel_col - mi_x) >> TMVP_MI_SZ_LOG2;
         const int tip_mv_offset = (row_offset * TIP_MV_STRIDE + col_offset)
                                   << 1;
         const int ss_x = pd->subsampling_x;
@@ -5193,7 +5172,7 @@ static void build_inter_predictors_8x8_and_bigger_facade(
         MV tip_mv[2];
         int_mv tip_mv_tmp[2];
 
-        get_tip_mv(cm, &mi->mv[0].as_mv, blk_col, blk_row, tip_mv_tmp);
+        get_tip_mv(cm, &mi->mv[0].as_mv, tpl_col, tpl_row, tip_mv_tmp);
 
         tip_mv[0] = tip_mv_tmp[0].as_mv;
         tip_mv[1] = tip_mv_tmp[1].as_mv;
@@ -5206,7 +5185,7 @@ static void build_inter_predictors_8x8_and_bigger_facade(
 #if CONFIG_BAWP
             dst_orig,
 #endif
-            build_for_obmc, unit_blk_size, unit_blk_size, tpl_col, tpl_row,
+            build_for_obmc, unit_blk_size, unit_blk_size, pixel_col, pixel_row,
             mc_buf, tip_mv, calc_subpel_params_func, dst_buf->buf, dst_stride,
             bw, bh,
 #if CONFIG_REFINEMV
