@@ -30,6 +30,17 @@ impl FrameInfoViewer {
         // info.push(("Show frame".into(), params.show_frame.to_string()));
         info.push(("Base QIndex".into(), params.base_qindex.to_string()));
         info.push(("Bit depth".into(), params.bit_depth.to_string()));
+        let chroma_format =
+            if params.subsampling_x == 0 && params.subsampling_y == 0 {
+                "4:4:4"
+            } else if params.subsampling_x == 1 && params.subsampling_y == 0 {
+                "4:2:2"
+            } else if params.subsampling_x == 1 && params.subsampling_y == 1 {
+                "4:2:0"
+            } else {
+                "Unknown"
+            };
+        info.push(("Chroma format".into(), chroma_format.to_string()));
         Some(info)
     }
 }
@@ -47,8 +58,8 @@ impl RenderView for FrameInfoViewer {
             return Ok(());
         };
         TableBuilder::new(ui)
-            .column(Column::initial(300.0).resizable(true))
-            .column(Column::remainder())
+            .column(Column::auto().resizable(true).clip(false).at_least(100.0))
+            .column(Column::remainder().clip(false).at_least(100.0))
             .striped(true)
             .header(20.0, |mut header| {
                 header.col(|ui| {
@@ -60,7 +71,7 @@ impl RenderView for FrameInfoViewer {
             })
             .body(|mut body| {
                 for (info_name, info_value) in frame_info {
-                    body.row(20.0, |mut row| {
+                    body.row(30.0, |mut row| {
                         row.col(|col| {
                             col.label(info_name);
                         });
