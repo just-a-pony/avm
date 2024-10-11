@@ -457,8 +457,13 @@ static void iddt4x4_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
   (void)bit;
   __m128i tmp[4];
   TRANSPOSE_4X4(in[0], in[1], in[2], in[3], tmp[0], tmp[1], tmp[2], tmp[3]);
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_sse4(tmp, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt4_kernel[INV_TXFM], 4, 4, 1);
+#else
   iadst_matrix_mult_sse4(tmp, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt4_kernel[INV_TXFM], 4, 4, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -1110,10 +1115,17 @@ static void idct8x8_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
 static void iddt8x8_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
                            int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_sse4(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt8_kernel[INV_TXFM], 8, 8, 2);
+  iadst_matrix_mult_sse4(in + 1, out + 1, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt8_kernel[INV_TXFM], 8, 8, 2);
+#else
   iadst_matrix_mult_sse4(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt8_kernel[INV_TXFM], 8, 8, 2);
   iadst_matrix_mult_sse4(in + 1, out + 1, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt8_kernel[INV_TXFM], 8, 8, 2);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -1862,8 +1874,13 @@ static void idct8x8_new_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
 static void iddt8x8_low1_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
                                 int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_sse4(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt8_kernel[INV_TXFM], 8, 1, 1);
+#else
   iadst_matrix_mult_sse4(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt8_kernel[INV_TXFM], 8, 1, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -1970,8 +1987,13 @@ static void iadst8x8_low1_sse4_1(__m128i *in, __m128i *out, int bit,
 static void iddt8x8_new_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
                                int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_sse4(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt8_kernel[INV_TXFM], 8, 8, 1);
+#else
   iadst_matrix_mult_sse4(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt8_kernel[INV_TXFM], 8, 8, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -2399,8 +2421,13 @@ void iadst_matrix_mult_sse4(__m128i *in, __m128i *out, int bit, int do_cols,
 static void iddt16x16_low1_sse4_1(__m128i *in, __m128i *out, int bit,
                                   int do_cols, int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_sse4(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt16_kernel[INV_TXFM], 16, 1, 1);
+#else
   iadst_matrix_mult_sse4(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt16_kernel[INV_TXFM], 16, 1, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -2590,8 +2617,13 @@ static void iadst16x16_low1_sse4_1(__m128i *in, __m128i *out, int bit,
 static void iddt16x16_low8_sse4_1(__m128i *in, __m128i *out, int bit,
                                   int do_cols, int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_sse4(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt16_kernel[INV_TXFM], 16, 8, 1);
+#else
   iadst_matrix_mult_sse4(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt16_kernel[INV_TXFM], 16, 8, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -3108,8 +3140,13 @@ static void idct16x16_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
 static void iddt16x16_sse4_1(__m128i *in, __m128i *out, int bit, int do_cols,
                              int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_sse4(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt16_kernel[INV_TXFM], 16, 16, 1);
+#else
   iadst_matrix_mult_sse4(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt16_kernel[INV_TXFM], 16, 16, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 

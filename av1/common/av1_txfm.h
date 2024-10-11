@@ -77,6 +77,9 @@ static const int cos_bit_max = 16;
 // Round shift bits for the ADST forward and inverse transforms
 #define FWD_ADST_BIT 12
 #define INV_ADST_BIT 7
+#if CONFIG_FIX_INTER_DDT_PRECISION
+#define INV_DDT_BIT 6
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 #endif  // CONFIG_ADST_TUNED || CONFIG_INTER_DDT
 
 #define NewSqrt2Bits ((int32_t)12)

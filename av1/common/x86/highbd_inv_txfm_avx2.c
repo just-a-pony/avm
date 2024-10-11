@@ -1541,8 +1541,13 @@ static void idct16_avx2(__m256i *in, __m256i *out, int bit, int do_cols, int bd,
 static void iddt16_low1_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
                              int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_avx2(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt16_kernel[INV_TXFM], 16, 1);
+#else
   iadst_matrix_mult_avx2(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt16_kernel[INV_TXFM], 16, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 #if CONFIG_ADST_TUNED && USE_TUNED_ADST16
@@ -1737,8 +1742,13 @@ static void iadst16_low1_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
 static void iddt16_low8_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
                              int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_avx2(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt16_kernel[INV_TXFM], 16, 8);
+#else
   iadst_matrix_mult_avx2(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt16_kernel[INV_TXFM], 16, 8);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -2077,8 +2087,13 @@ static void iadst16_low8_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
 static void iddt16_avx2(__m256i *in, __m256i *out, int bit, int do_cols, int bd,
                         int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_avx2(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt16_kernel[INV_TXFM], 16, 16);
+#else
   iadst_matrix_mult_avx2(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt16_kernel[INV_TXFM], 16, 16);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 #if CONFIG_ADST_TUNED && USE_TUNED_ADST16
@@ -2672,8 +2687,13 @@ void iadst_matrix_mult_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
 static void iddt8x8_low1_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
                               int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_avx2(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt8_kernel[INV_TXFM], 8, 1);
+#else
   iadst_matrix_mult_avx2(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt8_kernel[INV_TXFM], 8, 1);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 
@@ -2780,8 +2800,13 @@ static void iadst8x8_low1_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
 static void iddt8x8_avx2(__m256i *in, __m256i *out, int bit, int do_cols,
                          int bd, int out_shift) {
   (void)bit;
+#if CONFIG_FIX_INTER_DDT_PRECISION
+  iadst_matrix_mult_avx2(in, out, INV_DDT_BIT, do_cols, bd, out_shift,
+                         ddt8_kernel[INV_TXFM], 8, 8);
+#else
   iadst_matrix_mult_avx2(in, out, INV_ADST_BIT, do_cols, bd, out_shift,
                          ddt8_kernel[INV_TXFM], 8, 8);
+#endif  // CONFIG_FIX_INTER_DDT_PRECISION
 }
 #endif  // CONFIG_INTER_DDT
 

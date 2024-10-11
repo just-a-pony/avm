@@ -456,6 +456,8 @@ set_aom_config_var(CONFIG_MV_TRAJECTORY 1
 set_aom_config_var(CONFIG_ADAPTATION_RATE_IMPROVE 1
                    "Enables adaptation rate improvement with CDF propagation.")
 
+set_aom_config_var(CONFIG_FIX_INTER_DDT_PRECISION 1
+                   "Fix precision of inter DDT.")
 set_aom_config_var(
   CONFIG_ALIGN_DEBLOCK_ERP_SDP 1
   "Align deblocking filter boundaries with AVM partitioning scheme.")

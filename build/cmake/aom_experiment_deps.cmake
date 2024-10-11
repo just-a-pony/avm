@@ -152,4 +152,9 @@ macro(fix_experiment_configs)
   if(NOT CONFIG_TMVP_MEM_OPT AND CONFIG_MV_TRAJECTORY)
     change_config_and_warn(CONFIG_MV_TRAJECTORY 0 !CONFIG_TMVP_MEM_OPT)
   endif()
+
+  # CONFIG_FIX_INTER_DDT_PRECISION depends on CONFIG_INTER_DDT
+  if(NOT CONFIG_INTER_DDT AND CONFIG_FIX_INTER_DDT_PRECISION)
+    change_config_and_warn(CONFIG_FIX_INTER_DDT_PRECISION 0 !CONFIG_INTER_DDT)
+  endif()
 endmacro()
