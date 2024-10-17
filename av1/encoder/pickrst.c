@@ -2864,7 +2864,7 @@ static void find_best_match_for_filter(const RestSearchCtxt *rsc,
     use_one_match_indices[c_id] = best_match_results[c_id].use_one_match_index;
     assert(best_match_results[c_id].use_one_match_index ==
            get_first_match_index(use_one_match_indices[c_id],
-                                 filter->num_classes));
+                                 filter->num_classes, nopcw));
   }
   int *best_match_indices = use_one_match_indices;
 
@@ -4409,7 +4409,9 @@ static double calculate_frame_filters_cost(const RestSearchCtxt *rsc,
       count_wienerns_bits_set(rsc->plane, &rsc->x->mode_costs, filter, bank,
                               nsfilter_params, ALL_WIENERNS_CLASSES);
   // debug_point, to be fixed
-  bits += count_match_indices_bits(filter->num_classes) *
+  const int nopcw =
+      disable_pcwiener_filters_in_framefilters(&rsc->cm->seq_params);
+  bits += count_match_indices_bits(filter->num_classes, nopcw) *
           (1 << AV1_PROB_COST_SHIFT);
 
   double cost = RDCOST_DBL_WITH_NATIVE_BD_DIST(rsc->x->rdmult, bits >> 4, 0,

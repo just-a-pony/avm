@@ -3163,16 +3163,17 @@ static AOM_INLINE void read_sgrproj_filter(MACROBLOCKD *xd,
 }
 
 #if CONFIG_COMBINE_PC_NS_WIENER
-static void read_match_indices(WienerNonsepInfo *wienerns_info,
+static void read_match_indices(WienerNonsepInfo *wienerns_info, int nopcw,
                                aom_reader *rb) {
   for (int c_id = 0; c_id < wienerns_info->num_classes; ++c_id) {
     int decoded_match = aom_read_literal(
-        rb, first_match_bits(wienerns_info->num_classes), ACCT_INFO("match"));
+        rb, first_match_bits(wienerns_info->num_classes, nopcw),
+        ACCT_INFO("match"));
     int first_match = decode_first_match(decoded_match);
     wienerns_info->match_indices[c_id] = first_match;
     assert(first_match ==
            get_first_match_index(wienerns_info->match_indices[c_id],
-                                 wienerns_info->num_classes));
+                                 wienerns_info->num_classes, nopcw));
   }
 }
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
@@ -3194,7 +3195,8 @@ static void read_wienerns_framefilters(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CONFIG_TEMP_LR
   assert(!rsi->temporal_pred_flag);
 #endif  // CONFIG_TEMP_LR
-  read_match_indices(&rsi->frame_filters, rb);
+  const int nopcw = disable_pcwiener_filters_in_framefilters(&cm->seq_params);
+  read_match_indices(&rsi->frame_filters, nopcw, rb);
   for (int c_id = 0; c_id < num_classes; ++c_id) {
     const int exact_match = aom_read_symbol(rb, xd->tile_ctx->merged_param_cdf,
                                             2, ACCT_INFO("exact_match"));
@@ -3205,7 +3207,6 @@ static void read_wienerns_framefilters(AV1_COMMON *cm, MACROBLOCKD *xd,
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;
   WienerNonsepInfoBank bank = { 0 };
   bank.filter[0].num_classes = num_classes;
-  const int nopcw = disable_pcwiener_filters_in_framefilters(&cm->seq_params);
   for (int c_id = 0; c_id < num_classes; ++c_id) {
     fill_first_slot_of_bank_with_filter_match(
         &bank, &rsi->frame_filters, rsi->frame_filters.match_indices,

@@ -4214,17 +4214,17 @@ static int check_and_write_exact_match(
 
 #if CONFIG_COMBINE_PC_NS_WIENER
 static inline void write_match_indices(const WienerNonsepInfo *wienerns_info,
-                                       aom_writer *wb) {
+                                       int nopcw, aom_writer *wb) {
   int total_bits = 0;
   for (int c_id = 0; c_id < wienerns_info->num_classes; ++c_id) {
     int num_bits = 0;
     int encoded_match =
         encode_first_match(wienerns_info->match_indices[c_id], &num_bits,
-                           wienerns_info->num_classes);
+                           wienerns_info->num_classes, nopcw);
     aom_write_literal(wb, encoded_match, num_bits);
     total_bits += num_bits;
   }
-  int count_bits = count_match_indices_bits(wienerns_info->num_classes);
+  int count_bits = count_match_indices_bits(wienerns_info->num_classes, nopcw);
   (void)count_bits;
   (void)total_bits;
   assert(total_bits == count_bits);
@@ -4245,12 +4245,12 @@ static AOM_INLINE void write_wienerns_framefilters(
 #if CONFIG_TEMP_LR
   assert(!rsi->temporal_pred_flag);
 #endif  // CONFIG_TEMP_LR
-  write_match_indices(&rsi->frame_filters, wb);
+  const int nopcw = disable_pcwiener_filters_in_framefilters(&cm->seq_params);
+  write_match_indices(&rsi->frame_filters, nopcw, wb);
   WienerNonsepInfoBank bank = { 0 };
   // needed to handle asserts in copy_nsfilter_taps_for_class
   bank.filter[0].num_classes = num_classes;
 
-  const int nopcw = disable_pcwiener_filters_in_framefilters(&cm->seq_params);
   fill_first_slot_of_bank_with_filter_match(
       &bank, &rsi->frame_filters, rsi->frame_filters.match_indices, base_qindex,
       ALL_WIENERNS_CLASSES, frame_filter_dictionary, dict_stride, nopcw);

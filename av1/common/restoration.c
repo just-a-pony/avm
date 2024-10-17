@@ -2734,7 +2734,7 @@ void fill_filter_with_match(WienerNonsepInfo *filter,
     int16_t *wienerns_filter = nsfilter_taps(filter, c_id);
 
     int filter_index =
-        get_first_match_index(match_indices[c_id], filter->num_classes);
+        get_first_match_index(match_indices[c_id], filter->num_classes, nopcw);
     assert(filter_index < num_dictionary_slots(filter->num_classes, nopcw));
     const int16_t *matching_filter =
         get_matching_filter(frame_filter_dictionary, dict_stride, filter_index,

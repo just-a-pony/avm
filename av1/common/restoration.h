@@ -223,34 +223,34 @@ void fill_first_slot_of_bank_with_filter_match(
 #define ILLEGAL_MATCH -1
 
 static INLINE int get_first_match_index(int compound_match_index,
-                                        int num_classes) {
+                                        int num_classes, int nopcw) {
   assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
   return compound_match_index &
-         ((1 << num_frame_first_predictor_bits[num_classes]) - 1);
+         ((1 << num_frame_first_predictor_bits[nopcw][num_classes]) - 1);
 }
 
-static INLINE int first_match_bits(int num_classes) {
+static INLINE int first_match_bits(int num_classes, int nopcw) {
   assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
-  return num_frame_first_predictor_bits[num_classes];
+  return num_frame_first_predictor_bits[nopcw][num_classes];
 }
 
 static INLINE int encode_first_match(int compound_match_index, int *num_bits,
-                                     int num_classes) {
+                                     int num_classes, int nopcw) {
   assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
-  *num_bits = first_match_bits(num_classes);
-  return get_first_match_index(compound_match_index, num_classes);
+  *num_bits = first_match_bits(num_classes, nopcw);
+  return get_first_match_index(compound_match_index, num_classes, nopcw);
 }
 
 static INLINE int decode_first_match(int encoded_match_index) {
   return encoded_match_index;
 }
 
-static INLINE int count_match_indices_bits(int num_classes) {
+static INLINE int count_match_indices_bits(int num_classes, int nopcw) {
   assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
   int total_bits = 0;
 
   for (int c_id = 0; c_id < num_classes; ++c_id) {
-    total_bits += first_match_bits(num_classes);
+    total_bits += first_match_bits(num_classes, nopcw);
   }
   return total_bits;
 }
