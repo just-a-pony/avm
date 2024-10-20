@@ -5017,8 +5017,12 @@ static AOM_INLINE void write_tile_info(const AV1_COMMON *const cm,
 
   *saved_wb = *wb;
   if (cm->tiles.rows * cm->tiles.cols > 1) {
-    // tile id used for cdf update
-    aom_wb_write_literal(wb, 0, cm->tiles.log2_cols + cm->tiles.log2_rows);
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+    if (!cm->seq_params.enable_tiles_cdfs_avg) {
+      // tile id used for cdf update
+      aom_wb_write_literal(wb, 0, cm->tiles.log2_cols + cm->tiles.log2_rows);
+    }
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
     // Number of bytes in tile size - 1
     aom_wb_write_literal(wb, 3, 2);
   }
@@ -5536,6 +5540,9 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
                      seq_params->enable_drl_reorder == DRL_REORDER_CONSTRAINT);
   }
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  aom_wb_write_bit(wb, seq_params->enable_tiles_cdfs_avg);
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   aom_wb_write_bit(wb, seq_params->explicit_ref_frame_map);
   // 0 : show_existing_frame, 1: implicit derviation
   aom_wb_write_bit(wb, seq_params->enable_frame_output_order);
@@ -6974,11 +6981,15 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
   }
 
   if (have_tiles) {
-    // Fill in context_update_tile_id indicating the tile to use for the
-    // cdf update. The encoder currently sets it to the largest tile
-    // (but is up to the encoder)
-    aom_wb_overwrite_literal(saved_wb, *largest_tile_id,
-                             tiles->log2_cols + tiles->log2_rows);
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+    if (!cm->seq_params.enable_tiles_cdfs_avg) {
+      // Fill in context_update_tile_id indicating the tile to use for the
+      // cdf update. The encoder currently sets it to the largest tile
+      // (but is up to the encoder)
+      aom_wb_overwrite_literal(saved_wb, *largest_tile_id,
+                               tiles->log2_cols + tiles->log2_rows);
+    }
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
     // If more than one tile group. tile_size_bytes takes the default value 4
     // and does not need to be set. For a single tile group it is set in the
     // section below.

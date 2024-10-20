@@ -291,6 +291,9 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_DRL_REORDER_CONTROL
   arg_def_t enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  arg_def_t enable_tiles_cdfs_avg;
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   arg_def_t enable_parity_hiding;
 #if CONFIG_MRSSE
   arg_def_t enable_mrsse;

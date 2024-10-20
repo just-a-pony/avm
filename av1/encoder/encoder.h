@@ -913,6 +913,10 @@ typedef struct {
   // Indicates if the reorder of DRL should be enabled.
   int enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  // Indicates if tiles cdfs average should be enabled.
+  bool enable_tiles_cdfs_avg;
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   // Indicates if optical flow refinement should be enabled
   aom_opfl_refine_type enable_opfl_refine;
 #if CONFIG_AFFINE_REFINEMENT

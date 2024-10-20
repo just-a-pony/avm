@@ -239,6 +239,9 @@ struct av1_extracfg {
 #if CONFIG_DRL_REORDER_CONTROL
   int enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  int enable_tiles_cdfs_avg;
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   int enable_parity_hiding;
 #if CONFIG_MRSSE
   unsigned int enable_mrsse;
@@ -578,6 +581,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_DRL_REORDER_CONTROL
   1,    // enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  1,    // enable_tiles_cdfs_avg
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   1,    // enable_parity_hiding
 #if CONFIG_MRSSE
   0,
@@ -1053,6 +1059,9 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_DRL_REORDER_CONTROL
   cfg->enable_drl_reorder = extra_cfg->enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  cfg->enable_tiles_cdfs_avg = extra_cfg->enable_tiles_cdfs_avg;
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
 #if CONFIG_MRSSE
   cfg->enable_mrsse = extra_cfg->enable_mrsse;
@@ -1177,6 +1186,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_DRL_REORDER_CONTROL
   extra_cfg->enable_drl_reorder = cfg->enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  extra_cfg->enable_tiles_cdfs_avg = cfg->enable_tiles_cdfs_avg;
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   extra_cfg->enable_parity_hiding = cfg->enable_parity_hiding;
 #if CONFIG_MRSSE
   extra_cfg->enable_mrsse = cfg->enable_mrsse;
@@ -1461,6 +1473,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     }
   }
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  tool_cfg->enable_tiles_cdfs_avg = extra_cfg->enable_tiles_cdfs_avg;
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   tool_cfg->enable_opfl_refine = extra_cfg->enable_order_hint
                                      ? extra_cfg->enable_opfl_refine
                                      : AOM_OPFL_REFINE_NONE;
@@ -4141,6 +4156,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               argv, err_string)) {
     extra_cfg.enable_drl_reorder = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_DRL_REORDER_CONTROL
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tiles_cdfs_avg,
+                              argv, err_string)) {
+    extra_cfg.enable_tiles_cdfs_avg = arg_parse_int_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_parity_hiding,
                               argv, err_string)) {
     extra_cfg.enable_parity_hiding = arg_parse_uint_helper(&arg, err_string);
@@ -4451,6 +4469,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_DRL_REORDER_CONTROL
         1,
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+        1,  // enable_tiles_cdfs_avg
+#endif      // CONFIG_TILE_CDFS_AVG_TO_FRAME
         1,
 #if CONFIG_MRSSE
         0,

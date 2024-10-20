@@ -605,10 +605,13 @@ typedef struct SequenceHeader {
 #endif                       // CONFIG_LF_SUB_PU
   uint8_t enable_refmvbank;  // To turn on/off Ref MV Bank
 #if CONFIG_DRL_REORDER_CONTROL
-  uint8_t enable_drl_reorder;        // 0 - DRL reorder is disabled
-                                     // 1 - DRL reorder with constraints
-                                     // 2 - Always reorder DRL
-#endif                               // CONFIG_DRL_REORDER_CONTROL
+  uint8_t enable_drl_reorder;  // 0 - DRL reorder is disabled
+                               // 1 - DRL reorder with constraints
+                               // 2 - Always reorder DRL
+#endif                         // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+  uint8_t enable_tiles_cdfs_avg;     // To turn on/off tiles cdfs average
+#endif                               // CONFIG_TILE_CDFS_AVG_TO_FRAME
   uint8_t lr_tools_disable_mask[2];  // mask of lr tool(s) to disable.
                                      // To disable tool i in RestorationType
                                      // enum where:
@@ -4459,6 +4462,31 @@ static INLINE int is_new_nearmv_pred_mode_disallowed(const MB_MODE_INFO *mbmi) {
   return 0;
 }
 #endif  // CONFIG_OPT_INTER_MODE_CTX
+
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#define MAX_NUM_TILES_FOR_CDFS_AVG_LOG2 3
+
+// Compute the log2 value corresponding to the input value
+static INLINE int compute_log2(int value) {
+  int bits = 0;
+  while (value) {
+    ++bits;
+    value >>= 1;
+  }
+
+  return bits - 1;
+}
+
+// Compute the log2 value of the allowed number of tiles for CDF average
+static INLINE unsigned int av1_compute_allowed_tiles_log2(
+    const AV1_COMMON *const cm) {
+  const CommonTileParams *const tiles = &cm->tiles;
+  const unsigned int tiles_rows_log2 = compute_log2(tiles->rows);
+  const unsigned int tiles_cols_log2 = compute_log2(tiles->cols);
+  const unsigned int total_tiles_log2 = tiles_rows_log2 + tiles_cols_log2;
+  return AOMMIN(total_tiles_log2, MAX_NUM_TILES_FOR_CDFS_AVG_LOG2);
+}
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
 
 #ifdef __cplusplus
 }  // extern "C"
