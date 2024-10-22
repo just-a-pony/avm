@@ -440,8 +440,16 @@ int max_dictionary_size(int nopcw) {
 }
 
 void allocate_frame_filter_dictionary(AV1_COMMON *cm, int nopcw) {
-  cm->frame_filter_dictionary = aom_calloc(
-      max_dictionary_size(nopcw), sizeof(*cm->frame_filter_dictionary));
+  (void)nopcw;
+  // Use max_dictionary_size(0) below instead of max_dictionary_size(nopcw)
+  // to always allocate for the largest possible dictionary size.
+  // If nopcw is solely based on sequence level parameters, this
+  // should not be strictly necessary, since reallocation should
+  // happen with every new sequence parameter set. However the current
+  // reference decoder does not appear to reallocate when the sequence
+  // level parameters change. Hence this change is needed.
+  cm->frame_filter_dictionary =
+      aom_calloc(max_dictionary_size(0), sizeof(*cm->frame_filter_dictionary));
   cm->translated_pcwiener_filters =
       aom_calloc(NUM_PC_WIENER_FILTERS * NUM_PC_WIENER_TAPS_LUMA,
                  sizeof(*cm->translated_pcwiener_filters));
