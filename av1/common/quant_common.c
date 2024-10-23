@@ -18,18 +18,18 @@
 #include "av1/common/seg_common.h"
 
 // clang-format off
-//      32,                                              q_index = 0
+//      64,                                              q_index = 0
 // Q =  2^((q_index + 127)/24)                           q_index in [1, 24]
 //      Q[(q_index - 1) % 24) + 1] * 2^((q_index-1)/24)  q_index in [25, 255]
 static const uint16_t ac_qlookup_QTX[25] = {
-  32,    40,    41,    43,    44,    45,    47,    48,     49,   51,    52,
+  64,    40,    41,    43,    44,    45,    47,    48,     49,   51,    52,
   54,    55,    57,    59,    60,    62,    64,    66,     68,   70,    72,
   74,    76,    78
 };
 
 #ifndef NDEBUG
 static const uint16_t ac_qlookup_QTX_full[QINDEX_RANGE_8_BITS] = {
-  32,    40,    41,    43,    44,    45,    47,    48,    49,    51,    52,
+  64,    40,    41,    43,    44,    45,    47,    48,    49,    51,    52,
   54,    55,    57,    59,    60,    62,    64,    66,    68,    70,    72,
   74,    76,    78,    80,    82,    86,    88,    90,    94,    96,    98,
   102,   104,   108,   110,   114,   118,   120,   124,   128,   132,   136,
@@ -103,7 +103,7 @@ int32_t av1_dc_quant_QTX(int qindex, int delta, int base_dc_delta_q,
   int qindex_offset = MAXQ_OFFSET * (bit_depth - 8);
 
   // for 8 bit video, Q is calculated as
-  //      32,                                          q_idx = 0
+  //      64,                                          q_idx = 0
   // Q =  2^((q_idx + 127)/24)                         q_idx in [1, 24]
   //      Q[(q_idx - 1) % 24) + 1] * 2^((q_idx-1)/24)  q_idx in [25, 255]
   if (q_clamped > MAXQ_8_BITS) {
@@ -163,7 +163,7 @@ int32_t av1_ac_quant_QTX(int qindex, int delta, aom_bit_depth_t bit_depth) {
   int qindex_offset = MAXQ_OFFSET * (bit_depth - 8);
 
   // for 8 bit video, Q is calculated as
-  //      32,                                          q_idx = 0
+  //      64,                                          q_idx = 0
   // Q =  2^((q_idx + 127)/24)                         q_idx in [1, 24]
   //      Q[(q_idx - 1) % 24) + 1] * 2^((q_idx-1)/24)  q_idx in [25, 255]
   if (q_clamped > MAXQ_8_BITS) {

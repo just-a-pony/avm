@@ -20,7 +20,7 @@
 #define DCT_CONST_BITS 14
 #define DCT_CONST_ROUNDING (1 << (DCT_CONST_BITS - 1))
 
-#define UNIT_QUANT_SHIFT 2
+#define UNIT_QUANT_SHIFT 3
 #define UNIT_QUANT_FACTOR (1 << UNIT_QUANT_SHIFT)
 
 typedef struct txfm_param {
