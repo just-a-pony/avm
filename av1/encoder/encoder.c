@@ -794,6 +794,9 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
                         seq_params->tier[0]);
   }
 
+  // Need to call av1_rc_init() whenever any QP, lossless or related config
+  // is changed after compressor creation.
+  av1_rc_init(&cpi->oxcf, 0, rc);
   rc->baseline_gf_interval = (MIN_GF_INTERVAL + MAX_GF_INTERVAL) / 2;
 
   cm->features.refresh_frame_context =

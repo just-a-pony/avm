@@ -1323,7 +1323,12 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
       extra_cfg->lossless ? 0 : cfg->rc_min_quantizer + offset_qp;
   rc_cfg->worst_allowed_q =
       extra_cfg->lossless ? 0 : cfg->rc_max_quantizer + offset_qp;
-  rc_cfg->qp = extra_cfg->qp + offset_qp;
+  if (rc_cfg->best_allowed_q == 0 && rc_cfg->worst_allowed_q == 0)
+    extra_cfg->lossless = 1;
+
+  rc_cfg->qp = extra_cfg->lossless ? 0 : extra_cfg->qp + offset_qp;
+  rc_cfg->qp =
+      clamp(rc_cfg->qp, rc_cfg->best_allowed_q, rc_cfg->worst_allowed_q);
 
   rc_cfg->under_shoot_pct = cfg->rc_undershoot_pct;
   rc_cfg->over_shoot_pct = cfg->rc_overshoot_pct;

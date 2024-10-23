@@ -1493,7 +1493,6 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
         cm->seg.enabled ? av1_get_qindex(&cm->seg, i, quant_params->base_qindex,
                                          cm->seq_params.bit_depth)
                         : quant_params->base_qindex;
-
     xd->lossless[i] =
         qindex == 0 &&
         (quant_params->y_dc_delta_q + cm->seq_params.base_y_dc_delta_q <= 0) &&
