@@ -545,6 +545,29 @@ enum {
  */
 #define kSMSMaxStartMVs 1
 
+/*! \brief Contains aggregate quantities of the residual of a coded block.
+ *
+ * This is used by the ML models to learn certain encoder decisions, for ex. in
+ * partition pruning ML.
+ */
+typedef struct {
+  //! Maximum absolute value of all quantized coefficients of the residual.
+  int q_coeff_max;
+  //! Total number of non-zero quantized coefficients of the residual.
+  int q_coeff_nonz;
+  //! PSNR after trans-quant-dquant-itrans of the residual.
+  float psnr;
+  //! Sum of the transformed and quantized coefficients of the residual.
+  int satdq;
+  //! Sum of the transformed coefficients of the residual before quantization.
+  int satd;
+
+  //! SSE of the residual.
+  unsigned int sse;
+  //! Variance of the residual.
+  unsigned int var;
+} ResidualStats;
+
 /*! \brief Contains data for simple motion
  */
 typedef struct SimpleMotionData {
@@ -572,6 +595,11 @@ typedef struct SimpleMotionData {
 
   int ref_frame; /*!< ref frame used */
   int rdmult;    /*!< rd_mult for the block */
+
+  //! Has residual stats been computed, this is controlled by the flag.
+  bool residual_stats_valid;
+  //! Residual stats used by ML models.
+  ResidualStats residual_stats;
 } SimpleMotionData;
 
 /*!\cond */
