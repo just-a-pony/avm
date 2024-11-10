@@ -393,6 +393,10 @@ set_aom_config_var(CONFIG_TILE_CDFS_AVG_TO_FRAME 1
 set_aom_config_var(CONFIG_LC_REF_MV_BANK 1
                    "Enable low complexity refmv bank design")
 
+set_aom_config_var(
+  CONFIG_FRAME_HEADER_SIGNAL_OPT 1
+  "Enable the signaling optimization for certain frame header syntax elements")
+
 # This is an encode-only change.
 set_aom_config_var(CONFIG_OPFL_MV_SEARCH 1 "Optical flow based MV search")
 

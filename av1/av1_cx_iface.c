@@ -1420,16 +1420,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_DERIVED_MVD_SIGN
   tool_cfg->enable_mvd_sign_derive = extra_cfg->enable_mvd_sign_derive;
 #endif  // CONFIG_DERIVED_MVD_SIGN
-  tool_cfg->enable_tip = extra_cfg->enable_tip;
-  if (tool_cfg->enable_tip) {
-    if (cfg->g_lag_in_frames == 0) {
-      tool_cfg->enable_tip = 0;
-    }
-
-    if (cfg->kf_max_dist == 0) {
-      tool_cfg->enable_tip = 0;
-    }
-  }
 #if CONFIG_BAWP
   tool_cfg->enable_bawp = extra_cfg->enable_bawp;
 #endif  // CONFIG_BAWP
@@ -1463,6 +1453,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   tool_cfg->max_drl_refbvs = extra_cfg->max_drl_refbvs;
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   tool_cfg->enable_refmvbank = extra_cfg->enable_refmvbank;
+
 #if CONFIG_DRL_REORDER_CONTROL
   tool_cfg->enable_drl_reorder = extra_cfg->enable_drl_reorder;
   if (tool_cfg->enable_drl_reorder == 1) {
@@ -1473,12 +1464,46 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     }
   }
 #endif  // CONFIG_DRL_REORDER_CONTROL
+
 #if CONFIG_TILE_CDFS_AVG_TO_FRAME
   tool_cfg->enable_tiles_cdfs_avg = extra_cfg->enable_tiles_cdfs_avg;
 #endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+
+  if (extra_cfg->enable_order_hint && extra_cfg->enable_ref_frame_mvs) {
+    tool_cfg->enable_tip = extra_cfg->enable_tip;
+    if (tool_cfg->enable_tip) {
+      if (cfg->g_lag_in_frames == 0) {
+        tool_cfg->enable_tip = 0;
+      }
+
+      if (cfg->kf_max_dist == 0) {
+        tool_cfg->enable_tip = 0;
+      }
+    }
+  } else {
+    tool_cfg->enable_tip = 0;
+  }
+
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+  if (extra_cfg->enable_order_hint) {
+    tool_cfg->enable_opfl_refine = extra_cfg->enable_opfl_refine;
+    if (tool_cfg->enable_opfl_refine) {
+      if (cfg->g_lag_in_frames == 0) {
+        tool_cfg->enable_opfl_refine = 0;
+      }
+
+      if (cfg->kf_max_dist == 0) {
+        tool_cfg->enable_opfl_refine = 0;
+      }
+    }
+  } else {
+    tool_cfg->enable_opfl_refine = AOM_OPFL_REFINE_NONE;
+  }
+#else
   tool_cfg->enable_opfl_refine = extra_cfg->enable_order_hint
                                      ? extra_cfg->enable_opfl_refine
                                      : AOM_OPFL_REFINE_NONE;
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_AFFINE_REFINEMENT
   tool_cfg->enable_affine_refine =
       extra_cfg->enable_opfl_refine ? extra_cfg->enable_affine_refine : 0;

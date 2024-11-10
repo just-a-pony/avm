@@ -7167,6 +7167,29 @@ static INLINE int get_ref_frame_disp_order_hint(AV1_COMMON *const cm,
 }
 #endif  // CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
 
+static INLINE void read_screen_content_params(AV1_COMMON *const cm,
+                                              struct aom_read_bit_buffer *rb) {
+  const SequenceHeader *const seq_params = &cm->seq_params;
+  FeatureFlags *const features = &cm->features;
+
+  if (seq_params->force_screen_content_tools == 2) {
+    features->allow_screen_content_tools = aom_rb_read_bit(rb);
+  } else {
+    features->allow_screen_content_tools =
+        seq_params->force_screen_content_tools;
+  }
+
+  if (features->allow_screen_content_tools) {
+    if (seq_params->force_integer_mv == 2) {
+      features->cur_frame_force_integer_mv = aom_rb_read_bit(rb);
+    } else {
+      features->cur_frame_force_integer_mv = seq_params->force_integer_mv;
+    }
+  } else {
+    features->cur_frame_force_integer_mv = 0;
+  }
+}
+
 // On success, returns 0. On failure, calls aom_internal_error and does not
 // return.
 static int read_uncompressed_header(AV1Decoder *pbi,
@@ -7309,7 +7332,20 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       return 0;
     }
 
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+    if (aom_rb_read_bit(rb)) {
+      current_frame->frame_type = INTER_FRAME;
+    } else {
+      if (aom_rb_read_bit(rb)) {
+        current_frame->frame_type = KEY_FRAME;
+      } else {
+        current_frame->frame_type =
+            aom_rb_read_bit(rb) ? INTRA_ONLY_FRAME : S_FRAME;
+      }
+    }
+#else
     current_frame->frame_type = (FRAME_TYPE)aom_rb_read_literal(rb, 2);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     if (pbi->sequence_header_changed) {
       if (current_frame->frame_type == KEY_FRAME) {
         // This is the start of a new coded video sequence.
@@ -7375,24 +7411,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       pbi->valid_for_referencing[i] = 0;
     }
   }
+#if !CONFIG_FRAME_HEADER_SIGNAL_OPT
   features->disable_cdf_update = aom_rb_read_bit(rb);
 
-  if (seq_params->force_screen_content_tools == 2) {
-    features->allow_screen_content_tools = aom_rb_read_bit(rb);
-  } else {
-    features->allow_screen_content_tools =
-        seq_params->force_screen_content_tools;
-  }
-
-  if (features->allow_screen_content_tools) {
-    if (seq_params->force_integer_mv == 2) {
-      features->cur_frame_force_integer_mv = aom_rb_read_bit(rb);
-    } else {
-      features->cur_frame_force_integer_mv = seq_params->force_integer_mv;
-    }
-  } else {
-    features->cur_frame_force_integer_mv = 0;
-  }
+  read_screen_content_params(cm, rb);
+#endif  // !CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   int frame_size_override_flag = 0;
   features->allow_intrabc = 0;
@@ -7671,7 +7694,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     cm->current_frame.pyramid_level = 1;
     features->tip_frame_mode = TIP_FRAME_DISABLED;
     setup_frame_size(cm, frame_size_override_flag, rb);
-
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+    read_screen_content_params(cm, rb);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     if (
 #if !CONFIG_ENABLE_IBC_NAT
         features->allow_screen_content_tools &&
@@ -7712,6 +7737,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->cur_frame->film_grain_params_present =
           seq_params->film_grain_params_present;
       setup_frame_size(cm, frame_size_override_flag, rb);
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+      read_screen_content_params(cm, rb);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
       if (
 #if !CONFIG_ENABLE_IBC_NAT
           features->allow_screen_content_tools &&
@@ -7878,8 +7906,22 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->tip_global_motion.as_int = 0;
       cm->tip_interp_filter = MULTITAP_SHARP;
 #endif  // CONFIG_TIP_DIRECT_FRAME_MV
-      if (cm->seq_params.enable_tip) {
+      if (cm->seq_params.enable_tip
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+          && features->allow_ref_frame_mvs &&
+          cm->ref_frames_info.num_total_refs >= 2
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
+      ) {
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+        if (aom_rb_read_bit(rb)) {
+          features->tip_frame_mode = TIP_FRAME_AS_OUTPUT;
+        } else {
+          features->tip_frame_mode =
+              aom_rb_read_bit(rb) ? TIP_FRAME_AS_REF : TIP_FRAME_DISABLED;
+        }
+#else
         features->tip_frame_mode = aom_rb_read_literal(rb, 2);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_OPTFLOW_ON_TIP
         features->use_optflow_tip = 1;
 #endif  // CONFIG_OPTFLOW_ON_TIP
@@ -7933,6 +7975,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       }
 
       if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+        read_screen_content_params(cm, rb);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_IBC_SR_EXT
         if (
 #if !CONFIG_ENABLE_IBC_NAT
@@ -7986,10 +8031,19 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         }
         features->enabled_motion_modes = frame_enabled_motion_modes;
         if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
-          features->opfl_refine_type = aom_rb_read_literal(rb, 2);
-          if (features->opfl_refine_type == AOM_OPFL_REFINE_AUTO)
-            aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
-                               "Invalid frame level optical flow refine type");
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+          if (aom_rb_read_bit(rb)) {
+            features->opfl_refine_type = REFINE_SWITCHABLE;
+          } else {
+            features->opfl_refine_type =
+                aom_rb_read_bit(rb) ? REFINE_ALL : REFINE_NONE;
+          }
+#else
+        features->opfl_refine_type = aom_rb_read_literal(rb, 2);
+        if (features->opfl_refine_type == AOM_OPFL_REFINE_AUTO)
+          aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                             "Invalid frame level optical flow refine type");
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         } else {
           features->opfl_refine_type = cm->seq_params.enable_opfl_refine;
         }
@@ -8129,6 +8183,9 @@ YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
   cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
     features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+    features->disable_cdf_update = 1;
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if !CONFIG_TIP_DIRECT_MODE_SIGNALING
     read_tile_info(pbi, rb);
 #endif  // !CONFIG_TIP_DIRECT_MODE_SIGNALING
@@ -8143,6 +8200,10 @@ YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
     // No futher processing needed
     return 0;
   }
+
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+  features->disable_cdf_update = aom_rb_read_bit(rb);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   const int might_bwd_adapt = !(seq_params->reduced_still_picture_hdr) &&
                               !(features->disable_cdf_update);

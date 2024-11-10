@@ -452,7 +452,20 @@ static aom_codec_err_t decoder_peek_si_internal(const uint8_t *data,
         struct aom_read_bit_buffer rb = { data, data + data_sz, 0, NULL, NULL };
         const int show_existing_frame = aom_rb_read_bit(&rb);
         if (!show_existing_frame) {
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+          FRAME_TYPE frame_type = KEY_FRAME;
+          if (aom_rb_read_bit(&rb)) {
+            frame_type = INTER_FRAME;
+          } else {
+            if (aom_rb_read_bit(&rb)) {
+              frame_type = KEY_FRAME;
+            } else {
+              frame_type = aom_rb_read_bit(&rb) ? INTRA_ONLY_FRAME : S_FRAME;
+            }
+          }
+#else
           const FRAME_TYPE frame_type = (FRAME_TYPE)aom_rb_read_literal(&rb, 2);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
           if (frame_type == KEY_FRAME) {
             found_keyframe = 1;
             break;  // Stop here as no further OBUs will change the outcome.

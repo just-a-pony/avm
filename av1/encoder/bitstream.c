@@ -5870,6 +5870,29 @@ static AOM_INLINE void write_global_motion(AV1_COMP *cpi,
   }
 }
 
+static AOM_INLINE void write_screen_content_params(
+    AV1_COMMON *const cm, struct aom_write_bit_buffer *wb) {
+  const SequenceHeader *const seq_params = &cm->seq_params;
+  FeatureFlags *const features = &cm->features;
+  if (seq_params->force_screen_content_tools == 2) {
+    aom_wb_write_bit(wb, features->allow_screen_content_tools);
+  } else {
+    assert(features->allow_screen_content_tools ==
+           seq_params->force_screen_content_tools);
+  }
+
+  if (features->allow_screen_content_tools) {
+    if (seq_params->force_integer_mv == 2) {
+      aom_wb_write_bit(wb, features->cur_frame_force_integer_mv);
+    } else {
+      assert(features->cur_frame_force_integer_mv ==
+             seq_params->force_integer_mv);
+    }
+  } else {
+    assert(features->cur_frame_force_integer_mv == 0);
+  }
+}
+
 // New function based on HLS R18
 static AOM_INLINE void write_uncompressed_header_obu(
     AV1_COMP *cpi, struct aom_write_bit_buffer *saved_wb,
@@ -5905,7 +5928,19 @@ static AOM_INLINE void write_uncompressed_header_obu(
       aom_wb_write_bit(wb, 0);  // show_existing_frame
     }
 
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+    const int is_inter_frame = (current_frame->frame_type == INTER_FRAME);
+    aom_wb_write_bit(wb, is_inter_frame);
+    if (!is_inter_frame) {
+      const int is_key_frame = (current_frame->frame_type == KEY_FRAME);
+      aom_wb_write_bit(wb, is_key_frame);
+      if (!is_key_frame) {
+        aom_wb_write_bit(wb, current_frame->frame_type == INTRA_ONLY_FRAME);
+      }
+    }
+#else
     aom_wb_write_literal(wb, current_frame->frame_type, 2);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 
     aom_wb_write_bit(wb, cm->show_frame);
     if (cm->show_frame) {
@@ -5921,25 +5956,12 @@ static AOM_INLINE void write_uncompressed_header_obu(
       aom_wb_write_bit(wb, features->error_resilient_mode);
     }
   }
+
+#if !CONFIG_FRAME_HEADER_SIGNAL_OPT
   aom_wb_write_bit(wb, features->disable_cdf_update);
 
-  if (seq_params->force_screen_content_tools == 2) {
-    aom_wb_write_bit(wb, features->allow_screen_content_tools);
-  } else {
-    assert(features->allow_screen_content_tools ==
-           seq_params->force_screen_content_tools);
-  }
-
-  if (features->allow_screen_content_tools) {
-    if (seq_params->force_integer_mv == 2) {
-      aom_wb_write_bit(wb, features->cur_frame_force_integer_mv);
-    } else {
-      assert(features->cur_frame_force_integer_mv ==
-             seq_params->force_integer_mv);
-    }
-  } else {
-    assert(features->cur_frame_force_integer_mv == 0);
-  }
+  write_screen_content_params(cm, wb);
+#endif  // !CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   int frame_size_override_flag = 0;
 
@@ -6072,6 +6094,9 @@ static AOM_INLINE void write_uncompressed_header_obu(
   if (current_frame->frame_type == KEY_FRAME) {
     write_frame_size(cm, frame_size_override_flag, wb);
     assert(!av1_superres_scaled(cm) || !features->allow_intrabc);
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+    write_screen_content_params(cm, wb);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     if (
 #if !CONFIG_ENABLE_IBC_NAT
         features->allow_screen_content_tools &&
@@ -6103,6 +6128,9 @@ static AOM_INLINE void write_uncompressed_header_obu(
     if (current_frame->frame_type == INTRA_ONLY_FRAME) {
       write_frame_size(cm, frame_size_override_flag, wb);
       assert(!av1_superres_scaled(cm) || !features->allow_intrabc);
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+      write_screen_content_params(cm, wb);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
       if (
 #if !CONFIG_ENABLE_IBC_NAT
           features->allow_screen_content_tools &&
@@ -6199,10 +6227,24 @@ static AOM_INLINE void write_uncompressed_header_obu(
         aom_wb_write_bit(wb, features->allow_lf_sub_pu);
       }
 #endif  // CONFIG_LF_SUB_PU
-      if (cm->seq_params.enable_tip) {
+      if (cm->seq_params.enable_tip
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+          && features->allow_ref_frame_mvs &&
+          cm->ref_frames_info.num_total_refs >= 2
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
+      ) {
         assert(IMPLIES(av1_superres_scaled(cm),
                        features->tip_frame_mode != TIP_FRAME_AS_OUTPUT));
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+        const int is_tip_direct_output =
+            (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT);
+        aom_wb_write_bit(wb, is_tip_direct_output);
+        if (!is_tip_direct_output) {
+          aom_wb_write_bit(wb, features->tip_frame_mode == TIP_FRAME_AS_REF);
+        }
+#else
         aom_wb_write_literal(wb, features->tip_frame_mode, 2);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {
           aom_wb_write_bit(wb, features->allow_tip_hole_fill);
         }
@@ -6233,6 +6275,9 @@ static AOM_INLINE void write_uncompressed_header_obu(
 
       if (!cm->seq_params.enable_tip ||
           features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+        write_screen_content_params(cm, wb);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_IBC_SR_EXT
         if (
 #if !CONFIG_ENABLE_IBC_NAT
@@ -6283,7 +6328,16 @@ static AOM_INLINE void write_uncompressed_header_obu(
           }
         }
         if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+          const int is_opfl_switchable =
+              (features->opfl_refine_type == REFINE_SWITCHABLE);
+          aom_wb_write_bit(wb, is_opfl_switchable);
+          if (!is_opfl_switchable) {
+            aom_wb_write_bit(wb, features->opfl_refine_type == REFINE_ALL);
+          }
+#else
           aom_wb_write_literal(wb, features->opfl_refine_type, 2);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         }
       }
     }
@@ -6322,6 +6376,10 @@ static AOM_INLINE void write_uncompressed_header_obu(
       write_film_grain_params(cpi, wb);
     return;
   }
+
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+  aom_wb_write_bit(wb, features->disable_cdf_update);
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   const int might_bwd_adapt = !(seq_params->reduced_still_picture_hdr) &&
                               !(features->disable_cdf_update);
