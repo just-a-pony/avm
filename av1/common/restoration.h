@@ -192,6 +192,14 @@ typedef struct {
 extern const WienernsFilterParameters wienerns_filter_y;
 extern const WienernsFilterParameters wienerns_filter_uv;
 
+extern const int wienerns_simd_config_y[25][3];
+extern const int wienerns_simd_config_uv_from_uv[13][3];
+extern const int wienerns_simd_config_uv_from_y[13][3];
+extern const int wienerns_simd_subtract_center_config_y[24][3];
+extern const int wienerns_simd_subtract_center_config_uv_from_uv[12][3];
+extern const int wienerns_simd_subtract_center_config_uv_from_y[12][3];
+extern const int wienerns_simd_config_uv_from_uvonly[13][3];
+
 static INLINE const WienernsFilterParameters *get_wienerns_parameters(
     int qindex, int is_uv) {
   (void)qindex;
@@ -207,9 +215,12 @@ static INLINE const NonsepFilterConfig *get_wienerns_config(int qindex,
 
 #if CONFIG_COMBINE_PC_NS_WIENER
 const uint8_t *get_pc_wiener_sub_classifier(int num_classes, int set_index);
+
+// TODO(any): This function is deprecated and can be removed
 int wienerns_to_pcwiener_tap_config_translator(
     const NonsepFilterConfig *nsfilter_config, int *tap_translator,
     int max_num_taps);
+
 void fill_filter_with_match(WienerNonsepInfo *filter,
                             const int16_t *frame_filter_dictionary,
                             int dict_stride, const int *match_indices,
@@ -752,8 +763,11 @@ static INLINE int to_readwrite_framefilters(const RestorationInfo *rsi,
                                             int mi_row, int mi_col) {
   return ((rsi->frame_restoration_type == RESTORE_WIENER_NONSEP ||
            rsi->frame_restoration_type == RESTORE_SWITCHABLE) &&
-          rsi->frame_filters_on && !rsi->temporal_pred_flag && mi_row == 0 &&
-          mi_col == 0);
+          rsi->frame_filters_on &&
+#if CONFIG_TEMP_LR
+          !rsi->temporal_pred_flag &&
+#endif  // CONFIG_TEMP_LR
+          mi_row == 0 && mi_col == 0);
 }
 
 void av1_copy_rst_frame_filters(RestorationInfo *to,
