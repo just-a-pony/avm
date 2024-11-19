@@ -3947,8 +3947,10 @@ static AOM_INLINE void init_allowed_partitions(
   const bool has_cols = blk_params->has_cols;
   const bool ss_x = part_search_state->ss_x;
   const bool ss_y = part_search_state->ss_y;
+  const bool allow_rect = part_cfg->enable_rect_partitions ||
+                          !(blk_params->has_rows && blk_params->has_cols);
 
-  part_search_state->do_rectangular_split = part_cfg->enable_rect_partitions;
+  part_search_state->do_rectangular_split = allow_rect;
 
   const BLOCK_SIZE horz_subsize = get_partition_subsize(bsize, PARTITION_HORZ);
   const BLOCK_SIZE vert_subsize = get_partition_subsize(bsize, PARTITION_VERT);
@@ -3969,8 +3971,7 @@ static AOM_INLINE void init_allowed_partitions(
       (has_rows && has_cols &&
        is_bsize_geq(blk_params->bsize, blk_params->min_partition_size));
   part_search_state->partition_rect_allowed[HORZ] =
-      part_search_state->is_block_splittable &&
-      part_cfg->enable_rect_partitions &&
+      part_search_state->is_block_splittable && allow_rect &&
       is_bsize_geq(horz_subsize, blk_params->min_partition_size) &&
       is_horz_size_valid
 #if CONFIG_CB1TO4_SPLIT
@@ -3981,8 +3982,7 @@ static AOM_INLINE void init_allowed_partitions(
 #endif  // CONFIG_CB1TO4_SPLIT
       ;
   part_search_state->partition_rect_allowed[VERT] =
-      part_search_state->is_block_splittable &&
-      part_cfg->enable_rect_partitions &&
+      part_search_state->is_block_splittable && allow_rect &&
       is_bsize_geq(vert_subsize, blk_params->min_partition_size) &&
       is_vert_size_valid
 #if CONFIG_CB1TO4_SPLIT
@@ -4654,9 +4654,6 @@ static void rectangular_partition_search(
 
   // Loop over rectangular partition types.
   for (RECT_PART_TYPE i = HORZ; i < NUM_RECT_PARTS; i++) {
-    assert(IMPLIES(!cpi->oxcf.part_cfg.enable_rect_partitions,
-                   !part_search_state->partition_rect_allowed[i]));
-
     // Check if the HORZ / VERT partition search is to be performed.
     if (!is_rect_part_allowed(cpi, part_search_state, active_edge_type, i,
                               mi_pos_rect[i][0][i]))
@@ -8855,8 +8852,6 @@ BEGIN_PARTITION_SEARCH:
         cpi, &x->plane[0].src, bsize, xd->bd);
   }
 
-  assert(IMPLIES(!cpi->oxcf.part_cfg.enable_rect_partitions,
-                 !part_search_state.do_rectangular_split));
 #if CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_EXTENDED_SDP
   if (search_none_after_rect && !search_none_after_split &&
@@ -8910,8 +8905,6 @@ BEGIN_PARTITION_SEARCH:
   }
 
   // PARTITION_HORZ_4
-  assert(IMPLIES(!cpi->oxcf.part_cfg.enable_rect_partitions,
-                 !part4_search_allowed[HORZ4]));
   if (!part_search_state.terminate_partition_search &&
       part4_search_allowed[HORZ4] && blk_params.has_rows &&
       (part_search_state.do_rectangular_split ||
@@ -8930,8 +8923,6 @@ BEGIN_PARTITION_SEARCH:
   }
 
   // PARTITION_VERT_4
-  assert(IMPLIES(!cpi->oxcf.part_cfg.enable_rect_partitions,
-                 !part4_search_allowed[VERT4]));
   if (!part_search_state.terminate_partition_search &&
       part4_search_allowed[VERT4] && blk_params.has_cols &&
       (part_search_state.do_rectangular_split ||
