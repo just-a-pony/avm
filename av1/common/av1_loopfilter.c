@@ -268,15 +268,57 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
   }
 }
 
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+// Returns the starting mi location of chroma reference block for the current
+// mbmi, by setting `chroma_mi_row_start` and `chroma_mi_col_start`.
+static void get_chroma_start_location(const MB_MODE_INFO *mbmi,
+                                      TREE_TYPE tree_type,
+                                      int *chroma_mi_row_start,
+                                      int *chroma_mi_col_start) {
+  assert(tree_type == SHARED_PART || tree_type == CHROMA_PART);
+  if (tree_type == SHARED_PART) {
+    *chroma_mi_row_start = mbmi->chroma_ref_info.mi_row_chroma_base;
+    *chroma_mi_col_start = mbmi->chroma_ref_info.mi_col_chroma_base;
+  } else {
+    *chroma_mi_row_start = mbmi->chroma_mi_row_start;
+    *chroma_mi_col_start = mbmi->chroma_mi_col_start;
+  }
+}
+
+// Returns true if we are at the transform boundary.
+static bool is_tu_edge_helper(TX_SIZE tx_size, EDGE_DIR edge_dir,
+                              int relative_row, int relative_col) {
+  assert(tx_size != TX_INVALID);
+  assert(relative_row >= 0);
+  assert(relative_col >= 0);
+  const int relative_coord =
+      (edge_dir == VERT_EDGE) ? relative_col : relative_row;
+  const uint32_t tu_mask = edge_dir == VERT_EDGE
+                               ? tx_size_wide_unit[tx_size] - 1
+                               : tx_size_high_unit[tx_size] - 1;
+  return !(relative_coord & tu_mask);
+}
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+
 #if CONFIG_NEW_TX_PARTITION
 static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
                                   const MB_MODE_INFO *const mbmi,
                                   const EDGE_DIR edge_dir, const int mi_row,
                                   const int mi_col, const int plane,
                                   const TREE_TYPE tree_type,
-                                  const struct macroblockd_plane *plane_ptr) {
+                                  const struct macroblockd_plane *plane_ptr
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                                  ,
+                                  bool *tu_edge
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+) {
   assert(mbmi != NULL);
-  if (xd && xd->lossless[mbmi->segment_id]) return TX_4X4;
+  if (xd && xd->lossless[mbmi->segment_id]) {
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    *tu_edge = true;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    return TX_4X4;
+  }
   const int plane_type = av1_get_sdp_idx(tree_type);
 #if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE bsize_base =
@@ -285,24 +327,41 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 
   TX_SIZE tx_size = TX_INVALID;
   if (plane != AOM_PLANE_Y) {
-    tx_size =
 #if CONFIG_EXT_RECUR_PARTITIONS
-        av1_get_max_uv_txsize(bsize_base, plane_ptr->subsampling_x,
-                              plane_ptr->subsampling_y);
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    tx_size = av1_get_max_uv_txsize(bsize_base, plane_ptr->subsampling_x,
+                                    plane_ptr->subsampling_y);
+    int chroma_mi_row_start;
+    int chroma_mi_col_start;
+    get_chroma_start_location(mbmi, tree_type, &chroma_mi_row_start,
+                              &chroma_mi_col_start);
+    *tu_edge =
+        is_tu_edge_helper(tx_size, edge_dir, mi_row - chroma_mi_row_start,
+                          mi_col - chroma_mi_col_start);
 #else
-        av1_get_max_uv_txsize(mbmi->sb_type[plane_type],
-                              plane_ptr->subsampling_x,
-                              plane_ptr->subsampling_y);
+    tx_size = av1_get_max_uv_txsize(bsize_base, plane_ptr->subsampling_x,
+                                    plane_ptr->subsampling_y);
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+#else
+    tx_size = av1_get_max_uv_txsize(mbmi->sb_type[plane_type],
+
+                                    plane_ptr->subsampling_x,
+                                    plane_ptr->subsampling_y);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 
   if (plane == AOM_PLANE_Y && !mbmi->skip_txfm[SHARED_PART]) {
     const BLOCK_SIZE sb_type = mbmi->sb_type[plane_type];
 
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    const int blk_row = mi_row - mbmi->mi_row_start;
+    const int blk_col = mi_col - mbmi->mi_col_start;
+#else
     int row_mask = mi_size_high[sb_type] - 1;
     int col_mask = mi_size_wide[sb_type] - 1;
     const int blk_row = mi_row & row_mask;
     const int blk_col = mi_col & col_mask;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
 
     assert(blk_row >= 0);
     assert(blk_col >= 0);
@@ -322,11 +381,24 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
       int mi_blk_row = blk_row & 0xf;
       int mi_blk_col = blk_col & 0xf;
 
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+      *tu_edge = false;  // Default. May be updated below.
+#endif                   // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+
       int txb_idx;
       for (txb_idx = 0; txb_idx < txb_pos.n_partitions; ++txb_idx) {
         TX_SIZE sub_tx = sub_txs[txb_idx];
         int txh = tx_size_high_unit[sub_tx];
         int txw = tx_size_wide_unit[sub_tx];
+
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+        if ((edge_dir == VERT_EDGE &&
+             mi_blk_col == txb_pos.col_offset[txb_idx]) ||
+            (edge_dir == HORZ_EDGE &&
+             mi_blk_row == txb_pos.row_offset[txb_idx])) {
+          *tu_edge = true;
+        }
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
         if (mi_blk_row >= txb_pos.row_offset[txb_idx] &&
             mi_blk_row < txb_pos.row_offset[txb_idx] + txh &&
             mi_blk_col >= txb_pos.col_offset[txb_idx] &&
@@ -341,12 +413,19 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
       tx_size = tmp_tx_size;
     } else {
       tx_size = get_tx_partition_one_size(partition, max_tx_size);
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+      *tu_edge = is_tu_edge_helper(tx_size, edge_dir, blk_row, blk_col);
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
     }
   }
 
   if (plane == AOM_PLANE_Y && mbmi->skip_txfm[SHARED_PART]) {
     const BLOCK_SIZE sb_type = mbmi->sb_type[plane_type];
     tx_size = max_txsize_rect_lookup[sb_type];
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    *tu_edge = is_tu_edge_helper(tx_size, edge_dir, mi_row - mbmi->mi_row_start,
+                                 mi_col - mbmi->mi_col_start);
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
   }
 
   assert(tx_size < TX_SIZES_ALL);
@@ -421,6 +500,28 @@ typedef struct AV1_DEBLOCKING_PARAMETERS {
   uint16_t side_threshold;
 } AV1_DEBLOCKING_PARAMETERS;
 
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+static uint32_t get_pu_starting_cooord(const MB_MODE_INFO *const mbmi,
+                                       int plane, TREE_TYPE tree_type,
+                                       int scale_horz, int scale_vert,
+                                       EDGE_DIR edge_dir) {
+  uint32_t pu_starting_mi;
+  const bool vert_edge = (edge_dir == VERT_EDGE);
+  if (plane == AOM_PLANE_Y) {
+    pu_starting_mi = vert_edge ? mbmi->mi_col_start : mbmi->mi_row_start;
+  } else {
+    int chroma_mi_row_start;
+    int chroma_mi_col_start;
+    get_chroma_start_location(mbmi, tree_type, &chroma_mi_row_start,
+                              &chroma_mi_col_start);
+    pu_starting_mi = vert_edge ? chroma_mi_col_start : chroma_mi_row_start;
+  }
+  const uint32_t pu_stating_coord_luma = pu_starting_mi * MI_SIZE;
+  const int scale = vert_edge ? scale_horz : scale_vert;
+  return pu_stating_coord_luma >> scale;
+}
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+
 #if CONFIG_LF_SUB_PU
 // Check whether current block is TIP mode
 static AOM_INLINE void check_tip_edge(const MB_MODE_INFO *const mbmi,
@@ -475,9 +576,12 @@ static AOM_INLINE void check_rfmv_edge(const MB_MODE_INFO *const mbmi,
 // Check whether current block is sub-prediction mode
 static AOM_INLINE void check_sub_pu_edge(
     const AV1_COMMON *const cm, const MACROBLOCKD *const xd,
-    const MB_MODE_INFO *const mbmi, const int plane, const int scale_horz,
-    const int scale_vert, const EDGE_DIR edge_dir, const uint32_t coord,
-    TX_SIZE *ts, int32_t *sub_pu_edge) {
+    const MB_MODE_INFO *const mbmi, const int plane,
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    TREE_TYPE tree_type,
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    const int scale_horz, const int scale_vert, const EDGE_DIR edge_dir,
+    const uint32_t coord, TX_SIZE *ts, int32_t *sub_pu_edge) {
   if (!cm->features.allow_lf_sub_pu) return;
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   if (!is_inter) return;
@@ -505,17 +609,112 @@ static AOM_INLINE void check_sub_pu_edge(
       const uint32_t sub_pu_masks = edge_dir == VERT_EDGE
                                         ? tx_size_wide[temp_ts] - 1
                                         : tx_size_high[temp_ts] - 1;
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+      const uint32_t pu_starting_coord = get_pu_starting_cooord(
+          mbmi, plane, tree_type, scale_horz, scale_vert, edge_dir);
+      assert(coord >= pu_starting_coord);
+      const uint32_t relative_coord = coord - pu_starting_coord;
+      *sub_pu_edge = (relative_coord & sub_pu_masks) ? (0) : (1);
+#else
       *sub_pu_edge = (coord & sub_pu_masks) ? (0) : (1);
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
       if (*sub_pu_edge) *ts = temp_ts;
     }
   }
 }
 #endif  // CONFIG_LF_SUB_PU
 
+// Returns pointer to appropriate 'mi' with 'mi_grid_base', which contains
+// information about current coding block and given current 'x'/'y' location,
+// 'plane', 'region_type' etc. The `mi_row` and `mi_col` corresponding to
+// 'x'/'y' location are also set.
+// Note that, this function is required because, for chroma plane in particular,
+// the actual 'mi' location maybe at an offset from the mi_row/mi_col.
+MB_MODE_INFO **get_mi_location(const AV1_COMMON *const cm, int scale_horz,
+                               int scale_vert, uint32_t x, uint32_t y,
+                               int plane, int *mi_row, int *mi_col) {
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+  const int this_mi_row = (y << scale_vert) >> MI_SIZE_LOG2;
+  const int this_mi_col = (x << scale_horz) >> MI_SIZE_LOG2;
+  MB_MODE_INFO **this_mi = cm->mi_params.mi_grid_base +
+                           this_mi_row * cm->mi_params.mi_stride + this_mi_col;
+  *mi_row = this_mi_row;
+  *mi_col = this_mi_col;
+  if (plane > 0) {  // Chroma plane.
+    // Two possible cases:
+    // 1. Decoupled luma/chroma tree OR
+    // 2. Shared luma/chroma tree.
+    // Need to get appropriate 'mi' location differently for each case.
+    const bool is_sdp_eligible = cm->seq_params.enable_sdp &&
+                                 !cm->seq_params.monochrome &&
+#if CONFIG_EXTENDED_SDP
+                                 this_mi[0]->region_type == INTRA_REGION
+#else
+                                 frame_is_intra_only(cm)
+#endif  // CONFIG_EXTENDED_SDP
+        ;
+    if (is_sdp_eligible) {
+      // 1. Decoupled luma/chroma tree:
+      // Get top-left mi location using chroma_mi_row_start/chroma_mi_col_start.
+      MB_MODE_INFO **top_left_mi =
+          cm->mi_params.mi_grid_base +
+          this_mi[0]->chroma_mi_row_start * cm->mi_params.mi_stride +
+          this_mi[0]->chroma_mi_col_start;
+      assert(top_left_mi[0]->region_type == INTRA_REGION);
+      return top_left_mi;
+    } else {
+      // 2. Shared luma/chroma tree.
+      // Get bottom-right mi location using chroma_ref_info.
+      const CHROMA_REF_INFO *chroma_ref_info = &this_mi[0]->chroma_ref_info;
+      if (!chroma_ref_info->is_chroma_ref) {
+        // For sub8x8 block, if this mi is NOT a chroma ref, then chroma
+        // prediction mode is obtained from the bottom/right mi. So, for chroma
+        // plane, mi_row and mi_col should map to the bottom/right mi structure.
+        // Also, mi_grid_base array is only filled in for on-screen mi's, even
+        // though chroma block can extend over the edge. So, make sure we stay
+        // within mi_grid_base array's bottom and right limits.
+        const int bottom_mi_row =
+            AOMMIN(chroma_ref_info->mi_row_chroma_base +
+                       mi_size_high[chroma_ref_info->bsize_base] - 1,
+                   cm->mi_params.mi_rows - 1);
+        const int right_mi_col =
+            AOMMIN(chroma_ref_info->mi_col_chroma_base +
+                       mi_size_wide[chroma_ref_info->bsize_base] - 1,
+                   cm->mi_params.mi_cols - 1);
+        MB_MODE_INFO **bottom_right_mi =
+            cm->mi_params.mi_grid_base +
+            bottom_mi_row * cm->mi_params.mi_stride + right_mi_col;
+        assert(bottom_right_mi[0]->chroma_ref_info.is_chroma_ref);
+        assert(bottom_right_mi[0]->region_type == MIXED_INTER_INTRA_REGION);
+        return bottom_right_mi;
+      }
+    }
+  }
+  return this_mi;
+#else
+  (void)plane;
+  // for sub8x8 block, chroma prediction mode is obtained from the bottom/right
+  // mi structure of the co-located 8x8 luma block. so for chroma plane, mi_row
+  // and mi_col should map to the bottom/right mi structure, i.e, both mi_row
+  // and mi_col should be odd number for chroma plane.
+  const int this_mi_row = scale_vert | ((y << scale_vert) >> MI_SIZE_LOG2);
+  const int this_mi_col = scale_horz | ((x << scale_horz) >> MI_SIZE_LOG2);
+  *mi_row = this_mi_row;
+  *mi_col = this_mi_col;
+  return cm->mi_params.mi_grid_base + this_mi_row * cm->mi_params.mi_stride +
+         this_mi_col;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+}
+
 // Return TX_SIZE from get_transform_size(), so it is plane and direction
 // aware
 static TX_SIZE set_lpf_parameters(
-    AV1_DEBLOCKING_PARAMETERS *const params, const ptrdiff_t mode_step,
+    AV1_DEBLOCKING_PARAMETERS *const params,
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    uint32_t prev_x, uint32_t prev_y,
+#else
+    const ptrdiff_t mode_step,
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
     const AV1_COMMON *const cm, const MACROBLOCKD *const xd,
     const EDGE_DIR edge_dir, const uint32_t x, const uint32_t y,
     const int plane, const struct macroblockd_plane *const plane_ptr) {
@@ -543,16 +742,12 @@ static TX_SIZE set_lpf_parameters(
     return TX_4X4;
   }
 
-  const uint32_t scale_horz = plane_ptr->subsampling_x;
-  const uint32_t scale_vert = plane_ptr->subsampling_y;
-  // for sub8x8 block, chroma prediction mode is obtained from the bottom/right
-  // mi structure of the co-located 8x8 luma block. so for chroma plane, mi_row
-  // and mi_col should map to the bottom/right mi structure, i.e, both mi_row
-  // and mi_col should be odd number for chroma plane.
-  const int mi_row = scale_vert | ((y << scale_vert) >> MI_SIZE_LOG2);
-  const int mi_col = scale_horz | ((x << scale_horz) >> MI_SIZE_LOG2);
-  MB_MODE_INFO **mi =
-      cm->mi_params.mi_grid_base + mi_row * cm->mi_params.mi_stride + mi_col;
+  const int scale_horz = plane_ptr->subsampling_x;
+  const int scale_vert = plane_ptr->subsampling_y;
+  int mi_row;
+  int mi_col;
+  MB_MODE_INFO **mi = get_mi_location(cm, scale_horz, scale_vert, x, y, plane,
+                                      &mi_row, &mi_col);
   const MB_MODE_INFO *mbmi = mi[0];
   // If current mbmi is not correctly setup, return an invalid value to stop
   // filtering. One example is that if this tile is not coded, then its mbmi
@@ -569,24 +764,43 @@ static TX_SIZE set_lpf_parameters(
   const int plane_type = is_sdp_eligible && plane > 0;
 #endif  // CONFIG_EXTENDED_SDP
 
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+  bool tu_edge;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
 #if CONFIG_LF_SUB_PU
   TX_SIZE ts = get_transform_size(xd, mi[0], edge_dir, mi_row, mi_col, plane,
-                                  tree_type, plane_ptr);
+                                  tree_type, plane_ptr
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                                  ,
+                                  &tu_edge
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+  );
   const TX_SIZE ts_ori = ts;
 #else
   const TX_SIZE ts = get_transform_size(xd, mi[0], edge_dir, mi_row, mi_col,
-                                        plane, tree_type, plane_ptr);
+                                        plane, tree_type, plane_ptr
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                                        ,
+                                        &tu_edge
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+  );
 #endif  // CONFIG_LF_SUB_PU
   {
     const uint32_t coord = (VERT_EDGE == edge_dir) ? (x) : (y);
+#if !CONFIG_ALIGN_DEBLOCK_ERP_SDP
     const uint32_t transform_masks =
         edge_dir == VERT_EDGE ? tx_size_wide[ts] - 1 : tx_size_high[ts] - 1;
-    const int32_t tu_edge = (coord & transform_masks) ? (0) : (1);
+    const bool tu_edge = (coord & transform_masks) ? (0) : (1);
+#endif  // !CONFIG_ALIGN_DEBLOCK_ERP_SDP
 
 #if CONFIG_LF_SUB_PU
     int32_t sub_pu_edge = 0;
-    check_sub_pu_edge(cm, xd, mbmi, plane, scale_horz, scale_vert, edge_dir,
-                      coord, &ts, &sub_pu_edge);
+    check_sub_pu_edge(cm, xd, mbmi, plane,
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                      tree_type,
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                      scale_horz, scale_vert, edge_dir, coord, &ts,
+                      &sub_pu_edge);
     if (!tu_edge && !sub_pu_edge)
 #else
     if (!tu_edge)
@@ -604,12 +818,22 @@ static TX_SIZE set_lpf_parameters(
           mbmi->skip_txfm[plane_type] && is_inter_block(mbmi, tree_type);
       if (coord) {
         {
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+          assert(prev_x <= x && prev_y <= y);
+          int pv_row;
+          int pv_col;
+          MB_MODE_INFO **mi_prev_ptr =
+              get_mi_location(cm, scale_horz, scale_vert, prev_x, prev_y, plane,
+                              &pv_row, &pv_col);
+          const MB_MODE_INFO *const mi_prev = mi_prev_ptr[0];
+#else
           const MB_MODE_INFO *const mi_prev = *(mi - mode_step);
           if (mi_prev == NULL) return TX_INVALID;
           const int pv_row =
               (VERT_EDGE == edge_dir) ? (mi_row) : (mi_row - (1 << scale_vert));
           const int pv_col =
               (VERT_EDGE == edge_dir) ? (mi_col - (1 << scale_horz)) : (mi_col);
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
 
 #if CONFIG_EXTENDED_SDP
           TREE_TYPE prev_tree_type = SHARED_PART;
@@ -623,14 +847,29 @@ static TX_SIZE set_lpf_parameters(
           if (is_prev_sdp_eligible) {
             prev_tree_type = (plane == AOM_PLANE_Y) ? LUMA_PART : CHROMA_PART;
           }
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+          bool prev_tu_edge;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
           const TX_SIZE pv_ts =
               get_transform_size(xd, mi_prev, edge_dir, pv_row, pv_col, plane,
-                                 prev_tree_type, plane_ptr);
+                                 prev_tree_type, plane_ptr
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                                 ,
+                                 &prev_tu_edge
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+              );
 #else
 
-          const TX_SIZE pv_ts =
-              get_transform_size(xd, mi_prev, edge_dir, pv_row, pv_col, plane,
-                                 tree_type, plane_ptr);
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+          bool prev_tu_edge;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+          const TX_SIZE pv_ts = get_transform_size(
+              xd, mi_prev, edge_dir, pv_row, pv_col, plane, tree_type, plane_ptr
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+              ,
+              &prev_tu_edge
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+          );
 #endif  // CONFIG_EXTENDED_SDP
 
           const uint32_t pv_q =
@@ -640,6 +879,11 @@ static TX_SIZE set_lpf_parameters(
 
           const int pv_skip_txfm = mi_prev->skip_txfm[plane_type] &&
                                    is_inter_block(mi_prev, tree_type);
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+          const uint32_t pu_starting_coord = get_pu_starting_cooord(
+              mbmi, plane, tree_type, scale_horz, scale_vert, edge_dir);
+          const bool pu_edge = (coord == pu_starting_coord);
+#else
           const BLOCK_SIZE bsize = get_mb_plane_block_size_from_tree_type(
               mbmi, tree_type, plane, plane_ptr->subsampling_x,
               plane_ptr->subsampling_y);
@@ -653,8 +897,9 @@ static TX_SIZE set_lpf_parameters(
                                            ? block_size_wide[bsize] - 1
                                            : block_size_high[bsize] - 1;
           const int32_t pu_edge = !(coord & prediction_masks);
-          // if the current and the previous blocks are skipped,
-          // deblock the edge if the edge belongs to a PU's edge only.
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+        // if the current and the previous blocks are skipped,
+        // deblock the edge if the edge belongs to a PU's edge only.
 #if DF_REDUCED_SB_EDGE
           const BLOCK_SIZE superblock_size = get_plane_block_size(
               cm->sb_size, plane_ptr->subsampling_x, plane_ptr->subsampling_y);
@@ -845,6 +1090,10 @@ void av1_filter_block_plane_vert(const AV1_COMMON *const cm,
   const int x_range = (mib_size >> scale_horz);
   for (int y = 0; y < y_range; y++) {
     uint16_t *p = dst_ptr + y * MI_SIZE * dst_stride;
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    uint32_t prev_x =
+        (mi_col == 0) ? 0 : ((mi_col - 1) * MI_SIZE) >> scale_horz;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
     for (int x = 0; x < x_range;) {
       // inner loop always filter vertical edges in a MI block. If MI size
       // is 8x8, it will filter the vertical edge aligned with a 8x8 block.
@@ -857,9 +1106,14 @@ void av1_filter_block_plane_vert(const AV1_COMMON *const cm,
       AV1_DEBLOCKING_PARAMETERS params;
       memset(&params, 0, sizeof(params));
 
-      tx_size =
-          set_lpf_parameters(&params, ((ptrdiff_t)1 << scale_horz), cm, xd,
-                             VERT_EDGE, curr_x, curr_y, plane, plane_ptr);
+      tx_size = set_lpf_parameters(&params,
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                                   prev_x, curr_y,
+#else
+                                   ((ptrdiff_t)1 << scale_horz),
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                                   cm, xd, VERT_EDGE, curr_x, curr_y, plane,
+                                   plane_ptr);
       if (tx_size == TX_INVALID) {
         params.filter_length = 0;
         tx_size = TX_4X4;
@@ -878,6 +1132,9 @@ void av1_filter_block_plane_vert(const AV1_COMMON *const cm,
       }
 
       // advance the destination pointer
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+      prev_x = curr_x;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
       advance_units = tx_size_wide_unit[tx_size];
       x += advance_units;
       p += advance_units * MI_SIZE;
@@ -899,6 +1156,10 @@ void av1_filter_block_plane_horz(const AV1_COMMON *const cm,
   const int x_range = (mib_size >> scale_horz);
   for (int x = 0; x < x_range; x++) {
     uint16_t *p = dst_ptr + x * MI_SIZE;
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+    uint32_t prev_y =
+        (mi_row == 0) ? 0 : ((mi_row - 1) * MI_SIZE) >> scale_vert;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
     for (int y = 0; y < y_range;) {
       // inner loop always filter vertical edges in a MI block. If MI size
       // is 8x8, it will first filter the vertical edge aligned with a 8x8
@@ -911,9 +1172,15 @@ void av1_filter_block_plane_horz(const AV1_COMMON *const cm,
       AV1_DEBLOCKING_PARAMETERS params;
       memset(&params, 0, sizeof(params));
 
-      tx_size = set_lpf_parameters(
-          &params, (cm->mi_params.mi_stride << scale_vert), cm, xd, HORZ_EDGE,
-          curr_x, curr_y, plane, plane_ptr);
+      tx_size = set_lpf_parameters(&params,
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+                                   curr_x, prev_y,
+#else
+                                   (cm->mi_params.mi_stride << scale_vert),
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
+
+                                   cm, xd, HORZ_EDGE, curr_x, curr_y, plane,
+                                   plane_ptr);
       if (tx_size == TX_INVALID) {
         params.filter_length = 0;
         tx_size = TX_4X4;
@@ -932,85 +1199,12 @@ void av1_filter_block_plane_horz(const AV1_COMMON *const cm,
       }
 
       // advance the destination pointer
+#if CONFIG_ALIGN_DEBLOCK_ERP_SDP
+      prev_y = curr_y;
+#endif  // CONFIG_ALIGN_DEBLOCK_ERP_SDP
       advance_units = tx_size_high_unit[tx_size];
       y += advance_units;
       p += advance_units * dst_stride * MI_SIZE;
-    }
-  }
-}
-
-void av1_filter_block_plane_vert_test(const AV1_COMMON *const cm,
-                                      const MACROBLOCKD *const xd,
-                                      const int plane,
-                                      const MACROBLOCKD_PLANE *const plane_ptr,
-                                      const uint32_t mi_row,
-                                      const uint32_t mi_col) {
-  const uint32_t scale_horz = plane_ptr->subsampling_x;
-  const uint32_t scale_vert = plane_ptr->subsampling_y;
-  const int y_range = cm->mi_params.mi_rows >> scale_vert;
-  const int x_range = cm->mi_params.mi_cols >> scale_horz;
-  for (int y = 0; y < y_range; y++) {
-    for (int x = 0; x < x_range;) {
-      // inner loop always filter vertical edges in a MI block. If MI size
-      // is 8x8, it will filter the vertical edge aligned with a 8x8 block.
-      // If 4x4 transform is used, it will then filter the internal edge
-      //  aligned with a 4x4 block
-      const uint32_t curr_x = ((mi_col * MI_SIZE) >> scale_horz) + x * MI_SIZE;
-      const uint32_t curr_y = ((mi_row * MI_SIZE) >> scale_vert) + y * MI_SIZE;
-      uint32_t advance_units;
-      TX_SIZE tx_size;
-      AV1_DEBLOCKING_PARAMETERS params;
-      memset(&params, 0, sizeof(params));
-
-      tx_size =
-          set_lpf_parameters(&params, ((ptrdiff_t)1 << scale_horz), cm, xd,
-                             VERT_EDGE, curr_x, curr_y, plane, plane_ptr);
-      if (tx_size == TX_INVALID) {
-        params.filter_length = 0;
-        tx_size = TX_4X4;
-      }
-
-      // advance the destination pointer
-      advance_units = tx_size_wide_unit[tx_size];
-      x += advance_units;
-    }
-  }
-}
-
-void av1_filter_block_plane_horz_test(const AV1_COMMON *const cm,
-                                      const MACROBLOCKD *const xd,
-                                      const int plane,
-                                      const MACROBLOCKD_PLANE *const plane_ptr,
-                                      const uint32_t mi_row,
-                                      const uint32_t mi_col) {
-  const uint32_t scale_horz = plane_ptr->subsampling_x;
-  const uint32_t scale_vert = plane_ptr->subsampling_y;
-  const int y_range = cm->mi_params.mi_rows >> scale_vert;
-  const int x_range = cm->mi_params.mi_cols >> scale_horz;
-  for (int x = 0; x < x_range; x++) {
-    for (int y = 0; y < y_range;) {
-      // inner loop always filter vertical edges in a MI block. If MI size
-      // is 8x8, it will first filter the vertical edge aligned with a 8x8
-      // block. If 4x4 transform is used, it will then filter the internal
-      // edge aligned with a 4x4 block
-      const uint32_t curr_x = ((mi_col * MI_SIZE) >> scale_horz) + x * MI_SIZE;
-      const uint32_t curr_y = ((mi_row * MI_SIZE) >> scale_vert) + y * MI_SIZE;
-      uint32_t advance_units;
-      TX_SIZE tx_size;
-      AV1_DEBLOCKING_PARAMETERS params;
-      memset(&params, 0, sizeof(params));
-
-      tx_size = set_lpf_parameters(
-          &params, (cm->mi_params.mi_stride << scale_vert), cm, xd, HORZ_EDGE,
-          curr_x, curr_y, plane, plane_ptr);
-      if (tx_size == TX_INVALID) {
-        params.filter_length = 0;
-        tx_size = TX_4X4;
-      }
-
-      // advance the destination pointer
-      advance_units = tx_size_high_unit[tx_size];
-      y += advance_units;
     }
   }
 }
