@@ -426,6 +426,101 @@ int av1_get_intra_inter_context(const MACROBLOCKD *xd) {
   }
 }
 
+#if CONFIG_CCSO_IMPROVE
+// This funtion is to check if the 1st mbmi of the current ccso unit is inside
+// the current tile. The 1st mbmi is used to signal the ccso block control flag
+// for the current ccso unit.
+bool av1_check_ccso_mbmi_inside_tile(const MACROBLOCKD *xd,
+                                     const MB_MODE_INFO *const mbmi) {
+  const TileInfo *const tile = &xd->tile;
+  const int blk_size_y =
+      (1 << (CCSO_BLK_SIZE + xd->plane[1].subsampling_y - MI_SIZE_LOG2)) - 1;
+  const int blk_size_x =
+      (1 << (CCSO_BLK_SIZE + xd->plane[1].subsampling_x - MI_SIZE_LOG2)) - 1;
+
+  return (((mbmi->mi_row_start & ~blk_size_y) >= tile->mi_row_start) &&
+          ((mbmi->mi_col_start & ~blk_size_x) >= tile->mi_col_start) &&
+          ((mbmi->mi_row_start & ~blk_size_y) < tile->mi_row_end) &&
+          ((mbmi->mi_col_start & ~blk_size_x) < tile->mi_col_end));
+}
+
+// This function is the derive the neighboring context of ccso_cdf. -- means
+// neighbouring ccso unit or ccso flag is not available. 0 -
+// neighbor0_ccso_false/neighbor1_ccso_false, neighbor0_ccso_false/--,
+// --/neighbor1_ccso_false, --/-- 1 - neighbor0_ccso_true/neighbor0_ccso_false,
+// neighbor0_ccso_false/neighbor1_ccso_true 2 - neighbor0_ccso_true/--,
+// --/neighbor1_ccso_true, neighbor0_ccso_true/neighbor1_ccso_true &&
+// neighbor0_ccso_unit==neighbor1_ccso_unit 3 -
+// neighbor0_ccso_true/neighbor1_ccso_true &&
+// neighbor0_ccso_unit!=neighbor1_ccso_unit
+int av1_get_ccso_context(const MACROBLOCKD *xd, int plane) {
+  const MB_MODE_INFO *const neighbor0 = xd->neighbors[0];
+  const MB_MODE_INFO *const neighbor1 = xd->neighbors[1];
+
+  bool neighbor0_ccso_available = 0;
+  bool neighbor1_ccso_available = 0;
+
+  if (neighbor0) {
+    neighbor0_ccso_available = av1_check_ccso_mbmi_inside_tile(xd, neighbor0);
+  }
+
+  if (neighbor1) {
+    neighbor1_ccso_available = av1_check_ccso_mbmi_inside_tile(xd, neighbor1);
+  }
+
+  const int blk_size_y =
+      (1 << (CCSO_BLK_SIZE + xd->plane[1].subsampling_y - MI_SIZE_LOG2)) - 1;
+  const int blk_size_x =
+      (1 << (CCSO_BLK_SIZE + xd->plane[1].subsampling_x - MI_SIZE_LOG2)) - 1;
+
+  if (neighbor0_ccso_available && neighbor1_ccso_available) {
+    int is_neighbor0_ccso = 0;
+    int is_neighbor1_ccso = 0;
+
+    if (plane == 0) {
+      is_neighbor0_ccso = neighbor0->ccso_blk_y;
+      is_neighbor1_ccso = neighbor1->ccso_blk_y;
+    } else if (plane == 1) {
+      is_neighbor0_ccso = neighbor0->ccso_blk_u;
+      is_neighbor1_ccso = neighbor1->ccso_blk_u;
+    } else if (plane == 2) {
+      is_neighbor0_ccso = neighbor0->ccso_blk_v;
+      is_neighbor1_ccso = neighbor1->ccso_blk_v;
+    }
+
+    if ((neighbor0->mi_row_start & ~blk_size_y) !=
+            (neighbor1->mi_row_start & ~blk_size_y) ||
+        (neighbor0->mi_col_start & ~blk_size_x) !=
+            (neighbor1->mi_col_start & ~blk_size_x)) {
+      // neighbor0 and neighbor1 belong to different superblocks
+      return is_neighbor0_ccso && is_neighbor1_ccso
+                 ? 3
+                 : is_neighbor0_ccso || is_neighbor1_ccso;
+    } else {
+      // neighbor0 and neighbor1 belong to the same superblock
+      return is_neighbor0_ccso ? 2 : 0;
+    }
+  } else if (neighbor0_ccso_available || neighbor1_ccso_available) {
+    const MB_MODE_INFO *const neighbor =
+        neighbor0_ccso_available ? neighbor0 : neighbor1;
+
+    int is_neighbor_ccso = 0;
+
+    if (plane == 0) {
+      is_neighbor_ccso = neighbor->ccso_blk_y;
+    } else if (plane == 1) {
+      is_neighbor_ccso = neighbor->ccso_blk_u;
+    } else if (plane == 2) {
+      is_neighbor_ccso = neighbor->ccso_blk_v;
+    }
+
+    return is_neighbor_ccso ? 2 : 0;
+  } else {
+    return 0;
+  }
+}
+#endif  // CONFIG_CCSO_IMPROVE
+
 #define IS_BACKWARD_REF_FRAME(ref_frame) \
   (get_dir_rank(cm, ref_frame, NULL) == 1)
 
