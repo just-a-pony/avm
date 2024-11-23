@@ -576,7 +576,7 @@ static INLINE void highbd_ibp_dc_top_predictor(uint16_t *dst, ptrdiff_t stride,
   for (r = 0; r < len; r++) {
     for (c = 0; c < bw; c++) {
       int val = ROUND_POWER_OF_TWO(
-          above[c] * (256 - weights[r]) + dst[c] * weights[r],
+          above[c] * (IBP_WEIGHT_REF - weights[r]) + dst[c] * weights[r],
           IBP_WEIGHT_SHIFT);
       dst[c] = val;
     }
@@ -594,24 +594,33 @@ static INLINE void highbd_ibp_dc_predictor(uint16_t *dst, ptrdiff_t stride,
   uint16_t *orig_dst = dst;
   int len_h = bh >> 2;
   int len_w = bw >> 2;
+  int row_start = 0;
+  int col_start = 0;
+#if CONFIG_FIX_IBP_DC
+  if (bw >= bh)
+    row_start = len_h;
+  else
+    col_start = len_w;
+#endif  // CONFIG_FIX_IBP_DC
   uint8_t weights_index = size_to_weights_index[bh >> 3];
   const uint8_t *weights = ibp_weights[weights_index];
   for (r = 0; r < len_h; r++) {
-    for (c = 0; c < bw; c++) {
+    for (c = col_start; c < bw; c++) {
       int val = ROUND_POWER_OF_TWO(
-          above[c] * (256 - weights[r]) + dst[c] * weights[r],
+          above[c] * (IBP_WEIGHT_REF - weights[r]) + dst[c] * weights[r],
           IBP_WEIGHT_SHIFT);
       dst[c] = val;
     }
     dst += stride;
   }
-  dst = orig_dst;
+  dst = orig_dst + row_start * stride;
   weights_index = size_to_weights_index[bw >> 3];
   weights = ibp_weights[weights_index];
-  for (r = 0; r < bh; r++) {
+  for (r = row_start; r < bh; r++) {
     for (c = 0; c < len_w; c++) {
       int val = ROUND_POWER_OF_TWO(
-          left[r] * (256 - weights[c]) + dst[c] * weights[c], IBP_WEIGHT_SHIFT);
+          left[r] * (IBP_WEIGHT_REF - weights[c]) + dst[c] * weights[c],
+          IBP_WEIGHT_SHIFT);
       dst[c] = val;
     }
     dst += stride;
@@ -630,7 +639,8 @@ static INLINE void ibp_dc_left_predictor(uint8_t *dst, ptrdiff_t stride, int bw,
   for (r = 0; r < bh; r++) {
     for (c = 0; c < len; c++) {
       int val = ROUND_POWER_OF_TWO(
-          left[r] * (256 - weights[c]) + dst[c] * weights[c], IBP_WEIGHT_SHIFT);
+          left[r] * (IBP_WEIGHT_REF - weights[c]) + dst[c] * weights[c],
+          IBP_WEIGHT_SHIFT);
       dst[c] = val;
     }
     dst += stride;
@@ -649,7 +659,7 @@ static INLINE void ibp_dc_top_predictor(uint8_t *dst, ptrdiff_t stride, int bw,
   for (r = 0; r < len; r++) {
     for (c = 0; c < bw; c++) {
       int val = ROUND_POWER_OF_TWO(
-          above[c] * (256 - weights[r]) + dst[c] * weights[r],
+          above[c] * (IBP_WEIGHT_REF - weights[r]) + dst[c] * weights[r],
           IBP_WEIGHT_SHIFT);
       dst[c] = val;
     }
@@ -666,22 +676,31 @@ static INLINE void ibp_dc_predictor(uint8_t *dst, ptrdiff_t stride, int bw,
   const uint8_t *weights = ibp_weights[weights_index];
   int len_w = bw >> 2;
   int len_h = bh >> 2;
+  int row_start = 0;
+  int col_start = 0;
+#if CONFIG_FIX_IBP_DC
+  if (bw >= bh)
+    row_start = len_h;
+  else
+    col_start = len_w;
+#endif  // CONFIG_FIX_IBP_DC
   for (r = 0; r < len_h; r++) {
-    for (c = 0; c < bw; c++) {
+    for (c = col_start; c < bw; c++) {
       int val = ROUND_POWER_OF_TWO(
-          above[c] * (256 - weights[r]) + dst[c] * weights[r],
+          above[c] * (IBP_WEIGHT_REF - weights[r]) + dst[c] * weights[r],
           IBP_WEIGHT_SHIFT);
       dst[c] = val;
     }
     dst += stride;
   }
-  dst = orig_dst;
+  dst = orig_dst + row_start * stride;
   weights_index = size_to_weights_index[bw >> 3];
   weights = ibp_weights[weights_index];
-  for (r = 0; r < bh; r++) {
+  for (r = row_start; r < bh; r++) {
     for (c = 0; c < len_w; c++) {
       int val = ROUND_POWER_OF_TWO(
-          left[r] * (256 - weights[c]) + dst[c] * weights[c], IBP_WEIGHT_SHIFT);
+          left[r] * (IBP_WEIGHT_REF - weights[c]) + dst[c] * weights[c],
+          IBP_WEIGHT_SHIFT);
       dst[c] = val;
     }
     dst += stride;

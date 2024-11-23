@@ -1417,8 +1417,8 @@ void av1_upsample_intra_edge_high_c(uint16_t *p, int sz, int bd) {
 
 #if CONFIG_IBP_WEIGHT
 void av1_highbd_ibp_dr_prediction_z1_c(
-    const uint8_t weights[][IBP_WEIGHT_SIZE][DIR_MODES_0_90], int mode_idx,
-    uint16_t *dst, ptrdiff_t stride, uint16_t *second_pred,
+    const IbpWeightsType weights[][IBP_WEIGHT_SIZE][DIR_MODES_0_90],
+    int mode_idx, uint16_t *dst, ptrdiff_t stride, uint16_t *second_pred,
     ptrdiff_t second_stride, int bw, int bh) {
   const int col_shift = bw >> (IBP_WEIGHT_SIZE_LOG2 + 1);
   const int row_shift = bh >> (IBP_WEIGHT_SIZE_LOG2 + 1);
@@ -1438,8 +1438,8 @@ void av1_highbd_ibp_dr_prediction_z1_c(
 }
 
 void av1_highbd_ibp_dr_prediction_z3_c(
-    const uint8_t weights[][IBP_WEIGHT_SIZE][DIR_MODES_0_90], int mode_idx,
-    uint16_t *dst, ptrdiff_t stride, uint16_t *second_pred,
+    const IbpWeightsType weights[][IBP_WEIGHT_SIZE][DIR_MODES_0_90],
+    int mode_idx, uint16_t *dst, ptrdiff_t stride, uint16_t *second_pred,
     ptrdiff_t second_stride, int bw, int bh) {
   const int col_shift = bw >> (IBP_WEIGHT_SIZE_LOG2 + 1);
   const int row_shift = bh >> (IBP_WEIGHT_SIZE_LOG2 + 1);
@@ -1506,7 +1506,7 @@ static void build_intra_predictors_high(
     int n_bottomleft_px, int plane, int is_sb_boundary,
     const int seq_intra_pred_filter_flag, const int seq_ibp_flag,
 #if CONFIG_IBP_WEIGHT
-    const uint8_t ibp_weights[][IBP_WEIGHT_SIZE][DIR_MODES_0_90]
+    const IbpWeightsType ibp_weights[][IBP_WEIGHT_SIZE][DIR_MODES_0_90]
 #else
     uint8_t *const ibp_weights[TX_SIZES_ALL][DIR_MODES_0_90]
 #endif  // CONFIG_IBP_WEIGHT
