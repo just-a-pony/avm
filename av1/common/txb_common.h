@@ -435,7 +435,8 @@ static AOM_FORCE_INLINE int get_nz_mag_chroma(const uint8_t *const levels,
 static AOM_FORCE_INLINE int get_nz_mag_lf(const uint8_t *const levels,
                                           const int bwl,
                                           const TX_CLASS tx_class) {
-  int mag;
+  int mag = 0;
+
   // Note: AOMMIN(level, 5) is useless for decoder since level < 5.
   mag = clip_max5[levels[1]];                         // { 0, 1 }
   mag += clip_max5[levels[(1 << bwl) + TX_PAD_HOR]];  // { 1, 0 }
@@ -459,7 +460,7 @@ static AOM_FORCE_INLINE int get_nz_mag_lf(const uint8_t *const levels,
 // for coefficient coding for the higher-frequency default region.
 static AOM_FORCE_INLINE int get_nz_mag(const uint8_t *const levels,
                                        const int bwl, const TX_CLASS tx_class) {
-  int mag;
+  int mag = 0;
 
   // Note: AOMMIN(level, 3) is useless for decoder since level < 3.
   mag = clip_max3[levels[1]];                         // { 0, 1 }
@@ -615,12 +616,8 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats(
       if (row + col < 8) return 5 + ctx;
       return 10 + ctx;
     }
-    case TX_CLASS_HORIZ: {
-      return ctx + 15;
-    }
-    case TX_CLASS_VERT: {
-      return ctx + 15;
-    }
+    case TX_CLASS_HORIZ:
+    case TX_CLASS_VERT: return ctx + 15;
     default: break;
   }
   return 0;
@@ -749,7 +746,7 @@ static INLINE int get_lower_levels_ctx_2d_chroma(const uint8_t *levels,
 static INLINE int get_lower_levels_ctx_lf_2d(const uint8_t *levels,
                                              int coeff_idx, int bwl) {
   assert(coeff_idx > 0);
-  int mag;
+  int mag = 0;
   // Note: AOMMIN(level, 3) is useless for decoder since level < 5.
   levels = levels + get_padded_idx(coeff_idx, bwl);
   mag = AOMMIN(levels[1], 5);                                     // { 0, 1 }
@@ -788,7 +785,7 @@ static INLINE int get_lower_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
 #endif  // CONFIG_CHROMA_CODING
 ) {
   assert(coeff_idx > 0);
-  int mag;
+  int mag = 0;
   // Note: AOMMIN(level, 3) is useless for decoder since level < 3.
   levels = levels + get_padded_idx(coeff_idx, bwl);
   mag = AOMMIN(levels[1], 3);                                     // { 0, 1 }

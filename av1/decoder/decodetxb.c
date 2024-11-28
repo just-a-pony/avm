@@ -910,7 +910,7 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
            : (*eob != 1 && cm->seq_params.enable_ist))) {
     av1_read_sec_tx_type(cm, xd, blk_row, blk_col, tx_size, eob, r);
   }
-  //
+
   if (*eob > 1) {
     memset(levels_buf, 0, sizeof(*levels_buf) * TX_PAD_2D);
   }
