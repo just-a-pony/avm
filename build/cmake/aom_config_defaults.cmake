@@ -143,6 +143,9 @@ set_aom_config_var(CONFIG_AV2CTC_PSNR_PEAK 1
 set_aom_config_var(CONFIG_ZERO_OFFSET_BITUPSHIFT 1
                    "Use zero offset for non-normative bit upshift")
 
+set_aom_config_var(CONFIG_PARAKIT_COLLECT_DATA 0
+                   "enables data collection for ParaKit training.")
+
 # AV2 experiment flags.
 set_aom_config_var(CONFIG_IMPROVEIDTX 1
                    "AV2 enable improved identity transform coding.")
