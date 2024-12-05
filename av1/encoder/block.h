@@ -1250,8 +1250,19 @@ typedef struct {
   //! txfm_do_partition_cost
   int txfm_do_partition_cost[FSC_MODES][2][TXFM_SPLIT_GROUP][2];
   //! txfm_4way_partition_type_cost
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+  int txfm_4way_partition_type_cost[FSC_MODES][2]
+                                   [TX_PARTITION_TYPE_NUM_VERT_AND_HORZ]
+                                   [TX_PARTITION_TYPE_NUM];
+#else
   int txfm_4way_partition_type_cost[FSC_MODES][2][TXFM_PARTITION_GROUP - 1]
                                    [TX_PARTITION_TYPE_NUM];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+  int txfm_2or3_way_partition_type_cost[FSC_MODES][2]
+                                       [TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1]
+                                       [2];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #else
   //! txfm_do_partition_cost
   int txfm_do_partition_cost[2][TXFM_SPLIT_GROUP][2];

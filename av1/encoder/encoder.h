@@ -1627,8 +1627,17 @@ typedef struct FRAME_COUNTS {
 #if CONFIG_TX_PARTITION_CTX
 #if CONFIG_IMPROVEIDTX
   unsigned int txfm_do_partition[FSC_MODES][2][TXFM_SPLIT_GROUP][2];
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+  unsigned int txfm_4way_partition_type[FSC_MODES][2]
+                                       [TX_PARTITION_TYPE_NUM_VERT_AND_HORZ]
+                                       [TX_PARTITION_TYPE_NUM];
+  unsigned int
+      txfm_2or3_way_partition_type[FSC_MODES][2]
+                                  [TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1][2];
+#else
   unsigned int txfm_4way_partition_type[FSC_MODES][2][TXFM_PARTITION_GROUP - 1]
                                        [TX_PARTITION_TYPE_NUM];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #else
   unsigned int txfm_do_partition[2][TXFM_SPLIT_GROUP][2];
   unsigned int txfm_4way_partition_type[2][TXFM_PARTITION_GROUP - 1]

@@ -138,6 +138,89 @@ static const uint8_t size_to_tx_part_group_lookup[BLOCK_SIZES_ALL] = {
 };
 #endif  // CONFIG_TX_PARTITION_CTX
 
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+/*
+Maps a block size to a transform partition context.
+size_to_tx_type_group_vert_and_horz_lookup - 1-2
+size_to_tx_type_group_vert_or_horz_lookup - 0-13
+size_to_tx_type_group_vert_and_horz_lookup - used when block can support
+both vertical and horizontal TX partitions.
+size_to_tx_type_group_vert_or_horz_lookup - used when block can support
+either vertical or horizontal TX partitions.
+0 in size_to_tx_type_group_vert_or_horz_lookup is case when there will not
+be any TX partitions (TX_PARTITION_NONE)
+*/
+static const uint8_t
+    size_to_tx_type_group_vert_and_horz_lookup[BLOCK_SIZES_ALL] = {
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      9,
+      9,
+      9,
+      9,
+      9,
+      9,
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      10,
+      11,
+      12,
+      13,
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      10,
+      11,
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID   // unused
+    };
+
+static const uint8_t
+    size_to_tx_type_group_vert_or_horz_lookup[BLOCK_SIZES_ALL] = {
+      0,
+      0,
+      0,
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      1,
+      2,
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      1,
+      2,
+      BLOCK_INVALID,  // unused
+      BLOCK_INVALID,  // unused
+      1,
+      2
+    };
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+
 static const uint8_t size_to_tx_type_group_lookup[BLOCK_SIZES_ALL] = {
   0,  0,  0,  1,  2,  3,  4, 5, 6, 7, 8, 9, 10, 10, 10, 10,
 #if CONFIG_EXT_RECUR_PARTITIONS

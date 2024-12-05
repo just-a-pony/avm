@@ -1593,6 +1593,10 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #if CONFIG_TX_PARTITION_CTX
   AVERAGE_CDF(ctx_left->txfm_do_partition_cdf, ctx_tr->txfm_do_partition_cdf,
               2);
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+  AVERAGE_CDF(ctx_left->txfm_2or3_way_partition_type_cdf,
+              ctx_tr->txfm_2or3_way_partition_type_cdf, 2);
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   AVERAGE_CDF(ctx_left->txfm_4way_partition_type_cdf,
               ctx_tr->txfm_4way_partition_type_cdf, TX_PARTITION_TYPE_NUM);
 #else

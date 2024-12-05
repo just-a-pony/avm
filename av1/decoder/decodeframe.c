@@ -1626,7 +1626,14 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
 #endif  // CONFIG_IMPROVEIDTX
 #if CONFIG_TX_PARTITION_CTX
   const int bsize_group = size_to_tx_part_group_lookup[bsize];
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+  const int txsize_group_h_and_v = get_vert_and_horz_group(bsize);
+  const int txsize_group_h_or_v = get_vert_or_horz_group(bsize);
+  assert(!(txsize_group_h_and_v == BLOCK_INVALID &&
+           txsize_group_h_or_v == BLOCK_INVALID));
+#else
   const int txsize_group = size_to_tx_type_group_lookup[bsize];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   int do_partition = 0;
   if (allow_horz || allow_vert) {
     aom_cdf_prob *do_partition_cdf =
@@ -1642,11 +1649,20 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
   if (do_partition) {
     if (allow_horz && allow_vert) {
       // Read 4way tree type
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+      assert(txsize_group_h_or_v > 0);
+#else
       assert(txsize_group > 0);
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       aom_cdf_prob *partition_type_cdf =
 #if CONFIG_IMPROVEIDTX
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+          ec_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
+                                              [txsize_group_h_and_v];
+#else
           ec_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
                                               [txsize_group - 1];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #else
           ec_ctx->txfm_4way_partition_type_cdf[is_inter][txsize_group - 1];
 #endif  // CONFIG_IMPROVEIDTX
@@ -1654,18 +1670,34 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
           aom_read_symbol(r, partition_type_cdf, TX_PARTITION_TYPE_NUM,
                           ACCT_INFO("partition_type"));
       partition = partition_type + 1;
-    } else if (txsize_group) {
+    }
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+    else if (txsize_group_h_or_v)
+#else
+    else if (txsize_group)
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+    {
+
       aom_cdf_prob *partition_type_cdf =
 #if CONFIG_IMPROVEIDTX
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+          ec_ctx->txfm_2or3_way_partition_type_cdf[is_fsc][is_inter]
+                                                  [txsize_group_h_or_v - 1];
+#else
           ec_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
                                               [txsize_group - 1];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #else
           ec_ctx->txfm_4way_partition_type_cdf[is_inter][txsize_group - 1];
 #endif  // CONFIG_IMPROVEIDTX
       const TX_PARTITION_TYPE partition_type =
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+          aom_read_symbol(r, partition_type_cdf, 2,
+                          ACCT_INFO("partition_type"));
+#else
           aom_read_symbol(r, partition_type_cdf, TX_PARTITION_TYPE_NUM,
                           ACCT_INFO("partition_type"));
-
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       if (allow_horz) {
         switch (partition_type) {
           case 0: partition = TX_PARTITION_HORZ; break;

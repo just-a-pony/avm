@@ -347,7 +347,14 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
     const int allow_vert = allow_tx_vert_split(max_tx_size);
 #if CONFIG_TX_PARTITION_CTX
     const int bsize_group = size_to_tx_part_group_lookup[bsize];
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+    const int txsize_group_h_and_v = get_vert_and_horz_group(bsize);
+    const int txsize_group_h_or_v = get_vert_or_horz_group(bsize);
+    assert(!(txsize_group_h_and_v == BLOCK_INVALID &&
+             txsize_group_h_or_v == BLOCK_INVALID));
+#else
     const int txsize_group = size_to_tx_type_group_lookup[bsize];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
     int do_partition = 0;
     if (allow_horz || allow_vert) {
       do_partition = (partition != TX_PARTITION_NONE);
@@ -362,11 +369,20 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
 
     if (do_partition) {
       if (allow_horz && allow_vert) {
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+        assert(txsize_group_h_or_v > 0);
+#else
         assert(txsize_group > 0);
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
         aom_cdf_prob *partition_type_cdf =
 #if CONFIG_IMPROVEIDTX
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+            ec_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
+                                                [txsize_group_h_and_v];
+#else
             ec_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
                                                 [txsize_group - 1];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #else
             ec_ctx->txfm_4way_partition_type_cdf[is_inter][txsize_group - 1];
 #endif  // CONFIG_IMPROVEIDTX
@@ -377,17 +393,29 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
         if (partition == TX_PARTITION_VERT_M ||
             partition == TX_PARTITION_HORZ_M)
           has_first_split = 1;
-
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+        if (txsize_group_h_or_v) {
+#else
         if (txsize_group) {
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
           aom_cdf_prob *partition_type_cdf =
 #if CONFIG_IMPROVEIDTX
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+              ec_ctx->txfm_2or3_way_partition_type_cdf[is_fsc][is_inter]
+                                                      [txsize_group_h_or_v - 1];
+#else
               ec_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
                                                   [txsize_group - 1];
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #else
               ec_ctx->txfm_4way_partition_type_cdf[is_inter][txsize_group - 1];
 #endif  // CONFIG_IMPROVEIDTX
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+          aom_write_symbol(w, has_first_split, partition_type_cdf, 2);
+#else
           aom_write_symbol(w, has_first_split, partition_type_cdf,
                            TX_PARTITION_TYPE_NUM);
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
         }
       }
     }

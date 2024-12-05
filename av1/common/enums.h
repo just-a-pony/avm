@@ -624,6 +624,10 @@ enum {
 #if CONFIG_NEW_TX_PARTITION
 #define TX_PARTITION_TYPE_NUM (TX_PARTITION_TYPES - 1)
 #endif  // CONFIG_NEW_TX_PARTITION
+#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+#define TX_PARTITION_TYPE_NUM_VERT_AND_HORZ 14
+#define TX_PARTITION_TYPE_NUM_VERT_OR_HORZ 3
+#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #define TX_SIZE_LUMA_MIN (TX_4X4)
 /* We don't need to code a transform size unless the allowed size is at least
    one more than the minimum. */
