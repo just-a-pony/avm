@@ -4396,6 +4396,7 @@ static AOM_INLINE void read_tile_info(AV1Decoder *const pbi,
   if (cm->tiles.rows * cm->tiles.cols > 1) {
 #if CONFIG_TILE_CDFS_AVG_TO_FRAME
     if (!cm->seq_params.enable_tiles_cdfs_avg) {
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
       // tile to use for cdf update
       pbi->context_update_tile_id =
           aom_rb_read_literal(rb, cm->tiles.log2_rows + cm->tiles.log2_cols);
@@ -4403,6 +4404,7 @@ static AOM_INLINE void read_tile_info(AV1Decoder *const pbi,
         aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                            "Invalid context_update_tile_id");
       }
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
     }
 #endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
     // tile size magnitude

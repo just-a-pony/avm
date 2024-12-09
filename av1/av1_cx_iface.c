@@ -4156,9 +4156,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               argv, err_string)) {
     extra_cfg.enable_drl_reorder = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_DRL_REORDER_CONTROL
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tiles_cdfs_avg,
                               argv, err_string)) {
     extra_cfg.enable_tiles_cdfs_avg = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_parity_hiding,
                               argv, err_string)) {
     extra_cfg.enable_parity_hiding = arg_parse_uint_helper(&arg, err_string);

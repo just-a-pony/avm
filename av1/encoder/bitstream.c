@@ -5019,8 +5019,10 @@ static AOM_INLINE void write_tile_info(const AV1_COMMON *const cm,
   if (cm->tiles.rows * cm->tiles.cols > 1) {
 #if CONFIG_TILE_CDFS_AVG_TO_FRAME
     if (!cm->seq_params.enable_tiles_cdfs_avg) {
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
       // tile id used for cdf update
       aom_wb_write_literal(wb, 0, cm->tiles.log2_cols + cm->tiles.log2_rows);
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
     }
 #endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
     // Number of bytes in tile size - 1
@@ -6983,11 +6985,13 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
   if (have_tiles) {
 #if CONFIG_TILE_CDFS_AVG_TO_FRAME
     if (!cm->seq_params.enable_tiles_cdfs_avg) {
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
       // Fill in context_update_tile_id indicating the tile to use for the
       // cdf update. The encoder currently sets it to the largest tile
       // (but is up to the encoder)
       aom_wb_overwrite_literal(saved_wb, *largest_tile_id,
                                tiles->log2_cols + tiles->log2_rows);
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME
     }
 #endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
     // If more than one tile group. tile_size_bytes takes the default value 4
