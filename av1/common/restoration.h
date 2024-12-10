@@ -84,7 +84,8 @@ extern "C" {
 #define NUM_PC_WIENER_TAPS_LUMA 13
 #include "av1/common/pc_wiener_filters.h"
 
-#define NUM_DICTIONARY_TAPS_LUMA 18  // Max #taps for translated filters
+// Maximum number of filter-taps in LR non-separable filtering.
+#define MAX_NUM_DICTIONARY_TAPS 18
 
 #define RESTORATION_UNITPELS_HORZ_MAX \
   (RESTORATION_UNITSIZE_MAX * 3 / 2 + 2 * RESTORATION_BORDER_HORZ + 16)
@@ -216,6 +217,56 @@ static INLINE const NonsepFilterConfig *get_wienerns_config(int qindex,
 }
 
 #if CONFIG_COMBINE_PC_NS_WIENER
+#ifndef NDEBUG
+static inline void print_filters(
+    int plane, const WienernsFilterParameters *nsfilter_params,
+    const WienerNonsepInfo *wienerns_info, char enc_dec, int pm) {
+  for (int c_id = 0; c_id < wienerns_info->num_classes; ++c_id) {
+    const int16_t *wienerns_info_nsfilter =
+        const_nsfilter_taps(wienerns_info, c_id);
+    printf("%c[%1d, %2d] %2d: ", enc_dec, plane, wienerns_info->num_classes,
+           c_id);
+    for (int i = 0; i < nsfilter_params->ncoeffs; ++i) {
+      if (pm) {
+        printf("%3d (%2d),", wienerns_info_nsfilter[i],
+               wienerns_info->match_indices[i]);
+      } else {
+        printf("%3d,", wienerns_info_nsfilter[i]);
+      }
+    }
+    printf(" [%2d]\n", wienerns_info->num_ref_filters);
+  }
+}
+#endif
+static inline int is_frame_filters_enabled(int plane) {
+#if CONFIG_COMBINE_PC_NS_WIENER_ADD
+  (void)plane;
+  return 1;
+#else
+  return plane == AOM_PLANE_Y;
+#endif  // CONFIG_COMBINE_PC_NS_WIENER_ADD
+}
+
+// Returns the alternate plane whose reference-frame-filters can be used to
+// augment those for plane.
+static inline int alternate_ref_plane(int plane) {
+  switch (plane) {
+    case AOM_PLANE_Y: return -1;
+    case AOM_PLANE_U: return AOM_PLANE_V;
+    case AOM_PLANE_V: return AOM_PLANE_U;
+    default: assert(0); return -1;
+  }
+}
+
+static inline int max_num_classes(int plane) {
+  return (plane == AOM_PLANE_Y) ? NUM_WIENERNS_CLASS_INIT_LUMA
+                                : NUM_WIENERNS_CLASS_INIT_CHROMA;
+}
+
+static inline int default_num_classes(int plane) {
+  return max_num_classes(plane);
+}
+
 const uint8_t *get_pc_wiener_sub_classifier(int num_classes, int set_index);
 
 // TODO(any): This function is deprecated and can be removed
@@ -229,7 +280,7 @@ void fill_filter_with_match(WienerNonsepInfo *filter,
                             const WienernsFilterParameters *nsfilter_params,
                             int class_id, int nopcw);
 void fill_first_slot_of_bank_with_filter_match(
-    WienerNonsepInfoBank *bank, const WienerNonsepInfo *reference,
+    int plane, WienerNonsepInfoBank *bank, const WienerNonsepInfo *reference,
     const int *match_indices, int base_qindex, int class_id,
     int16_t *frame_filter_dictionary, int dict_stride, int nopcw);
 
@@ -258,6 +309,7 @@ static INLINE int decode_first_match(int encoded_match_index) {
   return encoded_match_index;
 }
 
+#if !CONFIG_COMBINE_PC_NS_WIENER_ADD
 static INLINE int count_match_indices_bits(int num_classes, int nopcw) {
   assert(num_classes >= 1 && num_classes <= WIENERNS_MAX_CLASSES);
   int total_bits = 0;
@@ -267,6 +319,7 @@ static INLINE int count_match_indices_bits(int num_classes, int nopcw) {
   }
   return total_bits;
 }
+#endif  // !CONFIG_COMBINE_PC_NS_WIENER_ADD
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
 
 // Max of SGRPROJ_TMPBUF_SIZE, DOMAINTXFMRF_TMPBUF_SIZE, WIENER_TMPBUF_SIZE

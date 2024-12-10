@@ -1868,6 +1868,7 @@ static const int num_frame_first_predictor_bits[2][WIENERNS_MAX_CLASSES + 1] = {
 };
 
 static inline int num_dictionary_slots(int num_classes, int nopcw) {
+  assert(nopcw >= 0 && nopcw <= 1);
   return 1 << num_frame_first_predictor_bits[nopcw][num_classes];
 }
 
@@ -1895,6 +1896,105 @@ static inline int max_num_base_filters(int num_classes, int nopcw) {
 }
 
 int max_dictionary_size(int nopcw);
+
+#define NUM_MATCH_GROUPS 3
+
+// Fills the number of filters allowed for three groups.
+// Group-0: All zeros filter and any filters for classes 0 -> num_classes - 1.
+// Group-1: Reference frame-filters from reference frames.
+// Group-2: Pc-wiener filters (for luma only.)
+void set_group_counts(int plane, int num_classes, int num_ref_frames,
+                      int *group_counts, int nopcw);
+
+// Given the class-id returns a group-id guess based on group counts.
+static inline int most_probable_group(int c_id, const int *group_counts) {
+  assert(NUM_MATCH_GROUPS == 3);
+  const int group_count_0 = c_id + 1;
+  // Prefer previous classes and reference-frame filters.
+  if (group_count_0 > 2 || group_counts[1] > 2) {
+    if (group_count_0 > group_counts[1]) return 0;
+    return 1;
+  }
+  if (group_count_0 >= group_counts[1] && group_count_0 >= group_counts[2]) {
+    return 0;
+  } else if (group_counts[1] >= group_counts[2]) {
+    return 1;
+  } else {
+    return 2;
+  }
+}
+
+// Returns the group id of a match index.
+static inline int index_to_group(int match_index, const int *group_counts) {
+  assert(NUM_MATCH_GROUPS == 3);
+  if (match_index < group_counts[0]) {
+    return 0;
+  } else if (match_index < group_counts[0] + group_counts[1]) {
+    return 1;
+  }
+  return 2;
+}
+
+// Given the class-id and the match indices of previous class filters returns a
+// group-id prediction.
+static inline int predict_group(int c_id, const int *match_indices,
+                                const int *group_counts) {
+  assert(NUM_MATCH_GROUPS == 3);
+  if (c_id == 0) return most_probable_group(c_id, group_counts);
+  int running_group_count[NUM_MATCH_GROUPS] = { 0 };
+  for (int i = 0; i < c_id; ++i) {
+    const int group = index_to_group(match_indices[i], group_counts);
+    ++running_group_count[group];
+  }
+  if (running_group_count[0] >= running_group_count[1] &&
+      running_group_count[0] >= running_group_count[2])
+    return 0;
+  else if (running_group_count[1] >= running_group_count[2])
+    return 1;
+  else
+    return 2;
+}
+
+// Returns the total number of filters with group-id less than group.
+static inline int get_group_base(int group, const int *group_counts) {
+  if (group == 0) return 0;
+  int base = 0;
+  for (int i = 0; i < group; ++i) {
+    base += group_counts[i];
+  }
+  return base;
+}
+
+// Returns a match index prediction given that the filter has a known group-id.
+// The prediction is useful as a reference when encoding/decoding the match
+// index via *_primitive_refsubexpfin().
+static inline int predict_within_group(int group, int c_id,
+                                       const int *match_indices,
+                                       const int *group_counts) {
+  int base = get_group_base(group, group_counts);
+  int sum = 0;
+  int cnt = 0;
+  for (int i = 0; i < c_id; ++i) {
+    if (index_to_group(match_indices[i], group_counts) != group) continue;
+    ++cnt;
+    sum += match_indices[i];
+  }
+  const int count = group == 0 ? c_id + 1 : group_counts[group];
+  return cnt > 0 ? sum / cnt : (base + count / 2);
+}
+
+#ifndef NDEBUG
+static inline void print_match_indices(int plane, int num_classes,
+                                       int num_ref_filters,
+                                       const int *match_indices, char enc_dec) {
+  printf("%c: plane[%1d] ", enc_dec, plane);
+  for (int i = 0; i < num_classes; ++i) {
+    printf("%3d, ", match_indices[i]);
+  }
+  printf(" (%3d)\n", num_ref_filters);
+}
+#endif  // NDEBUG
+
 #else
 #define WIENERNS_MAX_CLASSES 1
 #define NUM_WIENERNS_CLASS_INIT_LUMA 1
@@ -1929,6 +2029,7 @@ typedef struct {
    * the first bank slot and in turn used as frame filter predictors.
    */
   int match_indices[WIENERNS_MAX_CLASSES];
+  int num_ref_filters;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
 } WienerNonsepInfo;
 
