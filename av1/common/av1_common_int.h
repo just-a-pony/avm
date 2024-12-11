@@ -619,9 +619,13 @@ typedef struct SequenceHeader {
                                // 1 - DRL reorder with constraints
                                // 2 - Always reorder DRL
 #endif                         // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
-  uint8_t enable_tiles_cdfs_avg;     // To turn on/off tiles cdfs average
-#endif                               // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  uint8_t enable_avg_cdf;  // enable CDF averaging
+  uint8_t avg_cdf_type;    // 0 - Frame averaging for CDF initialization
+                           // 1 - Tile averaging for CDF initialization
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
+  uint8_t enable_tiles_cdfs_avg;   // To turn on/off tiles cdfs average
+#endif                               // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   uint8_t lr_tools_disable_mask[2];  // mask of lr tool(s) to disable.
                                      // To disable tool i in RestorationType
                                      // enum where:
@@ -791,6 +795,9 @@ typedef struct {
    * The derived primary reference frame by the decoder.
    */
   int derived_primary_ref_frame;
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  int derived_secondary_ref_frame;
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
   /*!
    * Byte alignment of the planes in the reference buffers.

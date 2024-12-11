@@ -846,11 +846,19 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "Enable DRL reorder (0: no reorder, 1: reorder with constraints "
               "(default), 2: always reorder"),
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  .enable_avg_cdf = ARG_DEF(NULL, "enable-avg-cdf", 1,
+                            "Enable frame/tile cdfs average for initialization "
+                            "(0:false), 1:true (default)"),
+  .avg_cdf_type = ARG_DEF(NULL, "avg-cdf-type", 1,
+                          "Type of cdf averaging "
+                          "(0 (frame based), 1 (tile based)), default "
+                          "(adaptively choosen based on number of tiles)."),
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   .enable_tiles_cdfs_avg = ARG_DEF(NULL, "enable-tiles-cdfs-avg", 1,
                                    "Enable tiles cdfs average "
                                    "(0:false), 1:true (default)"),
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   .enable_parity_hiding = ARG_DEF(NULL, "enable-parity-hiding", 1,
                                   "Enable parity hiding "
                                   "(0:false), 1:true (default)"),

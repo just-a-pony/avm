@@ -24,6 +24,9 @@
 #include "av1/encoder/rdopt.h"
 #include "av1/encoder/segmentation.h"
 #include "av1/encoder/superres_scale.h"
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+#include "av1/encoder/encodeframe_utils.h"
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 
 #if CONFIG_TUNE_VMAF
 #include "av1/encoder/tune_vmaf.h"
@@ -836,6 +839,19 @@ void av1_setup_frame(AV1_COMP *cpi) {
       cm->seg.update_data = 1;
     } else {
       *cm->fc = primary_ref_buf->frame_context;
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+      const int ref_frame_used = (cm->features.primary_ref_frame ==
+                                  cm->features.derived_primary_ref_frame)
+                                     ? cm->features.derived_secondary_ref_frame
+                                     : cm->features.derived_primary_ref_frame;
+      const int map_idx = get_ref_frame_map_idx(cm, ref_frame_used);
+      if ((map_idx != INVALID_IDX) &&
+          (ref_frame_used != cm->features.primary_ref_frame) &&
+          (cm->seq_params.enable_avg_cdf && !cm->seq_params.avg_cdf_type)) {
+        av1_avg_cdf_symbols(cm->fc, &cm->ref_frame_map[map_idx]->frame_context,
+                            AVG_CDF_WEIGHT_PRIMARY, AVG_CDF_WEIGHT_NON_PRIMARY);
+      }
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     }
   }
   av1_set_frame_sb_size(cm, cm->seq_params.sb_size);

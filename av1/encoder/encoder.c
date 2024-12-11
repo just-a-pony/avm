@@ -519,9 +519,12 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_DRL_REORDER_CONTROL
   seq->enable_drl_reorder = tool_cfg->enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  seq->enable_avg_cdf = tool_cfg->enable_avg_cdf;
+  seq->avg_cdf_type = tool_cfg->avg_cdf_type;
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   seq->enable_tiles_cdfs_avg = tool_cfg->enable_tiles_cdfs_avg;
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   seq->enable_parity_hiding = tool_cfg->enable_parity_hiding;
 #if CONFIG_IMPROVED_GLOBAL_MOTION
   // TODO(rachelbarker): Check if cpi->sf.gm_sf.gm_search_type is set by this
@@ -2557,7 +2560,14 @@ static void set_primary_ref_frame(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
   cpi->signal_primary_ref_frame = 0;
   // Got the derived_primary_ref_frame.
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  int tmp_ref_frame[2] = { 0 };
+  choose_primary_secondary_ref_frame(cm, tmp_ref_frame);
+  cm->features.derived_primary_ref_frame = tmp_ref_frame[0];
+  cm->features.derived_secondary_ref_frame = tmp_ref_frame[1];
+#else
   cm->features.derived_primary_ref_frame = choose_primary_ref_frame(cm);
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   // The primary_ref_frame can be set to other refs other than the derived
   // one. If that is needed, disable primary_ref_frame search.
   cm->features.primary_ref_frame = cm->features.derived_primary_ref_frame;
@@ -3557,7 +3567,6 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
     int best_ref_idx = -1;
     int best_frame_size = INT32_MAX;
     int cur_frame_size = INT32_MAX;
-
     // Save LR parameters
     LrParams lr_params = { { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 } };
     store_lr_parameters(cm, &lr_params);
@@ -3568,6 +3577,7 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
       if (temp_ref_buf->frame_type != INTER_FRAME) continue;
 
       *cm->fc = temp_ref_buf->frame_context;
+
       if (!cm->fc->initialized)
         aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                            "Uninitialized entropy context.");
@@ -3612,6 +3622,21 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
       aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                          "Uninitialized entropy context.");
   }
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  if (cm->features.primary_ref_frame != PRIMARY_REF_NONE) {
+    const int ref_frame_used = (cm->features.primary_ref_frame ==
+                                cm->features.derived_primary_ref_frame)
+                                   ? cm->features.derived_secondary_ref_frame
+                                   : cm->features.derived_primary_ref_frame;
+    const int map_idx = get_ref_frame_map_idx(cm, ref_frame_used);
+    if ((map_idx != INVALID_IDX) &&
+        (ref_frame_used != cm->features.primary_ref_frame) &&
+        (cm->seq_params.enable_avg_cdf && !cm->seq_params.avg_cdf_type)) {
+      av1_avg_cdf_symbols(cm->fc, &cm->ref_frame_map[map_idx]->frame_context,
+                          AVG_CDF_WEIGHT_PRIMARY, AVG_CDF_WEIGHT_NON_PRIMARY);
+    }
+  }
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
   av1_finalize_encoded_frame(cpi);
@@ -4197,16 +4222,21 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
 #endif  // CONFIG_ENTROPY_STATS
 
   if (features->refresh_frame_context == REFRESH_FRAME_CONTEXT_BACKWARD) {
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+    if (cm->seq_params.enable_avg_cdf && cm->seq_params.avg_cdf_type &&
+        cm->tiles.rows * cm->tiles.cols > 1) {
+      encoder_avg_tiles_cdfs(cpi);
+    } else {
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
     if (cm->seq_params.enable_tiles_cdfs_avg &&
         cm->tiles.rows * cm->tiles.cols > 1) {
       encoder_avg_tiles_cdfs(cpi);
     } else {
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
       *cm->fc = cpi->tile_data[largest_tile_id].tctx;
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     }
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     av1_reset_cdf_symbol_counters(cm->fc);
   }
   if (!cm->tiles.large_scale) {

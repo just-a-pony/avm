@@ -225,6 +225,96 @@ static int is_ref_better(const OrderHintInfo *oh, int cur_disp, int ref_disp,
   return 0;
 }
 
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+// Derive the primary & secondary reference frame from the reference list based
+// on qindex and frame distances.
+void choose_primary_secondary_ref_frame(const AV1_COMMON *const cm,
+                                        int *ref_frame) {
+  const int intra_only = cm->current_frame.frame_type == KEY_FRAME ||
+                         cm->current_frame.frame_type == INTRA_ONLY_FRAME;
+  if (intra_only || cm->features.error_resilient_mode) {
+    ref_frame[0] = PRIMARY_REF_NONE;
+    ref_frame[1] = PRIMARY_REF_NONE;
+    return;
+  }
+
+  // In large scale case, always use Last frame's frame contexts.
+  if (cm->tiles.large_scale) {
+    ref_frame[0] = 0;
+    ref_frame[1] = 0;
+    return;
+  }
+
+  // Find the most recent reference frame with the same reference type as the
+  // current frame
+  int primary_ref_frame = PRIMARY_REF_NONE;
+  int secondary_ref_frame = PRIMARY_REF_NONE;
+  const int n_refs = cm->ref_frames_info.num_total_refs;
+
+  const RefFrameMapPair *ref_frame_map_pairs = cm->ref_frame_map_pairs;
+  const int cur_frame_disp = cm->current_frame.display_order_hint;
+  int i;
+
+  PrimaryRefCand cand_lower_qp = { -1, -1, -1 };
+  PrimaryRefCand cand_higher_qp = { -1, -1, INT32_MAX };
+
+  PrimaryRefCand secondary_cand_lower_qp = { -1, -1, -1 };
+  PrimaryRefCand secondary_cand_higher_qp = { -1, -1, INT32_MAX };
+
+  const OrderHintInfo *oh = &cm->seq_params.order_hint_info;
+  for (i = 0; i < n_refs; i++) {
+    // Get reference frame buffer
+    RefFrameMapPair cur_ref = ref_frame_map_pairs[get_ref_frame_map_idx(cm, i)];
+    if (cur_ref.disp_order == -1) continue;
+    if (cur_ref.frame_type != INTER_FRAME) continue;
+
+    const int ref_base_qindex = cur_ref.base_qindex;
+
+    if (ref_base_qindex > cm->quant_params.base_qindex) {
+      if ((ref_base_qindex < cand_higher_qp.base_qindex) ||
+          (ref_base_qindex == cand_higher_qp.base_qindex &&
+           is_ref_better(oh, cur_frame_disp, cur_ref.disp_order,
+                         cand_higher_qp.disp_order))) {
+        secondary_cand_higher_qp.idx = cand_higher_qp.idx;
+        secondary_cand_higher_qp.base_qindex = cand_higher_qp.base_qindex;
+        secondary_cand_higher_qp.disp_order = cand_higher_qp.disp_order;
+
+        cand_higher_qp.idx = i;
+        cand_higher_qp.base_qindex = ref_base_qindex;
+        cand_higher_qp.disp_order = cur_ref.disp_order;
+      }
+    } else {
+      if ((ref_base_qindex > cand_lower_qp.base_qindex) ||
+          (ref_base_qindex == cand_lower_qp.base_qindex &&
+           is_ref_better(oh, cur_frame_disp, cur_ref.disp_order,
+                         cand_lower_qp.disp_order))) {
+        secondary_cand_lower_qp.idx = cand_lower_qp.idx;
+        secondary_cand_lower_qp.base_qindex = cand_lower_qp.base_qindex;
+        secondary_cand_lower_qp.disp_order = cand_lower_qp.disp_order;
+
+        cand_lower_qp.idx = i;
+        cand_lower_qp.base_qindex = ref_base_qindex;
+        cand_lower_qp.disp_order = cur_ref.disp_order;
+      }
+    }
+  }
+
+  if (cand_lower_qp.idx != -1)
+    primary_ref_frame = cand_lower_qp.idx;
+  else if (cand_higher_qp.idx != -1)
+    primary_ref_frame = cand_higher_qp.idx;
+
+  if (secondary_cand_lower_qp.idx != -1)
+    secondary_ref_frame = secondary_cand_lower_qp.idx;
+  else if (secondary_cand_higher_qp.idx != -1)
+    secondary_ref_frame = secondary_cand_higher_qp.idx;
+
+  ref_frame[0] = primary_ref_frame;
+  ref_frame[1] = secondary_ref_frame;
+
+  return;
+}
+#else
 // Derive the primary reference frame from the reference list based on qindex
 // and frame distances.
 int choose_primary_ref_frame(const AV1_COMMON *const cm) {
@@ -286,6 +376,7 @@ int choose_primary_ref_frame(const AV1_COMMON *const cm) {
 
   return primary_ref_frame;
 }
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
 // Returns a context number for the given MB prediction signal

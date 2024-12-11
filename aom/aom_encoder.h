@@ -624,12 +624,22 @@ typedef struct cfg_options {
    */
   unsigned int enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  /*!\brief enable the average of frame or tile cdfs for initialization
+   *
+   */
+  unsigned int enable_avg_cdf;
+  /*!\brief type of cdf averaging for initialization
+   * If 0, enables cross frame averaging and initialization of CDFs
+   * If 1, enables cross tile averaging and initialization of CDFs
+   */
+  unsigned int avg_cdf_type;
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   /*!\brief enable the average of tiles' cdfs
    *
    */
   unsigned int enable_tiles_cdfs_avg;
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   /*!\brief enable parity hiding for coefficients coding
    *
    */

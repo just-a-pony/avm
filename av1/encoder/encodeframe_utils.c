@@ -1380,6 +1380,7 @@ void av1_update_picked_ref_frames_mask(MACROBLOCK *const x, int ref_type,
   }
 }
 
+#if !CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 static void avg_cdf_symbol(aom_cdf_prob *cdf_ptr_left, aom_cdf_prob *cdf_ptr_tr,
                            int num_cdfs, int cdf_stride, int nsymbs,
                            int wt_left, int wt_tr) {
@@ -1395,10 +1396,8 @@ static void avg_cdf_symbol(aom_cdf_prob *cdf_ptr_left, aom_cdf_prob *cdf_ptr_tr,
     }
   }
 }
-
 #define AVERAGE_CDF(cname_left, cname_tr, nsymbs) \
   AVG_CDF_STRIDE(cname_left, cname_tr, nsymbs, CDF_SIZE(nsymbs))
-
 #define AVG_CDF_STRIDE(cname_left, cname_tr, nsymbs, cdf_stride)           \
   do {                                                                     \
     aom_cdf_prob *cdf_ptr_left = (aom_cdf_prob *)cname_left;               \
@@ -1408,7 +1407,6 @@ static void avg_cdf_symbol(aom_cdf_prob *cdf_ptr_left, aom_cdf_prob *cdf_ptr_tr,
     avg_cdf_symbol(cdf_ptr_left, cdf_ptr_tr, num_cdfs, cdf_stride, nsymbs, \
                    wt_left, wt_tr);                                        \
   } while (0)
-
 static void avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr, int wt_left,
                     int wt_tr) {
 #if !CONFIG_VQ_MVD_CODING
@@ -1899,6 +1897,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->coeff_br_ph_cdf, ctx_tr->coeff_br_ph_cdf, 4);
   AVERAGE_CDF(ctx_left->cctx_type_cdf, ctx_tr->cctx_type_cdf, CCTX_TYPES);
 }
+#endif  // !CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 
 // Memset the mbmis at the current superblock to 0
 void av1_reset_mbmi(const CommonModeInfoParams *const mi_params,

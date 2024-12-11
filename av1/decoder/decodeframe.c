@@ -4438,9 +4438,11 @@ static AOM_INLINE void read_tile_info(AV1Decoder *const pbi,
 
   pbi->context_update_tile_id = 0;
   if (cm->tiles.rows * cm->tiles.cols > 1) {
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+    if (!cm->seq_params.enable_avg_cdf || !cm->seq_params.avg_cdf_type) {
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
     if (!cm->seq_params.enable_tiles_cdfs_avg) {
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
       // tile to use for cdf update
       pbi->context_update_tile_id =
           aom_rb_read_literal(rb, cm->tiles.log2_rows + cm->tiles.log2_cols);
@@ -4448,9 +4450,9 @@ static AOM_INLINE void read_tile_info(AV1Decoder *const pbi,
         aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                            "Invalid context_update_tile_id");
       }
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     }
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     // tile size magnitude
     pbi->tile_size_bytes = aom_rb_read_literal(rb, 2) + 1;
   }
@@ -4746,7 +4748,7 @@ static INLINE int get_sync_range(int width) {
   else
     return 8;
 #else
-  (void)width;
+    (void)width;
 #endif
   return 1;
 }
@@ -4825,9 +4827,9 @@ static INLINE void sync_read(AV1DecRowMTSync *const dec_row_mt_sync, int r,
     pthread_mutex_unlock(mutex);
   }
 #else
-  (void)dec_row_mt_sync;
-  (void)r;
-  (void)c;
+    (void)dec_row_mt_sync;
+    (void)r;
+    (void)c;
 #endif  // CONFIG_MULTITHREAD
 }
 
@@ -4854,10 +4856,10 @@ static INLINE void sync_write(AV1DecRowMTSync *const dec_row_mt_sync, int r,
     pthread_mutex_unlock(&dec_row_mt_sync->mutex_[r]);
   }
 #else
-  (void)dec_row_mt_sync;
-  (void)r;
-  (void)c;
-  (void)sb_cols;
+    (void)dec_row_mt_sync;
+    (void)r;
+    (void)c;
+    (void)sb_cols;
 #endif  // CONFIG_MULTITHREAD
 }
 
@@ -4893,7 +4895,7 @@ static AOM_INLINE void decode_tile_sb_row(AV1Decoder *pbi, ThreadData *const td,
 #if CONFIG_BANK_IMPROVE
     av1_reset_refmv_bank(cm, xd, &tile_info, mi_row, mi_col);
 #else
-    xd->ref_mv_bank.rmb_sb_hits = 0;
+      xd->ref_mv_bank.rmb_sb_hits = 0;
 #endif  // CONFIG_BANK_IMPROVE
 
 #if !CONFIG_BANK_IMPROVE
@@ -5000,7 +5002,7 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
 #if CONFIG_BANK_IMPROVE
       av1_reset_refmv_bank(cm, xd, &tile_info, mi_row, mi_col);
 #else
-      xd->ref_mv_bank.rmb_sb_hits = 0;
+        xd->ref_mv_bank.rmb_sb_hits = 0;
 #endif  // CONFIG_BANK_IMPROVE
 #if !CONFIG_MVP_IMPROVEMENT
       td->ref_mv_bank = xd->ref_mv_bank;
@@ -5240,7 +5242,7 @@ static TileJobsDec *get_dec_job_info(AV1DecTileMT *tile_mt_info) {
 
   pthread_mutex_unlock(tile_mt_info->job_mutex);
 #else
-  (void)tile_mt_info;
+    (void)tile_mt_info;
 #endif
   return cur_job_info;
 }
@@ -5523,7 +5525,7 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
 #if CONFIG_BANK_IMPROVE
       av1_reset_refmv_bank(cm, xd, &tile_info, mi_row, mi_col);
 #else
-      xd->ref_mv_bank.rmb_sb_hits = 0;
+        xd->ref_mv_bank.rmb_sb_hits = 0;
 #endif  // CONFIG_BANK_IMPROVE
 #if !CONFIG_MVP_IMPROVEMENT
       td->ref_mv_bank = xd->ref_mv_bank;
@@ -6431,7 +6433,7 @@ static AOM_INLINE void read_film_grain(AV1_COMMON *cm,
       (cm->seq_params.enable_frame_output_order || cm->show_frame ||
        cm->showable_frame)) {
 #else
-      (cm->show_frame || cm->showable_frame)) {
+        (cm->show_frame || cm->showable_frame)) {
 #endif
     av1_read_film_grain_params(cm, rb);
   } else {
@@ -6701,9 +6703,14 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
         aom_rb_read_bit(rb) ? DRL_REORDER_CONSTRAINT : DRL_REORDER_ALWAYS;
   }
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
-  seq_params->enable_tiles_cdfs_avg = aom_rb_read_bit(rb);
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  seq_params->enable_avg_cdf = aom_rb_read_bit(rb);
+  if (seq_params->enable_avg_cdf) {
+    seq_params->avg_cdf_type = aom_rb_read_bit(rb);
+  }
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
+    seq_params->enable_tiles_cdfs_avg = aom_rb_read_bit(rb);
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   seq_params->explicit_ref_frame_map = aom_rb_read_bit(rb);
   // 0 : use show_existing_frame, 1: use implicit derivation
   seq_params->enable_frame_output_order = aom_rb_read_bit(rb);
@@ -6820,7 +6827,7 @@ static int read_global_motion_params(WarpedMotionParams *params,
 #if CONFIG_IMPROVED_GLOBAL_MOTION
       type = AFFINE;
 #else
-      type = aom_rb_read_bit(rb) ? TRANSLATION : AFFINE;
+        type = aom_rb_read_bit(rb) ? TRANSLATION : AFFINE;
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
     }
   }
@@ -6863,17 +6870,17 @@ static int read_global_motion_params(WarpedMotionParams *params,
     const int trans_prec_diff = GM_TRANS_PREC_DIFF;
     const int trans_max = GM_TRANS_MAX;
 #else
-    const int trans_bits = (type == TRANSLATION)
-                               ? GM_ABS_TRANS_ONLY_BITS - precision_loss
-                               : GM_ABS_TRANS_BITS;
-    const int trans_dec_factor =
-        (type == TRANSLATION)
-            ? GM_TRANS_ONLY_DECODE_FACTOR * (1 << precision_loss)
-            : GM_TRANS_DECODE_FACTOR;
-    const int trans_prec_diff = (type == TRANSLATION)
-                                    ? GM_TRANS_ONLY_PREC_DIFF + precision_loss
-                                    : GM_TRANS_PREC_DIFF;
-    const int trans_max = (1 << trans_bits);
+      const int trans_bits = (type == TRANSLATION)
+                                 ? GM_ABS_TRANS_ONLY_BITS - precision_loss
+                                 : GM_ABS_TRANS_BITS;
+      const int trans_dec_factor =
+          (type == TRANSLATION)
+              ? GM_TRANS_ONLY_DECODE_FACTOR * (1 << precision_loss)
+              : GM_TRANS_DECODE_FACTOR;
+      const int trans_prec_diff = (type == TRANSLATION)
+                                      ? GM_TRANS_ONLY_PREC_DIFF + precision_loss
+                                      : GM_TRANS_PREC_DIFF;
+      const int trans_max = (1 << trans_bits);
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
 
     params->wmmat[0] = aom_rb_read_signed_primitive_refsubexpfin(
@@ -6978,9 +6985,9 @@ static AOM_INLINE void read_global_motion(AV1_COMMON *cm,
                          temporal_distance);
     WarpedMotionParams *ref_params = &ref_params_;
 #else
-    const WarpedMotionParams *ref_params =
-        cm->prev_frame ? &cm->prev_frame->global_motion[frame]
-                       : &default_warp_params;
+      const WarpedMotionParams *ref_params =
+          cm->prev_frame ? &cm->prev_frame->global_motion[frame]
+                         : &default_warp_params;
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
     int good_params =
         read_global_motion_params(&cm->global_motion[frame], ref_params, rb,
@@ -7195,7 +7202,14 @@ static void set_primary_ref_frame_and_ctx(AV1_COMMON *const cm) {
   FeatureFlags *const features = &cm->features;
 
   if (!seq_params->reduced_still_picture_hdr) {
-    features->derived_primary_ref_frame = choose_primary_ref_frame(cm);
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+    int tmp_ref_frame[2] = { 0 };
+    choose_primary_secondary_ref_frame(cm, tmp_ref_frame);
+    features->derived_primary_ref_frame = tmp_ref_frame[0];
+    features->derived_secondary_ref_frame = tmp_ref_frame[1];
+#else
+      features->derived_primary_ref_frame = choose_primary_ref_frame(cm);
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 
     if (features->primary_ref_frame == PRIMARY_REF_NONE) {
       features->primary_ref_frame = features->derived_primary_ref_frame;
@@ -7228,7 +7242,7 @@ static void set_primary_ref_frame_and_ctx(AV1_COMMON *const cm) {
     *cm->fc = get_primary_ref_frame_buf(cm, cm->features.primary_ref_frame)
                   ->frame_context;
 #else
-    *cm->fc = get_primary_ref_frame_buf(cm)->frame_context;
+      *cm->fc = get_primary_ref_frame_buf(cm)->frame_context;
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
   }
 
@@ -7371,13 +7385,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                            "Buffer does not contain a showable frame");
       }
 #else
-      // Section 6.8.2: It is a requirement of bitstream conformance that when
-      // show_existing_frame is used to show a previous frame, that the value
-      // of showable_frame for the previous frame was equal to 1.
-      if (!frame_to_show->showable_frame) {
-        aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-                           "Buffer does not contain a showable frame");
-      }
+        // Section 6.8.2: It is a requirement of bitstream conformance that when
+        // show_existing_frame is used to show a previous frame, that the value
+        // of showable_frame for the previous frame was equal to 1.
+        if (!frame_to_show->showable_frame) {
+          aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                             "Buffer does not contain a showable frame");
+        }
 #endif  // !CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
       if (pbi->reset_decoder_state) frame_to_show->showable_frame = 0;
 
@@ -7404,7 +7418,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       }
     }
 #else
-    current_frame->frame_type = (FRAME_TYPE)aom_rb_read_literal(rb, 2);
+      current_frame->frame_type = (FRAME_TYPE)aom_rb_read_literal(rb, 2);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     if (pbi->sequence_header_changed) {
       if (current_frame->frame_type == KEY_FRAME) {
@@ -7547,7 +7561,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       if (signal_primary_ref_frame)
         features->primary_ref_frame = aom_rb_read_literal(rb, PRIMARY_REF_BITS);
 #else
-      features->primary_ref_frame = aom_rb_read_literal(rb, PRIMARY_REF_BITS);
+        features->primary_ref_frame = aom_rb_read_literal(rb, PRIMARY_REF_BITS);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
     }
   }
@@ -7600,7 +7614,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
             aom_rb_read_literal(rb, refresh_frame_flags_bits);
       }
 #else
-      current_frame->refresh_frame_flags = aom_rb_read_literal(rb, REF_FRAMES);
+        current_frame->refresh_frame_flags =
+            aom_rb_read_literal(rb, REF_FRAMES);
 #endif        // CONFIG_REFRESH_FLAG
     } else {  // shown keyframe
       current_frame->refresh_frame_flags = REFRESH_FRAME_ALL;
@@ -7630,7 +7645,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
             aom_rb_read_literal(rb, refresh_frame_flags_bits);
       }
 #else
-      current_frame->refresh_frame_flags = aom_rb_read_literal(rb, REF_FRAMES);
+        current_frame->refresh_frame_flags =
+            aom_rb_read_literal(rb, REF_FRAMES);
 #endif  // CONFIG_REFRESH_FLAG
       if (current_frame->refresh_frame_flags == REFRESH_FRAME_ALL) {
         aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
@@ -7661,9 +7677,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         }
       }
 #else
-      current_frame->refresh_frame_flags =
-          frame_is_sframe(cm) ? REFRESH_FRAME_ALL
-                              : aom_rb_read_literal(rb, REF_FRAMES);
+        current_frame->refresh_frame_flags =
+            frame_is_sframe(cm) ? REFRESH_FRAME_ALL
+                                : aom_rb_read_literal(rb, REF_FRAMES);
 #endif  // CONFIG_REFRESH_FLAG
     }
   }
@@ -7731,7 +7747,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
           buf->display_order_hint = get_ref_frame_disp_order_hint(cm, buf);
 #else
-          buf->display_order_hint = order_hint;
+            buf->display_order_hint = order_hint;
 #endif  // CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
         }
       }
@@ -7839,11 +7855,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       int n_ranked = av1_get_ref_frames(cm, current_frame->display_order_hint,
                                         cm->ref_frame_map_pairs);
 #else
-      RefFrameMapPair ref_frame_map_pairs[REF_FRAMES];
-      init_ref_map_pair(cm, ref_frame_map_pairs,
-                        current_frame->frame_type == KEY_FRAME);
-      int n_ranked = av1_get_ref_frames(cm, current_frame->display_order_hint,
-                                        ref_frame_map_pairs);
+        RefFrameMapPair ref_frame_map_pairs[REF_FRAMES];
+        init_ref_map_pair(cm, ref_frame_map_pairs,
+                          current_frame->frame_type == KEY_FRAME);
+        int n_ranked = av1_get_ref_frames(cm, current_frame->display_order_hint,
+                                          ref_frame_map_pairs);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
       // Reference rankings have been implicitly derived in av1_get_ref_frames.
@@ -7934,7 +7950,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_PRIMARY_REF_FRAME_OPT
                      (int)cm->ref_frame_map_pairs[ref].disp_order)
 #else
-                     (int)ref_frame_map_pairs[ref].disp_order)
+                       (int)ref_frame_map_pairs[ref].disp_order)
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
                   : 1;
           cm->ref_frames_info.ref_frame_distance[i] = scores[i].distance;
@@ -7980,7 +7996,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
               aom_rb_read_bit(rb) ? TIP_FRAME_AS_REF : TIP_FRAME_DISABLED;
         }
 #else
-        features->tip_frame_mode = aom_rb_read_literal(rb, 2);
+          features->tip_frame_mode = aom_rb_read_literal(rb, 2);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_OPTFLOW_ON_TIP && !CONFIG_TIP_LD
         features->use_optflow_tip = 1;
@@ -8099,10 +8115,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                 aom_rb_read_bit(rb) ? REFINE_ALL : REFINE_NONE;
           }
 #else
-          features->opfl_refine_type = aom_rb_read_literal(rb, 2);
-          if (features->opfl_refine_type == AOM_OPFL_REFINE_AUTO)
-            aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
-                               "Invalid frame level optical flow refine type");
+            features->opfl_refine_type = aom_rb_read_literal(rb, 2);
+            if (features->opfl_refine_type == AOM_OPFL_REFINE_AUTO)
+              aom_internal_error(
+                  &cm->error, AOM_CODEC_CORRUPT_FRAME,
+                  "Invalid frame level optical flow refine type");
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         } else {
           features->opfl_refine_type = cm->seq_params.enable_opfl_refine;
@@ -8174,7 +8191,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_TIP_DIRECT_FRAME_MV
   YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tmp_tip_frame->buf;
 #else
-  YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
+    YV12_BUFFER_CONFIG *tip_frame_buf = &cm->tip_ref.tip_frame->buf;
 #endif  // CONFIG_TIP_DIRECT_FRAME_MV
   tip_frame_buf->bit_depth = seq_params->bit_depth;
   tip_frame_buf->color_primaries = seq_params->color_primaries;
@@ -8202,10 +8219,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_FIX_CDEF_SYNTAX
     cm->cdef_info.cdef_frame_enable = 0;
 #else
-    cm->cdef_info.cdef_bits = 0;
-    cm->cdef_info.cdef_strengths[0] = 0;
-    cm->cdef_info.nb_cdef_strengths = 1;
-    cm->cdef_info.cdef_uv_strengths[0] = 0;
+      cm->cdef_info.cdef_bits = 0;
+      cm->cdef_info.cdef_strengths[0] = 0;
+      cm->cdef_info.nb_cdef_strengths = 1;
+      cm->cdef_info.cdef_uv_strengths[0] = 0;
 #endif  // CONFIG_FIX_CDEF_SYNTAX
     cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
@@ -8237,10 +8254,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->cur_frame->v_ac_delta_q = cm->quant_params.v_ac_delta_q;
     }
 #else
-    cm->quant_params.base_qindex = aom_rb_read_literal(
-        rb, cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_BITS_UNEXT
-                                                   : QINDEX_BITS);
-    cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
+      cm->quant_params.base_qindex = aom_rb_read_literal(
+          rb, cm->seq_params.bit_depth == AOM_BITS_8 ? QINDEX_BITS_UNEXT
+                                                     : QINDEX_BITS);
+      cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
     features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
@@ -8349,9 +8366,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_FIX_CDEF_SYNTAX
     cm->cdef_info.cdef_frame_enable = 0;
 #else
-    cm->cdef_info.cdef_bits = 0;
-    cm->cdef_info.cdef_strengths[0] = 0;
-    cm->cdef_info.cdef_uv_strengths[0] = 0;
+      cm->cdef_info.cdef_bits = 0;
+      cm->cdef_info.cdef_strengths[0] = 0;
+      cm->cdef_info.cdef_uv_strengths[0] = 0;
 #endif  // CONFIG_FIX_CDEF_SYNTAX
   }
   if (features->all_lossless || !seq_params->enable_restoration) {
@@ -8469,7 +8486,7 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
 #if CONFIG_TIP_LD
       (cm->has_both_sides_refs || cm->ref_frames_info.num_past_refs >= 2)
 #else
-      cm->has_both_sides_refs
+        cm->has_both_sides_refs
 #endif  // CONFIG_TIP_LD
   ) {
     if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
@@ -8501,7 +8518,7 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
 #if CONFIG_TIP_LD
     set_primary_ref_frame_and_ctx(cm);
 #else
-    av1_setup_past_independence(cm);
+      av1_setup_past_independence(cm);
 #endif  // CONFIG_TIP_LD
     if (!cm->tiles.large_scale) {
       cm->cur_frame->frame_context = *cm->fc;
@@ -8602,6 +8619,33 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
 
   av1_setup_block_planes(xd, cm->seq_params.subsampling_x,
                          cm->seq_params.subsampling_y, num_planes);
+  if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
+    // use the default frame context values
+    *cm->fc = *cm->default_frame_context;
+  } else {
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+    *cm->fc = get_primary_ref_frame_buf(cm, cm->features.primary_ref_frame)
+                  ->frame_context;
+#else
+      *cm->fc = get_primary_ref_frame_buf(cm)->frame_context;
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+    const int ref_frame_used = (cm->features.primary_ref_frame ==
+                                cm->features.derived_primary_ref_frame)
+                                   ? cm->features.derived_secondary_ref_frame
+                                   : cm->features.derived_primary_ref_frame;
+    const int map_idx = get_ref_frame_map_idx(cm, ref_frame_used);
+    if ((map_idx != INVALID_IDX) &&
+        (ref_frame_used != cm->features.primary_ref_frame) &&
+        (cm->seq_params.enable_avg_cdf && !cm->seq_params.avg_cdf_type)) {
+      av1_avg_cdf_symbols(cm->fc, &cm->ref_frame_map[map_idx]->frame_context,
+                          AVG_CDF_WEIGHT_PRIMARY, AVG_CDF_WEIGHT_NON_PRIMARY);
+    }
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  }
+  if (!cm->fc->initialized)
+    aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                       "Uninitialized entropy context.");
 
   pbi->dcb.corrupted = 0;
   return uncomp_hdr_size;
@@ -8763,9 +8807,9 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_FIX_CDEF_SYNTAX
                         cm->cdef_info.cdef_frame_enable;
 #else
-                        (cm->cdef_info.cdef_bits ||
-                         cm->cdef_info.cdef_strengths[0] ||
-                         cm->cdef_info.cdef_uv_strengths[0]);
+                          (cm->cdef_info.cdef_bits ||
+                           cm->cdef_info.cdef_strengths[0] ||
+                           cm->cdef_info.cdef_uv_strengths[0]);
 #endif  // CONFIG_FIX_CDEF_SYNTAX
     const int do_superres = av1_superres_scaled(cm);
 
@@ -8833,17 +8877,22 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 
   if (!pbi->dcb.corrupted) {
     if (cm->features.refresh_frame_context == REFRESH_FRAME_CONTEXT_BACKWARD) {
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
-      if (cm->seq_params.enable_tiles_cdfs_avg &&
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+      if (cm->seq_params.enable_avg_cdf && cm->seq_params.avg_cdf_type &&
           cm->tiles.rows * cm->tiles.cols > 1) {
         decoder_avg_tiles_cdfs(pbi);
       } else {
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
+        if (cm->seq_params.enable_tiles_cdfs_avg &&
+            cm->tiles.rows * cm->tiles.cols > 1) {
+          decoder_avg_tiles_cdfs(pbi);
+        } else {
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
         assert(pbi->context_update_tile_id < pbi->allocated_tiles);
         *cm->fc = pbi->tile_data[pbi->context_update_tile_id].tctx;
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
       }
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
       av1_reset_cdf_symbol_counters(cm->fc);
     }
   } else {

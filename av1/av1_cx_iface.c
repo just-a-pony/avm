@@ -249,9 +249,12 @@ struct av1_extracfg {
 #if CONFIG_DRL_REORDER_CONTROL
   int enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  int enable_avg_cdf;
+  int avg_cdf_type;
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   int enable_tiles_cdfs_avg;
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   int enable_parity_hiding;
 #if CONFIG_MRSSE
   unsigned int enable_mrsse;
@@ -467,7 +470,7 @@ static struct av1_extracfg default_extra_cfg = {
   2,  // use ml model for erp pruning
   1,  // enable extended partitions
 #else
-  0,                           // disable ML based partition speed up features
+  0,    // disable ML based partition speed up features
 #endif
   1,  // enable rectangular partitions
   1,  // enable ab shape partitions
@@ -512,7 +515,7 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_EXT_RECUR_PARTITIONS
   256,  // max_partition_size
 #else
-  128,                         // max_partition_size
+  128,  // max_partition_size
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   1,    // enable intra edge filter
   1,    // frame order hint
@@ -551,7 +554,7 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   0,    // enable overlay
 #else   // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
-  1,                           // enable overlay
+  1,    // enable overlay
 #endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   1,    // enable palette
   !CONFIG_SHARP_SETTINGS,  // enable intrabc
@@ -600,9 +603,12 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_DRL_REORDER_CONTROL
   1,    // enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  1,  // enable_avg_cdf
+  1,  // avg_cdf_type
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   1,    // enable_tiles_cdfs_avg
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   1,    // enable_parity_hiding
 #if CONFIG_MRSSE
   0,
@@ -1087,9 +1093,12 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_DRL_REORDER_CONTROL
   cfg->enable_drl_reorder = extra_cfg->enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  cfg->enable_avg_cdf = extra_cfg->enable_avg_cdf;
+  cfg->avg_cdf_type = extra_cfg->avg_cdf_type;
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   cfg->enable_tiles_cdfs_avg = extra_cfg->enable_tiles_cdfs_avg;
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
 #if CONFIG_MRSSE
   cfg->enable_mrsse = extra_cfg->enable_mrsse;
@@ -1223,9 +1232,12 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_DRL_REORDER_CONTROL
   extra_cfg->enable_drl_reorder = cfg->enable_drl_reorder;
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  extra_cfg->enable_avg_cdf = cfg->enable_avg_cdf;
+  extra_cfg->avg_cdf_type = cfg->avg_cdf_type;
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   extra_cfg->enable_tiles_cdfs_avg = cfg->enable_tiles_cdfs_avg;
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   extra_cfg->enable_parity_hiding = cfg->enable_parity_hiding;
 #if CONFIG_MRSSE
   extra_cfg->enable_mrsse = cfg->enable_mrsse;
@@ -1501,10 +1513,20 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     }
   }
 #endif  // CONFIG_DRL_REORDER_CONTROL
-
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  tool_cfg->enable_avg_cdf = extra_cfg->enable_avg_cdf;
+  if (tool_cfg->enable_avg_cdf) {
+    if (extra_cfg->tile_columns <= 1 && extra_cfg->tile_rows <= 1) {
+      tool_cfg->avg_cdf_type = 0;
+    } else {
+      tool_cfg->avg_cdf_type = extra_cfg->avg_cdf_type;
+    }
+  } else {
+    tool_cfg->avg_cdf_type = 0;
+  }
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   tool_cfg->enable_tiles_cdfs_avg = extra_cfg->enable_tiles_cdfs_avg;
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
 
   if (extra_cfg->enable_order_hint && extra_cfg->enable_ref_frame_mvs) {
     tool_cfg->enable_tip = extra_cfg->enable_tip;
@@ -4265,11 +4287,18 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               argv, err_string)) {
     extra_cfg.enable_drl_reorder = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_avg_cdf, argv,
+                              err_string)) {
+    extra_cfg.enable_avg_cdf = arg_parse_int_helper(&arg, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.avg_cdf_type, argv,
+                              err_string)) {
+    extra_cfg.avg_cdf_type = arg_parse_int_helper(&arg, err_string);
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tiles_cdfs_avg,
                               argv, err_string)) {
     extra_cfg.enable_tiles_cdfs_avg = arg_parse_int_helper(&arg, err_string);
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_parity_hiding,
                               argv, err_string)) {
     extra_cfg.enable_parity_hiding = arg_parse_uint_helper(&arg, err_string);
@@ -4594,9 +4623,12 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_DRL_REORDER_CONTROL
         1,
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+        1,  // enable_avg_cdf
+        1,  // avg_cdf_type
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
         1,  // enable_tiles_cdfs_avg
-#endif      // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
         1,
 #if CONFIG_MRSSE
         0,

@@ -5187,14 +5187,16 @@ static AOM_INLINE void write_tile_info(const AV1_COMMON *const cm,
 
   *saved_wb = *wb;
   if (cm->tiles.rows * cm->tiles.cols > 1) {
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+    if (!cm->seq_params.enable_avg_cdf || !cm->seq_params.avg_cdf_type) {
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
     if (!cm->seq_params.enable_tiles_cdfs_avg) {
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
       // tile id used for cdf update
       aom_wb_write_literal(wb, 0, cm->tiles.log2_cols + cm->tiles.log2_rows);
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     }
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     // Number of bytes in tile size - 1
     aom_wb_write_literal(wb, 3, 2);
   }
@@ -5601,8 +5603,8 @@ static AOM_INLINE void write_sb_size(const SequenceHeader *const seq_params,
     return;
   }
 #else
-  assert(seq_params->sb_size == BLOCK_128X128 ||
-         seq_params->sb_size == BLOCK_64X64);
+    assert(seq_params->sb_size == BLOCK_128X128 ||
+           seq_params->sb_size == BLOCK_64X64);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   aom_wb_write_bit(wb, seq_params->sb_size == BLOCK_128X128);
 }
@@ -5720,9 +5722,14 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
                      seq_params->enable_drl_reorder == DRL_REORDER_CONSTRAINT);
   }
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
-  aom_wb_write_bit(wb, seq_params->enable_tiles_cdfs_avg);
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  aom_wb_write_bit(wb, seq_params->enable_avg_cdf);
+  if (seq_params->enable_avg_cdf) {
+    aom_wb_write_bit(wb, seq_params->avg_cdf_type);
+  }
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
+    aom_wb_write_bit(wb, seq_params->enable_tiles_cdfs_avg);
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   aom_wb_write_bit(wb, seq_params->explicit_ref_frame_map);
   // 0 : show_existing_frame, 1: implicit derviation
   aom_wb_write_bit(wb, seq_params->enable_frame_output_order);
@@ -5832,7 +5839,7 @@ static AOM_INLINE void write_global_motion_params(
 #if CONFIG_IMPROVED_GLOBAL_MOTION
       assert(type == AFFINE);
 #else
-      aom_wb_write_bit(wb, type == TRANSLATION);
+        aom_wb_write_bit(wb, type == TRANSLATION);
 #endif  // !CONFIG_IMPROVED_GLOBAL_MOTION
     }
   }
@@ -5866,13 +5873,13 @@ static AOM_INLINE void write_global_motion_params(
     const int trans_prec_diff = GM_TRANS_PREC_DIFF;
     const int trans_max = GM_TRANS_MAX;
 #else
-    const int trans_bits = (type == TRANSLATION)
-                               ? GM_ABS_TRANS_ONLY_BITS - precision_loss
-                               : GM_ABS_TRANS_BITS;
-    const int trans_prec_diff = (type == TRANSLATION)
-                                    ? GM_TRANS_ONLY_PREC_DIFF + precision_loss
-                                    : GM_TRANS_PREC_DIFF;
-    const int trans_max = (1 << trans_bits);
+      const int trans_bits = (type == TRANSLATION)
+                                 ? GM_ABS_TRANS_ONLY_BITS - precision_loss
+                                 : GM_ABS_TRANS_BITS;
+      const int trans_prec_diff = (type == TRANSLATION)
+                                      ? GM_TRANS_ONLY_PREC_DIFF + precision_loss
+                                      : GM_TRANS_PREC_DIFF;
+      const int trans_max = (1 << trans_bits);
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
 
     aom_wb_write_signed_primitive_refsubexpfin(
@@ -5966,9 +5973,9 @@ static AOM_INLINE void write_global_motion(AV1_COMP *cpi,
                          temporal_distance);
     WarpedMotionParams *ref_params = &ref_params_;
 #else
-    const WarpedMotionParams *ref_params =
-        cm->prev_frame ? &cm->prev_frame->global_motion[frame]
-                       : &default_warp_params;
+      const WarpedMotionParams *ref_params =
+          cm->prev_frame ? &cm->prev_frame->global_motion[frame]
+                         : &default_warp_params;
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
 
     write_global_motion_params(&cm->global_motion[frame], ref_params, wb,
@@ -6067,7 +6074,7 @@ static AOM_INLINE void write_uncompressed_header_obu(
       }
     }
 #else
-    aom_wb_write_literal(wb, current_frame->frame_type, 2);
+      aom_wb_write_literal(wb, current_frame->frame_type, 2);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 
     aom_wb_write_bit(wb, cm->show_frame);
@@ -6126,7 +6133,7 @@ static AOM_INLINE void write_uncompressed_header_obu(
       if (cpi->signal_primary_ref_frame)
         aom_wb_write_literal(wb, features->primary_ref_frame, PRIMARY_REF_BITS);
 #else
-      aom_wb_write_literal(wb, features->primary_ref_frame, PRIMARY_REF_BITS);
+        aom_wb_write_literal(wb, features->primary_ref_frame, PRIMARY_REF_BITS);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
       if (features->primary_ref_frame >= cm->ref_frames_info.num_total_refs &&
           features->primary_ref_frame != PRIMARY_REF_NONE)
@@ -6192,7 +6199,7 @@ static AOM_INLINE void write_uncompressed_header_obu(
       aom_wb_write_literal(wb, current_frame->refresh_frame_flags, REF_FRAMES);
     }
 #else
-    aom_wb_write_literal(wb, current_frame->refresh_frame_flags, REF_FRAMES);
+      aom_wb_write_literal(wb, current_frame->refresh_frame_flags, REF_FRAMES);
 #endif  // CONFIG_REFRESH_FLAG
   }
 
@@ -6371,7 +6378,7 @@ static AOM_INLINE void write_uncompressed_header_obu(
           aom_wb_write_bit(wb, features->tip_frame_mode == TIP_FRAME_AS_REF);
         }
 #else
-        aom_wb_write_literal(wb, features->tip_frame_mode, 2);
+          aom_wb_write_literal(wb, features->tip_frame_mode, 2);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {
           aom_wb_write_bit(wb, features->allow_tip_hole_fill);
@@ -6464,7 +6471,7 @@ static AOM_INLINE void write_uncompressed_header_obu(
             aom_wb_write_bit(wb, features->opfl_refine_type == REFINE_ALL);
           }
 #else
-          aom_wb_write_literal(wb, features->opfl_refine_type, 2);
+            aom_wb_write_literal(wb, features->opfl_refine_type, 2);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         }
       }
@@ -6491,10 +6498,10 @@ static AOM_INLINE void write_uncompressed_header_obu(
       }
     }
 #else
-    aom_wb_write_literal(wb, quant_params->base_qindex,
-                         cm->seq_params.bit_depth == AOM_BITS_8
-                             ? QINDEX_BITS_UNEXT
-                             : QINDEX_BITS);
+      aom_wb_write_literal(wb, quant_params->base_qindex,
+                           cm->seq_params.bit_depth == AOM_BITS_8
+                               ? QINDEX_BITS_UNEXT
+                               : QINDEX_BITS);
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
 #if !CONFIG_TIP_DIRECT_MODE_SIGNALING
     write_tile_info(cm, saved_wb, wb);
@@ -7222,17 +7229,19 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
   }
 
   if (have_tiles) {
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
-    if (!cm->seq_params.enable_tiles_cdfs_avg) {
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+    if (!cm->seq_params.enable_avg_cdf || !cm->seq_params.avg_cdf_type) {
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
+      if (!cm->seq_params.enable_tiles_cdfs_avg) {
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
       // Fill in context_update_tile_id indicating the tile to use for the
       // cdf update. The encoder currently sets it to the largest tile
       // (but is up to the encoder)
       aom_wb_overwrite_literal(saved_wb, *largest_tile_id,
                                tiles->log2_cols + tiles->log2_rows);
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     }
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME || CONFIG_ENHANCED_FRAME_CONTEXT_INIT
     // If more than one tile group. tile_size_bytes takes the default value 4
     // and does not need to be set. For a single tile group it is set in the
     // section below.

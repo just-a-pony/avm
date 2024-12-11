@@ -499,6 +499,9 @@ set_aom_config_var(CONFIG_MV_TRAJECTORY 1
                    "Enables TMVP MV trajectory tracking.")
 set_aom_config_var(CONFIG_ADAPTATION_RATE_IMPROVE 1
                    "Enables adaptation rate improvement with CDF propagation.")
+set_aom_config_var(
+  CONFIG_ENHANCED_FRAME_CONTEXT_INIT 1
+  "Enables improved frame context initialization with frame averaging.")
 
 set_aom_config_var(CONFIG_FIX_INTER_DDT_PRECISION 1
                    "Fix precision of inter DDT.")

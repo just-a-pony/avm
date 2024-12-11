@@ -912,6 +912,11 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
                            unsigned int total_tiles_log2);
 #endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
 
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
+                         int wt_left, int wt_tr);
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+
 static const int comp_idx_to_opfl_mode[INTER_COMPOUND_REF_TYPES] = {
   NEAR_NEARMV_OPTFLOW, NEAR_NEWMV_OPTFLOW,  NEW_NEARMV_OPTFLOW,      -1,
   NEW_NEWMV_OPTFLOW,   JOINT_NEWMV_OPTFLOW, JOINT_AMVDNEWMV_OPTFLOW,

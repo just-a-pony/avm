@@ -480,9 +480,12 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_DRL_REORDER_CONTROL
   &g_av1_codec_arg_defs.enable_drl_reorder,
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  &g_av1_codec_arg_defs.enable_avg_cdf,
+  &g_av1_codec_arg_defs.avg_cdf_type,
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   &g_av1_codec_arg_defs.enable_tiles_cdfs_avg,
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   &g_av1_codec_arg_defs.enable_opfl_refine,
 #if CONFIG_AFFINE_REFINEMENT
   &g_av1_codec_arg_defs.enable_affine_refine,
@@ -759,9 +762,12 @@ static void init_config(cfg_options_t *config) {
 #if CONFIG_DRL_REORDER_CONTROL
   config->enable_drl_reorder = 1;
 #endif  // CONFIG_DRL_REORDER_CONTROL
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+  config->enable_avg_cdf = 1;
+  config->avg_cdf_type = 1;
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   config->enable_tiles_cdfs_avg = 1;
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   config->enable_parity_hiding = 1;
 #if CONFIG_MRSSE
   config->enable_mrsse = 0;
@@ -1706,9 +1712,12 @@ static void show_stream_config(struct stream_state *stream,
 #if CONFIG_MRSSE
           "MRSSE (%d), "
 #endif  // CONFIG_MRSSE
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+          "Enable_CDF_Avg (%d), "
+          "CDF_Avg_Type (%d), "
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
           "TilesCDFsAvg (%d), "
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
           "IntraBC (%d)\n",
           encoder_cfg->enable_palette, encoder_cfg->enable_parity_hiding,
 #if CONFIG_IBC_SR_EXT
@@ -1717,9 +1726,11 @@ static void show_stream_config(struct stream_state *stream,
 #if CONFIG_MRSSE
           encoder_cfg->enable_mrsse,
 #endif  // CONFIG_MRSSE
-#if CONFIG_TILE_CDFS_AVG_TO_FRAME
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+          encoder_cfg->enable_avg_cdf, encoder_cfg->avg_cdf_type,
+#elif CONFIG_TILE_CDFS_AVG_TO_FRAME
           encoder_cfg->enable_tiles_cdfs_avg,
-#endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
           encoder_cfg->enable_intrabc);
 
   fprintf(stdout, "\n\n");
