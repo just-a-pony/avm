@@ -7749,7 +7749,7 @@ static INLINE void search_partition_vert_4b(
       cpi->common.seq_params.enable_sdp &&
       is_extended_sdp_allowed(pc_tree->parent->block_size,
                               pc_tree->parent->partitioning) &&
-      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_VERT_4A))
+      is_bsize_allowed_for_extended_sdp(bsize, PARTITION_VERT_4B))
     sum_rdc.rate +=
         part_search_state->region_type_cost[MIXED_INTER_INTRA_REGION];
 #endif  // CONFIG_EXTENDED_SDP
