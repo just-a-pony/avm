@@ -1662,9 +1662,15 @@ static void build_intra_predictors_high(
       num_left_pixels_needed += 1;
     }
 #else
-    const int num_left_pixels_needed =
+    int num_left_pixels_needed =
         txhpx + (need_bottom ? txwpx : 3) + (mrl_index << 1);
 #endif  // CONFIG_IDIF
+#if CONFIG_DIP
+    if (use_intra_dip) {
+      // DIP mode requires left edge + 1/4 tx height for overhang feature.
+      num_left_pixels_needed = txhpx + (txhpx >> 2);
+    }
+#endif  // CONFIG_DIP
     i = 0;
     if (n_left_px > 0) {
       for (; i < n_left_px; i++) left_col[i] = left_ref[i * ref_stride];
@@ -1697,9 +1703,15 @@ static void build_intra_predictors_high(
       num_top_pixels_needed += 1;
     }
 #else
-    const int num_top_pixels_needed =
+    int num_top_pixels_needed =
         txwpx + (need_right ? txhpx : 0) + (mrl_index << 1);
 #endif  // CONFIG_IDIF
+#if CONFIG_DIP
+    if (use_intra_dip) {
+      // DIP mode requires above line + 1/4 tx width for overhang feature.
+      num_top_pixels_needed = txwpx + (txwpx >> 2);
+    }
+#endif  // CONFIG_DIP
     if (n_top_px > 0) {
       memcpy(above_row, above_ref, n_top_px * sizeof(above_ref[0]));
       i = n_top_px;

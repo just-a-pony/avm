@@ -95,7 +95,7 @@ static void resample_output(uint16_t *dst, int dst_stride,
   }
 }
 
-// Create intra ML prediction for large blocks
+// Create intra DIP prediction for large blocks
 extern "C" void av1_highbd_intra_dip_predictor(int mode, uint16_t *dst,
                                                int dst_stride,
                                                const uint16_t *above_row,
