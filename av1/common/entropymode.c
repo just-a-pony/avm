@@ -8690,6 +8690,11 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          ctx_tr->coeff_base_eob_cdf, 3);
   CUMULATIVE_AVERAGE_CDF(ctx_left->coeff_base_bob_cdf,
                          ctx_tr->coeff_base_bob_cdf, 3);
+#if CONFIG_DIP
+  CUMULATIVE_AVERAGE_CDF(ctx_left->intra_dip_cdf, ctx_tr->intra_dip_cdf, 2);
+  CUMULATIVE_AVERAGE_CDF(ctx_left->intra_dip_mode_n6_cdf,
+                         ctx_tr->intra_dip_mode_n6_cdf, 6);
+#endif  // CONFIG_DIP
   CUMULATIVE_AVERAGE_CDF(ctx_left->coeff_base_lf_cdf, ctx_tr->coeff_base_lf_cdf,
                          LF_BASE_SYMBOLS);
   CUMULATIVE_AVERAGE_CDF(ctx_left->coeff_base_lf_eob_cdf,
@@ -9173,6 +9178,10 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   SHIFT_CDF(ctx_ptr->eob_flag_cdf1024, EOB_MAX_SYMS);
   SHIFT_CDF(ctx_ptr->coeff_base_eob_cdf, 3);
   SHIFT_CDF(ctx_ptr->coeff_base_bob_cdf, 3);
+#if CONFIG_DIP
+  SHIFT_CDF(ctx_ptr->intra_dip_cdf, 2);
+  SHIFT_CDF(ctx_ptr->intra_dip_mode_n6_cdf, 6);
+#endif  // CONFIG_DIP
   SHIFT_CDF(ctx_ptr->coeff_base_lf_cdf, LF_BASE_SYMBOLS);
   SHIFT_CDF(ctx_ptr->coeff_base_lf_eob_cdf, LF_BASE_SYMBOLS - 1);
   SHIFT_CDF(ctx_ptr->coeff_br_lf_cdf, BR_CDF_SIZE);
