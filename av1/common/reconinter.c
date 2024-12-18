@@ -3250,56 +3250,6 @@ void av1_build_one_inter_predictor(
   }
 }
 
-#if CONFIG_EXPLICIT_BAWP
-// Derive the offset value of block adaptive weighted prediction
-// mode. One row from the top boundary and one column from the left boundary
-// are used in the less square error process.
-static void derive_explicit_bawp_offsets(MACROBLOCKD *xd, uint16_t *recon_top,
-                                         uint16_t *recon_left, int rec_stride,
-                                         uint16_t *ref_top, uint16_t *ref_left,
-                                         int ref_stride, int ref, int plane,
-                                         int bw, int bh) {
-  MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_BAWP_CHROMA
-  assert(mbmi->bawp_flag[0] > 1);
-#else
-  assert(mbmi->bawp_flag > 1);
-#endif  // CONFIG_BAWP_CHROMA
-  // only integer position of reference, may need to consider
-  // fractional position of ref samples
-  int count = 0;
-  int sum_x = 0, sum_y = 0;
-
-  if (xd->up_available) {
-    for (int i = 0; i < bw; ++i) {
-      sum_x += ref_top[i];
-      sum_y += recon_top[i];
-    }
-    count += bw;
-  }
-
-  if (xd->left_available) {
-    for (int i = 0; i < bh; ++i) {
-      sum_x += ref_left[0];
-      sum_y += recon_left[0];
-
-      recon_left += rec_stride;
-      ref_left += ref_stride;
-    }
-    count += bh;
-  }
-
-  const int16_t shift = 8;  // maybe a smaller value can be used
-  if (count > 0) {
-    const int beta = derive_linear_parameters_beta(
-        sum_x, sum_y, count, shift, mbmi->bawp_alpha[plane][ref]);
-    mbmi->bawp_beta[plane][ref] = beta;
-  } else {
-    mbmi->bawp_beta[plane][ref] = -(1 << shift);
-  }
-}
-#endif  // CONFIG_EXPLICIT_BAWP
-
 #if CONFIG_BAWP
 #if CONFIG_BAWP_ACROSS_SCALES_FIX
 // The below functions are used for scaling X, Y position
@@ -3319,6 +3269,63 @@ static INLINE int scaled_y_gen(int val, const struct scale_factors *sf) {
 // Derive the scaling factor and offset of block adaptive weighted prediction
 // mode. One row from the top boundary and one column from the left boundary
 // are used in the less square error process.
+
+#if CONFIG_BAWP_FIX_DIVISION_16x16_MC
+// The bellow arrays are used to map the number of BAWP reference samples to a
+// 2^N number for each side (left or above).
+static const uint8_t blk_size_log2_bawp[BAWP_MAX_REF_NUMB + 1] = {
+  0, 0, 0, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4
+};
+static const uint8_t log_to_blk_size[5] = { 0, 2, 4, 8, 16 };
+
+// The below function is used to allocate the number of reference samples for
+// the left and above based on the availablity of the left and above and the
+// total number of available samples. The final number should be 0, 4, 8, 16 or
+// 32 in total.
+static void derive_number_ref_samples_bawp(bool above_valid, bool left_valid,
+                                           int width, int height, int *numb_up,
+                                           int *numb_left) {
+  // If the number of adjusted number of samples is zero, set the availability
+  // to be false
+  const bool above_available = width ? above_valid : false;
+  const bool left_available = height ? left_valid : false;
+
+  // If both left and above references are availalbe, the numbers of reference
+  // samples in each side are calculated based on the clamped width and clamped
+  // height. Else, only the reference samples in the available side is used.
+
+  *numb_up = -1;
+  *numb_left = -1;
+  if (above_available && left_available) {
+    if (width == 16 && height == 16) {
+      *numb_up = 16;
+      *numb_left = 16;  // Using 32 samples in total for 16x16
+    } else if (width > 4 && height > 4) {
+      *numb_up = 8;
+      *numb_left = 8;  // (16) 8x8, 8x16, 16x8
+    } else if (width < 16 && height < 16) {
+      *numb_up = 4;
+      *numb_left = 4;  // (8) 4x8, 8x4
+    } else if (width == 16) {
+      *numb_up = 16;
+      *numb_left = 0;  // (16) 16x4
+    } else {
+      *numb_up = 0;
+      *numb_left = 16;  // (16) 4x16
+    }
+  } else if (above_available) {
+    *numb_up = width;
+    *numb_left = 0;
+  } else if (left_available) {
+    *numb_up = 0;
+    *numb_left = height;
+  } else {
+    *numb_up = 0;
+    *numb_left = 0;
+  }
+}
+#endif  // CONFIG_BAWP_FIX_DIVISION_16x16_MC
+
 static void derive_bawp_parameters(MACROBLOCKD *xd, uint16_t *recon_top,
                                    uint16_t *recon_left, int rec_stride,
                                    uint16_t *ref_top, uint16_t *ref_left,
@@ -3339,6 +3346,109 @@ static void derive_bawp_parameters(MACROBLOCKD *xd, uint16_t *recon_top,
   int count = 0;
   int sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
 
+#if CONFIG_BAWP_FIX_DIVISION_16x16_MC
+  const int max_numb_each_size =
+      plane ? (BAWP_MAX_REF_NUMB >> 1) : BAWP_MAX_REF_NUMB;
+  // Clamp the bw and bh to use up to 16 samples in the left and above
+  bw = AOMMIN(bw, max_numb_each_size);
+  bh = AOMMIN(bh, max_numb_each_size);
+
+  // Make the number of samples in each side to 4, 8, or 16 by padding. If the
+  // number of sample in a side is smaller than 3, dont use the reference in
+  // this side (set the corresponding elements in blk_size_log2_bawp to zero).
+  const int log2_width = blk_size_log2_bawp[bw];
+  const int width = log_to_blk_size[log2_width];
+
+  const int log2_height = blk_size_log2_bawp[bh];
+  const int height = log_to_blk_size[log2_height];
+
+  int numb_up = 0, numb_left = 0;
+  derive_number_ref_samples_bawp(xd->up_available, xd->left_available, width,
+                                 height, &numb_up, &numb_left);
+
+  uint16_t ref_pad[BAWP_MAX_REF_NUMB] = { 0 };
+  uint16_t recon_pad[BAWP_MAX_REF_NUMB] = { 0 };
+
+  if (numb_up) {
+    const int step = (int)width / numb_up;
+    const int start = step == 1 ? 0 : step >> 1;
+    const int delta_w = width - bw;
+
+#if CONFIG_BAWP_ACROSS_SCALES_FIX
+    if (sf->x_scale_fp != REF_NO_SCALE) {
+      for (int i = 0; i < bw; i++) {
+        int idx = scaled_x_gen(i, sf);
+        ref_pad[i] = ref_top[idx];
+        recon_pad[i] = recon_top[i];
+      }
+    } else {
+#endif  // CONFIG_BAWP_ACROSS_SCALES_FIX
+      for (int i = 0; i < bw; ++i) {
+        ref_pad[i] = ref_top[i];
+        recon_pad[i] = recon_top[i];
+      }
+#if CONFIG_BAWP_ACROSS_SCALES_FIX
+    }
+#endif  // CONFIG_BAWP_ACROSS_SCALES_FIX
+    // Padding
+    if (delta_w > 0) {
+      for (int i = 0; i < delta_w; i++) {
+        ref_pad[i + bw] = ref_pad[i];
+        recon_pad[i + bw] = recon_pad[i];
+      }
+    }
+
+    for (int i = start; i < width; i = i + step) {
+      sum_x += ref_pad[i];
+      sum_y += recon_pad[i];
+      sum_xy += ref_pad[i] * recon_pad[i];
+      sum_xx += ref_pad[i] * ref_pad[i];
+    }
+    count += numb_up;
+  }
+
+  if (numb_left) {
+    const int step_left = (int)height / numb_left;
+    const int start_left = step_left == 1 ? 0 : step_left >> 1;
+    const int delta = height - bh;
+
+#if CONFIG_BAWP_ACROSS_SCALES_FIX
+    if (sf->y_scale_fp != REF_NO_SCALE) {
+      for (int i = 0; i < bh; i++) {
+        int ref_left_tmp_idx = scaled_y_gen(i, sf) * ref_stride;
+        ref_pad[i] = ref_left[ref_left_tmp_idx];
+        recon_pad[i] = recon_left[0];
+
+        recon_left += rec_stride;
+      }
+    } else {
+#endif  // CONFIG_BAWP_ACROSS_SCALES_FIX
+      for (int i = 0; i < bh; ++i) {
+        ref_pad[i] = ref_left[0];
+        recon_pad[i] = recon_left[0];
+
+        recon_left += rec_stride;
+        ref_left += ref_stride;
+      }
+#if CONFIG_BAWP_ACROSS_SCALES_FIX
+    }
+#endif  // CONFIG_BAWP_ACROSS_SCALES_FIX
+    // Padding
+    if (delta > 0) {
+      for (int i = 0; i < delta; i++) {
+        ref_pad[i + bh] = ref_pad[i];
+        recon_pad[i + bh] = recon_pad[i];
+      }
+    }
+    for (int i = start_left; i < height; i = i + step_left) {
+      sum_x += ref_pad[i];
+      sum_y += recon_pad[i];
+      sum_xy += ref_pad[i] * recon_pad[i];
+      sum_xx += ref_pad[i] * ref_pad[i];
+    }
+    count += numb_left;
+  }
+#else
   if (xd->up_available) {
 #if CONFIG_BAWP_ACROSS_SCALES_FIX
     if (sf->x_scale_fp != REF_NO_SCALE) {
@@ -3387,31 +3497,42 @@ static void derive_bawp_parameters(MACROBLOCKD *xd, uint16_t *recon_top,
       }
 #if CONFIG_BAWP_ACROSS_SCALES_FIX
     }
-#endif  // CONFIG_BAWP_ACROSS_SCALES_FIX
+#endif                      // CONFIG_BAWP_ACROSS_SCALES_FIX
     count += bh;
   }
-
+#endif                      // CONFIG_BAWP_FIX_DIVISION_16x16_MC
   const int16_t shift = 8;  // maybe a smaller value can be used
-  if (count > 0) {
+
+  if (mbmi->bawp_flag[0] > 1 && plane == 0) {
+    if (count > 0) {
+      const int beta = derive_linear_parameters_beta(
+          sum_x, sum_y, count, shift, mbmi->bawp_alpha[plane][ref]);
+      mbmi->bawp_beta[plane][ref] = beta;
+    } else {
+      mbmi->bawp_beta[plane][ref] = -(1 << shift);
+    }
+  } else {
+    if (count > 0) {
 #if CONFIG_BAWP_CHROMA
-    if (plane == 0) {
+      if (plane == 0) {
+        const int16_t alpha = derive_linear_parameters_alpha(
+            sum_x, sum_y, sum_xx, sum_xy, count, shift);
+        mbmi->bawp_alpha[plane][ref] = (alpha == 0) ? (1 << shift) : alpha;
+      } else {
+        mbmi->bawp_alpha[plane][ref] = mbmi->bawp_alpha[0][ref];
+      }
+#else
       const int16_t alpha = derive_linear_parameters_alpha(
           sum_x, sum_y, sum_xx, sum_xy, count, shift);
       mbmi->bawp_alpha[plane][ref] = (alpha == 0) ? (1 << shift) : alpha;
-    } else {
-      mbmi->bawp_alpha[plane][ref] = mbmi->bawp_alpha[0][ref];
-    }
-#else
-    const int16_t alpha = derive_linear_parameters_alpha(sum_x, sum_y, sum_xx,
-                                                         sum_xy, count, shift);
-    mbmi->bawp_alpha[plane][ref] = (alpha == 0) ? (1 << shift) : alpha;
 #endif  // CONFIG_BAWP_CHROMA
-    const int beta = derive_linear_parameters_beta(
-        sum_x, sum_y, count, shift, mbmi->bawp_alpha[plane][ref]);
-    mbmi->bawp_beta[plane][ref] = beta;
-  } else {
-    mbmi->bawp_alpha[plane][ref] = 1 << shift;
-    mbmi->bawp_beta[plane][ref] = -(1 << shift);
+      const int beta = derive_linear_parameters_beta(
+          sum_x, sum_y, count, shift, mbmi->bawp_alpha[plane][ref]);
+      mbmi->bawp_beta[plane][ref] = beta;
+    } else {
+      mbmi->bawp_alpha[plane][ref] = 1 << shift;
+      mbmi->bawp_beta[plane][ref] = -(1 << shift);
+    }
   }
 }
 
@@ -3503,6 +3624,9 @@ void av1_build_one_bawp_inter_predictor(
       (mi_y_p + ref_h + y_off_p) >= height_p) {
     mbmi->bawp_alpha[plane][ref] = 1 << shift;
     mbmi->bawp_beta[plane][ref] = -(1 << shift);
+#if CONFIG_BAWP_FIX_DIVISION_16x16_MC
+    return;
+#endif
   } else {
     uint16_t *recon_buf = xd->plane[plane].dst.buf;
     int recon_stride = xd->plane[plane].dst.stride;
@@ -3565,15 +3689,11 @@ void av1_build_one_bawp_inter_predictor(
       const int delta_magtitude = delta_sign * delta_scales;
       if (first_ref_dist > 4) delta_scales = delta_sign * (delta_magtitude + 1);
       mbmi->bawp_alpha[plane][ref] = 256 + (delta_scales * 16);
-      derive_explicit_bawp_offsets(xd, recon_top, recon_left, recon_stride,
-                                   ref_top, ref_left, ref_stride, ref, plane,
-                                   ref_w, ref_h);
-    } else
+    }
 #endif  // CONFIG_EXPLICIT_BAWP
-      derive_bawp_parameters(xd, recon_top, recon_left, recon_stride, ref_top,
+    derive_bawp_parameters(xd, recon_top, recon_left, recon_stride, ref_top,
 #if CONFIG_BAWP_ACROSS_SCALES_FIX
-                             ref_left, ref_stride, ref, plane, ref_w, ref_h,
-                             sf);
+                           ref_left, ref_stride, ref, plane, ref_w, ref_h, sf);
 #else   // CONFIG_BAWP_ACROSS_SCALES_FIX
                            ref_left, ref_stride, ref, plane, ref_w, ref_h);
 #endif  // CONFIG_BAWP_ACROSS_SCALES_FIX
