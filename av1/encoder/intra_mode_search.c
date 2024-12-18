@@ -2461,7 +2461,8 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
 
 #if CONFIG_DIP
   // Try Intra ML prediction (within intra frame).
-  const int try_intra_dip = av1_intra_dip_allowed_bsize(&cpi->common, bsize);
+  const int try_intra_dip = !cpi->sf.intra_sf.skip_intra_dip_search &&
+                            av1_intra_dip_allowed_bsize(&cpi->common, bsize);
   if (try_intra_dip) {
     if (rd_pick_intra_dip_sby(cpi, x, rate, rate_tokenonly, distortion,
                               skippable, bsize,

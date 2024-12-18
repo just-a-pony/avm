@@ -431,6 +431,9 @@ static void set_good_speed_features_framesize_independent(
 
     sf->interp_sf.use_interp_filter = 1;
     sf->intra_sf.prune_palette_search_level = 1;
+#if CONFIG_DIP
+    sf->intra_sf.skip_intra_dip_search = true;
+#endif  // CONFIG_DIP
 
     sf->tx_sf.adaptive_txb_search_level = 2;
     sf->tx_sf.inter_tx_size_search_init_depth_rect = 1;
@@ -852,6 +855,9 @@ static AOM_INLINE void init_intra_sf(INTRA_MODE_SPEED_FEATURES *intra_sf) {
 #if CONFIG_AIMC
   intra_sf->reuse_uv_mode_rd_info = false;
 #endif  // CONFIG_AIMC
+#if CONFIG_DIP
+  intra_sf->skip_intra_dip_search = false;
+#endif  // CONFIG_DIP
 
   for (int i = 0; i < TX_SIZES; i++) {
     intra_sf->intra_y_mode_mask[i] = INTRA_ALL;
@@ -1167,6 +1173,11 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
     if (sf->inter_sf.disable_obmc) {
       cpi->common.seq_params.seq_enabled_motion_modes &= ~(1 << OBMC_CAUSAL);
     }
+#if CONFIG_DIP
+    if (sf->intra_sf.skip_intra_dip_search) {
+      cpi->common.seq_params.enable_intra_dip = 0;
+    }
+#endif  // CONFIG_DIP
   }
 
   // sf->part_sf.partition_search_breakout_dist_thr is set assuming max 64x64
