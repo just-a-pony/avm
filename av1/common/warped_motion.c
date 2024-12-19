@@ -574,18 +574,24 @@ static int is_affine_shear_allowed(int16_t alpha, int16_t beta, int16_t gamma,
 int av1_get_shear_params(WarpedMotionParams *wm) {
   const int32_t *mat = wm->wmmat;
   if (!is_affine_valid(wm)) return 0;
+#if CONFIG_RELAX_AFFINE_CONSTRAINTS
+  const int16_t max_value = INT16_MAX - (1 << (WARP_PARAM_REDUCE_BITS - 1));
+#else
+  const int16_t max_value = INT16_MAX;
+#endif  // CONFIG_RELAX_AFFINE_CONSTRAINTS
+
   wm->alpha =
-      clamp(mat[2] - (1 << WARPEDMODEL_PREC_BITS), INT16_MIN, INT16_MAX);
-  wm->beta = clamp(mat[3], INT16_MIN, INT16_MAX);
+      clamp(mat[2] - (1 << WARPEDMODEL_PREC_BITS), INT16_MIN, max_value);
+  wm->beta = clamp(mat[3], INT16_MIN, max_value);
   int16_t shift;
   int16_t y = resolve_divisor_32(abs(mat[2]), &shift) * (mat[2] < 0 ? -1 : 1);
   int64_t v = ((int64_t)mat[4] * (1 << WARPEDMODEL_PREC_BITS)) * y;
   wm->gamma =
-      clamp((int)ROUND_POWER_OF_TWO_SIGNED_64(v, shift), INT16_MIN, INT16_MAX);
+      clamp((int)ROUND_POWER_OF_TWO_SIGNED_64(v, shift), INT16_MIN, max_value);
   v = ((int64_t)mat[3] * mat[4]) * y;
   wm->delta = clamp(mat[5] - (int)ROUND_POWER_OF_TWO_SIGNED_64(v, shift) -
                         (1 << WARPEDMODEL_PREC_BITS),
-                    INT16_MIN, INT16_MAX);
+                    INT16_MIN, max_value);
 
   // Note(rachelbarker):
   // In extreme cases, the `clamp` operations in the previous block can set
