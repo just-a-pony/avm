@@ -320,20 +320,48 @@ typedef struct {
 #if CONFIG_REFINEMV
 #if CONFIG_ACROSS_SCALE_REFINEMV
 // Currently we supports upto 2x super-res in horizontal direction only
+#if CONFIG_SUBBLK_REF_EXT
+#define REF_BUFFER_WIDTH                                      \
+  (2 * (REFINEMV_SUBBLOCK_WIDTH + 2 * SUBBLK_REF_EXT_LINES) + \
+   (AOM_INTERP_EXTEND - 1) + AOM_INTERP_EXTEND)
+#else
 #define REF_BUFFER_WIDTH \
   (2 * REFINEMV_SUBBLOCK_WIDTH + (AOM_INTERP_EXTEND - 1) + AOM_INTERP_EXTEND)
+#endif
+#else
+#if CONFIG_SUBBLK_REF_EXT
+#define REF_BUFFER_WIDTH                                                   \
+  (REFINEMV_SUBBLOCK_WIDTH + (AOM_INTERP_EXTEND - 1) + AOM_INTERP_EXTEND + \
+   2 * SUBBLK_REF_EXT_LINES)
 #else
 #define REF_BUFFER_WIDTH \
   (REFINEMV_SUBBLOCK_WIDTH + (AOM_INTERP_EXTEND - 1) + AOM_INTERP_EXTEND)
+#endif
 #endif  // CONFIG_ACROSS_SCALE_REFINEMV
+#if CONFIG_SUBBLK_REF_EXT
+#define REF_BUFFER_HEIGHT                                                   \
+  (REFINEMV_SUBBLOCK_HEIGHT + (AOM_INTERP_EXTEND - 1) + AOM_INTERP_EXTEND + \
+   2 * SUBBLK_REF_EXT_LINES)
+#else
 #define REF_BUFFER_HEIGHT \
   (REFINEMV_SUBBLOCK_HEIGHT + (AOM_INTERP_EXTEND - 1) + AOM_INTERP_EXTEND)
+#endif  // CONFIG_SUBBLK_REF_EXT
 typedef struct PadBlock {
   int x0;
   int x1;
   int y0;
   int y1;
 } PadBlock;
+
+#if CONFIG_WARP_BD_BOX
+// boundary box for 4x4 warp reference samples
+typedef struct WarpBoundaryBox {
+  uint16_t x0;
+  uint16_t x1;
+  uint16_t y0;
+  uint16_t y1;
+} WarpBoundaryBox;
+#endif  // CONFIG_WARP_BD_BOX
 
 typedef struct PadArea {
   PadBlock pad_block;
