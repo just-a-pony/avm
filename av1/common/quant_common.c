@@ -87,6 +87,47 @@ static const uint16_t ac_qlookup_QTX_full[QINDEX_RANGE_8_BITS] = {
 // addition, the minimum allowable quantizer is 4; smaller values will
 // underflow to 0 in the actual quantization routines.
 
+#if CONFIG_TCQ
+int tcq_parity(int absLevel) {
+  int par = absLevel & 1;
+  return par;
+}
+
+int tcq_init_state(int tcq_mode, int plane, TX_CLASS tx_class) {
+  int state = tcq_mode << 8;
+  if (TCQ_DIS_CHR && plane != 0) {
+    state = 0;
+  }
+  if (TCQ_DIS_1D && tx_class != TX_CLASS_2D) {
+    state = 0;
+  }
+  return state;
+}
+
+int tcq_next_state(const int curState, const int absLevel) {
+  int tcq_mode = curState >> 8;
+  int state = curState & 255;
+  int nextState = 0;
+  if (tcq_mode == TCQ_8ST) {
+    switch (state) {
+      case 0: nextState = !(tcq_parity(absLevel)) ? 0 : 4; break;
+      case 1: nextState = !(tcq_parity(absLevel)) ? 4 : 0; break;
+      case 2: nextState = !(tcq_parity(absLevel)) ? 1 : 5; break;
+      case 3: nextState = !(tcq_parity(absLevel)) ? 5 : 1; break;
+      case 4: nextState = !(tcq_parity(absLevel)) ? 6 : 2; break;
+      case 5: nextState = !(tcq_parity(absLevel)) ? 2 : 6; break;
+      case 6: nextState = !(tcq_parity(absLevel)) ? 7 : 3; break;
+      case 7: nextState = !(tcq_parity(absLevel)) ? 3 : 7; break;
+      default: nextState = !(tcq_parity(absLevel)) ? 0 : 4; break;
+    }
+  } else {  // TCQ_DISABLE
+    nextState = 0;
+  }
+  nextState += (tcq_mode << 8);
+  return nextState;
+}
+#endif  // CONFIG_TCQ
+
 int32_t av1_dc_quant_QTX(int qindex, int delta, int base_dc_delta_q,
                          aom_bit_depth_t bit_depth) {
   int q_clamped;

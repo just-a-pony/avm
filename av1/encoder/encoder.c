@@ -525,7 +525,16 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #elif CONFIG_TILE_CDFS_AVG_TO_FRAME
   seq->enable_tiles_cdfs_avg = tool_cfg->enable_tiles_cdfs_avg;
 #endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+#if CONFIG_TCQ
+  seq->enable_tcq = tool_cfg->enable_tcq;
+  if (seq->enable_tcq == TCQ_DISABLE || seq->enable_tcq >= TCQ_8ST_FR) {
+    seq->enable_parity_hiding = tool_cfg->enable_parity_hiding;
+  } else {
+    seq->enable_parity_hiding = 0;
+  }
+#else
   seq->enable_parity_hiding = tool_cfg->enable_parity_hiding;
+#endif  // CONFIG_TCQ
 #if CONFIG_IMPROVED_GLOBAL_MOTION
   // TODO(rachelbarker): Check if cpi->sf.gm_sf.gm_search_type is set by this
   // point, and set to 0 if cpi->sf.gm_sf.gm_search_type == GM_DISABLE_SEARCH
@@ -1588,6 +1597,7 @@ void av1_remove_compressor(AV1_COMP *cpi) {
     fclose(cpi->common.fEncCoeffLog);
   }
 #endif
+
   aom_free(cpi->subgop_config_str);
   aom_free(cpi->subgop_config_path);
   aom_free(cpi);
@@ -4169,6 +4179,15 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     aom_invalidate_pyramid(cpi->source->y_pyramid);
     av1_invalidate_corner_list(cpi->source->corners);
   }
+
+#if CONFIG_TCQ
+  if (cm->seq_params.enable_tcq >= TCQ_8ST_FR) {
+    features->tcq_mode =
+        frame_is_intra_only(cm) || current_frame->pyramid_level <= 1;
+  } else {
+    features->tcq_mode = cm->seq_params.enable_tcq;
+  }
+#endif  // CONFIG_TCQ
 
   int largest_tile_id = 0;
   if (av1_superres_in_recode_allowed(cpi)) {

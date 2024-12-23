@@ -2686,6 +2686,15 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
           intra_txb_rd_info->txb_entropy_ctx;
       best_eob = intra_txb_rd_info->eob;
       best_tx_type = intra_txb_rd_info->tx_type;
+#if CONFIG_TCQ
+      const TX_CLASS tx_class =
+          tx_type_to_class[get_primary_tx_type(best_tx_type)];
+      if (tcq_enable(cm->features.tcq_mode, plane, tx_class))
+        // perform_block_coeff_opt : Whether trellis optimization is done.
+        // we do not skip any optimization in loop of txfm search. so make sure
+        // each block is optimized.
+        assert(intra_txb_rd_info->perform_block_coeff_opt);
+#endif  // CONFIG_TCQ
       skip_trellis |= !intra_txb_rd_info->perform_block_coeff_opt;
       update_txk_array(xd, blk_row, blk_col, tx_size, best_tx_type);
       recon_intra(cpi, x, plane, block, blk_row, blk_col, plane_bsize, tx_size,
@@ -2751,9 +2760,17 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   // would be helpful. For larger residuals, R-D optimization may not be
   // effective.
   // TODO(any): Experiment with variance and mean based thresholds
-  const int perform_block_coeff_opt =
-      ((uint64_t)block_mse_q8 <=
-       (uint64_t)txfm_params->coeff_opt_dist_threshold * qstep * qstep);
+  int perform_block_coeff_opt = 0;
+#if CONFIG_TCQ
+  if (tcq_enable(cm->features.tcq_mode, plane, TX_CLASS_2D)) {
+    perform_block_coeff_opt = 1;
+  } else
+#endif  // CONFIG_TCQ
+  {
+    perform_block_coeff_opt =
+        ((uint64_t)block_mse_q8 <=
+         (uint64_t)txfm_params->coeff_opt_dist_threshold * qstep * qstep);
+  }
   skip_trellis |= !perform_block_coeff_opt;
 
   // Flag to indicate if distortion should be calculated in transform domain or
@@ -3009,12 +3026,19 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
         }
         *coeffs_available = 1;
 
-        skip_trellis_based_on_satd[txfm_param.tx_type] =
-            skip_trellis_opt_based_on_satd(
-                x, &quant_param, plane, block, tx_size,
-                cpi->oxcf.q_cfg.quant_b_adapt, qstep,
-                txfm_params->coeff_opt_satd_threshold, skip_trellis_in,
-                dc_only_blk);
+#if CONFIG_TCQ
+        const TX_CLASS tx_class =
+            tx_type_to_class[get_primary_tx_type(tx_type)];
+        if (tcq_enable(cm->features.tcq_mode, plane, tx_class)) {
+          skip_trellis_based_on_satd[txfm_param.tx_type] = skip_trellis;
+        } else
+#endif  // CONFIG_TCQ
+          skip_trellis_based_on_satd[txfm_param.tx_type] =
+              skip_trellis_opt_based_on_satd(
+                  x, &quant_param, plane, block, tx_size,
+                  cpi->oxcf.q_cfg.quant_b_adapt, qstep,
+                  txfm_params->coeff_opt_satd_threshold, skip_trellis_in,
+                  dc_only_blk);
 
         uint8_t fsc_mode_in = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
                                plane == PLANE_TYPE_Y) ||
@@ -3220,10 +3244,8 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
           break;
         }
       }  // for (int stx = 0;
-#if CONFIG_IST_ANY_SET
       if (skip_idx) break;
-    }   // for (int stx_set = 0;
-#endif  // CONFIG_IST_ANY_SET
+    }
     if (skip_idx) break;
   }
 

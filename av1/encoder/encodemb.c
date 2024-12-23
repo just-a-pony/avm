@@ -37,7 +37,10 @@
 #include "av1/encoder/rdopt.h"
 #if CONFIG_E191_OFS_PRED_RES_HANDLE
 #include "av1/encoder/rdopt_utils.h"
+#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
+#include "av1/encoder/trellis_quant.h"
 
+#if CONFIG_E191_OFS_PRED_RES_HANDLE
 // Compute the average value of the wxh block.
 static AOM_INLINE int16_t avg_wxh_block_c(const int16_t *diff,
                                           ptrdiff_t diff_stride, int w, int h) {
@@ -400,9 +403,17 @@ int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                                      cctx_type);
     return eob;
   }
-
-  return av1_optimize_txb_new(cpi, x, plane, block, tx_size, tx_type, cctx_type,
-                              txb_ctx, rate_cost, cpi->oxcf.algo_cfg.sharpness);
+#if CONFIG_TCQ
+  const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
+  int use_tcq = tcq_enable(cpi->common.features.tcq_mode, plane, tx_class);
+  if (use_tcq) {
+    return av1_trellis_quant(cpi, x, plane, block, tx_size, tx_type, cctx_type,
+                             txb_ctx, rate_cost, cpi->oxcf.algo_cfg.sharpness);
+  } else
+#endif  // CONFIG_TCQ
+    return av1_optimize_txb_new(cpi, x, plane, block, tx_size, tx_type,
+                                cctx_type, txb_ctx, rate_cost,
+                                cpi->oxcf.algo_cfg.sharpness);
 }
 
 // This function returns the multiplier of dequantization for current position.
@@ -626,18 +637,6 @@ void av1_dropout_qcoeff(MACROBLOCK *mb, int plane, int block, TX_SIZE tx_size,
         av1_get_txb_entropy_context(qcoeff, scan_order, eob);
   }
 }
-
-// Settings for optimization type. NOTE: To set optimization type for all intra
-// frames, both `KEY_BLOCK_OPT_TYPE` and `INTRA_BLOCK_OPT_TYPE` should be set.
-// TODO(yjshen): These settings are hard-coded and look okay for now. They
-// should be made configurable later.
-// Blocks of key frames ONLY.
-const OPT_TYPE KEY_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
-// Blocks of intra frames (key frames EXCLUSIVE).
-const OPT_TYPE INTRA_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
-// Blocks of inter frames. (NOTE: Dropout optimization is DISABLED by default
-// if trellis optimization is on for inter frames.)
-const OPT_TYPE INTER_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
 
 enum {
   QUANT_FUNC_LOWBD = 0,
@@ -1045,6 +1044,27 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
 #else
         get_primary_tx_type(tx_type) < IDTX;
 #endif  // CONFIG_IMPROVEIDTX
+    // Settings for optimization type. NOTE: To set optimization type for all
+    // intra frames, both `KEY_BLOCK_OPT_TYPE` and `INTRA_BLOCK_OPT_TYPE` should
+    // be set.
+    // TODO(yjshen): These settings are hard-coded and look okay for now. They
+    // should be made configurable later.
+    // Blocks of key frames ONLY.
+    // Blocks of inter frames. (NOTE: Dropout optimization is DISABLED by
+    // default if trellis optimization is on for inter frames.)
+    OPT_TYPE INTER_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
+
+#if CONFIG_TCQ
+    const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
+    int use_tcq = tcq_enable(cm->features.tcq_mode, plane, tx_class);
+    if (use_tcq) {
+      // Dropout setting should be disabled when Trellis Coded Quant is
+      // enabled.
+      // Blocks of inter frames. (NOTE: Dropout optimization is DISABLED by
+      // default if trellis optimization is on for inter frames.)
+      INTER_BLOCK_OPT_TYPE = TRELLIS_OPT;
+    }
+#endif  // CONFIG_TCQ
 
     // Whether trellis or dropout optimization is required for inter frames.
     const bool do_trellis = INTER_BLOCK_OPT_TYPE == TRELLIS_OPT ||
@@ -1595,6 +1615,7 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
       fprintf(cm->fEncCoeffLog, "tx_type = %d, eob = %d", tx_type, *eob);
     }
 #endif
+
   } else {
 #if !CONFIG_E191_OFS_PRED_RES_HANDLE
     av1_subtract_txb(x, plane, plane_bsize, blk_col, blk_row, tx_size);
@@ -1654,6 +1675,29 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
       fprintf(cm->fEncCoeffLog, "\n\n");
     }
 #endif
+
+    // Settings for optimization type. NOTE: To set optimization type for all
+    // intra frames, both `KEY_BLOCK_OPT_TYPE` and `INTRA_BLOCK_OPT_TYPE` should
+    // be set.
+    // TODO(yjshen): These settings are hard-coded and look okay for now. They
+    // should be made configurable later.
+    // Blocks of key frames ONLY.
+    OPT_TYPE KEY_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
+    // Blocks of intra frames (key frames EXCLUSIVE).
+    OPT_TYPE INTRA_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
+
+#if CONFIG_TCQ
+    const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
+    int use_tcq = tcq_enable(cm->features.tcq_mode, plane, tx_class);
+    if (use_tcq) {
+      // Dropout setting should be disabled when Trellis Coded Quant is
+      // enabled.
+      KEY_BLOCK_OPT_TYPE = TRELLIS_OPT;
+      // Blocks of intra frames (key frames EXCLUSIVE).
+      INTRA_BLOCK_OPT_TYPE = TRELLIS_OPT;
+    }
+#endif  // CONFIG_TCQ
+
     // Whether trellis or dropout optimization is required for key frames and
     // intra frames.
     const bool do_trellis = (frame_is_intra_only(cm) &&
@@ -1714,7 +1758,9 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
         else
 #endif  // CONFIG_IMPROVEIDTX
           av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type,
-                         CCTX_NONE, &txb_ctx, &dummy_rate_cost);
+                         CCTX_NONE, &txb_ctx, &dummy_rate_cost
+
+          );
       }
       if (do_dropout && !fsc_mode && !enable_parity_hiding) {
         av1_dropout_qcoeff(x, plane, block, tx_size, tx_type,
@@ -1961,6 +2007,28 @@ void av1_encode_block_intra_joint_uv(int block, int blk_row, int blk_col,
   av1_setup_xform(cm, x, AOM_PLANE_U, tx_size, tx_type, cctx_type, &txfm_param);
   av1_setup_quant(tx_size, use_trellis, quant_idx,
                   cpi->oxcf.q_cfg.quant_b_adapt, &quant_param);
+
+  // Settings for optimization type. NOTE: To set optimization type for all
+  // intra frames, both `KEY_BLOCK_OPT_TYPE` and `INTRA_BLOCK_OPT_TYPE` should
+  // be set.
+  // TODO(yjshen): These settings are hard-coded and look okay for now. They
+  // should be made configurable later.
+  // Blocks of key frames ONLY.
+  OPT_TYPE KEY_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
+  // Blocks of intra frames (key frames EXCLUSIVE).
+  OPT_TYPE INTRA_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
+
+#if CONFIG_TCQ
+  int use_tcq = cm->features.tcq_mode != 0;
+  if (use_tcq) {
+    // Dropout setting should be disabled when Trellis Coded Quant is
+    // enabled.
+    KEY_BLOCK_OPT_TYPE = TRELLIS_OPT;
+    // Blocks of intra frames (key frames EXCLUSIVE).
+    INTRA_BLOCK_OPT_TYPE = TRELLIS_OPT;
+  }
+#endif  // CONFIG_TCQ
+
   // Whether trellis or dropout optimization is required for key frames and
   // intra frames.
   const bool do_trellis = (frame_is_intra_only(cm) &&

@@ -1,0 +1,174 @@
+/*
+ * Copyright (c) 2024, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at aomedia.org/license/software-license/bsd-3-c-c/.  If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * aomedia.org/license/patent-license/.
+ */
+
+#ifndef AOM_AV1_ENCODER_TRELLIS_QUANT_H_
+#define AOM_AV1_ENCODER_TRELLIS_QUANT_H_
+
+#include "config/aom_config.h"
+
+#include "av1/common/av1_common_int.h"
+#include "av1/common/blockd.h"
+#include "av1/common/txb_common.h"
+#include "av1/encoder/block.h"
+#include "av1/encoder/encoder.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define MAX_DIAG 32
+#define MAX_LF_SCAN 10
+
+typedef struct tcq_node_t {
+  int64_t rdCost : 64;
+  int32_t rate : 32;
+  int32_t absLevel : 24;
+  int8_t prevId : 8;
+} tcq_node_t;
+
+typedef struct tcq_ctx_t {
+  uint8_t ctx[MAX_DIAG];
+  uint8_t lev[MAX_DIAG];
+  int8_t orig_id;
+} tcq_ctx_t;
+
+typedef struct tcq_lf_ctx_t {
+  uint8_t last[16];
+} tcq_lf_ctx_t;
+
+typedef struct prequant_t {
+  int32_t absLevel[4];
+  int64_t deltaDist[4];
+  int16_t qIdx;
+} prequant_t;
+
+typedef struct tcq_rate_t {
+  int32_t rate[2 * TCQ_MAX_STATES];
+  int32_t rate_zero[TCQ_MAX_STATES];
+  int32_t rate_eob[2];
+} tcq_rate_t;
+
+typedef struct tcq_coeff_ctx_t {
+  uint8_t coef[TCQ_MAX_STATES];
+  uint8_t coef_eob;
+  uint8_t pad[3];
+} tcq_coeff_ctx_t;
+
+typedef struct tcq_param_t {
+  int plane;
+  TX_SIZE tx_size;
+  TX_CLASS tx_class;
+  int sharpness;
+  int64_t rdmult;
+  int log_scale;
+  const int16_t *scan;
+  const int32_t *tmp_sign;
+  const tran_low_t *qcoeff;
+  const tran_low_t *tcoeff;
+  const int32_t *quant;
+  const int32_t *dequant;
+  const qm_val_t *iqmatrix;
+  const uint16_t *block_eob_rate;
+  const TXB_CTX *txb_ctx;
+  const LV_MAP_COEFF_COST *txb_costs;
+} tcq_param_t;
+
+// Get the low range part of a coeff
+static AOM_FORCE_INLINE int get_low_range(int abs_qc, int lf) {
+  int base_levels = lf ? 6 : 4;
+  int parity = abs_qc & 1;
+#if ((COEFF_BASE_RANGE & 1) == 1)
+  int br_max = COEFF_BASE_RANGE + base_levels - 1 - parity;
+  int low = AOMMIN(abs_qc, br_max);
+  low -= base_levels - 1;
+#else
+  int abs2 = abs_qc & ~1;
+  int low = AOMMIN(abs2, COEFF_BASE_RANGE + base_levels - 2) + parity;
+  low -= base_levels - 1;
+#endif
+  return low;
+}
+
+// Get the high range part of a coeff
+static AOM_FORCE_INLINE int get_high_range(int abs_qc, int lf) {
+  int base_levels = lf ? 6 : 4;
+  int low_range = get_low_range(abs_qc, lf);
+  int high_range = (abs_qc - low_range - (base_levels - 1)) >> 1;
+  return high_range;
+}
+
+// Calculate the cost of high range of a coeff
+static AOM_FORCE_INLINE int get_golomb_cost_tcq(int abs_qc, int lf) {
+  const int r = 1 + get_high_range(abs_qc, lf);
+  const int length = get_msb(r) + 1;
+  return av1_cost_literal(2 * length - 1);
+  return 0;
+}
+
+// Calculate the cost of low range of a coeff in low-freq region
+static AOM_FORCE_INLINE int get_br_lf_cost_tcq(tran_low_t level,
+                                               const int *coeff_lps) {
+  const int base_range = get_low_range(level, 1);
+  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
+  return coeff_lps[base_range] + get_golomb_cost_tcq(level, 1);
+}
+
+// Calculate the cost of low range of a coeff in non-low-freq region
+static INLINE int get_br_cost_tcq(tran_low_t level, const int *coeff_lps) {
+  const int base_range = get_low_range(level, 0);
+  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
+  return coeff_lps[base_range] + get_golomb_cost_tcq(level, 0);
+}
+
+/*!\brief Adjust the magnitude of quantized coefficients to achieve better
+ * rate-distortion (RD) trade-off with trellis coded quant techology.
+ *
+ * \ingroup coefficient_coding
+ *
+ * This function builds a trellis through each position of coefficient and keep
+ * track of best RD cost of each node in the trellis. At the last position, it
+ * decides the best candidate and back track to eob to find the optimal
+ * quantization path.
+ *
+ * The coefficients are processing in reversed scan order.
+ *
+ * Note that, the end of block position (eob) may change if the original last
+ * coefficient is lowered to zero.
+ *
+ * \param[in]    cpi            Top-level encoder structure
+ * \param[in]    x              Pointer to structure holding the data for the
+                                current encoding macroblock
+ * \param[in]    plane          The index of the current plane
+ * \param[in]    block          The index of the current transform block in the
+ * \param[in]    tx_size        The transform size
+ * \param[in]    tx_type        The transform type
+ * \param[in]    cctx_type      The cross chroma component transform type
+ * \param[in]    txb_ctx        Context info for entropy coding transform block
+ * skip flag (tx_skip) and the sign of DC coefficient (dc_sign).
+ * \param[out]   rate_cost      The entropy cost of coding the transform block
+ * after adjustment of coefficients.
+ * \param[in]    sharpness      When sharpness == 1, the function will be less
+ * aggressive toward lowering the magnitude of coefficients.
+ * In this way, the transform block will contain more high-frequency
+ coefficients
+ * and therefore preserve the sharpness of the reconstructed block.
+ */
+int av1_trellis_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
+                      int block, TX_SIZE tx_size, TX_TYPE tx_type,
+                      CctxType cctx_type, const TXB_CTX *const txb_ctx,
+                      int *rate_cost, int sharpness);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // AOM_AV1_ENCODER_TRELLIS_QUANT_H_

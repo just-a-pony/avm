@@ -33,6 +33,7 @@ extern "C" {
 
 #include "aom/aom_codec.h"
 #include "aom/aom_frame_buffer.h"
+#include "config/aom_config.h"
 
 /*!\brief Current ABI version number
  *

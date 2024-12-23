@@ -643,6 +643,10 @@ static const int plane_rd_mult[REF_TYPES][PLANE_TYPES] = {
 };
 /*!\endcond */
 
+int get_tx_type_cost(const MACROBLOCK *x, const MACROBLOCKD *xd, int plane,
+                     TX_SIZE tx_size, TX_TYPE tx_type, int reduced_tx_set_used,
+                     int eob, int bob_code, int is_fsc);
+
 #ifdef __cplusplus
 }
 #endif
