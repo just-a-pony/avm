@@ -9713,6 +9713,11 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
               EOB_MAX_SYMS);
   AVERAGE_CDF(ctx_left->coeff_base_eob_cdf, ctx_tr->coeff_base_eob_cdf, 3);
   AVERAGE_CDF(ctx_left->coeff_base_bob_cdf, ctx_tr->coeff_base_bob_cdf, 3);
+#if CONFIG_DIP
+  AVERAGE_CDF(ctx_left->intra_dip_cdf, ctx_tr->intra_dip_cdf, 2);
+  AVERAGE_CDF(ctx_left->intra_dip_mode_n6_cdf, ctx_tr->intra_dip_mode_n6_cdf,
+              6);
+#endif  // CONFIG_DIP
   AVERAGE_CDF(ctx_left->coeff_base_lf_cdf, ctx_tr->coeff_base_lf_cdf,
               LF_BASE_SYMBOLS);
   AVERAGE_CDF(ctx_left->coeff_base_lf_eob_cdf, ctx_tr->coeff_base_lf_eob_cdf,
@@ -9746,9 +9751,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
               REFINEMV_NUM_MODES);
 #endif  // CONFIG_REFINEMV
 
-  AVERAGE_CDF(ctx_left->drl_cdf[0], ctx_tr->drl_cdf[0], 2);
-  AVERAGE_CDF(ctx_left->drl_cdf[1], ctx_tr->drl_cdf[1], 2);
-  AVERAGE_CDF(ctx_left->drl_cdf[2], ctx_tr->drl_cdf[2], 2);
+  AVERAGE_CDF(ctx_left->drl_cdf, ctx_tr->drl_cdf, 2);
 #if CONFIG_SKIP_MODE_ENHANCEMENT || CONFIG_OPTIMIZE_CTX_TIP_WARP
   AVERAGE_CDF(ctx_left->skip_drl_cdf, ctx_tr->skip_drl_cdf, 2);
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT || CONFIG_OPTIMIZE_CTX_TIP_WARP
@@ -9810,9 +9813,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 
   AVERAGE_CDF(ctx_left->warped_causal_warpmv_cdf,
               ctx_tr->warped_causal_warpmv_cdf, 2);
-  AVERAGE_CDF(ctx_left->warp_ref_idx_cdf[0], ctx_tr->warp_ref_idx_cdf[0], 2);
-  AVERAGE_CDF(ctx_left->warp_ref_idx_cdf[1], ctx_tr->warp_ref_idx_cdf[1], 2);
-  AVERAGE_CDF(ctx_left->warp_ref_idx_cdf[2], ctx_tr->warp_ref_idx_cdf[2], 2);
+  AVERAGE_CDF(ctx_left->warp_ref_idx_cdf, ctx_tr->warp_ref_idx_cdf, 2);
   AVERAGE_CDF(ctx_left->warpmv_with_mvd_flag_cdf,
               ctx_tr->warpmv_with_mvd_flag_cdf, 2);
 
@@ -9824,22 +9825,36 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->warp_extend_cdf, ctx_tr->warp_extend_cdf, 2);
 
 #if CONFIG_BAWP
-#if CONFIG_BAWP_CHROMA
-  AVERAGE_CDF(ctx_left->bawp_cdf[0], ctx_tr->bawp_cdf[0], 2);
-  AVERAGE_CDF(ctx_left->bawp_cdf[1], ctx_tr->bawp_cdf[1], 2);
-#else
   AVERAGE_CDF(ctx_left->bawp_cdf, ctx_tr->bawp_cdf, 2);
-#endif  // CONFIG_BAWP_CHROMA
 #if CONFIG_EXPLICIT_BAWP
   AVERAGE_CDF(ctx_left->explicit_bawp_cdf, ctx_tr->explicit_bawp_cdf, 2);
   AVERAGE_CDF(ctx_left->explicit_bawp_scale_cdf,
               ctx_tr->explicit_bawp_scale_cdf, EXPLICIT_BAWP_SCALE_CNT);
 #endif  // CONFIG_EXPLICIT_BAWP
-#endif
+#endif  // CONFIG_BAWP
+  AVERAGE_CDF(ctx_left->tip_cdf, ctx_tr->tip_cdf, 2);
+#if CONFIG_OPTIMIZE_CTX_TIP_WARP
+  AVERAGE_CDF(ctx_left->tip_pred_mode_cdf, ctx_tr->tip_pred_mode_cdf,
+              TIP_PRED_MODES);
+#endif  // CONFIG_OPTIMIZE_CTX_TIP_WARP
   AVERAGE_CDF(ctx_left->palette_y_size_cdf, ctx_tr->palette_y_size_cdf,
               PALETTE_SIZES);
   AVERAGE_CDF(ctx_left->palette_uv_size_cdf, ctx_tr->palette_uv_size_cdf,
               PALETTE_SIZES);
+#if CONFIG_PALETTE_IMPROVEMENTS
+#if CONFIG_PALETTE_LINE_COPY
+  AVERAGE_CDF(ctx_left->identity_row_cdf_y, ctx_tr->identity_row_cdf_y, 3);
+  AVERAGE_CDF(ctx_left->identity_row_cdf_uv, ctx_tr->identity_row_cdf_uv, 3);
+  AVERAGE_CDF(ctx_left->palette_direction_cdf, ctx_tr->palette_direction_cdf,
+              2);
+#else
+  CUMULATIVE_AVERAGE_CDF(ctx_left->identity_row_cdf_y,
+                         ctx_tr->identity_row_cdf_y, 2);
+  CUMULATIVE_AVERAGE_CDF(ctx_left->identity_row_cdf_uv,
+                         ctx_tr->identity_row_cdf_uv, 2);
+#endif  // CONFIG_PALETTE_LINE_COPY
+#endif  // CONFIG_PALETTE_IMPROVEMENTS
+  AVERAGE_CDF(ctx_left->cfl_cdf, ctx_tr->cfl_cdf, 2);
   for (int j = 0; j < PALETTE_SIZES; j++) {
     int nsymbs = j + PALETTE_MIN_SIZE;
     AVG_CDF_STRIDE(ctx_left->palette_y_color_index_cdf[j],
@@ -9866,12 +9881,8 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->txfm_4way_partition_type_cdf,
               ctx_tr->txfm_4way_partition_type_cdf, TX_PARTITION_TYPE_NUM);
 #else
-  // Square blocks
-  AVERAGE_CDF(ctx_left->inter_4way_txfm_partition_cdf[0],
-              ctx_tr->inter_4way_txfm_partition_cdf[0], 4);
-  // Rectangular blocks
-  AVERAGE_CDF(ctx_left->inter_4way_txfm_partition_cdf[1],
-              ctx_tr->inter_4way_txfm_partition_cdf[1], 4);
+  AVERAGE_CDF(ctx_left->inter_4way_txfm_partition_cdf,
+              ctx_tr->inter_4way_txfm_partition_cdf, 4);
   AVERAGE_CDF(ctx_left->inter_2way_txfm_partition_cdf,
               ctx_tr->inter_2way_txfm_partition_cdf, 2);
 #endif  // CONFIG_TX_PARTITION_CTX
@@ -9881,12 +9892,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->comp_group_idx_cdf, ctx_tr->comp_group_idx_cdf, 2);
   AVERAGE_CDF(ctx_left->skip_mode_cdfs, ctx_tr->skip_mode_cdfs, 2);
   AVERAGE_CDF(ctx_left->skip_txfm_cdfs, ctx_tr->skip_txfm_cdfs, 2);
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-  AVERAGE_CDF(ctx_left->intra_inter_cdf[0], ctx_tr->intra_inter_cdf[0], 2);
-  AVERAGE_CDF(ctx_left->intra_inter_cdf[1], ctx_tr->intra_inter_cdf[1], 2);
-#else
   AVERAGE_CDF(ctx_left->intra_inter_cdf, ctx_tr->intra_inter_cdf, 2);
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   avg_nmv(&ctx_left->nmvc, &ctx_tr->nmvc, wt_left, wt_tr);
   avg_nmv(&ctx_left->ndvc, &ctx_tr->ndvc, wt_left, wt_tr);
   AVERAGE_CDF(ctx_left->intrabc_cdf, ctx_tr->intrabc_cdf, 2);
@@ -9911,16 +9917,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->switchable_flex_restore_cdf,
               ctx_tr->switchable_flex_restore_cdf, 2);
   AVERAGE_CDF(ctx_left->wiener_restore_cdf, ctx_tr->wiener_restore_cdf, 2);
-  for (int plane = 0; plane < MAX_MB_PLANE; plane++) {
-#if CONFIG_CCSO_IMPROVE
-    for (int ctx = 0; ctx < CCSO_CONTEXT; ctx++) {
-      AVERAGE_CDF(ctx_left->ccso_cdf[plane][ctx], ctx_tr->ccso_cdf[plane][ctx],
-                  2);
-    }
-#else
-    AVERAGE_CDF(ctx_left->ccso_cdf[plane], ctx_tr->ccso_cdf[plane], 2);
-#endif  // CONFIG_CCSO_IMPROVE
-  }
+  AVERAGE_CDF(ctx_left->ccso_cdf, ctx_tr->ccso_cdf, 2);
   AVERAGE_CDF(ctx_left->sgrproj_restore_cdf, ctx_tr->sgrproj_restore_cdf, 2);
   AVERAGE_CDF(ctx_left->wienerns_restore_cdf, ctx_tr->wienerns_restore_cdf, 2);
   AVERAGE_CDF(ctx_left->wienerns_length_cdf, ctx_tr->wienerns_length_cdf, 2);
@@ -9958,7 +9955,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->y_mode_cdf, ctx_tr->y_mode_cdf, INTRA_MODES);
 #endif  // CONFIG_AIMC
 #if CONFIG_AIMC
-  AVERAGE_CDF(ctx_left->uv_mode_cdf, ctx_tr->uv_mode_cdf, UV_INTRA_MODES);
+  AVERAGE_CDF(ctx_left->uv_mode_cdf, ctx_tr->uv_mode_cdf, UV_INTRA_MODES - 1);
 #else
   AVG_CDF_STRIDE(ctx_left->uv_mode_cdf[0], ctx_tr->uv_mode_cdf[0],
                  UV_INTRA_MODES - 1, CDF_SIZE(UV_INTRA_MODES));
@@ -9966,52 +9963,20 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #endif  // CONFIG_AIMC
 
 #if CONFIG_EXTENDED_SDP
-  for (int i = 0; i < INTER_SDP_BSIZE_GROUP; i++) {
-    AVERAGE_CDF(ctx_left->region_type_cdf[i], ctx_tr->region_type_cdf[i],
-                REGION_TYPES);
-  }
+  AVERAGE_CDF(ctx_left->region_type_cdf, ctx_tr->region_type_cdf, REGION_TYPES);
 #endif  // CONFIG_EXTENDED_SDP
 
 #if CONFIG_EXT_RECUR_PARTITIONS
-  for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
-       plane_index++) {
-    for (int i = 0; i < PARTITION_CONTEXTS; i++) {
-      AVERAGE_CDF(ctx_left->do_split_cdf[plane_index][i],
-                  ctx_tr->do_split_cdf[plane_index][i], 2);
-    }
-  }
+  AVERAGE_CDF(ctx_left->do_split_cdf, ctx_tr->do_split_cdf, 2);
 #if CONFIG_EXT_RECUR_PARTITIONS
-  for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
-       plane_index++) {
-    for (int i = 0; i < SQUARE_SPLIT_CONTEXTS; i++) {
-      AVERAGE_CDF(ctx_left->do_square_split_cdf[plane_index][i],
-                  ctx_tr->do_square_split_cdf[plane_index][i], 2);
-    }
-  }
+  AVERAGE_CDF(ctx_left->do_square_split_cdf, ctx_tr->do_square_split_cdf, 2);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
-  for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
-       plane_index++) {
-    for (int i = 0; i < PARTITION_CONTEXTS; i++) {
-      AVERAGE_CDF(ctx_left->rect_type_cdf[plane_index][i],
-                  ctx_tr->rect_type_cdf[plane_index][i], 2);
-    }
-  }
-  for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
-       plane_index++) {
-    for (int i = 0; i < PARTITION_CONTEXTS; i++) {
-      for (RECT_PART_TYPE rect = 0; rect < NUM_RECT_PARTS; rect++) {
-        AVERAGE_CDF(ctx_left->do_ext_partition_cdf[plane_index][rect][i],
-                    ctx_tr->do_ext_partition_cdf[plane_index][rect][i], 2);
-        AVERAGE_CDF(
-            ctx_left->do_uneven_4way_partition_cdf[plane_index][rect][i],
-            ctx_tr->do_uneven_4way_partition_cdf[plane_index][rect][i], 2);
-        AVERAGE_CDF(
-            ctx_left->uneven_4way_partition_type_cdf[plane_index][rect][i],
-            ctx_tr->uneven_4way_partition_type_cdf[plane_index][rect][i],
-            NUM_UNEVEN_4WAY_PARTS);
-      }
-    }
-  }
+  AVERAGE_CDF(ctx_left->rect_type_cdf, ctx_tr->rect_type_cdf, 2);
+  AVERAGE_CDF(ctx_left->do_ext_partition_cdf, ctx_tr->do_ext_partition_cdf, 2);
+  AVERAGE_CDF(ctx_left->do_uneven_4way_partition_cdf,
+              ctx_tr->do_uneven_4way_partition_cdf, 2);
+  AVERAGE_CDF(ctx_left->uneven_4way_partition_type_cdf,
+              ctx_tr->uneven_4way_partition_type_cdf, NUM_UNEVEN_4WAY_PARTS);
 #else
   for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
        plane_index++) {
@@ -10039,12 +10004,8 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 
 #if CONFIG_NEW_TX_PARTITION
 #if !CONFIG_TX_PARTITION_CTX
-  // Square blocks
-  AVERAGE_CDF(ctx_left->intra_4way_txfm_partition_cdf[0],
-              ctx_tr->intra_4way_txfm_partition_cdf[0], 4);
-  // Rectangular blocks
-  AVERAGE_CDF(ctx_left->intra_4way_txfm_partition_cdf[1],
-              ctx_tr->intra_4way_txfm_partition_cdf[1], 4);
+  AVERAGE_CDF(ctx_left->intra_4way_txfm_partition_cdf,
+              ctx_tr->intra_4way_txfm_partition_cdf, 4);
   AVERAGE_CDF(ctx_left->intra_2way_txfm_partition_cdf,
               ctx_tr->intra_2way_txfm_partition_cdf, 2);
 #endif  // !CONFIG_TX_PARTITION_CTX
@@ -10060,10 +10021,8 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #endif  // CONFIG_NEW_TX_PARTITION
   AVERAGE_CDF(ctx_left->delta_q_cdf, ctx_tr->delta_q_cdf, DELTA_Q_PROBS + 1);
   AVERAGE_CDF(ctx_left->delta_lf_cdf, ctx_tr->delta_lf_cdf, DELTA_LF_PROBS + 1);
-  for (int i = 0; i < FRAME_LF_COUNT; i++) {
-    AVERAGE_CDF(ctx_left->delta_lf_multi_cdf[i], ctx_tr->delta_lf_multi_cdf[i],
-                DELTA_LF_PROBS + 1);
-  }
+  AVERAGE_CDF(ctx_left->delta_lf_multi_cdf, ctx_tr->delta_lf_multi_cdf,
+              DELTA_LF_PROBS + 1);
 #if CONFIG_TX_TYPE_FLEX_IMPROVE
   AVERAGE_CDF(ctx_left->inter_ext_tx_short_side_cdf,
               ctx_tr->inter_ext_tx_short_side_cdf, 4);
@@ -10095,10 +10054,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #endif  // CONFIG_INTRA_TX_IST_PARSE
 #endif  // CONFIG_IST_SET_FLAG
 
-  for (int p = 0; p < NUM_MV_PREC_MPP_CONTEXT; ++p) {
-    AVG_CDF_STRIDE(ctx_left->pb_mv_mpp_flag_cdf[p],
-                   ctx_tr->pb_mv_mpp_flag_cdf[p], 2, CDF_SIZE(2));
-  }
+  AVERAGE_CDF(ctx_left->pb_mv_mpp_flag_cdf, ctx_tr->pb_mv_mpp_flag_cdf, 2);
   for (int p = MV_PRECISION_HALF_PEL; p < NUM_MV_PRECISIONS; ++p) {
     int mb_precision_set = (p == MV_PRECISION_QTR_PEL);
     const PRECISION_SET *precision_def =
