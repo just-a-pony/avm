@@ -635,9 +635,9 @@ void av1_inverse_transform_block(const MACROBLOCKD *xd,
 #endif  // CONFIG_INTER_DDT
                   &txfm_param);
   assert(av1_ext_tx_used[txfm_param.tx_set_type][txfm_param.tx_type]);
-  assert(
-      IMPLIES(txfm_param.sec_tx_type,
-              block_signals_sec_tx_type(xd, tx_size, txfm_param.tx_type, eob)));
+  assert(IMPLIES(txfm_param.sec_tx_type,
+                 block_signals_sec_tx_type(xd, tx_size, txfm_param.tx_type,
+                                           txfm_param.eob)));
 
   // Work buffer for secondary transform
   DECLARE_ALIGNED(32, tran_low_t, temp_dqcoeff[MAX_TX_SQUARE]);
