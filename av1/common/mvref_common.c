@@ -5858,8 +5858,9 @@ void av1_setup_ref_frame_sides(AV1_COMMON *cm) {
   const int cur_order_hint = cm->cur_frame->order_hint;
 #endif  // CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
 
-  for (int ref_frame = 0; ref_frame < cm->ref_frames_info.num_total_refs;
-       ref_frame++) {
+  const int num_refs =
+      AOMMIN(cm->ref_frames_info.num_total_refs, INTER_REFS_PER_FRAME);
+  for (int ref_frame = 0; ref_frame < num_refs; ref_frame++) {
     const RefCntBuffer *const buf = get_ref_frame_buf(cm, ref_frame);
     int order_hint = 0;
 
