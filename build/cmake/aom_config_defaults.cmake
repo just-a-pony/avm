@@ -441,6 +441,9 @@ set_aom_config_var(
 
 set_aom_config_var(CONFIG_TIP_LD 1 "Enable TIP for low delay")
 
+set_aom_config_var(CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW 1
+                   "Enable the redesign of warp modes signaling flow")
+
 # This is an encode-only change.
 set_aom_config_var(CONFIG_OPFL_MV_SEARCH 1 "Optical flow based MV search")
 

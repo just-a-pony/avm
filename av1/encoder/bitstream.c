@@ -132,9 +132,20 @@ static AOM_INLINE void write_inter_mode(
 
   if (is_warpmv_mode_allowed(cm, mbmi, bsize)) {
     const int16_t iswarpmvmode_ctx = inter_warpmv_mode_ctx(cm, xd, mbmi);
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+    const int is_warpmv_or_warp_newmv = (mode == WARPMV || mode == WARP_NEWMV);
+    aom_write_symbol(w, is_warpmv_or_warp_newmv,
+                     ec_ctx->inter_warp_mode_cdf[iswarpmvmode_ctx], 2);
+    if (is_warpmv_or_warp_newmv) {
+      aom_write_symbol(w, mode == WARPMV, ec_ctx->is_warpmv_or_warp_newmv_cdf,
+                       2);
+      return;
+    }
+#else
     aom_write_symbol(w, mode == WARPMV,
                      ec_ctx->inter_warp_mode_cdf[iswarpmvmode_ctx], 2);
     if (mode == WARPMV) return;
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   } else {
     assert(mode != WARPMV);
   }
@@ -791,6 +802,53 @@ static AOM_INLINE void write_motion_mode(
     return;
   }
 
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+  if (mbmi->mode == WARP_NEWMV) {
+    if (!((allowed_motion_modes & (1 << WARPED_CAUSAL)) ||
+          (allowed_motion_modes & (1 << WARP_DELTA))))
+      return;
+
+    if (allowed_motion_modes & (1 << WARP_EXTEND)) {
+#if CONFIG_OPTIMIZE_CTX_TIP_WARP
+      const int ctx = av1_get_warp_extend_ctx(xd);
+      aom_write_symbol(w, motion_mode == WARP_EXTEND,
+                       xd->tile_ctx->warp_extend_cdf[ctx], 2);
+#else
+      const int ctx1 = av1_get_warp_extend_ctx1(xd, mbmi);
+      const int ctx2 = av1_get_warp_extend_ctx2(xd, mbmi);
+      aom_write_symbol(w, motion_mode == WARP_EXTEND,
+                       xd->tile_ctx->warp_extend_cdf[ctx1][ctx2], 2);
+#endif  // CONFIG_OPTIMIZE_CTX_TIP_WARP
+      if (motion_mode == WARP_EXTEND) {
+        return;
+      }
+    }
+
+    if (!(allowed_motion_modes & (1 << WARP_DELTA))) return;
+
+    if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+      const int ctx = av1_get_warp_causal_ctx(xd);
+      aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
+                       xd->tile_ctx->warped_causal_cdf[ctx], 2);
+#else
+      aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+                       xd->tile_ctx->warped_causal_cdf,
+#else
+                       xd->tile_ctx->warped_causal_cdf[bsize],
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+                       2);
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+      if (motion_mode == WARPED_CAUSAL) {
+        return;
+      }
+    }
+
+    return;
+  }
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+
   if (allowed_motion_modes & (1 << INTERINTRA)) {
     const int bsize_group = size_group_lookup[bsize];
     aom_write_symbol(w, motion_mode == INTERINTRA,
@@ -835,6 +893,7 @@ static AOM_INLINE void write_motion_mode(
     }
   }
 
+#if !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   if (allowed_motion_modes & (1 << WARP_EXTEND)) {
 #if CONFIG_OPTIMIZE_CTX_TIP_WARP
     const int ctx = av1_get_warp_extend_ctx(xd);
@@ -850,8 +909,14 @@ static AOM_INLINE void write_motion_mode(
       return;
     }
   }
+#endif  // !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
   if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+    const int ctx = av1_get_warp_causal_ctx(xd);
+    aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
+                     xd->tile_ctx->warped_causal_cdf[ctx], 2);
+#else
     aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
 #if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
                      xd->tile_ctx->warped_causal_cdf,
@@ -859,12 +924,14 @@ static AOM_INLINE void write_motion_mode(
                      xd->tile_ctx->warped_causal_cdf[bsize],
 #endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
                      2);
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
     if (motion_mode == WARPED_CAUSAL) {
       return;
     }
   }
 
+#if !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   if (allowed_motion_modes & (1 << WARP_DELTA)) {
     aom_write_symbol(w, motion_mode == WARP_DELTA,
 #if CONFIG_D149_CTX_MODELING_OPT
@@ -874,6 +941,7 @@ static AOM_INLINE void write_motion_mode(
 #endif  // CONFIG_D149_CTX_MODELING_OPT
                      2);
   }
+#endif  // !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 }
 
 static AOM_INLINE void write_delta_qindex(const MACROBLOCKD *xd,

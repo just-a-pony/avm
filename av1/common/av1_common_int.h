@@ -4727,6 +4727,43 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     return (allowed_motion_mode_warpmv & enabled_motion_modes);
   }
 
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+  if (mbmi->mode == WARP_NEWMV) {
+    int allowed_motion_modes = 0;
+
+    const int allow_warped_motion =
+        is_motion_variation_allowed_bsize(bsize, xd->mi_row, xd->mi_col) &&
+        is_motion_variation_allowed_compound(mbmi) &&
+        !av1_is_scaled(xd->block_ref_scale_factors[0]) &&
+        !xd->cur_frame_force_integer_mv;
+
+    if (allow_warped_motion &&
+#if CONFIG_COMPOUND_WARP_CAUSAL
+        mbmi->num_proj_ref[0] >= 1
+#else
+        mbmi->num_proj_ref >= 1
+#endif  // CONFIG_COMPOUND_WARP_CAUSAL
+    ) {
+      allowed_motion_modes |= (1 << WARPED_CAUSAL);
+    }
+
+    if (allow_warped_motion && allow_extend_nb(cm, xd, mbmi, NULL)) {
+      allowed_motion_modes |= (1 << WARP_EXTEND);
+    }
+
+    bool warp_delta_allowed =
+        allow_warped_motion &&
+        AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >=
+            MIN_BSIZE_WARP_DELTA;
+
+    if (warp_delta_allowed) {
+      allowed_motion_modes |= (1 << WARP_DELTA);
+    }
+
+    return (allowed_motion_modes & enabled_motion_modes);
+  }
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+
   if (mbmi->skip_mode || mbmi->ref_frame[0] == INTRA_FRAME) {
     return (1 << SIMPLE_TRANSLATION);
   }
@@ -4785,6 +4822,24 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     allowed_motion_modes |= (1 << OBMC_CAUSAL);
   }
 
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+#if CONFIG_COMPOUND_WARP_CAUSAL
+  const int allow_compound_warp_causal_motion =
+      is_motion_variation_allowed_bsize(bsize, xd->mi_row, xd->mi_col) &&
+      mbmi->mode == NEW_NEWMV &&
+      !av1_is_scaled(xd->block_ref_scale_factors[0]) &&
+      !xd->cur_frame_force_integer_mv &&
+      is_compound_warp_causal_allowed(cm,
+#if CONFIG_COMPOUND_4XN
+                                      xd,
+#endif  // CONFIG_COMPOUND_4XN
+                                      mbmi) &&
+      mbmi->num_proj_ref[0] >= 1 && mbmi->num_proj_ref[1] >= 1;
+  if (allow_compound_warp_causal_motion) {
+    allowed_motion_modes |= (1 << WARPED_CAUSAL);
+  }
+#endif  // CONFIG_COMPOUND_WARP_CAUSAL
+#else
   // From here on, all modes are warped, so have some common criteria:
   const int allow_warped_motion =
       motion_variation_allowed &&
@@ -4840,6 +4895,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
   if (warp_delta_allowed) {
     allowed_motion_modes |= (1 << WARP_DELTA);
   }
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
   return (allowed_motion_modes & enabled_motion_modes);
 }

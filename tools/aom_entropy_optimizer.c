@@ -1409,6 +1409,15 @@ int main(int argc, const char **argv) {
       "default_inter_warp_mode_cdf[WARPMV_MODE_CONTEXT][CDF_SIZE(2)]",
       0, &total_count, 0, mem_wanted, "Inter");
 
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+  cts_each_dim[0] = 2;
+  optimize_cdf_table(&fc.is_warpmv_or_warp_newmv_cnt[0], probsfile, 1,
+                     cts_each_dim,
+                     "static const aom_cdf_prob "
+                     "default_is_warpmv_or_warp_newmv_cdf[CDF_SIZE(2)]",
+                     0, &total_count, 0, mem_wanted, "Inter");
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+
   /* motion_var and warped_motion experiments */
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
@@ -1425,6 +1434,15 @@ int main(int argc, const char **argv) {
                      0, &total_count, 0, mem_wanted, "Inter");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+  cts_each_dim[0] = WARP_CAUSAL_MODE_CTX;
+  cts_each_dim[1] = 2;
+  optimize_cdf_table(
+      &fc.warped_causal[0][0], probsfile, 2, cts_each_dim,
+      "static const aom_cdf_prob "
+      "default_warped_causal_cdf[WARP_CAUSAL_MODE_CTX]CDF_SIZE(2)]",
+      0, &total_count, 0, mem_wanted, "Inter");
+#else
 #if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.warped_causal[0], probsfile, 1, cts_each_dim,
@@ -1454,6 +1472,7 @@ int main(int argc, const char **argv) {
                      "default_warp_delta_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
   cts_each_dim[0] = 2;
   cts_each_dim[1] = WARP_DELTA_NUMSYMBOLS_LOW;

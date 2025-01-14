@@ -1224,6 +1224,22 @@ static INLINE void av1_get_neighbor_warp_model(const AV1_COMMON *cm,
   }
 }
 
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+static INLINE int av1_get_warp_causal_ctx(const MACROBLOCKD *xd) {
+  int ctx = 0;
+  int has_warp_neighbor = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL && is_warp_mode(neighbor->motion_mode)) {
+      has_warp_neighbor = 1;
+      ctx += (neighbor->motion_mode == WARPED_CAUSAL);
+    }
+  }
+
+  return (ctx + has_warp_neighbor);
+}
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+
 #if CONFIG_OPTIMIZE_CTX_TIP_WARP
 static INLINE int av1_get_warp_extend_ctx(const MACROBLOCKD *xd) {
   int ctx = 0;
@@ -1245,7 +1261,11 @@ static INLINE int av1_get_warp_extend_ctx1(const MACROBLOCKD *xd,
   if (mbmi->mode == NEARMV) {
     return 0;
   } else {
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+    assert(mbmi->mode == WARP_NEWMV);
+#else
     assert(mbmi->mode == NEWMV);
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
     const TileInfo *const tile = &xd->tile;
     const POSITION mi_pos = { xd->height - 1, -1 };
     if (!(is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) &&
@@ -1273,7 +1293,11 @@ static INLINE int av1_get_warp_extend_ctx2(const MACROBLOCKD *xd,
   if (mbmi->mode == NEARMV) {
     return 0;
   } else {
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+    assert(mbmi->mode == WARP_NEWMV);
+#else
     assert(mbmi->mode == NEWMV);
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
     const TileInfo *const tile = &xd->tile;
     const POSITION mi_pos = { -1, xd->width - 1 };
     if (!(is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->up_available))

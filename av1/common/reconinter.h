@@ -377,8 +377,14 @@ static INLINE int allow_warp_parameter_signaling(const AV1_COMMON *const cm,
 #endif                                         // CONFIG_SIX_PARAM_WARP_DELTA
       (mbmi->warp_ref_idx == 1);               // 4-parameter
 
-  return (mbmi->mode != WARPMV && cm->features.allow_warpmv_mode &&
-          mbmi->motion_mode == WARP_DELTA && allow_delta_for_this_warp_ref_idx);
+  return (
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+      mbmi->mode == WARP_NEWMV &&
+#else
+      mbmi->mode != WARPMV &&
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+      cm->features.allow_warpmv_mode && mbmi->motion_mode == WARP_DELTA &&
+      allow_delta_for_this_warp_ref_idx);
 }
 
 // Map the index to weighting factor for compound weighted prediction
@@ -1619,9 +1625,12 @@ static INLINE int is_mvd_sign_derive_allowed(const AV1_COMMON *const cm,
     }
     if (drl_idx > 0) return 0;
   }
-  return (mbmi->mode == NEWMV || mbmi->mode == JOINT_NEWMV ||
-          mbmi->mode == JOINT_NEWMV_OPTFLOW || mbmi->mode == NEW_NEWMV ||
-          mbmi->mode == NEW_NEWMV_OPTFLOW);
+  return (mbmi->mode == NEWMV ||
+#if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+          mbmi->mode == WARP_NEWMV ||
+#endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
+          mbmi->mode == JOINT_NEWMV || mbmi->mode == JOINT_NEWMV_OPTFLOW ||
+          mbmi->mode == NEW_NEWMV || mbmi->mode == NEW_NEWMV_OPTFLOW);
 }
 #endif  // CONFIG_DERIVED_MVD_SIGN
 
