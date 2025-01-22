@@ -78,6 +78,9 @@ TEST_P(AV1HighbdWarpBilinearFilterTest, DISABLED_Speed) {
 TEST_P(AV1HighbdWarpBilinearFilterTest, CheckOutput) {
   RunCheckOutput(std::get<4>(GET_PARAM(0)));
 }
+TEST_P(AV1HighbdWarpBilinearFilterTest, ExtremeValues) {
+  RunTest_ExtremeValues(std::get<4>(GET_PARAM(0)));
+}
 #if HAVE_AVX2
 INSTANTIATE_TEST_SUITE_P(AVX2, AV1HighbdWarpBilinearFilterTest,
                          libaom_test::AV1HighbdWarpBilinearFilter::BuildParams(

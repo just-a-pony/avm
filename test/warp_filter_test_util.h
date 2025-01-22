@@ -132,6 +132,7 @@ class AV1HighbdWarpBilinearFilterTest
 
  protected:
   void RunCheckOutput(highbd_warp_plane_bilinear_func test_impl);
+  void RunTest_ExtremeValues(highbd_warp_plane_bilinear_func test_impl);
   void RunSpeedTest(highbd_warp_plane_bilinear_func test_impl);
   libaom_test::ACMRandom rnd_;
 };

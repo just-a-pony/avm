@@ -447,6 +447,72 @@ void AV1HighbdWarpBilinearFilterTest::RunCheckOutput(
   delete[] output2;
 }
 
+void AV1HighbdWarpBilinearFilterTest::RunTest_ExtremeValues(
+    highbd_warp_plane_bilinear_func test_impl) {
+  const int w = 256, h = 256;
+  const int border = 16;
+  const int stride = w + 2 * border;
+  HighbdWarpBilinearTestParam param = GET_PARAM(0);
+  const int out_w = std::get<0>(param), out_h = std::get<1>(param);
+  const int max_w = 16384 - out_w, max_h = 8704 - out_h;
+  const int bd = std::get<3>(param);
+  const int num_iters = std::get<2>(param);
+  const int mask = (1 << bd) - 1;
+  int i, j, sub_x, sub_y;
+  int output_n = ((out_w + 7) & ~7) * out_h;
+  uint16_t *input_ = new uint16_t[h * stride];
+  uint16_t *input = input_ + border;
+  uint16_t *output = new uint16_t[output_n];
+  uint16_t *output2 = new uint16_t[output_n];
+  WarpedMotionParams wms;
+  ConvolveParams conv_params = get_conv_params(0, 0, bd);
+  for (int i = 0; i < output_n; ++i) output[i] = output2[i] = rnd_.Rand16();
+
+  for (i = 0; i < num_iters; ++i) {
+    // Generate an input block and extend its borders horizontally
+    for (int r = 0; r < h; ++r)
+      for (int c = 0; c < w; ++c) input[r * stride + c] = rnd_.Rand16() & mask;
+    for (int r = 0; r < h; ++r) {
+      for (int c = 0; c < border; ++c) {
+        input[r * stride - border + c] = input[r * stride];
+        input[r * stride + w + c] = input[r * stride + (w - 1)];
+      }
+    }
+    for (sub_x = 0; sub_x < 2; ++sub_x)
+      for (sub_y = 0; sub_y < 2; ++sub_y) {
+        wms.wmtype = AFFINE;
+        wms.wmmat[0] = WARPEDMODEL_TRANS_CLAMP - (1 << WARPEDMODEL_PREC_BITS);
+        wms.wmmat[1] = WARPEDMODEL_TRANS_CLAMP - (1 << WARPEDMODEL_PREC_BITS);
+        const int max_value =
+            (1 << (WARPEDMODEL_PREC_BITS - 1)) - (1 << WARP_PARAM_REDUCE_BITS);
+        for (int i = 2; i < 6; i++) {
+          int offset = (i == 2 || i == 5) ? (1 << WARPEDMODEL_PREC_BITS) : 0;
+          wms.wmmat[i] = max_value + offset;
+        }
+        conv_params = get_conv_params_no_round(0, 0, NULL, 0, 0, bd);
+
+        av1_warp_plane_bilinear_c(&wms, bd, input, w, h, stride, output, max_w,
+                                  max_h, out_w, out_h, out_w, sub_x, sub_y,
+                                  &conv_params);
+        test_impl(&wms, bd, input, w, h, stride, output2, max_w, max_h, out_w,
+                  out_h, out_w, sub_x, sub_y, &conv_params);
+
+        for (int k = 0; k < out_h; ++k) {
+          for (j = 0; j < out_w; ++j) {
+            ASSERT_EQ(output[(k * out_w + j)], output2[k * out_w + j])
+                << "Pixel mismatch at index " << (k * out_w + j) << " = ("
+                << ((k * out_w + j) % out_w) << ", "
+                << ((k * out_w + j) / out_w) << ") on iteration " << i;
+          }
+        }
+      }
+  }
+
+  delete[] input_;
+  delete[] output;
+  delete[] output2;
+}
+
 void AV1HighbdWarpBilinearFilterTest::RunSpeedTest(
     highbd_warp_plane_bilinear_func test_impl) {
   const int w = 128, h = 128;
