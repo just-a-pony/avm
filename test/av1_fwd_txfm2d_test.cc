@@ -807,25 +807,40 @@ class AV1FwdSecTxfmTest : public ::testing::TestWithParam<FwdSTxfmFunc> {
   void AV1FwdSecTxfmMatchTest() {
     for (int set_id = 0; set_id < IST_DIR_SIZE; ++set_id) {
       for (uint8_t stx = 0; stx < STX_TYPES - 1; ++stx) {
+#if CONFIG_E124_IST_REDUCE_METHOD4
+        for (int sb_size = 0; sb_size < 3; ++sb_size) {
+#else
         for (int sb_size_idx = 0; sb_size_idx < 2; ++sb_size_idx) {
           int sb_size = (sb_size_idx == 0) ? 4 : 8;
+#endif
           DECLARE_ALIGNED(32, tran_low_t, input[IST_8x8_WIDTH]) = { 0 };
           DECLARE_ALIGNED(32, tran_low_t, output[IST_8x8_HEIGHT]) = { 0 };
           DECLARE_ALIGNED(32, tran_low_t, ref_output[IST_8x8_HEIGHT]) = { 0 };
           ACMRandom rnd(ACMRandom::DeterministicSeed());
-          for (int cnt = 0; cnt < 2; ++cnt) {
+          const int coeff_range = (1 << (bd + 7)) - 1;
+          for (int cnt = 0; cnt < 3; ++cnt) {
             if (cnt == 0) {
               for (int r = 0; r < IST_8x8_WIDTH; ++r) {
-                input[r] = (1 << bd) - 1;
+                input[r] = coeff_range;
+              }
+            } else if (cnt == 1) {
+              for (int r = 0; r < IST_8x8_WIDTH; ++r) {
+                input[r] = -coeff_range;
               }
             } else {
               for (int r = 0; r < IST_8x8_WIDTH; ++r) {
-                input[r] = rnd.Rand16() % (1 << bd);
+                input[r] = rnd(2) ? rnd(coeff_range) : -rnd(coeff_range);
               }
             }
             fwd_stxfm_c(input, ref_output, set_id, stx, sb_size);
             fwd_stxfm_func_(input, output, set_id, stx, sb_size);
+#if CONFIG_E124_IST_REDUCE_METHOD4
+            int check_rows = (sb_size == 0)   ? IST_4x4_HEIGHT
+                             : (sb_size == 1) ? IST_8x8_HEIGHT_RED
+                                              : IST_8x8_HEIGHT;
+#else
             int check_rows = (sb_size == 4) ? IST_4x4_HEIGHT : IST_8x8_HEIGHT;
+#endif
             for (int r = 0; r < check_rows; ++r) {
               ASSERT_EQ(ref_output[r], output[r])
                   << "[" << r << "] cnt:" << cnt
@@ -839,13 +854,18 @@ class AV1FwdSecTxfmTest : public ::testing::TestWithParam<FwdSTxfmFunc> {
   }
 
   void AV1FwdSecTxfmSpeedTest() {
+#if CONFIG_E124_IST_REDUCE_METHOD4
+    for (int sb_size = 0; sb_size < 3; ++sb_size) {
+#else
     for (int sb_size_idx = 0; sb_size_idx < 2; ++sb_size_idx) {
       int sb_size = (sb_size_idx == 0) ? 4 : 8;
+#endif
       DECLARE_ALIGNED(32, tran_low_t, input[IST_8x8_WIDTH]) = { 0 };
       DECLARE_ALIGNED(32, tran_low_t, output[IST_8x8_HEIGHT]) = { 0 };
       ACMRandom rnd(ACMRandom::DeterministicSeed());
+      const int coeff_range = (1 << (bd + 7)) - 1;
       for (int r = 0; r < IST_8x8_WIDTH; ++r) {
-        input[r] = rnd.Rand16() % (1 << bd);
+        input[r] = rnd(2) ? rnd(coeff_range) : -rnd(coeff_range);
       }
       aom_usec_timer ref_timer, test_timer;
       const int knum_loops = 100000000;
@@ -902,20 +922,27 @@ class AV1InvSecTxfmTest : public ::testing::TestWithParam<InvSTxfmFunc> {
   void AV1InvSecTxfmMatchTest() {
     for (int set_id = 0; set_id < IST_DIR_SIZE; ++set_id) {
       for (uint8_t stx = 0; stx < STX_TYPES - 1; ++stx) {
+#if CONFIG_E124_IST_REDUCE_METHOD4
+        for (int sb_size = 0; sb_size < 3; ++sb_size) {
+#else
         for (int sb_size_idx = 0; sb_size_idx < 2; ++sb_size_idx) {
           int sb_size = (sb_size_idx == 0) ? 4 : 8;
+#endif
           DECLARE_ALIGNED(32, tran_low_t, input[IST_8x8_HEIGHT]) = { 0 };
           DECLARE_ALIGNED(32, tran_low_t, output[IST_8x8_WIDTH]) = { 0 };
           DECLARE_ALIGNED(32, tran_low_t, ref_output[IST_8x8_WIDTH]) = { 0 };
           ACMRandom rnd(ACMRandom::DeterministicSeed());
-          const uint16_t inv_input_mask =
-              static_cast<uint16_t>((1 << (bd + 7)) - 1);
+          const int coeff_range = ((1 << (bd + 7)) - 1);
           for (int r = 0; r < IST_8x8_HEIGHT; r++) {
-            input[r] = (rnd.Rand31() & inv_input_mask);
+            input[r] = rnd(2) ? rnd(coeff_range) : -rnd(coeff_range);
           }
           inv_stxfm_c(input, ref_output, set_id, stx, sb_size);
           inv_stxfm_func_(input, output, set_id, stx, sb_size);
+#if CONFIG_E124_IST_REDUCE_METHOD4
+          int check_rows = (sb_size == 0) ? IST_4x4_WIDTH : IST_8x8_WIDTH;
+#else
           int check_rows = (sb_size == 4) ? IST_4x4_WIDTH : IST_8x8_WIDTH;
+#endif
           for (int r = 0; r < check_rows; ++r) {
             ASSERT_EQ(ref_output[r], output[r])
                 << "[" << r << "] "
@@ -928,15 +955,18 @@ class AV1InvSecTxfmTest : public ::testing::TestWithParam<InvSTxfmFunc> {
   }
 
   void AV1InvSecTxfmSpeedTest() {
+#if CONFIG_E124_IST_REDUCE_METHOD4
+    for (int sb_size = 0; sb_size < 3; ++sb_size) {
+#else
     for (int sb_size_idx = 0; sb_size_idx < 2; ++sb_size_idx) {
       int sb_size = (sb_size_idx == 0) ? 4 : 8;
+#endif
       DECLARE_ALIGNED(32, tran_low_t, input[IST_8x8_HEIGHT]) = { 0 };
       DECLARE_ALIGNED(32, tran_low_t, output[IST_8x8_WIDTH]) = { 0 };
       ACMRandom rnd(ACMRandom::DeterministicSeed());
-      const uint16_t inv_input_mask =
-          static_cast<uint16_t>((1 << (bd + 7)) - 1);
+      const int coeff_range = ((1 << (bd + 7)) - 1);
       for (int r = 0; r < IST_8x8_HEIGHT; ++r) {
-        input[r] = (rnd.Rand31() & inv_input_mask);
+        input[r] = rnd(2) ? rnd(coeff_range) : -rnd(coeff_range);
       }
       aom_usec_timer ref_timer, test_timer;
       const int knum_loops = 100000000;

@@ -4180,7 +4180,9 @@ void fwd_stxfm_avx2(tran_low_t *src, tran_low_t *dst,
 #endif  // CONFIG_E124_IST_REDUCE_METHOD4
   int *out = dst;
   int shift = 7;
+#if !CONFIG_E194_FLEX_SECTX
   int offset = 1 << (shift - 1);
+#endif
   int *srcPtr = src;
 #if CONFIG_E124_IST_REDUCE_METHOD4
   const int ist_height = (size == 0)   ? IST_4x4_HEIGHT
@@ -4191,7 +4193,6 @@ void fwd_stxfm_avx2(tran_low_t *src, tran_low_t *dst,
   if (size == 4) {
 #endif  // CONFIG_E124_IST_REDUCE_METHOD4
     assert(IST_4x4_WIDTH == 16);
-    const __m256i offset_vec = _mm256_set1_epi32(offset);
     __m256i kernel_t[16];
     __m256i sum = _mm256_setzero_si256();
     transpose_kernel(kernel, kernel_t);
@@ -4200,7 +4201,12 @@ void fwd_stxfm_avx2(tran_low_t *src, tran_low_t *dst,
       __m256i tmp = _mm256_mullo_epi32(tmpCoeff, kernel_t[j]);
       sum = _mm256_add_epi32(sum, tmp);
     }
-    sum = _mm256_srai_epi32(_mm256_add_epi32(sum, offset_vec), 7);
+#if CONFIG_E194_FLEX_SECTX
+    sum = round_power_of_two_signed_avx2(sum, shift);
+#else
+    const __m256i offset_vec = _mm256_set1_epi32(offset);
+    sum = _mm256_srai_epi32(_mm256_add_epi32(sum, offset_vec), shift);
+#endif
     _mm256_storeu_si256((__m256i *)out, sum);
   } else {
 #if CONFIG_E194_FLEX_SECTX
