@@ -2972,7 +2972,7 @@ static BestMatchResults find_best_match_for_class(
     av1_upd_to_wienerns_bank(bank, bank_ref, &tmp_filter, class_id);
     bank->bank_size_for_class[class_id] = 1;
     const int64_t score =
-        count_wienerns_bits_set(AOM_PLANE_Y, &rsc->x->mode_costs, filter, bank,
+        count_wienerns_bits_set(rsc->plane, &rsc->x->mode_costs, filter, bank,
                                 nsfilter_params, class_id);
     if (score < best_scr) {
       best_scr = score;
@@ -3030,7 +3030,7 @@ static void find_best_match_for_filter(const RestSearchCtxt *rsc,
     av1_upd_to_wienerns_bank(&tmp_bank, /*bank_ref=*/0, &tmp_filter, c_id);
     tmp_bank.bank_size_for_class[c_id] = 1;
     const int64_t taps_score =
-        count_wienerns_bits_set(AOM_PLANE_Y, &rsc->x->mode_costs, filter,
+        count_wienerns_bits_set(rsc->plane, &rsc->x->mode_costs, filter,
                                 &tmp_bank, nsfilter_params, c_id);
     (void)taps_score;
     assert(taps_score == best_match_results[c_id].use_one_taps_score);
