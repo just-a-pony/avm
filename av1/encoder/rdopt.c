@@ -474,9 +474,10 @@ int64_t av1_highbd_block_error_c(const tran_low_t *coeff,
   return error;
 }
 
-static int cost_mv_ref(const ModeCosts *const mode_costs, PREDICTION_MODE mode,
-                       const AV1_COMMON *cm, const MB_MODE_INFO *const mbmi,
-                       const MACROBLOCKD *xd, int16_t mode_context) {
+static int cost_prediction_mode(const ModeCosts *const mode_costs,
+                                PREDICTION_MODE mode, const AV1_COMMON *cm,
+                                const MB_MODE_INFO *const mbmi,
+                                const MACROBLOCKD *xd, int16_t mode_context) {
   if (is_inter_compound_mode(mode)) {
     int use_optical_flow_cost = 0;
     const int comp_mode_idx = opfl_get_comp_idx(mode);
@@ -950,10 +951,10 @@ static int skip_repeated_mv(const AV1_COMMON *const cm,
   const int16_t mode_ctx =
       av1_mode_context_analyzer(mbmi_ext->mode_context, ref_frames);
   const MB_MODE_INFO *const mbmi = x->e_mbd.mi[0];
-  const int compare_cost =
-      cost_mv_ref(&x->mode_costs, compare_mode, cm, mbmi, &x->e_mbd, mode_ctx);
-  const int this_cost =
-      cost_mv_ref(&x->mode_costs, this_mode, cm, mbmi, &x->e_mbd, mode_ctx);
+  const int compare_cost = cost_prediction_mode(&x->mode_costs, compare_mode,
+                                                cm, mbmi, &x->e_mbd, mode_ctx);
+  const int this_cost = cost_prediction_mode(&x->mode_costs, this_mode, cm,
+                                             mbmi, &x->e_mbd, mode_ctx);
 
   // Only skip if the mode cost is larger than compare mode cost
   if (this_cost > compare_cost) {
@@ -4110,9 +4111,9 @@ static int64_t simple_translation_pred_rd(AV1_COMP *const cpi, MACROBLOCK *x,
 
     mbmi->mv[i].as_int = cur_mv[i].as_int;
   }
-  const int ref_mv_cost =
-      cost_mv_ref(mode_costs, mbmi->mode, cm, mbmi, xd, mode_ctx);
-  rd_stats->rate += ref_mv_cost;
+  const int prediction_mode_cost =
+      cost_prediction_mode(mode_costs, mbmi->mode, cm, mbmi, xd, mode_ctx);
+  rd_stats->rate += prediction_mode_cost;
 
   rd_stats->rate += get_jmvd_scale_mode_cost(mbmi, mode_costs);
 
@@ -5404,11 +5405,11 @@ static int64_t handle_inter_mode(
       av1_mode_context_analyzer(mbmi_ext->mode_context, mbmi->ref_frame);
 
   const ModeCosts *mode_costs = &x->mode_costs;
-  const int ref_mv_cost =
-      cost_mv_ref(mode_costs, this_mode, cm, mbmi, xd, mode_ctx);
+  const int prediction_mode_cost =
+      cost_prediction_mode(mode_costs, this_mode, cm, mbmi, xd, mode_ctx);
 
   const int base_rate =
-      args->ref_frame_cost + args->single_comp_cost + ref_mv_cost;
+      args->ref_frame_cost + args->single_comp_cost + prediction_mode_cost;
 
   for (int pb_mv_precision = mbmi->max_mv_precision;
        pb_mv_precision >= MV_PRECISION_8_PEL; pb_mv_precision--) {
