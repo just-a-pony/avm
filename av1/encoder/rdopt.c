@@ -2438,6 +2438,7 @@ static int64_t motion_mode_rd(
   for (int mode_index = SIMPLE_TRANSLATION; mode_index < MOTION_MODES;
        mode_index++) {
     if ((modes_to_search & (1 << mode_index)) == 0) continue;
+    if (base_mbmi.refinemv_flag && mode_index != SIMPLE_TRANSLATION) continue;
 
     int is_warpmv_warp_causal =
         (mode_index == WARPED_CAUSAL) && (base_mbmi.mode == WARPMV);
@@ -5761,6 +5762,7 @@ static int64_t handle_inter_mode(
 
 #if CONFIG_REFINEMV
             // Get the default value of DMVR flag based on mode
+            assert(mbmi->motion_mode == SIMPLE_TRANSLATION);
             mbmi->refinemv_flag = get_default_refinemv_flag(cm, mbmi);
 #endif  // CONFIG_REFINEMV
 
@@ -11628,11 +11630,11 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
   av1_count_overlappable_neighbors(cm, xd);
 #if CONFIG_COMPOUND_WARP_CAUSAL
   if (is_motion_variation_allowed_bsize(bsize, xd->mi_row, xd->mi_col) &&
-      (!has_second_ref(mbmi) || is_compound_warp_causal_allowed(
+      (!has_second_ref(mbmi) || is_compound_warp_causal_allowed(cm,
 #if CONFIG_COMPOUND_4XN
-                                    xd,
+                                                                xd,
 #endif  // CONFIG_COMPOUND_4XN
-                                    mbmi))) {
+                                                                mbmi))) {
     int pts0[SAMPLES_ARRAY_SIZE], pts0_inref[SAMPLES_ARRAY_SIZE];
     mbmi->num_proj_ref[0] = av1_findSamples(cm, xd, pts0, pts0_inref, 0);
     // Select the samples according to motion vector difference
