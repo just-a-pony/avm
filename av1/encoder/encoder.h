@@ -1653,6 +1653,9 @@ typedef struct FRAME_COUNTS {
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   unsigned int warp_delta_param[2][WARP_DELTA_NUMSYMBOLS_LOW];
+#if CONFIG_WARP_PRECISION
+  unsigned int warp_delta_param_high[2][WARP_DELTA_NUMSYMBOLS_HIGH];
+#endif  // CONFIG_WARP_PRECISION
 #if CONFIG_OPTIMIZE_CTX_TIP_WARP
   unsigned int warp_extend[WARP_EXTEND_CTX][2];
 #else

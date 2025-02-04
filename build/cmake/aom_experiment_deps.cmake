@@ -167,4 +167,16 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_CHROMA_CODING 1 CONFIG_TCQ)
     change_config_and_warn(CONFIG_CONTEXT_DERIVATION 1 CONFIG_TCQ)
   endif()
+
+  # CONFIG_DRL_LINE_BUFFER_REDUCTION depends on CONFIG_MVP_SIMPLIFY
+  if(NOT CONFIG_MVP_SIMPLIFY AND CONFIG_DRL_LINE_BUFFER_REDUCTION)
+    change_config_and_warn(CONFIG_DRL_LINE_BUFFER_REDUCTION 0
+                           !CONFIG_MVP_SIMPLIFY)
+  endif()
+
+  # CONFIG_DRL_LINE_BUFFER_REDUCTION depends on CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+  if(NOT CONFIG_CWG_E099_DRL_WRL_SIMPLIFY AND CONFIG_DRL_LINE_BUFFER_REDUCTION)
+    change_config_and_warn(CONFIG_DRL_LINE_BUFFER_REDUCTION 0
+                           !CONFIG_CWG_E099_DRL_WRL_SIMPLIFY)
+  endif()
 endmacro()

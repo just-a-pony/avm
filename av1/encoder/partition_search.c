@@ -1248,7 +1248,18 @@ static void update_warp_delta_param_stats(int index, int coded_value,
 #endif  // CONFIG_WARP_PRECISION
 
 #if CONFIG_ENTROPY_STATS
-  counts->warp_delta_param[index_type][coded_value]++;
+  const int low_coded_value =
+#if CONFIG_WARP_PRECISION
+      coded_value >= coded_value_low_max ? coded_value_low_max :
+#endif  // CONFIG_WARP_PRECISION
+                                         coded_value;
+  counts->warp_delta_param[index_type][low_coded_value]++;
+#if CONFIG_WARP_PRECISION
+  if (max_coded_index >= WARP_DELTA_NUMSYMBOLS_LOW &&
+      coded_value >= coded_value_low_max) {
+    counts->warp_delta_param_high[index_type][coded_value - 7]++;
+  }
+#endif  // CONFIG_WARP_PRECISION
 #endif  // CONFIG_ENTROPY_STATS
 }
 

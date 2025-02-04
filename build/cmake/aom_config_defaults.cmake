@@ -387,6 +387,11 @@ set_aom_config_var(
   "Enable MRLS improvement to enable two reference lines for intra prediction")
 
 set_aom_config_var(CONFIG_TMVP_MV_COMPRESSION 1 "Enable to compress TMVP MV")
+set_aom_config_var(
+  CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  1
+  "Reduce the line buffer size for DRL and WRL. The access unit is changed from 4x4 to 8x8"
+)
 
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1

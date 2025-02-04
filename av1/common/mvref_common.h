@@ -1362,10 +1362,6 @@ static INLINE int is_ref_motion_field_eligible(
   return 1;
 }
 
-// Check all 3 neighbors to generate projected points
-int generate_points_from_corners(const MACROBLOCKD *xd, int *pts, int *mvs,
-                                 int *np, MV_REFERENCE_FRAME ref_frame);
-
 // Temporal scaling the motion vector
 static AOM_INLINE void tip_get_mv_projection(MV *output, MV ref,
                                              int scale_factor) {

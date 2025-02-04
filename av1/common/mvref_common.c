@@ -41,6 +41,27 @@ typedef struct mvp_unit_status {
 } MVP_UNIT_STATUS;
 #endif  // CONFIG_MVP_SIMPLIFY
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+enum {
+  /**
+   * Coding block width is 4
+   */
+  BLOCK_WIDTH_4 = 0,
+  /**
+   * Coding block width is 8
+   */
+  BLOCK_WIDTH_8,
+  /**
+   * Coding block width no less than 16
+   */
+  BLOCK_WIDTH_OTHERS,
+  /**
+   * Coding block width types
+   */
+  BLOCK_WIDTH_TYPES,
+} UENUM1BYTE(BLOCK_WIDTH_TYPE);
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+
 #if CONFIG_TMVP_MEM_OPT
 #define TIP_MFMV_STACK_SIZE 3  // The limit for original TMVP w/ TIP.
 #define MFMV_STACK_SIZE 4      // The total limit of motion field candidates.
@@ -2641,6 +2662,7 @@ static AOM_INLINE void add_derived_smvp_candidates(
   }
 #endif  // CONFIG_MVP_IMPROVEMENT
 }
+
 static AOM_INLINE void add_ref_mv_bank_candidates(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, MV_REFERENCE_FRAME *rf,
     MV_REFERENCE_FRAME ref_frame, MV_REFERENCE_FRAME *ref_frame_idx0,
@@ -2700,6 +2722,230 @@ static AOM_INLINE void add_ref_mv_bank_candidates(
   }
 }
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+// Compute the offset between 8x8 aligned spatial neighbor block and mi_col
+static AOM_INLINE int compute_aligned_offset(int mi_col, int col_offset) {
+  // Around the super-block boundary, align mi_col to 8x8 grid
+  const int aligned_mi_col = (mi_col >> 1) << 1;
+  return aligned_mi_col + col_offset - mi_col;
+}
+
+// Check if the above spatial neighbor block is within the tile
+static AOM_INLINE int is_above_smvp_available(const MACROBLOCKD *xd, int mi_col,
+                                              int col_offset) {
+  if (!xd->up_available) return 0;
+  // Around the super-block boundary, align mi_col to 8x8 grid
+  const int aligned_smvp_mi_col = ((mi_col >> 1) << 1) + col_offset;
+  return aligned_smvp_mi_col >= xd->tile.mi_col_start &&
+         aligned_smvp_mi_col < xd->tile.mi_col_end;
+}
+
+// Compute the availability and the offset of the above row neighbor block
+static AOM_INLINE void get_row_smvp_states(const AV1_COMMON *cm,
+                                           const MACROBLOCKD *xd,
+                                           MVP_UNIT_STATUS row_smvp_state[4]) {
+  const int mi_row = xd->mi_row;
+  const int mi_col = xd->mi_col;
+#if CONFIG_EXT_RECUR_PARTITIONS
+  const int has_tr = has_top_right(cm, xd, mi_row, mi_col, xd->width);
+#else
+  const int bs = AOMMAX(xd->width, xd->height);
+  const int has_tr = has_top_right(cm, xd, mi_row, mi_col, bs);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+
+  const int block_width_type =
+      xd->width == 1 ? BLOCK_WIDTH_4
+                     : (xd->width == 2 ? BLOCK_WIDTH_8 : BLOCK_WIDTH_OTHERS);
+  const int is_sb_boundary = (mi_row % cm->mib_size == 0);
+
+  const MVP_UNIT_STATUS row_smvp_all_states[2][BLOCK_WIDTH_TYPES][4] = {
+    {
+        // Within the super-block, similar to the existing algorithm,
+        // access to information is allowed for each 4x4 unit.
+        {
+            // Block width is 4
+            { xd->up_available, -1, (xd->width - 1) },
+            { 0, -1, 0 },
+            { has_tr, -1, xd->width },
+            { xd->up_available && xd->left_available, -1, -1 },
+        },
+        {
+            // Block width is 8
+            { xd->up_available, -1, (xd->width - 1) },
+            { xd->up_available, -1, 0 },
+            { has_tr, -1, xd->width },
+            { xd->up_available && xd->left_available, -1, -1 },
+        },
+        {
+            // Block width is no less than 8
+            { xd->up_available, -1, (xd->width - 1) },
+            { xd->up_available, -1, 0 },
+            { has_tr, -1, xd->width },
+            { xd->up_available && xd->left_available, -1, -1 },
+        },
+    },
+    {
+        // Around the super-block boundary, to reduce the size of the line
+        // buffer, access to information is allowed for each 8x8 unit. The
+        // bottom-left 4x4 block's information is used to represent the entire
+        // 8x8 block.
+        {
+            // Block width is 4
+            { is_above_smvp_available(xd, mi_col, 0), -1,
+              compute_aligned_offset(mi_col, 0) },
+            { 0, -1, 0 },
+            { is_above_smvp_available(xd, mi_col, 2), -1,
+              compute_aligned_offset(mi_col, 2) },
+            { is_above_smvp_available(xd, mi_col, -2), -1,
+              compute_aligned_offset(mi_col, -2) },
+        },
+        {
+            // Block width is 8
+            { is_above_smvp_available(xd, mi_col, 0), -1,
+              compute_aligned_offset(mi_col, 0) },
+            { 0, -1, 0 },
+            { is_above_smvp_available(xd, mi_col, 2), -1,
+              compute_aligned_offset(mi_col, 2) },
+            { is_above_smvp_available(xd, mi_col, -2), -1,
+              compute_aligned_offset(mi_col, -2) },
+        },
+        {
+            // Block width is no less than 8
+            { is_above_smvp_available(xd, mi_col, xd->width - 2), -1,
+              compute_aligned_offset(mi_col, xd->width - 2) },
+            { is_above_smvp_available(xd, mi_col, 0), -1,
+              compute_aligned_offset(mi_col, 0) },
+            { is_above_smvp_available(xd, mi_col, xd->width), -1,
+              compute_aligned_offset(mi_col, xd->width) },
+            { is_above_smvp_available(xd, mi_col, -2), -1,
+              compute_aligned_offset(mi_col, -2) },
+        },
+    }
+  };
+
+  for (int i = 0; i < 4; i++) {
+    row_smvp_state[i] =
+        row_smvp_all_states[is_sb_boundary][block_width_type][i];
+  }
+}
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+
+// return 1 if valid point is found
+// return 0 if the point is not valid
+static AOM_INLINE int fill_warp_corner_projected_point(
+    const MACROBLOCKD *xd, const MB_MODE_INFO *neighbor_mi,
+    MV_REFERENCE_FRAME this_ref, const int pos_col, const int pos_row, int *pts,
+    int *mvs, int *n_points) {
+  // return if the source point is invalid
+  if (pos_col < 0 || pos_row < 0) return 0;
+
+  if (!is_inter_ref_frame(neighbor_mi->ref_frame[0])) return 0;
+  if (neighbor_mi->ref_frame[0] != this_ref) return 0;
+  int mv_row;
+  int mv_col;
+  if (is_warp_mode(neighbor_mi->motion_mode)) {
+    int_mv warp_mv =
+        get_warp_motion_vector_xy_pos(xd, &neighbor_mi->wm_params[0], pos_col,
+                                      pos_row, MV_PRECISION_ONE_EIGHTH_PEL);
+    mv_row = warp_mv.as_mv.row;
+    mv_col = warp_mv.as_mv.col;
+  } else {
+    mv_row = neighbor_mi->mv[0].as_mv.row;
+    mv_col = neighbor_mi->mv[0].as_mv.col;
+  }
+  pts[2 * (*n_points)] = pos_col;
+  pts[2 * (*n_points) + 1] = pos_row;
+  mvs[2 * (*n_points)] = mv_col;
+  mvs[2 * (*n_points) + 1] = mv_row;
+  ++(*n_points);
+  return 1;
+}
+
+// Check all 3 neighbors to generate projected points
+static AOM_INLINE int generate_points_from_corners(
+    const MACROBLOCKD *xd,
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    MVP_UNIT_STATUS row_smvp_state[4],
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    int *pts, int *mvs, int *np, MV_REFERENCE_FRAME ref_frame) {
+  const TileInfo *const tile = &xd->tile;
+  POSITION mi_pos;
+  int valid_points = 0;
+  MV_REFERENCE_FRAME rf[2];
+  av1_set_ref_frame(rf, ref_frame);
+  MV_REFERENCE_FRAME this_ref = rf[0];
+  const int bw = xd->width * MI_SIZE;
+  const int bh = xd->height * MI_SIZE;
+
+  // top-left
+  mi_pos.row = -1;
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  mi_pos.col = row_smvp_state[3].col_offset;
+#else
+  mi_pos.col = -1;
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) &&
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+      row_smvp_state[3].is_available
+#else
+      xd->up_available && xd->left_available
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  ) {
+    const MB_MODE_INFO *neighbor_mi =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    int pos_row = xd->mi_row * MI_SIZE;
+    int pos_col = xd->mi_col * MI_SIZE;
+    int valid = fill_warp_corner_projected_point(
+        xd, neighbor_mi, this_ref, pos_col, pos_row, pts, mvs, np);
+    if (valid) {
+      valid_points++;
+    }
+  }
+
+  // top-right
+  mi_pos.row = -1;
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  mi_pos.col = row_smvp_state[0].col_offset;
+#else
+  mi_pos.col = xd->width - 1;
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) &&
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+      row_smvp_state[0].is_available
+#else
+      xd->up_available
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  ) {
+    const MB_MODE_INFO *neighbor_mi =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    int pos_row = xd->mi_row * MI_SIZE;
+    int pos_col = xd->mi_col * MI_SIZE + bw;
+    int valid = fill_warp_corner_projected_point(
+        xd, neighbor_mi, this_ref, pos_col, pos_row, pts, mvs, np);
+    if (valid) {
+      valid_points++;
+    }
+  }
+
+  // bottom-left
+  mi_pos.row = xd->height - 1;
+  mi_pos.col = -1;
+  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->left_available) {
+    const MB_MODE_INFO *neighbor_mi =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    int pos_row = xd->mi_row * MI_SIZE + bh;
+    int pos_col = xd->mi_col * MI_SIZE;
+    int valid = fill_warp_corner_projected_point(
+        xd, neighbor_mi, this_ref, pos_col, pos_row, pts, mvs, np);
+    if (valid) {
+      valid_points++;
+    }
+  }
+
+  assert(valid_points <= 3);
+  return valid_points;
+}
+
 static AOM_INLINE void setup_ref_mv_list(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, MV_REFERENCE_FRAME ref_frame,
     uint8_t *const refmv_count,
@@ -2718,13 +2964,17 @@ static AOM_INLINE void setup_ref_mv_list(
     WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
     int max_num_of_warp_candidates, uint8_t *valid_num_warp_candidates) {
 #if CONFIG_EXT_RECUR_PARTITIONS
+#if !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   const int has_tr = has_top_right(cm, xd, mi_row, mi_col, xd->width);
+#endif  // !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
 #if CONFIG_MVP_IMPROVEMENT
   const int has_bl = has_bottom_left(cm, xd, mi_row, mi_col, xd->height);
 #endif  // CONFIG_MVP_IMPROVEMENT
 #else
   const int bs = AOMMAX(xd->width, xd->height);
+#if !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   const int has_tr = has_top_right(cm, xd, mi_row, mi_col, bs);
+#endif  // !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
 #if CONFIG_MVP_IMPROVEMENT
   const int has_bl = has_bottom_left(cm, xd, mi_row, mi_col, bs);
 #endif  // CONFIG_MVP_IMPROVEMENT
@@ -2773,6 +3023,11 @@ static AOM_INLINE void setup_ref_mv_list(
     ref_mv_stack[k].cwp_idx = CWP_EQUAL;
   }
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  MVP_UNIT_STATUS row_smvp_state[4] = { 0 };
+  get_row_smvp_states(cm, xd, row_smvp_state);
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+
   // derive a warp model from the 3 corner MVs
   if (warp_param_stack && valid_num_warp_candidates &&
       *valid_num_warp_candidates < max_num_of_warp_candidates) {
@@ -2781,7 +3036,11 @@ static AOM_INLINE void setup_ref_mv_list(
     int np = 0;
     WarpedMotionParams cand_warp_param = default_warp_params;
     const int valid_points =
-        generate_points_from_corners(xd, pts, mvs_32, &np, ref_frame);
+        generate_points_from_corners(xd,
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                                     row_smvp_state,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                                     pts, mvs_32, &np, ref_frame);
     const int valid_model =
         get_model_from_corner_mvs(&cand_warp_param, pts, valid_points, mvs_32,
                                   xd->mi[0]->sb_type[PLANE_TYPE_Y]
@@ -2841,7 +3100,9 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_MVP_IMPROVEMENT
 
 #if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+#if !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   const int width_at_least_two = xd->up_available ? (xd->width > 1) : 0;
+#endif  // !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   const int height_at_least_two = xd->left_available ? (xd->height > 1) : 0;
 #endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
 
@@ -2877,9 +3138,19 @@ static AOM_INLINE void setup_ref_mv_list(
     update_processed_cols(xd, mi_row, mi_col, (xd->height - 1), -1,
                           max_col_offset, &processed_cols);
   }
+
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  if (row_smvp_state[0].is_available) {
+#else
   if (xd->up_available) {
-    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, (xd->width - 1), ref_mv_stack,
-                  ref_mv_weight, &row_match_count, &newmv_count,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf,
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  row_smvp_state[0].row_offset, row_smvp_state[0].col_offset,
+#else
+                  -1, (xd->width - 1),
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  ref_mv_stack, ref_mv_weight, &row_match_count, &newmv_count,
                   gm_mv_candidates,
 #if CONFIG_SKIP_MODE_ENHANCEMENT
                   ref_frame_idx0, ref_frame_idx1,
@@ -2911,13 +3182,23 @@ static AOM_INLINE void setup_ref_mv_list(
     update_processed_cols(xd, mi_row, mi_col, 0, -1, max_col_offset,
                           &processed_cols);
   }
+
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  if (row_smvp_state[1].is_available) {
+#else
 #if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
   if (width_at_least_two) {
 #else
   if (xd->up_available) {
 #endif  // CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
-    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, 0, ref_mv_stack,
-                  ref_mv_weight, &row_match_count, &newmv_count,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf,
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  row_smvp_state[1].row_offset, row_smvp_state[1].col_offset,
+#else
+                  -1, 0,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  ref_mv_stack, ref_mv_weight, &row_match_count, &newmv_count,
                   gm_mv_candidates,
 #if CONFIG_SKIP_MODE_ENHANCEMENT
                   ref_frame_idx0, ref_frame_idx1,
@@ -2943,9 +3224,19 @@ static AOM_INLINE void setup_ref_mv_list(
                   warp_param_stack, max_num_of_warp_candidates,
                   valid_num_warp_candidates, ref_frame, refmv_count);
   }
+
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  if (row_smvp_state[2].is_available) {
+#else
   if (has_tr) {
-    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, xd->width, ref_mv_stack,
-                  ref_mv_weight, &row_match_count, &newmv_count,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf,
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  row_smvp_state[2].row_offset, row_smvp_state[2].col_offset,
+#else
+                  -1, xd->width,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  ref_mv_stack, ref_mv_weight, &row_match_count, &newmv_count,
                   gm_mv_candidates,
 #if CONFIG_SKIP_MODE_ENHANCEMENT
                   ref_frame_idx0, ref_frame_idx1,
@@ -3085,12 +3376,21 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_DRL_REORDER_CONTROL
 
 #if CONFIG_CWG_E099_DRL_WRL_SIMPLIFY
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  if (row_smvp_state[3].is_available) {
+#else
   if (xd->up_available && xd->left_available) {
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
     uint8_t dummy_ref_match_count = 0;
     uint8_t dummy_new_mv_count = 0;
-    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf, -1, -1, ref_mv_stack,
-                  ref_mv_weight, &dummy_ref_match_count, &dummy_new_mv_count,
-                  gm_mv_candidates,
+    scan_blk_mbmi(cm, xd, mi_row, mi_col, rf,
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  row_smvp_state[3].row_offset, row_smvp_state[3].col_offset,
+#else
+                  -1, -1,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                  ref_mv_stack, ref_mv_weight, &dummy_ref_match_count,
+                  &dummy_new_mv_count, gm_mv_candidates,
 #if CONFIG_SKIP_MODE_ENHANCEMENT
                   ref_frame_idx0, ref_frame_idx1,
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
@@ -6104,6 +6404,9 @@ uint8_t av1_findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int *pts,
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  const int is_sb_border = (mi_row % cm->mib_size == 0);
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   // scan the nearest above rows
   if (up_available) {
     const int mi_row_offset = -1;
@@ -6113,16 +6416,31 @@ uint8_t av1_findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int *pts,
 
     if (above_mc_offset_start < 0) do_top_left = 0;
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    int adjust_mi_col_offset = 0;
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
     for (i = above_mc_offset_start;
          i < AOMMIN(xd->width, cm->mi_params.mi_cols - mi_col); i += mi_step) {
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+      adjust_mi_col_offset =
+          (((mi_col + i) >> is_sb_border) << is_sb_border) - mi_col;
+      above_mbmi = xd->mi[adjust_mi_col_offset + mi_row_offset * mi_stride];
+#else
       above_mbmi = xd->mi[i + mi_row_offset * mi_stride];
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
       above_block_width = mi_size_wide[above_mbmi->sb_type[PLANE_TYPE_Y]];
       mi_step = above_block_width;
 
 #if CONFIG_COMPOUND_WARP_SAMPLES
       for (int ref = 0; ref < 1 + has_second_ref(above_mbmi); ++ref) {
         if (above_mbmi->ref_frame[ref] == ref_frame) {
-          record_samples(above_mbmi, ref, pts, pts_inref, 0, -1, i, 1);
+          record_samples(above_mbmi, ref, pts, pts_inref, 0, -1,
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                         adjust_mi_col_offset,
+#else
+                         i,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+                         1);
           pts += 2;
           pts_inref += 2;
           if (++np >= LEAST_SQUARES_SAMPLES_MAX)
@@ -6142,7 +6460,12 @@ uint8_t av1_findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int *pts,
 #endif  // CONFIG_COMPOUND_WARP_SAMPLES
     }
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    do_top_right = (adjust_mi_col_offset >= xd->width) &&
+                   (adjust_mi_col_offset < cm->mi_params.mi_cols - mi_col);
+#else
     do_top_right = (i == xd->width) && (i < cm->mi_params.mi_cols - mi_col);
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   }
 
   // Scan the nearest left columns
@@ -6190,8 +6513,15 @@ uint8_t av1_findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int *pts,
   if (do_top_left && left_available && up_available) {
     const int mi_row_offset = -1;
     const int mi_col_offset = -1;
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    const int adjust_mi_col_offset =
+        (((mi_col + mi_col_offset) >> is_sb_border) << is_sb_border) - mi_col;
+    const MB_MODE_INFO *top_left_mbmi =
+        xd->mi[adjust_mi_col_offset + mi_row_offset * mi_stride];
+#else
     const MB_MODE_INFO *top_left_mbmi =
         xd->mi[mi_col_offset + mi_row_offset * mi_stride];
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
 #if CONFIG_COMPOUND_WARP_SAMPLES
     for (int ref = 0; ref < 1 + has_second_ref(top_left_mbmi); ++ref) {
       if (top_left_mbmi->ref_frame[ref] == ref_frame) {
@@ -6225,8 +6555,15 @@ uint8_t av1_findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int *pts,
     if (is_inside(tile, mi_col, mi_row, &top_right_block_pos)) {
       const int mi_row_offset = -1;
       const int mi_col_offset = xd->width;
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+      const int adjust_mi_col_offset =
+          (((mi_col + mi_col_offset) >> is_sb_border) << is_sb_border) - mi_col;
+      const MB_MODE_INFO *top_right_mbmi =
+          xd->mi[adjust_mi_col_offset + mi_row_offset * mi_stride];
+#else
       const MB_MODE_INFO *top_right_mbmi =
           xd->mi[mi_col_offset + mi_row_offset * mi_stride];
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
 #if CONFIG_COMPOUND_WARP_SAMPLES
       for (int ref = 0; ref < 1 + has_second_ref(top_right_mbmi); ++ref) {
         if (top_right_mbmi->ref_frame[ref] == ref_frame) {
@@ -6910,31 +7247,38 @@ int allow_extend_nb(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     }
   }
 
-  mi_pos.row = (xd->height >> 1);
-  mi_pos.col = -1;
-  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->left_available) {
-    const MB_MODE_INFO *neighbor_mi =
-        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
-    if (is_same_ref_frame(neighbor_mi, mbmi)) {
-      allow_new_ext |= 1;
-      allow_near_ext |= is_warp_mode(neighbor_mi->motion_mode);
-      if (p_num_of_warp_neighbors && is_warp_mode(neighbor_mi->motion_mode))
-        num_of_warp_neighbors++;
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  if (p_num_of_warp_neighbors) {
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+    mi_pos.row = (xd->height >> 1);
+    mi_pos.col = -1;
+    if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) &&
+        xd->left_available) {
+      const MB_MODE_INFO *neighbor_mi =
+          xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+      if (is_same_ref_frame(neighbor_mi, mbmi)) {
+        allow_new_ext |= 1;
+        allow_near_ext |= is_warp_mode(neighbor_mi->motion_mode);
+        if (p_num_of_warp_neighbors && is_warp_mode(neighbor_mi->motion_mode))
+          num_of_warp_neighbors++;
+      }
     }
-  }
 
-  mi_pos.row = -1;
-  mi_pos.col = (xd->width >> 1);
-  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->up_available) {
-    const MB_MODE_INFO *neighbor_mi =
-        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
-    if (is_same_ref_frame(neighbor_mi, mbmi)) {
-      allow_new_ext |= 1;
-      allow_near_ext |= is_warp_mode(neighbor_mi->motion_mode);
-      if (p_num_of_warp_neighbors && is_warp_mode(neighbor_mi->motion_mode))
-        num_of_warp_neighbors++;
+    mi_pos.row = -1;
+    mi_pos.col = (xd->width >> 1);
+    if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->up_available) {
+      const MB_MODE_INFO *neighbor_mi =
+          xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+      if (is_same_ref_frame(neighbor_mi, mbmi)) {
+        allow_new_ext |= 1;
+        allow_near_ext |= is_warp_mode(neighbor_mi->motion_mode);
+        if (p_num_of_warp_neighbors && is_warp_mode(neighbor_mi->motion_mode))
+          num_of_warp_neighbors++;
+      }
     }
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   }
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
 
   if (p_num_of_warp_neighbors) {
     *p_num_of_warp_neighbors = num_of_warp_neighbors;
@@ -6954,6 +7298,93 @@ int allow_extend_nb(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   }
 }
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+static AOM_INLINE POSITION get_pos_from_pos_idx(const AV1_COMMON *cm,
+                                                const MACROBLOCKD *xd,
+                                                int pos_idx) {
+  MVP_UNIT_STATUS row_smvp_state[4] = { 0 };
+  if (pos_idx == 2 || pos_idx == 4 || pos_idx == 6 || pos_idx == 7) {
+    get_row_smvp_states(cm, xd, row_smvp_state);
+  }
+
+  POSITION ret_pos = { 0, 0 };
+  // 1/3/5 are left neighbors, 2/4/6/7 are above neighbors
+  if (pos_idx == 5) {
+    ret_pos.row = xd->height;
+    ret_pos.col = -1;
+  } else if (pos_idx == 1) {
+    ret_pos.row = (xd->height - 1);
+    ret_pos.col = -1;
+  } else if (pos_idx == 3) {
+    ret_pos.row = 0;
+    ret_pos.col = -1;
+  } else if (pos_idx == 7) {
+    if (row_smvp_state[3].is_available) {
+      ret_pos.row = -1;
+      ret_pos.col = row_smvp_state[3].col_offset;
+    }
+  } else if (pos_idx == 4) {
+    if (row_smvp_state[1].is_available) {
+      ret_pos.row = -1;
+      ret_pos.col = row_smvp_state[1].col_offset;
+    }
+  } else if (pos_idx == 2) {
+    if (row_smvp_state[0].is_available) {
+      ret_pos.row = -1;
+      ret_pos.col = row_smvp_state[0].col_offset;
+    }
+  } else if (pos_idx == 6) {
+    if (row_smvp_state[2].is_available) {
+      ret_pos.row = -1;
+      ret_pos.col = row_smvp_state[2].col_offset;
+    }
+  } else {
+    assert(0);
+  }
+
+  return ret_pos;
+}
+
+static AOM_INLINE int get_cand_from_pos_idx(const AV1_COMMON *cm,
+                                            const MACROBLOCKD *xd,
+                                            int pos_idx) {
+  MVP_UNIT_STATUS row_smvp_state[4] = { 0 };
+  if (pos_idx == 2 || pos_idx == 4 || pos_idx == 6 || pos_idx == 7) {
+    get_row_smvp_states(cm, xd, row_smvp_state);
+  }
+
+#if CONFIG_EXT_RECUR_PARTITIONS
+  const int has_bl =
+      has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, xd->height);
+#else
+  const int bs = AOMMAX(xd->width, xd->height);
+  const int has_bl = has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, bs);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+
+  int ret_cand = 0;
+
+  // 1/3/5 are left neighbors, 2/4/6/7 are above neighbors
+  if (pos_idx == 5) {
+    ret_cand = has_bl;
+  } else if (pos_idx == 1) {
+    ret_cand = xd->left_available;
+  } else if (pos_idx == 3) {
+    ret_cand = xd->left_available;
+  } else if (pos_idx == 7) {
+    ret_cand = row_smvp_state[3].is_available;
+  } else if (pos_idx == 4) {
+    ret_cand = row_smvp_state[1].is_available;
+  } else if (pos_idx == 2) {
+    ret_cand = row_smvp_state[0].is_available;
+  } else if (pos_idx == 6) {
+    ret_cand = row_smvp_state[2].is_available;
+  } else {
+    assert(0);
+  }
+
+  return ret_cand;
+}
+#else
 static AOM_INLINE POSITION get_pos_from_pos_idx(const MACROBLOCKD *xd,
                                                 int pos_idx) {
   POSITION ret_pos = { 0, 0 };
@@ -7020,6 +7451,7 @@ static AOM_INLINE int get_cand_from_pos_idx(const AV1_COMMON *cm,
   }
   return ret_cand;
 }
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
 
 static AOM_INLINE int check_pos_and_get_base_pos(const AV1_COMMON *cm,
                                                  const MACROBLOCKD *xd,
@@ -7027,7 +7459,11 @@ static AOM_INLINE int check_pos_and_get_base_pos(const AV1_COMMON *cm,
                                                  POSITION *base_pos,
                                                  int pos_idx) {
   const TileInfo *const tile = &xd->tile;
-  POSITION mi_pos = get_pos_from_pos_idx(xd, pos_idx);
+  POSITION mi_pos = get_pos_from_pos_idx(
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+      cm,
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+      xd, pos_idx);
   if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) &&
       get_cand_from_pos_idx(cm, xd, pos_idx)) {
     const MB_MODE_INFO *neighbor_mi =
@@ -7064,7 +7500,11 @@ int get_extend_base_pos(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     }
   }
 
+#if CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
+  for (int pos_idx = 1; pos_idx <= 7; pos_idx++) {
+#else
   for (int pos_idx = 1; pos_idx <= 9; pos_idx++) {
+#endif  // CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
     if (check_pos_and_get_base_pos(cm, xd, mbmi, base_pos, pos_idx)) return 1;
   }
   return 0;
@@ -7077,99 +7517,4 @@ int16_t inter_warpmv_mode_ctx(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   assert(num_of_warp_neighbors == ctx);
   assert(ctx < WARPMV_MODE_CONTEXT);
   return ctx;
-}
-
-// return 1 if valid point is found
-// return 0 if the point is not valid
-static int fill_warp_corner_projected_point(const MACROBLOCKD *xd,
-                                            const MB_MODE_INFO *neighbor_mi,
-                                            MV_REFERENCE_FRAME this_ref,
-                                            const int pos_col,
-                                            const int pos_row, int *pts,
-                                            int *mvs, int *n_points) {
-  // return if the source point is invalid
-  if (pos_col < 0 || pos_row < 0) return 0;
-
-  if (!is_inter_ref_frame(neighbor_mi->ref_frame[0])) return 0;
-  if (neighbor_mi->ref_frame[0] != this_ref) return 0;
-  int mv_row;
-  int mv_col;
-  if (is_warp_mode(neighbor_mi->motion_mode)) {
-    int_mv warp_mv =
-        get_warp_motion_vector_xy_pos(xd, &neighbor_mi->wm_params[0], pos_col,
-                                      pos_row, MV_PRECISION_ONE_EIGHTH_PEL);
-    mv_row = warp_mv.as_mv.row;
-    mv_col = warp_mv.as_mv.col;
-  } else {
-    mv_row = neighbor_mi->mv[0].as_mv.row;
-    mv_col = neighbor_mi->mv[0].as_mv.col;
-  }
-  pts[2 * (*n_points)] = pos_col;
-  pts[2 * (*n_points) + 1] = pos_row;
-  mvs[2 * (*n_points)] = mv_col;
-  mvs[2 * (*n_points) + 1] = mv_row;
-  ++(*n_points);
-  return 1;
-}
-
-// Check all 3 neighbors to generate projected points
-int generate_points_from_corners(const MACROBLOCKD *xd, int *pts, int *mvs,
-                                 int *np, MV_REFERENCE_FRAME ref_frame) {
-  const TileInfo *const tile = &xd->tile;
-  POSITION mi_pos;
-  int valid_points = 0;
-  MV_REFERENCE_FRAME rf[2];
-  av1_set_ref_frame(rf, ref_frame);
-  MV_REFERENCE_FRAME this_ref = rf[0];
-  const int bw = xd->width * MI_SIZE;
-  const int bh = xd->height * MI_SIZE;
-
-  // top-left
-  mi_pos.row = -1;
-  mi_pos.col = -1;
-  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->up_available &&
-      xd->left_available) {
-    const MB_MODE_INFO *neighbor_mi =
-        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
-    int pos_row = xd->mi_row * MI_SIZE;
-    int pos_col = xd->mi_col * MI_SIZE;
-    int valid = fill_warp_corner_projected_point(
-        xd, neighbor_mi, this_ref, pos_col, pos_row, pts, mvs, np);
-    if (valid) {
-      valid_points++;
-    }
-  }
-
-  // top-right
-  mi_pos.row = -1;
-  mi_pos.col = xd->width - 1;
-  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->up_available) {
-    const MB_MODE_INFO *neighbor_mi =
-        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
-    int pos_row = xd->mi_row * MI_SIZE;
-    int pos_col = xd->mi_col * MI_SIZE + bw;
-    int valid = fill_warp_corner_projected_point(
-        xd, neighbor_mi, this_ref, pos_col, pos_row, pts, mvs, np);
-    if (valid) {
-      valid_points++;
-    }
-  }
-
-  // bottom-left
-  mi_pos.row = xd->height - 1;
-  mi_pos.col = -1;
-  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->left_available) {
-    const MB_MODE_INFO *neighbor_mi =
-        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
-    int pos_row = xd->mi_row * MI_SIZE + bh;
-    int pos_col = xd->mi_col * MI_SIZE;
-    int valid = fill_warp_corner_projected_point(
-        xd, neighbor_mi, this_ref, pos_col, pos_row, pts, mvs, np);
-    if (valid) {
-      valid_points++;
-    }
-  }
-
-  assert(valid_points <= 3);
-  return valid_points;
 }

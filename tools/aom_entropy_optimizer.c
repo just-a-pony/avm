@@ -1475,6 +1475,15 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob default_warp_delta_param_cdf"
                      "[2][CDF_SIZE(WARP_DELTA_NUMSYMBOLS_LOW)]",
                      0, &total_count, 0, mem_wanted, "Inter");
+#if CONFIG_WARP_PRECISION
+  cts_each_dim[0] = 2;
+  cts_each_dim[1] = WARP_DELTA_NUMSYMBOLS_HIGH;
+  optimize_cdf_table(
+      &fc.warp_delta_param_high[0][0], probsfile, 2, cts_each_dim,
+      "static const aom_cdf_prob default_warp_delta_param_high_cdf"
+      "[2][CDF_SIZE(WARP_DELTA_NUMSYMBOLS_HIGH)]",
+      0, &total_count, 0, mem_wanted, "Inter");
+#endif  // CONFIG_WARP_PRECISION
 
 #if CONFIG_OPTIMIZE_CTX_TIP_WARP
   cts_each_dim[0] = WARP_EXTEND_CTX;
