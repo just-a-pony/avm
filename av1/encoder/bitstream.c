@@ -1317,7 +1317,7 @@ static AOM_INLINE void write_ref_frames(const AV1_COMMON *cm,
   // or the segment allows multiple reference frame options
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_SKIP) ||
       segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
-    assert(mbmi->ref_frame[0] == get_closest_pastcur_ref_index(cm));
+    assert(mbmi->ref_frame[0] == get_closest_pastcur_ref_or_ref0(cm));
     assert(!is_compound);
   } else {
     // does the feature use compound prediction or not
@@ -5335,7 +5335,8 @@ static AOM_INLINE void write_frame_size_with_refs(
   int found = 0;
 
   MV_REFERENCE_FRAME ref_frame;
-  for (ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ++ref_frame) {
+  for (ref_frame = 0; ref_frame < cm->ref_frames_info.num_total_refs;
+       ++ref_frame) {
     const YV12_BUFFER_CONFIG *cfg = get_ref_frame_yv12_buf(cm, ref_frame);
 
     if (cfg != NULL) {
@@ -5496,8 +5497,10 @@ static AOM_INLINE void write_film_grain_params(
     aom_wb_write_bit(wb, pars->update_parameters);
 
   if (!pars->update_parameters) {
-    int ref_frame, ref_idx;
-    for (ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ref_frame++) {
+    int ref_frame;
+    int ref_idx = INVALID_IDX;
+    for (ref_frame = 0; ref_frame < cm->ref_frames_info.num_total_refs;
+         ref_frame++) {
       ref_idx = get_ref_frame_map_idx(cm, ref_frame);
       assert(ref_idx != INVALID_IDX);
       const RefCntBuffer *const buf = cm->ref_frame_map[ref_idx];
@@ -5507,6 +5510,7 @@ static AOM_INLINE void write_film_grain_params(
       }
     }
     assert(ref_frame < REF_FRAMES);
+    assert(ref_idx != INVALID_IDX);
     aom_wb_write_literal(wb, ref_idx, 3);
     return;
   }
