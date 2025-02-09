@@ -351,7 +351,9 @@ int get_opfl_mv_iterations(const struct AV1_COMP *cpi,
                            const MB_MODE_INFO *mbmi);
 #endif  // CONFIG_OPFL_MV_SEARCH
 
+#if !CONFIG_TIP_MV_SIMPLIFICATION
 void av1_set_tip_mv_search_range(FullMvLimits *mv_limits);
+#endif  // !CONFIG_TIP_MV_SIMPLIFICATION
 
 int av1_init_search_range(int size);
 
@@ -684,6 +686,7 @@ static INLINE void av1_set_subpel_mv_search_range(
   subpel_limits->row_max = AOMMIN(MV_UPP - (1 << sub_pel_prec_shift), maxr);
 }
 
+#if !CONFIG_TIP_MV_SIMPLIFICATION
 static INLINE void av1_set_tip_subpel_mv_search_range(
     SubpelMvLimits *subpel_limits, const FullMvLimits *mv_limits) {
   const int tmvp_mv = GET_MV_SUBPEL(TIP_MV_SEARCH_RANGE << TMVP_MI_SZ_LOG2);
@@ -693,6 +696,7 @@ static INLINE void av1_set_tip_subpel_mv_search_range(
   subpel_limits->row_min = AOMMAX(GET_MV_SUBPEL(mv_limits->row_min), -tmvp_mv);
   subpel_limits->row_max = AOMMIN(GET_MV_SUBPEL(mv_limits->row_max), tmvp_mv);
 }
+#endif  // !CONFIG_TIP_MV_SIMPLIFICATION
 
 static INLINE int av1_is_subpelmv_in_range(const SubpelMvLimits *mv_limits,
                                            MV mv) {
