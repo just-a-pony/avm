@@ -1825,12 +1825,13 @@ static const uint8_t pc_wiener_collapse_2[1][2] = {
 // clang-format on
 
 // qindex ranges 0 : [0, 130), 1: [130, 190), 2: [190, 220), 3: [220, 270)]
-static AOM_INLINE int get_filter_set_index(int base_qindex) {
-  if (base_qindex < 130)
+static AOM_INLINE int get_filter_set_index(int base_qindex, int qindex_offset) {
+  const int qindex = base_qindex + qindex_offset;
+  if (qindex < 130)
     return 0;
-  else if (base_qindex < 190)
+  else if (qindex < 190)
     return 1;
-  else if (base_qindex < 220)
+  else if (qindex < 220)
     return 2;
   else
     return 3;

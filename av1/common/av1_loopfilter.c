@@ -82,7 +82,7 @@ static const int mode_lf_lut[] = {
 
 // Function obtains q_threshold from the quantization index.
 int df_quant_from_qindex(int q_index, int bit_depth) {
-  int qstep = ROUND_POWER_OF_TWO(av1_ac_quant_QTX(q_index, 0, bit_depth),
+  int qstep = ROUND_POWER_OF_TWO(av1_ac_quant_QTX(q_index, 0, 0, bit_depth),
                                  QUANT_TABLE_BITS);
 
   int q_threshold = qstep >> 6;

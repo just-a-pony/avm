@@ -1864,7 +1864,7 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
                                         : cm->seq_params.base_uv_dc_delta_q,
                                  cm->seq_params.bit_depth, tcq_mode);
         xd->plane[j].seg_dequant_QTX[i][1] = av1_ac_quant_QTX_tcq(
-            current_qindex, ac_delta_q, cm->seq_params.bit_depth, tcq_mode);
+            current_qindex, ac_delta_q, 0, cm->seq_params.bit_depth, tcq_mode);
 #else
         xd->plane[j].seg_dequant_QTX[i][0] =
             av1_dc_quant_QTX(current_qindex, dc_delta_q,
@@ -1872,7 +1872,7 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
                                     : cm->seq_params.base_uv_dc_delta_q,
                              cm->seq_params.bit_depth);
         xd->plane[j].seg_dequant_QTX[i][1] = av1_ac_quant_QTX(
-            current_qindex, ac_delta_q, cm->seq_params.bit_depth);
+            current_qindex, ac_delta_q, 0, cm->seq_params.bit_depth);
 #endif  // CONFIG_TCQ
       }
     }
@@ -4118,32 +4118,33 @@ static AOM_INLINE void setup_segmentation_dequant(AV1_COMMON *const cm,
         qindex, quant_params->y_dc_delta_q, cm->seq_params.base_y_dc_delta_q,
         bit_depth, tcq_mode);
     quant_params->y_dequant_QTX[i][1] =
-        av1_ac_quant_QTX_tcq(qindex, 0, bit_depth, tcq_mode);
+        av1_ac_quant_QTX_tcq(qindex, 0, 0, bit_depth, tcq_mode);
     quant_params->u_dequant_QTX[i][0] = av1_dc_quant_QTX_tcq(
         qindex, quant_params->u_dc_delta_q, cm->seq_params.base_uv_dc_delta_q,
         bit_depth, tcq_mode);
     quant_params->u_dequant_QTX[i][1] = av1_ac_quant_QTX_tcq(
-        qindex, quant_params->u_ac_delta_q, bit_depth, tcq_mode);
+        qindex, quant_params->u_ac_delta_q, 0, bit_depth, tcq_mode);
     quant_params->v_dequant_QTX[i][0] = av1_dc_quant_QTX_tcq(
         qindex, quant_params->v_dc_delta_q, cm->seq_params.base_uv_dc_delta_q,
         bit_depth, tcq_mode);
     quant_params->v_dequant_QTX[i][1] = av1_ac_quant_QTX_tcq(
-        qindex, quant_params->v_ac_delta_q, bit_depth, tcq_mode);
+        qindex, quant_params->v_ac_delta_q, 0, bit_depth, tcq_mode);
 #else
     quant_params->y_dequant_QTX[i][0] =
         av1_dc_quant_QTX(qindex, quant_params->y_dc_delta_q,
                          cm->seq_params.base_y_dc_delta_q, bit_depth);
-    quant_params->y_dequant_QTX[i][1] = av1_ac_quant_QTX(qindex, 0, bit_depth);
+    quant_params->y_dequant_QTX[i][1] =
+        av1_ac_quant_QTX(qindex, 0, 0, bit_depth);
     quant_params->u_dequant_QTX[i][0] =
         av1_dc_quant_QTX(qindex, quant_params->u_dc_delta_q,
                          cm->seq_params.base_uv_dc_delta_q, bit_depth);
     quant_params->u_dequant_QTX[i][1] =
-        av1_ac_quant_QTX(qindex, quant_params->u_ac_delta_q, bit_depth);
+        av1_ac_quant_QTX(qindex, quant_params->u_ac_delta_q, 0, bit_depth);
     quant_params->v_dequant_QTX[i][0] =
         av1_dc_quant_QTX(qindex, quant_params->v_dc_delta_q,
                          cm->seq_params.base_uv_dc_delta_q, bit_depth);
     quant_params->v_dequant_QTX[i][1] =
-        av1_ac_quant_QTX(qindex, quant_params->v_ac_delta_q, bit_depth);
+        av1_ac_quant_QTX(qindex, quant_params->v_ac_delta_q, 0, bit_depth);
 #endif  // CONFIG_TCQ
     const int use_qmatrix = av1_use_qmatrix(quant_params, xd, i);
     // NB: depends on base index so there is only 1 set per frame

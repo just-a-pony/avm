@@ -11793,8 +11793,8 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
       nn_features[2] = (float)mi_size_high_log2[bsize];
       nn_features[3] = (float)intra_cost;
       nn_features[4] = (float)inter_cost;
-      const int ac_q = av1_ac_quant_QTX(x->qindex, 0, xd->bd);
-      const int ac_q_max = av1_ac_quant_QTX(255, 0, xd->bd);
+      const int ac_q = av1_ac_quant_QTX(x->qindex, 0, 0, xd->bd);
+      const int ac_q_max = av1_ac_quant_QTX(255, 0, 0, xd->bd);
       nn_features[5] = (float)(ac_q_max / ac_q);
 
       av1_nn_predict(nn_features, nn_config, 1, scores);

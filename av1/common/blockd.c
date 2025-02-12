@@ -492,8 +492,7 @@ void translate_pcwiener_filters_to_wienerns(AV1_COMMON *cm) {
    * (void)num_taps;
    * assert(num_taps == num_feat);
    */
-  const int set_index =
-      0;  // get_filter_set_index(base_qindex + qindex_offset);
+  const int set_index = 0;  // get_filter_set_index(base_qindex, qindex_offset);
 
   const int num_pc_wiener_filters = NUM_PC_WIENER_FILTERS;
   const int(*wienerns_coeffs)[WIENERNS_COEFCFG_LEN] = nsfilter_params->coeffs;

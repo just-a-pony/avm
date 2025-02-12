@@ -183,12 +183,13 @@ int32_t av1_dc_quant_QTX(int qindex, int delta, int base_dc_delta_q,
   }
 }
 
-int32_t av1_ac_quant_QTX(int qindex, int delta, aom_bit_depth_t bit_depth) {
+int32_t av1_ac_quant_QTX(int qindex, int delta, int base_ac_delta_q,
+                         aom_bit_depth_t bit_depth) {
   int q_clamped;
-  if ((qindex == 0) && (delta <= 0))
+  if ((qindex == 0) && (delta + base_ac_delta_q <= 0))
     q_clamped = 0;
   else
-    q_clamped = clamp(qindex + delta, 1,
+    q_clamped = clamp(qindex + base_ac_delta_q + delta, 1,
                       bit_depth == AOM_BITS_8    ? MAXQ_8_BITS
                       : bit_depth == AOM_BITS_10 ? MAXQ_10_BITS
                                                  : MAXQ);

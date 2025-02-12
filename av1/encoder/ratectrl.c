@@ -178,13 +178,13 @@ double av1_convert_qindex_to_q(int qindex, aom_bit_depth_t bit_depth) {
   // Convert the index to a real Q value normalized for unitary transforms.
   switch (bit_depth) {
     case AOM_BITS_8:
-      return av1_ac_quant_QTX(qindex, 0, bit_depth) /
+      return av1_ac_quant_QTX(qindex, 0, 0, bit_depth) /
              (8.0 * (1 << QUANT_TABLE_BITS));
     case AOM_BITS_10:
-      return av1_ac_quant_QTX(qindex, 0, bit_depth) /
+      return av1_ac_quant_QTX(qindex, 0, 0, bit_depth) /
              (32.0 * (1 << QUANT_TABLE_BITS));
     case AOM_BITS_12:
-      return av1_ac_quant_QTX(qindex, 0, bit_depth) /
+      return av1_ac_quant_QTX(qindex, 0, 0, bit_depth) /
              (128.0 * (1 << QUANT_TABLE_BITS));
 
     default:

@@ -1289,18 +1289,19 @@ void av1_apply_selfguided_restoration_c(const uint16_t *dat, int width,
 // This routine should remain in sync with av1_convert_qindex_to_q.
 // The actual qstep used to quantize coefficients should be:
 //  get_qstep() / (1 << shift)
-static int get_qstep(int ac_qindex, int bit_depth, int *shift) {
-  int ac_shift = QUANT_TABLE_BITS;
+static int get_qstep(int base_qindex, int qindex_offset, int bit_depth,
+                     int *shift) {
+  int base_shift = QUANT_TABLE_BITS;
   switch (bit_depth) {
     case AOM_BITS_8:
-      *shift = 2 + ac_shift;
-      return av1_ac_quant_QTX(ac_qindex, 0, bit_depth);
+      *shift = 2 + base_shift;
+      return av1_ac_quant_QTX(base_qindex, qindex_offset, 0, bit_depth);
     case AOM_BITS_10:
-      *shift = 4 + ac_shift;
-      return av1_ac_quant_QTX(ac_qindex, 0, bit_depth);
+      *shift = 4 + base_shift;
+      return av1_ac_quant_QTX(base_qindex, qindex_offset, 0, bit_depth);
     case AOM_BITS_12:
-      *shift = 6 + ac_shift;
-      return av1_ac_quant_QTX(ac_qindex, 0, bit_depth);
+      *shift = 6 + base_shift;
+      return av1_ac_quant_QTX(base_qindex, qindex_offset, 0, bit_depth);
     default:
       assert(0 && "bit_depth should be AOM_BITS_8, AOM_BITS_10 or AOM_BITS_12");
       return -1;
@@ -1444,10 +1445,10 @@ static void calculate_features(int32_t *feature_vector, int bit_depth, int col,
 // the thresholds can be precomputed rather than performing an online
 // calculation over each classified block. See CWG-C016 contribution for
 // details.
-static void fill_qval_given_tskip_lut(int ac_qindex, int bit_depth,
-                                      PcwienerBuffers *buffers) {
+static void fill_qval_given_tskip_lut(int ac_qindex, int ac_qindex_offset,
+                                      int bit_depth, PcwienerBuffers *buffers) {
   int qstep_shift = 0;
-  int qstep = get_qstep(ac_qindex, bit_depth, &qstep_shift);
+  int qstep = get_qstep(ac_qindex, ac_qindex_offset, bit_depth, &qstep_shift);
   qstep_shift += 8;  // normalization in tf
   const int bit_depth_shift = bit_depth - 8;
   if (bit_depth_shift) {
@@ -1712,13 +1713,14 @@ void apply_pc_wiener_highbd(
   }
 }
 
-static void setup_qval_tskip_lut(int qindex, int bit_depth,
+static void setup_qval_tskip_lut(int qindex, int qindex_offset, int bit_depth,
                                  PcwienerBuffers *buffers) {
-  if (qindex == buffers->prev_qindex && bit_depth == buffers->prev_bit_depth) {
+  if (qindex + qindex_offset == buffers->prev_qindex &&
+      bit_depth == buffers->prev_bit_depth) {
     return;
   }
-  fill_qval_given_tskip_lut(qindex, bit_depth, buffers);
-  buffers->prev_qindex = qindex;
+  fill_qval_given_tskip_lut(qindex, qindex_offset, bit_depth, buffers);
+  buffers->prev_qindex = qindex + qindex_offset;
   buffers->prev_bit_depth = bit_depth;
 }
 
@@ -1740,7 +1742,7 @@ static void pc_wiener_stripe_highbd(const RestorationUnitInfo *rui,
   (void)tmpbuf;
   (void)bit_depth;
   const int set_index =
-      get_filter_set_index(rui->base_qindex + rui->qindex_offset);
+      get_filter_set_index(rui->base_qindex, rui->qindex_offset);
   const int16_t(*pcwiener_filters_luma)[NUM_PC_WIENER_TAPS_LUMA] =
       get_filter_set(set_index);
   const uint8_t *filter_selector = get_filter_selector(set_index);
@@ -1750,7 +1752,7 @@ static void pc_wiener_stripe_highbd(const RestorationUnitInfo *rui,
   classify_only = rui->skip_pcwiener_filtering ? true : false;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
 
-  setup_qval_tskip_lut(rui->base_qindex + rui->qindex_offset, bit_depth,
+  setup_qval_tskip_lut(rui->base_qindex, rui->qindex_offset, bit_depth,
                        rui->pcwiener_buffers);
   for (int j = 0; j < stripe_width; j += procunit_width) {
     int w = AOMMIN(procunit_width, stripe_width - j);
@@ -1957,12 +1959,12 @@ static void wiener_nsfilter_stripe_highbd(const RestorationUnitInfo *rui,
   (void)bit_depth;
 #if CONFIG_COMBINE_PC_NS_WIENER
   const int set_index =
-      get_filter_set_index(rui->base_qindex + rui->qindex_offset);
+      get_filter_set_index(rui->base_qindex, rui->qindex_offset);
   if (rui->compute_classification && rui->wienerns_info.num_classes > 1) {
     // Replicate pc_wiener_stripe but only perform classification, i.e., no
     // filtering. Only needed in the decoding loop. Encoder side will buffer the
     // class_id (follow rsc->classification_is_buffered.)
-    setup_qval_tskip_lut(rui->base_qindex + rui->qindex_offset, bit_depth,
+    setup_qval_tskip_lut(rui->base_qindex, rui->qindex_offset, bit_depth,
                          rui->pcwiener_buffers);
     for (int j = 0; j < stripe_width; j += procunit_width) {
       int w = AOMMIN(procunit_width, stripe_width - j);

@@ -3777,7 +3777,7 @@ static int64_t compute_stats_for_wienerns_filter(
   const int stride_b = WIENERNS_TAPS_MAX;
 #if CONFIG_COMBINE_PC_NS_WIENER
   const int set_index =
-      get_filter_set_index(rui->base_qindex + rui->qindex_offset);
+      get_filter_set_index(rui->base_qindex, rui->qindex_offset);
   const uint8_t *pc_wiener_sub_classify =
       get_pc_wiener_sub_classifier(num_classes, set_index);
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
@@ -5075,13 +5075,13 @@ const uint8_t *get_class_converter(const RestSearchCtxt *rsc,
                                    int num_target_classes) {
   int qindex_offset = 0;
   if (rsc->plane != AOM_PLANE_Y)
-    qindex_offset = rsc->plane == AOM_PLANE_U
-                        ? rsc->cm->quant_params.u_ac_delta_q
-                        : rsc->cm->quant_params.v_ac_delta_q;
+    qindex_offset =
+        (rsc->plane == AOM_PLANE_U ? rsc->cm->quant_params.u_ac_delta_q
+                                   : rsc->cm->quant_params.v_ac_delta_q);
   else
     qindex_offset = 0;
   const int set_index =
-      get_filter_set_index(rsc->cm->quant_params.base_qindex + qindex_offset);
+      get_filter_set_index(rsc->cm->quant_params.base_qindex, qindex_offset);
   return get_converter(set_index, num_stats_classes, num_target_classes);
 }
 

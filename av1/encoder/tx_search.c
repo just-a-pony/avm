@@ -607,7 +607,7 @@ static int predict_skip_txfm(const AV1_COMMON *cm, MACROBLOCK *x,
   const int16_t *src_diff = x->plane[0].src_diff;
   const int n_coeff = tx_w * tx_h;
 
-  const int32_t ac_q = av1_ac_quant_QTX(x->qindex, 0, xd->bd);
+  const int32_t ac_q = av1_ac_quant_QTX(x->qindex, 0, 0, xd->bd);
   const uint32_t dc_thresh =
       (uint32_t)ROUND_POWER_OF_TWO((max_qcoef_thresh * dc_q), QUANT_TABLE_BITS);
   const uint32_t ac_thresh =
