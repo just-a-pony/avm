@@ -4319,6 +4319,10 @@ static AOM_INLINE void init_allowed_partitions(
       partition_allowed[PARTITION_VERT_4B] &&
       is_bsize_geq(get_partition_subsize(bsize, PARTITION_VERT_4B),
                    blk_params->min_partition_size);
+  part_search_state->partition_split_allowed =
+      partition_allowed[PARTITION_SPLIT] &&
+      is_bsize_geq(get_partition_subsize(bsize, PARTITION_SPLIT),
+                   blk_params->min_partition_size);
 
   // Reset the flag indicating whether a partition leading to a rdcost lower
   // than the bound best_rdc has been found.
@@ -5472,7 +5476,6 @@ static void prune_4_way_partition_search(
 
 // Set PARTITION_NONE allowed flag.
 static AOM_INLINE void set_part_none_allowed_flag(
-    const AV1_COMP *const cpi,
 #if CONFIG_EXT_RECUR_PARTITIONS
     TREE_TYPE tree_type,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
@@ -5508,11 +5511,6 @@ static AOM_INLINE void set_part_none_allowed_flag(
     return;
   }
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
-
-  // Set PARTITION_NONE for screen content.
-  if (cpi->is_screen_content_type)
-    part_search_state->partition_none_allowed =
-        blk_params.has_rows && blk_params.has_cols;
 }
 
 // Set params needed for PARTITION_NONE search.
@@ -5786,14 +5784,14 @@ static void none_partition_search(
       is_inter_sdp_chroma(cm, pc_tree->region_type, x->e_mbd.tree_type);
 #endif  // CONFIG_EXTENDED_SDP
   // Set PARTITION_NONE allowed flag.
-  set_part_none_allowed_flag(cpi,
+  set_part_none_allowed_flag(
 #if CONFIG_EXT_RECUR_PARTITIONS
-                             x->e_mbd.tree_type,
+      x->e_mbd.tree_type,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_EXTENDED_SDP
-                             sdp_inter_chroma_flag,
+      sdp_inter_chroma_flag,
 #endif  // CONFIG_EXTENDED_SDP
-                             part_search_state);
+      part_search_state);
   if (!part_search_state->partition_none_allowed) {
     return;
   }
@@ -5993,6 +5991,7 @@ static void split_partition_search(
 #if CONFIG_EXT_RECUR_PARTITIONS
   (void)sms_tree;
   if (part_search_state->terminate_partition_search ||
+      !part_search_state->partition_split_allowed ||
       !is_square_split_eligible(bsize, cm->sb_size)) {
     return;
   }
@@ -8808,12 +8807,13 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
   // outside the min and max bsize limitations set from the encoder.
   av1_prune_partitions_by_max_min_bsize(
       &x->sb_enc, bsize, blk_params.has_rows && blk_params.has_cols,
-      &part_search_state.partition_none_allowed, partition_horz_allowed,
+      &part_search_state,
 #if CONFIG_EXT_RECUR_PARTITIONS
-      partition_vert_allowed, NULL);
+      NULL
 #else
-      partition_vert_allowed, &part_search_state.do_square_split);
+      &part_search_state.do_square_split
 #endif
+  );
 
   int luma_split_flag = 0;
 #if !CONFIG_EXT_RECUR_PARTITIONS
@@ -8910,7 +8910,7 @@ BEGIN_PARTITION_SEARCH:
   // PARTITION_NONE search stage.
   int64_t part_none_rd = INT64_MAX;
 #if CONFIG_EXTENDED_SDP
-  int partition_none_allowed = 1;
+  int partition_none_allowed = part_search_state.partition_none_allowed;
   if (pc_tree->parent && pc_tree->region_type == INTRA_REGION &&
       pc_tree->parent->region_type == MIXED_INTER_INTRA_REGION &&
       xd->tree_type != CHROMA_PART)
