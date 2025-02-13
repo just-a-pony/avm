@@ -6723,6 +6723,8 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
   if (!is_monochrome) {
     seq_params->base_uv_dc_delta_q =
         DELTA_DCQUANT_MIN + aom_rb_read_literal(rb, DELTA_DCQUANT_BITS);
+  } else {
+    seq_params->base_uv_dc_delta_q = 0;
   }
 }
 
