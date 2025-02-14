@@ -3776,6 +3776,18 @@ void av1_find_mode_ctx(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 }
 #endif  // CONFIG_C076_INTER_MOD_CTX
 
+// Initialize ref_mv_stack with zero MVs.
+void av1_initialize_ref_mv_stack(
+    CANDIDATE_MV ref_mv_stack[MAX_REF_MV_STACK_SIZE], int max_cand_num) {
+  for (int i = 0; i < max_cand_num; ++i) {
+    ref_mv_stack[i].this_mv.as_int = 0;
+    ref_mv_stack[i].comp_mv.as_int = 0;
+    ref_mv_stack[i].row_offset = OFFSET_NONSPATIAL;
+    ref_mv_stack[i].col_offset = OFFSET_NONSPATIAL;
+    ref_mv_stack[i].cwp_idx = CWP_EQUAL;
+  }
+}
+
 void av1_find_mv_refs(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, MB_MODE_INFO *mi,
     MV_REFERENCE_FRAME ref_frame, uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
@@ -3832,6 +3844,8 @@ void av1_find_mv_refs(
   if (mi->skip_mode) {
     SKIP_MODE_MVP_LIST *skip_list =
         (SKIP_MODE_MVP_LIST *)&(xd->skip_mvp_candidate_list);
+    av1_initialize_ref_mv_stack(skip_list->ref_mv_stack,
+                                USABLE_REF_MV_STACK_SIZE);
     setup_ref_mv_list(
         cm, xd, ref_frame, &(skip_list->ref_mv_count), skip_list->ref_mv_stack,
         skip_list->weight, skip_list->ref_frame0, skip_list->ref_frame1,
@@ -3855,6 +3869,16 @@ void av1_find_mv_refs(
                                         fr_mv_precision, bsize, mi_col, mi_row);
       gm_mv[1].as_int = 0;
     }
+    if (ref_frame == INTRA_FRAME) {
+#if CONFIG_IBC_MAX_DRL
+      av1_initialize_ref_mv_stack(ref_mv_stack[rf[0]],
+                                  cm->features.max_bvp_drl_bits + 1);
+#else
+      av1_initialize_ref_mv_stack(ref_mv_stack[rf[0]], MAX_REF_BV_STACK_SIZE);
+#endif  // CONFIG_IBC_MAX_DRL
+    } else {
+      av1_initialize_ref_mv_stack(ref_mv_stack[rf[0]], MAX_REF_MV_STACK_SIZE);
+    }
     setup_ref_mv_list(cm, xd, rf[0], &ref_mv_count[rf[0]], ref_mv_stack[rf[0]],
                       ref_mv_weight[rf[0]], NULL, NULL,
                       mv_ref_list ? mv_ref_list[rf[0]] : NULL, gm_mv, mi_row,
@@ -3877,6 +3901,7 @@ void av1_find_mv_refs(
                                         fr_mv_precision, bsize, mi_col, mi_row);
       gm_mv[1].as_int = 0;
 
+      av1_initialize_ref_mv_stack(ref_mv_stack[rf[1]], MAX_REF_MV_STACK_SIZE);
       setup_ref_mv_list(cm, xd, rf[1], &ref_mv_count[rf[1]],
                         ref_mv_stack[rf[1]], ref_mv_weight[rf[1]], NULL, NULL,
                         mv_ref_list ? mv_ref_list[rf[1]] : NULL, gm_mv, mi_row,
@@ -3892,6 +3917,18 @@ void av1_find_mv_refs(
     }
     if (derive_wrl) assert(rf[0] == ref_frame);
 #else
+    if (ref_frame == INTRA_FRAME) {
+#if CONFIG_IBC_MAX_DRL
+      av1_initialize_ref_mv_stack(ref_mv_stack[ref_frame],
+                                  cm->features.max_bvp_drl_bits + 1);
+#else
+      av1_initialize_ref_mv_stack(ref_mv_stack[ref_frame],
+                                  MAX_REF_BV_STACK_SIZE);
+#endif  // CONFIG_IBC_MAX_DRL
+    } else {
+      av1_initialize_ref_mv_stack(ref_mv_stack[ref_frame],
+                                  MAX_REF_MV_STACK_SIZE);
+    }
     setup_ref_mv_list(cm, xd, ref_frame, &ref_mv_count[ref_frame],
                       ref_mv_stack[ref_frame], ref_mv_weight[ref_frame], NULL,
                       NULL, mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv,
@@ -3909,6 +3946,16 @@ void av1_find_mv_refs(
 #endif  // CONFIG_SEP_COMP_DRL
   }
 #else
+  if (ref_frame == INTRA_FRAME) {
+#if CONFIG_IBC_MAX_DRL
+    av1_initialize_ref_mv_stack(ref_mv_stack[ref_frame],
+                                cm->features.max_bvp_drl_bits + 1);
+#else
+    av1_initialize_ref_mv_stack(ref_mv_stack[ref_frame], MAX_REF_BV_STACK_SIZE);
+#endif  // CONFIG_IBC_MAX_DRL
+  } else {
+    av1_initialize_ref_mv_stack(ref_mv_stack[ref_frame], MAX_REF_MV_STACK_SIZE);
+  }
   setup_ref_mv_list(cm, xd, ref_frame, &ref_mv_count[ref_frame],
                     ref_mv_stack[ref_frame], ref_mv_weight[ref_frame],
                     mv_ref_list ? mv_ref_list[ref_frame] : NULL, gm_mv, mi_row,
