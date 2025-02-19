@@ -134,7 +134,7 @@ specialize qw/av1_copy_pred_array_highbd sse4_1/;
 # High bitdepth functions
 
 #inv txfm
-add_proto qw/void inv_stxfm/ , "tran_low_t *src, tran_low_t *dst, const PREDICTION_MODE mode, const uint8_t stx_idx, const int size";
+add_proto qw/void inv_stxfm/ , "tran_low_t *src, tran_low_t *dst, const PREDICTION_MODE mode, const uint8_t stx_idx, const int size, const int bd";
 specialize qw/inv_stxfm sse4_1 avx2/;
 add_proto qw/void av1_highbd_inv_txfm_add/, "const tran_low_t *input, uint16_t *dest, int stride, const TxfmParam *txfm_param";
 if (aom_config("CONFIG_ADST_TUNED") eq "yes"
@@ -402,11 +402,11 @@ if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
 
   # fwd cctx
   add_proto qw/void av1_fwd_cross_chroma_tx_block/, "tran_low_t *coeff_c1, tran_low_t *coeff_c2,
-                         TX_SIZE tx_size, CctxType cctx_type";
+                         TX_SIZE tx_size, CctxType cctx_type, const int bd";
   specialize qw/av1_fwd_cross_chroma_tx_block avx2/;
 
   #fwd txfm
-  add_proto qw/void fwd_stxfm/ , "tran_low_t *src, tran_low_t *dst, const PREDICTION_MODE mode, const uint8_t stx_idx, const int size";
+  add_proto qw/void fwd_stxfm/ , "tran_low_t *src, tran_low_t *dst, const PREDICTION_MODE mode, const uint8_t stx_idx, const int size, const int bd";
   specialize qw/fwd_stxfm sse4_1 avx2/;
   add_proto qw/void av1_lowbd_fwd_txfm/, "const int16_t *src_diff, tran_low_t *coeff, int diff_stride, TxfmParam *txfm_param";
   if (aom_config("CONFIG_INTER_DDT") eq "yes") {

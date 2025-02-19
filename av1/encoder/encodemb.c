@@ -778,7 +778,8 @@ void forward_cross_chroma_transform(MACROBLOCK *x, int block, TX_SIZE tx_size,
   const int block_offset = BLOCK_OFFSET(block);
   tran_low_t *coeff_c1 = p_c1->coeff + block_offset;
   tran_low_t *coeff_c2 = p_c2->coeff + block_offset;
-  av1_fwd_cross_chroma_tx_block(coeff_c1, coeff_c2, tx_size, cctx_type);
+  av1_fwd_cross_chroma_tx_block(coeff_c1, coeff_c2, tx_size, cctx_type,
+                                x->e_mbd.bd);
 }
 
 // Finds and sets the first position (BOB) index.
@@ -1158,7 +1159,8 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
     recon_with_cctx = (eob_c1 || eob_c2) && !skip_cctx;
     max_chroma_eob = AOMMAX(eob_c1, eob_c2);
     if (recon_with_cctx) {
-      av1_inv_cross_chroma_tx_block(dqcoeff_c1, dqcoeff, tx_size, cctx_type);
+      av1_inv_cross_chroma_tx_block(dqcoeff_c1, dqcoeff, tx_size, cctx_type,
+                                    xd->bd);
       av1_inverse_transform_block(
           xd, dqcoeff_c1, AOM_PLANE_U, tx_type, tx_size, dst_c1,
           pd_c1->dst.stride, max_chroma_eob,
@@ -2135,7 +2137,8 @@ void av1_encode_block_intra_joint_uv(int block, int blk_row, int blk_col,
   }
 
   if (*eob_c1 || *eob_c2) {
-    av1_inv_cross_chroma_tx_block(dqcoeff_c1, dqcoeff_c2, tx_size, cctx_type);
+    av1_inv_cross_chroma_tx_block(dqcoeff_c1, dqcoeff_c2, tx_size, cctx_type,
+                                  xd->bd);
     av1_inverse_transform_block(
         xd, dqcoeff_c1, AOM_PLANE_U, tx_type, tx_size, dst_c1, dst_stride,
         AOMMAX(*eob_c1, *eob_c2),
