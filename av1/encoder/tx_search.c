@@ -154,6 +154,8 @@ static int find_tx_size_rd_info(TXB_RD_RECORD *cur_record,
 }
 
 #if !CONFIG_NEW_TX_PARTITION
+// TODO(any) This feature seems to be broken now. Fix this feature or remove it.
+#define USE_INTER_TXB_HASH 0
 static const RD_RECORD_IDX_NODE rd_record_tree_8x8[] = {
   { 1, { 0 } },
 };
@@ -261,6 +263,14 @@ static const RD_RECORD_IDX_NODE *rd_record_tree[BLOCK_SIZES_ALL] = {
   rd_record_tree_4_1,  // BLOCK_32X8
   rd_record_tree_1_4,  // BLOCK_16X64
   rd_record_tree_4_1,  // BLOCK_64X16
+#if CONFIG_EXT_RECUR_PARTITIONS
+  NULL,  // BLOCK_4X32
+  NULL,  // BLOCK_32X4
+  NULL,  // BLOCK_8X64
+  NULL,  // BLOCK_64X8
+  NULL,  // BLOCK_4X64
+  NULL,  // BLOCK_64X4
+#endif   // CONFIG_EXT_RECUR_PARTITIONS
 };
 
 static const int rd_record_tree_size[BLOCK_SIZES_ALL] = {
@@ -291,6 +301,14 @@ static const int rd_record_tree_size[BLOCK_SIZES_ALL] = {
   sizeof(rd_record_tree_4_1) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_32X8
   sizeof(rd_record_tree_1_4) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_16X64
   sizeof(rd_record_tree_4_1) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_64X16
+#if CONFIG_EXT_RECUR_PARTITIONS
+  0,    // BLOCK_4X32
+  0,    // BLOCK_32X4
+  0,    // BLOCK_8X64
+  0,    // BLOCK_64X8
+  0,    // BLOCK_4X64
+  0,    // BLOCK_64X4
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 
 static INLINE void init_rd_record_tree(TXB_RD_INFO_NODE *tree,
@@ -317,6 +335,7 @@ static INLINE void init_rd_record_tree(TXB_RD_INFO_NODE *tree,
 // the form of a quadtree for easier access in actual TX size search.
 static int find_tx_size_rd_records(MACROBLOCK *x, BLOCK_SIZE bsize,
                                    TXB_RD_INFO_NODE *dst_rd_info) {
+  int found = 0;
   TxfmSearchInfo *txfm_info = &x->txfm_search_info;
   TXB_RD_RECORD *rd_records_table[4] = { txfm_info->txb_rd_record_8X8,
                                          txfm_info->txb_rd_record_16X16,
@@ -377,6 +396,7 @@ static int find_tx_size_rd_records(MACROBLOCK *x, BLOCK_SIZE bsize,
           int idx = find_tx_size_rd_info(records, hash);
           dst_rd_info[cur_rd_info_idx].rd_info_array =
               &records->tx_rd_info[idx];
+          found = 1;
         }
         ++cur_rd_info_idx;
       }
@@ -384,7 +404,7 @@ static int find_tx_size_rd_records(MACROBLOCK *x, BLOCK_SIZE bsize,
     cur_tx_size = next_tx_size;
     ++cur_tx_depth;
   }
-  return 1;
+  return found;
 }
 #endif  // !CONFIG_NEW_TX_PARTITION
 
@@ -3661,7 +3681,7 @@ static AOM_INLINE void try_tx_block_no_split(
   mbmi->inter_tx_size[index] = tx_size;
   tx_type_rd(cpi, x, tx_size, blk_row, blk_col, block, plane_bsize, &txb_ctx,
              rd_stats, ftxs_mode, ref_best_rd,
-             rd_info_node != NULL ? rd_info_node->rd_info_array : NULL);
+             rd_info_node ? rd_info_node->rd_info_array : NULL);
   assert(rd_stats->rate < INT_MAX);
 
   const int pick_skip_txfm =
@@ -4336,6 +4356,10 @@ static AOM_INLINE void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
   uint8_t best_blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   TX_SIZE best_tx_size = max_rect_tx_size;
   int64_t best_rd = INT64_MAX;
+#if CONFIG_WAIP
+  int is_wide_angle_mapped = 0;
+  int mapped_wide_angle = DC_PRED;
+#endif  // CONFIG_WAIP
   const int num_blks = bsize_to_num_blk(bs);
   x->rd_model = FULL_TXFM_RD;
   int64_t rd[MAX_TX_DEPTH + 1] = { INT64_MAX, INT64_MAX, INT64_MAX };
@@ -4351,9 +4375,13 @@ static AOM_INLINE void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
     rd[depth] = av1_uniform_txfm_yrd(cpi, x, &this_rd_stats, ref_best_rd, bs,
                                      tx_size, FTXS_NONE, skip_trellis);
     if (rd[depth] < best_rd) {
-      av1_copy_array(best_blk_skip, txfm_info->blk_skip, num_blks);
+      av1_copy_array(best_blk_skip, txfm_info->blk_skip[AOM_PLANE_Y], num_blks);
       av1_copy_array(best_txk_type_map, xd->tx_type_map, num_blks);
       best_tx_size = tx_size;
+#if CONFIG_WAIP
+      is_wide_angle_mapped = mbmi->is_wide_angle[0];
+      mapped_wide_angle = mbmi->mapped_intra_mode[0];
+#endif
       best_rd = rd[depth];
       *rd_stats = this_rd_stats;
     }
@@ -4368,8 +4396,12 @@ static AOM_INLINE void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
 
   if (rd_stats->rate != INT_MAX) {
     mbmi->tx_size = best_tx_size;
+#if CONFIG_WAIP
+    mbmi->is_wide_angle[0] = is_wide_angle_mapped;
+    mbmi->mapped_intra_mode[0] = mapped_wide_angle;
+#endif
     av1_copy_array(xd->tx_type_map, best_txk_type_map, num_blks);
-    av1_copy_array(txfm_info->blk_skip, best_blk_skip, num_blks);
+    av1_copy_array(txfm_info->blk_skip[AOM_PLANE_Y], best_blk_skip, num_blks);
   }
 }
 #endif  // CONFIG_NEW_TX_PARTITION
@@ -4584,9 +4616,18 @@ static AOM_INLINE void tx_block_yrd(
     get_txb_ctx(plane_bsize, tx_size, 0, ta, tl, &txb_ctx,
                 mbmi->fsc_mode[xd->tree_type == CHROMA_PART]);
 
+#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
+    const int is_inter = is_inter_block(mbmi, xd->tree_type);
+    const int pred_mode_ctx =
+        (is_inter || mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) ? 1 : 0;
+    const int zero_blk_rate =
+        x->coeff_costs.coeff_costs[txs_ctx][PLANE_TYPE_Y]
+            .txb_skip_cost[pred_mode_ctx][txb_ctx.txb_skip_ctx][1];
+#else
     const int zero_blk_rate =
         x->coeff_costs.coeff_costs[txs_ctx][get_plane_type(0)]
             .txb_skip_cost[txb_ctx.txb_skip_ctx][1];
+#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
     rd_stats->zero_rate = zero_blk_rate;
     tx_type_rd(cpi, x, tx_size, blk_row, blk_col, block, plane_bsize, &txb_ctx,
                rd_stats, ftxs_mode, ref_best_rd, NULL);
@@ -5056,12 +5097,12 @@ void av1_pick_recursive_tx_size_type_yrd(const AV1_COMP *cpi, MACROBLOCK *x,
   // up TX size/type search.
   TXB_RD_INFO_NODE matched_rd_info[4 + 16 + 64];
   int found_rd_info = 0;
-#if !CONFIG_NEW_TX_PARTITION
+#if !CONFIG_NEW_TX_PARTITION && USE_INTER_TXB_HASH
   if (ref_best_rd != INT64_MAX && within_border &&
       cpi->sf.tx_sf.use_inter_txb_hash) {
     found_rd_info = find_tx_size_rd_records(x, bsize, matched_rd_info);
   }
-#endif  // !CONFIG_NEW_TX_PARTITION
+#endif  // !CONFIG_NEW_TX_PARTITION && USE_INTER_TXB_HASH
 
   const int64_t rd =
       select_tx_size_and_type(cpi, x, rd_stats, bsize, ref_best_rd,
