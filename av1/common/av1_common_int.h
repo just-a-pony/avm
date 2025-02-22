@@ -3261,9 +3261,8 @@ static INLINE int check_is_chroma_size_valid(
 // sets `implied_partition` appropriately.
 // Note: `implied_partition` can be passed NULL.
 static AOM_INLINE bool is_partition_implied_at_boundary(
-    const CommonModeInfoParams *const mi_params, TREE_TYPE tree_type, bool ss_x,
-    bool ss_y, int mi_row, int mi_col, BLOCK_SIZE bsize,
-    const CHROMA_REF_INFO *chroma_ref_info, PARTITION_TYPE *implied_partition) {
+    const CommonModeInfoParams *const mi_params, int mi_row, int mi_col,
+    BLOCK_SIZE bsize, PARTITION_TYPE *implied_partition) {
   if (bsize >= BLOCK_SIZES_ALL) return false;
   bool is_implied = false;
   PARTITION_TYPE tmp_implied_partition = PARTITION_INVALID;
@@ -3320,34 +3319,6 @@ static AOM_INLINE bool is_partition_implied_at_boundary(
       }
     }
   }
-  if (is_implied) {
-    assert(tmp_implied_partition == PARTITION_HORZ ||
-           tmp_implied_partition == PARTITION_VERT);
-    if (!check_is_chroma_size_valid(tree_type, tmp_implied_partition, bsize,
-                                    mi_row, mi_col, ss_x, ss_y,
-                                    chroma_ref_info)) {
-      is_implied = false;
-      tmp_implied_partition = PARTITION_INVALID;
-    }
-#if CONFIG_CB1TO4_SPLIT
-    if (tree_type == SHARED_PART) {
-      // Make sure that chroma ref block is not completely outside frame
-      // boundary, to ensure that coding of chroma ref block is not skipped.
-      if ((tmp_implied_partition == PARTITION_HORZ) &&
-          have_nz_chroma_ref_offset(bsize, PARTITION_HORZ, ss_x, ss_y) &&
-          !has_rows) {
-        is_implied = false;
-        tmp_implied_partition = PARTITION_INVALID;
-      }
-      if ((tmp_implied_partition == PARTITION_VERT) &&
-          have_nz_chroma_ref_offset(bsize, PARTITION_VERT, ss_x, ss_y) &&
-          !has_cols) {
-        is_implied = false;
-        tmp_implied_partition = PARTITION_INVALID;
-      }
-    }
-#endif  // CONFIG_CB1TO4_SPLIT
-  }
   assert(IMPLIES(is_implied && implied_partition,
                  tmp_implied_partition == PARTITION_HORZ ||
                      tmp_implied_partition == PARTITION_VERT));
@@ -3365,7 +3336,7 @@ static AOM_INLINE bool is_partition_implied_at_boundary(
 static AOM_INLINE PARTITION_TYPE av1_get_normative_forced_partition_type(
     const CommonModeInfoParams *const mi_params, TREE_TYPE tree_type, int ss_x,
     int ss_y, int mi_row, int mi_col, BLOCK_SIZE bsize,
-    const PARTITION_TREE *ptree_luma, const CHROMA_REF_INFO *chroma_ref_info) {
+    const PARTITION_TREE *ptree_luma) {
   // Return NONE if this block size is not splittable
   if (!is_partition_point(bsize)) {
     return PARTITION_NONE;
@@ -3387,8 +3358,7 @@ static AOM_INLINE PARTITION_TYPE av1_get_normative_forced_partition_type(
   // Partitions forced by boundary
   PARTITION_TYPE implied_partition;
   const bool is_part_implied = is_partition_implied_at_boundary(
-      mi_params, tree_type, ss_x, ss_y, mi_row, mi_col, bsize, chroma_ref_info,
-      &implied_partition);
+      mi_params, mi_row, mi_col, bsize, &implied_partition);
   if (is_part_implied) return implied_partition;
 
   // No forced partitions
