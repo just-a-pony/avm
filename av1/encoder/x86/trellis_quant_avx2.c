@@ -246,10 +246,17 @@ void av1_update_states_avx2(tcq_node_t *decision, int scan_idx,
     int prevId = decision[i].prevId;
     int absLevel = decision[i].absLevel;
     if (prevId >= 0) {
-      memcpy(&nxt_ctx[i], &cur_ctx[prevId], sizeof(tcq_ctx_t));
+      const tcq_ctx_t *p = &cur_ctx[prevId];
+      __m256i ctx0 = _mm256_lddqu_si256((__m256i *)&p->ctx);
+      __m256i ctx1 = _mm256_lddqu_si256((__m256i *)&p->lev);
+      _mm256_storeu_si256((__m256i *)&nxt_ctx[i].ctx, ctx0);
+      _mm256_storeu_si256((__m256i *)&nxt_ctx[i].lev, ctx1);
+      nxt_ctx[i].orig_id = p->orig_id;
     } else {
       // New EOB; reset contexts
-      memset(&nxt_ctx[i], 0, sizeof(tcq_ctx_t));
+      __m256i zero = _mm256_setzero_si256();
+      _mm256_storeu_si256((__m256i *)&nxt_ctx[i].ctx, zero);
+      _mm256_storeu_si256((__m256i *)&nxt_ctx[i].lev, zero);
       nxt_ctx[i].orig_id = -1;
     }
     nxt_ctx[i].lev[scan_idx] = AOMMIN(absLevel, INT8_MAX);
