@@ -6665,8 +6665,11 @@ void av1_find_warp_delta_base_candidates(
     return;
   }
 
+  // Copy the entire wrl_list where all candidates have been properly defined.
+  // Note that the first num_wrl_cand have been filled, and the rest have been
+  // initialized as default_warp_params.
   memcpy(&warp_param_stack[0], &wrl_list[0],
-         num_wrl_cand * sizeof(wrl_list[0]));
+         MAX_WARP_REF_CANDIDATES * sizeof(wrl_list[0]));
   if (p_valid_num_candidates) {
     // for NEARMV mode, the maximum number of candidates is 1
     *p_valid_num_candidates = (mbmi->mode == NEARMV || mbmi->mode == AMVDNEWMV
