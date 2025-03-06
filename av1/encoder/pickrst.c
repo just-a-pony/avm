@@ -1255,10 +1255,10 @@ static void initialize_rui_for_nonsep_search(const RestSearchCtxt *rsc,
   rui->base_qindex = rsc->cm->quant_params.base_qindex;
   if (rsc->plane != AOM_PLANE_Y)
     rui->qindex_offset = rsc->plane == AOM_PLANE_U
-                             ? rsc->cm->quant_params.u_dc_delta_q
-                             : rsc->cm->quant_params.v_dc_delta_q;
+                             ? rsc->cm->quant_params.u_ac_delta_q
+                             : rsc->cm->quant_params.v_ac_delta_q;
   else
-    rui->qindex_offset = rsc->cm->quant_params.y_dc_delta_q;
+    rui->qindex_offset = 0;
   rui->luma = rsc->luma;
   rui->luma_stride = rsc->luma_stride;
   rui->plane = rsc->plane;
@@ -1290,9 +1290,23 @@ static AOM_INLINE void search_pc_wiener_visitor(
   const MACROBLOCK *const x = rsc->x;
   const int64_t bits_none = x->mode_costs.pc_wiener_restore_cost[0];
 
+#if CONFIG_COMBINE_PC_NS_WIENER
+  const int pcwiener_disabled =
+      rsc->plane > 0 ||
+      (rsc->cm->seq_params.lr_tools_disable_mask[AOM_PLANE_Y] &
+       (1 << RESTORE_PC_WIENER));
+#endif  // CONFIG_COMBINE_PC_NS_WIENER
+
 #if CONFIG_COMBINE_PC_NS_WIENER_ADD
+  // This routine is called (i) when the rtype = RESTORE_PC_WIENER or (ii) when
+  // handling frame filters with rtype = RESTORE_WIENER_NONSEP.
+  // (i) Run the full pc-wiener, i.e., don't skip, if pc-wiener is not disabled.
+  // (Disabling can be accomplished by config or the plane being chroma.)
+  // (ii) If disabled, skip only if frame-filters are off or the number of
+  // filter classes for frame filters is one.
   bool skip_search =
-      !is_frame_filters_enabled(rsc->plane) || rsc->num_filter_classes == 1;
+      pcwiener_disabled &&
+      (!is_frame_filters_enabled(rsc->plane) || rsc->num_filter_classes == 1);
 #else
   bool skip_search = rsc->plane != AOM_PLANE_Y;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER_ADD
@@ -1307,10 +1321,7 @@ static AOM_INLINE void search_pc_wiener_visitor(
   RestorationUnitInfo rui;
   initialize_rui_for_nonsep_search(rsc, &rui);
 #if CONFIG_COMBINE_PC_NS_WIENER
-  const int pcwiener_disabled =
-      rsc->plane > 0 ||
-      (rsc->cm->seq_params.lr_tools_disable_mask[AOM_PLANE_Y] &
-       (1 << RESTORE_PC_WIENER));
+  // Only need the classification if running for frame filters.
   rui.skip_pcwiener_filtering = pcwiener_disabled ? 1 : 0;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
 
@@ -4444,10 +4455,10 @@ const uint8_t *get_class_converter(const RestSearchCtxt *rsc,
   int qindex_offset = 0;
   if (rsc->plane != AOM_PLANE_Y)
     qindex_offset = rsc->plane == AOM_PLANE_U
-                        ? rsc->cm->quant_params.u_dc_delta_q
-                        : rsc->cm->quant_params.v_dc_delta_q;
+                        ? rsc->cm->quant_params.u_ac_delta_q
+                        : rsc->cm->quant_params.v_ac_delta_q;
   else
-    qindex_offset = rsc->cm->quant_params.y_dc_delta_q;
+    qindex_offset = 0;
   const int set_index =
       get_filter_set_index(rsc->cm->quant_params.base_qindex + qindex_offset);
   return get_converter(set_index, num_stats_classes, num_target_classes);
