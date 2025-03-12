@@ -158,11 +158,6 @@ bool ldl_decompose(int64_t A[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS],
                    int64_t U[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS],
                    int64_t diag[MHCCP_NUM_PARAMS], int numEq);
 #endif  // !CONFIG_E125_MHCCP_SIMPLIFY
-
-// Get chroma prediction with MHCCP
-void mhccp_predict_hv_hbd_c(const uint16_t *input, uint16_t *dst, bool have_top,
-                            bool have_left, int dst_stride, int64_t *alpha_q3,
-                            int bit_depth, int width, int height, int dir);
 #endif  // CONFIG_ENABLE_MHCCP
 
 static INLINE int get_scaled_luma_q0(int alpha_q3, int16_t pred_buf_q3) {

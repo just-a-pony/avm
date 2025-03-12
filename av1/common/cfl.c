@@ -647,18 +647,18 @@ void cfl_predict_block(MACROBLOCKD *const xd, uint16_t *dst, int dst_stride,
   int alpha_q3;
 #if CONFIG_ENABLE_MHCCP
   if (mbmi->cfl_idx == CFL_MULTI_PARAM_V && mbmi->mh_dir == 0) {
-    mhccp_predict_hv_hbd_c(cfl->mhccp_ref_buf_q3[0] + (uint16_t)left_lines +
-                               (uint16_t)above_lines * CFL_BUF_LINE * 2,
-                           dst, have_top, have_left, dst_stride,
-                           mbmi->mhccp_implicit_param[plane - 1], xd->bd,
-                           tx_size_wide[tx_size], tx_size_high[tx_size], 0);
+    mhccp_predict_hv_hbd(cfl->mhccp_ref_buf_q3[0] + (uint16_t)left_lines +
+                             (uint16_t)above_lines * CFL_BUF_LINE * 2,
+                         dst, have_top, have_left, dst_stride,
+                         mbmi->mhccp_implicit_param[plane - 1], xd->bd,
+                         tx_size_wide[tx_size], tx_size_high[tx_size], 0);
     return;
   } else if (mbmi->cfl_idx == CFL_MULTI_PARAM_V && mbmi->mh_dir == 1) {
-    mhccp_predict_hv_hbd_c(cfl->mhccp_ref_buf_q3[0] + (uint16_t)left_lines +
-                               (uint16_t)above_lines * CFL_BUF_LINE * 2,
-                           dst, have_top, have_left, dst_stride,
-                           mbmi->mhccp_implicit_param[plane - 1], xd->bd,
-                           tx_size_wide[tx_size], tx_size_high[tx_size], 1);
+    mhccp_predict_hv_hbd(cfl->mhccp_ref_buf_q3[0] + (uint16_t)left_lines +
+                             (uint16_t)above_lines * CFL_BUF_LINE * 2,
+                         dst, have_top, have_left, dst_stride,
+                         mbmi->mhccp_implicit_param[plane - 1], xd->bd,
+                         tx_size_wide[tx_size], tx_size_high[tx_size], 1);
     return;
   } else if (mbmi->cfl_idx == CFL_DERIVED_ALPHA) {
     alpha_q3 = mbmi->cfl_implicit_alpha[plane - 1];
@@ -1295,7 +1295,7 @@ void ldl_solve(int64_t U[MHCCP_NUM_PARAMS][MHCCP_NUM_PARAMS],
 static int16_t convolve(int64_t *params, uint16_t *vector, int16_t numParams) {
   int64_t sum = 0;
   for (int i = 0; i < numParams; i++) {
-#if CONFIG_E125_MHCCP_SIMPLIFY
+#if CONFIG_E125_MHCCP_SIMPLIFY && !CONFIG_MHCCP_CONVOLVE_SIMPLIFY
     sum += stable_mult_shift(params[i], vector[i], MHCCP_DECIM_BITS,
                              get_msb_signed_64(params[i]),
                              get_msb_signed(vector[i]), 32, NULL);
@@ -1303,7 +1303,7 @@ static int16_t convolve(int64_t *params, uint16_t *vector, int16_t numParams) {
     sum += params[i] * vector[i];
 #endif  // CONFIG_E125_MHCCP_SIMPLIFY
   }
-#if CONFIG_E125_MHCCP_SIMPLIFY
+#if CONFIG_E125_MHCCP_SIMPLIFY && !CONFIG_MHCCP_CONVOLVE_SIMPLIFY
   return (int16_t)clamp64(sum, INT16_MIN, INT16_MAX);
 #else
   return (int16_t)((sum + MHCCP_DECIM_ROUND) >> MHCCP_DECIM_BITS);
