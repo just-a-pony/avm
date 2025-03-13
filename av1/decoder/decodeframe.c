@@ -4329,11 +4329,7 @@ static AOM_INLINE void setup_buffer_pool(AV1_COMMON *cm) {
   cm->cur_frame->buf.render_width = cm->render_width;
   cm->cur_frame->buf.render_height = cm->render_height;
   if (cm->seq_params.enable_tip) {
-    const RefCntBuffer *const ref_buf = get_ref_frame_buf(cm, TIP_FRAME);
-    if (ref_buf == NULL || (ref_buf->buf.y_crop_width != cm->width ||
-                            ref_buf->buf.y_crop_height != cm->height)) {
-      setup_tip_frame_size(cm);
-    }
+    setup_tip_frame_size(cm);
   }
 }
 
@@ -8675,8 +8671,16 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
     }
 #if CONFIG_TIP_LD
     set_primary_ref_frame_and_ctx(cm);
+    cm->seg.enabled = 0;
+    if (cm->cur_frame->seg_map) {
+      memset(cm->cur_frame->seg_map, 0,
+             (cm->cur_frame->mi_rows * cm->cur_frame->mi_cols));
+    }
+    memset(&cm->seg, 0, sizeof(cm->seg));
+    segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
 #else
       av1_setup_past_independence(cm);
+      segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
 #endif  // CONFIG_TIP_LD
     if (!cm->tiles.large_scale) {
       cm->cur_frame->frame_context = *cm->fc;
