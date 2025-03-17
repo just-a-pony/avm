@@ -1310,6 +1310,9 @@ static void highbd_filter_intra_predictor(uint16_t *dst, ptrdiff_t stride,
 }
 
 static int is_smooth(const MB_MODE_INFO *mbmi, int plane, TREE_TYPE tree_type) {
+#if CONFIG_INTRA_SDP_LATENCY_FIX
+  (void)tree_type;
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
   if (plane == 0) {
     const PREDICTION_MODE mode = mbmi->mode;
     return (mode == SMOOTH_PRED || mode == SMOOTH_V_PRED ||
@@ -1317,7 +1320,13 @@ static int is_smooth(const MB_MODE_INFO *mbmi, int plane, TREE_TYPE tree_type) {
   } else {
     // uv_mode is not set for inter blocks, so need to explicitly
     // detect that case.
+#if CONFIG_INTRA_SDP_LATENCY_FIX
+    if (is_inter_block(
+            mbmi, mbmi->tree_type == SHARED_PART ? SHARED_PART : CHROMA_PART))
+      return 0;
+#else
     if (is_inter_block(mbmi, tree_type)) return 0;
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
 
     const UV_PREDICTION_MODE uv_mode = mbmi->uv_mode;
     return (uv_mode == UV_SMOOTH_PRED || uv_mode == UV_SMOOTH_V_PRED ||

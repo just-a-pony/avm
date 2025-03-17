@@ -4206,13 +4206,13 @@ static AOM_INLINE void write_modes_sb(
 
   // update partition context
   update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);
-#if CONFIG_EXTENDED_SDP
+#if CONFIG_INTRA_SDP_LATENCY_FIX
   if (intra_sdp_enabled && xd->tree_type == SHARED_PART) {
     xd->tree_type = CHROMA_PART;
     update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);
     xd->tree_type = SHARED_PART;
   }
-#endif  // CONFIG_EXTENDED_SDP
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
 }
 
 static AOM_INLINE void write_modes(AV1_COMP *const cpi,

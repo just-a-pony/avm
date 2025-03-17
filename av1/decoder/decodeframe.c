@@ -2854,14 +2854,19 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
 #undef DEC_BLOCK_STX_ARG
 
   if (parse_decode_flag & 1)
+#if CONFIG_INTRA_SDP_LATENCY_FIX
+  {
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
     update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);
-#if CONFIG_EXTENDED_SDP
-  if (is_intra_sdp_enabled && xd->tree_type == SHARED_PART) {
-    xd->tree_type = CHROMA_PART;
-    update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);
-    xd->tree_type = SHARED_PART;
+#if CONFIG_INTRA_SDP_LATENCY_FIX
+    if (is_intra_sdp_enabled && xd->tree_type == SHARED_PART) {
+      xd->tree_type = CHROMA_PART;
+      update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize,
+                                   partition);
+      xd->tree_type = SHARED_PART;
+    }
   }
-#endif  // CONFIG_EXTENDED_SDP
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
 }
 
 static AOM_INLINE void setup_bool_decoder(
