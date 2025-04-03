@@ -1204,13 +1204,11 @@ static INLINE int get_sqr_bsize_idx(BLOCK_SIZE bsize) {
   }
 }
 
-// For a square block size 'bsize', returns the size of the sub-blocks used by
-// the given partition type. If the partition produces sub-blocks of different
-// sizes, then the function returns the largest sub-block size.
-// Implements the Partition_Subsize lookup table in the spec (Section 9.3.
-// Conversion tables).
-// Note: the input block size should be square.
-// Otherwise it's considered invalid.
+// For a block size 'bsize', returns the size of the sub-blocks used by the
+// given partition type. If the partition produces sub-blocks of different
+// sizes, then the function returns the size of the first sub-block. If given
+// partition type is not allowed for given block size, returns
+// PARTITION_INVALID.
 static INLINE BLOCK_SIZE get_partition_subsize(BLOCK_SIZE bsize,
                                                PARTITION_TYPE partition) {
   if (partition == PARTITION_INVALID) {
