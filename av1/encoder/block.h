@@ -1245,15 +1245,15 @@ typedef struct {
    * \name Inter Costs: Motion Modes/Filters
    ****************************************************************************/
   /**@{*/
-  //! warped_causal_cost
+  //! warp_causal_cost
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-  int warped_causal_cost[WARP_CAUSAL_MODE_CTX][2];
+  int warp_causal_cost[WARP_CAUSAL_MODE_CTX][2];
 #else
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-  int warped_causal_cost[2];
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+  int warp_causal_cost[2];
 #else
-  int warped_causal_cost[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+  int warp_causal_cost[BLOCK_SIZES_ALL][2];
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
   //! warp_delta_cost
 #if CONFIG_D149_CTX_MODELING_OPT
   int warp_delta_cost[2];
@@ -1262,11 +1262,11 @@ typedef struct {
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
-  //! warped_causal_warpmv_cost
+  //! warp_causal_warpmv_cost
 #if CONFIG_D149_CTX_MODELING_OPT
-  int warped_causal_warpmv_cost[2];
+  int warp_causal_warpmv_cost[2];
 #else
-  int warped_causal_warpmv_cost[BLOCK_SIZES_ALL][2];
+  int warp_causal_warpmv_cost[BLOCK_SIZES_ALL][2];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
   //! warp_delta_param_cost

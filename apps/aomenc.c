@@ -515,7 +515,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_mvd_sign_derive,
 #endif  // CONFIG_DERIVED_MVD_SIGN
   &g_av1_codec_arg_defs.enable_parity_hiding,
-  &g_av1_codec_arg_defs.enable_warped_causal,
+  &g_av1_codec_arg_defs.enable_warp_causal,
   &g_av1_codec_arg_defs.enable_warp_delta,
 #if CONFIG_SIX_PARAM_WARP_DELTA
   &g_av1_codec_arg_defs.enable_six_param_warp_delta,
@@ -725,7 +725,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_lf_sub_pu = 1;
 #endif  // CONFIG_LF_SUB_PU
   config->enable_warped_motion = 1;
-  config->enable_warped_causal = 1;
+  config->enable_warp_causal = 1;
   config->enable_warp_delta = 1;
 #if CONFIG_SIX_PARAM_WARP_DELTA
   config->enable_six_param_warp_delta = 1;
@@ -1628,17 +1628,17 @@ static void show_stream_config(struct stream_state *stream,
   if (encoder_cfg->enable_warped_motion) {
 #if CONFIG_SIX_PARAM_WARP_DELTA
     fprintf(stdout,
-            "                               : WARPED_CAUSAL (%d), "
+            "                               : WARP_CAUSAL (%d), "
             "WARP_DELTA (%d), Six-param-warp-delta (%d), WARP_EXTEND (%d)\n",
-            encoder_cfg->enable_warped_causal, encoder_cfg->enable_warp_delta,
+            encoder_cfg->enable_warp_causal, encoder_cfg->enable_warp_delta,
             encoder_cfg->enable_six_param_warp_delta,
             encoder_cfg->enable_warp_extend);
 
 #else
     fprintf(stdout,
-            "                               : WARPED_CAUSAL (%d), "
+            "                               : WARP_CAUSAL (%d), "
             "WARP_DELTA (%d), WARP_EXTEND (%d)\n",
-            encoder_cfg->enable_warped_causal, encoder_cfg->enable_warp_delta,
+            encoder_cfg->enable_warp_causal, encoder_cfg->enable_warp_delta,
             encoder_cfg->enable_warp_extend);
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
   }

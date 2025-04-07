@@ -605,10 +605,10 @@ typedef struct MV_SPEED_FEATURES {
   // This is only active when there are at least 16 rows.
   int use_downsampled_sad;
 
-  // Method to use for refining WARPED_CAUSAL motion vectors
+  // Method to use for refining WARP_CAUSAL motion vectors
   WARP_SEARCH_METHOD warp_search_method;
 
-  // Maximum number of iterations in WARPED_CAUSAL refinement search
+  // Maximum number of iterations in WARP_CAUSAL refinement search
   int warp_search_iters;
 #if CONFIG_EXT_RECUR_PARTITIONS
   // Use faster motion search settings for partition blocks with at least one

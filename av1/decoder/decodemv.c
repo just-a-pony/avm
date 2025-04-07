@@ -853,23 +853,23 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
       motion_mode_allowed(cm, xd, xd->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
 
   if (mbmi->mode == WARPMV) {
-    if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
-      int use_warped_causal =
+    if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
+      int use_warp_causal =
 #if CONFIG_D149_CTX_MODELING_OPT
-          aom_read_symbol(r, xd->tile_ctx->warped_causal_warpmv_cdf, 2,
-                          ACCT_INFO("use_warped_causal"));
+          aom_read_symbol(r, xd->tile_ctx->warp_causal_warpmv_cdf, 2,
+                          ACCT_INFO("use_warp_causal"));
 #else
-          aom_read_symbol(r, xd->tile_ctx->warped_causal_warpmv_cdf[bsize], 2,
-                          ACCT_INFO("use_warped_causal"));
+          aom_read_symbol(r, xd->tile_ctx->warp_causal_warpmv_cdf[bsize], 2,
+                          ACCT_INFO("use_warp_causal"));
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-      return use_warped_causal ? WARPED_CAUSAL : WARP_DELTA;
+      return use_warp_causal ? WARP_CAUSAL : WARP_DELTA;
     }
     return WARP_DELTA;
   }
 
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   if (is_warp_newmv_allowed(cm, xd, mbmi, bsize) && mbmi->mode == WARP_NEWMV) {
-    if (!((allowed_motion_modes & (1 << WARPED_CAUSAL)) ||
+    if (!((allowed_motion_modes & (1 << WARP_CAUSAL)) ||
           (allowed_motion_modes & (1 << WARP_DELTA))))
       return WARP_EXTEND;
 
@@ -891,27 +891,26 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
       }
     }
 
-    if (!(allowed_motion_modes & (1 << WARP_DELTA))) return WARPED_CAUSAL;
+    if (!(allowed_motion_modes & (1 << WARP_DELTA))) return WARP_CAUSAL;
 
-    if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+    if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
       const int ctx = av1_get_warp_causal_ctx(xd);
-      const int use_warped_causal =
-          aom_read_symbol(r, xd->tile_ctx->warped_causal_cdf[ctx], 2,
-                          ACCT_INFO("use_warped_causal"));
+      const int use_warp_causal =
+          aom_read_symbol(r, xd->tile_ctx->warp_causal_cdf[ctx], 2,
+                          ACCT_INFO("use_warp_causal"));
 #else
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-      int use_warped_causal =
-          aom_read_symbol(r, xd->tile_ctx->warped_causal_cdf, 2,
-                          ACCT_INFO("use_warped_causal"));
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+      int use_warp_causal = aom_read_symbol(r, xd->tile_ctx->warp_causal_cdf, 2,
+                                            ACCT_INFO("use_warp_causal"));
 #else
-      int use_warped_causal =
-          aom_read_symbol(r, xd->tile_ctx->warped_causal_cdf[bsize], 2,
-                          ACCT_INFO("use_warped_causal"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+      int use_warp_causal =
+          aom_read_symbol(r, xd->tile_ctx->warp_causal_cdf[bsize], 2,
+                          ACCT_INFO("use_warp_causal"));
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-      if (use_warped_causal) {
-        return WARPED_CAUSAL;
+      if (use_warp_causal) {
+        return WARP_CAUSAL;
       }
     }
 
@@ -991,24 +990,23 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
   }
 #endif  // !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
-  if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+  if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
     const int ctx = av1_get_warp_causal_ctx(xd);
-    const int use_warped_causal =
-        aom_read_symbol(r, xd->tile_ctx->warped_causal_cdf[ctx], 2,
-                        ACCT_INFO("use_warped_causal"));
+    const int use_warp_causal = aom_read_symbol(
+        r, xd->tile_ctx->warp_causal_cdf[ctx], 2, ACCT_INFO("use_warp_causal"));
 #else
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-    int use_warped_causal = aom_read_symbol(r, xd->tile_ctx->warped_causal_cdf,
-                                            2, ACCT_INFO("use_warped_causal"));
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+    int use_warp_causal = aom_read_symbol(r, xd->tile_ctx->warp_causal_cdf, 2,
+                                          ACCT_INFO("use_warp_causal"));
 #else
-    int use_warped_causal =
-        aom_read_symbol(r, xd->tile_ctx->warped_causal_cdf[bsize], 2,
-                        ACCT_INFO("use_warped_causal"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+    int use_warp_causal =
+        aom_read_symbol(r, xd->tile_ctx->warp_causal_cdf[bsize], 2,
+                        ACCT_INFO("use_warp_causal"));
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-    if (use_warped_causal) {
-      return WARPED_CAUSAL;
+    if (use_warp_causal) {
+      return WARP_CAUSAL;
     }
   }
 
@@ -4225,7 +4223,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       }
       mbmi->motion_mode = read_motion_mode(cm, xd, mbmi, r);
       int is_warpmv_warp_causal =
-          ((mbmi->motion_mode == WARPED_CAUSAL) && mbmi->mode == WARPMV);
+          ((mbmi->motion_mode == WARP_CAUSAL) && mbmi->mode == WARPMV);
       if (mbmi->motion_mode == WARP_DELTA || is_warpmv_warp_causal) {
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
         mbmi->max_num_warp_candidates = MAX_WARP_REF_CANDIDATES;
@@ -4513,7 +4511,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
 
-  if (mbmi->motion_mode == WARPED_CAUSAL) {
+  if (mbmi->motion_mode == WARP_CAUSAL) {
     mbmi->wm_params[0].wmtype = DEFAULT_WMTYPE;
 #if CONFIG_COMPOUND_WARP_CAUSAL
     mbmi->wm_params[1].wmtype = DEFAULT_WMTYPE;

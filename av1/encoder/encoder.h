@@ -1627,18 +1627,18 @@ typedef struct FRAME_COUNTS {
   unsigned int compound_type[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-  unsigned int warped_causal[WARP_CAUSAL_MODE_CTX][2];
+  unsigned int warp_causal_cnt[WARP_CAUSAL_MODE_CTX][2];
 #else
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-  unsigned int warped_causal[2];
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+  unsigned int warp_causal_cnt[2];
 #else
-  unsigned int warped_causal[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+  unsigned int warp_causal_cnt[BLOCK_SIZES_ALL][2];
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 #if CONFIG_D149_CTX_MODELING_OPT
-  unsigned int warped_causal_warpmv[CDF_SIZE(2)];
+  unsigned int warp_causal_warpmv[CDF_SIZE(2)];
 #else
-  unsigned int warped_causal_warpmv[BLOCK_SIZES_ALL][CDF_SIZE(2)];
+  unsigned int warp_causal_warpmv[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warpmv_with_mvd_flag[CDF_SIZE(2)];

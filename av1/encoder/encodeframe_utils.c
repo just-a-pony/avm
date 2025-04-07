@@ -1630,7 +1630,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->wedge_interintra_cdf, ctx_tr->wedge_interintra_cdf, 2);
   AVERAGE_CDF(ctx_left->interintra_mode_cdf, ctx_tr->interintra_mode_cdf,
               INTERINTRA_MODES);
-  AVERAGE_CDF(ctx_left->warped_causal_cdf, ctx_tr->warped_causal_cdf, 2);
+  AVERAGE_CDF(ctx_left->warp_causal_cdf, ctx_tr->warp_causal_cdf, 2);
 #if !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   AVERAGE_CDF(ctx_left->warp_delta_cdf, ctx_tr->warp_delta_cdf, 2);
 #endif  // !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
@@ -1642,8 +1642,8 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->warp_param_sign_cdf, ctx_tr->warp_param_sign_cdf, 2);
 #endif  // CONFIG_WARP_PRECISION
 
-  AVERAGE_CDF(ctx_left->warped_causal_warpmv_cdf,
-              ctx_tr->warped_causal_warpmv_cdf, 2);
+  AVERAGE_CDF(ctx_left->warp_causal_warpmv_cdf, ctx_tr->warp_causal_warpmv_cdf,
+              2);
   AVERAGE_CDF(ctx_left->warp_ref_idx_cdf[0], ctx_tr->warp_ref_idx_cdf[0], 2);
   AVERAGE_CDF(ctx_left->warp_ref_idx_cdf[1], ctx_tr->warp_ref_idx_cdf[1], 2);
   AVERAGE_CDF(ctx_left->warp_ref_idx_cdf[2], ctx_tr->warp_ref_idx_cdf[2], 2);

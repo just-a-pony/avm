@@ -762,27 +762,27 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
 
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
     for (i = 0; i < WARP_CAUSAL_MODE_CTX; i++) {
-      av1_cost_tokens_from_cdf(mode_costs->warped_causal_cost[i],
-                               fc->warped_causal_cdf[i], NULL);
+      av1_cost_tokens_from_cdf(mode_costs->warp_causal_cost[i],
+                               fc->warp_causal_cdf[i], NULL);
     }
 #else
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-    av1_cost_tokens_from_cdf(mode_costs->warped_causal_cost,
-                             fc->warped_causal_cdf, NULL);
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+    av1_cost_tokens_from_cdf(mode_costs->warp_causal_cost, fc->warp_causal_cdf,
+                             NULL);
 #else
     for (i = BLOCK_8X8; i < BLOCK_SIZES_ALL; i++) {
-      av1_cost_tokens_from_cdf(mode_costs->warped_causal_cost[i],
-                               fc->warped_causal_cdf[i], NULL);
+      av1_cost_tokens_from_cdf(mode_costs->warp_causal_cost[i],
+                               fc->warp_causal_cdf[i], NULL);
     }
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 #if CONFIG_D149_CTX_MODELING_OPT
-    av1_cost_tokens_from_cdf(mode_costs->warped_causal_warpmv_cost,
-                             fc->warped_causal_warpmv_cdf, NULL);
+    av1_cost_tokens_from_cdf(mode_costs->warp_causal_warpmv_cost,
+                             fc->warp_causal_warpmv_cdf, NULL);
 #else
     for (i = BLOCK_8X8; i < BLOCK_SIZES_ALL; i++) {
-      av1_cost_tokens_from_cdf(mode_costs->warped_causal_warpmv_cost[i],
-                               fc->warped_causal_warpmv_cdf[i], NULL);
+      av1_cost_tokens_from_cdf(mode_costs->warp_causal_warpmv_cost[i],
+                               fc->warp_causal_warpmv_cdf[i], NULL);
     }
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_D149_CTX_MODELING_OPT

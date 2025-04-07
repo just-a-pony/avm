@@ -469,7 +469,7 @@ typedef struct cfg_options {
   /*!\brief enable spatial warp prediction
    *
    */
-  unsigned int enable_warped_causal;
+  unsigned int enable_warp_causal;
   /*!\brief enable explicit warp models
    *
    */

@@ -2402,9 +2402,9 @@ static int64_t motion_mode_rd(
 
   int allowed_motion_modes = motion_mode_allowed(
       cm, xd, mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
-  if ((allowed_motion_modes & (1 << WARPED_CAUSAL))) {
+  if ((allowed_motion_modes & (1 << WARP_CAUSAL))) {
     // Collect projection samples used in least squares approximation of
-    // the warped motion parameters if WARPED_CAUSAL is going to be searched.
+    // the warped motion parameters if WARP_CAUSAL is going to be searched.
 #if CONFIG_COMPOUND_WARP_CAUSAL
     mbmi->num_proj_ref[0] = av1_findSamples(cm, xd, pts0, pts_inref0, 0);
     if (has_second_ref(mbmi))
@@ -2423,9 +2423,9 @@ static int64_t motion_mode_rd(
   const int total_samples = mbmi->num_proj_ref;
   if (total_samples == 0) {
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
-    // Do not search WARPED_CAUSAL if there are no samples to use to determine
+    // Do not search WARP_CAUSAL if there are no samples to use to determine
     // warped parameters.
-    allowed_motion_modes &= ~(1 << WARPED_CAUSAL);
+    allowed_motion_modes &= ~(1 << WARP_CAUSAL);
   }
 
   int_mv previous_mvs[MAX_WARP_REF_CANDIDATES];
@@ -2473,7 +2473,7 @@ static int64_t motion_mode_rd(
     if (base_mbmi.refinemv_flag && mode_index != SIMPLE_TRANSLATION) continue;
 
     int is_warpmv_warp_causal =
-        (mode_index == WARPED_CAUSAL) && (base_mbmi.mode == WARPMV);
+        (mode_index == WARP_CAUSAL) && (base_mbmi.mode == WARPMV);
 
     int max_warp_ref_idx = 1;
     uint8_t valid_num_candidates = 0;
@@ -2548,7 +2548,7 @@ static int64_t motion_mode_rd(
             continue;
 #endif  // CONFIG_WARP_PRECISION
 
-          // Only WARP_DELTA and WARPED_CAUSAL are supported for WARPMV mode
+          // Only WARP_DELTA and WARP_CAUSAL are supported for WARPMV mode
           assert(IMPLIES(
               mbmi->mode == WARPMV,
               mbmi->motion_mode == WARP_DELTA || is_warpmv_warp_causal));
@@ -2601,8 +2601,7 @@ static int64_t motion_mode_rd(
               }
             }  // if (is_mvd_sign_derive_allowed(cm, xd, mbmi))
 #endif
-
-          } else if (mbmi->motion_mode == WARPED_CAUSAL) {
+          } else if (mbmi->motion_mode == WARP_CAUSAL) {
             int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
 #if CONFIG_COMPOUND_WARP_CAUSAL
             mbmi->wm_params[0].wmtype = DEFAULT_WMTYPE;
@@ -3274,21 +3273,19 @@ static int64_t motion_mode_rd(
 #endif  // !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
           if (continue_motion_mode_signaling &&
-              allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+              allowed_motion_modes & (1 << WARP_CAUSAL)) {
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
             const int ctx = av1_get_warp_causal_ctx(xd);
             rd_stats->rate +=
-                mode_costs
-                    ->warped_causal_cost[ctx][motion_mode == WARPED_CAUSAL];
+                mode_costs->warp_causal_cost[ctx][motion_mode == WARP_CAUSAL];
 #else
           rd_stats->rate +=
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-              mode_costs->warped_causal_cost[motion_mode == WARPED_CAUSAL];
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+              mode_costs->warp_causal_cost[motion_mode == WARP_CAUSAL];
 #else
-              mode_costs
-                  ->warped_causal_cost[bsize][motion_mode == WARPED_CAUSAL];
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-          if (motion_mode == WARPED_CAUSAL) {
+              mode_costs->warp_causal_cost[bsize][motion_mode == WARP_CAUSAL];
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+          if (motion_mode == WARP_CAUSAL) {
             continue_motion_mode_signaling = false;
           }
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
@@ -3310,7 +3307,7 @@ static int64_t motion_mode_rd(
           if (is_warp_newmv_allowed(cm, xd, mbmi, bsize) &&
               mbmi->mode == WARP_NEWMV) {
             continue_motion_mode_signaling =
-                (allowed_motion_modes & (1 << WARPED_CAUSAL)) ||
+                (allowed_motion_modes & (1 << WARP_CAUSAL)) ||
                 (allowed_motion_modes & (1 << WARP_DELTA));
 
             if (continue_motion_mode_signaling &&
@@ -3333,21 +3330,20 @@ static int64_t motion_mode_rd(
 
             if (continue_motion_mode_signaling &&
                 (allowed_motion_modes & (1 << WARP_DELTA)) &&
-                (allowed_motion_modes & (1 << WARPED_CAUSAL))) {
+                (allowed_motion_modes & (1 << WARP_CAUSAL))) {
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
               const int ctx = av1_get_warp_causal_ctx(xd);
               rd_stats->rate +=
-                  mode_costs
-                      ->warped_causal_cost[ctx][motion_mode == WARPED_CAUSAL];
+                  mode_costs->warp_causal_cost[ctx][motion_mode == WARP_CAUSAL];
 #else
               rd_stats->rate +=
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-                  mode_costs->warped_causal_cost[motion_mode == WARPED_CAUSAL];
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+                  mode_costs->warp_causal_cost[motion_mode == WARP_CAUSAL];
 #else
                   mode_costs
-                      ->warped_causal_cost[bsize][motion_mode == WARPED_CAUSAL];
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-              if (motion_mode == WARPED_CAUSAL) {
+                      ->warp_causal_cost[bsize][motion_mode == WARP_CAUSAL];
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+              if (motion_mode == WARP_CAUSAL) {
                 continue_motion_mode_signaling = false;
               }
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
@@ -3356,14 +3352,14 @@ static int64_t motion_mode_rd(
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
           if (mbmi->mode == WARPMV) {
-            if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+            if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
               rd_stats->rate +=
 #if CONFIG_D149_CTX_MODELING_OPT
                   mode_costs
-                      ->warped_causal_warpmv_cost[motion_mode != WARP_DELTA];
+                      ->warp_causal_warpmv_cost[motion_mode != WARP_DELTA];
 #else
-                mode_costs->warped_causal_warpmv_cost[bsize][motion_mode !=
-                                                             WARP_DELTA];
+                mode_costs
+                    ->warp_causal_warpmv_cost[bsize][motion_mode != WARP_DELTA];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
             } else {
@@ -3383,7 +3379,7 @@ static int64_t motion_mode_rd(
           }
 
           if (motion_mode == WARP_DELTA ||
-              ((motion_mode == WARPED_CAUSAL) && mbmi->mode == WARPMV)) {
+              ((motion_mode == WARP_CAUSAL) && mbmi->mode == WARPMV)) {
             rd_stats->rate += get_warp_ref_idx_cost(mbmi, x);
 
             if (allow_warp_parameter_signaling(cm, mbmi)) {
@@ -6470,7 +6466,7 @@ static int64_t handle_inter_mode(
                          (rd_stats->rate == base_rate && rate_mv == 0)));
 #endif  // CONFIG_REFINEMV
         // Determine the motion mode. This will be one of SIMPLE_TRANSLATION,
-        // WARPED_CAUSAL or WARP_EXTEND or WARP_DELTA
+        // WARP_CAUSAL or WARP_EXTEND or WARP_DELTA
                   ret_val = motion_mode_rd(cpi, tile_data, x, bsize, rd_stats,
                                            rd_stats_y, rd_stats_uv, args,
                                            ref_best_rd, skip_rd,
@@ -11606,7 +11602,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   assert(search_state.best_mbmode.mode != MODE_INVALID);
 
   if (mbmi->motion_mode == WARP_DELTA ||
-      (mbmi->motion_mode == WARPED_CAUSAL && mbmi->mode == WARPMV)) {
+      (mbmi->motion_mode == WARP_CAUSAL && mbmi->mode == WARPMV)) {
     // Rebuild the warp candidate list with the best coding results
     av1_find_warp_delta_base_candidates(
         xd, mbmi,

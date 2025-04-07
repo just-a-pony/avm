@@ -37,7 +37,7 @@ extern "C" {
 // Maximum size of the first step in full pel units
 #define MAX_FIRST_STEP (1 << (MAX_MVSEARCH_STEPS - 1))
 // Maximum number of neighbors to scan per iteration during
-// WARPED_CAUSAL refinement
+// WARP_CAUSAL refinement
 // Note: The elements of warp_search_config.neighbor_mask must be at least
 // MAX_WARP_SEARCH_NEIGHBORS many bits wide. So the type may need to be
 // widened if this value is increased.
@@ -177,7 +177,7 @@ typedef struct warp_search_config {
   uint8_t neighbor_mask[MAX_WARP_SEARCH_NEIGHBORS];
 } warp_search_config;
 
-// Methods for refining WARPED_CAUSAL motion vectors
+// Methods for refining WARP_CAUSAL motion vectors
 enum {
   // Search 4 adjacent points in a diamond shape at each iteration
   WARP_SEARCH_DIAMOND,

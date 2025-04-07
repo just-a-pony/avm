@@ -4817,7 +4817,7 @@ static inline int is_this_mv_precision_compliant(
 }
 
 static INLINE bool is_warp_mode(MOTION_MODE motion_mode) {
-  return (motion_mode >= WARPED_CAUSAL);
+  return (motion_mode >= WARP_CAUSAL);
 }
 
 /* Evaluate which motion modes are allowed for the current block
@@ -4882,17 +4882,17 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
   int enabled_motion_modes = cm->features.enabled_motion_modes;
 
-  // only WARP_DELTA and WARPED_CAUSAL are supported for WARPMV mode
+  // only WARP_DELTA and WARP_CAUSAL are supported for WARPMV mode
   if (mbmi->mode == WARPMV) {
     int allowed_motion_mode_warpmv = (1 << WARP_DELTA);
     int frame_warp_causal_allowed =
-        cm->features.enabled_motion_modes & (1 << WARPED_CAUSAL);
+        cm->features.enabled_motion_modes & (1 << WARP_CAUSAL);
 #if CONFIG_COMPOUND_WARP_CAUSAL
     if (frame_warp_causal_allowed && mbmi->num_proj_ref[0] >= 1) {
 #else
     if (frame_warp_causal_allowed && mbmi->num_proj_ref >= 1) {
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
-      allowed_motion_mode_warpmv |= (1 << WARPED_CAUSAL);
+      allowed_motion_mode_warpmv |= (1 << WARP_CAUSAL);
     }
     return (allowed_motion_mode_warpmv & enabled_motion_modes);
   }
@@ -4908,7 +4908,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
         mbmi->num_proj_ref >= 1
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
     ) {
-      allowed_motion_modes |= (1 << WARPED_CAUSAL);
+      allowed_motion_modes |= (1 << WARP_CAUSAL);
     }
 
     if (allow_extend_nb(cm, xd, mbmi, NULL)) {
@@ -4990,7 +4990,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
                                       mbmi) &&
       mbmi->num_proj_ref[0] >= 1 && mbmi->num_proj_ref[1] >= 1;
   if (allow_compound_warp_causal_motion) {
-    allowed_motion_modes |= (1 << WARPED_CAUSAL);
+    allowed_motion_modes |= (1 << WARP_CAUSAL);
   }
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
 #else
@@ -5026,7 +5026,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
   if (allow_warped_motion && mbmi->num_proj_ref >= 1
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
       && mbmi->mode != NEARMV) {
-    allowed_motion_modes |= (1 << WARPED_CAUSAL);
+    allowed_motion_modes |= (1 << WARP_CAUSAL);
   }
 
   bool warp_extend_allowed = false;

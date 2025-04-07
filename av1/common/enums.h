@@ -995,9 +995,9 @@ enum {
 enum {
   SIMPLE_TRANSLATION,
   INTERINTRA,
-  WARPED_CAUSAL,  // Warp estimation from spatial MVs
-  WARP_DELTA,     // Directly-signaled warp model
-  WARP_EXTEND,    // Extension of an existing warp model into another block
+  WARP_CAUSAL,  // Warp estimation from spatial MVs
+  WARP_DELTA,   // Directly-signaled warp model
+  WARP_EXTEND,  // Extension of an existing warp model into another block
   MOTION_MODES
 } UENUM1BYTE(MOTION_MODE);
 
@@ -1091,9 +1091,9 @@ enum {
 #define ANGLE_STEP 3
 
 #if CONFIG_D149_CTX_MODELING_OPT && CONFIG_COMPOUND_WARP_CAUSAL
-#define NO_D149_FOR_WARPED_CAUSAL 1
+#define NO_D149_FOR_WARP_CAUSAL 1
 #else
-#define NO_D149_FOR_WARPED_CAUSAL 0
+#define NO_D149_FOR_WARP_CAUSAL 0
 #endif  // CONFIG_D149_CTX_MODELING_OPT && CONFIG_COMPOUND_WARP_CAUSAL
 #if CONFIG_AIMC
 // Total delta angles for one nominal directional mode

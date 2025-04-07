@@ -1562,12 +1562,12 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
   // TODO(rachelbarker): Rework pruning into something more unified in phase 2
   int enabled_motion_modes = cm->seq_params.seq_enabled_motion_modes;
 
-  if ((enabled_motion_modes & (1 << WARPED_CAUSAL)) != 0 &&
+  if ((enabled_motion_modes & (1 << WARP_CAUSAL)) != 0 &&
       cpi->sf.inter_sf.prune_warped_prob_thresh > 0) {
     const FRAME_UPDATE_TYPE update_type = get_frame_update_type(&cpi->gf_group);
     if (frame_probs->warped_probs[update_type] <
         cpi->sf.inter_sf.prune_warped_prob_thresh)
-      enabled_motion_modes &= ~(1 << WARPED_CAUSAL);
+      enabled_motion_modes &= ~(1 << WARP_CAUSAL);
   }
 
   features->enabled_motion_modes = enabled_motion_modes;

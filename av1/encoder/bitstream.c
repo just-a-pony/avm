@@ -789,15 +789,14 @@ static AOM_INLINE void write_motion_mode(
 #endif  // !CONFIG_INTERINTRA_IMPROVEMENT
 
   if (mbmi->mode == WARPMV) {
-    assert(mbmi->motion_mode == WARP_DELTA ||
-           mbmi->motion_mode == WARPED_CAUSAL);
+    assert(mbmi->motion_mode == WARP_DELTA || mbmi->motion_mode == WARP_CAUSAL);
     // Signal if the motion mode is WARP_CAUSAL or WARP_DELTA
-    if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
-      aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
+    if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
+      aom_write_symbol(w, motion_mode == WARP_CAUSAL,
 #if CONFIG_D149_CTX_MODELING_OPT
-                       xd->tile_ctx->warped_causal_warpmv_cdf,
+                       xd->tile_ctx->warp_causal_warpmv_cdf,
 #else
-                       xd->tile_ctx->warped_causal_warpmv_cdf[bsize],
+                       xd->tile_ctx->warp_causal_warpmv_cdf[bsize],
 #endif  // CONFIG_D149_CTX_MODELING_OPT
                        2);
     }
@@ -806,7 +805,7 @@ static AOM_INLINE void write_motion_mode(
 
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   if (is_warp_newmv_allowed(cm, xd, mbmi, bsize) && mbmi->mode == WARP_NEWMV) {
-    if (!((allowed_motion_modes & (1 << WARPED_CAUSAL)) ||
+    if (!((allowed_motion_modes & (1 << WARP_CAUSAL)) ||
           (allowed_motion_modes & (1 << WARP_DELTA))))
       return;
 
@@ -828,21 +827,21 @@ static AOM_INLINE void write_motion_mode(
 
     if (!(allowed_motion_modes & (1 << WARP_DELTA))) return;
 
-    if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+    if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
       const int ctx = av1_get_warp_causal_ctx(xd);
-      aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
-                       xd->tile_ctx->warped_causal_cdf[ctx], 2);
+      aom_write_symbol(w, motion_mode == WARP_CAUSAL,
+                       xd->tile_ctx->warp_causal_cdf[ctx], 2);
 #else
-      aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-                       xd->tile_ctx->warped_causal_cdf,
+      aom_write_symbol(w, motion_mode == WARP_CAUSAL,
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+                       xd->tile_ctx->warp_causal_cdf,
 #else
-                       xd->tile_ctx->warped_causal_cdf[bsize],
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+                       xd->tile_ctx->warp_causal_cdf[bsize],
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
                        2);
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-      if (motion_mode == WARPED_CAUSAL) {
+      if (motion_mode == WARP_CAUSAL) {
         return;
       }
     }
@@ -899,22 +898,22 @@ static AOM_INLINE void write_motion_mode(
   }
 #endif  // !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
-  if (allowed_motion_modes & (1 << WARPED_CAUSAL)) {
+  if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
     const int ctx = av1_get_warp_causal_ctx(xd);
-    aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
-                     xd->tile_ctx->warped_causal_cdf[ctx], 2);
+    aom_write_symbol(w, motion_mode == WARP_CAUSAL,
+                     xd->tile_ctx->warp_causal_cdf[ctx], 2);
 #else
-    aom_write_symbol(w, motion_mode == WARPED_CAUSAL,
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-                     xd->tile_ctx->warped_causal_cdf,
+    aom_write_symbol(w, motion_mode == WARP_CAUSAL,
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+                     xd->tile_ctx->warp_causal_cdf,
 #else
-                     xd->tile_ctx->warped_causal_cdf[bsize],
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+                     xd->tile_ctx->warp_causal_cdf[bsize],
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
                      2);
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 
-    if (motion_mode == WARPED_CAUSAL) {
+    if (motion_mode == WARP_CAUSAL) {
       return;
     }
   }
@@ -2672,8 +2671,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   // Just for debugging purpose
   if (mbmi->mode == WARPMV) {
     assert(mbmi->skip_mode == 0);
-    assert(mbmi->motion_mode == WARP_DELTA ||
-           mbmi->motion_mode == WARPED_CAUSAL);
+    assert(mbmi->motion_mode == WARP_DELTA || mbmi->motion_mode == WARP_CAUSAL);
 #if CONFIG_SEP_COMP_DRL
     assert(get_ref_mv_idx(mbmi, 0) == 0);
     assert(get_ref_mv_idx(mbmi, 1) == 0);
@@ -2832,7 +2830,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif
       write_motion_mode(cm, xd, mbmi, mbmi_ext_frame, w);
       int is_warpmv_warp_causal =
-          ((mbmi->motion_mode == WARPED_CAUSAL) && mbmi->mode == WARPMV);
+          ((mbmi->motion_mode == WARP_CAUSAL) && mbmi->mode == WARPMV);
       if (mbmi->motion_mode == WARP_DELTA || is_warpmv_warp_causal)
         write_warp_ref_idx(xd->tile_ctx, mbmi, w);
 

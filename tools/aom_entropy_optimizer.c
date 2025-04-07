@@ -1433,25 +1433,25 @@ int main(int argc, const char **argv) {
   cts_each_dim[0] = WARP_CAUSAL_MODE_CTX;
   cts_each_dim[1] = 2;
   optimize_cdf_table(
-      &fc.warped_causal[0][0], probsfile, 2, cts_each_dim,
+      &fc.warp_causal_cnt[0][0], probsfile, 2, cts_each_dim,
       "static const aom_cdf_prob "
-      "default_warped_causal_cdf[WARP_CAUSAL_MODE_CTX]CDF_SIZE(2)]",
+      "default_warp_causal_cdf[WARP_CAUSAL_MODE_CTX]CDF_SIZE(2)]",
       0, &total_count, 0, mem_wanted, "Inter");
 #else
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
   cts_each_dim[0] = 2;
-  optimize_cdf_table(&fc.warped_causal[0], probsfile, 1, cts_each_dim,
+  optimize_cdf_table(&fc.warp_causal_cnt[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob "
-                     "default_warped_causal_cdf[CDF_SIZE(2)]",
+                     "default_warp_causal_cdf[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
 #else
   cts_each_dim[0] = BLOCK_SIZES_ALL;
   cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.warped_causal[0][0], probsfile, 2, cts_each_dim,
+  optimize_cdf_table(&fc.warp_causal_cnt[0][0], probsfile, 2, cts_each_dim,
                      "static const aom_cdf_prob "
-                     "default_warped_causal_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
+                     "default_warp_causal_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
 
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
@@ -1506,17 +1506,17 @@ int main(int argc, const char **argv) {
 
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
-  optimize_cdf_table(&fc.warped_causal_warpmv[0], probsfile, 1, cts_each_dim,
+  optimize_cdf_table(&fc.warp_causal_warpmv[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob "
-                     "default_warped_causal_warpmv_cdf[CDF_SIZE(2)]",
+                     "default_warp_causal_warpmv_cdf[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
 #else
   cts_each_dim[0] = BLOCK_SIZES_ALL;
   cts_each_dim[1] = 2;
   optimize_cdf_table(
-      &fc.warped_causal_warpmv[0][0], probsfile, 2, cts_each_dim,
+      &fc.warp_causal_warpmv[0][0], probsfile, 2, cts_each_dim,
       "static const aom_cdf_prob "
-      "default_warped_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
+      "default_warp_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
       0, &total_count, 0, mem_wanted, "Inter");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 

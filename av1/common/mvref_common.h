@@ -1237,7 +1237,7 @@ static INLINE int av1_get_warp_causal_ctx(const MACROBLOCKD *xd) {
     const MB_MODE_INFO *const neighbor = xd->neighbors[i];
     if (neighbor != NULL && is_warp_mode(neighbor->motion_mode)) {
       has_warp_neighbor = 1;
-      ctx += (neighbor->motion_mode == WARPED_CAUSAL);
+      ctx += (neighbor->motion_mode == WARP_CAUSAL);
     }
   }
 

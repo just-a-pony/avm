@@ -364,13 +364,13 @@ typedef struct frame_contexts {
   aom_cdf_prob interintra_mode_cdf[BLOCK_SIZE_GROUPS]
                                   [CDF_SIZE(INTERINTRA_MODES)];
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-  aom_cdf_prob warped_causal_cdf[WARP_CAUSAL_MODE_CTX][CDF_SIZE(2)];
+  aom_cdf_prob warp_causal_cdf[WARP_CAUSAL_MODE_CTX][CDF_SIZE(2)];
 #else
-#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
-  aom_cdf_prob warped_causal_cdf[CDF_SIZE(2)];
+#if CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
+  aom_cdf_prob warp_causal_cdf[CDF_SIZE(2)];
 #else
-  aom_cdf_prob warped_causal_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARPED_CAUSAL
+  aom_cdf_prob warp_causal_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
+#endif  // CONFIG_D149_CTX_MODELING_OPT && !NO_D149_FOR_WARP_CAUSAL
 #if CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob warp_delta_cdf[CDF_SIZE(2)];
 #else
@@ -378,9 +378,9 @@ typedef struct frame_contexts {
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
 #if CONFIG_D149_CTX_MODELING_OPT
-  aom_cdf_prob warped_causal_warpmv_cdf[CDF_SIZE(2)];
+  aom_cdf_prob warp_causal_warpmv_cdf[CDF_SIZE(2)];
 #else
-  aom_cdf_prob warped_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
+  aom_cdf_prob warp_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob warp_ref_idx_cdf[3][WARP_REF_CONTEXTS][CDF_SIZE(2)];
 #if CONFIG_D149_CTX_MODELING_OPT

@@ -188,7 +188,7 @@ struct av1_extracfg {
   int enable_interintra_wedge;    // enable interintra-wedge compound usage
   int enable_global_motion;       // enable global motion usage for sequence
   int enable_warped_motion;       // enable local warped motion for sequence
-  int enable_warped_causal;       // enable spatial warp prediction for sequence
+  int enable_warp_causal;         // enable spatial warp prediction for sequence
   int enable_warp_delta;          // enable explicit warp models for sequence
 #if CONFIG_SIX_PARAM_WARP_DELTA
   int enable_six_param_warp_delta;  // enable explicit six-parameter warp models
@@ -542,7 +542,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,  // enable interintra wedge compound
   0,  // enable_global_motion usage
   1,  // enable_warped_motion at sequence level
-  1,  // enable_warped_causal at sequence level
+  1,  // enable_warp_causal at sequence level
   1,  // enable_warp_delta at sequence level
 #if CONFIG_SIX_PARAM_WARP_DELTA
   1,    // enable_six_param_warp_delta at sequence level
@@ -1066,7 +1066,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_interinter_wedge = extra_cfg->enable_interinter_wedge;
   cfg->enable_interintra_wedge = extra_cfg->enable_interintra_wedge;
   cfg->enable_global_motion = extra_cfg->enable_global_motion;
-  cfg->enable_warped_causal = extra_cfg->enable_warped_causal;
+  cfg->enable_warp_causal = extra_cfg->enable_warp_causal;
   cfg->enable_warp_delta = extra_cfg->enable_warp_delta;
 #if CONFIG_SIX_PARAM_WARP_DELTA
   cfg->enable_six_param_warp_delta = extra_cfg->enable_six_param_warp_delta;
@@ -1208,7 +1208,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_interinter_wedge = cfg->enable_interinter_wedge;
   extra_cfg->enable_interintra_wedge = cfg->enable_interintra_wedge;
   extra_cfg->enable_global_motion = cfg->enable_global_motion;
-  extra_cfg->enable_warped_causal = cfg->enable_warped_causal;
+  extra_cfg->enable_warp_causal = cfg->enable_warp_causal;
   extra_cfg->enable_warp_delta = cfg->enable_warp_delta;
 #if CONFIG_SIX_PARAM_WARP_DELTA
   extra_cfg->enable_six_param_warp_delta = cfg->enable_six_param_warp_delta;
@@ -1781,8 +1781,8 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     seq_enabled_motion_modes |= (1 << INTERINTRA);
   }
   if (extra_cfg->enable_warped_motion) {
-    if (extra_cfg->enable_warped_causal) {
-      seq_enabled_motion_modes |= (1 << WARPED_CAUSAL);
+    if (extra_cfg->enable_warp_causal) {
+      seq_enabled_motion_modes |= (1 << WARP_CAUSAL);
     }
     if (extra_cfg->enable_warp_delta) {
       seq_enabled_motion_modes |= (1 << WARP_DELTA);
@@ -4191,9 +4191,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_warped_motion,
                               argv, err_string)) {
     extra_cfg.enable_warped_motion = arg_parse_int_helper(&arg, err_string);
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_warped_causal,
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_warp_causal,
                               argv, err_string)) {
-    extra_cfg.enable_warped_causal = arg_parse_int_helper(&arg, err_string);
+    extra_cfg.enable_warp_causal = arg_parse_int_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_warp_delta,
                               argv, err_string)) {
     extra_cfg.enable_warp_delta = arg_parse_int_helper(&arg, err_string);
