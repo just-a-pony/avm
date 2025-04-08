@@ -661,7 +661,11 @@ void av1_opfl_build_inter_predictor(
 
 // Generate refined MVs using optflow refinement
 void av1_get_optflow_based_mv(
-    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mbmi,
+    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
+#if !CONFIG_DAMR_CLEAN_UP
+    const
+#endif  // !CONFIG_DAMR_CLEAN_UP
+    MB_MODE_INFO *mbmi,
     int_mv *mv_refined, int bw, int bh, int mi_x, int mi_y,
 #if CONFIG_E191_OFS_PRED_RES_HANDLE
     int build_for_decode,

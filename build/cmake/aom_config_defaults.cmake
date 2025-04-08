@@ -630,6 +630,9 @@ set_aom_config_var(CONFIG_TX_PARTITION_RESTRICT 1
 
 set_aom_config_var(CONFIG_REDUCE_SYMBOL_SIZE 1
                    "Symbol size reduction from 16 to 8.")
+
+set_aom_config_var(CONFIG_DAMR_CLEAN_UP 1
+                   "Clean up DAMR memory bandwith issue.")
 #
 # Variables in this section control optional features of the build system.
 #

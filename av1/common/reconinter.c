@@ -1350,8 +1350,32 @@ void av1_warp_plane_bilinear_c(WarpedMotionParams *wm, int bd,
                                int stride, uint16_t *pred, int p_col, int p_row,
                                int p_width, int p_height, int p_stride,
                                int subsampling_x, int subsampling_y,
-                               ConvolveParams *conv_params) {
+                               ConvolveParams *conv_params
+#if CONFIG_DAMR_CLEAN_UP
+                               ,
+                               ReferenceArea *ref_area
+#endif  // CONFIG_DAMR_CLEAN_UP
+) {
   (void)conv_params;
+#if CONFIG_DAMR_CLEAN_UP
+  (void)width;
+  (void)height;
+  int left_limit;
+  int right_limit;
+  int top_limit;
+  int bottom_limit;
+  if (ref_area) {
+    left_limit = ref_area->pad_block.x0;
+    right_limit = ref_area->pad_block.x1 - 1;
+    top_limit = ref_area->pad_block.y0;
+    bottom_limit = ref_area->pad_block.y1 - 1;
+  } else {
+    left_limit = 0;
+    right_limit = width - 1;
+    top_limit = 0;
+    bottom_limit = height - 1;
+  }
+#endif  // CONFIG_DAMR_CLEAN_UP
 #if AFFINE_FAST_WARP_METHOD == 3
 #define BILINEAR_WARP_PREC_BITS 12
   assert(wm->wmtype <= AFFINE);
@@ -1376,12 +1400,22 @@ void av1_warp_plane_bilinear_c(WarpedMotionParams *wm, int bd,
       const int64_t y = dst_y >> subsampling_y;
 
       const int32_t ix = (int32_t)(x >> WARPEDMODEL_PREC_BITS);
+#if CONFIG_DAMR_CLEAN_UP
+      const int32_t ix0 = clamp(ix, left_limit, right_limit);
+      const int32_t ix1 = clamp(ix + 1, left_limit, right_limit);
+#else
       const int32_t ix0 = clamp(ix, 0, width - 1);
       const int32_t ix1 = clamp(ix + 1, 0, width - 1);
+#endif  // CONFIG_DAMR_CLEAN_UP
       const int32_t sx = x & ((1 << WARPEDMODEL_PREC_BITS) - 1);
       const int32_t iy = (int32_t)(y >> WARPEDMODEL_PREC_BITS);
+#if CONFIG_DAMR_CLEAN_UP
+      const int32_t iy0 = clamp(iy, top_limit, bottom_limit);
+      const int32_t iy1 = clamp(iy + 1, top_limit, bottom_limit);
+#else
       const int32_t iy0 = clamp(iy, 0, height - 1);
       const int32_t iy1 = clamp(iy + 1, 0, height - 1);
+#endif  // CONFIG_DAMR_CLEAN_UP
       const int32_t sy = y & ((1 << WARPEDMODEL_PREC_BITS) - 1);
 
       const int32_t unit_offset = 1 << BILINEAR_WARP_PREC_BITS;
@@ -2445,7 +2479,12 @@ void update_pred_grad_with_affine_model(MACROBLOCKD *xd, int plane, int bw,
                                         int mi_x, int mi_y, int16_t *tmp0,
                                         int16_t *tmp1, int16_t *gx0,
                                         int16_t *gy0, const int d0,
-                                        const int d1, int *grad_prec_bits) {
+                                        const int d1, int *grad_prec_bits
+#if CONFIG_DAMR_CLEAN_UP
+                                        ,
+                                        const AV1_COMMON *cm, MB_MODE_INFO *mi
+#endif  // CONFIG_DAMR_CLEAN_UP
+) {
   uint16_t *dst_warped =
       (uint16_t *)aom_memalign(16, 2 * bw * bh * sizeof(uint16_t));
   struct macroblockd_plane *const pd = &xd->plane[plane];
@@ -2460,11 +2499,22 @@ void update_pred_grad_with_affine_model(MACROBLOCKD *xd, int plane, int bw,
     for (int i = 0; i < bh; i += sub_bh) {
       for (int j = 0; j < bw; j += sub_bw) {
 #if AFFINE_FAST_WARP_METHOD == 3
+#if CONFIG_DAMR_CLEAN_UP
+        ReferenceArea ref_area_damr_intermediate;
+        av1_get_reference_area_with_padding_single(
+            cm, xd, plane, mi, mi->mv[ref].as_mv, sub_bw, sub_bh, mi_x + j,
+            mi_y + i, &ref_area_damr_intermediate, sub_bw, sub_bh, ref);
+#endif  // CONFIG_DAMR_CLEAN_UP
         av1_warp_plane_bilinear(
             wms + 2 * nb + ref, xd->bd, pre_buf->buf0, pre_buf->width,
             pre_buf->height, pre_buf->stride,
             &dst_warped[ref * bw * bh + i * bw + j], mi_x + j, mi_y + i, sub_bw,
-            sub_bh, bw, pd->subsampling_x, pd->subsampling_y, &conv_params);
+            sub_bh, bw, pd->subsampling_x, pd->subsampling_y, &conv_params
+#if CONFIG_DAMR_CLEAN_UP
+            ,
+            &ref_area_damr_intermediate
+#endif  // CONFIG_DAMR_CLEAN_UP
+        );
 #elif AFFINE_FAST_WARP_METHOD == 2
         av1_warp_plane_bicubic(
             wms + 2 * nb + ref, xd->bd, pre_buf->buf0, pre_buf->width,
@@ -2545,7 +2595,11 @@ void av1_copy_pred_array_highbd_c(const uint16_t *src1, const uint16_t *src2,
 }
 
 void av1_get_optflow_based_mv(
-    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mbmi,
+    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
+#if !CONFIG_DAMR_CLEAN_UP
+    const
+#endif  // !CONFIG_DAMR_CLEAN_UP
+    MB_MODE_INFO *mbmi,
     int_mv *mv_refined, int bw, int bh, int mi_x, int mi_y,
 #if CONFIG_E191_OFS_PRED_RES_HANDLE
     int build_for_decode,
@@ -2706,7 +2760,12 @@ void av1_get_optflow_based_mv(
     );
 
     update_pred_grad_with_affine_model(xd, plane, bw, bh, wms, mi_x, mi_y, tmp0,
-                                       tmp1, gx0, gy0, d0, d1, &grad_prec_bits);
+                                       tmp1, gx0, gy0, d0, d1, &grad_prec_bits
+#if CONFIG_DAMR_CLEAN_UP
+                                       ,
+                                       cm, mbmi
+#endif  // CONFIG_DAMR_CLEAN_UP
+    );
 
     // Subblock wise translational refinement
     if (damr_refine_subblock(plane, bw, bh, mbmi->comp_refine_type, n, n)) {
