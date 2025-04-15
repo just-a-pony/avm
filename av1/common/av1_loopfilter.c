@@ -576,13 +576,12 @@ static AOM_INLINE void check_rfmv_edge(const AV1_COMMON *const cm,
                                        const int scale, TX_SIZE *ts,
                                        int32_t *rfmv_edge) {
   const int tip_ref_frame = is_tip_ref_frame(mbmi->ref_frame[0]);
-  int is_rfmv_mode = 0;
-  is_rfmv_mode = mbmi->refinemv_flag &&
+  int is_rfmv_mode = mbmi->refinemv_flag &&
 #if CONFIG_AFFINE_REFINEMENT
-                 (is_damr_allowed_with_refinemv(mbmi->mode) ||
-                  mbmi->comp_refine_type < COMP_AFFINE_REFINE_START) &&
+                     (is_damr_allowed_with_refinemv(mbmi->mode) ||
+                      mbmi->comp_refine_type < COMP_AFFINE_REFINE_START) &&
 #endif  // CONFIG_AFFINE_REFINEMENT
-                 !tip_ref_frame;
+                     !tip_ref_frame;
 
 #if CONFIG_AFFINE_REFINEMENT
   if (is_rfmv_mode && default_refinemv_modes(cm, mbmi))
@@ -624,7 +623,8 @@ static AOM_INLINE void check_sub_pu_edge(
 #endif  // CONFIG_COMPOUND_4XN
                     mbmi, scale, &temp_ts, &temp_edge);
 #if CONFIG_REFINEMV
-  if (!temp_edge) check_rfmv_edge(cm, mbmi, scale, &temp_ts, &temp_edge);
+  if (!temp_edge)
+    check_rfmv_edge(cm, mbmi, scale_horz, scale_vert, &temp_ts, &temp_edge);
 #endif  // CONFIG_REFINEMV
 
   if (temp_edge) {
