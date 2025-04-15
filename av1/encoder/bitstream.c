@@ -5171,21 +5171,28 @@ static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
       aom_wb_write_bit(wb, lf->filter_level_v);
     }
   }
+#if CONFIG_DF_PAR_BITS
+  const uint8_t df_par_bits = cm->seq_params.df_par_bits_minus2 + 2;
+  const uint8_t df_par_offset = 1 << (df_par_bits - 1);
+#else
+  const uint8_t df_par_bits = DF_PAR_BITS;
+  const uint8_t df_par_offset = DF_PAR_OFFSET;
+#endif  // CONFIG_DF_PAR_BITS
 #if DF_DUAL
   if (lf->filter_level[0]) {
     int luma_delta_q_flag = lf->delta_q_luma[0] != 0;
 
     aom_wb_write_bit(wb, luma_delta_q_flag);
     if (luma_delta_q_flag) {
-      aom_wb_write_literal(wb, lf->delta_q_luma[0] + DF_PAR_OFFSET,
-                           DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_q_luma[0] + df_par_offset,
+                           df_par_bits);
     }
 #if DF_TWO_PARAM
     int luma_delta_side_flag = lf->delta_side_luma[0] != 0;
     aom_wb_write_bit(wb, luma_delta_side_flag);
     if (luma_delta_side_flag) {
-      aom_wb_write_literal(wb, lf->delta_side_luma[0] + DF_PAR_OFFSET,
-                           DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_side_luma[0] + df_par_offset,
+                           df_par_bits);
     }
 #else
     assert(lf->delta_q_luma[0] == lf->delta_side_luma[0]);
@@ -5197,15 +5204,15 @@ static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
 
     aom_wb_write_bit(wb, luma_delta_q_flag);
     if (luma_delta_q_flag) {
-      aom_wb_write_literal(wb, lf->delta_q_luma[1] + DF_PAR_OFFSET,
-                           DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_q_luma[1] + df_par_offset,
+                           df_par_bits);
     }
 #if DF_TWO_PARAM
     int luma_delta_side_flag = lf->delta_side_luma[1] != lf->delta_side_luma[0];
     aom_wb_write_bit(wb, luma_delta_side_flag);
     if (luma_delta_side_flag) {
-      aom_wb_write_literal(wb, lf->delta_side_luma[1] + DF_PAR_OFFSET,
-                           DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_side_luma[1] + df_par_offset,
+                           df_par_bits);
     }
 #else
     assert(lf->delta_q_luma[1] == lf->delta_side_luma[1]);
@@ -5217,14 +5224,14 @@ static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
 
     aom_wb_write_bit(wb, luma_delta_q_flag);
     if (luma_delta_q_flag) {
-      aom_wb_write_literal(wb, lf->delta_q_luma + DF_PAR_OFFSET, DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_q_luma + df_par_offset, df_par_bits);
     }
 #if DF_TWO_PARAM
     int luma_delta_side_flag = lf->delta_side_luma != 0;
     aom_wb_write_bit(wb, luma_delta_side_flag);
     if (luma_delta_side_flag) {
-      aom_wb_write_literal(wb, lf->delta_side_luma + DF_PAR_OFFSET,
-                           DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_side_luma + df_par_offset,
+                           df_par_bits);
     }
 #else
     assert(lf->delta_q_luma == lf->delta_side_luma);
@@ -5236,7 +5243,7 @@ static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
 
     aom_wb_write_bit(wb, u_delta_q_flag);
     if (u_delta_q_flag) {
-      aom_wb_write_literal(wb, lf->delta_q_u + DF_PAR_OFFSET, DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_q_u + df_par_offset, df_par_bits);
     }
 #if DF_TWO_PARAM
     int u_delta_side_flag = lf->delta_side_u != 0;
@@ -5254,13 +5261,13 @@ static AOM_INLINE void encode_loopfilter(AV1_COMMON *cm,
 
     aom_wb_write_bit(wb, v_delta_q_flag);
     if (v_delta_q_flag) {
-      aom_wb_write_literal(wb, lf->delta_q_v + DF_PAR_OFFSET, DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_q_v + df_par_offset, df_par_bits);
     }
 #if DF_TWO_PARAM
     int v_delta_side_flag = lf->delta_side_v != 0;
     aom_wb_write_bit(wb, v_delta_side_flag);
     if (v_delta_side_flag) {
-      aom_wb_write_literal(wb, lf->delta_side_v + DF_PAR_OFFSET, DF_PAR_BITS);
+      aom_wb_write_literal(wb, lf->delta_side_v + df_par_offset, df_par_bits);
     }
 #else
     assert(lf->delta_q_v == lf->delta_side_v);
@@ -6261,6 +6268,9 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
     aom_wb_write_bit(wb, seq_params->enable_global_motion);
   }
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
+#if CONFIG_DF_PAR_BITS
+  aom_wb_write_literal(wb, seq_params->df_par_bits_minus2, 2);
+#endif  // CONFIG_DF_PAR_BITS
 #if CONFIG_REFRESH_FLAG
   aom_wb_write_bit(wb, seq_params->enable_short_refresh_frame_flags);
 #endif  // CONFIG_REFRESH_FLAG
