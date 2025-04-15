@@ -2244,9 +2244,7 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
     return;
 
 #if CONFIG_INTRA_SDP_LATENCY_FIX
-  const int is_intra_sdp_enabled =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp);
+  const int is_intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
   const int total_loop_num =
       is_intra_sdp_enabled && bsize == BLOCK_64X64 ? 2 : 1;
   if (total_loop_num == 2 && xd->tree_type == SHARED_PART) {
@@ -2740,9 +2738,7 @@ static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
   MACROBLOCKD *const xd = &dcb->xd;
 #if CONFIG_INTRA_SDP_LATENCY_FIX
   xd->tree_type = SHARED_PART;
-  const int is_intra_sdp_enabled =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp);
+  const int is_intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
 #else
   const int total_loop_num =
       (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&

@@ -553,15 +553,9 @@ static AOM_INLINE void perform_one_partition_pass(
   RD_STATS dummy_rdc;
   av1_invalid_rd_stats(&dummy_rdc);
 #if CONFIG_INTRA_SDP_LATENCY_FIX
-  const int intra_sdp_enabled =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp);
+  const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
 #endif  // CONFIG_INTRA_SDP_LATENCY_FIX
-  const int total_loop_num =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp)
-          ? 2
-          : 1;
+  const int total_loop_num = intra_sdp_enabled ? 2 : 1;
 #if CONFIG_EXT_RECUR_PARTITIONS
   x->is_whole_sb = mi_row + mi_size_high[sb_size] <= cm->mi_params.mi_rows &&
                    mi_col + mi_size_wide[sb_size] <= cm->mi_params.mi_cols;
@@ -808,11 +802,7 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
   (void)num_planes;
   (void)mi;
 
-  const int total_loop_num =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp)
-          ? 2
-          : 1;
+  const int total_loop_num = is_sdp_enabled_in_keyframe(cm) ? 2 : 1;
   MACROBLOCKD *const xd = &x->e_mbd;
   x->e_mbd.sbi->sb_mv_precision = cm->features.fr_mv_precision;
 
@@ -823,9 +813,7 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
   init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row, mi_col,
                     1);
 #if CONFIG_INTRA_SDP_LATENCY_FIX
-  const int intra_sdp_enabled =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp);
+  const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
 #endif  // CONFIG_INTRA_SDP_LATENCY_FIX
 
   // Encode the superblock
@@ -1193,9 +1181,7 @@ void av1_encode_sb_row(AV1_COMP *cpi, ThreadData *td, int tile_row,
     Only in key frames tok chroma will be used to store palette infomation of
     chroma.
    */
-  const int intra_sdp_enabled =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp);
+  const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
   int temp_num_mb_rows_in_sb = num_mb_rows_in_sb;
   TokenExtra *tok_chroma =
       tok + get_token_alloc(temp_num_mb_rows_in_sb, tile_mb_cols,

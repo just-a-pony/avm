@@ -3204,6 +3204,13 @@ static INLINE void av1_reset_refmv_bank(const AV1_COMMON *const cm,
 }
 #endif  // CONFIG_BANK_IMPROVE
 
+#if CONFIG_INTRA_SDP_LATENCY_FIX
+static AOM_INLINE int is_sdp_enabled_in_keyframe(const AV1_COMMON *const cm) {
+  return (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
+          cm->seq_params.enable_sdp);
+}
+#endif  // CONFIG_INTRA_SDP_LATENCY_FIX
+
 #if CONFIG_EXT_RECUR_PARTITIONS
 // The blocksize above which chroma and luma partitions will stayed coupled.
 // Currently this is set to BLOCK_128X128 (e.g. chroma always follows luma at
@@ -3284,9 +3291,7 @@ static INLINE int check_is_chroma_size_valid(
     int mi_col, int ss_x, int ss_y,
     const CHROMA_REF_INFO *parent_chroma_ref_info) {
 #if CONFIG_INTRA_SDP_LATENCY_FIX
-  const int intra_sdp_enabled =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp);
+  const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
   bool sdp_tree_type = ((tree_type == LUMA_PART) ||
                         (intra_sdp_enabled && tree_type == SHARED_PART));
   // After interleave luma and chroma at 64X64

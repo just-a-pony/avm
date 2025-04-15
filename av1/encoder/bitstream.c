@@ -3902,14 +3902,9 @@ static AOM_INLINE void write_modes_sb(
   if (mi_row >= mi_params->mi_rows || mi_col >= mi_params->mi_cols) return;
 
 #if CONFIG_INTRA_SDP_LATENCY_FIX
-  const int intra_sdp_enabled =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp);
+  const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
   const int total_loop_num =
-      (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-       cm->seq_params.enable_sdp && bsize == BLOCK_64X64)
-          ? 2
-          : 1;
+      (intra_sdp_enabled && bsize == BLOCK_64X64) ? 2 : 1;
   if (total_loop_num == 2 && xd->tree_type == SHARED_PART) {
     xd->tree_type = LUMA_PART;
     write_modes_sb(cpi, tile, w, tok, tok_end,
@@ -4379,10 +4374,8 @@ static AOM_INLINE void write_modes(AV1_COMP *const cpi,
     const TokenExtra *tok_end_chroma =
         tok_chroma +
         cpi->token_info.tplist[tile_row][tile_col][sb_row_in_tile].count_chroma;
-    const int intra_sdp_enabled =
-        (frame_is_intra_only(cm) && !cm->seq_params.monochrome &&
-         cm->seq_params.enable_sdp);
-    if (intra_sdp_enabled) assert(tok_end < tok_chroma);
+    const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
+    if (intra_sdp_enabled) assert(tok_end <= tok_chroma);
 #endif  // CONFIG_INTRA_SDP_LATENCY_FIX
     av1_zero_left_context(xd);
 
