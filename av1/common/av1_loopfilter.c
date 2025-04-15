@@ -571,11 +571,27 @@ static AOM_INLINE void check_opfl_edge(const AV1_COMMON *const cm,
 
 #if CONFIG_REFINEMV
 // Check whether current block is RFMV mode
-static AOM_INLINE void check_rfmv_edge(const MB_MODE_INFO *const mbmi,
+static AOM_INLINE void check_rfmv_edge(const AV1_COMMON *const cm,
+                                       const MB_MODE_INFO *const mbmi,
                                        const int scale, TX_SIZE *ts,
                                        int32_t *rfmv_edge) {
-  const int is_rfmv_mode =
-      mbmi->refinemv_flag && !is_tip_ref_frame(mbmi->ref_frame[0]);
+  const int tip_ref_frame = is_tip_ref_frame(mbmi->ref_frame[0]);
+  int is_rfmv_mode = 0;
+  is_rfmv_mode = mbmi->refinemv_flag &&
+#if CONFIG_AFFINE_REFINEMENT
+                 (is_damr_allowed_with_refinemv(mbmi->mode) ||
+                  mbmi->comp_refine_type < COMP_AFFINE_REFINE_START) &&
+#endif  // CONFIG_AFFINE_REFINEMENT
+                 !tip_ref_frame;
+
+#if CONFIG_AFFINE_REFINEMENT
+  if (is_rfmv_mode && default_refinemv_modes(cm, mbmi))
+#else
+  if (is_rfmv_mode && default_refinemv_modes(mbmi))
+#endif  // CONFIG_AFFINE_REFINEMENT
+    is_rfmv_mode &= (mbmi->comp_group_idx == 0 &&
+                     mbmi->interinter_comp.type == COMPOUND_AVERAGE);
+
   if (is_rfmv_mode) {
     *rfmv_edge = 1;
     const int rfmv_ts = scale ? TX_8X8 : TX_16X16;
@@ -608,7 +624,7 @@ static AOM_INLINE void check_sub_pu_edge(
 #endif  // CONFIG_COMPOUND_4XN
                     mbmi, scale, &temp_ts, &temp_edge);
 #if CONFIG_REFINEMV
-  if (!temp_edge) check_rfmv_edge(mbmi, scale, &temp_ts, &temp_edge);
+  if (!temp_edge) check_rfmv_edge(cm, mbmi, scale, &temp_ts, &temp_edge);
 #endif  // CONFIG_REFINEMV
 
   if (temp_edge) {
