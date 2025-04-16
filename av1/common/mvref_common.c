@@ -2612,6 +2612,94 @@ static AOM_INLINE int assign_tmvp_high_priority(const AV1_COMMON *cm,
 }
 #endif  // CONFIG_DRL_REORDER_CONTROL
 
+static AOM_INLINE void add_derived_smvp_candidates(
+    const AV1_COMMON *cm, const MACROBLOCKD *xd, MV_REFERENCE_FRAME *rf,
+    MV_REFERENCE_FRAME *ref_frame_idx0, MV_REFERENCE_FRAME *ref_frame_idx1,
+    uint8_t *const refmv_count,
+    CANDIDATE_MV ref_mv_stack[MAX_REF_MV_STACK_SIZE],
+    uint16_t ref_mv_weight[MAX_REF_MV_STACK_SIZE],
+    CANDIDATE_MV derived_mv_stack[MAX_REF_MV_STACK_SIZE],
+    uint8_t derived_mv_count) {
+#if CONFIG_MVP_IMPROVEMENT
+  const int max_ref_mv_count =
+#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
+      xd->mi[0]->use_intrabc[xd->tree_type == CHROMA_PART]
+          ? AOMMIN(cm->features.max_bvp_drl_bits + 1, MAX_REF_BV_STACK_SIZE)
+          :
+#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
+          AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+  if (xd->mi[0]->skip_mode) derived_mv_count = 0;
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+  if (*refmv_count < max_ref_mv_count && derived_mv_count > 0) {
+    fill_mvp_from_derived_smvp(rf, ref_mv_stack, ref_mv_weight, refmv_count,
+                               derived_mv_stack, derived_mv_count,
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+                               xd->mi[0], ref_frame_idx0, ref_frame_idx1,
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+                               max_ref_mv_count);
+  }
+#endif  // CONFIG_MVP_IMPROVEMENT
+}
+static AOM_INLINE void add_ref_mv_bank_candidates(
+    const AV1_COMMON *cm, const MACROBLOCKD *xd, MV_REFERENCE_FRAME *rf,
+    MV_REFERENCE_FRAME ref_frame, MV_REFERENCE_FRAME *ref_frame_idx0,
+    MV_REFERENCE_FRAME *ref_frame_idx1, uint8_t *const refmv_count,
+    CANDIDATE_MV ref_mv_stack[MAX_REF_MV_STACK_SIZE],
+    uint16_t ref_mv_weight[MAX_REF_MV_STACK_SIZE]) {
+  const int ref_mv_limit =
+#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
+      xd->mi[0]->use_intrabc[xd->tree_type == CHROMA_PART]
+          ? AOMMIN(cm->features.max_bvp_drl_bits + 1, MAX_REF_BV_STACK_SIZE)
+          :
+#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
+          AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
+  // If open slots are available, fetch reference MVs from the ref mv banks.
+  if (*refmv_count < ref_mv_limit
+#if !CONFIG_IBC_BV_IMPROVEMENT
+      && ref_frame != INTRA_FRAME
+#endif  // CONFIG_IBC_BV_IMPROVEMENT
+  ) {
+    const REF_MV_BANK *ref_mv_bank = &xd->ref_mv_bank;
+#if CONFIG_LC_REF_MV_BANK
+    const int rmb_list_index = get_rmb_list_index(ref_frame);
+#else
+    const int rmb_list_index = ref_frame;
+#endif  // CONFIG_LC_REF_MV_BANK
+    const CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[rmb_list_index];
+#if CONFIG_LC_REF_MV_BANK
+    const MV_REFERENCE_FRAME *rmb_ref_frame = ref_mv_bank->rmb_ref_frame;
+#endif  // CONFIG_LC_REF_MV_BANK
+    const int count = ref_mv_bank->rmb_count[rmb_list_index];
+    const int start_idx = ref_mv_bank->rmb_start_idx[rmb_list_index];
+    const int is_comp = is_inter_ref_frame(rf[1]);
+    const int block_width = xd->width * MI_SIZE;
+    const int block_height = xd->height * MI_SIZE;
+    for (int idx_bank = 0; idx_bank < count && *refmv_count < ref_mv_limit;
+         ++idx_bank) {
+      const int idx = (start_idx + count - 1 - idx_bank) % REF_MV_BANK_SIZE;
+      const CANDIDATE_MV cand_mv = queue[idx];
+#if CONFIG_LC_REF_MV_BANK
+      if (rmb_list_index == REF_MV_BANK_LIST_FOR_ALL_OTHERS &&
+          rmb_ref_frame[idx] != ref_frame)
+        continue;
+#endif  // CONFIG_LC_REF_MV_BANK
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+      bool rmb_candi_exist =
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+          check_rmb_cand(cand_mv, ref_mv_stack, ref_mv_weight, refmv_count,
+                         is_comp, xd->mi_row, xd->mi_col, block_width,
+                         block_height, cm->width, cm->height);
+#if CONFIG_SKIP_MODE_ENHANCEMENT
+      if (xd->mi[0]->skip_mode && rmb_candi_exist) {
+        ref_frame_idx0[*refmv_count - 1] = rf[0];
+        ref_frame_idx1[*refmv_count - 1] = rf[1];
+      }
+#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
+    }
+  }
+}
+
 static AOM_INLINE void setup_ref_mv_list(
     const AV1_COMMON *cm, const MACROBLOCKD *xd, MV_REFERENCE_FRAME ref_frame,
     uint8_t *const refmv_count,
@@ -3256,85 +3344,28 @@ static AOM_INLINE void setup_ref_mv_list(
   }
 #endif  // CONFIG_DRL_REORDER_CONTROL
 
-#if CONFIG_MVP_IMPROVEMENT
-  if (cm->seq_params.enable_refmvbank) {
-    const int ref_mv_limit =
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-        xd->mi[0]->use_intrabc[xd->tree_type == CHROMA_PART]
-            ? AOMMIN(cm->features.max_bvp_drl_bits + 1, MAX_REF_BV_STACK_SIZE)
-            :
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-            AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
-    // If open slots are available, fetch reference MVs from the ref mv banks.
-    if (*refmv_count < ref_mv_limit
-#if !CONFIG_IBC_BV_IMPROVEMENT
-        && ref_frame != INTRA_FRAME
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
-    ) {
-      const REF_MV_BANK *ref_mv_bank = &xd->ref_mv_bank;
-#if CONFIG_LC_REF_MV_BANK
-      const int rmb_list_index = get_rmb_list_index(ref_frame);
-#else
-      const int rmb_list_index = ref_frame;
-#endif  // CONFIG_LC_REF_MV_BANK
-      const CANDIDATE_MV *queue = ref_mv_bank->rmb_buffer[rmb_list_index];
-#if CONFIG_LC_REF_MV_BANK
-      const MV_REFERENCE_FRAME *rmb_ref_frame = ref_mv_bank->rmb_ref_frame;
-#endif  // CONFIG_LC_REF_MV_BANK
-      const int count = ref_mv_bank->rmb_count[rmb_list_index];
-      const int start_idx = ref_mv_bank->rmb_start_idx[rmb_list_index];
-      const int is_comp = is_inter_ref_frame(rf[1]);
-      const int block_width = xd->width * MI_SIZE;
-      const int block_height = xd->height * MI_SIZE;
-
-      for (int idx_bank = 0; idx_bank < count && *refmv_count < ref_mv_limit;
-           ++idx_bank) {
-        const int idx = (start_idx + count - 1 - idx_bank) % REF_MV_BANK_SIZE;
-        const CANDIDATE_MV cand_mv = queue[idx];
-#if CONFIG_LC_REF_MV_BANK
-        if (rmb_list_index == REF_MV_BANK_LIST_FOR_ALL_OTHERS &&
-            rmb_ref_frame[idx] != ref_frame)
-          continue;
-#endif  // CONFIG_LC_REF_MV_BANK
-#if CONFIG_SKIP_MODE_ENHANCEMENT
-        bool rmb_candi_exist =
-#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-            check_rmb_cand(cand_mv, ref_mv_stack, ref_mv_weight, refmv_count,
-                           is_comp, xd->mi_row, xd->mi_col, block_width,
-                           block_height, cm->width, cm->height);
-#if CONFIG_SKIP_MODE_ENHANCEMENT
-        if (xd->mi[0]->skip_mode && rmb_candi_exist) {
-          ref_frame_idx0[*refmv_count - 1] = rf[0];
-          ref_frame_idx1[*refmv_count - 1] = rf[1];
-        }
-#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-      }
-    }
+#if CONFIG_DSMVP_REFBANK_MV_SWAP
+  const int is_compound = is_inter_ref_frame(rf[1]);
+  if (is_compound) {
+    add_derived_smvp_candidates(cm, xd, rf, ref_frame_idx0, ref_frame_idx1,
+                                refmv_count, ref_mv_stack, ref_mv_weight,
+                                derived_mv_stack, derived_mv_count);
+    if (cm->seq_params.enable_refmvbank)
+      add_ref_mv_bank_candidates(cm, xd, rf, ref_frame, ref_frame_idx0,
+                                 ref_frame_idx1, refmv_count, ref_mv_stack,
+                                 ref_mv_weight);
+  } else {
+#endif  // CONFIG_DSMVP_REFBANK_MV_SWAP
+    if (cm->seq_params.enable_refmvbank)
+      add_ref_mv_bank_candidates(cm, xd, rf, ref_frame, ref_frame_idx0,
+                                 ref_frame_idx1, refmv_count, ref_mv_stack,
+                                 ref_mv_weight);
+    add_derived_smvp_candidates(cm, xd, rf, ref_frame_idx0, ref_frame_idx1,
+                                refmv_count, ref_mv_stack, ref_mv_weight,
+                                derived_mv_stack, derived_mv_count);
+#if CONFIG_DSMVP_REFBANK_MV_SWAP
   }
-#endif  // CONFIG_MVP_IMPROVEMENT
-
-#if CONFIG_MVP_IMPROVEMENT
-  const int max_ref_mv_count =
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-      xd->mi[0]->use_intrabc[xd->tree_type == CHROMA_PART]
-          ? AOMMIN(cm->features.max_bvp_drl_bits + 1, MAX_REF_BV_STACK_SIZE)
-          :
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
-          AOMMIN(cm->features.max_drl_bits + 1, MAX_REF_MV_STACK_SIZE);
-
-#if CONFIG_SKIP_MODE_ENHANCEMENT
-  if (xd->mi[0]->skip_mode) derived_mv_count = 0;
-#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-
-  if (*refmv_count < max_ref_mv_count && derived_mv_count > 0) {
-    fill_mvp_from_derived_smvp(rf, ref_mv_stack, ref_mv_weight, refmv_count,
-                               derived_mv_stack, derived_mv_count,
-#if CONFIG_SKIP_MODE_ENHANCEMENT
-                               xd->mi[0], ref_frame_idx0, ref_frame_idx1,
-#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-                               max_ref_mv_count);
-  }
-#endif  // CONFIG_MVP_IMPROVEMENT
+#endif  // CONFIG_DSMVP_REFBANK_MV_SWAP
 
 #if CONFIG_MVP_SIMPLIFY
   for (int idx = 0; idx < *refmv_count; ++idx) {
