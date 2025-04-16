@@ -387,7 +387,7 @@ void scale_tx(const int txsize, const int level, const int plane,
     upsample(4, 8, width, height, source_4x8_iwt_base_matrix[level][plane],
              output);
   } else {
-    /*height > width*/
+    // width > height
     upsample(8, 4, width, height, source_8x4_iwt_base_matrix[level][plane],
              output);
   }
