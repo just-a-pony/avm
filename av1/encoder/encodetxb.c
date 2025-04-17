@@ -1110,7 +1110,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
 
   const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
 #if CONFIG_TCQ
-  const int tcq_mode = cm->features.tcq_mode;
+  const int tcq_mode = tcq_enable(cm->features.tcq_mode, plane, tx_class);
 #else
   const int tcq_mode = 0;
 #endif  // CONFIG_TCQ
@@ -1156,7 +1156,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
 #endif  // CONFIG_IMPROVEIDTX
 
 #if CONFIG_TCQ
-  int state = tcq_init_state(tcq_mode, plane, tx_class);
+  int state = tcq_init_state(tcq_mode);
 #endif  // CONFIG_TCQ
   // Loop to code AC coefficient magnitudes
   for (int c = eob - 1; c > 0; --c) {
@@ -6109,7 +6109,8 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
           get_primary_tx_type(tx_type) < IDTX;
 #endif  // CONFIG_IMPROVEIDTX
 #if CONFIG_TCQ
-    int state = tcq_init_state(cm->features.tcq_mode, plane, tx_class);
+    int tcq_mode = tcq_enable(cm->features.tcq_mode, plane, tx_class);
+    int state = tcq_init_state(tcq_mode);
 #endif  // CONFIG_TCQ
 
     for (int c = eob - 1; c > 0; --c) {
