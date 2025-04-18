@@ -623,8 +623,7 @@ static AOM_INLINE void check_sub_pu_edge(
 #endif  // CONFIG_COMPOUND_4XN
                     mbmi, scale, &temp_ts, &temp_edge);
 #if CONFIG_REFINEMV
-  if (!temp_edge)
-    check_rfmv_edge(cm, mbmi, scale_horz, scale_vert, &temp_ts, &temp_edge);
+  if (!temp_edge) check_rfmv_edge(cm, mbmi, scale, &temp_ts, &temp_edge);
 #endif  // CONFIG_REFINEMV
 
   if (temp_edge) {
