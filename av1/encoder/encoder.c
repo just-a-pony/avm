@@ -1790,7 +1790,13 @@ static void set_mv_search_params(AV1_COMP *cpi) {
   const int max_mv_def = AOMMAX(cm->width, cm->height);
 
   // Default based on max resolution.
-  mv_search_params->mv_step_param = av1_init_search_range(max_mv_def);
+  mv_search_params->mv_step_param =
+      av1_init_search_range(max_mv_def
+#if CONFIG_MV_RANGE_EXTENSION
+                            ,
+                            cpi->oxcf.tool_cfg.enable_high_motion
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      );
 
   if (cpi->sf.mv_sf.auto_mv_step_size) {
     if (frame_is_intra_only(cm)) {
@@ -1804,7 +1810,12 @@ static void set_mv_search_params(AV1_COMP *cpi) {
         // in the previous frame, capped by the default max_mv_magnitude based
         // on resolution.
         mv_search_params->mv_step_param = av1_init_search_range(
-            AOMMIN(max_mv_def, 2 * mv_search_params->max_mv_magnitude));
+            AOMMIN(max_mv_def, 2 * mv_search_params->max_mv_magnitude)
+#if CONFIG_MV_RANGE_EXTENSION
+                ,
+            cpi->oxcf.tool_cfg.enable_high_motion
+#endif  // CONFIG_MV_RANGE_EXTENSION
+        );
       }
       mv_search_params->max_mv_magnitude = -1;
     }
@@ -2125,6 +2136,9 @@ void av1_set_screen_content_options(AV1_COMP *cpi, FeatureFlags *features) {
 // Function pointer to search site config initialization
 // of different search method functions.
 typedef void (*av1_init_search_site_config)(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                            int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
                                             int stride);
 
 av1_init_search_site_config
@@ -2164,13 +2178,24 @@ static void init_motion_estimation(AV1_COMP *cpi) {
   // Initialization of search_site_cfg for NUM_DISTINCT_SEARCH_METHODS.
   for (SEARCH_METHODS i = DIAMOND; i < NUM_DISTINCT_SEARCH_METHODS; i++) {
     av1_init_motion_compensation[i](
-        &mv_search_params->search_site_cfg[SS_CFG_SRC][i], y_stride);
+        &mv_search_params->search_site_cfg[SS_CFG_SRC][i],
+#if CONFIG_MV_RANGE_EXTENSION
+        cpi->oxcf.tool_cfg.enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+        y_stride);
     av1_init_motion_compensation[i](
-        &mv_search_params->search_site_cfg[SS_CFG_LOOKAHEAD][i], y_stride_src);
+        &mv_search_params->search_site_cfg[SS_CFG_LOOKAHEAD][i],
+#if CONFIG_MV_RANGE_EXTENSION
+        cpi->oxcf.tool_cfg.enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+        y_stride_src);
   }
 
   // First pass search site config initialization.
   av1_init_motion_fpf(&mv_search_params->search_site_cfg[SS_CFG_FPF][DIAMOND],
+#if CONFIG_MV_RANGE_EXTENSION
+                      cpi->oxcf.tool_cfg.enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
                       fpf_y_stride);
   for (SEARCH_METHODS i = NSTEP; i < NUM_DISTINCT_SEARCH_METHODS; i++) {
     memcpy(&mv_search_params->search_site_cfg[SS_CFG_FPF][i],

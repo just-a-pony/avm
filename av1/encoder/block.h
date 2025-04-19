@@ -1423,7 +1423,7 @@ typedef struct {
   /*! costs to code mvd shell index. */
   int nmv_joint_shell_cost[NUM_MV_PRECISIONS][(2 * MV_MAX) + 1];
 
-  /*! costs to code col_mv_greter_flags. */
+  /*! costs to code col_mv_greater_flags. */
   int col_mv_greater_flags_costs[NUM_MV_PRECISIONS]
                                 [MAX_COL_TRUNCATED_UNARY_VAL + 1]
                                 [MAX_COL_TRUNCATED_UNARY_VAL + 1];

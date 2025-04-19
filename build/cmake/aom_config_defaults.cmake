@@ -378,6 +378,9 @@ set_aom_config_var(
 set_aom_config_var(CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION 1
                    "Enable to reduce context model line buffer size")
 
+set_aom_config_var(CONFIG_MV_RANGE_EXTENSION 1
+                   "Enable to extend the range of MV")
+
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
                    "Enable a sufficient MV search range.")

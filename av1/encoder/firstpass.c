@@ -185,11 +185,22 @@ static unsigned int highbd_get_prediction_error(BLOCK_SIZE bsize,
 
 // Refine the motion search range according to the frame dimension
 // for first pass test.
-static int get_search_range(const InitialDimensions *initial_dimensions) {
+static int get_search_range(const InitialDimensions *initial_dimensions
+#if CONFIG_MV_RANGE_EXTENSION
+                            ,
+                            int enable_high_motion
+#endif  // CONFIG_MV_RANGE_EXTENSION
+) {
   int sr = 0;
   const int dim = AOMMIN(initial_dimensions->width, initial_dimensions->height);
 
-  while ((dim << sr) < MAX_FULL_PEL_VAL) ++sr;
+#if CONFIG_MV_RANGE_EXTENSION
+  const int max_full_range =
+      enable_high_motion ? MAX_FULL_PEL_VAL : LOW_MOTION_MAX_FULL_PEL_VAL;
+#else
+  const int max_full_range = MAX_FULL_PEL_VAL;
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  while ((dim << sr) < max_full_range) ++sr;
   return sr;
 }
 
@@ -203,7 +214,12 @@ static AOM_INLINE void first_pass_motion_search(AV1_COMP *cpi, MACROBLOCK *x,
   int tmp_err;
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
   const int new_mv_mode_penalty = NEW_MV_MODE_PENALTY;
-  const int sr = get_search_range(&cpi->initial_dimensions);
+  const int sr = get_search_range(&cpi->initial_dimensions
+#if CONFIG_MV_RANGE_EXTENSION
+                                  ,
+                                  cpi->oxcf.tool_cfg.enable_high_motion
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  );
   const int step_param = 3 + sr;
 
   const search_site_config *first_pass_search_sites =

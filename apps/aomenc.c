@@ -448,6 +448,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
   &g_av1_codec_arg_defs.enable_mv_traj,
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  &g_av1_codec_arg_defs.enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
   &g_av1_codec_arg_defs.enable_bawp,
 #if CONFIG_ENABLE_MHCCP
   &g_av1_codec_arg_defs.enable_mhccp,
@@ -663,6 +666,12 @@ static void init_config(cfg_options_t *config) {
   config->enable_extended_sdp = 1;
   config->enable_mrls = 1;
   config->enable_tip = 1;
+#if CONFIG_TMVP_SIMPLIFICATIONS_F085
+  config->enable_mv_traj = 1;
+#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  config->enable_high_motion = 0;
+#endif  // CONFIG_MV_RANGE_EXTENSION
   config->enable_bawp = 1;
   config->enable_cwp = 1;
 #if CONFIG_D071_IMP_MSK_BLD
@@ -1626,6 +1635,10 @@ static void show_stream_config(struct stream_state *stream,
   fprintf(stdout, "                               : MV traj (%d)\n",
           encoder_cfg->enable_mv_traj);
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  fprintf(stdout, "                               : HighMotion (%d)\n",
+          encoder_cfg->enable_high_motion);
+#endif  // CONFIG_MV_RANGE_EXTENSION
   fprintf(stdout, "                               : BAWP (%d)\n",
           encoder_cfg->enable_bawp);
   fprintf(stdout, "                               : CWP (%d)\n",

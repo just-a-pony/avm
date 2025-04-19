@@ -446,14 +446,28 @@ void av1_set_tip_mv_search_range(FullMvLimits *mv_limits) {
 }
 #endif  // !CONFIG_TIP_MV_SIMPLIFICATION
 
-int av1_init_search_range(int size) {
+int av1_init_search_range(int size
+#if CONFIG_MV_RANGE_EXTENSION
+                          ,
+                          int enable_high_motion
+#endif  // CONFIG_MV_RANGE_EXTENSION
+) {
   int sr = 0;
   // Minimum search size no matter what the passed in value.
   size = AOMMAX(16, size);
 
-  while ((size << sr) < MAX_FULL_PEL_VAL) sr++;
+#if CONFIG_MV_RANGE_EXTENSION
+  const int max_full_range =
+      enable_high_motion ? MAX_FULL_PEL_VAL : LOW_MOTION_MAX_FULL_PEL_VAL;
+  const int max_search_steps =
+      enable_high_motion ? MAX_MVSEARCH_STEPS - 2 : MAX_MVSEARCH_STEPS - 4;
+#else
+  const int max_full_range = MAX_FULL_PEL_VAL;
+  const int max_search_steps = MAX_MVSEARCH_STEPS - 2;
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  while ((size << sr) < max_full_range) sr++;
 
-  sr = AOMMIN(sr, MAX_MVSEARCH_STEPS - 2);
+  sr = AOMMIN(sr, max_search_steps);
   return sr;
 }
 
@@ -957,19 +971,36 @@ static INLINE int mvsad_err_cost(const FULLPEL_MV mv,
 // =============================================================================
 //  Fullpixel Motion Search: Translational
 // =============================================================================
+#if CONFIG_MV_RANGE_EXTENSION
+#define MAX_PATTERN_SCALES 13
+#else
 #define MAX_PATTERN_SCALES 11
+#endif                            // CONFIG_MV_RANGE_EXTENSION
 #define MAX_PATTERN_CANDIDATES 8  // max number of candidates per scale
 #define PATTERN_CANDIDATES_REF 3  // number of refinement candidates
 
-void av1_init_dsmotion_compensation(search_site_config *cfg, int stride) {
+void av1_init_dsmotion_compensation(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                    int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                    int stride) {
   int num_search_steps = 0;
+#if CONFIG_MV_RANGE_EXTENSION
+  cfg->enable_high_motion = enable_high_motion;
+  int stage_index =
+      enable_high_motion ? MAX_MVSEARCH_STEPS - 1 : MAX_MVSEARCH_STEPS - 3;
+  const int init_radius =
+      enable_high_motion ? MAX_FIRST_STEP : LOW_MOTION_MAX_FIRST_STEP;
+#else
   int stage_index = MAX_MVSEARCH_STEPS - 1;
+  const int init_radius = MAX_FIRST_STEP;
+#endif  // CONFIG_MV_RANGE_EXTENSION
 
   cfg->site[stage_index][0].mv.col = cfg->site[stage_index][0].mv.row = 0;
   cfg->site[stage_index][0].offset = 0;
   cfg->stride = stride;
 
-  for (int radius = MAX_FIRST_STEP; radius > 0; radius /= 2) {
+  for (int radius = init_radius; radius > 0; radius /= 2) {
     int num_search_pts = 8;
 
     const FULLPEL_MV search_site_mvs[13] = {
@@ -992,15 +1023,28 @@ void av1_init_dsmotion_compensation(search_site_config *cfg, int stride) {
   cfg->num_search_steps = num_search_steps;
 }
 
-void av1_init_motion_fpf(search_site_config *cfg, int stride) {
+void av1_init_motion_fpf(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                         int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                         int stride) {
   int num_search_steps = 0;
+#if CONFIG_MV_RANGE_EXTENSION
+  cfg->enable_high_motion = enable_high_motion;
+  int stage_index =
+      enable_high_motion ? MAX_MVSEARCH_STEPS - 1 : MAX_MVSEARCH_STEPS - 3;
+  const int init_radius =
+      enable_high_motion ? MAX_FIRST_STEP : LOW_MOTION_MAX_FIRST_STEP;
+#else
   int stage_index = MAX_MVSEARCH_STEPS - 1;
+  const int init_radius = MAX_FIRST_STEP;
+#endif  // CONFIG_MV_RANGE_EXTENSION
 
   cfg->site[stage_index][0].mv.col = cfg->site[stage_index][0].mv.row = 0;
   cfg->site[stage_index][0].offset = 0;
   cfg->stride = stride;
 
-  for (int radius = MAX_FIRST_STEP; radius > 0; radius /= 2) {
+  for (int radius = init_radius; radius > 0; radius /= 2) {
     // Generate offsets for 8 search sites per step.
     int tan_radius = AOMMAX((int)(0.41 * radius), 1);
     int num_search_pts = 12;
@@ -1037,16 +1081,28 @@ void av1_init_motion_fpf(search_site_config *cfg, int stride) {
 }
 
 // Search site initialization for NSTEP search method.
-void av1_init_motion_compensation_nstep(search_site_config *cfg, int stride) {
+void av1_init_motion_compensation_nstep(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                        int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                        int stride) {
   int num_search_steps = 0;
   int stage_index = 0;
   cfg->stride = stride;
   int radius = 1;
-#if CONFIG_MV_SEARCH_RANGE
-  for (stage_index = 0; stage_index < 16; ++stage_index) {
+#if CONFIG_MV_RANGE_EXTENSION
+  cfg->enable_high_motion = enable_high_motion;
+  // 20 corresponds to 17bits mv range for NSTEP
+  const int max_stage_index = enable_high_motion ? 20 : 16;
 #else
-  for (stage_index = 0; stage_index < 15; ++stage_index) {
+#if CONFIG_MV_SEARCH_RANGE
+  const int max_stage_index = 16;
+#else
+  const int max_stage_index = 15;
 #endif  // CONFIG_MV_SEARCH_RANGE
+#endif  // CONFIG_MV_RANGE_EXTENSION
+
+  for (stage_index = 0; stage_index < max_stage_index; ++stage_index) {
     int tan_radius = AOMMAX((int)(0.41 * radius), 1);
     int num_search_pts = 12;
     if (radius <= 5) {
@@ -1087,12 +1143,19 @@ void av1_init_motion_compensation_nstep(search_site_config *cfg, int stride) {
 
 // Search site initialization for BIGDIA / FAST_BIGDIA / FAST_DIAMOND
 // search methods.
-void av1_init_motion_compensation_bigdia(search_site_config *cfg, int stride) {
+void av1_init_motion_compensation_bigdia(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                         int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                         int stride) {
   cfg->stride = stride;
   // First scale has 4-closest points, the rest have 8 points in diamond
   // shape at increasing scales
   static const int bigdia_num_candidates[MAX_PATTERN_SCALES] = {
     4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+#if CONFIG_MV_RANGE_EXTENSION
+    8, 8,
+#endif  // CONFIG_MV_RANGE_EXTENSION
   };
 
   // BIGDIA search method candidates.
@@ -1122,11 +1185,24 @@ void av1_init_motion_compensation_bigdia(search_site_config *cfg, int stride) {
             { 256, 256 }, { 0, 512 }, { -256, 256 }, { -512, 0 } },
           { { -512, -512 }, { 0, -1024 }, { 512, -512 }, { 1024, 0 },
             { 512, 512 }, { 0, 1024 }, { -512, 512 }, { -1024, 0 } },
+#if CONFIG_MV_RANGE_EXTENSION
+        { { -1024, -1024 }, { 0, -2048 }, { 1024, -1024 }, { 2048, 0 },
+          { 1024, 1024 }, { 0, 2048 }, { -1024, 1024 }, { -2048, 0 } },
+        { { -2048, -2048 }, { 0, -4096 }, { 2048, -2048 }, { 4096, 0 },
+          { 2048, 2048 }, { 0, 4096 }, { -2048, 2048 }, { -4096, 0 } },
+#endif  // CONFIG_MV_RANGE_EXTENSION
         };
 
   /* clang-format on */
   int radius = 1;
-  for (int i = 0; i < MAX_PATTERN_SCALES; ++i) {
+#if CONFIG_MV_RANGE_EXTENSION
+  cfg->enable_high_motion = enable_high_motion;
+  const int max_search_steps =
+      enable_high_motion ? MAX_PATTERN_SCALES : MAX_PATTERN_SCALES - 2;
+#else
+  const int max_search_steps = MAX_PATTERN_SCALES;
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  for (int i = 0; i < max_search_steps; ++i) {
     cfg->searches_per_step[i] = bigdia_num_candidates[i];
     cfg->radius[i] = radius;
     for (int j = 0; j < MAX_PATTERN_CANDIDATES; ++j) {
@@ -1136,15 +1212,22 @@ void av1_init_motion_compensation_bigdia(search_site_config *cfg, int stride) {
     }
     radius *= 2;
   }
-  cfg->num_search_steps = MAX_PATTERN_SCALES;
+  cfg->num_search_steps = max_search_steps;
 }
 
 // Search site initialization for SQUARE search method.
-void av1_init_motion_compensation_square(search_site_config *cfg, int stride) {
+void av1_init_motion_compensation_square(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                         int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                         int stride) {
   cfg->stride = stride;
   // All scales have 8 closest points in square shape.
   static const int square_num_candidates[MAX_PATTERN_SCALES] = {
     8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+#if CONFIG_MV_RANGE_EXTENSION
+    8, 8,
+#endif  // CONFIG_MV_RANGE_EXTENSION
   };
 
   // Square search method candidates.
@@ -1174,11 +1257,24 @@ void av1_init_motion_compensation_square(search_site_config *cfg, int stride) {
                { 512, 512 }, { 0, 512 }, { -512, 512 }, { -512, 0 } },
              { { -1024, -1024 }, { 0, -1024 }, { 1024, -1024 }, { 1024, 0 },
                { 1024, 1024 }, { 0, 1024 }, { -1024, 1024 }, { -1024, 0 } },
+#if CONFIG_MV_RANGE_EXTENSION
+          { { -2048, -2048 }, { 0, -2048 }, { 2048, -2048 }, { 2048, 0 },
+            { 2048, 2048 }, { 0, 2048 }, { -2048, 2048 }, { -2048, 0 } },
+          { { -4096, -4096 }, { 0, -4096 }, { 4096, -4096 }, { 4096, 0 },
+            { 4096, 4096 }, { 0, 4096 }, { -4096, 4096 }, { -4096, 0 } },
+#endif  // CONFIG_MV_RANGE_EXTENSION
     };
 
   /* clang-format on */
   int radius = 1;
-  for (int i = 0; i < MAX_PATTERN_SCALES; ++i) {
+#if CONFIG_MV_RANGE_EXTENSION
+  cfg->enable_high_motion = enable_high_motion;
+  const int max_search_steps =
+      enable_high_motion ? MAX_PATTERN_SCALES : MAX_PATTERN_SCALES - 2;
+#else
+  const int max_search_steps = MAX_PATTERN_SCALES;
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  for (int i = 0; i < max_search_steps; ++i) {
     cfg->searches_per_step[i] = square_num_candidates[i];
     cfg->radius[i] = radius;
     for (int j = 0; j < MAX_PATTERN_CANDIDATES; ++j) {
@@ -1188,16 +1284,24 @@ void av1_init_motion_compensation_square(search_site_config *cfg, int stride) {
     }
     radius *= 2;
   }
-  cfg->num_search_steps = MAX_PATTERN_SCALES;
+  cfg->num_search_steps = max_search_steps;
 }
 
 // Search site initialization for HEX / FAST_HEX search methods.
-void av1_init_motion_compensation_hex(search_site_config *cfg, int stride) {
+void av1_init_motion_compensation_hex(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                      int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                      int stride) {
   cfg->stride = stride;
   // First scale has 8-closest points, the rest have 6 points in hex shape
   // at increasing scales.
-  static const int hex_num_candidates[MAX_PATTERN_SCALES] = { 8, 6, 6, 6, 6, 6,
-                                                              6, 6, 6, 6, 6 };
+  static const int hex_num_candidates[MAX_PATTERN_SCALES] = {
+    8, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+#if CONFIG_MV_RANGE_EXTENSION
+    6, 6,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  };
   // Note that the largest candidate step at each scale is 2^scale.
   /* clang-format off */
     static const FULLPEL_MV
@@ -1221,11 +1325,24 @@ void av1_init_motion_compensation_hex(search_site_config *cfg, int stride) {
           { -256, 512 }, { -512, 0 } },
         { { -512, -1024 }, { 512, -1024 }, { 1024, 0 }, { 512, 1024 },
           { -512, 1024 }, { -1024, 0 } },
+#if CONFIG_MV_RANGE_EXTENSION
+          { { -1024, -2048 }, { 1024, -2048 }, { 2048, 0 }, { 1024, 2048 },
+            { -1024, 2048 }, { -2048, 0 } },
+          { { -2048, -4096 }, { 2048, -4096 }, { 4096, 0 }, { 2048, 4096 },
+            { -2048, 4096 }, { -4096, 0 } },
+#endif  // CONFIG_MV_RANGE_EXTENSION
     };
 
   /* clang-format on */
   int radius = 1;
-  for (int i = 0; i < MAX_PATTERN_SCALES; ++i) {
+#if CONFIG_MV_RANGE_EXTENSION
+  cfg->enable_high_motion = enable_high_motion;
+  const int max_search_steps =
+      enable_high_motion ? MAX_PATTERN_SCALES : MAX_PATTERN_SCALES - 2;
+#else
+  const int max_search_steps = MAX_PATTERN_SCALES;
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  for (int i = 0; i < max_search_steps; ++i) {
     cfg->searches_per_step[i] = hex_num_candidates[i];
     cfg->radius[i] = radius;
     for (int j = 0; j < hex_num_candidates[i]; ++j) {
@@ -1235,7 +1352,7 @@ void av1_init_motion_compensation_hex(search_site_config *cfg, int stride) {
     }
     radius *= 2;
   }
-  cfg->num_search_steps = MAX_PATTERN_SCALES;
+  cfg->num_search_steps = max_search_steps;
 }
 
 // Checks whether the mv is within range of the mv_limits
@@ -1447,8 +1564,8 @@ static AOM_FORCE_INLINE void calc_int_sad_list(
 #if CONFIG_IBC_SR_EXT
     if (ms_params->is_intra_mode &&
         ms_params->cm->features.allow_local_intrabc) {
-      MV sub_mv = { (int16_t)GET_MV_SUBPEL(best_mv.row),
-                    (int16_t)GET_MV_SUBPEL(best_mv.col) };
+      MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(best_mv.row),
+                    (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(best_mv.col) };
       int flag = av1_is_dv_valid(sub_mv, ms_params->cm, ms_params->xd,
                                  ms_params->mi_row, ms_params->mi_col,
                                  ms_params->bsize, ms_params->mib_size_log2);
@@ -1474,8 +1591,8 @@ static AOM_FORCE_INLINE void calc_int_sad_list(
 #if CONFIG_IBC_SR_EXT
         if (ms_params->is_intra_mode &&
             ms_params->cm->features.allow_local_intrabc) {
-          MV sub_mv = { (int16_t)GET_MV_SUBPEL(this_mv.row),
-                        (int16_t)GET_MV_SUBPEL(this_mv.col) };
+          MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(this_mv.row),
+                        (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(this_mv.col) };
           int flag = av1_is_dv_valid(
               sub_mv, ms_params->cm, ms_params->xd, ms_params->mi_row,
               ms_params->mi_col, ms_params->bsize, ms_params->mib_size_log2);
@@ -1506,8 +1623,8 @@ static AOM_FORCE_INLINE void calc_int_sad_list(
 #if CONFIG_IBC_SR_EXT
           if (ms_params->is_intra_mode &&
               ms_params->cm->features.allow_local_intrabc) {
-            MV sub_mv = { (int16_t)GET_MV_SUBPEL(this_mv.row),
-                          (int16_t)GET_MV_SUBPEL(this_mv.col) };
+            MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(this_mv.row),
+                          (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(this_mv.col) };
             int flag = av1_is_dv_valid(
                 sub_mv, ms_params->cm, ms_params->xd, ms_params->mi_row,
                 ms_params->mi_col, ms_params->bsize, ms_params->mib_size_log2);
@@ -1652,7 +1769,10 @@ static int pattern_search(FULLPEL_MV start_mv,
                           int search_step, const int do_init_search,
                           int *cost_list, FULLPEL_MV *best_mv) {
   static const int search_steps[MAX_MVSEARCH_STEPS] = {
-    10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+#if CONFIG_MV_RANGE_EXTENSION
+    12, 11,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+    10, 9,  8, 7, 6, 5, 4, 3, 2, 1, 0,
   };
   int i, s, t;
 
@@ -1668,6 +1788,11 @@ static int pattern_search(FULLPEL_MV start_mv,
   int k = -1;
   const MV_COST_PARAMS *mv_cost_params = &ms_params->mv_cost_params;
   search_step = AOMMIN(search_step, MAX_MVSEARCH_STEPS - 1);
+#if CONFIG_MV_RANGE_EXTENSION
+  if (!search_sites->enable_high_motion) {
+    search_step = AOMMAX(search_step, 2);
+  }
+#endif  // CONFIG_MV_RANGE_EXTENSION
   assert(search_step >= 0);
   assert(ms_params->mv_cost_params.pb_mv_precision >= MV_PRECISION_ONE_PEL);
 
@@ -2044,8 +2169,8 @@ static int diamond_search_sad(FULLPEL_MV start_mv,
 
 #if CONFIG_IBC_SR_EXT
   if (ms_params->is_intra_mode && ms_params->cm->features.allow_local_intrabc) {
-    MV sub_mv = { (int16_t)GET_MV_SUBPEL(start_mv.row),
-                  (int16_t)GET_MV_SUBPEL(start_mv.col) };
+    MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(start_mv.row),
+                  (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(start_mv.col) };
     if (av1_is_dv_valid(sub_mv, ms_params->cm, ms_params->xd, ms_params->mi_row,
                         ms_params->mi_col, ms_params->bsize,
                         ms_params->mib_size_log2)) {
@@ -2090,9 +2215,10 @@ static int diamond_search_sad(FULLPEL_MV start_mv,
     if (ms_params->is_intra_mode &&
         ms_params->cm->features.allow_local_intrabc) {
       for (j = 0; j < 4; j++) {
-        MV sub_mv = { (int16_t)GET_MV_SUBPEL(best_mv->row + site[1 + j].mv.row),
-                      (int16_t)GET_MV_SUBPEL(best_mv->col +
-                                             site[1 + j].mv.col) };
+        MV sub_mv = {
+          (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(best_mv->row + site[1 + j].mv.row),
+          (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(best_mv->col + site[1 + j].mv.col)
+        };
         all_in &= av1_is_dv_valid(sub_mv, ms_params->cm, ms_params->xd,
                                   ms_params->mi_row, ms_params->mi_col,
                                   ms_params->bsize, ms_params->mib_size_log2);
@@ -2112,10 +2238,10 @@ static int diamond_search_sad(FULLPEL_MV start_mv,
         for (j = 0; j < 4; j++) {
           if (ms_params->is_intra_mode &&
               ms_params->cm->features.allow_local_intrabc) {
-            MV sub_mv = {
-              (int16_t)GET_MV_SUBPEL(best_mv->row + site[idx + j].mv.row),
-              (int16_t)GET_MV_SUBPEL(best_mv->col + site[idx + j].mv.col)
-            };
+            MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(
+                              best_mv->row + site[idx + j].mv.row),
+                          (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(
+                              best_mv->col + site[idx + j].mv.col) };
             valid &= av1_is_dv_valid(
                 sub_mv, ms_params->cm, ms_params->xd, ms_params->mi_row,
                 ms_params->mi_col, ms_params->bsize, ms_params->mib_size_log2);
@@ -2159,8 +2285,8 @@ static int diamond_search_sad(FULLPEL_MV start_mv,
 #if CONFIG_IBC_SR_EXT
           if (ms_params->is_intra_mode &&
               ms_params->cm->features.allow_local_intrabc) {
-            MV sub_mv = { (int16_t)GET_MV_SUBPEL(this_mv.row),
-                          (int16_t)GET_MV_SUBPEL(this_mv.col) };
+            MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(this_mv.row),
+                          (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(this_mv.col) };
             int valid = av1_is_dv_valid(
                 sub_mv, ms_params->cm, ms_params->xd, ms_params->mi_row,
                 ms_params->mi_col, ms_params->bsize, ms_params->mib_size_log2);
@@ -2294,8 +2420,8 @@ static int exhaustive_mesh_search(FULLPEL_MV start_mv,
   *best_mv = start_mv;
 #if CONFIG_IBC_SR_EXT
   if (ms_params->is_intra_mode && ms_params->cm->features.allow_local_intrabc) {
-    const MV sub_mv = { (int16_t)GET_MV_SUBPEL(start_mv.row),
-                        (int16_t)GET_MV_SUBPEL(start_mv.col) };
+    const MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(start_mv.row),
+                        (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(start_mv.col) };
     if (av1_is_dv_valid(sub_mv, ms_params->cm, ms_params->xd, ms_params->mi_row,
                         ms_params->mi_col, ms_params->bsize,
                         ms_params->mib_size_log2)) {
@@ -2389,8 +2515,8 @@ static int exhaustive_mesh_search(FULLPEL_MV start_mv,
         // stores the best valid mv
         if (best_valid_mv.row != best_mv->row ||
             best_valid_mv.col != best_mv->col) {
-          const MV sub_mv = { (int16_t)GET_MV_SUBPEL(best_mv->row),
-                              (int16_t)GET_MV_SUBPEL(best_mv->col) };
+          const MV sub_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(best_mv->row),
+                              (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(best_mv->col) };
           if (av1_is_dv_valid(sub_mv, ms_params->cm, ms_params->xd,
                               ms_params->mi_row, ms_params->mi_col,
                               ms_params->bsize, ms_params->mib_size_log2)) {

@@ -2644,7 +2644,6 @@ static void read_truncated_unary_mvd(aom_reader *r, nmv_context *ctx,
 #if CONFIG_MVD_CDF_REDUCTION
         bit_idx ? aom_read_literal(r, 1, ACCT_INFO("greater_flags")) :
 #endif  // CONFIG_MVD_CDF_REDUCTION
-
                 aom_read_symbol(
                     r, cdf, 2,
                     ACCT_INFO("greater_flags", "col_mv_greater_flags_cdf"));
@@ -2762,25 +2761,63 @@ static INLINE void read_mv(aom_reader *r, MV *mv_diff, int skip_sign_coding,
   shell_set = aom_read_symbol(r, ctx->joint_shell_set_cdf, 2,
                               ACCT_INFO("shell_set", "joint_shell_set_cdf"));
   if (shell_set) {
+#if CONFIG_MV_RANGE_EXTENSION
+    if (precision == MV_PRECISION_ONE_EIGHTH_PEL) {
+      shell_class =
+          num_mv_class_0 +
+          aom_read_symbol(
+              r, ctx->joint_shell_class_cdf_1[precision], num_mv_class_1 - 1,
+              ACCT_INFO("shell_class_1", "joint_shell_class_cdf_1"));
+      if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
+        shell_class += aom_read_symbol(
+            r, ctx->joint_shell_last_two_classes_cdf, 2,
+            ACCT_INFO("shell_class", "joint_shell_last_two_classes_cdf"));
+      }
+    } else {
+      shell_class =
+          num_mv_class_0 +
+          aom_read_symbol(
+              r, ctx->joint_shell_class_cdf_1[precision], num_mv_class_1,
+              ACCT_INFO("shell_class_1", "joint_shell_class_cdf_1"));
+    }
+#else
     shell_class =
         num_mv_class_0 +
         aom_read_symbol(r, ctx->joint_shell_class_cdf_1[precision],
                         num_mv_class_1,
                         ACCT_INFO("shell_class_1", "joint_shell_class_cdf_1"));
+#endif  // CONFIG_MV_RANGE_EXTENSION
   } else {
     shell_class = aom_read_symbol(
         r, ctx->joint_shell_class_cdf_0[precision], num_mv_class_0,
         ACCT_INFO("shell_class_0", "joint_shell_class_cdf_0"));
   }
 #else
+#if CONFIG_MV_RANGE_EXTENSION
+  int shell_class = 0;
+  if (precision == MV_PRECISION_ONE_EIGHTH_PEL) {
+    shell_class = aom_read_symbol(
+        r, ctx->joint_shell_class_cdf[precision], num_mv_class - 1,
+        ACCT_INFO("shell_class", "joint_shell_class_cdf"));
+    if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
+      shell_class += aom_read_symbol(
+          r, ctx->joint_shell_last_two_classes_cdf, 2,
+          ACCT_INFO("shell_class", "joint_shell_last_two_classes_cdf"));
+    }
+  } else {
+    shell_class =
+        aom_read_symbol(r, ctx->joint_shell_class_cdf[precision], num_mv_class,
+                        ACCT_INFO("shell_class", "joint_shell_class_cdf"));
+  }
+#else
   const int shell_class =
       aom_read_symbol(r, ctx->joint_shell_class_cdf[precision], num_mv_class,
                       ACCT_INFO("shell_class", "joint_shell_class_cdf"));
+#endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   assert(shell_class < num_mv_class);
 
   // Decode shell class offset
-
   int shell_cls_offset = 0;
 
   if (shell_class < 2) {

@@ -226,7 +226,14 @@ static uint32_t motion_estimation(AV1_COMP *cpi, MACROBLOCK *x,
   xd->mi[0]->use_amvd = 0;
 
   step_param = tpl_sf->reduce_first_step_size;
-  step_param = AOMMIN(step_param, MAX_MVSEARCH_STEPS - 2);
+#if CONFIG_MV_RANGE_EXTENSION
+  const int max_search_steps = cpi->oxcf.tool_cfg.enable_high_motion
+                                   ? MAX_MVSEARCH_STEPS - 2
+                                   : MAX_MVSEARCH_STEPS - 4;
+#else
+  const int max_search_steps = MAX_MVSEARCH_STEPS - 2;
+#endif  // CONFIG_MV_RANGE_EXTENSION
+  step_param = AOMMIN(step_param, max_search_steps);
 
   const search_site_config *search_site_cfg =
       cpi->mv_search_params.search_site_cfg[SS_CFG_SRC];

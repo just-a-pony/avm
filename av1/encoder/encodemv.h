@@ -117,7 +117,7 @@ static INLINE int get_shell_class_with_precision(const int shell_index,
 static INLINE MV_CLASS_TYPE av1_get_mv_class(int z, int *offset) {
   assert(z >= 0);
   const MV_CLASS_TYPE c = (MV_CLASS_TYPE)av1_log_in_base_2(z >> 3);
-  assert(c <= MV_CLASS_10);
+  assert(c < MV_CLASSES);
   if (offset) *offset = z - av1_mv_class_base(c);
   return c;
 }

@@ -23,11 +23,16 @@
 extern "C" {
 #endif
 
-#define INVALID_MV 0x80008000
 #define GET_MV_RAWPEL(x) (((x) + 3 + ((x) >= 0)) >> 3)
 #define GET_MV_SUBPEL(x) ((x) * 8)
 
+#if CONFIG_MV_RANGE_EXTENSION
+#define INVALID_MV 0x2000020000
+#define MV_IN_USE_BITS 16
+#else
+#define INVALID_MV 0x80008000
 #define MV_IN_USE_BITS 14
+#endif  // CONFIG_MV_RANGE_EXTENSION
 #define MV_UPP (1 << MV_IN_USE_BITS)
 #define MV_LOW (-(1 << MV_IN_USE_BITS))
 
@@ -37,23 +42,35 @@ extern "C" {
   } while (0);
 #define CHECK_MV_EQUAL(x, y) (((x).row == (y).row) && ((x).col == (y).col))
 
+#if CONFIG_MV_RANGE_EXTENSION
+// Data type of MV component
+#define MV_COMP_DATA_TYPE int32_t
+// Data type of MV
+#define MV_DATA_TYPE uint64_t
+#else
+// Data type of MV component
+#define MV_COMP_DATA_TYPE int16_t
+// Data type of MV
+#define MV_DATA_TYPE uint32_t
+#endif  // CONFIG_MV_RANGE_EXTENSION
+
 // The motion vector in units of full pixel
 typedef struct fullpel_mv {
-  int16_t row;
-  int16_t col;
+  MV_COMP_DATA_TYPE row;
+  MV_COMP_DATA_TYPE col;
 } FULLPEL_MV;
 
 // The motion vector in units of 1/8-pel
 typedef struct mv {
-  int16_t row;
-  int16_t col;
+  MV_COMP_DATA_TYPE row;
+  MV_COMP_DATA_TYPE col;
 } MV;
 
 static const MV kZeroMv = { 0, 0 };
 static const FULLPEL_MV kZeroFullMv = { 0, 0 };
 
 typedef union int_mv {
-  uint32_t as_int;
+  MV_DATA_TYPE as_int;
   MV as_mv;
   FULLPEL_MV as_fullmv;
 } int_mv; /* facilitates faster equality tests and copies */
@@ -116,7 +133,11 @@ static const int av1_intraBc_precision_to_index[NUM_MV_PRECISIONS] = {
   ((NUM_MV_PRECISIONS) - (MV_PRECISION_HALF_PEL))
 
 #if CONFIG_VQ_MVD_CODING
+#if CONFIG_MV_RANGE_EXTENSION
+#define MAX_NUM_SHELL_CLASS 17
+#else
 #define MAX_NUM_SHELL_CLASS 15
+#endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_VQ_MVD_CODING
 // The mv limit for fullpel mvs
 typedef struct {
@@ -135,8 +156,9 @@ typedef struct {
 } SubpelMvLimits;
 
 static AOM_INLINE FULLPEL_MV get_fullmv_from_mv(const MV *subpel_mv) {
-  const FULLPEL_MV full_mv = { (int16_t)GET_MV_RAWPEL(subpel_mv->row),
-                               (int16_t)GET_MV_RAWPEL(subpel_mv->col) };
+  const FULLPEL_MV full_mv = { (MV_COMP_DATA_TYPE)GET_MV_RAWPEL(subpel_mv->row),
+                               (MV_COMP_DATA_TYPE)GET_MV_RAWPEL(
+                                   subpel_mv->col) };
   return full_mv;
 }
 
@@ -164,8 +186,8 @@ static AOM_INLINE void get_phase_from_mv(MV ref_mv, MV *sub_mv_offset,
 #endif  // CONFIG_C071_SUBBLK_WARPMV
 
 static AOM_INLINE MV get_mv_from_fullmv(const FULLPEL_MV *full_mv) {
-  const MV subpel_mv = { (int16_t)GET_MV_SUBPEL(full_mv->row),
-                         (int16_t)GET_MV_SUBPEL(full_mv->col) };
+  const MV subpel_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(full_mv->row),
+                         (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(full_mv->col) };
   return subpel_mv;
 }
 
@@ -677,11 +699,11 @@ typedef struct warp_candidate {
 } WARP_CANDIDATE;
 
 static INLINE int is_zero_mv(const MV *mv) {
-  return *((const uint32_t *)mv) == 0;
+  return *((const MV_DATA_TYPE *)mv) == 0;
 }
 
 static INLINE int is_equal_mv(const MV *a, const MV *b) {
-  return *((const uint32_t *)a) == *((const uint32_t *)b);
+  return *((const MV_DATA_TYPE *)a) == *((const MV_DATA_TYPE *)b);
 }
 
 static INLINE void clamp_mv(MV *mv, const SubpelMvLimits *mv_limits) {
@@ -703,6 +725,13 @@ static INLINE MV convert_mv_to_1_16th_pel(const MV *in_mv) {
   return mv;
 }
 #endif  // CONFIG_IMPROVE_REFINED_MV
+
+#if CONFIG_MV_RANGE_EXTENSION
+static INLINE int get_map_shell_class(const int shell_class) {
+  return shell_class >= MAX_NUM_SHELL_CLASS - 2 ? MAX_NUM_SHELL_CLASS - 2
+                                                : shell_class;
+}
+#endif  // CONFIG_MV_RANGE_EXTENSION
 
 #ifdef __cplusplus
 }  // extern "C"

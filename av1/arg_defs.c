@@ -433,7 +433,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                             "(0: disable MV traj tracking, "
                             " 1: enable MV traj tracking (default))"),
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
-
+#if CONFIG_MV_RANGE_EXTENSION
+  .enable_high_motion = ARG_DEF(NULL, "enable-high-motion", 1,
+                                "Enable a large motion search window"
+                                "(0: false (default), 1: true"),
+#endif  // CONFIG_MV_RANGE_EXTENSION
   .enable_bawp = ARG_DEF(NULL, "enable-bawp", 1,
                          "Enable block adaptive weighted prediction (BAWP)"
                          "(0: false, 1: true (default))"),

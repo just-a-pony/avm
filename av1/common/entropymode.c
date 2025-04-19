@@ -7475,15 +7475,39 @@ static void cumulative_avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr,
     CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_class_cdf_0[prec],
                            nmv_tr->joint_shell_class_cdf_0[prec],
                            num_mv_class_0);
-    CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_class_cdf_1[prec],
-                           nmv_tr->joint_shell_class_cdf_1[prec],
-                           num_mv_class_1);
+#if CONFIG_MV_RANGE_EXTENSION
+    if (prec == MV_PRECISION_ONE_EIGHTH_PEL) {
+      CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_class_cdf_1[prec],
+                             nmv_tr->joint_shell_class_cdf_1[prec],
+                             num_mv_class_1 - 1);
+      CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_last_two_classes_cdf,
+                             nmv_tr->joint_shell_last_two_classes_cdf, 2);
+    } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_class_cdf_1[prec],
+                             nmv_tr->joint_shell_class_cdf_1[prec],
+                             num_mv_class_1);
+#if CONFIG_MV_RANGE_EXTENSION
+    }
+#endif  // CONFIG_MV_RANGE_EXTENSION
   }
 #else
   for (int prec = 0; prec < NUM_MV_PRECISIONS; prec++) {
     int num_mv_class = get_default_num_shell_class(prec);
-    CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_class_cdf[prec],
-                           nmv_tr->joint_shell_class_cdf[prec], num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+    if (prec == MV_PRECISION_ONE_EIGHTH_PEL) {
+      CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_class_cdf[prec],
+                             nmv_tr->joint_shell_class_cdf[prec],
+                             num_mv_class - 1);
+      CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_last_two_classes_cdf,
+                             nmv_tr->joint_shell_last_two_classes_cdf, 2);
+    } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      CUMULATIVE_AVERAGE_CDF(nmv_left->joint_shell_class_cdf[prec],
+                             nmv_tr->joint_shell_class_cdf[prec], num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+    }
+#endif  // CONFIG_MV_RANGE_EXTENSION
   }
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   CUMULATIVE_AVERAGE_CDF(nmv_left->shell_offset_low_class_cdf,
@@ -7973,12 +7997,30 @@ static void shift_nmv(nmv_context *nmv_ptr, int total_tiles_log2) {
     int num_mv_class_0, num_mv_class_1;
     split_num_shell_class(num_mv_class, &num_mv_class_0, &num_mv_class_1);
     SHIFT_CDF(nmv_ptr->joint_shell_class_cdf_0[prec], num_mv_class_0);
-    SHIFT_CDF(nmv_ptr->joint_shell_class_cdf_1[prec], num_mv_class_1);
+#if CONFIG_MV_RANGE_EXTENSION
+    if (prec == MV_PRECISION_ONE_EIGHTH_PEL) {
+      SHIFT_CDF(nmv_ptr->joint_shell_class_cdf_1[prec], num_mv_class_1 - 1);
+      SHIFT_CDF(nmv_ptr->joint_shell_last_two_classes_cdf, 2);
+    } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      SHIFT_CDF(nmv_ptr->joint_shell_class_cdf_1[prec], num_mv_class_1);
+#if CONFIG_MV_RANGE_EXTENSION
+    }
+#endif  // CONFIG_MV_RANGE_EXTENSION
   }
 #else
   for (int prec = 0; prec < NUM_MV_PRECISIONS; prec++) {
     int num_mv_class = get_default_num_shell_class(prec);
-    SHIFT_CDF(nmv_ptr->joint_shell_class_cdf[prec], num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+    if (prec == MV_PRECISION_ONE_EIGHTH_PEL) {
+      SHIFT_CDF(nmv_ptr->joint_shell_class_cdf[prec], num_mv_class - 1);
+      SHIFT_CDF(nmv_ptr->joint_shell_last_two_classes_cdf, 2);
+    } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      SHIFT_CDF(nmv_ptr->joint_shell_class_cdf[prec], num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+    }
+#endif  // CONFIG_MV_RANGE_EXTENSION
   }
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   SHIFT_CDF(nmv_ptr->shell_offset_low_class_cdf, 2);
@@ -8328,14 +8370,36 @@ static void avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr, int wt_left,
     split_num_shell_class(num_mv_class, &num_mv_class_0, &num_mv_class_1);
     AVERAGE_CDF(nmv_left->joint_shell_class_cdf_0[prec],
                 nmv_tr->joint_shell_class_cdf_0[prec], num_mv_class_0);
-    AVERAGE_CDF(nmv_left->joint_shell_class_cdf_1[prec],
-                nmv_tr->joint_shell_class_cdf_1[prec], num_mv_class_1);
+#if CONFIG_MV_RANGE_EXTENSION
+    if (prec == MV_PRECISION_ONE_EIGHTH_PEL) {
+      AVERAGE_CDF(nmv_left->joint_shell_class_cdf_1[prec],
+                  nmv_tr->joint_shell_class_cdf_1[prec], num_mv_class_1 - 1);
+      AVERAGE_CDF(nmv_left->joint_shell_last_two_classes_cdf,
+                  nmv_tr->joint_shell_last_two_classes_cdf, 2);
+    } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      AVERAGE_CDF(nmv_left->joint_shell_class_cdf_1[prec],
+                  nmv_tr->joint_shell_class_cdf_1[prec], num_mv_class_1);
+#if CONFIG_MV_RANGE_EXTENSION
+    }
+#endif  // CONFIG_MV_RANGE_EXTENSION
   }
 #else
   for (int prec = 0; prec < NUM_MV_PRECISIONS; prec++) {
     int num_mv_class = get_default_num_shell_class(prec);
-    AVERAGE_CDF(nmv_left->joint_shell_class_cdf[prec],
-                nmv_tr->joint_shell_class_cdf[prec], num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+    if (prec == MV_PRECISION_ONE_EIGHTH_PEL) {
+      AVERAGE_CDF(nmv_left->joint_shell_class_cdf[prec],
+                  nmv_tr->joint_shell_class_cdf[prec], num_mv_class - 1);
+      AVERAGE_CDF(nmv_left->joint_shell_last_two_classes_cdf,
+                  nmv_tr->joint_shell_last_two_classes_cdf, 2);
+    } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      AVERAGE_CDF(nmv_left->joint_shell_class_cdf[prec],
+                  nmv_tr->joint_shell_class_cdf[prec], num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+    }
+#endif  // CONFIG_MV_RANGE_EXTENSION
   }
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   AVERAGE_CDF(nmv_left->shell_offset_low_class_cdf,

@@ -131,8 +131,11 @@ struct av1_extracfg {
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
   int enable_mv_traj;  // enable MV trajectory tracking
 #endif                 // CONFIG_TMVP_SIMPLIFICATIONS_F085
-  int enable_bawp;     // enable block adaptive weighted prediction
-  int enable_cwp;      // enable compound weighted prediction
+#if CONFIG_MV_RANGE_EXTENSION
+  int enable_high_motion;  // Enable a large motion search window
+#endif                     // CONFIG_MV_RANGE_EXTENSION
+  int enable_bawp;         // enable block adaptive weighted prediction
+  int enable_cwp;          // enable compound weighted prediction
 #if CONFIG_D071_IMP_MSK_BLD
   int enable_imp_msk_bld;
 #endif  // CONFIG_D071_IMP_MSK_BLD
@@ -489,6 +492,9 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
   1,    // enable mv trajectory tracking
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  0,    // enable a large motion search window
+#endif  // CONFIG_MV_RANGE_EXTENSION
   1,    // enable block adaptive weighted prediction (BAWP)
   1,    // enable compound weighted prediction (CWP)
 #if CONFIG_D071_IMP_MSK_BLD
@@ -1022,6 +1028,9 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
   cfg->enable_mv_traj = extra_cfg->enable_mv_traj;
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  cfg->enable_high_motion = extra_cfg->enable_high_motion;
+#endif  // CONFIG_MV_RANGE_EXTENSION
   cfg->enable_bawp = extra_cfg->enable_bawp;
   cfg->enable_cwp = extra_cfg->enable_cwp;
 #if CONFIG_D071_IMP_MSK_BLD
@@ -1165,6 +1174,9 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
   extra_cfg->enable_mv_traj = cfg->enable_mv_traj;
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  extra_cfg->enable_high_motion = cfg->enable_high_motion;
+#endif  // CONFIG_MV_RANGE_EXTENSION
   extra_cfg->enable_bawp = cfg->enable_bawp;
   extra_cfg->enable_cwp = cfg->enable_cwp;
 #if CONFIG_D071_IMP_MSK_BLD
@@ -1583,6 +1595,10 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     tool_cfg->enable_mv_traj = 0;
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
   }
+
+#if CONFIG_MV_RANGE_EXTENSION
+  tool_cfg->enable_high_motion = extra_cfg->enable_high_motion;
+#endif  // CONFIG_MV_RANGE_EXTENSION
 
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
   if (extra_cfg->enable_order_hint) {
@@ -4195,6 +4211,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.enable_mv_traj = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_high_motion,
+                              argv, err_string)) {
+    extra_cfg.enable_high_motion = arg_parse_int_helper(&arg, err_string);
+#endif  // CONFIG_MV_RANGE_EXTENSION
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_bawp, argv,
                               err_string)) {
     extra_cfg.enable_bawp = arg_parse_int_helper(&arg, err_string);
@@ -4782,6 +4803,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
         1,  // MV traj
 #endif      // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+        0,  // enable_high_motion
+#endif      // CONFIG_MV_RANGE_EXTENSION
         1,   1,
 #if CONFIG_D071_IMP_MSK_BLD
         1,

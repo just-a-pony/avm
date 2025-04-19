@@ -521,11 +521,11 @@ static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
           if (weights) {
             const int scale_factor = weight_div_mult[weights];
             tpl_mfs[blk_pos_in_sb].as_mv.row =
-                (int16_t)ROUND_POWER_OF_TWO_SIGNED(sum_mv_row * scale_factor,
-                                                   DIV_SHIFT_BITS);
+                (MV_COMP_DATA_TYPE)ROUND_POWER_OF_TWO_SIGNED(
+                    sum_mv_row * scale_factor, DIV_SHIFT_BITS);
             tpl_mfs[blk_pos_in_sb].as_mv.col =
-                (int16_t)ROUND_POWER_OF_TWO_SIGNED(sum_mv_col * scale_factor,
-                                                   DIV_SHIFT_BITS);
+                (MV_COMP_DATA_TYPE)ROUND_POWER_OF_TWO_SIGNED(
+                    sum_mv_col * scale_factor, DIV_SHIFT_BITS);
           } else {
             tpl_mfs[blk_pos_in_sb].as_int = INVALID_MV;
           }
@@ -558,8 +558,8 @@ static INLINE MV tip_clamp_tip_mv_to_umv_border_sb(
   const int spel_right = spel_left - SUBPEL_SHIFTS;
   const int spel_top = (AOM_INTERP_EXTEND + bh) << SUBPEL_BITS;
   const int spel_bottom = spel_top - SUBPEL_SHIFTS;
-  MV clamped_mv = { (int16_t)(src_mv->row * (1 << (1 - ss_y))),
-                    (int16_t)(src_mv->col * (1 << (1 - ss_x))) };
+  MV clamped_mv = { (MV_COMP_DATA_TYPE)(src_mv->row * (1 << (1 - ss_y))),
+                    (MV_COMP_DATA_TYPE)(src_mv->col * (1 << (1 - ss_x))) };
   assert(ss_x <= 1);
   assert(ss_y <= 1);
   const SubpelMvLimits mv_limits = {
@@ -1544,14 +1544,18 @@ static void tip_setup_tip_frame_plane(
                               tip_ref->ref_frames_offset_sf[0]);
         tip_get_mv_projection(&mv[1], tpl_mvs->mfmv0.as_mv,
                               tip_ref->ref_frames_offset_sf[1]);
-        mv[0].row = (int16_t)clamp(mv[0].row + cm->tip_global_motion.as_mv.row,
-                                   MV_LOW + 1, MV_UPP - 1);
-        mv[0].col = (int16_t)clamp(mv[0].col + cm->tip_global_motion.as_mv.col,
-                                   MV_LOW + 1, MV_UPP - 1);
-        mv[1].row = (int16_t)clamp(mv[1].row + cm->tip_global_motion.as_mv.row,
-                                   MV_LOW + 1, MV_UPP - 1);
-        mv[1].col = (int16_t)clamp(mv[1].col + cm->tip_global_motion.as_mv.col,
-                                   MV_LOW + 1, MV_UPP - 1);
+        mv[0].row = (MV_COMP_DATA_TYPE)clamp(
+            mv[0].row + cm->tip_global_motion.as_mv.row, MV_LOW + 1,
+            MV_UPP - 1);
+        mv[0].col = (MV_COMP_DATA_TYPE)clamp(
+            mv[0].col + cm->tip_global_motion.as_mv.col, MV_LOW + 1,
+            MV_UPP - 1);
+        mv[1].row = (MV_COMP_DATA_TYPE)clamp(
+            mv[1].row + cm->tip_global_motion.as_mv.row, MV_LOW + 1,
+            MV_UPP - 1);
+        mv[1].col = (MV_COMP_DATA_TYPE)clamp(
+            mv[1].col + cm->tip_global_motion.as_mv.col, MV_LOW + 1,
+            MV_UPP - 1);
       } else {
         mv[0] = cm->tip_global_motion.as_mv;
         mv[1] = cm->tip_global_motion.as_mv;

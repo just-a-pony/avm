@@ -25,6 +25,17 @@ extern "C" {
 
 // The maximum number of steps in a step search given the largest
 // allowed initial step
+#if CONFIG_MV_RANGE_EXTENSION
+#define MAX_MVSEARCH_STEPS 13
+// Enable the use of motion vector in range [-8191, 8191].
+#define MAX_FULL_PEL_VAL ((1 << MV_CLASSES) - 1)
+// Enable the use of motion vector in range [-2047, 2047] for low motion
+#define LOW_MOTION_MAX_FULL_PEL_VAL ((1 << (MV_CLASSES - 2)) - 1)
+// Maximum size of the first step in full pel units
+#define MAX_FIRST_STEP ((1 << MAX_MVSEARCH_STEPS) - 1)
+// Maximum size of the first step in full pel units for low motion
+#define LOW_MOTION_MAX_FIRST_STEP ((1 << (MAX_MVSEARCH_STEPS - 2)) - 1)
+#else
 #define MAX_MVSEARCH_STEPS 11
 // Max full pel mv specified in the unit of full pixel
 #if CONFIG_MV_SEARCH_RANGE
@@ -36,6 +47,7 @@ extern "C" {
 #endif  // CONFIG_MV_SEARCH_RANGE
 // Maximum size of the first step in full pel units
 #define MAX_FIRST_STEP (1 << (MAX_MVSEARCH_STEPS - 1))
+#endif  // CONFIG_MV_RANGE_EXTENSION
 // Maximum number of neighbors to scan per iteration during
 // WARP_CAUSAL refinement
 // Note: The elements of warp_search_config.neighbor_mask must be at least
@@ -61,6 +73,9 @@ typedef struct search_site_config {
   int searches_per_step[MAX_MVSEARCH_STEPS * 2];
   int radius[MAX_MVSEARCH_STEPS * 2];
   int stride;
+#if CONFIG_MV_RANGE_EXTENSION
+  int enable_high_motion;
+#endif  // CONFIG_MV_RANGE_EXTENSION
 } search_site_config;
 
 typedef struct {
@@ -244,23 +259,46 @@ void av1_make_default_fullpel_ms_params(
 #if CONFIG_IBC_BV_IMPROVEMENT
     const int is_ibc_cost,
 #endif
-
     const search_site_config search_sites[NUM_DISTINCT_SEARCH_METHODS],
     int fine_search_interval);
 
 // Sets up configs for fullpixel diamond search method.
-void av1_init_dsmotion_compensation(search_site_config *cfg, int stride);
+void av1_init_dsmotion_compensation(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                    int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                    int stride);
 // Sets up configs for firstpass motion search.
-void av1_init_motion_fpf(search_site_config *cfg, int stride);
+void av1_init_motion_fpf(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                         int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                         int stride);
 // Sets up configs for all other types of motion search method.
-void av1_init_motion_compensation_nstep(search_site_config *cfg, int stride);
+void av1_init_motion_compensation_nstep(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                        int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                        int stride);
 // Sets up configs for BIGDIA / FAST_DIAMOND / FAST_BIGDIA
 // motion search method.
-void av1_init_motion_compensation_bigdia(search_site_config *cfg, int stride);
+void av1_init_motion_compensation_bigdia(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                         int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                         int stride);
 // Sets up configs for HEX or FAST_HEX motion search method.
-void av1_init_motion_compensation_hex(search_site_config *cfg, int stride);
+void av1_init_motion_compensation_hex(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                      int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                      int stride);
 // Sets up configs for SQUARE motion search method.
-void av1_init_motion_compensation_square(search_site_config *cfg, int stride);
+void av1_init_motion_compensation_square(search_site_config *cfg,
+#if CONFIG_MV_RANGE_EXTENSION
+                                         int enable_high_motion,
+#endif  // CONFIG_MV_RANGE_EXTENSION
+                                         int stride);
 
 // Mv beyond the range do not produce new/different prediction block.
 static INLINE void av1_set_mv_search_method(
@@ -355,7 +393,12 @@ int get_opfl_mv_iterations(const struct AV1_COMP *cpi,
 void av1_set_tip_mv_search_range(FullMvLimits *mv_limits);
 #endif  // !CONFIG_TIP_MV_SIMPLIFICATION
 
-int av1_init_search_range(int size);
+int av1_init_search_range(int size
+#if CONFIG_MV_RANGE_EXTENSION
+                          ,
+                          int enable_high_motion
+#endif  // CONFIG_MV_RANGE_EXTENSION
+);
 
 int av1_refining_search_8p_c(const FULLPEL_MOTION_SEARCH_PARAMS *ms_params,
                              const FULLPEL_MV start_mv, FULLPEL_MV *best_mv);

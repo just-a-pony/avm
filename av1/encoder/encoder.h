@@ -905,6 +905,10 @@ typedef struct {
   // enable MV trajectory tracking
   int enable_mv_traj;
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
+#if CONFIG_MV_RANGE_EXTENSION
+  // enable a large motion search window
+  int enable_high_motion;
+#endif  // CONFIG_MV_RANGE_EXTENSION
   // enable block adaptive weighted prediction
   int enable_bawp;
   // enable compound weighted prediction
@@ -1307,16 +1311,24 @@ typedef struct {
   unsigned int joint_shell_class_1_cnts[NUM_MV_PRECISIONS]
                                        [CDF_SIZE(SECOND_SHELL_CLASS)];
 #else
+#if CONFIG_MV_RANGE_EXTENSION
+  unsigned int joint_shell_class_cnts[NUM_MV_PRECISIONS][CDF_SIZE(
+      MAX_NUM_SHELL_CLASS - 1)];  // placeholder
+#else
   unsigned int joint_shell_class_cnts[NUM_MV_PRECISIONS][CDF_SIZE(
       MAX_NUM_SHELL_CLASS)];  // placeholder
+#endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
+#if CONFIG_MV_RANGE_EXTENSION
+  unsigned int joint_shell_last_two_classes_cnts[CDF_SIZE(2)];  // placeholder
+#endif  // CONFIG_MV_RANGE_EXTENSION
   unsigned int shell_offset_low_class_cnts[2][CDF_SIZE(2)];  // placeholder
   unsigned int shell_offset_class2_cnts[3][CDF_SIZE(2)];     // // placeholder
   unsigned int shell_offset_other_class_cnts[NUM_CTX_CLASS_OFFSETS]
                                             [SHELL_INT_OFFSET_BIT]
                                             [CDF_SIZE(2)];  // placeholder
-  unsigned int col_mv_greter_flags_cnts[NUM_CTX_COL_MV_GTX]
-                                       [CDF_SIZE(2)];  // placeholder
+  unsigned int col_mv_greater_flags_cnts[NUM_CTX_COL_MV_GTX]
+                                        [CDF_SIZE(2)];  // placeholder
   unsigned int col_mv_index_cnts[NUM_CTX_COL_MV_INDEX]
                                 [CDF_SIZE(2)];  // placeholder
 #else

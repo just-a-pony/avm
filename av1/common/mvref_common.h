@@ -661,8 +661,8 @@ static AOM_INLINE void get_mv_projection(MV *output, MV ref, int num, int den) {
   const int mv_col = (int)ROUND_POWER_OF_TWO_SIGNED_64(scale_mv_col, 14);
   const int clamp_max = MV_UPP - 1;
   const int clamp_min = MV_LOW + 1;
-  output->row = (int16_t)clamp(mv_row, clamp_min, clamp_max);
-  output->col = (int16_t)clamp(mv_col, clamp_min, clamp_max);
+  output->row = (MV_COMP_DATA_TYPE)clamp(mv_row, clamp_min, clamp_max);
+  output->col = (MV_COMP_DATA_TYPE)clamp(mv_col, clamp_min, clamp_max);
 }
 
 void av1_setup_frame_buf_refs(AV1_COMMON *cm);
@@ -1436,8 +1436,8 @@ static AOM_INLINE void tip_get_mv_projection(MV *output, MV ref,
   const int mv_col = (int)ROUND_POWER_OF_TWO_SIGNED_64(scale_mv_col, 14);
   const int clamp_max = MV_UPP - 1;
   const int clamp_min = MV_LOW + 1;
-  output->row = (int16_t)clamp(mv_row, clamp_min, clamp_max);
-  output->col = (int16_t)clamp(mv_col, clamp_min, clamp_max);
+  output->row = (MV_COMP_DATA_TYPE)clamp(mv_row, clamp_min, clamp_max);
+  output->col = (MV_COMP_DATA_TYPE)clamp(mv_col, clamp_min, clamp_max);
 }
 
 // Compute TMVP unit offset related to block mv
@@ -1505,14 +1505,14 @@ static AOM_INLINE void get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
     tip_mv[0].as_int = 0;
     tip_mv[1].as_int = 0;
   }
-  tip_mv[0].as_mv.row = (int16_t)clamp(tip_mv[0].as_mv.row + block_mv->row,
-                                       MV_LOW + 1, MV_UPP - 1);
-  tip_mv[0].as_mv.col = (int16_t)clamp(tip_mv[0].as_mv.col + block_mv->col,
-                                       MV_LOW + 1, MV_UPP - 1);
-  tip_mv[1].as_mv.row = (int16_t)clamp(tip_mv[1].as_mv.row + block_mv->row,
-                                       MV_LOW + 1, MV_UPP - 1);
-  tip_mv[1].as_mv.col = (int16_t)clamp(tip_mv[1].as_mv.col + block_mv->col,
-                                       MV_LOW + 1, MV_UPP - 1);
+  tip_mv[0].as_mv.row = (MV_COMP_DATA_TYPE)clamp(
+      tip_mv[0].as_mv.row + block_mv->row, MV_LOW + 1, MV_UPP - 1);
+  tip_mv[0].as_mv.col = (MV_COMP_DATA_TYPE)clamp(
+      tip_mv[0].as_mv.col + block_mv->col, MV_LOW + 1, MV_UPP - 1);
+  tip_mv[1].as_mv.row = (MV_COMP_DATA_TYPE)clamp(
+      tip_mv[1].as_mv.row + block_mv->row, MV_LOW + 1, MV_UPP - 1);
+  tip_mv[1].as_mv.col = (MV_COMP_DATA_TYPE)clamp(
+      tip_mv[1].as_mv.col + block_mv->col, MV_LOW + 1, MV_UPP - 1);
 }
 
 #ifdef __cplusplus

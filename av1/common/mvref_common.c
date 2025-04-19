@@ -3843,9 +3843,9 @@ static AOM_INLINE void setup_ref_mv_list(
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
       CANDIDATE_MV tmp_mv;
       tmp_mv.this_mv.as_mv.col =
-          (int16_t)GET_MV_SUBPEL(default_ref_bv_list[i][0]);
+          (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(default_ref_bv_list[i][0]);
       tmp_mv.this_mv.as_mv.row =
-          (int16_t)GET_MV_SUBPEL(default_ref_bv_list[i][1]);
+          (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(default_ref_bv_list[i][1]);
       tmp_mv.comp_mv.as_int = 0;
       add_to_ref_bv_list(tmp_mv, ref_mv_stack, ref_mv_weight, refmv_count);
     }

@@ -719,6 +719,15 @@ int main(int argc, const char **argv) {
                        "[NUM_MV_PRECISIONS][CDF_SIZE(SECOND_SHELL_CLASS)]",
                        0, &total_count, 0, mem_wanted, "Inter");
 #else
+#if CONFIG_MV_RANGE_EXTENSION
+    cts_each_dim[0] = ibc == 0 ? NUM_MV_PRECISIONS : 1;
+    cts_each_dim[1] = MAX_NUM_SHELL_CLASS - 1;
+    optimize_cdf_table(&nmvc_cnts->joint_shell_class_cnts[0][0], probsfile, 2,
+                       cts_each_dim,
+                       "static aom_cdf_prob joint_shell_class_cdf_placeholder"
+                       "[NUM_MV_PRECISIONS][CDF_SIZE(MAX_NUM_SHELL_CLASS - 1)]",
+                       0, &total_count, 0, mem_wanted, "Inter");
+#else
     cts_each_dim[0] = ibc == 0 ? NUM_MV_PRECISIONS : 1;
     cts_each_dim[1] = MAX_NUM_SHELL_CLASS;
     optimize_cdf_table(&nmvc_cnts->joint_shell_class_cnts[0][0], probsfile, 2,
@@ -726,7 +735,18 @@ int main(int argc, const char **argv) {
                        "static aom_cdf_prob joint_shell_class_cdf_placeholder"
                        "[NUM_MV_PRECISIONS][CDF_SIZE(MAX_NUM_SHELL_CLASS)]",
                        0, &total_count, 0, mem_wanted, "Inter");
+#endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
+
+#if CONFIG_MV_RANGE_EXTENSION
+    cts_each_dim[0] = 2;
+    optimize_cdf_table(
+        &nmvc_cnts->joint_shell_last_two_classes_cnts[0], probsfile, 1,
+        cts_each_dim,
+        "static aom_cdf_prob joint_shell_last_two_classes_cdf_placeholder"
+        "[CDF_SIZE(2)]",
+        0, &total_count, 0, mem_wanted, "Inter");
+#endif  // CONFIG_MV_RANGE_EXTENSION
 
     cts_each_dim[0] = 2;
     cts_each_dim[1] = 2;
@@ -758,11 +778,11 @@ int main(int argc, const char **argv) {
 #endif  // !CONFIG_CTX_MV_SHELL_OFFSET_OTHER
     cts_each_dim[0] = NUM_CTX_COL_MV_GTX;
     cts_each_dim[1] = 2;
-    optimize_cdf_table(&nmvc_cnts->col_mv_greter_flags_cnts[0][0], probsfile, 2,
-                       cts_each_dim,
-                       "static aom_cdf_prob col_mv_greter_flags_cdf_placeholder"
-                       "[NUM_CTX_COL_MV_GTX][CDF_SIZE(2)]",
-                       0, &total_count, 0, mem_wanted, "Inter");
+    optimize_cdf_table(
+        &nmvc_cnts->col_mv_greater_flags_cnts[0][0], probsfile, 2, cts_each_dim,
+        "static aom_cdf_prob col_mv_greater_flags_cdf_placeholder"
+        "[NUM_CTX_COL_MV_GTX][CDF_SIZE(2)]",
+        0, &total_count, 0, mem_wanted, "Inter");
 
     cts_each_dim[0] = NUM_CTX_COL_MV_INDEX;
     cts_each_dim[1] = 2;

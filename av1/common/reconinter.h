@@ -1339,13 +1339,13 @@ static INLINE MV clamp_mv_to_umv_border_sb(const MACROBLOCKD *xd,
   if (use_optflow_refinement) {
     // optflow refinement always returns MVs with 1/16 precision so it is not
     // necessary to shift the MV before clamping
-    clamped_mv.row = (int16_t)ROUND_POWER_OF_TWO_SIGNED(
+    clamped_mv.row = (MV_COMP_DATA_TYPE)ROUND_POWER_OF_TWO_SIGNED(
         src_mv->row * (1 << SUBPEL_BITS), MV_REFINE_PREC_BITS + ss_y);
-    clamped_mv.col = (int16_t)ROUND_POWER_OF_TWO_SIGNED(
+    clamped_mv.col = (MV_COMP_DATA_TYPE)ROUND_POWER_OF_TWO_SIGNED(
         src_mv->col * (1 << SUBPEL_BITS), MV_REFINE_PREC_BITS + ss_x);
   } else {
-    clamped_mv.row = (int16_t)(src_mv->row * (1 << (1 - ss_y)));
-    clamped_mv.col = (int16_t)(src_mv->col * (1 << (1 - ss_x)));
+    clamped_mv.row = (MV_COMP_DATA_TYPE)(src_mv->row * (1 << (1 - ss_y)));
+    clamped_mv.col = (MV_COMP_DATA_TYPE)(src_mv->col * (1 << (1 - ss_x)));
   }
   assert(ss_x <= 1);
   assert(ss_y <= 1);
