@@ -2796,7 +2796,7 @@ static void read_truncated_unary_mvd(aom_reader *r, nmv_context *ctx,
     assert(context_index < num_of_ctx);
     aom_cdf_prob *cdf = ctx->shell_offset_class2_cdf[context_index];
     int this_bit = aom_read_symbol(
-        r, cdf, 2, ACCT_INFO("greater_flags", "col_mv_greter_flags_cdf"));
+        r, cdf, 2, ACCT_INFO("greater_flags", "col_mv_greater_flags_cdf"));
 
     col = bit_idx + this_bit;
     if (!this_bit) break;
@@ -2814,8 +2814,8 @@ static void read_tu_quasi_uniform(aom_reader *r, nmv_context *ctx,
     int context_index = bit_idx < max_num_of_ctx ? bit_idx : max_num_of_ctx - 1;
     assert(context_index < max_num_of_ctx);
     int this_bit =
-        aom_read_symbol(r, ctx->col_mv_greter_flags_cdf[context_index], 2,
-                        ACCT_INFO("greater_flags", "col_mv_greter_flags_cdf"));
+        aom_read_symbol(r, ctx->col_mv_greater_flags_cdf[context_index], 2,
+                        ACCT_INFO("greater_flags", "col_mv_greater_flags_cdf"));
 
     col = bit_idx + this_bit;
     if (!this_bit) break;
@@ -2961,7 +2961,7 @@ static INLINE void read_mv(aom_reader *r, MV *mv_diff, int skip_sign_coding,
 
       int this_bit = aom_read_symbol(
           r, ctx->col_mv_index_cdf[context_index], 2,
-          ACCT_INFO("greater_flags", "col_mv_greter_flags_cdf"));
+          ACCT_INFO("greater_flags", "col_mv_greater_flags_cdf"));
       if (!this_bit)
         scaled_mv_col = this_pair_index;
       else

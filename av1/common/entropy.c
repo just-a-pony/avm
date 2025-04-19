@@ -138,7 +138,7 @@ static AOM_INLINE void reset_nmv_counter(nmv_context *nmv) {
   for (int i = 0; i < NUM_CTX_CLASS_OFFSETS; i++) {
     RESET_CDF_COUNTER(nmv->shell_offset_other_class_cdf[i], 2);
   }
-  RESET_CDF_COUNTER(nmv->col_mv_greter_flags_cdf, 2);
+  RESET_CDF_COUNTER(nmv->col_mv_greater_flags_cdf, 2);
   RESET_CDF_COUNTER(nmv->col_mv_index_cdf, 2);
 #else
   RESET_CDF_COUNTER(nmv->joints_cdf, 4);

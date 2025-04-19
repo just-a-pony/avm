@@ -409,9 +409,9 @@ static AOM_INLINE int get_vq_col_mvd_rate(nmv_context *mvctx,
     int context_index =
         bit_idx < NUM_CTX_COL_MV_GTX ? bit_idx : NUM_CTX_COL_MV_GTX - 1;
     assert(context_index < NUM_CTX_COL_MV_GTX);
-    total_rate += get_symbol_cost(mvctx->col_mv_greter_flags_cdf[context_index],
-                                  coded_col != bit_idx);
-    update_cdf(mvctx->col_mv_greter_flags_cdf[context_index],
+    total_rate += get_symbol_cost(
+        mvctx->col_mv_greater_flags_cdf[context_index], coded_col != bit_idx);
+    update_cdf(mvctx->col_mv_greater_flags_cdf[context_index],
                coded_col != bit_idx, 2);
     if (coded_col == bit_idx) break;
   }

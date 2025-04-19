@@ -1473,8 +1473,8 @@ static void avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr, int wt_left,
     AVERAGE_CDF(nmv_left->shell_offset_other_class_cdf[i],
                 nmv_tr->shell_offset_other_class_cdf[i], 2);
   }
-  AVERAGE_CDF(nmv_left->col_mv_greter_flags_cdf,
-              nmv_tr->col_mv_greter_flags_cdf, 2);
+  AVERAGE_CDF(nmv_left->col_mv_greater_flags_cdf,
+              nmv_tr->col_mv_greater_flags_cdf, 2);
   AVERAGE_CDF(nmv_left->col_mv_index_cdf, nmv_tr->col_mv_index_cdf, 2);
 
 #endif  // !CONFIG_VQ_MVD_CODING
