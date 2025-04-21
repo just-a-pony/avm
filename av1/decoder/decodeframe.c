@@ -1657,10 +1657,6 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
 #else
 static AOM_INLINE void read_tx_size_vartx(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                                           TX_SIZE tx_size, int depth,
-#if CONFIG_LPF_MASK
-                                          AV1_COMMON *cm, int mi_row,
-                                          int mi_col, int store_bitmask,
-#endif
                                           int blk_row, int blk_col,
                                           aom_reader *r) {
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
@@ -1704,32 +1700,15 @@ static AOM_INLINE void read_tx_size_vartx(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
       mbmi->tx_size = sub_txs;
       txfm_partition_update(xd->above_txfm_context + blk_col,
                             xd->left_txfm_context + blk_row, sub_txs, tx_size);
-#if CONFIG_LPF_MASK
-      if (store_bitmask) {
-        av1_store_bitmask_vartx(cm, mi_row + blk_row, mi_col + blk_col,
-                                txsize_to_bsize[tx_size], TX_4X4, mbmi);
-      }
-#endif
       return;
     }
-#if CONFIG_LPF_MASK
-    if (depth + 1 == MAX_VARTX_DEPTH && store_bitmask) {
-      av1_store_bitmask_vartx(cm, mi_row + blk_row, mi_col + blk_col,
-                              txsize_to_bsize[tx_size], sub_txs, mbmi);
-      store_bitmask = 0;
-    }
-#endif
 
     assert(bsw > 0 && bsh > 0);
     for (int row = 0; row < tx_size_high_unit[tx_size]; row += bsh) {
       for (int col = 0; col < tx_size_wide_unit[tx_size]; col += bsw) {
         int offsetr = blk_row + row;
         int offsetc = blk_col + col;
-        read_tx_size_vartx(xd, mbmi, sub_txs, depth + 1,
-#if CONFIG_LPF_MASK
-                           cm, mi_row, mi_col, store_bitmask,
-#endif
-                           offsetr, offsetc, r);
+        read_tx_size_vartx(xd, mbmi, sub_txs, depth + 1, offsetr, offsetc, r);
       }
     }
   } else {
@@ -1738,12 +1717,6 @@ static AOM_INLINE void read_tx_size_vartx(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
     mbmi->tx_size = tx_size;
     txfm_partition_update(xd->above_txfm_context + blk_col,
                           xd->left_txfm_context + blk_row, tx_size, tx_size);
-#if CONFIG_LPF_MASK
-    if (store_bitmask) {
-      av1_store_bitmask_vartx(cm, mi_row + blk_row, mi_col + blk_col,
-                              txsize_to_bsize[tx_size], tx_size, mbmi);
-    }
-#endif
   }
 }
 
@@ -1826,11 +1799,7 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
 #if CONFIG_NEW_TX_PARTITION
           read_tx_partition(xd, mbmi, max_tx_size, idy, idx, r);
 #else
-          read_tx_size_vartx(xd, mbmi, max_tx_size, 0,
-#if CONFIG_LPF_MASK
-                             cm, mi_row, mi_col, 1,
-#endif
-                             idy, idx, r);
+          read_tx_size_vartx(xd, mbmi, max_tx_size, 0, idy, idx, r);
 #endif  // CONFIG_NEW_TX_PARTITION
     } else {
       mbmi->tx_size =
@@ -1844,36 +1813,8 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
                         is_inter_block(mbmi, xd->tree_type),
                     xd);
 #endif  // !CONFIG_TX_PARTITION_CTX
-#if CONFIG_LPF_MASK
-      const int w = mi_size_wide[bsize];
-      const int h = mi_size_high[bsize];
-      if (w <= mi_size_wide[BLOCK_64X64] && h <= mi_size_high[BLOCK_64X64]) {
-        av1_store_bitmask_univariant_tx(cm, mi_row, mi_col, bsize, mbmi);
-      } else {
-        for (int row = 0; row < h; row += mi_size_high[BLOCK_64X64]) {
-          for (int col = 0; col < w; col += mi_size_wide[BLOCK_64X64]) {
-            av1_store_bitmask_univariant_tx(cm, mi_row + row, mi_col + col,
-                                            BLOCK_64X64, mbmi);
-          }
-        }
-      }
-#endif
     }
   }
-#if CONFIG_LPF_MASK
-  const int w = mi_size_wide[bsize];
-  const int h = mi_size_high[bsize];
-  if (w <= mi_size_wide[BLOCK_64X64] && h <= mi_size_high[BLOCK_64X64]) {
-    av1_store_bitmask_other_info(cm, mi_row, mi_col, bsize, mbmi, 1, 1);
-  } else {
-    for (int row = 0; row < h; row += mi_size_high[BLOCK_64X64]) {
-      for (int col = 0; col < w; col += mi_size_wide[BLOCK_64X64]) {
-        av1_store_bitmask_other_info(cm, mi_row + row, mi_col + col,
-                                     BLOCK_64X64, mbmi, row == 0, col == 0);
-      }
-    }
-  }
-#endif
 
   if (cm->delta_q_info.delta_q_present_flag) {
     for (int i = 0; i < MAX_SEGMENTS; i++) {
@@ -8841,9 +8782,6 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 
   if (initialize_flag) setup_frame_info(pbi);
   const int num_planes = av1_num_planes(cm);
-#if CONFIG_LPF_MASK
-  av1_loop_filter_frame_init(cm, 0, num_planes);
-#endif
 #if CONFIG_INSPECTION
   aom_realloc_frame_buffer(
       &cm->predicted_pixels, cm->width, cm->height,
@@ -8891,18 +8829,12 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
           && !cm->features.allow_lf_sub_pu
 #endif  // CONFIG_LF_SUB_PU
       ) {
-        av1_loop_filter_frame_mt(
-            &cm->cur_frame->buf, cm, &pbi->dcb.xd, 0, num_planes, 0,
-#if CONFIG_LPF_MASK
-            1,
-#endif
-            pbi->tile_workers, pbi->num_workers, &pbi->lf_row_sync);
+        av1_loop_filter_frame_mt(&cm->cur_frame->buf, cm, &pbi->dcb.xd, 0,
+                                 num_planes, 0, pbi->tile_workers,
+                                 pbi->num_workers, &pbi->lf_row_sync);
       } else {
-        av1_loop_filter_frame(&cm->cur_frame->buf, cm, &pbi->dcb.xd,
-#if CONFIG_LPF_MASK
-                              1,
-#endif
-                              0, num_planes, 0);
+        av1_loop_filter_frame(&cm->cur_frame->buf, cm, &pbi->dcb.xd, 0,
+                              num_planes, 0);
       }
     }
 
@@ -9017,9 +8949,6 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       }
     }
   }
-#if CONFIG_LPF_MASK
-  av1_zero_array(cm->lf.lfm, cm->lf.lfm_num);
-#endif
 
   if (!pbi->dcb.corrupted) {
     if (cm->features.refresh_frame_context == REFRESH_FRAME_CONTEXT_BACKWARD) {

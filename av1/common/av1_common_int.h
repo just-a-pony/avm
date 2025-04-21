@@ -1928,10 +1928,6 @@ typedef struct AV1Common {
   int64_t txcoeff_cost_count;
 #endif  // TXCOEFF_COST_TIMER
 
-#if CONFIG_LPF_MASK
-  int is_decoding;
-#endif  // CONFIG_LPF_MASK
-
 #if DEBUG_EXTQUANT
   FILE *fEncCoeffLog;
   FILE *fDecCoeffLog;

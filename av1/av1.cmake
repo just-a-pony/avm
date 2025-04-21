@@ -105,10 +105,6 @@ list(
   "${AOM_ROOT}/av1/common/entropy_inits_mv.h"
   "${AOM_ROOT}/av1/common/entropy_sideinfo.h")
 
-if(CONFIG_LPF_MASK)
-  list(APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/common/loopfiltermask.c")
-endif()
-
 if(CONFIG_DIP)
   list(
     APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/common/intra_matrix.c"

@@ -88,18 +88,11 @@ static int64_t try_filter_frame(const YV12_BUFFER_CONFIG *sd,
 #endif  // CONFIG_LF_SUB_PU
   )
     av1_loop_filter_frame_mt(&cm->cur_frame->buf, cm, &cpi->td.mb.e_mbd, plane,
-                             plane + 1, partial_frame,
-#if CONFIG_LPF_MASK
-                             0,
-#endif
-                             mt_info->workers, num_workers,
-                             &mt_info->lf_row_sync);
+                             plane + 1, partial_frame, mt_info->workers,
+                             num_workers, &mt_info->lf_row_sync);
   else
-    av1_loop_filter_frame(&cm->cur_frame->buf, cm, &cpi->td.mb.e_mbd,
-#if CONFIG_LPF_MASK
-                          0,
-#endif
-                          plane, plane + 1, partial_frame);
+    av1_loop_filter_frame(&cm->cur_frame->buf, cm, &cpi->td.mb.e_mbd, plane,
+                          plane + 1, partial_frame);
 
   filt_err = aom_get_sse_plane(sd, &cm->cur_frame->buf, plane);
 

@@ -1236,56 +1236,12 @@ void av1_filter_block_plane_horz(const AV1_COMMON *const cm,
 
 static void loop_filter_rows(YV12_BUFFER_CONFIG *frame_buffer, AV1_COMMON *cm,
                              MACROBLOCKD *xd, int start, int stop,
-#if CONFIG_LPF_MASK
-                             int is_decoding,
-#endif
                              int plane_start, int plane_end) {
   struct macroblockd_plane *pd = xd->plane;
   const int col_start = 0;
   const int col_end = cm->mi_params.mi_cols;
   int mi_row, mi_col;
   int plane;
-
-#if CONFIG_LPF_MASK
-  if (is_decoding) {
-    cm->is_decoding = is_decoding;
-    for (plane = plane_start; plane < plane_end; plane++) {
-      if (plane == 0 && !(cm->lf.filter_level[0]) && !(cm->lf.filter_level[1]))
-        break;
-      else if (plane == 1 && !(cm->lf.filter_level_u))
-        continue;
-      else if (plane == 2 && !(cm->lf.filter_level_v))
-        continue;
-
-      av1_setup_dst_planes(pd, frame_buffer, 0, 0, plane, plane + 1, NULL);
-
-      av1_build_bitmask_vert_info(cm, &pd[plane], plane);
-      av1_build_bitmask_horz_info(cm, &pd[plane], plane);
-
-      // apply loop filtering which only goes through buffer once
-      for (mi_row = start; mi_row < stop; mi_row += MI_SIZE_64X64) {
-        for (mi_col = col_start; mi_col < col_end; mi_col += MI_SIZE_64X64) {
-          av1_setup_dst_planes(pd, frame_buffer, mi_row, mi_col, plane,
-                               plane + 1, NULL);
-          av1_filter_block_plane_bitmask_vert(cm, &pd[plane], plane, mi_row,
-                                              mi_col);
-          if (mi_col - MI_SIZE_64X64 >= 0) {
-            av1_setup_dst_planes(pd, frame_buffer, mi_row,
-                                 mi_col - MI_SIZE_64X64, plane, plane + 1,
-                                 NULL);
-            av1_filter_block_plane_bitmask_horz(cm, &pd[plane], plane, mi_row,
-                                                mi_col - MI_SIZE_64X64);
-          }
-        }
-        av1_setup_dst_planes(pd, frame_buffer, mi_row, mi_col - MI_SIZE_64X64,
-                             plane, plane + 1, NULL);
-        av1_filter_block_plane_bitmask_horz(cm, &pd[plane], plane, mi_row,
-                                            mi_col - MI_SIZE_64X64);
-      }
-    }
-    return;
-  }
-#endif
 
   const int mib_size = cm->mib_size;
   for (plane = plane_start; plane < plane_end; plane++) {
@@ -1344,11 +1300,8 @@ static void loop_filter_rows(YV12_BUFFER_CONFIG *frame_buffer, AV1_COMMON *cm,
 }
 
 void av1_loop_filter_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
-                           MACROBLOCKD *xd,
-#if CONFIG_LPF_MASK
-                           int is_decoding,
-#endif
-                           int plane_start, int plane_end, int partial_frame) {
+                           MACROBLOCKD *xd, int plane_start, int plane_end,
+                           int partial_frame) {
   int start_mi_row, end_mi_row, mi_rows_to_filter;
   start_mi_row = 0;
   mi_rows_to_filter = cm->mi_params.mi_rows;
@@ -1359,11 +1312,8 @@ void av1_loop_filter_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
   }
   end_mi_row = start_mi_row + mi_rows_to_filter;
   av1_loop_filter_frame_init(cm, plane_start, plane_end);
-  loop_filter_rows(frame, cm, xd, start_mi_row, end_mi_row,
-#if CONFIG_LPF_MASK
-                   is_decoding,
-#endif
-                   plane_start, plane_end);
+  loop_filter_rows(frame, cm, xd, start_mi_row, end_mi_row, plane_start,
+                   plane_end);
 }
 #if CONFIG_LF_SUB_PU
 // Apply loop filtering on TIP plane
