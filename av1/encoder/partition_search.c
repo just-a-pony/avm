@@ -58,8 +58,8 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
   const int is_rect = is_rect_tx(max_tx_size);
 #endif  // !CONFIG_TX_PARTITION_CTX
   const TX_PARTITION_TYPE partition = mbmi->tx_partition_type[txb_size_index];
-  const int allow_horz = allow_tx_horz_split(max_tx_size);
-  const int allow_vert = allow_tx_vert_split(max_tx_size);
+  const int allow_horz = allow_tx_horz_split(bsize, max_tx_size);
+  const int allow_vert = allow_tx_vert_split(bsize, max_tx_size);
 #if CONFIG_IMPROVEIDTX
   const int plane_type = xd->tree_type == CHROMA_PART;
   const int is_fsc = (xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART] &&
@@ -7235,7 +7235,7 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4a[HORZ] = 1;
       }
     }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
+    if (part_sf->prune_part_4_with_part_3) {
       if (pc_tree->partitioning == PARTITION_HORZ_3 &&
 #if CONFIG_EXTENDED_SDP
           !node_uses_horz(pc_tree->horizontal3[cur_region_type][0]) &&
@@ -7261,9 +7261,19 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4a[HORZ] = 1;
       }
     }
-    if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
+    if (part_sf->prune_part_4_horz_or_vert &&
         pc_tree->partitioning == PARTITION_VERT &&
-        part_search_state->partition_rect_allowed[HORZ]) {
+        part_search_state->partition_rect_allowed[HORZ] &&
+        (!frame_is_intra_only(cm) ||
+         (
+#if CONFIG_EXTENDED_SDP
+             !node_uses_horz(pc_tree->vertical[cur_region_type][0]) &&
+             !node_uses_horz(pc_tree->vertical[cur_region_type][1])
+#else
+             !node_uses_horz(pc_tree->vertical[0]) &&
+             !node_uses_horz(pc_tree->vertical[1])
+#endif  // CONFIG_EXTENDED_SDP
+                 ))) {
       part_search_state->prune_partition_4a[HORZ] = 1;
     }
   }
@@ -7300,7 +7310,7 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4b[HORZ] = 1;
       }
     }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
+    if (part_sf->prune_part_4_with_part_3) {
       if (pc_tree->partitioning == PARTITION_HORZ_3 &&
 #if CONFIG_EXTENDED_SDP
           !node_uses_horz(pc_tree->horizontal3[cur_region_type][0]) &&
@@ -7326,9 +7336,19 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4b[HORZ] = 1;
       }
     }
-    if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
+    if (part_sf->prune_part_4_horz_or_vert &&
         pc_tree->partitioning == PARTITION_VERT &&
-        part_search_state->partition_rect_allowed[HORZ]) {
+        part_search_state->partition_rect_allowed[HORZ] &&
+        (!frame_is_intra_only(cm) ||
+         (
+#if CONFIG_EXTENDED_SDP
+             !node_uses_horz(pc_tree->vertical[cur_region_type][0]) &&
+             !node_uses_horz(pc_tree->vertical[cur_region_type][1])
+#else
+             !node_uses_horz(pc_tree->vertical[0]) &&
+             !node_uses_horz(pc_tree->vertical[1])
+#endif  // CONFIG_EXTENDED_SDP
+                 ))) {
       part_search_state->prune_partition_4b[HORZ] = 1;
     }
   }
@@ -7365,7 +7385,7 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4a[VERT] = 1;
       }
     }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
+    if (part_sf->prune_part_4_with_part_3) {
       if (pc_tree->partitioning == PARTITION_VERT_3 &&
 #if CONFIG_EXTENDED_SDP
           !node_uses_vert(pc_tree->vertical3[cur_region_type][0]) &&
@@ -7391,9 +7411,19 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4a[VERT] = 1;
       }
     }
-    if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
+    if (part_sf->prune_part_4_horz_or_vert &&
         pc_tree->partitioning == PARTITION_HORZ &&
-        part_search_state->partition_rect_allowed[VERT]) {
+        part_search_state->partition_rect_allowed[VERT] &&
+        (!frame_is_intra_only(cm) ||
+         (
+#if CONFIG_EXTENDED_SDP
+             !node_uses_vert(pc_tree->horizontal[cur_region_type][0]) &&
+             !node_uses_vert(pc_tree->horizontal[cur_region_type][1])
+#else
+             !node_uses_vert(pc_tree->horizontal[0]) &&
+             !node_uses_vert(pc_tree->horizontal[1])
+#endif  // CONFIG_EXTENDED_SDP
+                 ))) {
       part_search_state->prune_partition_4a[VERT] = 1;
     }
   }
@@ -7430,7 +7460,7 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4b[VERT] = 1;
       }
     }
-    if (part_sf->prune_part_4_with_part_3 && !frame_is_intra_only(cm)) {
+    if (part_sf->prune_part_4_with_part_3) {
       if (pc_tree->partitioning == PARTITION_VERT_3 &&
 #if CONFIG_EXTENDED_SDP
           !node_uses_vert(pc_tree->vertical3[cur_region_type][0]) &&
@@ -7456,9 +7486,19 @@ static AOM_INLINE void prune_ext_partitions_4way(
         part_search_state->prune_partition_4b[VERT] = 1;
       }
     }
-    if (part_sf->prune_part_4_horz_or_vert && !frame_is_intra_only(cm) &&
+    if (part_sf->prune_part_4_horz_or_vert &&
         pc_tree->partitioning == PARTITION_HORZ &&
-        part_search_state->partition_rect_allowed[VERT]) {
+        part_search_state->partition_rect_allowed[VERT] &&
+        (!frame_is_intra_only(cm) ||
+         (
+#if CONFIG_EXTENDED_SDP
+             !node_uses_vert(pc_tree->horizontal[cur_region_type][0]) &&
+             !node_uses_vert(pc_tree->horizontal[cur_region_type][1])
+#else
+             !node_uses_vert(pc_tree->horizontal[0]) &&
+             !node_uses_vert(pc_tree->horizontal[1])
+#endif  // CONFIG_EXTENDED_SDP
+                 ))) {
       part_search_state->prune_partition_4b[VERT] = 1;
     }
   }
@@ -9319,6 +9359,15 @@ BEGIN_PARTITION_SEARCH:
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
                              multi_pass_mode, ext_recur_depth);
 
+    if (cpi->sf.part_sf.prune_part_4b_with_part_4a) {
+      if (part_search_state.partition_4a_allowed[HORZ] &&
+          !part_search_state.prune_partition_4a[HORZ] &&
+          part_search_state.found_best_partition &&
+          pc_tree->partitioning != PARTITION_HORZ_4A) {
+        part_search_state.prune_partition_4b[HORZ] = true;
+      }
+    }
+
     // PARTITION_HORZ_4B
     search_partition_horz_4b(&part_search_state, cpi, td, tile_data, tp,
                              &best_rdc, pc_tree,
@@ -9338,6 +9387,15 @@ BEGIN_PARTITION_SEARCH:
                              &level_banks,
 #endif  // CONFIG_MVP_IMPROVEMENT || WARP_CU_BANK
                              multi_pass_mode, ext_recur_depth);
+
+    if (cpi->sf.part_sf.prune_part_4b_with_part_4a) {
+      if (part_search_state.partition_4a_allowed[VERT] &&
+          !part_search_state.prune_partition_4a[VERT] &&
+          part_search_state.found_best_partition &&
+          pc_tree->partitioning != PARTITION_VERT_4A) {
+        part_search_state.prune_partition_4b[VERT] = true;
+      }
+    }
 
     // PARTITION_VERT_4B
     search_partition_vert_4b(&part_search_state, cpi, td, tile_data, tp,
