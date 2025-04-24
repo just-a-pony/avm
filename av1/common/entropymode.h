@@ -1012,13 +1012,17 @@ static const int
 // along with the 'color_order' of neighbors and the 'color_idx'.
 // The 'color_map' is a 2D array with the given 'stride'.
 int av1_get_palette_color_index_context(const uint8_t *color_map, int stride,
-                                        int r, int c, int palette_size,
+                                        int r, int c,
+#if !CONFIG_PALETTE_THREE_NEIGHBOR
+                                        int palette_size,
+#endif  // CONFIG_PALETTE_THREE_NEIGHBOR
                                         uint8_t *color_order, int *color_idx
 #if CONFIG_PALETTE_IMPROVEMENTS
                                         ,
                                         int row_flag, int prev_row_flag
 #endif
 );
+#if !CONFIG_PALETTE_THREE_NEIGHBOR
 // A faster version of av1_get_palette_color_index_context used by the encoder
 // exploiting the fact that the encoder does not need to maintain a color order.
 int av1_fast_palette_color_index_context(const uint8_t *color_map, int stride,
@@ -1028,6 +1032,7 @@ int av1_fast_palette_color_index_context(const uint8_t *color_map, int stride,
                                          int row_flag, int prev_row_flag
 #endif
 );
+#endif  // !CONFIG_PALETTE_THREE_NEIGHBOR
 #ifdef __cplusplus
 }  // extern "C"
 #endif
