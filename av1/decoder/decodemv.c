@@ -1862,7 +1862,7 @@ static void read_secondary_tx_set(MACROBLOCKD *xd, FRAME_CONTEXT *ec_ctx,
       reordered_stx_set_flag =
           aom_read_symbol(r, ec_ctx->most_probable_stx_set_cdf, IST_DIR_SIZE,
                           ACCT_INFO("stx_set_flag"));
-      assert(reordered_stx_set_flag < IST_REDUCE_SET_SIZE);
+      assert(reordered_stx_set_flag < IST_DIR_SIZE);
       stx_set_flag =
           inv_most_probable_stx_mapping[intra_mode][reordered_stx_set_flag];
     }
