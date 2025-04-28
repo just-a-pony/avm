@@ -8567,8 +8567,7 @@ void fwd_txfm_adst_size4_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 4;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_adst_size4_avx2[4][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_adst_size4_avx2[4][8]) = {
     { 18, 50, 75, 89, 18, 50, 75, 89 },
     { 50, 89, 18, -75, 50, 89, 18, -75 },
     { 75, 18, -89, 50, 75, 18, -89, 50 },
@@ -8606,8 +8605,7 @@ void fwd_txfm_adst_size8_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 8;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_adst_size8_avx2[8][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_adst_size8_avx2[8][8]) = {
     { 11, 34, 54, 71, 84, 88, 79, 50 },
     { 28, 74, 89, 68, 17, -44, -83, -69 },
     { 44, 89, 48, -41, -89, -44, 50, 81 },
@@ -8648,8 +8646,7 @@ void fwd_txfm_adst_size16_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 16;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_adst_size16_avx2[32][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_adst_size16_avx2[32][8]) = {
     { 8, 25, 41, 55, 67, 77, 84, 88 },
     { 17, 48, 73, 87, 88, 77, 55, 25 },
     { 25, 67, 88, 81, 48, 0, -48, -81 },
@@ -8716,8 +8713,7 @@ void fwd_txfm_fdst_size4_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 4;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_fdst_size4_avx2[4][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_fdst_size4_avx2[4][8]) = {
     { 89, 75, 50, 18, 89, 75, 50, 18 },
     { 75, -18, -89, -50, 75, -18, -89, -50 },
     { 50, -89, 18, 75, 50, -89, 18, 75 },
@@ -8755,8 +8751,7 @@ void fwd_txfm_fdst_size8_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 8;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_fdst_size8_avx2[8][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_fdst_size8_avx2[8][8]) = {
     { 89, -86, 79, -70, 58, -44, 29, -14 },
     { 86, -58, 12, 38, -75, 88, -74, 40 },
     { 79, -12, -66, 87, -35, -44, 86, -62 },
@@ -8796,8 +8791,7 @@ void fwd_txfm_fdst_size16_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 16;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_fdst_size16_avx2[32][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_fdst_size16_avx2[32][8]) = {
     { 89, 88, 87, 84, 81, 77, 73, 67 },
     { 88, 81, 67, 48, 25, 0, -25, -48 },
     { 87, 67, 33, -8, -48, -77, -89, -81 },
@@ -8864,8 +8858,7 @@ void fwd_txfm_ddtx_size4_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 4;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_ddtx_size4_avx2[4][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_ddtx_size4_avx2[4][8]) = {
     { 2, 14, 67, 108, 2, 14, 67, 108 },
     { 20, 68, 86, -61, 20, 68, 86, -61 },
     { 72, 81, -61, 27, 72, 81, -61, 27 },
@@ -8903,8 +8896,7 @@ void fwd_txfm_ddtx_size8_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 8;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_ddtx_size8_avx2[8][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_ddtx_size8_avx2[8][8]) = {
     { 4, 6, 22, 57, 96, 103, 78, 56 },
     { 7, 14, 48, 94, 73, -17, -79, -96 },
     { 15, 36, 85, 76, -43, -80, 7, 98 },
@@ -8944,8 +8936,7 @@ void fwd_txfm_ddtx_size16_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 16;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_ddtx_size16_avx2[32][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_ddtx_size16_avx2[32][8]) = {
     { 12, 17, 37, 45, 47, 60, 64, 82 },
     { 15, 23, 49, 60, 60, 74, 70, 73 },
     { 19, 30, 60, 69, 61, 64, 40, 3 },
@@ -9011,8 +9002,7 @@ void fwd_txfm_fddt_size4_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 4;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_ddtx_size4_avx2[4][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_ddtx_size4_avx2[4][8]) = {
     { 104, -69, 25, -8, 104, -69, 25, -8 },
     { 72, 81, -61, 27, 72, 81, -61, 27 },
     { 20, 68, 86, -61, 20, 68, 86, -61 },
@@ -9050,8 +9040,7 @@ void fwd_txfm_fddt_size8_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 8;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_fddtx_size8_avx2[8][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_fddtx_size8_avx2[8][8]) = {
     { 80, -98, 82, -66, 53, -41, 26, -6 },
     { 106, -57, -23, 54, -71, 75, -56, 19 },
     { 98, 45, -86, 34, 20, -66, 79, -33 },
@@ -9091,8 +9080,7 @@ void fwd_txfm_fddt_size16_avx2(const int *src, int *dst, int shift, int line,
   const int nz_line = line - skip_line;
   const int tx1d_size = 16;
 
-  __attribute__((
-      aligned(32))) static const int tx_kernel_fddtx_size16_avx2[32][8] = {
+  DECLARE_ALIGNED(32, static const int, tx_kernel_fddtx_size16_avx2[32][8]) = {
     { 50, -76, 83, -90, 97, -86, 83, -68 },
     { 68, -99, 84, -69, 32, 3, -37, 55 },
     { 83, -99, 40, 8, -74, 88, -83, 47 },
