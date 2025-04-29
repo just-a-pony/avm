@@ -2785,6 +2785,9 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
     }
 
     memset(seg, 0, sizeof(*seg));
+#if CONFIG_EXT_SEG
+    seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
+#endif  // CONFIG_EXT_SEG
     segfeatures_copy(&cm->cur_frame->seg, seg);
     return;
   }

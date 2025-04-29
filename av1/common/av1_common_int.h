@@ -4425,7 +4425,13 @@ static INLINE int is_coded_lossless(const AV1_COMMON *cm,
                                     const MACROBLOCKD *xd) {
   int coded_lossless = 1;
   if (cm->seg.enabled) {
-    for (int i = 0; i < MAX_SEGMENTS; ++i) {
+#if CONFIG_EXT_SEG
+    const int max_seg_num =
+        cm->seg.enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
+#else   // CONFIG_EXT_SEG
+    const int max_seg_num = MAX_SEGMENTS;
+#endif  // CONFIG_EXT_SEG
+    for (int i = 0; i < max_seg_num; i++) {
       if (!xd->lossless[i]) {
         coded_lossless = 0;
         break;
