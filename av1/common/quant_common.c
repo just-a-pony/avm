@@ -396,7 +396,7 @@ void calc_wt_matrix(const int txsize, const qm_val_t *iwt_matrix,
     wt_matrix[i] = (int)1024 / iwt_matrix[i];
   }
 }
-#else
+#else  // CONFIG_QM_SIMPLIFY
 
 // We only use wt_matrix_ref[q] and iwt_matrix_ref[q]
 // for q = 0, ..., NUM_QM_LEVELS - 2.
@@ -1251,7 +1251,7 @@ static const qm_val_t source_4x8_iwt_base_matrix[NUM_QM_LEVELS - 1][2][4 * 8] = 
     },
 };
 /* clang-format on */
-#else
+#else   // CONFIG_QM_SIMPLIFY
 
 /* Provide 15 sets of quantization matrices for chroma and luma
    and each TX size. Matrices for different TX sizes are in fact
