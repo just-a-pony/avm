@@ -1546,8 +1546,6 @@ static void tip_setup_tip_frame_plane(
           mbmi.sb_type[PLANE_TYPE_UV] = BLOCK_4X4;
           mbmi.ref_frame[0] = TIP_FRAME;
           mbmi.ref_frame[1] = NONE_FRAME;
-          mbmi.mv[0].as_mv = mv[0];
-          mbmi.mv[1].as_mv = mv[1];
           mbmi.mode = NEWMV;
           mbmi.skip_mode = 0;
           mbmi.motion_mode = SIMPLE_TRANSLATION;
@@ -1555,6 +1553,19 @@ static void tip_setup_tip_frame_plane(
           mbmi.cwp_idx = 0;
           mbmi.comp_refine_type = COMP_REFINE_SUBBLK2P;
           mbmi.refinemv_flag = 0;
+
+          // Save the MVs before refinement into the TMVP list.
+#if CONFIG_TIP_DIRECT_FRAME_MV
+          mbmi.mv[0].as_mv = cm->tip_global_motion.as_mv;
+          mbmi.mv[1].as_mv = cm->tip_global_motion.as_mv;
+#else
+          mbmi.mv[0].as_mv = zero_mv[0];
+          mbmi.mv[1].as_mv = zero_mv[1];
+#endif
+          av1_copy_frame_mvs(cm, xd, &mbmi, blk_row << TMVP_SHIFT_BITS,
+                             blk_col << TMVP_SHIFT_BITS,
+                             step << TMVP_SHIFT_BITS, step << TMVP_SHIFT_BITS);
+
           av1_copy_frame_refined_mvs(cm, xd, &mbmi, blk_row << TMVP_SHIFT_BITS,
                                      blk_col << TMVP_SHIFT_BITS,
                                      step << TMVP_SHIFT_BITS,
