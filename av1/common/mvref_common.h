@@ -768,8 +768,7 @@ static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
   const int sb_size = 1 << sb_size_log2;
   const int sb_mi_size = sb_size >> MI_SIZE_LOG2;
 #if CONFIG_ENABLE_IBC_NAT && (CONFIG_IBC_SR_EXT == 2)
-  int valid_size_log2 = sb_size_log2 > 6 ? 6 : sb_size_log2;
-  if (sb_size_log2 == 8) valid_size_log2 = 7;
+  int valid_size_log2 = sb_size_log2 > 7 ? 7 : sb_size_log2;
 #else
   int valid_size_log2 = sb_size_log2 > 6 ? 6 : sb_size_log2;
 #endif  // CONFIG_ENABLE_IBC_NAT && (CONFIG_IBC_SR_EXT == 2)
