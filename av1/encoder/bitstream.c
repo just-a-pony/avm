@@ -362,8 +362,17 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
     }
     if (allow_affine || allow_translational)
 #endif  // CONFIG_AFFINE_REFINEMENT
+#if CONFIG_OPFL_CTX_OPT
+    {
+      const int opfl_ctx =
+          get_optflow_context(comp_idx_to_opfl_mode[comp_mode_idx]);
       aom_write_symbol(w, use_optical_flow,
-                       xd->tile_ctx->use_optflow_cdf[mode_ctx], 2);
+                       xd->tile_ctx->use_optflow_cdf[opfl_ctx], 2);
+    }
+#else
+    aom_write_symbol(w, use_optical_flow,
+                     xd->tile_ctx->use_optflow_cdf[mode_ctx], 2);
+#endif  // CONFIG_OPFL_CTX_OPT
   }
 }
 

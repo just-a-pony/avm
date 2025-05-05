@@ -637,6 +637,12 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
     }
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT || CONFIG_OPTIMIZE_CTX_TIP_WARP
 
+#if CONFIG_OPFL_CTX_OPT
+    for (i = 0; i < OPFL_MODE_CONTEXTS; ++i) {
+      av1_cost_tokens_from_cdf(mode_costs->use_optflow_cost[i],
+                               fc->use_optflow_cdf[i], NULL);
+    }
+#else
 #if CONFIG_OPT_INTER_MODE_CTX
     for (i = 0; i < INTER_MODE_CONTEXTS; ++i) {
 #else
@@ -645,6 +651,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       av1_cost_tokens_from_cdf(mode_costs->use_optflow_cost[i],
                                fc->use_optflow_cdf[i], NULL);
     }
+#endif  // CONFIG_OPFL_CTX_OPT
 
     for (j = 0; j < NUM_MV_PREC_MPP_CONTEXT; ++j) {
       av1_cost_tokens_from_cdf(mode_costs->pb_block_mv_mpp_flag_costs[j],
