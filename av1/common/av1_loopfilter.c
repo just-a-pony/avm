@@ -502,7 +502,12 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 typedef struct AV1_DEBLOCKING_PARAMETERS {
   // length of the filter applied to the outer edge
 
+#if CONFIG_ASYM_DF
+  uint32_t filter_length_neg;
+  uint32_t filter_length_pos;
+#else
   uint32_t filter_length;
+#endif  // CONFIG_ASYM_DF
   // deblocking limits
   const uint8_t *lim;
   const uint8_t *mblim;
@@ -752,7 +757,12 @@ static TX_SIZE set_lpf_parameters(
     const int plane, const struct macroblockd_plane *const plane_ptr) {
   // reset to initial values
 
+#if CONFIG_ASYM_DF
+  params->filter_length_neg = 0;
+  params->filter_length_pos = 0;
+#else
   params->filter_length = 0;
+#endif  // CONFIG_ASYM_DF
 
   TREE_TYPE tree_type = SHARED_PART;
 
@@ -935,7 +945,14 @@ static TX_SIZE set_lpf_parameters(
 #if DF_REDUCED_SB_EDGE
           const BLOCK_SIZE superblock_size = get_plane_block_size(
               cm->sb_size, plane_ptr->subsampling_x, plane_ptr->subsampling_y);
+#if CONFIG_ASYM_DF
+          const BLOCK_SIZE block64_size = get_plane_block_size(
+              BLOCK_64X64, plane_ptr->subsampling_x, plane_ptr->subsampling_y);
+
+          const int vert_sb_mask = block_size_high[block64_size] - 1;
+#else
           const int vert_sb_mask = block_size_high[superblock_size] - 1;
+#endif  // CONFIG_ASYM_DF
           int horz_superblock_edge =
               (HORZ_EDGE == edge_dir) && !(coord & vert_sb_mask);
 
@@ -943,7 +960,12 @@ static TX_SIZE set_lpf_parameters(
           int vert_tile_edge = 0;
 
           for (int i = 1; i < cm->tiles.cols; ++i) {
+#if CONFIG_ASYM_DF
+            if ((cm->tiles.col_start_sb[i] * hor_sb_size == coord) &&
+                (VERT_EDGE == edge_dir)) {
+#else
             if (cm->tiles.col_start_sb[i] * hor_sb_size == coord) {
+#endif  // CONFIG_ASYM_DF
               vert_tile_edge = 1;
             }
           }
@@ -1039,21 +1061,53 @@ static TX_SIZE set_lpf_parameters(
             }
             const TX_SIZE min_ts = AOMMIN(clipped_ts, pv_ts);
             if (TX_4X4 >= min_ts) {
+#if CONFIG_ASYM_DF
+              params->filter_length_neg = 4;
+              params->filter_length_pos = 4;
+#else
               params->filter_length = 4;
+#endif  // CONFIG_ASYM_DF
             } else if (TX_8X8 == min_ts) {
 #if !DF_CHROMA_WIDE
               if (plane != 0)
                 params->filter_length = 6;
               else
 #endif  // !DF_CHROMA_WIDE
-                params->filter_length = 8;
+#if CONFIG_ASYM_DF
+              {
+                params->filter_length_neg = 8;
+                params->filter_length_pos = 8;
+              }
+#else
+              params->filter_length = 8;
+#endif  // CONFIG_ASYM_DF
 #if DF_FILT26
             } else if (TX_16X16 == min_ts) {
+#if CONFIG_ASYM_DF
+              params->filter_length_neg = 14;
+              params->filter_length_pos = 14;
+#else
               params->filter_length = 14;
-              // No wide filtering for chroma plane
+#endif  // CONFIG_ASYM_DF
+        // No wide filtering for chroma plane
               if (plane != 0) {
 #if DF_CHROMA_WIDE
+#if CONFIG_ASYM_DF
+#if DF_REDUCED_SB_EDGE
+                if (horz_superblock_edge || vert_tile_edge) {
+                  params->filter_length_neg = 6;
+                  params->filter_length_pos = 10;
+                } else {
+                  params->filter_length_neg = 10;
+                  params->filter_length_pos = 10;
+                }
+#else
+                params->filter_length_neg = 10;
+                params->filter_length_pos = 10;
+#endif
+#else
                 params->filter_length = 10;
+#endif  // CONFIG_ASYM_DF
 #else
                 params->filter_length = 6;
 #endif  // DF_CHROMA_WIDE
@@ -1062,20 +1116,44 @@ static TX_SIZE set_lpf_parameters(
 #if DF_REDUCED_SB_EDGE
               if (horz_superblock_edge || vert_tile_edge) {
                 if (plane != 0) {
+#if CONFIG_ASYM_DF
+                  params->filter_length_neg = 6;
+                  params->filter_length_pos = 10;
+                } else {
+                  params->filter_length_neg = 14;
+                  params->filter_length_pos = 18;
+                }
+#else
                   params->filter_length = 6;
                 } else
                   params->filter_length = 14;
+#endif  // CONFIG_ASYM_DF
               } else
 #endif  // DF_REDUCED_SB_EDGE
               {
+#if CONFIG_ASYM_DF
+                params->filter_length_neg = 18;
+                params->filter_length_pos = 18;
+#else
                 params->filter_length = 22;
-                // No wide filtering for chroma plane
+#endif  // CONFIG_ASYM_DF
+        // No wide filtering for chroma plane
 
                 if (plane != 0) {
 #if DF_CHROMA_WIDE
+#if CONFIG_ASYM_DF
+                  params->filter_length_neg = 10;
+                  params->filter_length_pos = 10;
+#else
                   params->filter_length = 10;
+#endif  // CONFIG_ASYM_DF
+#else
+#if CONFIG_ASYM_DF
+                  params->filter_length_neg = 6;
+                  params->filter_length_pos = 6;
 #else
                   params->filter_length = 6;
+#endif  // CONFIG_ASYM_DF
 #endif  // DF_CHROMA_WIDE
                 }
               }
@@ -1147,18 +1225,32 @@ void av1_filter_block_plane_vert(const AV1_COMMON *const cm,
                                    cm, xd, VERT_EDGE, curr_x, curr_y, plane,
                                    plane_ptr);
       if (tx_size == TX_INVALID) {
+#if CONFIG_ASYM_DF
+        params.filter_length_neg = 0;
+        params.filter_length_pos = 0;
+#else
         params.filter_length = 0;
+#endif  // CONFIG_ASYM_DF
         tx_size = TX_4X4;
       }
 
       const aom_bit_depth_t bit_depth = cm->seq_params.bit_depth;
+#if CONFIG_ASYM_DF
+      if (params.filter_length_neg || params.filter_length_pos) {
+#else
       if (params.filter_length) {
-        aom_highbd_lpf_vertical_generic_c(p, dst_stride, params.filter_length,
-                                          &params.q_threshold,
-                                          &params.side_threshold, bit_depth
+#endif  // CONFIG_ASYM_DF
+        aom_highbd_lpf_vertical_generic_c(
+            p, dst_stride,
+#if CONFIG_ASYM_DF
+            params.filter_length_neg, params.filter_length_pos,
+#else
+            params.filter_length,
+#endif  // CONFIG_ASYM_DF
+            &params.q_threshold, &params.side_threshold, bit_depth
 #if CONFIG_LF_SUB_PU
-                                          ,
-                                          4
+            ,
+            4
 #endif  // CONFIG_LF_SUB_PU
         );
       }
@@ -1214,18 +1306,32 @@ void av1_filter_block_plane_horz(const AV1_COMMON *const cm,
                                    cm, xd, HORZ_EDGE, curr_x, curr_y, plane,
                                    plane_ptr);
       if (tx_size == TX_INVALID) {
+#if CONFIG_ASYM_DF
+        params.filter_length_neg = 0;
+        params.filter_length_pos = 0;
+#else
         params.filter_length = 0;
+#endif  // CONFIG_ASYM_DF
         tx_size = TX_4X4;
       }
       const aom_bit_depth_t bit_depth = cm->seq_params.bit_depth;
 
+#if CONFIG_ASYM_DF
+      if (params.filter_length_neg || params.filter_length_pos) {
+#else
       if (params.filter_length) {
-        aom_highbd_lpf_horizontal_generic_c(p, dst_stride, params.filter_length,
-                                            &params.q_threshold,
-                                            &params.side_threshold, bit_depth
+#endif  // CONFIG_ASYM_DF
+        aom_highbd_lpf_horizontal_generic_c(
+            p, dst_stride,
+#if CONFIG_ASYM_DF
+            params.filter_length_neg, params.filter_length_pos,
+#else
+            params.filter_length,
+#endif  // CONFIG_ASYM_DF
+            &params.q_threshold, &params.side_threshold, bit_depth
 #if CONFIG_LF_SUB_PU
-                                            ,
-                                            4
+            ,
+            4
 #endif  // CONFIG_LF_SUB_PU
         );
       }
@@ -1355,12 +1461,19 @@ AOM_INLINE void loop_filter_tip_plane(AV1_COMMON *cm, const int plane,
       // filter vertical boundary
       if (i > 0) {
         aom_highbd_lpf_vertical_generic_c(dst, dst_stride, filter_length_vert,
+#if CONFIG_ASYM_DF
+                                          filter_length_vert,
+#endif
                                           &q_vert, &side_vert, bit_depth,
                                           sub_bh);
       }
       // filter horizontal boundary
+
       if (j > 0) {
         aom_highbd_lpf_horizontal_generic_c(dst, dst_stride, filter_length_horz,
+#if CONFIG_ASYM_DF
+                                            filter_length_horz,
+#endif
                                             &q_horz, &side_horz, bit_depth,
                                             sub_bw);
       }
