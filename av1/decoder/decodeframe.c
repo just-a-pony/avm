@@ -1555,6 +1555,7 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
                           ACCT_INFO("partition_type"));
       partition = partition_type + 1;
     }
+#if CONFIG_4WAY_5WAY_TX_PARTITION
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
     else if (txsize_group_h_or_v)
 #else
@@ -1585,17 +1586,19 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
       if (allow_horz) {
         switch (partition_type) {
           case 0: partition = TX_PARTITION_HORZ; break;
-          case 1: partition = TX_PARTITION_HORZ_M; break;
+          case 1: partition = TX_PARTITION_HORZ4; break;
           default: assert(0); break;
         }
       } else {
         switch (partition_type) {
           case 0: partition = TX_PARTITION_VERT; break;
-          case 1: partition = TX_PARTITION_VERT_M; break;
+          case 1: partition = TX_PARTITION_VERT4; break;
           default: assert(0); break;
         }
       }
-    } else {
+    }
+#endif  // CONFIG_4WAY_5WAY_TX_PARTITION
+    else {
       partition = allow_horz ? TX_PARTITION_HORZ : TX_PARTITION_VERT;
     }
   } else {
