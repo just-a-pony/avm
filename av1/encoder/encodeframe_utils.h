@@ -265,7 +265,7 @@ static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
   }
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
-      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_180)) {
+      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
     assert(wedge_dist != 0);
 #if CONFIG_ENTROPY_STATS
     counts->wedge_dist2_cnt[wedge_dist - 1]++;
@@ -296,7 +296,7 @@ static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
   }
 
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
-      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_180)) {
+      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
     assert(wedge_dist != 0);
 #if CONFIG_ENTROPY_STATS
     counts->wedge_dist2_cnt[bsize][wedge_dist - 1]++;

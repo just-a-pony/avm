@@ -222,7 +222,7 @@ static int get_wedge_cost(const BLOCK_SIZE bsize, const int8_t wedge_index,
   }
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
-      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_180)) {
+      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
     assert(wedge_dist != 0);
     wedge_cost += x->mode_costs.wedge_dist_cost2[wedge_dist - 1];
   } else {
@@ -238,7 +238,7 @@ static int get_wedge_cost(const BLOCK_SIZE bsize, const int8_t wedge_index,
   }
 
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
-      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_180)) {
+      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
     assert(wedge_dist != 0);
     wedge_cost += x->mode_costs.wedge_dist_cost2[bsize][wedge_dist - 1];
   } else {

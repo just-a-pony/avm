@@ -690,7 +690,7 @@ static void write_wedge_mode(aom_writer *w, FRAME_CONTEXT *ec_ctx,
   }
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
-      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_180)) {
+      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
     assert(wedge_dist != 0);
     aom_write_symbol(w, wedge_dist - 1,
 #if CONFIG_D149_CTX_MODELING_OPT
