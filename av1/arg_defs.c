@@ -424,6 +424,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_sdp = ARG_DEF(NULL, "enable-sdp", 1,
                         "Enable semi decoupled partitioning for key frame"
                         "(0: false, 1: true (default))"),
+  .enable_extended_sdp =
+      ARG_DEF(NULL, "enable-extended-sdp", 1,
+              "Enable semi decoupled partitioning for inter frame"
+              "(0: false, 1: true (default))"),
   .enable_mrls =
       ARG_DEF(NULL, "enable-mrls", 1,
               "Enable multiple reference line selection for intra prediction"

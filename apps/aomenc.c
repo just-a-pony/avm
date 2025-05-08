@@ -448,6 +448,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_ext_partitions,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   &g_av1_codec_arg_defs.enable_sdp,
+  &g_av1_codec_arg_defs.enable_extended_sdp,
   &g_av1_codec_arg_defs.enable_mrls,
   &g_av1_codec_arg_defs.enable_wiener,
   &g_av1_codec_arg_defs.enable_sgrproj,
@@ -686,6 +687,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_ext_partitions = 1;
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   config->enable_sdp = 1;
+  config->enable_extended_sdp = 1;
   config->enable_mrls = 1;
   config->enable_tip = 1;
 #if CONFIG_BAWP
@@ -1585,6 +1587,8 @@ static void show_stream_config(struct stream_state *stream,
           encoder_cfg->disable_ml_transform_speed_features);
   fprintf(stdout, "                               : SDP (%d)\n",
           encoder_cfg->enable_sdp);
+  fprintf(stdout, "                               : Inter SDP (%d)\n",
+          encoder_cfg->enable_extended_sdp);
   fprintf(stdout, "                               : IST (%d)\n",
           encoder_cfg->enable_ist);
   fprintf(stdout, "                               : Inter IST (%d)\n",

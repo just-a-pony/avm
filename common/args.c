@@ -93,6 +93,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_ext_partitions);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
     GET_PARAMS(enable_sdp);
+    GET_PARAMS(enable_extended_sdp);
     GET_PARAMS(enable_mrls);
     GET_PARAMS(enable_tip);
 #if CONFIG_BAWP

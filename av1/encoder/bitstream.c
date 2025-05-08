@@ -4200,9 +4200,9 @@ static AOM_INLINE void write_modes_sb(
   const int is_sb_root = bsize == cm->sb_size;
   PARTITION_TREE *parent = ptree->parent;
   if (!is_sb_root && !frame_is_intra_only(cm) && parent && partition &&
-      parent->region_type != INTRA_REGION && cm->seq_params.enable_sdp &&
-      ptree->extended_sdp_allowed_flag &&
-      is_extended_sdp_allowed(parent->bsize, parent->partition) &&
+      parent->region_type != INTRA_REGION && ptree->extended_sdp_allowed_flag &&
+      is_extended_sdp_allowed(cm->seq_params.enable_extended_sdp, parent->bsize,
+                              parent->partition) &&
       is_bsize_allowed_for_extended_sdp(bsize, ptree->partition)) {
     const int ctx = get_intra_region_context(bsize);
     assert(xd->tree_type != CHROMA_PART);
@@ -6532,6 +6532,8 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_literal(wb, seq_params->num_same_ref_compound, 2);
 #endif  // CONFIG_SAME_REF_COMPOUND
   if (!seq_params->monochrome) aom_wb_write_bit(wb, seq_params->enable_sdp);
+  if (seq_params->enable_sdp)
+    aom_wb_write_bit(wb, seq_params->enable_extended_sdp);
   aom_wb_write_bit(wb, seq_params->enable_ist);
   aom_wb_write_bit(wb, seq_params->enable_inter_ist);
 #if CONFIG_CHROMA_TX

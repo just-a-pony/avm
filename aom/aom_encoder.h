@@ -327,6 +327,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_sdp;
+  /*!\brief enable extended Semi-decoupled partitioning
+   *
+   */
+  unsigned int enable_extended_sdp;
   /*!\brief enable Multiple reference line selection
    *
    */

@@ -128,9 +128,10 @@ struct av1_extracfg {
                                // for sequence
 #endif                                      // CONFIG_EXT_RECUR_PARTITIONS
   int disable_ml_transform_speed_features;  // disable all ml transform speedups
-  int enable_sdp;   // enable semi-decoupled partitioning
-  int enable_mrls;  // enable multiple reference line selection
-  int enable_tip;   // enable temporal interpolated prediction
+  int enable_sdp;           // enable semi-decoupled partitioning
+  int enable_extended_sdp;  // enable inter semi-decoupled partitioning
+  int enable_mrls;          // enable multiple reference line selection
+  int enable_tip;           // enable temporal interpolated prediction
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
   int enable_mv_traj;  // enable MV trajectory tracking
 #endif                 // CONFIG_TMVP_SIMPLIFICATIONS_F085
@@ -490,6 +491,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,  // enable 1:4 and 4:1 partitions
   0,  // disable ml based transform speed features
   1,  // enable semi-decoupled partitioning
+  1,  // enable semi-decoupled partitioning for inter frame
   1,  // enable multiple reference line selection
   1,  // enable temporal interpolated prediction (TIP)
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
@@ -1044,6 +1046,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->disable_ml_transform_speed_features =
       extra_cfg->disable_ml_transform_speed_features;
   cfg->enable_sdp = extra_cfg->enable_sdp;
+  cfg->enable_extended_sdp = extra_cfg->enable_extended_sdp;
   cfg->enable_mrls = extra_cfg->enable_mrls;
   cfg->enable_tip = extra_cfg->enable_tip;
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
@@ -1192,6 +1195,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_ext_partitions = cfg->enable_ext_partitions;
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   extra_cfg->enable_sdp = cfg->enable_sdp;
+  extra_cfg->enable_extended_sdp = cfg->enable_extended_sdp;
   extra_cfg->enable_mrls = cfg->enable_mrls;
   extra_cfg->enable_tip = cfg->enable_tip;
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
@@ -1867,6 +1871,8 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
   part_cfg->enable_sdp =
       tool_cfg->enable_monochrome ? 0 : extra_cfg->enable_sdp;
+  part_cfg->enable_extended_sdp =
+      part_cfg->enable_sdp ? extra_cfg->enable_extended_sdp : 0;
 #if CONFIG_EXT_RECUR_PARTITIONS
   part_cfg->erp_pruning_level = extra_cfg->erp_pruning_level;
   part_cfg->use_ml_erp_pruning = extra_cfg->use_ml_erp_pruning;
@@ -4099,6 +4105,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_sdp, argv,
                               err_string)) {
     extra_cfg.enable_sdp = arg_parse_int_helper(&arg, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_extended_sdp,
+                              argv, err_string)) {
+    extra_cfg.enable_extended_sdp = arg_parse_int_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_mrls, argv,
                               err_string)) {
     extra_cfg.enable_mrls = arg_parse_int_helper(&arg, err_string);
@@ -4678,7 +4687,8 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
     0,                           // frame_hash_metadata;
     0,                           // frame_hash_per_plane;
     {
-        0, 128, 128, 4, 1, 1, 1,
+        0, 128, 128, 4,
+        1, 1,   1,
 #if CONFIG_EXT_RECUR_PARTITIONS
         1,
         5,  // aggressiveness for erp pruning
@@ -4687,7 +4697,8 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #else       // CONFIG_EXT_RECUR_PARTITIONS
         0,
 #endif      // CONFIG_EXT_RECUR_PARTITIONS
-        0, 1,   1,   1,
+        0, 1,   1,   /*extended sdp*/ 1,
+        1,
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
         1,  // MV traj
 #endif      // CONFIG_TMVP_SIMPLIFICATIONS_F085
@@ -4717,7 +4728,9 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_DERIVED_MVD_SIGN
         1,
 #endif  // CONFIG_DERIVED_MVD_SIGN
-        1, 1,   1,   1, 1, 1, 1, 1, 1,
+        1, 1,   1,   1,
+        1, 1,   1,   1,
+        1,
 #if CONFIG_LF_SUB_PU
         1,
 #endif  // CONFIG_LF_SUB_PU
@@ -4725,7 +4738,8 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_SIX_PARAM_WARP_DELTA
         1,
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
-        1, 1,   1,   1, 1, 0, 0, 1,
+        1, 1,   1,   1,
+        1, 0,   0,   1,
 #if CONFIG_IBC_SR_EXT
         1,
 #endif  // CONFIG_IBC_SR_EXT
@@ -4737,7 +4751,10 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_AFFINE_REFINEMENT
         1,
 #endif  // CONFIG_AFFINE_REFINEMENT
-        1, 1,   1,   1, 1, 1, 3, 1, 1, 0, 1, 0, 0,
+        1, 1,   1,   1,
+        1, 1,   3,   1,
+        1, 0,   1,   0,
+        0,
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         0,
 #endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL

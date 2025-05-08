@@ -614,7 +614,9 @@ typedef struct SequenceHeader {
 #if CONFIG_TCQ
   uint8_t enable_tcq;  // Seq: 0 - disable, 1: 8-state, 2: 8-state (frame adap)
 #endif
-  uint8_t enable_sdp;   // enables/disables semi-decoupled partitioning
+  uint8_t enable_sdp;           // enables/disables semi-decoupled partitioning
+  uint8_t enable_extended_sdp;  // enables/disables extended semi-decoupled
+                                // partitioning
   uint8_t enable_mrls;  // enables/disables multiple reference line selection
   uint8_t enable_tip;   // enables/disables temporal interpolated prediction
   uint8_t enable_tip_hole_fill;  // enables/disables hole fill for TIP

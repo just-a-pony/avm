@@ -163,6 +163,7 @@ typedef struct av1_codec_arg_definitions {
 #endif
   arg_def_t disable_ml_transform_speed_features;
   arg_def_t enable_sdp;
+  arg_def_t enable_extended_sdp;
   arg_def_t enable_mrls;
   arg_def_t enable_tip;
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085

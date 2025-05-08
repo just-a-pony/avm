@@ -251,6 +251,11 @@ typedef struct {
    */
   bool enable_sdp;
   /*!
+   * Flag to indicate if semi-decoupled partitioning should be enabled for inter
+   * frames.
+   */
+  bool enable_extended_sdp;
+  /*!
    * Indicates the minimum partition size that should be allowed. Both width and
    * height of a partition cannot be smaller than the min_partition_size.
    */

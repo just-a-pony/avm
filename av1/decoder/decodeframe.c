@@ -2332,7 +2332,7 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   if (is_sb_root) {
     if (!frame_is_intra_only(cm)) {
       ptree->region_type = MIXED_INTER_INTRA_REGION;
-      ptree->extended_sdp_allowed_flag = cm->seq_params.enable_sdp;
+      ptree->extended_sdp_allowed_flag = cm->seq_params.enable_extended_sdp;
     } else {
       ptree->region_type = INTRA_REGION;
       ptree->extended_sdp_allowed_flag = 0;
@@ -2409,8 +2409,8 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
     if (!is_sb_root && parent) {
       if (parent->extended_sdp_allowed_flag)
         ptree->extended_sdp_allowed_flag =
-            cm->seq_params.enable_sdp &&
-            is_extended_sdp_allowed(parent->bsize, parent->partition);
+            is_extended_sdp_allowed(cm->seq_params.enable_extended_sdp,
+                                    parent->bsize, parent->partition);
       else
         ptree->extended_sdp_allowed_flag = 0;
       if (!frame_is_intra_only(cm) && ptree->partition &&
@@ -7003,6 +7003,8 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
   seq_params->num_same_ref_compound = aom_rb_read_literal(rb, 2);
 #endif  // CONFIG_SAME_REF_COMPOUND
   seq_params->enable_sdp = seq_params->monochrome ? 0 : aom_rb_read_bit(rb);
+  seq_params->enable_extended_sdp =
+      seq_params->enable_sdp ? aom_rb_read_bit(rb) : 0;
   seq_params->enable_ist = aom_rb_read_bit(rb);
   seq_params->enable_inter_ist = aom_rb_read_bit(rb);
 #if CONFIG_CHROMA_TX

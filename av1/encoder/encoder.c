@@ -464,6 +464,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #endif  // CONFIG_DIP
 
   seq->enable_sdp = oxcf->part_cfg.enable_sdp;
+  seq->enable_extended_sdp = oxcf->part_cfg.enable_extended_sdp;
   seq->enable_mrls = oxcf->intra_mode_cfg.enable_mrls;
   seq->enable_fsc = oxcf->intra_mode_cfg.enable_fsc;
   seq->enable_orip = oxcf->intra_mode_cfg.enable_orip;
