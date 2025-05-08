@@ -550,6 +550,29 @@ int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir) {
   // left of the entries corresponding to real macroblocks.
   // The prediction flags in these dummy entries are initialized to 0.
   int filter_type_ctx = ctx_offset + (dir & 0x01) * INTER_FILTER_DIR_OFFSET;
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  int neighbor_filter_type[MAX_NUM_NEIGHBORS];
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    neighbor_filter_type[i] = SWITCHABLE_FILTERS;
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor != NULL) {
+      neighbor_filter_type[i] =
+          get_ref_filter_type(neighbor, xd, dir, ref_frame);
+    }
+  }
+
+  if (neighbor_filter_type[0] == neighbor_filter_type[1]) {
+    filter_type_ctx += neighbor_filter_type[0];
+  } else if (neighbor_filter_type[0] == SWITCHABLE_FILTERS) {
+    assert(neighbor_filter_type[1] != SWITCHABLE_FILTERS);
+    filter_type_ctx += neighbor_filter_type[1];
+  } else if (neighbor_filter_type[1] == SWITCHABLE_FILTERS) {
+    assert(neighbor_filter_type[0] != SWITCHABLE_FILTERS);
+    filter_type_ctx += neighbor_filter_type[0];
+  } else {
+    filter_type_ctx += SWITCHABLE_FILTERS;
+  }
+#else
   int left_type = SWITCHABLE_FILTERS;
   int above_type = SWITCHABLE_FILTERS;
 
@@ -571,6 +594,7 @@ int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir) {
   } else {
     filter_type_ctx += SWITCHABLE_FILTERS;
   }
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
 
   return filter_type_ctx;
 }
@@ -647,8 +671,14 @@ int av1_get_palette_cache(const MACROBLOCKD *const xd, int plane,
 // 2 - intra/--, --/intra
 // 3 - intra/intra
 int av1_get_intra_inter_context(const MACROBLOCKD *xd) {
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  const MB_MODE_INFO *const neighbor0 = xd->neighbors_line_buffer[0];
+  const MB_MODE_INFO *const neighbor1 = xd->neighbors_line_buffer[1];
+#else
   const MB_MODE_INFO *const neighbor0 = xd->neighbors[0];
   const MB_MODE_INFO *const neighbor1 = xd->neighbors[1];
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+
   if (neighbor0 && neighbor1) {  // both neighbors available
     const int is_neighbor0_intra = !is_inter_block(neighbor0, xd->tree_type);
     const int is_neighbor1_intra = !is_inter_block(neighbor1, xd->tree_type);
@@ -849,8 +879,13 @@ int av1_get_reference_mode_context(const AV1_COMMON *cm,
                                    const MACROBLOCKD *xd) {
   (void)cm;
   int ctx = 0;
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  const MB_MODE_INFO *const neighbor0 = xd->neighbors_line_buffer[0];
+  const MB_MODE_INFO *const neighbor1 = xd->neighbors_line_buffer[1];
+#else
   const MB_MODE_INFO *const neighbor0 = xd->neighbors[0];
   const MB_MODE_INFO *const neighbor1 = xd->neighbors[1];
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
 
   // Note:
   // The mode info data structure has a one element border above and to the

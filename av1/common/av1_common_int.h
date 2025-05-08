@@ -2657,11 +2657,28 @@ static INLINE void set_plane_n4(MACROBLOCKD *const xd, int bw, int bh,
   }
 }
 
-static INLINE void fetch_spatial_neighbors(MACROBLOCKD *xd) {
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+// Check whether the coding block is at the superblock top boundary
+static AOM_INLINE bool is_at_sb_top_boundary(int mi_row, int mib_size) {
+  return (mi_row % mib_size == 0);
+}
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+
+static INLINE void fetch_spatial_neighbors(MACROBLOCKD *xd
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+                                           ,
+                                           const int mib_size
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+) {
   // Scan from bottom left->above right->left->above
   for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
     xd->neighbors[i] = NULL;
   }
+
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  const int not_at_sb_top_boundary =
+      !is_at_sb_top_boundary(xd->mi_row, mib_size);
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
 
   int index = 0;
 #if CONFIG_NEW_CONTEXT_MODELING
@@ -2670,7 +2687,11 @@ static INLINE void fetch_spatial_neighbors(MACROBLOCKD *xd) {
     if (index >= MAX_NUM_NEIGHBORS) return;
   }
 
-  if (xd->above_right_mbmi) {
+  if (xd->above_right_mbmi
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      && not_at_sb_top_boundary
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  ) {
     xd->neighbors[index++] = xd->above_right_mbmi;
     if (index >= MAX_NUM_NEIGHBORS) return;
   }
@@ -2681,16 +2702,54 @@ static INLINE void fetch_spatial_neighbors(MACROBLOCKD *xd) {
     if (index >= MAX_NUM_NEIGHBORS) return;
   }
 
-  if (xd->above_mbmi) {
+  if (xd->above_mbmi
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      && not_at_sb_top_boundary
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  ) {
     xd->neighbors[index++] = xd->above_mbmi;
     if (index >= MAX_NUM_NEIGHBORS) return;
   }
 }
 
-static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
-                                  int mi_row, int bh, int mi_col, int bw,
-                                  int mi_rows, int mi_cols,
-                                  const CHROMA_REF_INFO *chroma_ref_info) {
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+static INLINE void fetch_spatial_neighbors_with_line_buffer(MACROBLOCKD *xd) {
+  // Scan from bottom left->above right->left->above
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    xd->neighbors_line_buffer[i] = NULL;
+  }
+
+  int index = 0;
+#if CONFIG_NEW_CONTEXT_MODELING
+  if (xd->bottom_left_mbmi) {
+    xd->neighbors_line_buffer[index++] = xd->bottom_left_mbmi;
+    if (index >= MAX_NUM_NEIGHBORS) return;
+  }
+
+  if (xd->above_right_mbmi) {
+    xd->neighbors_line_buffer[index++] = xd->above_right_mbmi;
+    if (index >= MAX_NUM_NEIGHBORS) return;
+  }
+#endif  // CONFIG_NEW_CONTEXT_MODELING
+
+  if (xd->left_mbmi) {
+    xd->neighbors_line_buffer[index++] = xd->left_mbmi;
+    if (index >= MAX_NUM_NEIGHBORS) return;
+  }
+
+  if (xd->above_mbmi) {
+    xd->neighbors_line_buffer[index++] = xd->above_mbmi;
+    if (index >= MAX_NUM_NEIGHBORS) return;
+  }
+}
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+
+static INLINE void set_mi_row_col(
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+    const AV1_COMMON *const cm,
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+    MACROBLOCKD *xd, const TileInfo *const tile, int mi_row, int bh, int mi_col,
+    int bw, int mi_rows, int mi_cols, const CHROMA_REF_INFO *chroma_ref_info) {
   xd->mb_to_top_edge = -GET_MV_SUBPEL(mi_row * MI_SIZE);
   xd->mb_to_bottom_edge = GET_MV_SUBPEL((mi_rows - bh - mi_row) * MI_SIZE);
   xd->mb_to_left_edge = -GET_MV_SUBPEL((mi_col * MI_SIZE));
@@ -2739,7 +2798,15 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
     xd->bottom_left_mbmi = NULL;
   }
 
-  fetch_spatial_neighbors(xd);
+  fetch_spatial_neighbors(xd
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+                          ,
+                          cm->mib_size
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  );
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  fetch_spatial_neighbors_with_line_buffer(xd);
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
 
   if (chroma_ref_info) {
     xd->is_chroma_ref = chroma_ref_info->is_chroma_ref;

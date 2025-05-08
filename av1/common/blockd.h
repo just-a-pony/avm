@@ -703,7 +703,7 @@ typedef struct MB_MODE_INFO {
 #else   // CONFIG_EXT_SEG
   uint8_t segment_id : 3;
 #endif  // CONFIG_EXT_SEG
-  /*! \brief Only valid when temporal update if off. */
+  /*! \brief Only valid when temporal update is off. */
   uint8_t seg_id_predicted : 1;
   /*! \brief Which ref_mv to use */
 #if CONFIG_SEP_COMP_DRL
@@ -2267,6 +2267,13 @@ typedef struct macroblockd {
    * if no available mbmi, set to be NULL.
    */
   MB_MODE_INFO *neighbors[MAX_NUM_NEIGHBORS];
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  /*!
+   * Neighboring blocks' mbmi could be from line buffer
+   * if no available mbmi, set to be NULL.
+   */
+  MB_MODE_INFO *neighbors_line_buffer[MAX_NUM_NEIGHBORS];
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
   /*!
    * Above chroma reference block if is_chroma_ref == true for the current block
    * and chroma_up_available == true; otherwise NULL.

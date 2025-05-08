@@ -786,8 +786,12 @@ void av1_set_offsets_without_segment_id(
   set_plane_n4(xd, mi_width, mi_height, num_planes, chroma_ref_info);
 
   // Set up distance of MB to edge of frame in 1/8th pel units.
-  set_mi_row_col(xd, tile, mi_row, mi_height, mi_col, mi_width,
-                 cm->mi_params.mi_rows, cm->mi_params.mi_cols, chroma_ref_info);
+  set_mi_row_col(
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      cm,
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      xd, tile, mi_row, mi_height, mi_col, mi_width, cm->mi_params.mi_rows,
+      cm->mi_params.mi_cols, chroma_ref_info);
 
   // Set up source buffers.
   av1_setup_src_planes(x, cpi->source, mi_row, mi_col, num_planes,

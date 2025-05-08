@@ -371,8 +371,12 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
                         mi_width, mi_height
 #endif  // CONFIG_C071_SUBBLK_WARPMV
   );
-  set_mi_row_col(xd, &xd->tile, mi_row, mi_height, mi_col, mi_width,
-                 cm->mi_params.mi_rows, cm->mi_params.mi_cols, NULL);
+  set_mi_row_col(
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      cm,
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      xd, &xd->tile, mi_row, mi_height, mi_col, mi_width, cm->mi_params.mi_rows,
+      cm->mi_params.mi_cols, NULL);
   set_plane_n4(xd, mi_size_wide[bsize], mi_size_high[bsize], av1_num_planes(cm),
                NULL);
   xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART] = bsize;

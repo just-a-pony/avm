@@ -629,8 +629,12 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
 
   // Distance of Mb to the various image edges. These are specified to 8th pel
   // as they are always compared to values that are in 1/8th pel units
-  set_mi_row_col(xd, tile, mi_row, bh, mi_col, bw, mi_params->mi_rows,
-                 mi_params->mi_cols, chroma_ref_info);
+  set_mi_row_col(
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      cm,
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      xd, tile, mi_row, bh, mi_col, bw, mi_params->mi_rows, mi_params->mi_cols,
+      chroma_ref_info);
 
   av1_setup_dst_planes(xd->plane, &cm->cur_frame->buf, mi_row, mi_col, 0,
                        num_planes, chroma_ref_info);
@@ -2135,8 +2139,12 @@ static AOM_INLINE void set_offsets_for_pred_and_recon(AV1Decoder *const pbi,
 
   // Distance of Mb to the various image edges. These are specified to 8th pel
   // as they are always compared to values that are in 1/8th pel units
-  set_mi_row_col(xd, tile, mi_row, bh, mi_col, bw, mi_params->mi_rows,
-                 mi_params->mi_cols, chroma_ref_info);
+  set_mi_row_col(
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      cm,
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+      xd, tile, mi_row, bh, mi_col, bw, mi_params->mi_rows, mi_params->mi_cols,
+      chroma_ref_info);
 
   av1_setup_dst_planes(xd->plane, &cm->cur_frame->buf, mi_row, mi_col, 0,
                        num_planes, chroma_ref_info);

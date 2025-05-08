@@ -409,6 +409,9 @@ set_aom_config_var(
   CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL 1
   "Enhanced parsing dependency removal and simplification of skip mode.")
 
+set_aom_config_var(CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION 1
+                   "Enable to reduce context model line buffer size")
+
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
                    "Enable a sufficient MV search range.")

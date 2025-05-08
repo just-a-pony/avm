@@ -6469,6 +6469,19 @@ void av1_build_interintra_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,
 
 int av1_get_mpp_flag_context(const AV1_COMMON *cm, const MACROBLOCKD *xd) {
   (void)cm;
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  int ctx = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor && is_inter_block(neighbor, SHARED_PART) &&
+        !is_intrabc_block(neighbor, SHARED_PART)) {
+      ctx += (neighbor->most_probable_pb_mv_precision ==
+              neighbor->pb_mv_precision);
+    }
+  }
+
+  return ctx;
+#else
   const MB_MODE_INFO *const above_mi = xd->above_mbmi;
   const MB_MODE_INFO *const left_mi = xd->left_mbmi;
   const int above_mpp_flag =
@@ -6484,6 +6497,7 @@ int av1_get_mpp_flag_context(const AV1_COMMON *cm, const MACROBLOCKD *xd) {
           : 0;
 
   return (above_mpp_flag + left_mpp_flag);
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
 }
 
 #if CONFIG_REFINEMV
@@ -6501,6 +6515,18 @@ int av1_get_refinemv_context(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 int av1_get_pb_mv_precision_down_context(const AV1_COMMON *cm,
                                          const MACROBLOCKD *xd) {
   (void)cm;
+#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
+  int ctx = 0;
+  for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
+    const MB_MODE_INFO *const neighbor = xd->neighbors[i];
+    if (neighbor && is_inter_block(neighbor, SHARED_PART) &&
+        !is_intrabc_block(neighbor, SHARED_PART)) {
+      ctx += (neighbor->max_mv_precision - neighbor->pb_mv_precision);
+    }
+  }
+
+  return ctx > 0;
+#else
   const MB_MODE_INFO *const above_mi = xd->above_mbmi;
   const MB_MODE_INFO *const left_mi = xd->left_mbmi;
   const int above_down =
@@ -6516,6 +6542,7 @@ int av1_get_pb_mv_precision_down_context(const AV1_COMMON *cm,
   assert(above_down >= 0);
   assert(left_down >= 0);
   return (above_down + left_down > 0);
+#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
 }
 
 int av1_get_mv_class_context(const MvSubpelPrecision pb_mv_precision) {
