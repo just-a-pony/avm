@@ -1955,6 +1955,14 @@ int get_tx_type_cost(const MACROBLOCK *x, const MACROBLOCKD *xd, int plane,
 #if CONFIG_TX_TYPE_FLEX_IMPROVE
   const TX_SIZE tx_size_sqr_up = txsize_sqr_up_map[tx_size];
 #endif  // CONFIG_TX_TYPE_FLEX_IMPROVE
+#if CONFIG_IMPROVE_LOSSLESS_TXM
+  if (xd->lossless[xd->mi[0]->segment_id]) {
+    if (is_inter && tx_size == TX_4X4) {
+      TX_TYPE lossless_inter_tx_type = get_primary_tx_type(tx_type) == IDTX;
+      return x->mode_costs.lossless_inter_tx_type_cost[lossless_inter_tx_type];
+    }
+  }
+#endif  // CONFIG_IMPROVE_LOSSLESS_TXM
   if (get_ext_tx_types(tx_size, is_inter, reduced_tx_set_used) > 1 &&
       !xd->lossless[xd->mi[0]->segment_id]) {
     const int ext_tx_set =
@@ -5544,6 +5552,15 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
       // assert(get_primary_tx_type(tx_type) == default_type);
     }
   }
+
+#if CONFIG_IMPROVE_LOSSLESS_TXM
+  if (xd->lossless[mbmi->segment_id]) {
+    if (is_inter && tx_size == TX_4X4) {
+      update_cdf(xd->tile_ctx->lossless_inter_tx_type_cdf,
+                 get_primary_tx_type(tx_type) == IDTX, 2);
+    }
+  }
+#endif  // CONFIG_IMPROVE_LOSSLESS_TXM
 
   if (get_ext_tx_types(tx_size, is_inter, reduced_tx_set_used) > 1 &&
       cm->quant_params.base_qindex > 0 &&

@@ -416,6 +416,17 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
   }
 #endif  // CONFIG_NEW_TX_PARTITION
 
+#if CONFIG_IMPROVE_LOSSLESS_TXM
+  for (i = 0; i < BLOCK_SIZE_GROUPS; ++i) {
+    for (j = 0; j < 2; ++j) {
+      av1_cost_tokens_from_cdf(mode_costs->lossless_tx_size_cost[i][j],
+                               fc->lossless_tx_size_cdf[i][j], NULL);
+    }
+  }
+  av1_cost_tokens_from_cdf(mode_costs->lossless_inter_tx_type_cost,
+                           fc->lossless_inter_tx_type_cdf, NULL);
+#endif  // CONFIG_IMPROVE_LOSSLESS_TXM
+
 #if CONFIG_TX_TYPE_FLEX_IMPROVE
   for (i = 0; i < 2; ++i) {
     av1_cost_tokens_from_cdf(mode_costs->tx_ext_32_costs[i],

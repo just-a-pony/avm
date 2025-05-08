@@ -4100,9 +4100,23 @@ static INLINE TX_TYPE av1_get_tx_type(const MACROBLOCKD *xd,
   if (is_fsc) {
     return IDTX;
   }
+#if CONFIG_IMPROVE_LOSSLESS_TXM
+  const int is_inter = is_inter_block(mbmi, xd->tree_type);
+  if (xd->lossless[mbmi->segment_id]) {
+    if (is_inter && tx_size == TX_8X8) {
+      assert(plane_type == PLANE_TYPE_Y);
+      return IDTX;
+    } else if (is_inter && plane_type == PLANE_TYPE_Y) {
+      return xd->tx_type_map[blk_row * xd->tx_type_map_stride + blk_col];
+    } else {
+      return DCT_DCT;
+    }
+  }
+#else
   if (xd->lossless[mbmi->segment_id]) {
     return DCT_DCT;
   }
+#endif  // CONFIG_IMPROVE_LOSSLESS_TXM
 #else   // CONFIG_LOSSLESS_DPCM
   if (xd->lossless[mbmi->segment_id]) {
     return DCT_DCT;
@@ -4387,7 +4401,20 @@ static INLINE TX_SIZE av1_get_max_uv_txsize(BLOCK_SIZE bsize, int subsampling_x,
 
 static INLINE TX_SIZE av1_get_tx_size(int plane, const MACROBLOCKD *xd) {
   const MB_MODE_INFO *mbmi = xd->mi[0];
+#if CONFIG_IMPROVE_LOSSLESS_TXM
+  if (xd->lossless[mbmi->segment_id]) {
+    const bool is_fsc = mbmi->fsc_mode[xd->tree_type == CHROMA_PART] && !plane;
+    const int is_inter = is_inter_block(mbmi, xd->tree_type);
+    const BLOCK_SIZE bs = get_bsize_base(xd, mbmi, plane);
+    if (block_size_wide[bs] < 8 || block_size_high[bs] < 8 || plane ||
+        (!is_inter && !is_fsc))
+      return TX_4X4;
+    else
+      return mbmi->tx_size;
+  }
+#else
   if (xd->lossless[mbmi->segment_id]) return TX_4X4;
+#endif  // CONFIG_IMPROVE_LOSSLESS_TXM
   if (plane == 0) return mbmi->tx_size;
   const MACROBLOCKD_PLANE *pd = &xd->plane[plane];
 #if CONFIG_EXT_RECUR_PARTITIONS
@@ -4555,7 +4582,20 @@ static INLINE int is_interintra_pred(const MB_MODE_INFO *mbmi) {
 
 static INLINE int get_vartx_max_txsize(const MACROBLOCKD *xd, BLOCK_SIZE bsize,
                                        int plane) {
+#if CONFIG_IMPROVE_LOSSLESS_TXM
+  if (xd->lossless[xd->mi[0]->segment_id]) {
+    const bool is_fsc =
+        xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART] && !plane;
+    const int is_inter = is_inter_block(xd->mi[0], xd->tree_type);
+    if (block_size_wide[bsize] < 8 || block_size_high[bsize] < 8 || plane ||
+        (!is_inter && !is_fsc))
+      return TX_4X4;
+    else
+      return xd->mi[0]->tx_size;
+  }
+#else
   if (xd->lossless[xd->mi[0]->segment_id]) return TX_4X4;
+#endif  // CONFIG_IMPROVE_LOSSLESS_TXM
   const TX_SIZE max_txsize = max_txsize_rect_lookup[bsize];
   if (plane == 0) return max_txsize;            // luma
   return av1_get_adjusted_tx_size(max_txsize);  // chroma

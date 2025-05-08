@@ -1750,7 +1750,24 @@ static TX_SIZE read_selected_tx_size(const MACROBLOCKD *const xd,
 static TX_SIZE read_tx_size(MACROBLOCKD *xd, TX_MODE tx_mode, int is_inter,
                             int allow_select_inter, aom_reader *r) {
   const BLOCK_SIZE bsize = xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART];
+#if CONFIG_IMPROVE_LOSSLESS_TXM
+  if (xd->lossless[xd->mi[0]->segment_id]) {
+    const bool is_fsc = xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART];
+    if (block_size_wide[bsize] < 8 || block_size_high[bsize] < 8 ||
+        (!is_inter && !is_fsc))
+      return TX_4X4;
+    else {
+      const int bsize_group = size_group_lookup[bsize];
+      TX_SIZE cur_tx_size = (TX_SIZE)aom_read_symbol(
+          r, xd->tile_ctx->lossless_tx_size_cdf[bsize_group][is_inter], 2,
+          ACCT_INFO("lossless_tx_size"));
+      assert(cur_tx_size == TX_4X4 || cur_tx_size == TX_8X8);
+      return cur_tx_size;
+    }
+  }
+#else
   if (xd->lossless[xd->mi[0]->segment_id]) return TX_4X4;
+#endif  // CONFIG_IMPROVE_LOSSLESS_TXM
 
   if (block_signals_txsize(bsize)) {
     if ((!is_inter || allow_select_inter) && tx_mode == TX_MODE_SELECT) {
