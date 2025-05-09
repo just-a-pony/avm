@@ -455,6 +455,34 @@ typedef struct BufferPool {
 
 /*!\endcond */
 
+#if CONFIG_GDF
+typedef struct {
+  int gdf_mode;       /*!< GDF frame flag (0 : disable,
+                                           1 : enable all block,
+                                           2 : enable with block level on/off */
+  int gdf_pic_qc_idx; /*!< GDF frame parameter indicates quality (QP) bucket */
+  int gdf_pic_scale_idx; /*!< GDF frame parameter indicates scale factor */
+  int gdf_block_size;    /*!< GDF parameter indicates block size for on/off */
+  int gdf_block_num;     /*!< GDF parameter indicates number of blocks */
+  int gdf_stripe_size;   /*!< GDF parameter indicates stripe size */
+  int gdf_unit_size; /*!< GDF parameter indicates feature extract/error lookup
+                        size */
+
+  int *gdf_block_flags; /*! GDF array store block on/off flags, active if
+                           gdf_mode == 2 */
+
+  int err_height;    /*! Height of GDF memory storing look-uped expected coding
+                        error */
+  int err_stride;    /*! Stride of GDF memory storing look-uped expected coding
+                        error */
+  int16_t *err_ptr;  /*! GDF poiter to memory storing look-uped expected coding
+                        error */
+  uint16_t *inp_ptr; /*! GDF poiter to memory storing guided frame for GDF,
+                        i.e., before LF frame */
+  uint16_t *inp_pad_ptr;
+} GdfInfo;
+#endif  // CONFIG_GDF
+
 /*!\brief Parameters related to CDEF */
 typedef struct {
   int cdef_damping;                       /*!< CDEF damping factor */
@@ -1791,6 +1819,10 @@ typedef struct AV1Common {
   RestorationLineBuffers *rlbs; /*!< Line buffers needed by loop restoration */
   YV12_BUFFER_CONFIG rst_frame; /*!< Stores the output of loop restoration */
   /**@}*/
+
+#if CONFIG_GDF
+  GdfInfo gdf_info;
+#endif  // CONFIG_GDF
 
   /*!
    * CDEF (Constrained Directional Enhancement Filter) parameters.

@@ -8605,6 +8605,10 @@ static const aom_cdf_prob
     };
 #endif  // CONFIG_CDEF_ENHANCEMENTS
 
+#if CONFIG_GDF
+static const aom_cdf_prob default_gdf_cdf[CDF_SIZE(2)] = { AOM_CDF2(11570) };
+#endif  // CONFIG_GDF
+
 #if CONFIG_ENTROPY_PARA
 static const aom_cdf_prob default_sgrproj_restore_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(13795), 32
@@ -9496,6 +9500,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->cdef_strength_index0_cdf, default_cdef_strength_index0_cdf);
   av1_copy(fc->cdef_cdf, default_cdef_cdf);
 #endif  // CONFIG_CDEF_ENHANCEMENTS
+#if CONFIG_GDF
+  av1_copy(fc->gdf_cdf, default_gdf_cdf);
+#endif  // CONFIG_GDF
   av1_copy(fc->sgrproj_restore_cdf, default_sgrproj_restore_cdf);
   av1_copy(fc->wienerns_restore_cdf, default_wienerns_restore_cdf);
   av1_copy(fc->wienerns_length_cdf, default_wienerns_length_cdf);

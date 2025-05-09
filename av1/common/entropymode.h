@@ -589,6 +589,9 @@ typedef struct frame_contexts {
   // CDF for CDEF all other strength index
   aom_cdf_prob cdef_cdf[CDEF_STRENGTHS_NUM - 1][CDF_SIZE(CDEF_STRENGTHS_NUM)];
 #endif  // CONFIG_CDEF_ENHANCEMENTS
+#if CONFIG_GDF
+  aom_cdf_prob gdf_cdf[CDF_SIZE(2)];
+#endif  // CONFIG_GDF
   aom_cdf_prob sgrproj_restore_cdf[CDF_SIZE(2)];
   aom_cdf_prob wienerns_restore_cdf[CDF_SIZE(2)];
   aom_cdf_prob wienerns_length_cdf[2][CDF_SIZE(2)];

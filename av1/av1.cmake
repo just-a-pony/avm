@@ -36,6 +36,10 @@ list(
   "${AOM_ROOT}/av1/common/blockd.h"
   "${AOM_ROOT}/av1/common/cdef.c"
   "${AOM_ROOT}/av1/common/cdef.h"
+  "${AOM_ROOT}/av1/common/gdf.c"
+  "${AOM_ROOT}/av1/common/gdf.h"
+  "${AOM_ROOT}/av1/common/gdf_block.c"
+  "${AOM_ROOT}/av1/common/gdf_block.h"
   "${AOM_ROOT}/av1/common/cdef_block.c"
   "${AOM_ROOT}/av1/common/cdef_block.h"
   "${AOM_ROOT}/av1/common/cfl.c"
@@ -374,6 +378,9 @@ list(
   "${AOM_ROOT}/av1/common/x86/highbd_warp_affine_avx2.c"
   "${AOM_ROOT}/av1/common/x86/reconinter_avx2.c"
   "${AOM_ROOT}/av1/common/x86/selfguided_avx2.c")
+
+list(APPEND AOM_AV1_COMMON_INTRIN_AVX2
+     "${AOM_ROOT}/av1/common/gdf_block_avx2.c")
 
 list(APPEND AOM_AV1_ENCODER_ASM_SSE2 "${AOM_ROOT}/av1/encoder/x86/dct_sse2.asm")
 

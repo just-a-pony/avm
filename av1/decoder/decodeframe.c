@@ -40,6 +40,11 @@
 
 #include "av1/common/alloccommon.h"
 #include "av1/common/cdef.h"
+
+#if CONFIG_GDF
+#include "av1/common/gdf.h"
+#endif  // CONFIG_GDF
+
 #include "av1/common/ccso.h"
 #include "av1/common/cfl.h"
 #if CONFIG_INSPECTION
@@ -3808,6 +3813,25 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
   lf->mode_ref_delta_update = 0;
   lf->mode_ref_delta_enabled = 0;
 }
+
+#if CONFIG_GDF
+static AOM_INLINE void setup_gdf(AV1_COMMON *cm,
+                                 struct aom_read_bit_buffer *rb) {
+  cm->gdf_info.gdf_mode = 0;
+  if (!is_allow_gdf(cm)) return;
+  init_gdf(cm);
+  cm->gdf_info.gdf_mode = aom_rb_read_bit(rb);
+  if (cm->gdf_info.gdf_mode > 0) {
+    alloc_gdf_buffers(cm);
+    if (cm->gdf_info.gdf_block_num > 1) {
+      cm->gdf_info.gdf_mode += aom_rb_read_bit(rb);
+    }
+    cm->gdf_info.gdf_pic_qc_idx = aom_rb_read_literal(rb, GDF_RDO_QP_NUM_LOG2);
+    cm->gdf_info.gdf_pic_scale_idx =
+        aom_rb_read_literal(rb, GDF_RDO_SCALE_NUM_LOG2);
+  }
+}
+#endif  // CONFIG_GDF
 
 static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {
@@ -8538,6 +8562,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     struct loopfilter *lf = &cm->lf;
     lf->filter_level[0] = 0;
     lf->filter_level[1] = 0;
+
+#if CONFIG_GDF
+    cm->gdf_info.gdf_mode = 0;
+#endif  // CONFIG_GDF
+
 #if CONFIG_FIX_CDEF_SYNTAX
     cm->cdef_info.cdef_frame_enable = 0;
 #else
@@ -8733,6 +8762,12 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif
   }
   setup_loopfilter(cm, rb);
+
+#if CONFIG_GDF
+  if (!features->coded_lossless) {
+    setup_gdf(cm, rb);
+  }
+#endif  // CONFIG_GDF
 
   if (!features->coded_lossless && seq_params->enable_cdef) {
     setup_cdef(cm, rb);
@@ -9088,6 +9123,10 @@ void decoder_avg_tiles_cdfs(AV1Decoder *const pbi) {
 }
 #endif  // CONFIG_TILE_CDFS_AVG_TO_FRAME
 
+#if CONFIG_GDF
+void av1_gdf_frame_dec(AV1_COMMON *cm) { gdf_filter_frame(cm); }
+#endif  // CONFIG_GDF
+
 void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
                                     const uint8_t *data_end,
                                     const uint8_t **p_data_end, int start_tile,
@@ -9227,9 +9266,16 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_ENABLE_SR
     const int do_superres = av1_superres_scaled(cm);
 #endif  // CONFIG_ENABLE_SR
-    const int optimized_loop_restoration = !use_ccso && !do_cdef
+#if CONFIG_GDF
+    const int do_gdf = is_gdf_enabled(cm);
+#endif  // CONFIG_GDF
+    const int optimized_loop_restoration =
+#if CONFIG_GDF
+        !do_gdf &&
+#endif  // CONFIG_GDF
+        !use_ccso && !do_cdef
 #if CONFIG_ENABLE_SR
-                                           && !do_superres
+        && !do_superres
 #endif  // CONFIG_ENABLE_SR
         ;
 
@@ -9241,7 +9287,6 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       if (do_cdef) {
         av1_cdef_frame(&pbi->common.cur_frame->buf, cm, &pbi->dcb.xd);
       }
-
       if (use_ccso) {
         ccso_frame(&cm->cur_frame->buf, cm, xd, ext_rec_y);
         aom_free(ext_rec_y);
@@ -9250,6 +9295,12 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_ENABLE_SR
       superres_post_decode(pbi);
 #endif  // CONFIG_ENABLE_SR
+
+#if CONFIG_GDF
+      if (do_gdf) {
+        gdf_copy_guided_frame(cm);
+      }
+#endif  // CONFIG_GDF
 
       if (do_loop_restoration) {
         av1_loop_restoration_save_boundary_lines(&pbi->common.cur_frame->buf,
@@ -9269,6 +9320,14 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
                                             &pbi->lr_ctxt);
         }
       }
+
+#if CONFIG_GDF
+      if (do_gdf) {
+        av1_gdf_frame_dec(cm);
+        gdf_free_guided_frame(cm);
+      }
+#endif  // CONFIG_GDF
+
     } else {
       // In no cdef and no superres case. Provide an optimized version of
       // loop_restoration_filter.

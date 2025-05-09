@@ -649,6 +649,11 @@ if ($opts{config} !~ /libs-x86-win32-vs.*/) {
   specialize qw/cdef_copy_rect8_16bit_to_16bit sse2 ssse3 sse4_1 avx2 neon/;
 }
 
+add_proto qw/void gdf_inference_block/, "const int i_min, const int i_max, const int j_min, const int j_max, const int stripe_size, const int qp_idx, const uint16_t* rec_pnt, const int rec_stride, const int bit_depth, int16_t* err_pnt, const int err_stride, const int pxl_shift, const int ref_dst_idx";
+specialize qw/gdf_inference_block avx2/;
+add_proto qw/void gdf_compensation_block/, "uint16_t* rec_pnt, const int rec_stride, int16_t* err_pnt, const int err_stride, const int err_shift, const int scale, const int pxl_max, const int blk_height, const int blk_width";
+specialize qw/gdf_compensation_block avx2/;
+
 # Cross-component Sample Offset
 if (aom_config("CONFIG_CCSO_FU_BUGFIX") eq "yes") {
   add_proto qw/void ccso_filter_block_hbd_wo_buf/, "const uint16_t *src_y, uint16_t *dst_yuv, const int x, const int y, const int pic_width, const int pic_height, int *src_cls, const int8_t *offset_buf, const int scaled_ext_stride, const int dst_stride, const int y_uv_hscale, const int y_uv_vscale, const int thr, const int neg_thr, const int *src_loc, const int max_val, const int blk_size_x, const int blk_size_y, const bool isSingleBand, const uint8_t shift_bits, const int edge_clf, const uint8_t ccso_bo_only";

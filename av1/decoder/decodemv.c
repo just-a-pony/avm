@@ -38,6 +38,11 @@
 #if CONFIG_VQ_MVD_CODING
 #include "aom_dsp/binary_codes_reader.h"
 #endif  // CONFIG_VQ_MVD_CODING
+
+#if CONFIG_GDF
+#include "av1/common/gdf.h"
+#endif  // CONFIG_GDF
+
 #define DEC_MISMATCH_DEBUG 0
 
 #if !CONFIG_AIMC
@@ -45,6 +50,23 @@ static PREDICTION_MODE read_intra_mode(aom_reader *r, aom_cdf_prob *cdf) {
   return (PREDICTION_MODE)aom_read_symbol(r, cdf, INTRA_MODES, ACCT_INFO());
 }
 #endif  // !CONFIG_AIMC
+
+#if CONFIG_GDF
+static void read_gdf(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
+  if (!is_allow_gdf(cm)) return;
+#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
+  if (is_global_intrabc_allowed(cm)) return;
+#endif  //! CONFIG_ENABLE_INLOOP_FILTER_GIBC
+  if ((cm->gdf_info.gdf_mode < 2) || (cm->gdf_info.gdf_block_num <= 1)) return;
+
+  if ((xd->mi_row == 0) && (xd->mi_col == 0)) {
+    for (int blk_idx = 0; blk_idx < cm->gdf_info.gdf_block_num; blk_idx++) {
+      cm->gdf_info.gdf_block_flags[blk_idx] =
+          aom_read_symbol(r, xd->tile_ctx->gdf_cdf, 2, ACCT_INFO("gdf_onoff"));
+    }
+  }
+}
+#endif  // CONFIG_GDF
 
 static void read_cdef(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
   assert(xd->tree_type != CHROMA_PART);
@@ -2476,6 +2498,10 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
 #if CONFIG_EXTENDED_SDP
   mbmi->seg_id_predicted = 0;
 #endif  // CONFIG_EXTENDED_SDP
+
+#if CONFIG_GDF
+  if (xd->tree_type != CHROMA_PART) read_gdf(cm, r, xd);
+#endif  // CONFIG_GDF
 
   if (xd->tree_type != CHROMA_PART) read_cdef(cm, r, xd);
 
@@ -5089,6 +5115,10 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 
   if (!cm->seg.segid_preskip)
     mbmi->segment_id = read_inter_segment_id(cm, xd, 0, r);
+
+#if CONFIG_GDF
+  read_gdf(cm, r, xd);
+#endif  // CONFIG_GDF
 
   read_cdef(cm, r, xd);
 

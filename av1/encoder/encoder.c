@@ -2393,6 +2393,195 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   set_ref_ptrs(cm, xd, 0, 0);
 }
 
+#if CONFIG_GDF
+/*!\brief Function to perform rate-distortion optimization for GDF
+ */
+void gdf_optimizer(AV1_COMP *cpi, AV1_COMMON *cm) {
+  uint16_t *org_pnt = cpi->source->y_buffer;
+  const int org_stride = cpi->source->y_stride;
+
+  uint16_t *rec_pnt = cm->cur_frame->buf.buffers[AOM_PLANE_Y];
+  const int rec_height = cm->cur_frame->buf.y_height;
+  const int rec_width = cm->cur_frame->buf.y_width;
+  const int rec_stride = cm->cur_frame->buf.y_stride;
+
+  const int bit_depth = cm->seq_params.bit_depth;
+  const int pxl_max = (1 << cm->cur_frame->buf.bit_depth) - 1;
+  const int pxl_shift = GDF_TEST_INP_PREC - cm->cur_frame->buf.bit_depth;
+  const int err_shift = GDF_RDO_SCALE_NUM_LOG2 + pxl_shift;
+  const int err_shift_half_pow2 = 1 << (err_shift - 1);
+
+  int ref_dst_idx = gdf_get_ref_dst_idx(cm);
+  int qp_idx_base = gdf_get_qp_idx_base(cm);
+
+  int64_t *rec_pic_error;
+  int64_t *flg_pic_error[GDF_RDO_SCALE_NUM][GDF_RDO_QP_NUM];
+  rec_pic_error =
+      (int64_t *)aom_calloc(cm->gdf_info.gdf_block_num, sizeof(int64_t));
+  for (int scale_idx = 0; scale_idx < GDF_RDO_SCALE_NUM; scale_idx++) {
+    for (int qp_idx = 0; qp_idx < GDF_RDO_QP_NUM; qp_idx++) {
+      flg_pic_error[scale_idx][qp_idx] =
+          (int64_t *)aom_calloc(cm->gdf_info.gdf_block_num, sizeof(int64_t));
+    }
+  }
+  const int64_t rdmult =
+      av1_compute_rd_mult_based_on_qindex(cpi, cm->quant_params.base_qindex);
+
+  int blk_idx = 0;
+  for (int y_pos = -GDF_TEST_STRIPE_OFF; y_pos < rec_height;
+       y_pos += cm->gdf_info.gdf_block_size) {
+    for (int x_pos = 0; x_pos < rec_width;
+         x_pos += cm->gdf_info.gdf_block_size) {
+      for (int v_pos = y_pos; v_pos < y_pos + cm->gdf_info.gdf_block_size;
+           v_pos += cm->gdf_info.gdf_unit_size) {
+        for (int u_pos = x_pos; u_pos < x_pos + cm->gdf_info.gdf_block_size;
+             u_pos += cm->gdf_info.gdf_unit_size) {
+          int i_min = AOMMAX(v_pos, GDF_TEST_FRAME_BOUNDARY_SIZE);
+          int i_max = AOMMIN(v_pos + cm->gdf_info.gdf_unit_size,
+                             rec_height - GDF_TEST_FRAME_BOUNDARY_SIZE);
+          int j_min = AOMMAX(u_pos, GDF_TEST_FRAME_BOUNDARY_SIZE);
+          int j_max = AOMMIN(u_pos + cm->gdf_info.gdf_unit_size,
+                             rec_width - GDF_TEST_FRAME_BOUNDARY_SIZE);
+
+          for (int qp_idx = 0; qp_idx < GDF_RDO_QP_NUM; qp_idx++) {
+            gdf_inference_block(
+                i_min, i_max, j_min, j_max, cm->gdf_info.gdf_stripe_size,
+                qp_idx + qp_idx_base, cm->gdf_info.inp_ptr, rec_stride,
+                bit_depth, cm->gdf_info.err_ptr, cm->gdf_info.err_stride,
+                pxl_shift, ref_dst_idx);
+
+            for (int i = i_min; i < i_max; i++) {
+              for (int j = j_min; j < j_max; j++) {
+                int rec_loc = i * rec_stride + j;
+                int org_loc = i * org_stride + j;
+                int err_loc =
+                    (i - i_min) * cm->gdf_info.err_stride + (j - j_min);
+
+                if (qp_idx == 0) {
+                  int64_t tmp_err = rec_pnt[rec_loc] - org_pnt[org_loc];
+                  rec_pic_error[blk_idx] += tmp_err * tmp_err;
+                }
+
+                for (int scale_idx = 0; scale_idx < GDF_RDO_SCALE_NUM;
+                     scale_idx++) {
+                  int32_t tmp_val =
+                      (scale_idx + 1) * cm->gdf_info.err_ptr[err_loc];
+                  if (tmp_val > 0) {
+                    tmp_val = (tmp_val + err_shift_half_pow2) >> err_shift;
+                  } else {
+                    tmp_val =
+                        -(((-tmp_val) + err_shift_half_pow2) >> err_shift);
+                  }
+                  tmp_val = CLIP(tmp_val + rec_pnt[rec_loc], 0, pxl_max) -
+                            org_pnt[org_loc];
+                  flg_pic_error[scale_idx][qp_idx][blk_idx] +=
+                      (int64_t)tmp_val * tmp_val;
+                }
+              }
+            }
+          }
+        }
+      }
+      blk_idx++;
+    }
+  }
+
+  int slice_rate = 1 << AV1_PROB_COST_SHIFT;
+  int64_t slice_error = 0;
+  for (blk_idx = 0; blk_idx < cm->gdf_info.gdf_block_num; blk_idx++) {
+    slice_error += rec_pic_error[blk_idx];
+  }
+  double best_cost = RDCOST_DBL_WITH_NATIVE_BD_DIST(
+      rdmult, (double)slice_rate / 16, slice_error, bit_depth);
+  cm->gdf_info.gdf_mode = 0;
+
+  int *block_flags;
+  block_flags = (int *)aom_malloc(cm->gdf_info.gdf_block_num * sizeof(int));
+  int gdf_enable_max_plus_1 = (cm->gdf_info.gdf_block_num <= 1) ? 2 : 3;
+  int gdf_block_enable_bit = 1;
+  aom_cdf_prob gdf_cdf[CDF_SIZE(2)];
+  static const aom_cdf_prob default_gdf_cdf[CDF_SIZE(2)] = { AOM_CDF2(11570) };
+  for (int gdf_mode = 1; gdf_mode < gdf_enable_max_plus_1; gdf_mode++) {
+    for (int scale_idx = 0; scale_idx < GDF_RDO_SCALE_NUM; scale_idx++) {
+      for (int qp_idx = 0; qp_idx < GDF_RDO_QP_NUM; qp_idx++) {
+        slice_rate = (1 + gdf_block_enable_bit + GDF_RDO_QP_NUM_LOG2 +
+                      GDF_RDO_SCALE_NUM_LOG2)
+                     << AV1_PROB_COST_SHIFT;
+        slice_error = 0;
+        av1_copy(gdf_cdf, default_gdf_cdf);
+
+        for (blk_idx = 0; blk_idx < cm->gdf_info.gdf_block_num; blk_idx++) {
+          if (gdf_mode == 1) {
+            slice_error += flg_pic_error[scale_idx][qp_idx][blk_idx];
+          } else {
+            double best_block_cost = DBL_MAX;
+            int best_block_rate = 0;
+            int64_t best_block_error = 0;
+            int cost_from_cdf[2];
+            av1_cost_tokens_from_cdf(cost_from_cdf, gdf_cdf, NULL);
+            for (int block_flag = 0; block_flag < 2; block_flag++) {
+              int block_rate = cost_from_cdf[block_flag];
+              int64_t block_error = 0;
+              block_error += (block_flag == 0)
+                                 ? rec_pic_error[blk_idx]
+                                 : flg_pic_error[scale_idx][qp_idx][blk_idx];
+              double block_cost = RDCOST_DBL_WITH_NATIVE_BD_DIST(
+                  rdmult, (double)block_rate / 16, block_error, bit_depth);
+              if (block_cost < best_block_cost) {
+                block_flags[blk_idx] = block_flag;
+                best_block_rate = block_rate;
+                best_block_error = block_error;
+                best_block_cost = block_cost;
+              }
+            }
+            slice_rate += best_block_rate;
+            slice_error += best_block_error;
+            update_cdf(gdf_cdf, block_flags[blk_idx], 2);
+          }
+        }
+        double slice_cost = RDCOST_DBL_WITH_NATIVE_BD_DIST(
+            rdmult, (double)slice_rate / 16, slice_error, bit_depth);
+
+        if (slice_cost < best_cost) {
+          cm->gdf_info.gdf_mode = gdf_mode;
+          cm->gdf_info.gdf_pic_qc_idx = qp_idx;
+          cm->gdf_info.gdf_pic_scale_idx = scale_idx;
+          if (gdf_mode == 2) {
+            for (blk_idx = 0; blk_idx < cm->gdf_info.gdf_block_num; blk_idx++) {
+              cm->gdf_info.gdf_block_flags[blk_idx] = block_flags[blk_idx];
+            }
+          }
+          best_cost = slice_cost;
+        }
+      }
+    }
+  }
+  aom_free(rec_pic_error);
+  for (int scale_idx = 0; scale_idx < GDF_RDO_SCALE_NUM; scale_idx++) {
+    for (int qp_idx = 0; qp_idx < GDF_RDO_QP_NUM; qp_idx++) {
+      aom_free(flg_pic_error[scale_idx][qp_idx]);
+    }
+  }
+  aom_free(block_flags);
+}
+
+/*!\brief Function to perform rate-distortion optimization for GDF
+ *        and then apply the selected GDF parameteres to filter the current
+ * frame
+ */
+void gdf_optimize_frame(AV1_COMP *cpi, AV1_COMMON *cm) {
+  init_gdf(cm);
+  alloc_gdf_buffers(cm);
+  gdf_optimizer(cpi, cm);
+#if GDF_VERBOSE
+  gdf_print_info(cm, "ENC", cm->current_frame.absolute_poc);
+#endif  //
+  if (is_gdf_enabled(cm)) {
+    gdf_filter_frame(cm);
+  }
+}
+#endif  // CONFIG_GDF
+
 /*!\brief Select and apply cdef filters and switchable restoration filters
  *
  * \ingroup high_level_algo
@@ -2465,6 +2654,13 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
   if (use_restoration)
     av1_loop_restoration_save_boundary_lines(&cm->cur_frame->buf, cm, 0);
 
+#if CONFIG_GDF
+  const int use_gdf = is_allow_gdf(cm);
+  if (!use_gdf) {
+    cm->gdf_info.gdf_mode = 0;
+  }
+#endif  // CONFIG_GDF
+
   if (use_cdef) {
 #if CONFIG_COLLECT_COMPONENT_TIMING
     start_timing(cpi, cdef_time);
@@ -2497,7 +2693,6 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
     cm->cdef_info.cdef_uv_strengths[0] = 0;
 #endif  // CONFIG_FIX_CDEF_SYNTAX
   }
-
   if (use_ccso) {
     av1_setup_dst_planes(xd->plane, &cm->cur_frame->buf, 0, 0, 0, num_planes,
                          NULL);
@@ -2551,6 +2746,12 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
   av1_superres_post_encode(cpi);
 #endif  // CONFIG_ENABLE_SR
 
+#if CONFIG_GDF
+  if (use_gdf) {
+    gdf_copy_guided_frame(cm);
+  }
+#endif  // CONFIG_GDF
+
 #if CONFIG_COLLECT_COMPONENT_TIMING
   start_timing(cpi, loop_restoration_time);
 #endif
@@ -2574,6 +2775,14 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
   }
+
+#if CONFIG_GDF
+  if (use_gdf) {
+    gdf_optimize_frame(cpi, cm);
+    gdf_free_guided_frame(cm);
+  }
+#endif  // CONFIG_GDF
+
 #if CONFIG_COLLECT_COMPONENT_TIMING
   end_timing(cpi, loop_restoration_time);
 #endif
