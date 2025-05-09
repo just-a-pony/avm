@@ -5090,41 +5090,6 @@ static INLINE int is_mv_refine_allowed(const AV1_COMMON *cm,
   return 1;
 }
 
-#if !CONFIG_IMPROVE_REFINED_MV
-// Check if the optical flow MV refinement is enabled for a given block.
-static AOM_INLINE int is_optflow_refinement_enabled(const AV1_COMMON *cm,
-#if CONFIG_COMPOUND_4XN
-                                                    const MACROBLOCKD *xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                                    const MB_MODE_INFO *mi,
-                                                    int plane,
-                                                    int tip_ref_frame) {
-  if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_NONE ||
-      cm->features.opfl_refine_type == REFINE_NONE)
-    return 0;
-
-  if (tip_ref_frame) {
-#if CONFIG_TIP_ENHANCEMENT
-    const int tip_wtd_index = cm->tip_global_wtd_index;
-    const int8_t tip_weight = tip_weighting_factors[tip_wtd_index];
-    if (tip_weight != TIP_EQUAL_WTD) return 0;
-#endif  // CONFIG_TIP_ENHANCEMENT
-    return (opfl_allowed_for_cur_refs(cm,
-#if CONFIG_COMPOUND_4XN
-                                      xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                      mi) &&
-            plane == 0);
-  } else {
-    return (opfl_allowed_for_cur_block(cm,
-#if CONFIG_COMPOUND_4XN
-                                       xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                       mi));
-  }
-}
-#endif  // !CONFIG_IMPROVE_REFINED_MV
-
 // Calculate the SAD of 2 compound prediction blocks and use it to decide
 // whether or not to skip the optical flow MV refinement for the TIP block.
 static AOM_INLINE int skip_opfl_refine_with_tip(
