@@ -6938,6 +6938,13 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
     if (seq_params->equal_ac_dc_q)
       seq_params->base_uv_dc_delta_q = seq_params->base_uv_ac_delta_q;
 #endif  // CONFIG_EXT_QUANT_UPD
+  } else {
+    seq_params->base_uv_dc_delta_q = 0;
+#if CONFIG_EXT_QUANT_UPD
+    seq_params->base_uv_ac_delta_q = 0;
+    seq_params->uv_dc_delta_q_enabled = 0;
+    seq_params->uv_ac_delta_q_enabled = 0;
+#endif  // CONFIG_EXT_QUANT_UPD
   }
 }
 
