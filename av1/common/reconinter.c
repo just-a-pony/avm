@@ -2474,15 +2474,13 @@ static INLINE unsigned int sad_generic(const uint16_t *a, int a_stride,
 
 // Update predicted blocks (P0 & P1) and their gradients based on the affine
 // model derived from the first DAMR step
-void update_pred_grad_with_affine_model(MACROBLOCKD *xd, int plane, int bw,
-                                        int bh, WarpedMotionParams *wms,
-                                        int mi_x, int mi_y, int16_t *tmp0,
-                                        int16_t *tmp1, int16_t *gx0,
-                                        int16_t *gy0, const int d0,
-                                        const int d1, int *grad_prec_bits
+void update_pred_grad_with_affine_model(
+    MACROBLOCKD *xd, int plane, int bw, int bh, WarpedMotionParams *wms,
+    int mi_x, int mi_y, int16_t *tmp0, int16_t *tmp1, int16_t *gx0,
+    int16_t *gy0, const int d0, const int d1, int *grad_prec_bits
 #if CONFIG_DAMR_CLEAN_UP
-                                        ,
-                                        const AV1_COMMON *cm, MB_MODE_INFO *mi
+    ,
+    const AV1_COMMON *cm, MB_MODE_INFO *mi, int pu_width, int pu_height
 #endif  // CONFIG_DAMR_CLEAN_UP
 ) {
   uint16_t *dst_warped =
@@ -2503,7 +2501,7 @@ void update_pred_grad_with_affine_model(MACROBLOCKD *xd, int plane, int bw,
         ReferenceArea ref_area_damr_intermediate;
         av1_get_reference_area_with_padding_single(
             cm, xd, plane, mi, mi->mv[ref].as_mv, sub_bw, sub_bh, mi_x + j,
-            mi_y + i, &ref_area_damr_intermediate, sub_bw, sub_bh, ref);
+            mi_y + i, &ref_area_damr_intermediate, pu_width, pu_height, ref);
 #endif  // CONFIG_DAMR_CLEAN_UP
         av1_warp_plane_bilinear(
             wms + 2 * nb + ref, xd->bd, pre_buf->buf0, pre_buf->width,
@@ -2763,7 +2761,7 @@ void av1_get_optflow_based_mv(
                                        tmp1, gx0, gy0, d0, d1, &grad_prec_bits
 #if CONFIG_DAMR_CLEAN_UP
                                        ,
-                                       cm, mbmi
+                                       cm, mbmi, pu_width, pu_height
 #endif  // CONFIG_DAMR_CLEAN_UP
     );
 
@@ -6036,7 +6034,7 @@ static void build_inter_predictors_8x8_and_bigger(
 #endif  // CONFIG_OPTFLOW_ON_TIP
 #if CONFIG_REFINEMV
           ,
-          best_mv_ref, bw, bh
+          best_mv_ref, pu_width, pu_height
 #endif  // CONFIG_REFINEMV
       );
 #if CONFIG_AFFINE_REFINEMENT
