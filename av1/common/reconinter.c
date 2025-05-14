@@ -5576,8 +5576,7 @@ static void build_inter_predictors_8x8_and_bigger(
       ;
   if (tip_ref_frame) {
 #if CONFIG_TIP_LD
-    mi->comp_refine_type = cm->seq_params.enable_affine_refine &&
-                                   has_both_sides_refs
+    mi->comp_refine_type = has_both_sides_refs
 #if CONFIG_TIP_ENHANCEMENT
                                    && tip_weight == TIP_EQUAL_WTD
 #endif  // CONFIG_TIP_ENHANCEMENT
