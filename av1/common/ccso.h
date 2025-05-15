@@ -24,6 +24,12 @@
 #include "aom_ports/mem.h"
 #include "av1/common/av1_common_int.h"
 
+#if CONFIG_BRU
+#define CCSO_REFACTORING 1
+#else
+#define CCSO_REFACTORING 0
+#endif
+
 static const int edge_clf_to_edge_interval[2] = { 3, 2 };
 
 #ifdef __cplusplus
@@ -58,6 +64,9 @@ void derive_ccso_sample_pos(AV1_COMMON *cm, int *rec_idx, const int ccso_stride,
 typedef void (*CCSO_FILTER_FUNC)(AV1_COMMON *cm, MACROBLOCKD *xd,
                                  const int plane, const uint16_t *src_y,
                                  uint16_t *dst_yuv, const int dst_stride,
+#if CCSO_REFACTORING
+                                 const int proc_unit_log2,
+#endif  // CCSO_REFACTORING
 #if CONFIG_CCSO_IMPROVE
                                  const uint16_t thr,
 #else

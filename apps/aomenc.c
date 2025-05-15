@@ -230,6 +230,9 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
 #if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
                                         AV1E_SET_ENABLE_CDF_AVERAGING,
 #endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+#if CONFIG_BRU
+                                        AV1E_SET_ENABLE_BRU,
+#endif  // CONFIG_BRU
                                         0 };
 
 const arg_def_t *main_args[] = { &g_av1_codec_arg_defs.help,
@@ -536,6 +539,9 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_EXTRA_DPB
   &g_av1_codec_arg_defs.num_extra_dpb,
 #endif  // CONFIG_EXTRA_DPB
+#if CONFIG_BRU
+  &g_av1_codec_arg_defs.enable_bru,
+#endif  // CONFIG_BRU
   NULL,
 };
 
@@ -797,6 +803,9 @@ static void init_config(cfg_options_t *config) {
 #if CONFIG_EXTRA_DPB
   config->num_extra_dpb = 0;
 #endif  // CONFIG_EXTRA_DPB
+#if CONFIG_BRU
+  config->enable_bru = 0;
+#endif  // CONFIG_BRU
 }
 
 /* Parses global config arguments into the AvxEncoderConfig. Note that
@@ -1572,6 +1581,10 @@ static void show_stream_config(struct stream_state *stream,
   fprintf(stdout, " , DRL Reorder (%d)", encoder_cfg->enable_drl_reorder);
 #endif  // CONFIG_DRL_REORDER_CONTROL
   fprintf(stdout, "\n");
+#if CONFIG_BRU
+  fprintf(stdout, "Backward Reference Update      : %d\n",
+          encoder_cfg->enable_bru);
+#endif  // CONFIG_BRU
 #if CONFIG_EXT_RECUR_PARTITIONS
   fprintf(
       stdout,
@@ -1913,6 +1926,17 @@ static void initialize_encoder(struct stream_state *stream,
       AOM_CODEC_CONTROL_TYPECHECKED(&stream->decoder, AV1_SET_DECODE_TILE_COL,
                                     -1);
       ctx_exit_on_error(&stream->decoder, "Failed to set decode_tile_col");
+#if CONFIG_BRU
+      int bru_opt_mode;
+      AOM_CODEC_CONTROL_TYPECHECKED(&stream->encoder, AV1E_GET_ENABLE_BRU,
+                                    &bru_opt_mode);
+      ctx_exit_on_error(&stream->encoder, "Failed to get bru opt_mode");
+      if (bru_opt_mode > 1) {
+        AOM_CODEC_CONTROL_TYPECHECKED(&stream->decoder, AV1D_SET_BRU_OPT_MODE,
+                                      bru_opt_mode > 1);
+        ctx_exit_on_error(&stream->decoder, "Failed to set bru opt_mode");
+      }
+#endif  // CONFIG_BRU
     }
   }
 #endif

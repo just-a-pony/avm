@@ -902,6 +902,12 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .num_extra_dpb = ARG_DEF(NULL, "num-extra-dpb", 1,
                            "extra dpb number (0..8), default is 0"),
 #endif  // CONFIG_EXTRA_DPB
+#if CONFIG_BRU
+  .enable_bru = ARG_DEF(NULL, "enable-bru", 1,
+                        "Enable Backward Reference Update "
+                        "(0: false (default), 1: true with regular decoder, 2: "
+                        "true with optimized decoder)"),
+#endif  // CONFIG_BRU
   .frame_hash_metadata = ARG_DEF_ENUM(
       NULL, "frame-hash", 1,
       "Write decoded frame hash metadata OBUs:", frame_hash_metadata_enum),

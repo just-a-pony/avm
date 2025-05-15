@@ -13,6 +13,9 @@
 #include <assert.h>
 
 #include "av1/common/blockd.h"
+#if CONFIG_BRU
+#include "av1/common/bru.h"
+#endif  // CONFIG_BRU
 #include "av1/common/cdef.h"
 #include "av1/common/ccso.h"
 #include "av1/common/cdef_block.h"
@@ -52,12 +55,24 @@ static PREDICTION_MODE read_intra_mode(aom_reader *r, aom_cdf_prob *cdf) {
 #endif  // !CONFIG_AIMC
 
 #if CONFIG_GDF
+#if CONFIG_BRU
+void read_gdf(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
+#else
 static void read_gdf(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
+#endif  // CONFIG_BRU
   if (!is_allow_gdf(cm)) return;
 #if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
   if (is_global_intrabc_allowed(cm)) return;
 #endif  //! CONFIG_ENABLE_INLOOP_FILTER_GIBC
   if ((cm->gdf_info.gdf_mode < 2) || (cm->gdf_info.gdf_block_num <= 1)) return;
+
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) return;
+  if (cm->bru.enabled && cm->gdf_info.gdf_mode == 1) {
+    aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                       "BRU frame cannnot use gdf_mode 1");
+  }
+#endif
 
   if ((xd->mi_row == 0) && (xd->mi_col == 0)) {
     for (int blk_idx = 0; blk_idx < cm->gdf_info.gdf_block_num; blk_idx++) {
@@ -68,7 +83,11 @@ static void read_gdf(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
 }
 #endif  // CONFIG_GDF
 
+#if CONFIG_BRU
+void read_cdef(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
+#else
 static void read_cdef(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
+#endif  // CONFIG_BRU
   assert(xd->tree_type != CHROMA_PART);
   const int skip_txfm = xd->mi[0]->skip_txfm[0];
   if (cm->features.coded_lossless) return;
@@ -187,7 +206,11 @@ static void span_ccso(AV1_COMMON *cm, MACROBLOCKD *const xd, int pli,
   }
 }
 
+#if CONFIG_BRU
+void read_ccso(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
+#else
 static void read_ccso(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
+#endif  // CONFIG_BRU
   if (cm->features.coded_lossless) return;
 #if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
   if (is_global_intrabc_allowed(cm)) return;

@@ -863,6 +863,20 @@ if(ENABLE_EXAMPLES
   list(APPEND AOM_APP_TARGETS lightfield_bitstream_parsing)
 endif()
 
+if((ENABLE_EXAMPLES OR ENABLE_TESTS)
+   AND CONFIG_AV1_ENCODER
+   AND CONFIG_AV1_DECODER
+   AND CONFIG_BRU)
+  add_executable(
+    bru_encoder_decoder
+    "${AOM_ROOT}/examples/bru_encoder_decoder.c"
+    $<TARGET_OBJECTS:aom_common_app_util>
+    $<TARGET_OBJECTS:aom_encoder_app_util>
+    $<TARGET_OBJECTS:aom_decoder_app_util>)
+  list(APPEND AOM_EXAMPLE_TARGETS bru_encoder_decoder)
+  list(APPEND AOM_APP_TARGETS bru_encoder_decoder)
+endif()
+
 foreach(aom_app ${AOM_APP_TARGETS})
   target_link_libraries(${aom_app} ${AOM_LIB_LINK_TYPE} aom)
 endforeach()

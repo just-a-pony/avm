@@ -19,6 +19,9 @@
 
 #include "aom_mem/aom_mem.h"
 #include "av1/common/av1_common_int.h"
+#if CONFIG_BRU
+#include "av1/common/bru.h"
+#endif  // CONFIG_BRU
 #include "av1/common/resize.h"
 #include "av1/common/restoration.h"
 #include "aom_dsp/aom_dsp_common.h"
@@ -528,8 +531,12 @@ void av1_extend_frame(uint16_t *data, int width, int height, int stride,
   extend_frame_highbd(data, width, height, stride, border_horz, border_vert);
 }
 
+#if CONFIG_BRU
+void copy_tile(int width, int height, const uint16_t *src,
+#else
 static void copy_tile(int width, int height, const uint16_t *src,
-                      int src_stride, uint16_t *dst, int dst_stride) {
+#endif  // CONFIG_BRU
+               int src_stride, uint16_t *dst, int dst_stride) {
   copy_tile_highbd(width, height, src, src_stride, dst, dst_stride);
 }
 
@@ -1756,6 +1763,19 @@ static void pc_wiener_stripe_highbd(const RestorationUnitInfo *rui,
                        rui->pcwiener_buffers);
   for (int j = 0; j < stripe_width; j += procunit_width) {
     int w = AOMMIN(procunit_width, stripe_width - j);
+#if CONFIG_BRU
+    const int mi_offset_x = j >> (MI_SIZE_LOG2 - rui->ss_x);
+    if (rui->mbmi_ptr[mi_offset_x]->local_rest_type == RESTORE_NONE) {
+      copy_tile(w, stripe_height, src + j, src_stride, dst + j, dst_stride);
+      continue;
+    }
+    if (rui->mbmi_ptr[mi_offset_x]->sb_active_mode != BRU_ACTIVE_SB) {
+      aom_internal_error(
+          rui->error, AOM_CODEC_ERROR,
+          "Invalid BRU activity in LR: only active SB can be filtered");
+      return;
+    }
+#endif  // CONFIG_BRU
     // The function update_accumulator() is used to compute the accumulated
     // result of tx_skip and feature direction filtering output at
     // PC_WIENER_BLOCk_SIZE samples. The SIMD for the same is implemented with
@@ -2015,6 +2035,19 @@ static void wiener_nsfilter_stripe_highbd(const RestorationUnitInfo *rui,
 
   for (int j = 0; j < stripe_width; j += procunit_width) {
     int w = AOMMIN(procunit_width, stripe_width - j);
+#if CONFIG_BRU
+    const int mi_offset_x = j >> (MI_SIZE_LOG2 - rui->ss_x);
+    if (rui->mbmi_ptr[mi_offset_x]->local_rest_type == RESTORE_NONE) {
+      copy_tile(w, stripe_height, src + j, src_stride, dst + j, dst_stride);
+      continue;
+    }
+    if (rui->mbmi_ptr[mi_offset_x]->sb_active_mode != BRU_ACTIVE_SB) {
+      aom_internal_error(
+          rui->error, AOM_CODEC_ERROR,
+          "Invalid BRU activity in LR: only active SB can be filtered");
+      return;
+    }
+#endif  // CONFIG_BRU
     apply_wienerns_class_id_highbd(
         src + j, w, stripe_height, src_stride, nsfilter_info, nsfilter_config,
         dst + j, dst_stride, rui->plane, rui->luma ? rui->luma + j : NULL,
@@ -2355,72 +2388,79 @@ uint16_t *wienerns_copy_luma_highbd(const uint16_t *dgd, int height_y,
     assert(0 && "Invalid dimensions");
   }
 #elif WIENERNS_CROSS_FILT_LUMA_TYPE == 2
-  const int ss_x = (((width_y + 1) >> 1) == width_uv);
-  const int ss_y = (((height_y + 1) >> 1) == height_uv);
+                 const int ss_x = (((width_y + 1) >> 1) == width_uv);
+                 const int ss_y = (((height_y + 1) >> 1) == height_uv);
 #if CONFIG_IMPROVED_DS_CC_WIENER
-  if (ss_x && ss_y) {
-    if (ds_type == 1) {
-      for (int r = 0; r < height_uv; ++r) {
-        for (int c = 0; c < width_uv; ++c) {
-          (*luma)[r * out_stride + c] =
+                 if (ss_x && ss_y) {
+                   if (ds_type == 1) {
+                     for (int r = 0; r < height_uv; ++r) {
+                       for (int c = 0; c < width_uv; ++c) {
+                         (*luma)[r * out_stride + c] =
 #if CONFIG_REMOVE_SIX_TAP_DS_CROSS_LR
-              (dgd[2 * r * in_stride + 2 * c] +
-               dgd[(2 * r + 1) * in_stride + 2 * c]) >>
-              1;
+                             (dgd[2 * r * in_stride + 2 * c] +
+                              dgd[(2 * r + 1) * in_stride + 2 * c]) >>
+                             1;
 #else
 
-              (dgd[2 * r * in_stride + 2 * c - ((c == 0) ? 0 : 1)] +
-               2 * dgd[2 * r * in_stride + 2 * c] +
-               dgd[2 * r * in_stride + 2 * c + 1] +
-               dgd[(2 * r + 1) * in_stride + 2 * c - ((c == 0) ? 0 : 1)] +
-               2 * dgd[(2 * r + 1) * in_stride + 2 * c] +
-               dgd[(2 * r + 1) * in_stride + 2 * c + 1]) >>
-              3;
+                             (dgd[2 * r * in_stride + 2 * c -
+                                  ((c == 0) ? 0 : 1)] +
+                              2 * dgd[2 * r * in_stride + 2 * c] +
+                              dgd[2 * r * in_stride + 2 * c + 1] +
+                              dgd[(2 * r + 1) * in_stride + 2 * c -
+                                  ((c == 0) ? 0 : 1)] +
+                              2 * dgd[(2 * r + 1) * in_stride + 2 * c] +
+                              dgd[(2 * r + 1) * in_stride + 2 * c + 1]) >>
+                             3;
 #endif
-        }
-      }
-    } else if (ds_type == 2) {
-      for (int r = 0; r < height_uv; ++r) {
-        for (int c = 0; c < width_uv; ++c) {
-          (*luma)[r * out_stride + c] =
-              dgd[(1 + ss_y) * r * in_stride + (1 + ss_x) * c];
-        }
-      }
-    } else {
-      for (int r = 0; r < height_uv; ++r) {
-        for (int c = 0; c < width_uv; ++c) {
-          (*luma)[r * out_stride + c] =
-              (dgd[2 * r * in_stride + 2 * c] +
-               dgd[2 * r * in_stride + 2 * c + 1] +
-               dgd[(2 * r + 1) * in_stride + 2 * c] +
-               dgd[(2 * r + 1) * in_stride + 2 * c + 1]) >>
-              2;
-        }
-      }
-    }
-  } else {
+                       }
+                     }
+                   } else if (ds_type == 2) {
+                     for (int r = 0; r < height_uv; ++r) {
+                       for (int c = 0; c < width_uv; ++c) {
+                         (*luma)[r * out_stride + c] =
+                             dgd[(1 + ss_y) * r * in_stride + (1 + ss_x) * c];
+                       }
+                     }
+                   } else {
+                     for (int r = 0; r < height_uv; ++r) {
+                       for (int c = 0; c < width_uv; ++c) {
+                         (*luma)[r * out_stride + c] =
+                             (dgd[2 * r * in_stride + 2 * c] +
+                              dgd[2 * r * in_stride + 2 * c + 1] +
+                              dgd[(2 * r + 1) * in_stride + 2 * c] +
+                              dgd[(2 * r + 1) * in_stride + 2 * c + 1]) >>
+                             2;
+                       }
+                     }
+                   }
+                 } else {
 #else
-  if (ss_x && ss_y && ds_type == 1) {
-    for (int r = 0; r < height_uv; ++r) {
-      for (int c = 0; c < width_uv; ++c) {
-        (*luma)[r * out_stride + c] = (dgd[2 * r * in_stride + 2 * c] +
-                                       dgd[(2 * r + 1) * in_stride + 2 * c]) /
-                                      2;
-      }
-    }
-  } else {
+                 if (ss_x && ss_y && ds_type == 1) {
+                   for (int r = 0; r < height_uv; ++r) {
+                     for (int c = 0; c < width_uv; ++c) {
+                       (*luma)[r * out_stride + c] =
+                           (dgd[2 * r * in_stride + 2 * c] +
+                            dgd[(2 * r + 1) * in_stride + 2 * c]) /
+                           2;
+                     }
+                   }
+                 } else {
+
 #endif  // CONFIG_IMPROVED_DS_CC_WIENER
-    for (int r = 0; r < height_uv; ++r) {
-      for (int c = 0; c < width_uv; ++c) {
-        (*luma)[r * out_stride + c] =
-            dgd[(1 + ss_y) * r * in_stride + (1 + ss_x) * c];
-      }
-    }
-  }
+                   for (int r = 0; r < height_uv; ++r) {
+                     for (int c = 0; c < width_uv; ++c) {
+                       (*luma)[r * out_stride + c] =
+                           dgd[(1 + ss_y) * r * in_stride + (1 + ss_x) * c];
+                     }
+                   }
+                 }
 #else
-  av1_highbd_resize_plane(dgd, height_y, width_y, in_stride, *luma, height_uv,
-                          width_uv, out_stride, bd);
+                 av1_highbd_resize_plane(dgd, height_y, width_y, in_stride,
+                                         *luma, height_uv, width_uv, out_stride,
+                                         bd);
+
 #endif  // WIENERNS_CROSS_FILT_LUMA_TYPE
+
   // extend border by replication
   for (int r = 0; r < height_uv; ++r) {
     for (int c = -border; c < 0; ++c)
@@ -2453,6 +2493,19 @@ static void wiener_filter_stripe_highbd(const RestorationUnitInfo *rui,
     int w = AOMMIN(procunit_width, (stripe_width - j + 15) & ~15);
     const uint16_t *src_p = src + j;
     uint16_t *dst_p = dst + j;
+#if CONFIG_BRU
+    const int mi_offset_x = j >> (MI_SIZE_LOG2 - rui->ss_x);
+    if (rui->mbmi_ptr[mi_offset_x]->local_rest_type == RESTORE_NONE) {
+      copy_tile(w, stripe_height, src_p, src_stride, dst_p, dst_stride);
+      continue;
+    }
+    if (rui->mbmi_ptr[mi_offset_x]->sb_active_mode != BRU_ACTIVE_SB) {
+      aom_internal_error(
+          rui->error, AOM_CODEC_ERROR,
+          "Invalid BRU activity in LR: only active SB can be filtered");
+      return;
+    }
+#endif  // CONFIG_BRU
     av1_highbd_wiener_convolve_add_src(src_p, src_stride, dst_p, dst_stride,
                                        rui->wiener_info.hfilter, 16,
                                        rui->wiener_info.vfilter, 16, w,
@@ -2468,6 +2521,19 @@ static void sgrproj_filter_stripe_highbd(const RestorationUnitInfo *rui,
                                          int32_t *tmpbuf, int bit_depth) {
   for (int j = 0; j < stripe_width; j += procunit_width) {
     int w = AOMMIN(procunit_width, stripe_width - j);
+#if CONFIG_BRU
+    const int mi_offset_x = j >> (MI_SIZE_LOG2 - rui->ss_x);
+    if (rui->mbmi_ptr[mi_offset_x]->local_rest_type == RESTORE_NONE) {
+      copy_tile(w, stripe_height, src + j, src_stride, dst + j, dst_stride);
+      continue;
+    }
+    if (rui->mbmi_ptr[mi_offset_x]->sb_active_mode != BRU_ACTIVE_SB) {
+      aom_internal_error(
+          rui->error, AOM_CODEC_ERROR,
+          "Invalid BRU activity in LR: only active SB can be filtered");
+      return;
+    }
+#endif  // CONFIG_BRU
     av1_apply_selfguided_restoration(
         src + j, w, stripe_height, src_stride, rui->sgrproj_info.ep,
         rui->sgrproj_info.xqd, dst + j, dst_stride, tmpbuf, bit_depth);
@@ -2515,7 +2581,9 @@ void av1_loop_restoration_filter_unit(
   // stripe_filter(). Use a temporary.
   RestorationUnitInfo rui_contents = *rui;
   RestorationUnitInfo *tmp_rui = &rui_contents;
-
+#if CONFIG_BRU
+  MB_MODE_INFO **const mbmi_base_ptr = rui->mbmi_ptr;
+#endif  // CONFIG_BRU
   const uint16_t *luma_in_ru = NULL;
   const int enable_cross_buffers =
       unit_rtype == RESTORE_WIENER_NONSEP && rui->plane != AOM_PLANE_Y;
@@ -2569,7 +2637,15 @@ void av1_loop_restoration_filter_unit(
         full_stripe_height - ((tile_stripe == 0) ? runit_offset : 0);
     const int h = AOMMIN(nominal_stripe_height,
                          remaining_stripes.v_end - remaining_stripes.v_start);
-
+#if CONFIG_BRU
+    // pass BRU related info to tmp RUI
+    tmp_rui->ss_x = ss_x;
+    tmp_rui->ss_y = ss_y;
+    tmp_rui->mbmi_ptr =
+        mbmi_base_ptr + (i >> (MI_SIZE_LOG2 - ss_y)) * rui->mi_stride;
+    tmp_rui->mi_stride = rui->mi_stride;
+    tmp_rui->error = rui->error;
+#endif  // CONFIG_BRU
     setup_processing_stripe_boundary(&remaining_stripes, rsb, rsb_row, h, data,
                                      stride, rlbs, copy_above, copy_below,
                                      optimized_lr
@@ -2643,7 +2719,15 @@ static void filter_frame_on_unit(const RestorationTileLimits *limits,
   rsi->unit_info[rest_unit_idx].compute_classification = 1;
   rsi->unit_info[rest_unit_idx].skip_pcwiener_filtering = 0;
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
-
+#if CONFIG_BRU
+  const int start_mi_x = limits->h_start >> (MI_SIZE_LOG2 - ctxt->ss_x);
+  const int start_mi_y = limits->v_start >> (MI_SIZE_LOG2 - ctxt->ss_y);
+  const int mbmi_idx = get_mi_grid_idx(ctxt->mi_params, start_mi_y, start_mi_x);
+  rsi->unit_info[rest_unit_idx].mbmi_ptr =
+      ctxt->mi_params->mi_grid_base + mbmi_idx;
+  rsi->unit_info[rest_unit_idx].mi_stride = ctxt->mi_params->mi_stride;
+  rsi->unit_info[rest_unit_idx].error = ctxt->error;
+#endif  // CONFIG_BRU
   av1_loop_restoration_filter_unit(
       limits, &rsi->unit_info[rest_unit_idx], &rsi->boundaries, rlbs, tile_rect,
       ctxt->tile_stripe0, ctxt->ss_x, ctxt->ss_y, ctxt->bit_depth, ctxt->data8,
@@ -2717,6 +2801,11 @@ void av1_loop_restoration_filter_frame_init(AV1LrStruct *lr_ctxt,
 #else
     lr_plane_ctxt->tskip_zero_flag = 0;
 #endif  // CONFIG_ENABLE_SR
+#if CONFIG_BRU
+    lr_plane_ctxt->mi_params = &cm->mi_params;
+    lr_plane_ctxt->order_hint = cm->current_frame.order_hint;
+    lr_plane_ctxt->error = &cm->error;
+#endif  // CONFIG_BRU
   }
 }
 

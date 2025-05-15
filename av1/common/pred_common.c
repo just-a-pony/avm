@@ -197,6 +197,12 @@ int av1_get_ref_frames(AV1_COMMON *cm, int cur_frame_disp,
   if (n_ranked > INTER_REFS_PER_FRAME)
     cm->remapped_ref_idx[n_ranked - 1] = scores[n_ranked - 1].index;
 
+#if CONFIG_BRU
+  cm->bru.ref_n_ranked = n_ranked;
+  if (n_ranked > 0)
+    memcpy(cm->bru.ref_scores, scores, REF_FRAMES * sizeof(*scores));
+#endif  // CONFIG_BRU
+
   // Fill any slots that are empty (should only happen for the first 7 frames)
   for (int i = 0; i < cm->seq_params.ref_frames; i++) {
 #if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY

@@ -265,7 +265,12 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
 
   // Sequence header for coding tools beyond AV1
   av1_read_sequence_header_beyond_av1(rb, seq_params);
-
+#if CONFIG_BRU
+  if (seq_params->enable_bru && !seq_params->explicit_ref_frame_map) {
+    aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                       "BRU enabled but explicit_ref_frame_map is 0.");
+  }
+#endif  // CONFIG_BRU
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   if (!seq_params->order_hint_info.enable_order_hint &&
       seq_params->enable_frame_output_order) {
@@ -316,6 +321,13 @@ static int32_t read_tile_group_header(AV1Decoder *pbi,
   uint32_t saved_bit_offset = rb->bit_offset;
   int tile_start_and_end_present_flag = 0;
   const int num_tiles = tiles->rows * tiles->cols;
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) {
+    *start_tile = 0;
+    *end_tile = num_tiles - 1;
+    return 0;
+  }
+#endif  // CONFIG_BRU
 
   if (!tiles->large_scale && num_tiles > 1) {
     tile_start_and_end_present_flag = aom_rb_read_bit(rb);
@@ -1011,6 +1023,18 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
           break;
         }
 
+#if CONFIG_BRU
+        if (cm->bru.frame_inactive_flag) {
+          pbi->seen_frame_header = 0;
+          frame_decoding_finished = 1;
+          const int num_tiles = cm->tiles.cols * cm->tiles.rows;
+          const int end_tile = num_tiles - 1;
+          // skip parsing and go directly to decode
+          av1_decode_tg_tiles_and_wrapup(pbi, data, data_end, p_data_end, 0,
+                                         end_tile, 0);
+          break;
+        }
+#endif  // CONFIG_BRU
         // In large scale tile coding, decode the common camera frame header
         // before any tile list OBU.
         if (!pbi->ext_tile_debug && pbi->camera_frame_header_ready) {

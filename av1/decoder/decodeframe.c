@@ -15,6 +15,9 @@
 
 #include "av1/common/av1_common_int.h"
 #include "av1/common/blockd.h"
+#if CONFIG_BRU
+#include "av1/common/bru.h"
+#endif  // CONFIG_BRU
 #include "av1/common/enums.h"
 #include "av1/common/filter.h"
 #include "config/aom_config.h"
@@ -652,6 +655,7 @@ typedef struct PadBlock {
 } PadBlock;
 #endif  //! CONFIG_REFINEMV
 
+#if !CONFIG_BRU
 static AOM_INLINE void highbd_build_mc_border(const uint16_t *src,
                                               int src_stride, uint16_t *dst,
                                               int dst_stride, int x, int y,
@@ -688,6 +692,7 @@ static AOM_INLINE void highbd_build_mc_border(const uint16_t *src,
     if (y > 0 && y < h) ref_row += src_stride;
   } while (--b_h);
 }
+#endif
 
 #if !CONFIG_REFINEMV
 int update_extend_mc_border_params(const struct scale_factors *const sf,
@@ -967,7 +972,31 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
   // set tree_type for each mbmi
   xd->mi[0]->tree_type = xd->tree_type;
 #endif  // CONFIG_EXTENDED_SDP
-  av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
+#if CONFIG_BRU
+  xd->mi[0]->local_rest_type =
+      1;  // set non zero default type, it is only matter 1 or 0 in SW
+  xd->mi[0]->local_ccso_blk_flag =
+      1;  // set non zero default type, it is only matter 1 or 0 in SW
+  if (!bru_is_sb_active(cm, mi_col, mi_row)) {
+    xd->mi[0]->sb_active_mode = xd->sbi->sb_active_mode;
+    bru_set_default_inter_mb_mode_info(cm, xd, xd->mi[0], bsize);
+    const int w = mi_size_wide[cm->seq_params.sb_size];
+    const int h = mi_size_high[cm->seq_params.sb_size];
+    const int x_inside_boundary = AOMMIN(w, cm->mi_params.mi_cols - mi_col);
+    const int y_inside_boundary = AOMMIN(h, cm->mi_params.mi_rows - mi_row);
+    bru_zero_sb_mvs(cm, cm->bru.update_ref_idx, mi_row, mi_col,
+                    x_inside_boundary, y_inside_boundary);
+    if (!cm->bru.frame_inactive_flag) {
+      if (cm->seq_params.enable_ccso) {
+        read_ccso(cm, r, xd);
+      }
+#if CONFIG_GDF
+      read_gdf(cm, r, xd);
+#endif
+    }
+  } else
+#endif  // CONFIG_BRU
+    av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
 
 #if CONFIG_EXT_RECUR_PARTITIONS
   if (xd->tree_type != LUMA_PART) {
@@ -1197,6 +1226,131 @@ static AOM_INLINE void set_color_index_map_offset(MACROBLOCKD *const xd,
   xd->color_index_map_offset[plane] += params.plane_width * params.plane_height;
 }
 
+#if CONFIG_BRU
+static AOM_INLINE int bru_is_valid_mv(AV1_COMMON *const cm,
+                                      MACROBLOCKD *const xd, BLOCK_SIZE bsize) {
+  if (!cm->bru.enabled) return 1;
+  const MB_MODE_INFO *const mbmi = xd->mi[0];
+  const int tip_ref_frame = is_tip_ref_frame(mbmi->ref_frame[0]);
+  if (tip_ref_frame) return 1;
+  const int is_compound = has_second_ref(mbmi);
+  for (int ref = 0; ref < 1 + is_compound; ++ref) {
+    if (mbmi->ref_frame[ref] == cm->bru.update_ref_idx) {
+      const int_mv mi_mv = mbmi->mv[ref];
+      if (mi_mv.as_int != 0) {
+        PadBlock block;
+        PadBlock cur_sb;
+        int pos_x = xd->mi_col << (SUBPEL_BITS + MI_SIZE_LOG2);
+        int pos_y = xd->mi_row << (SUBPEL_BITS + MI_SIZE_LOG2);
+        const int bw = max_block_wide(xd, bsize, 0);
+        const int bh = max_block_high(xd, bsize, 0);
+        int use_optflow_refinement = opfl_allowed_for_cur_block(cm,
+#if CONFIG_COMPOUND_4XN
+                                                                xd,
+#endif  // CONFIG_COMPOUND_4XN
+                                                                mbmi);
+        const MV mv_q4 = clamp_mv_to_umv_border_sb(
+            xd, &mi_mv.as_mv, bw, bh, use_optflow_refinement, 0, 0);
+        // Get reference block top left coordinate.
+        pos_x += mv_q4.col;
+        pos_y += mv_q4.row;
+
+        block.x0 = pos_x >> SUBPEL_BITS;
+        block.y0 = pos_y >> SUBPEL_BITS;
+        // Get reference block bottom right coordinate.
+        block.x1 = (pos_x >> SUBPEL_BITS) + (bw - 1) + 1;
+        block.y1 = (pos_y >> SUBPEL_BITS) + (bh - 1) + 1;
+        // check is inside cur sb
+        cur_sb.x0 = xd->sbi->mi_col << MI_SIZE_LOG2;
+        cur_sb.y0 = xd->sbi->mi_row << MI_SIZE_LOG2;
+        cur_sb.x1 = cur_sb.x0 + (cm->mib_size << MI_SIZE_LOG2);
+        cur_sb.y1 = cur_sb.y0 + (cm->mib_size << MI_SIZE_LOG2);
+        int valid_block = block.x0 >= cur_sb.x0 && block.y0 >= cur_sb.y0 &&
+                          block.x1 <= cur_sb.x1 && block.y1 <= cur_sb.y1;
+        if (!valid_block) return 0;
+      }
+    }
+  }
+  return 1;
+}
+
+void dec_bru_swap_stage(AV1_COMMON *cm, MACROBLOCKD *const xd) {
+  if (cm->bru.enabled) {
+    RefCntBuffer *tmp_buf = cm->cur_frame;
+    if (bru_swap_common(cm)) {
+      BufferPool *pool = cm->buffer_pool;
+      lock_buffer_pool(pool);
+      if (tmp_buf != NULL) {
+        assert(tmp_buf->ref_count == 0);
+        if (tmp_buf->ref_count == 0 && tmp_buf->raw_frame_buffer.data) {
+          pool->release_fb_cb(pool->cb_priv, &tmp_buf->raw_frame_buffer);
+          tmp_buf->raw_frame_buffer.data = NULL;
+          tmp_buf->raw_frame_buffer.size = 0;
+          tmp_buf->raw_frame_buffer.priv = NULL;
+        }
+      }
+      unlock_buffer_pool(pool);
+      xd->cur_buf = &cm->cur_frame->buf;
+    } else {
+      aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                         "Decoder BRU swap stage error");
+    }
+    // correctly extend borders after swap
+    // todo: this can be simplified by only extend support SB border
+    // aom_extend_frame_borders(&cm->cur_frame->buf, num_planes);
+    // Note, do not touch any recon region except the border
+    // first col of sb
+    const int sb_cols =
+        (cm->mi_params.mi_cols + cm->mib_size - 1) / cm->mib_size;
+    const int sb_rows =
+        (cm->mi_params.mi_rows + cm->mib_size - 1) / cm->mib_size;
+    for (int sb_row = 0; sb_row < sb_rows; sb_row++) {
+      const int sb_mi_row = sb_row << cm->mib_size_log2;
+      const int sb_mi_col = 0;
+      BruActiveMode active_mode =
+          av1_get_sb_info(cm, sb_mi_row, sb_mi_col)->sb_active_mode;
+      if (active_mode == BRU_SUPPORT_SB) {
+        bru_extend_mc_border(cm, sb_mi_row, sb_mi_col, cm->sb_size,
+                             &cm->cur_frame->buf);
+      }
+    }
+    // first row of sb
+    for (int sb_col = 0; sb_col < sb_cols; sb_col++) {
+      const int sb_mi_row = 0;
+      const int sb_mi_col = sb_col << cm->mib_size_log2;
+      BruActiveMode active_mode =
+          av1_get_sb_info(cm, sb_mi_row, sb_mi_col)->sb_active_mode;
+      if (active_mode == BRU_SUPPORT_SB) {
+        bru_extend_mc_border(cm, sb_mi_row, sb_mi_col, cm->sb_size,
+                             &cm->cur_frame->buf);
+      }
+    }
+    // last col of sb
+    for (int sb_row = 0; sb_row < sb_rows; sb_row++) {
+      const int sb_mi_row = sb_row << cm->mib_size_log2;
+      const int sb_mi_col = (sb_cols - 1) << cm->mib_size_log2;
+      BruActiveMode active_mode =
+          av1_get_sb_info(cm, sb_mi_row, sb_mi_col)->sb_active_mode;
+      if (active_mode == BRU_SUPPORT_SB) {
+        bru_extend_mc_border(cm, sb_mi_row, sb_mi_col, cm->sb_size,
+                             &cm->cur_frame->buf);
+      }
+    }
+    // last row of sb
+    for (int sb_col = 0; sb_col < sb_cols; sb_col++) {
+      const int sb_mi_row = (sb_rows - 1) << cm->mib_size_log2;
+      const int sb_mi_col = sb_col << cm->mib_size_log2;
+      BruActiveMode active_mode =
+          av1_get_sb_info(cm, sb_mi_row, sb_mi_col)->sb_active_mode;
+      if (active_mode == BRU_SUPPORT_SB) {
+        bru_extend_mc_border(cm, sb_mi_row, sb_mi_col, cm->sb_size,
+                             &cm->cur_frame->buf);
+      }
+    }
+  }
+}
+#endif  // CONFIG_BRU
+
 static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
                                                 ThreadData *const td,
                                                 aom_reader *r,
@@ -1215,6 +1369,14 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
     // td->read_coeffs_tx_intra_block_visit == decode_block_void.
     // In that case do not reset since it will erase previously set
     // values.
+#if CONFIG_BRU
+    // intra cannot be used in non-active SBs
+    if (!bru_is_sb_active(cm, xd->mi_col, xd->mi_row)) {
+      aom_internal_error(
+          &cm->error, AOM_CODEC_ERROR,
+          "Invalid BRU activte: only active SB can be predicted by intra");
+    }
+#endif  // CONFIG_BRU
     if (td->read_coeffs_tx_intra_block_visit != decode_block_void)
       av1_init_txk_skip_array(cm, xd->mi_row, xd->mi_col, bsize, 0,
                               xd->tree_type, &mbmi->chroma_ref_info,
@@ -1365,6 +1527,14 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
     // td->read_coeffs_tx_inter_block_visit == decode_block_void.
     // In that case do not reset since it will erase previously set
     // values.
+#if CONFIG_BRU
+    // check BRU inter prediction motion vector
+    if (!bru_is_valid_mv(cm, xd, bsize)) {
+      aom_internal_error(
+          &cm->error, AOM_CODEC_ERROR,
+          "Invalid BRU activte: only active SB can be predicted by intra");
+    }
+#endif  // CONFIG_BRU
     if (td->read_coeffs_tx_inter_block_visit != decode_block_void)
       av1_init_txk_skip_array(cm, xd->mi_row, xd->mi_col, bsize, 0,
                               xd->tree_type, &mbmi->chroma_ref_info,
@@ -1373,7 +1543,13 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
     // Reconstruction
     if (!mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
       int eobtotal = 0;
-
+#if CONFIG_BRU
+      if (!bru_is_sb_active(cm, xd->mi_col, xd->mi_row)) {
+        aom_internal_error(
+            &cm->error, AOM_CODEC_ERROR,
+            "Invalid BRU skip_txfm: only active SB has transform");
+      }
+#endif  // CONFIG_BRU
       const int max_blocks_wide = max_block_wide(xd, bsize, 0);
       const int max_blocks_high = max_block_high(xd, bsize, 0);
       int row, col;
@@ -1792,7 +1968,28 @@ static TX_SIZE read_tx_size(MACROBLOCKD *xd, TX_MODE tx_mode, int is_inter,
     return max_txsize_rect_lookup[bsize];
   }
 }
-
+#if CONFIG_BRU
+static BruActiveMode read_bru_mode(AV1_COMMON *cm, const MACROBLOCKD *xd,
+                                   aom_reader *r) {
+  if (!cm->bru.enabled) return 0;
+  BruActiveMode sb_active_mode = BRU_ACTIVE_SB;
+  if (is_sb_start_mi(cm, xd->mi_col, xd->mi_row)) {
+    if (xd->tile.tile_active_mode == 0) {
+      sb_active_mode = BRU_INACTIVE_SB;
+    } else {
+      FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+      // 0 inactive, 1 support, 2 active
+      sb_active_mode = (BruActiveMode)aom_read_symbol(
+          r, ec_ctx->bru_mode_cdf, 3, ACCT_INFO("sb_active_mode"));
+    }
+    xd->sbi->sb_active_mode = sb_active_mode;
+  } else {
+    const SB_INFO *sbi = av1_get_sb_info(cm, xd->mi_row, xd->mi_col);
+    sb_active_mode = sbi->sb_active_mode;
+  }
+  return sb_active_mode;
+}
+#endif  // CONFIG_BRU
 static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
                                           ThreadData *const td, int mi_row,
                                           int mi_col, aom_reader *r,
@@ -1809,7 +2006,12 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
   AV1_COMMON *cm = &pbi->common;
   const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *mbmi = xd->mi[0];
-
+#if CONFIG_BRU
+  // skip all the parsing and do recon directly if not active
+  if (!bru_is_sb_active(&pbi->common, mi_col, mi_row)) {
+    goto direct_recon;
+  }
+#endif  // CONFIG_BRU
   int inter_block_tx = is_inter_block(mbmi, xd->tree_type) ||
                        is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type != CHROMA_PART) {
@@ -1894,11 +2096,17 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
       }
     }
   }
-
   assert(bsize == mbmi->sb_type[av1_get_sdp_idx(xd->tree_type)]);
   if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART])
     av1_reset_entropy_context(xd, bsize, num_planes);
-  decode_token_recon_block(pbi, td, r, partition, bsize);
+#if CONFIG_BRU
+  // For regular decoder, always do recon
+  // For optimized decoder, only do reocn when support SB
+direct_recon:
+  if (!pbi->bru_opt_mode ||
+      (pbi->bru_opt_mode && bru_is_sb_active(cm, mi_col, mi_row)))
+#endif  // CONFIG_BRU
+    decode_token_recon_block(pbi, td, r, partition, bsize);
 
 #if CONFIG_REFINED_MVS_IN_TMVP
   if (!frame_is_intra_only(cm) &&
@@ -2116,18 +2324,35 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
 
   bool do_split;
   bool implied_do_split;
+  // allow do whatever implied first, then if not possible
+  // use BRU to set do split to false
   if (is_do_split_implied(partition_allowed, &implied_do_split)) {
-    do_split = implied_do_split;
+#if CONFIG_BRU
+    // BRU inactive won't go futher implied partition
+    if (!bru_is_sb_active(cm, mi_col, mi_row)) {
+      do_split = false;
+    } else
+#endif  // CONFIG_BRU
+      do_split = implied_do_split;
   } else {
+#if CONFIG_BRU
+    // if not derived partition, based on inactive/support set do_split to false
+    if (!bru_is_sb_active(cm, mi_col, mi_row)) {
+      do_split = false;
+    } else {
+#endif  // CONFIG_BRU
 #if CONFIG_NEW_PART_CTX
-    const int ctx =
-        partition_plane_context(xd, mi_row, mi_col, bsize, 0, SPLIT_CTX_MODE);
-    do_split = aom_read_symbol(r, ec_ctx->do_split_cdf[plane][ctx], 2,
-                               ACCT_INFO("do_split"));
+      const int ctx =
+          partition_plane_context(xd, mi_row, mi_col, bsize, 0, SPLIT_CTX_MODE);
+      do_split = aom_read_symbol(r, ec_ctx->do_split_cdf[plane][ctx], 2,
+                                 ACCT_INFO("do_split"));
 #else
     do_split = aom_read_symbol(r, ec_ctx->do_split_cdf[plane][ctx], 2,
                                ACCT_INFO("do_split"));
 #endif  // CONFIG_NEW_PART_CTX
+#if CONFIG_BRU
+    }
+#endif  // CONFIG_BRU
   }
   if (!do_split) {
     return PARTITION_NONE;
@@ -2327,7 +2552,21 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
                                                      decode_block,
                                                      parse_decode_block };
   const int is_sb_root = bsize == cm->sb_size;
-
+#if CONFIG_BRU
+  if (is_sb_root && cm->bru.enabled) {
+    const int mi_grid_idx = get_mi_grid_idx(&cm->mi_params, mi_row, mi_col);
+    const int mi_alloc_idx = get_alloc_mi_idx(&cm->mi_params, mi_row, mi_col);
+    cm->mi_params.mi_grid_base[mi_grid_idx] =
+        &cm->mi_params.mi_alloc[mi_alloc_idx];
+    // 'xd->mi' should point to an offset in 'mi_grid_base';
+    xd->mi = cm->mi_params.mi_grid_base + mi_grid_idx;
+    xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART] = bsize;
+    xd->mi_row = mi_row;
+    xd->mi_col = mi_col;
+    xd->sbi->sb_active_mode = read_bru_mode(cm, xd, reader);
+    set_active_map(cm, mi_col, mi_row, xd->sbi->sb_active_mode);
+  }
+#endif  // CONFIG_BRU
 #if CONFIG_EXTENDED_SDP
   if (is_sb_root) {
     if (!frame_is_intra_only(cm)) {
@@ -2416,6 +2655,9 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
       if (!frame_is_intra_only(cm) && ptree->partition &&
           parent->region_type != INTRA_REGION &&
           ptree->extended_sdp_allowed_flag &&
+#if CONFIG_BRU
+          bru_is_sb_active(cm, mi_col, mi_row) &&
+#endif  // CONFIG_BRU
           is_bsize_allowed_for_extended_sdp(bsize, ptree->partition)) {
         const int ctx = get_intra_region_context(bsize);
         ptree->region_type =
@@ -2842,13 +3084,66 @@ static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
     xd->tree_type = SHARED_PART;
   }
 #endif  // !CONFIG_INTRA_SDP_LATENCY_FIX
+#if CONFIG_BRU
+  if (cm->bru.enabled && cm->current_frame.frame_type != KEY_FRAME) {
+    if (pbi->bru_opt_mode) {
+      if (bru_is_sb_available(cm, mi_col, mi_row)) {
+#ifndef NDEBUG
+        RefCntBuffer *ref_buf = get_ref_frame_buf(cm, cm->bru.update_ref_idx);
+        assert(ref_buf != NULL);
+#endif
+        // for active sb, update to bru ref
+        // for support sb, prepare copy to cur_frame (prepare for intra)
+        if (bru_is_sb_active(cm, mi_col, mi_row))
+          bru_update_sb(cm, mi_col, mi_row);
+        else
+          bru_copy_sb(cm, mi_col, mi_row);
+      }
+    } else {
+      if (!bru_is_sb_active(cm, mi_col, mi_row)) {
+        if (cm->seq_params.order_hint_info.enable_ref_frame_mvs) {
+          const int sb_size = cm->seq_params.sb_size;
+          // set cur_frame mvs to 0
+          const int w = mi_size_wide[sb_size];
+          const int h = mi_size_high[sb_size];
+          const int x_inside_boundary =
+              AOMMIN(w, cm->mi_params.mi_cols - mi_col) << MI_SIZE_LOG2;
+          const int y_inside_boundary =
+              AOMMIN(h, cm->mi_params.mi_rows - mi_row) << MI_SIZE_LOG2;
+          bru_zero_sb_mvs(cm, -1, mi_row, mi_col,
+                          x_inside_boundary >> MI_SIZE_LOG2,
+                          y_inside_boundary >> MI_SIZE_LOG2);
+        }
+      }
+    }
+  }
+#endif  // CONFIG_BRU
 #if CONFIG_INSPECTION
   if (pbi->inspect_sb_cb != NULL) {
     (*pbi->inspect_sb_cb)(pbi, pbi->inspect_ctx);
   }
 #endif  // CONFIG_INSPECTION
 }
-
+#if CONFIG_BRU
+static AOM_INLINE void setup_bru_active_info(AV1_COMMON *const cm,
+                                             struct aom_read_bit_buffer *rb) {
+  cm->bru.update_ref_idx = -1;
+  cm->bru.ref_order = -1;
+  cm->bru.explicit_ref_idx = -1;
+  cm->bru.enabled = 0;
+  // need to reresh bru.active_mode_map every frame
+  memset(cm->bru.active_mode_map, 2, sizeof(uint8_t) * cm->bru.total_units);
+  cm->bru.frame_inactive_flag = 0;
+  if (cm->seq_params.enable_bru) {
+    cm->bru.enabled = aom_rb_read_bit(rb);
+    if (cm->bru.enabled) {
+      memset(cm->bru.active_mode_map, 0, sizeof(uint8_t) * cm->bru.total_units);
+      cm->bru.explicit_ref_idx = aom_rb_read_literal(rb, REF_FRAMES_LOG2);
+      cm->bru.frame_inactive_flag = aom_rb_read_bit(rb);
+    }
+  }
+}
+#endif  // CONFIG_BRU
 static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
                                           struct aom_read_bit_buffer *rb) {
   struct segmentation *const seg = &cm->seg;
@@ -2985,6 +3280,12 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
     cm->cur_frame->rst_info[p].temporal_pred_flag = 0;
 #endif  // CONFIG_TEMP_LR
 #endif  // CONFIG_COMBINE_PC_NS_WIENER
+#if CONFIG_BRU
+    if (cm->bru.frame_inactive_flag) {
+      rsi->frame_restoration_type = RESTORE_NONE;
+      continue;
+    }
+#endif  // CONFIG_BRU
     uint8_t plane_lr_tools_disable_mask =
         cm->seq_params.lr_tools_disable_mask[p > 0];
     av1_set_lr_tools(plane_lr_tools_disable_mask, p, &cm->features);
@@ -3102,6 +3403,17 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
 
   cm->rst_info[0].restoration_unit_size =
       cm->rst_info[0].max_restoration_unit_size;
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) {
+    if (num_planes > 1) {
+      cm->rst_info[1].restoration_unit_size =
+          cm->rst_info[1].max_restoration_unit_size;
+      cm->rst_info[2].restoration_unit_size =
+          cm->rst_info[1].restoration_unit_size;
+    }
+    return;
+  }
+#endif  // CONFIG_BRU
   if (!luma_none) {
     if (aom_rb_read_bit(rb))
       cm->rst_info[0].restoration_unit_size = size >> 1;
@@ -3658,7 +3970,9 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
     return;
   }
   assert(!cm->features.coded_lossless);
-
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) return;
+#endif  // CONFIG_BRU
   if (cm->prev_frame) {
     // write deltas to frame buffer
     memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, SINGLE_REF_FRAMES);
@@ -3819,6 +4133,11 @@ static AOM_INLINE void setup_gdf(AV1_COMMON *cm,
                                  struct aom_read_bit_buffer *rb) {
   cm->gdf_info.gdf_mode = 0;
   if (!is_allow_gdf(cm)) return;
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) {
+    return;
+  }
+#endif
   init_gdf(cm);
   cm->gdf_info.gdf_mode = aom_rb_read_bit(rb);
   if (cm->gdf_info.gdf_mode > 0) {
@@ -3840,6 +4159,9 @@ static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
 #if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
   if (is_global_intrabc_allowed(cm)) return;
 #endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) return;
+#endif  // CONFIG_BRU
 #if CONFIG_FIX_CDEF_SYNTAX
   cdef_info->cdef_frame_enable = aom_rb_read_bit(rb);
   if (!cdef_info->cdef_frame_enable) {
@@ -3920,6 +4242,14 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
   if (is_global_intrabc_allowed(cm)) return;
 #endif  // CONFIG_CCSO_IMPROVE
 #endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) {
+    cm->cur_frame->ccso_info.ccso_enable[0] = 0;
+    cm->cur_frame->ccso_info.ccso_enable[1] = 0;
+    cm->cur_frame->ccso_info.ccso_enable[2] = 0;
+    return;
+  }
+#endif  // CONFIG_BRU
   const int ccso_offset[8] = { 0, 1, -1, 3, -3, 7, -7, -10 };
 #if CONFIG_CCSO_IMPROVE
   const int ccso_scale[4] = { 1, 2, 3, 4 };
@@ -4476,6 +4806,9 @@ static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
   resize_context_buffers(cm, width, height);
   setup_render_size(cm, rb);
   setup_buffer_pool(cm);
+#if CONFIG_BRU
+  realloc_bru_info(cm);
+#endif  // CONFIG_BRU
 }
 
 static AOM_INLINE void setup_seq_sb_size(SequenceHeader *seq_params,
@@ -4582,6 +4915,9 @@ static AOM_INLINE void setup_frame_size_with_refs(
                          "Referenced frame has incompatible color format");
   }
   setup_buffer_pool(cm);
+#if CONFIG_BRU
+  realloc_bru_info(cm);
+#endif  // CONFIG_BRU
 }
 
 static AOM_INLINE void read_tile_info_max_tile(
@@ -5232,6 +5568,15 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
   for (int p = 0; p < num_planes; ++p)
     num_filter_classes[p] = cm->rst_info[p].num_filter_classes;
   av1_reset_loop_restoration(xd, 0, num_planes, num_filter_classes);
+#if CONFIG_BRU
+  if (cm->bru.enabled) {
+    if (cm->bru.frame_inactive_flag)
+      xd->tile.tile_active_mode = 0;
+    else
+      xd->tile.tile_active_mode =
+          aom_read_bit(td->bit_reader, ACCT_INFO("tile_active_mode"));
+  }
+#endif  // CONFIG_BRU
 
   for (int mi_row = tile_info.mi_row_start; mi_row < tile_info.mi_row_end;
        mi_row += cm->mib_size) {
@@ -5249,7 +5594,12 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
     for (int mi_col = tile_info.mi_col_start; mi_col < tile_info.mi_col_end;
          mi_col += cm->mib_size) {
       av1_reset_is_mi_coded_map(xd, cm->mib_size);
-      av1_set_sb_info(cm, xd, mi_row, mi_col);
+#if CONFIG_BRU
+      BruActiveMode sb_active_mode = BRU_ACTIVE_SB;
+      av1_set_sb_info(cm, xd, mi_row, mi_col, sb_active_mode);
+#else
+        av1_set_sb_info(cm, xd, mi_row, mi_col);
+#endif  // CONFIG_BRU
       set_cb_buffer(pbi, dcb, &td->cb_buffer_base, num_planes, 0, 0);
       // td->ref_mv_bank is initialized as xd->ref_mv_bank, and used
       // for MV referencing during decoding the tile.
@@ -5280,7 +5630,11 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
   }
 
   int corrupted =
-      (check_trailing_bits_after_symbol_coder(td->bit_reader)) ? 1 : 0;
+#if CONFIG_BRU
+      cm->bru.frame_inactive_flag ? 0 :
+#endif  // CONFIG_BRU
+      (check_trailing_bits_after_symbol_coder(td->bit_reader)) ? 1
+                                                               : 0;
   aom_merge_corrupted_flag(&dcb->corrupted, corrupted);
 }
 
@@ -5771,7 +6125,12 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
     for (int mi_col = tile_info.mi_col_start; mi_col < tile_info.mi_col_end;
          mi_col += cm->mib_size) {
       av1_reset_is_mi_coded_map(xd, cm->mib_size);
-      av1_set_sb_info(cm, xd, mi_row, mi_col);
+#if CONFIG_BRU
+      BruActiveMode sb_active_mode = BRU_ACTIVE_SB;
+      av1_set_sb_info(cm, xd, mi_row, mi_col, sb_active_mode);
+#else
+        av1_set_sb_info(cm, xd, mi_row, mi_col);
+#endif  // CONFIG_BRU
       set_cb_buffer(pbi, dcb, pbi->cb_buffer_base, num_planes, mi_row, mi_col);
 
 #if CONFIG_BANK_IMPROVE
@@ -7086,6 +7445,9 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #if CONFIG_REFINEMV
   seq_params->enable_refinemv = aom_rb_read_bit(rb);
 #endif  // CONFIG_REFINEMV
+#if CONFIG_BRU
+  seq_params->enable_bru = aom_rb_read_bit(rb);
+#endif  // CONFIG_BRU
 #if CONFIG_DERIVED_MVD_SIGN
   seq_params->enable_mvd_sign_derive = aom_rb_read_bit(rb);
 #endif  // CONFIG_DERIVED_MVD_SIGN
@@ -7602,7 +7964,12 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   aom_s_frame_info *sframe_info = &pbi->sframe_info;
   sframe_info->is_s_frame = 0;
   sframe_info->is_s_frame_at_altref = 0;
-
+#if CONFIG_BRU
+  cm->bru.enabled = 0;
+  cm->bru.update_ref_idx = -1;
+  cm->bru.explicit_ref_idx = -1;
+  cm->bru.ref_order = -1;
+#endif  // CONFIG_BRU
 #if CONFIG_PARAKIT_COLLECT_DATA
   for (int i = 0; i < MAX_NUM_CTX_GROUPS; i++) {
     cm->prob_models[i].frameNumber = current_frame->frame_number;
@@ -7873,7 +8240,14 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     }
 
     frame_size_override_flag = frame_is_sframe(cm) ? 1 : aom_rb_read_bit(rb);
-
+#if CONFIG_BRU
+    if (current_frame->frame_type == INTER_FRAME) {
+      setup_bru_active_info(cm, rb);
+    }
+    if (cm->bru.frame_inactive_flag) {
+      cm->features.disable_cdf_update = 1;
+    }
+#endif  // CONFIG_BRU
     current_frame->order_hint = aom_rb_read_literal(
         rb, seq_params->order_hint_info.order_hint_bits_minus_1 + 1);
 
@@ -8212,6 +8586,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           cm->features.error_resilient_mode || frame_is_sframe(cm) ||
           seq_params->explicit_ref_frame_map ||
           !seq_params->order_hint_info.enable_order_hint;
+#if CONFIG_BRU
+      if (cm->seq_params.enable_bru && !explicit_ref_frame_map) {
+        aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                           "BRU enabled sequence must be coded with "
+                           "explicit_Ref_frame_map=1.");
+      }
+#endif  // CONFIG_BRU
       if (explicit_ref_frame_map) {
         cm->ref_frames_info.num_total_refs =
             aom_rb_read_literal(rb, REF_FRAMES_LOG2);
@@ -8258,6 +8639,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                                "Inter frame requests nonexistent reference");
           cm->remapped_ref_idx[i] = ref;
         }
+#if CONFIG_BRU
+        // find corresponding bru ref idx given explicit_bru_idx
+        if (cm->bru.explicit_ref_idx == ref) {
+          cm->bru.ref_order = cm->ref_frame_map[ref]->order_hint;
+          cm->bru.update_ref_idx = i;
+        }
+#endif  // CONFIG_BRU
         // Check valid for referencing
         if (pbi->valid_for_referencing[ref] == 0)
           aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
@@ -8346,6 +8734,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           && features->allow_ref_frame_mvs &&
           cm->ref_frames_info.num_total_refs >= 2
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
+#if CONFIG_BRU
+          && !cm->bru.frame_inactive_flag
+#endif  // CONFIG_BRU
       ) {
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
         if (aom_rb_read_bit(rb)) {
@@ -8416,7 +8807,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         features->tip_frame_mode = TIP_FRAME_DISABLED;
       }
 
-      if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT) {
+      if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT
+#if CONFIG_BRU
+          && !cm->bru.frame_inactive_flag
+#endif  // CONFIG_BRU
+      ) {
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
         read_screen_content_params(cm, rb);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
@@ -8580,6 +8975,94 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                        "Keyframe / intra-only frame required to reset decoder"
                        " state");
   }
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) {
+    // Set parameters corresponding to no filtering.
+    struct loopfilter *lf = &cm->lf;
+    lf->filter_level[0] = 0;
+    lf->filter_level[1] = 0;
+#if CONFIG_FIX_CDEF_SYNTAX
+    cm->cdef_info.cdef_frame_enable = 0;
+#else
+    cm->cdef_info.cdef_bits = 0;
+    cm->cdef_info.cdef_strengths[0] = 0;
+    cm->cdef_info.nb_cdef_strengths = 1;
+    cm->cdef_info.cdef_uv_strengths[0] = 0;
+#endif  // CONFIG_FIX_CDEF_SYNTAX
+#if CONFIG_GDF
+    cm->gdf_info.gdf_mode = 0;
+#endif  // CONFIG_GDF
+    // set cm->rst_info and copy it to cur_frame->rst_info
+    for (int plane = 0; plane < av1_num_planes(cm); plane++) {
+      cm->rst_info[plane].frame_restoration_type = RESTORE_NONE;
+      cm->rst_info[plane].frame_filters_on = 0;
+      av1_copy_rst_frame_filters(&cm->cur_frame->rst_info[plane],
+                                 &cm->rst_info[plane]);
+      cm->cur_frame->rst_info[plane].num_filter_classes = 0;
+      cm->cur_frame->rst_info[plane].rst_ref_pic_idx = 0;
+      cm->cur_frame->rst_info[plane].temporal_pred_flag = 0;
+    }
+    features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
+#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+    features->disable_cdf_update = 1;
+#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
+    const RefCntBuffer *bru_ref_buf =
+        get_ref_frame_buf(cm, cm->bru.update_ref_idx);
+#if CONFIG_CCSO_IMPROVE
+    // set cm->ccso_info and copy to cur_frame->ccso_info
+    // doing once in uncompred header
+    cm->ccso_info.ccso_frame_flag = 0;
+    for (int plane = 0; plane < CCSO_NUM_COMPONENTS; plane++) {
+      if (cm->bru.frame_inactive_flag) {
+        cm->ccso_info.reuse_ccso[plane] = 0;
+        cm->ccso_info.sb_reuse_ccso[plane] = 0;
+        cm->ccso_info.ccso_ref_idx[plane] = UINT8_MAX;
+        cm->ccso_info.ccso_enable[plane] = 0;
+        av1_copy_ccso_filters(&cm->cur_frame->ccso_info, &cm->ccso_info, plane,
+                              1, 0, 0);
+        continue;
+      }
+    }
+#endif
+    cm->quant_params.base_qindex = bru_ref_buf->base_qindex;
+    if (av1_num_planes(cm) > 1) {
+      cm->quant_params.u_ac_delta_q = bru_ref_buf->u_ac_delta_q;
+      cm->quant_params.v_ac_delta_q = bru_ref_buf->v_ac_delta_q;
+    } else {
+      cm->quant_params.v_ac_delta_q = cm->quant_params.u_ac_delta_q = 0;
+    }
+    cm->cur_frame->base_qindex = cm->quant_params.base_qindex;
+    cm->cur_frame->u_ac_delta_q = cm->quant_params.u_ac_delta_q;
+    cm->cur_frame->v_ac_delta_q = cm->quant_params.v_ac_delta_q;
+    xd->bd = (int)seq_params->bit_depth;
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+    set_primary_ref_frame_and_ctx(cm);
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
+
+    CommonContexts *const above_contexts = &cm->above_contexts;
+    if (above_contexts->num_planes < av1_num_planes(cm) ||
+        above_contexts->num_mi_cols < cm->mi_params.mi_cols ||
+        above_contexts->num_tile_rows < cm->tiles.rows) {
+      av1_free_above_context_buffers(above_contexts);
+      if (av1_alloc_above_context_buffers(above_contexts, cm->tiles.rows,
+                                          cm->mi_params.mi_cols,
+                                          av1_num_planes(cm))) {
+        aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
+                           "Failed to allocate context buffers");
+      }
+    }
+
+#if !CONFIG_TIP_DIRECT_MODE_SIGNALING
+    read_tile_info(pbi, rb);
+#endif  // !CONFIG_TIP_DIRECT_MODE_SIGNALING
+    cm->cur_frame->film_grain_params_present =
+        seq_params->film_grain_params_present;
+    read_film_grain(cm, rb);
+
+    return 0;
+  }
+#endif  // CONFIG_BRU
+
   if (
 #if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
       is_global_intrabc_allowed(cm) ||
@@ -9057,6 +9540,78 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
     av1_setup_ref_frame_sides(cm);
 #endif  // CONFIG_MVP_IMPROVEMENT
 
+#if CONFIG_BRU
+  if (cm->bru.frame_inactive_flag) {
+#if CONFIG_CCSO_IMPROVE
+    for (int plane = 0; plane < av1_num_planes(cm); plane++) {
+      cm->cur_frame->ccso_info.ccso_enable[plane] = 0;
+    }
+#endif  // CONFIG_CCSO_IMPROVE
+    MV_REF *frame_mvs = cm->cur_frame->mvs;
+    const int mvs_rows =
+        ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
+    const int mvs_cols =
+        ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+    const int mvs_stride = mvs_cols;
+
+    for (int h = 0; h < mvs_rows; h++) {
+      MV_REF *mv = frame_mvs;
+      for (int w = 0; w < mvs_cols; w++) {
+        mv->ref_frame[0] = cm->bru.update_ref_idx;
+        mv->ref_frame[1] = NONE_FRAME;
+        mv->mv[0].as_int = 0;
+        mv->mv[1].as_int = 0;
+        mv++;
+      }
+      frame_mvs += mvs_stride;
+    }
+    for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
+      cm->global_motion[i] = default_warp_params;
+      cm->cur_frame->global_motion[i] = default_warp_params;
+    }
+#if CONFIG_TIP_LD
+    set_primary_ref_frame_and_ctx(cm);
+#else
+    av1_setup_past_independence(cm);
+#endif  // CONFIG_TIP_LD
+    if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
+      // use the default frame context values
+      *cm->fc = *cm->default_frame_context;
+    } else {
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+      *cm->fc = get_primary_ref_frame_buf(cm, cm->features.primary_ref_frame)
+                    ->frame_context;
+#else
+      *cm->fc = get_primary_ref_frame_buf(cm)->frame_context;
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
+#if CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+#if CONFIG_IMPROVED_SECONDARY_REFERENCE
+      int ref_frame_used = PRIMARY_REF_NONE;
+      int map_idx = INVALID_IDX;
+      get_secondary_reference_frame_idx(cm, &ref_frame_used, &map_idx);
+      avg_primary_secondary_references(cm, ref_frame_used, map_idx);
+#else
+      const int ref_frame_used = (cm->features.primary_ref_frame ==
+                                  cm->features.derived_primary_ref_frame)
+                                     ? cm->features.derived_secondary_ref_frame
+                                     : cm->features.derived_primary_ref_frame;
+      const int map_idx = get_ref_frame_map_idx(cm, ref_frame_used);
+      if ((map_idx != INVALID_IDX) &&
+          (ref_frame_used != cm->features.primary_ref_frame) &&
+          (cm->seq_params.enable_avg_cdf && !cm->seq_params.avg_cdf_type) &&
+          !(cm->features.error_resilient_mode || frame_is_sframe(cm)) &&
+          (ref_frame_used != PRIMARY_REF_NONE)) {
+        av1_avg_cdf_symbols(cm->fc, &cm->ref_frame_map[map_idx]->frame_context,
+                            AVG_CDF_WEIGHT_PRIMARY, AVG_CDF_WEIGHT_NON_PRIMARY);
+      }
+#endif  // CONFIG_IMPROVED_SECONDARY_REFERENCE
+#endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
+    }
+    *p_data_end = data + uncomp_hdr_size;
+    return uncomp_hdr_size;
+  }
+#endif  // CONFIG_BRU
+
   process_tip_mode(pbi);
   if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
     *p_data_end = data + uncomp_hdr_size;
@@ -9198,11 +9753,33 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
   if (end_tile != tiles->rows * tiles->cols - 1) {
     return;
   }
+#if CONFIG_BRU
+  // verify active region
+  if (!bru_active_map_validation(cm)) {
+    aom_internal_error(&cm->error, AOM_CODEC_ERROR, "Invalid active region");
+  }
+  // bru swap in mode 0, in mode 1, still use cur frame and then drop bru ref
+  // after filtering
+  // backward reference frame update
+  // check if any active block
+  // 1. intra frames do not have backward update
+  // 2. if no active block in the frame and bru enabled, no need to update, just
+  // drop the recon
+  // 3. if any inactive block exists and bru enabled, update ref and drop the
+  // if enabled flag signaled == 1, do swap
+  if (cm->bru.enabled && pbi->bru_opt_mode &&
+      cm->current_frame.frame_type != KEY_FRAME) {
+    dec_bru_swap_stage(cm, xd);
+  }
+#endif  // CONFIG_BRU
 
   if (
 #if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
       !is_global_intrabc_allowed(cm) &&
 #endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
+#if CONFIG_BRU
+      !cm->bru.frame_inactive_flag &&
+#endif  // CONFIG_BRU
       !tiles->single_tile_decoding) {
     if (cm->lf.filter_level[0] || cm->lf.filter_level[1]) {
       if (pbi->num_workers > 1
