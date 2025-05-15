@@ -143,7 +143,7 @@ int av1_get_ref_frames(AV1_COMMON *cm, int cur_frame_disp,
   int max_disp = 0;
   for (int i = 0; i < cm->seq_params.ref_frames; i++) {
     RefFrameMapPair cur_ref = ref_frame_map_pairs[i];
-    if (cur_ref.disp_order == -1) continue;
+    if (cur_ref.ref_frame_for_inference == -1) continue;
     max_disp = AOMMAX(max_disp, cur_ref.disp_order);
   }
 
@@ -151,7 +151,7 @@ int av1_get_ref_frames(AV1_COMMON *cm, int cur_frame_disp,
   for (int i = 0; i < cm->seq_params.ref_frames; i++) {
     // Get reference frame buffer
     RefFrameMapPair cur_ref = ref_frame_map_pairs[i];
-    if (cur_ref.disp_order == -1) continue;
+    if (cur_ref.ref_frame_for_inference == -1) continue;
     const int ref_disp = cur_ref.disp_order;
     // In error resilient mode, ref mapping must be independent of the
     // base_qindex to ensure decoding independency
@@ -283,7 +283,9 @@ void choose_primary_secondary_ref_frame(const AV1_COMMON *const cm,
 
   for (int i = 0; i < n_refs; i++) {
     RefFrameMapPair cur_ref = ref_frame_map_pairs[get_ref_frame_map_idx(cm, i)];
-    if (cur_ref.disp_order == -1 || cur_ref.frame_type != INTER_FRAME) continue;
+    if (cur_ref.ref_frame_for_inference == -1 ||
+        cur_ref.frame_type != INTER_FRAME)
+      continue;
 
     const int ref_qp = cur_ref.base_qindex;
     const int qp_diff = abs(ref_qp - current_qp);
@@ -348,7 +350,7 @@ void choose_primary_secondary_ref_frame(const AV1_COMMON *const cm,
   for (i = 0; i < n_refs; i++) {
     // Get reference frame buffer
     RefFrameMapPair cur_ref = ref_frame_map_pairs[get_ref_frame_map_idx(cm, i)];
-    if (cur_ref.disp_order == -1) continue;
+    if (cur_ref.ref_frame_for_inference == -1) continue;
     if (cur_ref.frame_type != INTER_FRAME) continue;
 
     const int ref_base_qindex = cur_ref.base_qindex;
@@ -438,7 +440,7 @@ int choose_primary_ref_frame(const AV1_COMMON *const cm) {
   for (i = 0; i < n_refs; i++) {
     // Get reference frame buffer
     RefFrameMapPair cur_ref = ref_frame_map_pairs[get_ref_frame_map_idx(cm, i)];
-    if (cur_ref.disp_order == -1) continue;
+    if (cur_ref.ref_frame_for_inference == -1) continue;
     if (cur_ref.frame_type != INTER_FRAME) continue;
 
     const int ref_base_qindex = cur_ref.base_qindex;

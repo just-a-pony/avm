@@ -2955,7 +2955,7 @@ static void set_primary_ref_frame_for_error_resilient(AV1_COMP *cpi) {
       // Get reference frame buffer
       RefFrameMapPair cur_ref =
           ref_frame_map_pairs[get_ref_frame_map_idx(cm, i)];
-      if (cur_ref.disp_order == -1) continue;
+      if (cur_ref.ref_frame_for_inference == -1) continue;
       if (cur_ref.frame_type != INTER_FRAME) continue;
 
       if (cur_ref.disp_order == cpi->last_encoded_frame_order_hint) {

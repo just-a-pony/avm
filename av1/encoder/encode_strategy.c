@@ -682,7 +682,7 @@ int use_subgop_cfg(const GF_GROUP *const gf_group, int gf_index) {
 static int get_free_ref_map_index(RefFrameMapPair ref_map_pairs[REF_FRAMES],
                                   const int ref_frames) {
   for (int idx = 0; idx < ref_frames; ++idx)
-    if (ref_map_pairs[idx].disp_order == -1) return idx;
+    if (ref_map_pairs[idx].ref_frame_for_inference == -1) return idx;
   return INVALID_IDX;
 }
 
@@ -701,7 +701,7 @@ static int get_refresh_idx(int update_arf, int refresh_level,
   int oldest_ref_level_idx = -1;
   for (int map_idx = 0; map_idx < ref_frames; map_idx++) {
     RefFrameMapPair ref_pair = ref_frame_map_pairs[map_idx];
-    if (ref_pair.disp_order == -1) continue;
+    if (ref_pair.ref_frame_for_inference == -1) continue;
     const int frame_order = ref_pair.disp_order;
     const int reference_frame_level = ref_pair.pyr_level;
     // Keep future frames and three closest previous frames in output order

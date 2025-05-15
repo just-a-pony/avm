@@ -422,6 +422,9 @@ typedef struct RefCntBuffer {
 // in reference frame ranking.
 typedef struct {
   FRAME_TYPE frame_type;
+  // 1 if this reference frame can be considered in the inference process (not
+  // a repeated reference frame)
+  int ref_frame_for_inference;
   int pyr_level;
 #if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
   int temporal_layer_id;
@@ -2381,7 +2384,8 @@ static INLINE void get_secondary_reference_frame_idx(const AV1_COMMON *const cm,
           ref_frame == cm->features.primary_ref_frame)
         continue;
       RefFrameMapPair cur_ref = cm->ref_frame_map_pairs[iter_map_idx];
-      if ((cur_ref.disp_order == -1) || (cur_ref.frame_type != INTER_FRAME)) {
+      if ((cur_ref.ref_frame_for_inference == -1) ||
+          (cur_ref.frame_type != INTER_FRAME)) {
         iter_map_idx = INVALID_IDX;
         continue;
       }

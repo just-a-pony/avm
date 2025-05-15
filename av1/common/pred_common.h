@@ -24,6 +24,9 @@ extern "C" {
 
 #if !CONFIG_PRIMARY_REF_FRAME_OPT
 typedef struct {
+  // 1 if this reference frame can be considered in the inference process (not
+  // a repeated reference frame)
+  int ref_frame_for_inference;
   int pyr_level;
 #if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
   int temporal_layer_id;
@@ -44,7 +47,19 @@ static INLINE void init_ref_map_pair(AV1_COMMON *cm,
   for (int map_idx = 0; map_idx < cm->seq_params.ref_frames; map_idx++) {
     // Get reference frame buffer
     const RefCntBuffer *const buf = cm->ref_frame_map[map_idx];
-    if (ref_frame_map_pairs[map_idx].disp_order == -1) continue;
+    if (buf) {
+      ref_frame_map_pairs[map_idx].disp_order = (int)buf->display_order_hint;
+      ref_frame_map_pairs[map_idx].pyr_level = buf->pyramid_level;
+#if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
+      ref_frame_map_pairs[map_idx].temporal_layer_id = buf->temporal_layer_id;
+#endif  // CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
+      ref_frame_map_pairs[map_idx].base_qindex = buf->base_qindex;
+#if CONFIG_PRIMARY_REF_FRAME_OPT
+      ref_frame_map_pairs[map_idx].frame_type = buf->frame_type;
+#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
+    }
+    if (ref_frame_map_pairs[map_idx].ref_frame_for_inference == -1) continue;
+    ref_frame_map_pairs[map_idx].ref_frame_for_inference = 1;
     if (buf == NULL
 #if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
         // If the temporal_layer_id of the reference frame is greater than
@@ -53,14 +68,10 @@ static INLINE void init_ref_map_pair(AV1_COMMON *cm,
         || buf->temporal_layer_id > cm->current_frame.temporal_layer_id
 #endif  // CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
     ) {
-      ref_frame_map_pairs[map_idx].disp_order = -1;
-      ref_frame_map_pairs[map_idx].pyr_level = -1;
-      ref_frame_map_pairs[map_idx].base_qindex = -1;
-#if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
-      ref_frame_map_pairs[map_idx].temporal_layer_id = -1;
-#endif  // CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
+      ref_frame_map_pairs[map_idx].ref_frame_for_inference = -1;
       continue;
-    } else if (buf->ref_count > 1) {
+    }
+    if (buf->ref_count > 1) {
       // Once the keyframe is coded, the slots in ref_frame_map will all
       // point to the same frame. In that case, all subsequent pointers
       // matching the current are considered "free" slots. This will find
@@ -69,24 +80,10 @@ static INLINE void init_ref_map_pair(AV1_COMMON *cm,
       for (int idx2 = map_idx + 1; idx2 < cm->seq_params.ref_frames; ++idx2) {
         const RefCntBuffer *const buf2 = cm->ref_frame_map[idx2];
         if (buf2 == buf) {
-          ref_frame_map_pairs[idx2].disp_order = -1;
-          ref_frame_map_pairs[idx2].pyr_level = -1;
-#if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
-          ref_frame_map_pairs[idx2].temporal_layer_id = -1;
-#endif  // CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
-          ref_frame_map_pairs[idx2].base_qindex = -1;
+          ref_frame_map_pairs[idx2].ref_frame_for_inference = -1;
         }
       }
     }
-    ref_frame_map_pairs[map_idx].disp_order = (int)buf->display_order_hint;
-    ref_frame_map_pairs[map_idx].pyr_level = buf->pyramid_level;
-#if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
-    ref_frame_map_pairs[map_idx].temporal_layer_id = buf->temporal_layer_id;
-#endif  // CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
-    ref_frame_map_pairs[map_idx].base_qindex = buf->base_qindex;
-#if CONFIG_PRIMARY_REF_FRAME_OPT
-    ref_frame_map_pairs[map_idx].frame_type = buf->frame_type;
-#endif  // CONFIG_PRIMARY_REF_FRAME_OPT
   }
 }
 
