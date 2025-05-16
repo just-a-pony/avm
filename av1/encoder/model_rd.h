@@ -25,11 +25,7 @@
 extern "C" {
 #endif
 
-// 0: Legacy model
-// 1: Curve fit model
-// 2: Surface fit model
-// 3: DNN regression model
-// 4: Full rd model
+// Each one uses one of the model RD types from ModelRdType enum.
 #define MODELRD_TYPE_INTERP_FILTER 1
 #define MODELRD_TYPE_TX_SEARCH_PRUNE 1
 #define MODELRD_TYPE_MASKED_COMPOUND 1
@@ -214,6 +210,10 @@ static AOM_INLINE void model_rd_for_sb(const AV1_COMP *const cpi,
                                        int use_mrsse
 #endif  // CONFIG_MRSSE
 ) {
+#if CONFIG_EXT_RECUR_PARTITIONS
+  (void)bsize;
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
+
   // Note our transform coeffs are 8 times an orthogonal transform.
   // Hence quantizer step is also 8 times. To get effective quantizer
   // we need to divide by 8 before sending to modeling function.
@@ -232,8 +232,13 @@ static AOM_INLINE void model_rd_for_sb(const AV1_COMP *const cpi,
     if (plane && !xd->is_chroma_ref) break;
     struct macroblock_plane *const p = &x->plane[plane];
     struct macroblockd_plane *const pd = &xd->plane[plane];
+#if CONFIG_EXT_RECUR_PARTITIONS
+    const BLOCK_SIZE plane_bsize = get_mb_plane_block_size(
+        xd, xd->mi[0], plane, pd->subsampling_x, pd->subsampling_y);
+#else
     const BLOCK_SIZE plane_bsize =
         get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
+#endif  // CONFIG_EXT_RECUR_PARTITIONS
     assert(plane_bsize < BLOCK_SIZES_ALL);
     const int bw = block_size_wide[plane_bsize];
     const int bh = block_size_high[plane_bsize];
