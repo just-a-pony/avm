@@ -4793,6 +4793,8 @@ static INLINE SB_INFO *av1_get_sb_info(const AV1_COMMON *cm, int mi_row,
                                        int mi_col) {
   const int sb_row = mi_row >> cm->mib_size_log2;
   const int sb_col = mi_col >> cm->mib_size_log2;
+  assert(sb_row < cm->sbi_params.sb_rows);
+  assert(sb_col < cm->sbi_params.sb_cols);
   return cm->sbi_params.sbi_grid_base + sb_row * cm->sbi_params.sbi_stride +
          sb_col;
 }

@@ -331,12 +331,12 @@ static void set_sb_si(AV1_COMMON *cm) {
 }
 
 static int alloc_sbi(CommonSBInfoParams *sbi_params) {
-  const int sbi_size =
-      sbi_params->sbi_stride * calc_mi_size(sbi_params->sb_rows);
+  const int sbi_size = sbi_params->sbi_stride * sbi_params->sb_rows;
 
   if (sbi_params->sbi_alloc_size < sbi_size) {
     free_sbi(sbi_params);
-    sbi_params->sbi_grid_base = aom_calloc(sbi_size, sizeof(SB_INFO));
+    sbi_params->sbi_grid_base =
+        aom_calloc(sbi_size, sizeof(*sbi_params->sbi_grid_base));
 
     if (!sbi_params->sbi_grid_base) return 1;
 
