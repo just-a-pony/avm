@@ -1930,10 +1930,12 @@ void get_ref_affine_params(int bw, int bh, int mi_x, int mi_y,
                      (int64_t)wm->wmmat[5] * (int64_t)am_params->tran_y;
     wm->wmmat[0] = (int32_t)clamp64(
         ROUND_POWER_OF_TWO_SIGNED_64(tmp_tx * (-d), WARPEDMODEL_PREC_BITS),
-        -WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - unit_offset);
+        -WARPEDMODEL_TRANS_CLAMP,
+        WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
     wm->wmmat[1] = (int32_t)clamp64(
         ROUND_POWER_OF_TWO_SIGNED_64(tmp_ty * (-d), WARPEDMODEL_PREC_BITS),
-        -WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - unit_offset);
+        -WARPEDMODEL_TRANS_CLAMP,
+        WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
   } else {
     // Parameters of A
     wm->wmmat[3] =
@@ -1944,12 +1946,12 @@ void get_ref_affine_params(int bw, int bh, int mi_x, int mi_y,
         (int32_t)clamp64(ROUND_POWER_OF_TWO_SIGNED_64(scale_x * sin_angle,
                                                       WARPEDMODEL_PREC_BITS),
                          ndiag_min, ndiag_max);
-    wm->wmmat[0] = (int32_t)clamp64((int64_t)am_params->tran_x * (-d),
-                                    -WARPEDMODEL_TRANS_CLAMP,
-                                    WARPEDMODEL_TRANS_CLAMP - unit_offset);
-    wm->wmmat[1] = (int32_t)clamp64((int64_t)am_params->tran_y * (-d),
-                                    -WARPEDMODEL_TRANS_CLAMP,
-                                    WARPEDMODEL_TRANS_CLAMP - unit_offset);
+    wm->wmmat[0] = (int32_t)clamp64(
+        (int64_t)am_params->tran_x * (-d), -WARPEDMODEL_TRANS_CLAMP,
+        WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
+    wm->wmmat[1] = (int32_t)clamp64(
+        (int64_t)am_params->tran_y * (-d), -WARPEDMODEL_TRANS_CLAMP,
+        WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
   }
   wm->wmmat[6] = wm->wmmat[7] = 0;
 
@@ -1978,17 +1980,21 @@ void get_ref_affine_params(int bw, int bh, int mi_x, int mi_y,
   // pixel of the frame.
   const int center_x = mi_x + bw / 2 - 1;
   const int center_y = mi_y + bh / 2 - 1;
-  wm->wmmat[0] +=
-      mv->col * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
-      (center_x * (wm->wmmat[2] - unit_offset) + center_y * wm->wmmat[3]);
-  wm->wmmat[1] +=
-      mv->row * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
-      (center_x * wm->wmmat[4] + center_y * (wm->wmmat[5] - unit_offset));
+  int64_t wmmat0 = (int64_t)wm->wmmat[0] +
+                   (int64_t)mv->col * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
+                   ((int64_t)center_x * (wm->wmmat[2] - unit_offset) +
+                    (int64_t)center_y * wm->wmmat[3]);
+  int64_t wmmat1 = (int64_t)wm->wmmat[1] +
+                   (int64_t)mv->row * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
+                   ((int64_t)center_x * wm->wmmat[4] +
+                    (int64_t)center_y * (wm->wmmat[5] - unit_offset));
 
-  wm->wmmat[0] = clamp(wm->wmmat[0], -WARPEDMODEL_TRANS_CLAMP,
-                       WARPEDMODEL_TRANS_CLAMP - unit_offset);
-  wm->wmmat[1] = clamp(wm->wmmat[1], -WARPEDMODEL_TRANS_CLAMP,
-                       WARPEDMODEL_TRANS_CLAMP - unit_offset);
+  wm->wmmat[0] =
+      (int32_t)clamp64(wmmat0, -WARPEDMODEL_TRANS_CLAMP,
+                       WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
+  wm->wmmat[1] =
+      (int32_t)clamp64(wmmat1, -WARPEDMODEL_TRANS_CLAMP,
+                       WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
 
   wm->wmtype = AFFINE;
   wm->invalid = 0;
@@ -3029,12 +3035,17 @@ void make_inter_pred_of_nxn(
                                       << inter_pred_params->subsampling_x;
           const int subblk_center_y = (j + sub_bh / 2 - 1)
                                       << inter_pred_params->subsampling_y;
-          const int32_t subblk_offset_x_hp =
-              subblk_center_x * (ref_wm.wmmat[2] - unit_offset) +
-              subblk_center_y * ref_wm.wmmat[3];
-          const int32_t subblk_offset_y_hp =
-              subblk_center_x * ref_wm.wmmat[4] +
-              subblk_center_y * (ref_wm.wmmat[5] - unit_offset);
+          const int32_t max_value =
+              INT32_MAX - (WARPEDMODEL_PREC_BITS - MV_REFINE_PREC_BITS);
+          const int32_t min_value = -max_value - 1;
+          const int32_t subblk_offset_x_hp = (int32_t)clamp64(
+              (int64_t)subblk_center_x * (ref_wm.wmmat[2] - unit_offset) +
+                  (int64_t)subblk_center_y * ref_wm.wmmat[3],
+              min_value, max_value);
+          const int32_t subblk_offset_y_hp = (int32_t)clamp64(
+              (int64_t)subblk_center_x * ref_wm.wmmat[4] +
+                  (int64_t)subblk_center_y * (ref_wm.wmmat[5] - unit_offset),
+              min_value, max_value);
           cur_mv.col += ROUND_POWER_OF_TWO_SIGNED(
               subblk_offset_x_hp, WARPEDMODEL_PREC_BITS - MV_REFINE_PREC_BITS);
           cur_mv.row += ROUND_POWER_OF_TWO_SIGNED(
@@ -3119,11 +3130,11 @@ void make_inter_pred_of_nxn(
             inter_pred_params->warp_params.wmmat[0] =
                 clamp(inter_pred_params->warp_params.wmmat[0],
                       -WARPEDMODEL_TRANS_CLAMP,
-                      WARPEDMODEL_TRANS_CLAMP - unit_offset);
+                      WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
             inter_pred_params->warp_params.wmmat[1] =
                 clamp(inter_pred_params->warp_params.wmmat[1],
                       -WARPEDMODEL_TRANS_CLAMP,
-                      WARPEDMODEL_TRANS_CLAMP - unit_offset);
+                      WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
           }
           subblock_mv = &mv_refined[ref].as_mv;
         }

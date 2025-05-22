@@ -546,8 +546,8 @@ void AV1HighbdWarpBilinearFilterTest::RunTest_ExtremeValues(
     for (sub_x = 0; sub_x < 2; ++sub_x)
       for (sub_y = 0; sub_y < 2; ++sub_y) {
         wms.wmtype = AFFINE;
-        wms.wmmat[0] = WARPEDMODEL_TRANS_CLAMP - (1 << WARPEDMODEL_PREC_BITS);
-        wms.wmmat[1] = WARPEDMODEL_TRANS_CLAMP - (1 << WARPEDMODEL_PREC_BITS);
+        wms.wmmat[0] = WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS);
+        wms.wmmat[1] = WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS);
         const int max_value =
             (1 << (WARPEDMODEL_PREC_BITS - 1)) - (1 << WARP_PARAM_REDUCE_BITS);
         for (int i = 2; i < 6; i++) {

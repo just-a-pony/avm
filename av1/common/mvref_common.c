@@ -698,19 +698,12 @@ static INLINE MV get_sub_block_warp_mv(const WarpedMotionParams *warp_params,
                                        int bh) {
   const int center_x = pixel_x + (bw >> 1);
   const int center_y = pixel_y + (bh >> 1);
-  const int64_t dst_x = (int64_t)warp_params->wmmat[2] * center_x +
-                        (int64_t)warp_params->wmmat[3] * center_y +
-                        (int64_t)warp_params->wmmat[0];
-  const int64_t dst_y = (int64_t)warp_params->wmmat[4] * center_x +
-                        (int64_t)warp_params->wmmat[5] * center_y +
-                        (int64_t)warp_params->wmmat[1];
 
-  const int32_t submv_x_hp =
-      (int32_t)clamp64(dst_x - ((int64_t)center_x << WARPEDMODEL_PREC_BITS),
-                       INT32_MIN, INT32_MAX);
-  const int32_t submv_y_hp =
-      (int32_t)clamp64(dst_y - ((int64_t)center_y << WARPEDMODEL_PREC_BITS),
-                       INT32_MIN, INT32_MAX);
+  const int32_t submv_x_hp = get_subblk_offset_x_hp(
+      warp_params->wmmat, center_x, center_y, 1 << WARPEDMODEL_PREC_BITS);
+  const int32_t submv_y_hp = get_subblk_offset_y_hp(
+      warp_params->wmmat, center_x, center_y, 1 << WARPEDMODEL_PREC_BITS);
+
   MV submv;
   submv.col = ROUND_POWER_OF_TWO_SIGNED(submv_x_hp, WARPEDMODEL_PREC_BITS - 3);
   submv.row = ROUND_POWER_OF_TWO_SIGNED(submv_y_hp, WARPEDMODEL_PREC_BITS - 3);
@@ -8879,12 +8872,12 @@ void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,
     for (int j = p_col; j < p_col + p_x_mis; j += 8) {
       const int32_t src_x = j + 4;
       const int32_t src_y = i + 4;
-      const int32_t dst_x = wm_params->wmmat[2] * src_x +
-                            wm_params->wmmat[3] * src_y + wm_params->wmmat[0];
-      const int32_t dst_y = wm_params->wmmat[4] * src_x +
-                            wm_params->wmmat[5] * src_y + wm_params->wmmat[1];
-      int32_t submv_x_hp = dst_x - (src_x << WARPEDMODEL_PREC_BITS);
-      int32_t submv_y_hp = dst_y - (src_y << WARPEDMODEL_PREC_BITS);
+
+      const int32_t submv_x_hp = get_subblk_offset_x_hp(
+          wm_params->wmmat, src_x, src_y, 1 << WARPEDMODEL_PREC_BITS);
+      const int32_t submv_y_hp = get_subblk_offset_y_hp(
+          wm_params->wmmat, src_x, src_y, 1 << WARPEDMODEL_PREC_BITS);
+
       int mi_y = (i - p_row) / MI_SIZE;
       int mi_x = (j - p_col) / MI_SIZE;
       const int mv_row =

@@ -511,16 +511,20 @@ void av1_set_warp_translation(int mi_row, int mi_col, BLOCK_SIZE bsize, MV mv,
   // This is because the warp model M maps (current frame) pixel coordinates to
   // (ref frame) pixel coordinates. So, in order to calculate the induced
   // motion vector, we have to subtract the identity matrix.
-  wm->wmmat[0] = mv.col * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
-                 (center_x * (wm->wmmat[2] - (1 << WARPEDMODEL_PREC_BITS)) +
-                  center_y * wm->wmmat[3]);
-  wm->wmmat[1] = mv.row * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
-                 (center_x * wm->wmmat[4] +
-                  center_y * (wm->wmmat[5] - (1 << WARPEDMODEL_PREC_BITS)));
+  int64_t wmmat0 =
+      (int64_t)mv.col * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
+      ((int64_t)center_x * (wm->wmmat[2] - (1 << WARPEDMODEL_PREC_BITS)) +
+       (int64_t)center_y * wm->wmmat[3]);
+  int64_t wmmat1 =
+      (int64_t)mv.row * (1 << (WARPEDMODEL_PREC_BITS - 3)) -
+      ((int64_t)center_x * wm->wmmat[4] +
+       (int64_t)center_y * (wm->wmmat[5] - (1 << WARPEDMODEL_PREC_BITS)));
 
-  wm->wmmat[0] = clamp(wm->wmmat[0], -WARPEDMODEL_TRANS_CLAMP,
+  wm->wmmat[0] =
+      (int32_t)clamp64(wmmat0, -WARPEDMODEL_TRANS_CLAMP,
                        WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
-  wm->wmmat[1] = clamp(wm->wmmat[1], -WARPEDMODEL_TRANS_CLAMP,
+  wm->wmmat[1] =
+      (int32_t)clamp64(wmmat1, -WARPEDMODEL_TRANS_CLAMP,
                        WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
 }
 
@@ -1911,10 +1915,8 @@ int_mv get_warp_motion_vector_xy_pos(const MACROBLOCKD *xd,
     assert(model->wmmat[4] == -model->wmmat[3]);
   }
 
-  int xc =
-      (mat[2] * x + mat[3] * y + mat[0]) - (1 << WARPEDMODEL_PREC_BITS) * x;
-  int yc =
-      (mat[4] * x + mat[5] * y + mat[1]) - (1 << WARPEDMODEL_PREC_BITS) * y;
+  int xc = get_subblk_offset_x_hp(mat, x, y, (1 << WARPEDMODEL_PREC_BITS));
+  int yc = get_subblk_offset_y_hp(mat, x, y, (1 << WARPEDMODEL_PREC_BITS));
 
   tx = convert_to_trans_prec(precision, xc);
   ty = convert_to_trans_prec(precision, yc);
@@ -2027,10 +2029,12 @@ int get_model_from_corner_mvs(WarpedMotionParams *derive_model, int *pts,
     return 0;
   }
 
-  derive_model->wmmat[0] = (int32_t)clamp64(wmmat0, -WARPEDMODEL_TRANS_CLAMP,
-                                            WARPEDMODEL_TRANS_CLAMP - 1);
-  derive_model->wmmat[1] = (int32_t)clamp64(wmmat1, -WARPEDMODEL_TRANS_CLAMP,
-                                            WARPEDMODEL_TRANS_CLAMP - 1);
+  derive_model->wmmat[0] =
+      (int32_t)clamp64(wmmat0, -WARPEDMODEL_TRANS_CLAMP,
+                       WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
+  derive_model->wmmat[1] =
+      (int32_t)clamp64(wmmat1, -WARPEDMODEL_TRANS_CLAMP,
+                       WARPEDMODEL_TRANS_CLAMP - (1 << WARP_PARAM_REDUCE_BITS));
 
   derive_model->wmmat[6] = derive_model->wmmat[7] = 0;
 

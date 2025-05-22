@@ -296,6 +296,28 @@ static INLINE void opfl_subblock_size_plane(const MACROBLOCKD *xd, int plane,
       AOMMAX((sub_bsize_y >> xd->plane[plane].subsampling_y), OF_MIN_BSIZE);
 }
 
+static INLINE int32_t get_subblk_offset_x_hp(const int32_t *wmmat,
+                                             int subblk_center_x,
+                                             int subblk_center_y,
+                                             int unit_offset) {
+  const int32_t subblk_offset_x_hp = (int32_t)clamp64(
+      ((int64_t)(wmmat[2] - unit_offset) * subblk_center_x +
+       (int64_t)wmmat[3] * subblk_center_y + (int64_t)wmmat[0]),
+      INT32_MIN, INT32_MAX);
+  return subblk_offset_x_hp;
+}
+
+static INLINE int32_t get_subblk_offset_y_hp(const int32_t *wmmat,
+                                             int subblk_center_x,
+                                             int subblk_center_y,
+                                             int unit_offset) {
+  const int32_t subblk_offset_y_hp = (int32_t)clamp64(
+      ((int64_t)wmmat[4] * subblk_center_x +
+       (int64_t)(wmmat[5] - unit_offset) * subblk_center_y + (int64_t)wmmat[1]),
+      INT32_MIN, INT32_MAX);
+  return subblk_offset_y_hp;
+}
+
 // Convert a global motion vector into a motion vector at the centre of the
 // given block.
 //
@@ -346,10 +368,9 @@ static INLINE int_mv get_warp_motion_vector(const MACROBLOCKD *xd,
     assert(model->wmmat[4] == -model->wmmat[3]);
   }
 
-  const int xc =
-      (mat[2] - (1 << WARPEDMODEL_PREC_BITS)) * x + mat[3] * y + mat[0];
-  const int yc =
-      mat[4] * x + (mat[5] - (1 << WARPEDMODEL_PREC_BITS)) * y + mat[1];
+  const int xc = get_subblk_offset_x_hp(mat, x, y, 1 << WARPEDMODEL_PREC_BITS);
+  const int yc = get_subblk_offset_y_hp(mat, x, y, 1 << WARPEDMODEL_PREC_BITS);
+
   tx = convert_to_trans_prec(precision, xc);
   ty = convert_to_trans_prec(precision, yc);
 
@@ -392,9 +413,9 @@ static INLINE int_mv get_int_warp_mv_for_fb(const MACROBLOCKD *xd,
 
   // here is mv
   const int xc =
-      (mat[2] - (1 << WARPEDMODEL_PREC_BITS)) * x + mat[3] * y + mat[0];
+      get_subblk_offset_x_hp(mat, x, y, (1 << WARPEDMODEL_PREC_BITS));
   const int yc =
-      mat[4] * x + (mat[5] - (1 << WARPEDMODEL_PREC_BITS)) * y + mat[1];
+      get_subblk_offset_y_hp(mat, x, y, (1 << WARPEDMODEL_PREC_BITS));
 
 #if CONFIG_IMPROVE_TMVP_LIST
   // down shift to 1/8th pel, match with warped_motion.c
