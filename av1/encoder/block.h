@@ -987,6 +987,7 @@ typedef struct {
   int mrl_index_cost[MRL_LINE_NUMBER];
 #endif  // CONFIG_IMPROVED_INTRA_DIR_PRED
 #if CONFIG_MRLS_IMPROVE
+  //! multi_line_mrl_cost
   int multi_line_mrl_cost[MRL_INDEX_CONTEXTS][2];
 #endif
   //! Cost of signaling the forward skip coding mode
@@ -1104,6 +1105,7 @@ typedef struct {
   int inter_single_mode_cost[INTER_SINGLE_MODE_CONTEXTS][INTER_SINGLE_MODES];
 #endif  // CONFIG_OPT_INTER_MODE_CTX
 #if CONFIG_INTER_MODE_CONSOLIDATION
+  //! signal use_amvd flag cost
   int amvd_mode_cost[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][2];
 #endif  // CONFIG_INTER_MODE_CONSOLIDATION
   //! inter warpmv mode cost
@@ -1369,6 +1371,7 @@ typedef struct {
                                    [TX_PARTITION_TYPE_NUM];
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+  //! txfm_2or3_way_partition_type_cost
   int txfm_2or3_way_partition_type_cost[FSC_MODES][2]
                                        [TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1]
                                        [2];

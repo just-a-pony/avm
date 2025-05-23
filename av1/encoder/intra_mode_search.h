@@ -55,6 +55,9 @@ typedef struct IntraModeSearchState {
    */
   int best_mrl_index;
 #if CONFIG_MRLS_IMPROVE
+  /*!
+   * \brief The best multi_line_mrl flag found so far
+   */
   int best_multi_line_mrl;
 #endif
 #if CONFIG_LOSSLESS_DPCM

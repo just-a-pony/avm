@@ -736,6 +736,7 @@ typedef struct MB_MODE_INFO {
   uint8_t skip_mode : 1;
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 #if CONFIG_INTER_MODE_CONSOLIDATION
+  /*! \brief amvd mode is enabled or not */
   int use_amvd;
 #endif  // CONFIG_INTER_MODE_CONSOLIDATION
   /*! \brief Whether intrabc is used. */
