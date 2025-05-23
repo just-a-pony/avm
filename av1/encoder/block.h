@@ -248,21 +248,34 @@ typedef struct LV_MAP_COEFF_COST {
 #endif  // CONFIG_TCQ
                [8];
 #if CONFIG_TCQ
-  //! Quick access to base costs for optimized access.
+  //! Quick access to precomputed base costs for optimized access.
+  //! Cost for encoding coeff_base Y zero coeff.
   int32_t base_cost_zero[TCQ_CTXS][SIG_COEF_CONTEXTS];
+  //! Cost for encoding coeff_base UV zero coeff.
   int32_t base_cost_uv_zero[TCQ_CTXS][SIG_COEF_CONTEXTS];
+  //! Cost for encoding coeff base + mid Y values.
   uint16_t base_cost_low_tbl[5][SIG_COEF_CONTEXTS][TCQ_CTXS][2];
+  //! Cost for encoding coeff base + mid UV values.
   uint16_t base_cost_uv_low_tbl[5][SIG_COEF_CONTEXTS][TCQ_CTXS][2];
+  //! Cost for encoding coeff_base Y zero value (LF region).
   uint16_t base_lf_cost_zero[TCQ_CTXS][LF_SIG_COEF_CONTEXTS];
+  //! Cost for encoding coeff_base UV zero value (LF region).
   uint16_t base_lf_cost_uv_zero[TCQ_CTXS][LF_SIG_COEF_CONTEXTS];
+  //! Cost for encoding coeff base + mid Y values (LF region).
   uint16_t base_lf_cost_low_tbl[9][LF_SIG_COEF_CONTEXTS][TCQ_CTXS][2];
+  //! Cost for encoding coeff base + mid UV values (LF region).
   uint16_t base_lf_cost_uv_low_tbl[9][LF_SIG_COEF_CONTEXTS][TCQ_CTXS][2];
+  //! Cost for encoding eob position.
   uint16_t base_eob_cost_tbl[5][SIG_COEF_CONTEXTS_EOB][2];
+  //! Cost for encoding eob position (UV).
   uint16_t base_eob_cost_uv_tbl[5][SIG_COEF_CONTEXTS_EOB][2];
+  //! Cost for encoding eob position (LF region).
   uint16_t base_lf_eob_cost_tbl[9][SIG_COEF_CONTEXTS_EOB][2];
+  //! Cost for encoding eob position (YV, LF region).
   uint16_t base_lf_eob_cost_uv_tbl[9][SIG_COEF_CONTEXTS_EOB][2];
   //! Quick access to mid (br) costs for optimized access.
   uint16_t mid_cost_tbl[11][LEVEL_CONTEXTS][TCQ_CTXS][2];
+  //! Quick access to mid (br) costs for optimized access (LF region).
   uint16_t mid_lf_cost_tbl[15][LF_LEVEL_CONTEXTS][TCQ_CTXS][2];
 #endif  // CONFIG_TCQ
   /*! \brief Cost for encoding the last non-zero coefficient.
