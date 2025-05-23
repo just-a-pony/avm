@@ -1364,8 +1364,15 @@ static AOM_INLINE void build_second_inter_pred(const AV1_COMP *cpi,
   struct buf_2d ref_yv12 = xd->plane[plane].pre[!ref_idx];
 
   struct scale_factors sf;
+#if CONFIG_F054_PIC_BOUNDARY
+  av1_setup_scale_factors_for_frame(&sf, ref_yv12.width, ref_yv12.height,
+                                    ((cm->width + 7) >> 3) * 8,
+                                    ((cm->height + 7) >> 3) * 8);
+#else
   av1_setup_scale_factors_for_frame(&sf, ref_yv12.width, ref_yv12.height,
                                     cm->width, cm->height);
+#endif  // CONFIG_F054_PIC_BOUNDARY
+  assert(av1_is_valid_scale(&sf));
 
   InterPredParams inter_pred_params;
 
