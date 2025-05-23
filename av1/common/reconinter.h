@@ -1429,8 +1429,9 @@ static INLINE int64_t scaled_buffer_offset(int x_offset, int y_offset,
 }
 
 static INLINE void setup_pred_plane(struct buf_2d *dst, uint16_t *src,
-                                    int width, int height, int stride,
-                                    int mi_row, int mi_col,
+                                    int width, int height, int crop_width,
+                                    int crop_height, int stride, int mi_row,
+                                    int mi_col,
                                     const struct scale_factors *scale,
                                     int subsampling_x, int subsampling_y,
                                     const CHROMA_REF_INFO *chroma_ref_info) {
@@ -1446,6 +1447,8 @@ static INLINE void setup_pred_plane(struct buf_2d *dst, uint16_t *src,
   dst->buf0 = src;
   dst->width = width;
   dst->height = height;
+  dst->crop_width = crop_width;
+  dst->crop_height = crop_height;
   dst->stride = stride;
 }
 
@@ -1473,15 +1476,17 @@ static AOM_INLINE void setup_pred_planes_for_tip(const TIP *tip_ref,
 #if CONFIG_F054_PIC_BOUNDARY
       setup_pred_plane(&pd->pre[ref], ref_buf->buffers[plane],
                        ref_buf->widths[is_uv], ref_buf->heights[is_uv],
-                       ref_buf->strides[is_uv], mi_row, mi_col,
-                       tip_ref->ref_scale_factor[ref], pd->subsampling_x,
-                       pd->subsampling_y, NULL);
-#else
-      setup_pred_plane(&pd->pre[ref], ref_buf->buffers[plane],
                        ref_buf->crop_widths[is_uv],
                        ref_buf->crop_heights[is_uv], ref_buf->strides[is_uv],
                        mi_row, mi_col, tip_ref->ref_scale_factor[ref],
                        pd->subsampling_x, pd->subsampling_y, NULL);
+#else
+      setup_pred_plane(
+          &pd->pre[ref], ref_buf->buffers[plane], ref_buf->crop_widths[is_uv],
+          ref_buf->crop_heights[is_uv], ref_buf->crop_widths[is_uv],
+          ref_buf->crop_heights[is_uv], ref_buf->strides[is_uv], mi_row, mi_col,
+          tip_ref->ref_scale_factor[ref], pd->subsampling_x, pd->subsampling_y,
+          NULL);
 #endif  // CONFIG_F054_PIC_BOUNDARY
     }
   }

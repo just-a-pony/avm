@@ -205,6 +205,7 @@ void av1_setup_src_planes(MACROBLOCK *x, const YV12_BUFFER_CONFIG *src,
   for (int i = 0; i < AOMMIN(num_planes, MAX_MB_PLANE); i++) {
     const int is_uv = i > 0;
     setup_pred_plane(&x->plane[i].src, src->buffers[i], src->crop_widths[is_uv],
+                     src->crop_heights[is_uv], src->crop_widths[is_uv],
                      src->crop_heights[is_uv], src->strides[is_uv], mi_row,
                      mi_col, NULL, x->e_mbd.plane[i].subsampling_x,
                      x->e_mbd.plane[i].subsampling_y, chroma_ref_info);

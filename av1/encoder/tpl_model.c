@@ -518,8 +518,12 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
 
     tpl_stats->mv[rf_idx].as_int = best_rfidx_mv.as_int;
 
-    struct buf_2d ref_buf = { NULL, ref_frame_ptr->y_buffer,
-                              ref_frame_ptr->y_width, ref_frame_ptr->y_height,
+    struct buf_2d ref_buf = { NULL,
+                              ref_frame_ptr->y_buffer,
+                              ref_frame_ptr->y_width,
+                              ref_frame_ptr->y_height,
+                              ref_frame_ptr->y_crop_width,
+                              ref_frame_ptr->y_crop_height,
                               ref_frame_ptr->y_stride };
     InterPredParams inter_pred_params;
     av1_init_inter_params(&inter_pred_params, bw, bh, mi_row * MI_SIZE,
@@ -570,8 +574,12 @@ static AOM_INLINE void mode_estimation(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
     const YV12_BUFFER_CONFIG *ref_frame_ptr = tpl_data->ref_frame[best_rf_idx];
 
     InterPredParams inter_pred_params;
-    struct buf_2d ref_buf = { NULL, ref_frame_ptr->y_buffer,
-                              ref_frame_ptr->y_width, ref_frame_ptr->y_height,
+    struct buf_2d ref_buf = { NULL,
+                              ref_frame_ptr->y_buffer,
+                              ref_frame_ptr->y_width,
+                              ref_frame_ptr->y_height,
+                              ref_frame_ptr->y_crop_width,
+                              ref_frame_ptr->y_crop_height,
                               ref_frame_ptr->y_stride };
     av1_init_inter_params(&inter_pred_params, bw, bh, mi_row * MI_SIZE,
                           mi_col * MI_SIZE, 0, 0, xd->bd, 0, &tpl_data->sf,

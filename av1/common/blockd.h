@@ -1876,6 +1876,8 @@ struct buf_2d {
   uint16_t *buf0;
   int width;
   int height;
+  int crop_width;
+  int crop_height;
   int stride;
 };
 

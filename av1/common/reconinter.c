@@ -4127,12 +4127,16 @@ static void build_inter_predictors_sub8x8(
         (plane == 1) ? ref_buf->buf.u_buffer : ref_buf->buf.v_buffer,
         ref_buf->buf.uv_width,
         ref_buf->buf.uv_height,
+        ref_buf->buf.uv_crop_width,
+        ref_buf->buf.uv_crop_height,
         ref_buf->buf.uv_stride,
       };
 #else
       const struct buf_2d pre_buf = {
         NULL,
         (plane == 1) ? ref_buf->buf.u_buffer : ref_buf->buf.v_buffer,
+        ref_buf->buf.uv_crop_width,
+        ref_buf->buf.uv_crop_height,
         ref_buf->buf.uv_crop_width,
         ref_buf->buf.uv_crop_height,
         ref_buf->buf.uv_stride,
@@ -6507,11 +6511,13 @@ void av1_setup_dst_planes(struct macroblockd_plane *planes,
     const int is_uv = i > 0;
 #if CONFIG_F054_PIC_BOUNDARY
     setup_pred_plane(&pd->dst, src->buffers[i], src->widths[is_uv],
-                     src->heights[is_uv], src->strides[is_uv], mi_row, mi_col,
-                     NULL, pd->subsampling_x, pd->subsampling_y,
+                     src->heights[is_uv], src->crop_widths[is_uv],
+                     src->crop_heights[is_uv], src->strides[is_uv], mi_row,
+                     mi_col, NULL, pd->subsampling_x, pd->subsampling_y,
                      chroma_ref_info);
 #else
     setup_pred_plane(&pd->dst, src->buffers[i], src->crop_widths[is_uv],
+                     src->crop_heights[is_uv], src->crop_widths[is_uv],
                      src->crop_heights[is_uv], src->strides[is_uv], mi_row,
                      mi_col, NULL, pd->subsampling_x, pd->subsampling_y,
                      chroma_ref_info);
@@ -6531,11 +6537,13 @@ void av1_setup_pre_planes(MACROBLOCKD *xd, int idx,
       const int is_uv = i > 0;
 #if CONFIG_F054_PIC_BOUNDARY
       setup_pred_plane(&pd->pre[idx], src->buffers[i], src->widths[is_uv],
-                       src->heights[is_uv], src->strides[is_uv], mi_row, mi_col,
-                       sf, pd->subsampling_x, pd->subsampling_y,
+                       src->heights[is_uv], src->crop_widths[is_uv],
+                       src->crop_heights[is_uv], src->strides[is_uv], mi_row,
+                       mi_col, sf, pd->subsampling_x, pd->subsampling_y,
                        chroma_ref_info);
 #else
       setup_pred_plane(&pd->pre[idx], src->buffers[i], src->crop_widths[is_uv],
+                       src->crop_heights[is_uv], src->crop_widths[is_uv],
                        src->crop_heights[is_uv], src->strides[is_uv], mi_row,
                        mi_col, sf, pd->subsampling_x, pd->subsampling_y,
                        chroma_ref_info);

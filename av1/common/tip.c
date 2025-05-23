@@ -1462,7 +1462,8 @@ static AOM_INLINE void tip_component_build_inter_predictors(
 }
 
 static INLINE void tip_setup_pred_plane(struct buf_2d *dst, uint16_t *src,
-                                        int width, int height, int stride,
+                                        int width, int height, int crop_width,
+                                        int crop_height, int stride,
                                         int tpl_row, int tpl_col,
                                         const struct scale_factors *scale,
                                         int subsampling_x, int subsampling_y) {
@@ -1472,6 +1473,8 @@ static INLINE void tip_setup_pred_plane(struct buf_2d *dst, uint16_t *src,
   dst->buf0 = src;
   dst->width = width;
   dst->height = height;
+  dst->crop_width = crop_width;
+  dst->crop_height = crop_height;
   dst->stride = stride;
 }
 
@@ -1491,10 +1494,12 @@ static AOM_INLINE void tip_component_setup_dst_planes(AV1_COMMON *const cm,
   }
 #if CONFIG_F054_PIC_BOUNDARY
   tip_setup_pred_plane(&pd->dst, src->buffers[plane], src->widths[is_uv],
-                       src->heights[is_uv], src->strides[is_uv], tpl_row,
+                       src->heights[is_uv], src->crop_widths[is_uv],
+                       src->crop_heights[is_uv], src->strides[is_uv], tpl_row,
                        tpl_col, NULL, subsampling_x, subsampling_y);
 #else
   tip_setup_pred_plane(&pd->dst, src->buffers[plane], src->crop_widths[is_uv],
+                       src->crop_heights[is_uv], src->crop_widths[is_uv],
                        src->crop_heights[is_uv], src->strides[is_uv], tpl_row,
                        tpl_col, NULL, subsampling_x, subsampling_y);
 #endif  // CONFIG_F054_PIC_BOUNDARY

@@ -3218,8 +3218,8 @@ static
   unsigned int besterr;
 #if CONFIG_F054_PIC_BOUNDARY
   const int is_scaled_ref =
-      ((ms_buffers->src->width + 7) >> 3) * 8 == ms_buffers->ref->width &&
-      ((ms_buffers->src->height + 7) >> 3) * 8 == ms_buffers->ref->height;
+      ms_buffers->src->width == ms_buffers->ref->crop_width &&
+      ms_buffers->src->height == ms_buffers->ref->crop_height;
 #else
   const int is_scaled_ref = ms_buffers->src->width == ms_buffers->ref->width &&
                             ms_buffers->src->height == ms_buffers->ref->height;

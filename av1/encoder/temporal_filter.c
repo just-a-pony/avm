@@ -618,9 +618,12 @@ static void tf_build_predictor(const YV12_BUFFER_CONFIG *ref_frame,
 
     const int is_y_plane = (plane == 0);  // Is Y-plane?
 
-    const struct buf_2d ref_buf = { NULL, ref_frame->buffers[plane],
+    const struct buf_2d ref_buf = { NULL,
+                                    ref_frame->buffers[plane],
                                     ref_frame->widths[is_y_plane ? 0 : 1],
                                     ref_frame->heights[is_y_plane ? 0 : 1],
+                                    ref_frame->crop_widths[is_y_plane ? 0 : 1],
+                                    ref_frame->crop_heights[is_y_plane ? 0 : 1],
                                     ref_frame->strides[is_y_plane ? 0 : 1] };
 
 #if CONFIG_LARGE_TF_BLOCK

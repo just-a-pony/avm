@@ -71,7 +71,7 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
   // Make the motion mode transalational, so that transalation MS can be used.
   if (mbmi->mode == WARPMV) mbmi->motion_mode = SIMPLE_TRANSLATION;
 
-  struct buf_2d backup_yv12[MAX_MB_PLANE] = { { 0, 0, 0, 0, 0 } };
+  struct buf_2d backup_yv12[MAX_MB_PLANE] = { { 0, 0, 0, 0, 0, 0, 0 } };
   int bestsme = INT_MAX;
   const int ref = mbmi->ref_frame[ref_idx];
   const YV12_BUFFER_CONFIG *scaled_ref_frame =
@@ -472,7 +472,7 @@ void av1_single_motion_search_high_precision(const AV1_COMP *const cpi,
   const AV1_COMMON *cm = &cpi->common;
   const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *mbmi = xd->mi[0];
-  struct buf_2d backup_yv12[MAX_MB_PLANE] = { { 0, 0, 0, 0, 0 } };
+  struct buf_2d backup_yv12[MAX_MB_PLANE] = { { 0, 0, 0, 0, 0, 0, 0 } };
   int bestsme = INT_MAX;
   int_mv curr_best_mv;
   const int ref = mbmi->ref_frame[ref_idx];
@@ -1365,9 +1365,8 @@ static AOM_INLINE void build_second_inter_pred(const AV1_COMP *cpi,
 
   struct scale_factors sf;
 #if CONFIG_F054_PIC_BOUNDARY
-  av1_setup_scale_factors_for_frame(&sf, ref_yv12.width, ref_yv12.height,
-                                    ((cm->width + 7) >> 3) * 8,
-                                    ((cm->height + 7) >> 3) * 8);
+  av1_setup_scale_factors_for_frame(
+      &sf, ref_yv12.crop_width, ref_yv12.crop_height, cm->width, cm->height);
 #else
   av1_setup_scale_factors_for_frame(&sf, ref_yv12.width, ref_yv12.height,
                                     cm->width, cm->height);
