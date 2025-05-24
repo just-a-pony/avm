@@ -4331,7 +4331,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
         mbmi->mode = read_inter_mode(ec_ctx, r, mode_ctx, cm, xd, mbmi, bsize);
 #if CONFIG_INTER_MODE_CONSOLIDATION
       mbmi->use_amvd = 0;
-      if (allow_amvd_mode(mbmi->mode)) {
+      if (cm->seq_params.enable_adaptive_mvd && allow_amvd_mode(mbmi->mode)) {
         int amvd_index = amvd_mode_to_index(mbmi->mode);
         assert(amvd_index >= 0);
         int amvd_ctx = get_amvd_context(xd);

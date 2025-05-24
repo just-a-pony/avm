@@ -2894,7 +2894,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
       else if (is_inter_singleref_mode(mode))
         write_inter_mode(w, mode, ec_ctx, mode_ctx, cm, xd, mbmi, bsize);
 #if CONFIG_INTER_MODE_CONSOLIDATION
-      if (allow_amvd_mode(mode)) {
+      if (cm->seq_params.enable_adaptive_mvd && allow_amvd_mode(mode)) {
         int amvd_index = amvd_mode_to_index(mbmi->mode);
         assert(amvd_index >= 0);
         int amvd_ctx = get_amvd_context(xd);
