@@ -3851,22 +3851,14 @@ static AOM_INLINE void init_allowed_partitions_for_signaling(
   num_allowed_partitions += partition_allowed[PARTITION_NONE];
 
   partition_allowed[PARTITION_HORZ] =
-      is_block_splittable && is_horz_size_valid
-#if CONFIG_CB1TO4_SPLIT
-      &&
+      is_block_splittable && is_horz_size_valid &&
       is_chroma_ref_within_boundary(cm, tree_type, is_chroma_ref, mi_row,
-                                    mi_col, bsize, PARTITION_HORZ, ss_x, ss_y)
-#endif  // CONFIG_CB1TO4_SPLIT
-      ;
+                                    mi_col, bsize, PARTITION_HORZ, ss_x, ss_y);
   num_allowed_partitions += partition_allowed[PARTITION_HORZ];
   partition_allowed[PARTITION_VERT] =
-      is_block_splittable && is_vert_size_valid
-#if CONFIG_CB1TO4_SPLIT
-      &&
+      is_block_splittable && is_vert_size_valid &&
       is_chroma_ref_within_boundary(cm, tree_type, is_chroma_ref, mi_row,
-                                    mi_col, bsize, PARTITION_VERT, ss_x, ss_y)
-#endif  // CONFIG_CB1TO4_SPLIT
-      ;
+                                    mi_col, bsize, PARTITION_VERT, ss_x, ss_y);
   num_allowed_partitions += partition_allowed[PARTITION_VERT];
 
   const bool ext_partition_allowed =
@@ -3878,11 +3870,9 @@ static AOM_INLINE void init_allowed_partitions_for_signaling(
       get_partition_subsize(bsize, PARTITION_HORZ_3) != BLOCK_INVALID &&
       check_is_chroma_size_valid(cm, tree_type, PARTITION_HORZ_3, bsize, mi_row,
                                  mi_col, ss_x, ss_y, chroma_ref_info) &&
-#if CONFIG_CB1TO4_SPLIT
       is_chroma_ref_within_boundary(cm, tree_type, is_chroma_ref, mi_row,
-                                    mi_col, bsize, PARTITION_HORZ_3, ss_x, ss_y)
-#endif  // CONFIG_CB1TO4_SPLIT
-      ;
+                                    mi_col, bsize, PARTITION_HORZ_3, ss_x,
+                                    ss_y);
   num_allowed_partitions += partition_allowed[PARTITION_HORZ_3];
 
   partition_allowed[PARTITION_VERT_3] =
@@ -3891,11 +3881,9 @@ static AOM_INLINE void init_allowed_partitions_for_signaling(
       get_partition_subsize(bsize, PARTITION_VERT_3) != BLOCK_INVALID &&
       check_is_chroma_size_valid(cm, tree_type, PARTITION_VERT_3, bsize, mi_row,
                                  mi_col, ss_x, ss_y, chroma_ref_info) &&
-#if CONFIG_CB1TO4_SPLIT
       is_chroma_ref_within_boundary(cm, tree_type, is_chroma_ref, mi_row,
-                                    mi_col, bsize, PARTITION_VERT_3, ss_x, ss_y)
-#endif  // CONFIG_CB1TO4_SPLIT
-      ;
+                                    mi_col, bsize, PARTITION_VERT_3, ss_x,
+                                    ss_y);
   num_allowed_partitions += partition_allowed[PARTITION_VERT_3];
 
   const bool uneven_4way_partition_allowed =

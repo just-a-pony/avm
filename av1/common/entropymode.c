@@ -2976,7 +2976,6 @@ static aom_cdf_prob
         { AOM_CDF2( 3302),  25 },
         { AOM_CDF2( 3314),   0 },
         { AOM_CDF2(  356), 110 },
-#if CONFIG_CB1TO4_SPLIT
         // BLOCK_4X16
         { AOM_CDF2(27089),  75 },
         { AOM_CDF2(24922),  75 },
@@ -3007,7 +3006,6 @@ static aom_cdf_prob
         { AOM_CDF2( 3618),   1 },
         { AOM_CDF2( 9667),   1 },
         { AOM_CDF2(  425),  90 },
-#endif  // CONFIG_CB1TO4_SPLIT
       },
       // Chroma
       {
@@ -3106,7 +3104,6 @@ static aom_cdf_prob
         { AOM_CDF2(16384),   0 },  // unused entry
         { AOM_CDF2(16384),   0 },  // unused entry
         { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
         // BLOCK_4X16,
         { AOM_CDF2(16384),   0 },  // unused entry
         { AOM_CDF2(16384),   0 },  // unused entry
@@ -3137,7 +3134,6 @@ static aom_cdf_prob
         { AOM_CDF2( 7352),  31 },
         { AOM_CDF2( 9962),   6 },
         { AOM_CDF2( 1922),   0 },
-#endif  // CONFIG_CB1TO4_SPLIT
       }
     };
 
@@ -3240,7 +3236,6 @@ static aom_cdf_prob
         { AOM_CDF2(14351),   0 },
         { AOM_CDF2(23553),  10 },
         { AOM_CDF2(19681),  25 },
-#if CONFIG_CB1TO4_SPLIT
         // BLOCK_4X16,
         { AOM_CDF2(16384),   0 },  // unused entry
         { AOM_CDF2(16384),   0 },  // unused entry
@@ -3271,7 +3266,6 @@ static aom_cdf_prob
         { AOM_CDF2(  643),  90 },
         { AOM_CDF2( 7712),  37 },
         { AOM_CDF2(  438),  75 },
-#endif  // CONFIG_CB1TO4_SPLIT
       },
       // Chroma
       {
@@ -3370,7 +3364,6 @@ static aom_cdf_prob
         { AOM_CDF2(16384),   0 },  // unused entry
         { AOM_CDF2(16384),   0 },  // unused entry
         { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
         // BLOCK_4X16,
         { AOM_CDF2(16384),   0 },  // unused entry
         { AOM_CDF2(16384),   0 },  // unused entry
@@ -3401,7 +3394,6 @@ static aom_cdf_prob
         { AOM_CDF2( 1984),   0 },
         { AOM_CDF2(11758),  32 },
         { AOM_CDF2( 2535),   6 },
-#endif  // CONFIG_CB1TO4_SPLIT
       }
     };
 
@@ -3510,7 +3502,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -3541,7 +3532,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(30314),  30 },
           { AOM_CDF2(30676),  31 },
           { AOM_CDF2(28363),  37 },
-#endif  // CONFIG_CB1TO4_SPLIT
         },
         // VERT
         {
@@ -3640,7 +3630,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -3671,7 +3660,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(22490),  90 },
           { AOM_CDF2(25067),  91 },
           { AOM_CDF2(23393),  90 },
-#endif  // CONFIG_CB1TO4_SPLIT
         }
       },
       // Chroma
@@ -3773,7 +3761,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -3804,7 +3791,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#endif  // CONFIG_CB1TO4_SPLIT
         },
         // VERT
         {
@@ -3903,7 +3889,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -3934,7 +3919,6 @@ static aom_cdf_prob default_do_ext_partition_cdf
           { AOM_CDF2(22793),   0 },
           { AOM_CDF2(24896),  76 },
           { AOM_CDF2(21952),  75 },
-#endif  // CONFIG_CB1TO4_SPLIT
         }
       }
     };
@@ -4041,7 +4025,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4072,7 +4055,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#endif  // CONFIG_CB1TO4_SPLIT
         },
         // VERT
         {
@@ -4171,7 +4153,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4202,7 +4183,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2( 7866),  75 },
           { AOM_CDF2(14524),  23 },
           { AOM_CDF2(10401),  75 },
-#endif  // CONFIG_CB1TO4_SPLIT
         }
       },
       // Chroma
@@ -4304,7 +4284,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4335,7 +4314,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#endif  // CONFIG_CB1TO4_SPLIT
         },
         // VERT
         {
@@ -4434,7 +4412,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4465,7 +4442,6 @@ static aom_cdf_prob default_do_uneven_4way_partition_cdf
           { AOM_CDF2(10836),  75 },
           { AOM_CDF2(17532),  98 },
           { AOM_CDF2(10826),  75 },
-#endif  // CONFIG_CB1TO4_SPLIT
         }
       },
     };
@@ -4572,7 +4548,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4603,7 +4578,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#endif  // CONFIG_CB1TO4_SPLIT
         },
         // VERT
         {
@@ -4702,7 +4676,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4733,7 +4706,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(27490),  90 },
           { AOM_CDF2(23633),  95 },
           { AOM_CDF2(26356),  90 },
-#endif  // CONFIG_CB1TO4_SPLIT
         }
       },
       // Chroma
@@ -4835,7 +4807,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4866,7 +4837,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#endif  // CONFIG_CB1TO4_SPLIT
         },
         // VERT
         {
@@ -4965,7 +4935,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
-#if CONFIG_CB1TO4_SPLIT
           // BLOCK_4X16,
           { AOM_CDF2(16384),   0 },  // unused entry
           { AOM_CDF2(16384),   0 },  // unused entry
@@ -4996,7 +4965,6 @@ static aom_cdf_prob default_uneven_4way_partition_type_cdf
           { AOM_CDF2(23325),  90 },
           { AOM_CDF2(17805),   0 },
           { AOM_CDF2(23302),  78 },
-#endif  // CONFIG_CB1TO4_SPLIT
         }
       },
     };

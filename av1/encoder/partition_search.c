@@ -4419,22 +4419,16 @@ static AOM_INLINE void init_allowed_partitions(
   part_search_state->partition_3_allowed[HORZ] =
       partition_allowed[PARTITION_HORZ_3] &&
       is_bsize_geq(get_partition_subsize(bsize, PARTITION_HORZ_3),
-                   blk_params->min_partition_size)
-#if CONFIG_CB1TO4_SPLIT
-      && is_bsize_geq(get_h_partition_subsize(bsize, 1, PARTITION_HORZ_3),
-                      blk_params->min_partition_size)
-#endif  // CONFIG_CB1TO4_SPLIT
-      ;
+                   blk_params->min_partition_size) &&
+      is_bsize_geq(get_h_partition_subsize(bsize, 1, PARTITION_HORZ_3),
+                   blk_params->min_partition_size);
 
   part_search_state->partition_3_allowed[VERT] =
       partition_allowed[PARTITION_VERT_3] &&
       is_bsize_geq(get_partition_subsize(bsize, PARTITION_VERT_3),
-                   blk_params->min_partition_size)
-#if CONFIG_CB1TO4_SPLIT
-      && is_bsize_geq(get_h_partition_subsize(bsize, 1, PARTITION_VERT_3),
-                      blk_params->min_partition_size)
-#endif  // CONFIG_CB1TO4_SPLIT
-      ;
+                   blk_params->min_partition_size) &&
+      is_bsize_geq(get_h_partition_subsize(bsize, 1, PARTITION_VERT_3),
+                   blk_params->min_partition_size);
 
   part_search_state->partition_4a_allowed[HORZ] =
       partition_allowed[PARTITION_HORZ_4A] &&

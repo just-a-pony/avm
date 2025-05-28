@@ -171,8 +171,6 @@ set_aom_config_var(CONFIG_EOB_POS_LUMA 1 "EOB position coding for luma.")
 set_aom_config_var(
   CONFIG_EXT_RECUR_PARTITIONS 1 NUMBER
   "AV2 Fully recursive partitions including H partitions experiment flag")
-set_aom_config_var(CONFIG_CB1TO4_SPLIT 1 NUMBER
-                   "AV2 amended flexible partition experiment flag")
 set_aom_config_var(CONFIG_DIP 1 "AV2 intra data-driven prediction.")
 set_aom_config_var(CONFIG_DIP_EXT 1 "AV2 DIP Improvements.")
 set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")

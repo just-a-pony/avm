@@ -1051,7 +1051,6 @@ static AOM_INLINE bool is_ext_partition_allowed_at_bsize(BLOCK_SIZE bsize,
     return false;
   }
 
-#if CONFIG_CB1TO4_SPLIT
   // At any dim less than 8, extended partitions will lead to dimension < 2.
   if (bsize == BLOCK_4X16 || bsize == BLOCK_16X4) {
     return false;
@@ -1062,7 +1061,6 @@ static AOM_INLINE bool is_ext_partition_allowed_at_bsize(BLOCK_SIZE bsize,
       (bsize == BLOCK_8X32 || bsize == BLOCK_32X8)) {
     return false;
   }
-#endif  // CONFIG_CB1TO4_SPLIT
   return true;
 }
 
@@ -1088,7 +1086,6 @@ static AOM_INLINE bool is_ext_partition_allowed(BLOCK_SIZE bsize,
        (bsize == BLOCK_16X32 && rect_type == VERT))) {
     return false;
   }
-#if CONFIG_CB1TO4_SPLIT
   // If 32x8 block performs HORZ_3 split, we'll get a block size 32x2, which is
   // invalid. So, extended partitions are disabled. Same goes for tall blocks.
   if ((bsize == BLOCK_32X8 && rect_type == HORZ) ||
@@ -1103,7 +1100,6 @@ static AOM_INLINE bool is_ext_partition_allowed(BLOCK_SIZE bsize,
        (bsize == BLOCK_16X64 && rect_type == VERT))) {
     return false;
   }
-#endif  // CONFIG_CB1TO4_SPLIT
   assert(IMPLIES(rect_type == HORZ,
                  subsize_lookup[PARTITION_HORZ_3][bsize] != BLOCK_INVALID));
   assert(IMPLIES(rect_type == VERT,
@@ -1116,7 +1112,6 @@ static AOM_INLINE bool is_ext_partition_allowed(BLOCK_SIZE bsize,
 static AOM_INLINE bool is_uneven_4way_partition_allowed_at_bsize(
     BLOCK_SIZE bsize, TREE_TYPE tree_type) {
   if (!is_ext_partition_allowed_at_bsize(bsize, tree_type)) return false;
-#if CONFIG_CB1TO4_SPLIT
   if (bsize > BLOCK_LARGEST) {
     if (bsize >= BLOCK_16X64) {  // 16x64, 64x16
       assert(bsize <= BLOCK_64X16);
@@ -1128,7 +1123,6 @@ static AOM_INLINE bool is_uneven_4way_partition_allowed_at_bsize(
     }
     return false;
   }
-#endif                         // CONFIG_CB1TO4_SPLIT
   if (bsize >= BLOCK_32X64) {  // 32x64, 64x32, 64x64
     assert(bsize <= BLOCK_64X64);
     return true;
@@ -1176,35 +1170,19 @@ rect_type_implied_by_bsize(BLOCK_SIZE bsize, TREE_TYPE tree_type) {
   if (bsize == BLOCK_256X128) {
     return VERT;
   }
-  if (bsize == BLOCK_4X8 || bsize == BLOCK_64X128
-#if CONFIG_CB1TO4_SPLIT
-      || bsize == BLOCK_4X16
-#endif  // CONFIG_CB1TO4_SPLIT
-  ) {
+  if (bsize == BLOCK_4X8 || bsize == BLOCK_64X128 || bsize == BLOCK_4X16) {
     return HORZ;
   }
-  if (bsize == BLOCK_8X4 || bsize == BLOCK_128X64
-#if CONFIG_CB1TO4_SPLIT
-      || bsize == BLOCK_16X4
-#endif  // CONFIG_CB1TO4_SPLIT
-  ) {
+  if (bsize == BLOCK_8X4 || bsize == BLOCK_128X64 || bsize == BLOCK_16X4) {
     return VERT;
   }
   // For chroma, we do not allow dimension of 4. If If we have BLOCK_8X16, we
   // can only do HORZ.
   if (tree_type == CHROMA_PART) {
-    if (bsize == BLOCK_8X16
-#if CONFIG_CB1TO4_SPLIT
-        || bsize == BLOCK_8X32
-#endif  // CONFIG_CB1TO4_SPLIT
-    ) {
+    if (bsize == BLOCK_8X16 || bsize == BLOCK_8X32) {
       return HORZ;
     }
-    if (bsize == BLOCK_16X8
-#if CONFIG_CB1TO4_SPLIT
-        || bsize == BLOCK_32X8
-#endif  // CONFIG_CB1TO4_SPLIT
-    ) {
+    if (bsize == BLOCK_16X8 || bsize == BLOCK_32X8) {
       return VERT;
     }
   }
@@ -1349,14 +1327,12 @@ static INLINE BLOCK_SIZE get_h_partition_subsize(BLOCK_SIZE bsize, int index,
       BLOCK_INVALID,  // BLOCK_128X256
       BLOCK_INVALID,  // BLOCK_256X128
       BLOCK_INVALID,  // BLOCK_256X256
-#if CONFIG_CB1TO4_SPLIT
       BLOCK_INVALID,  // BLOCK_4X16
       BLOCK_INVALID,  // BLOCK_16X4
       BLOCK_4X16,     // BLOCK_8X32
       BLOCK_16X4,     // BLOCK_32X8
       BLOCK_8X32,     // BLOCK_16X64
       BLOCK_32X8,     // BLOCK_64X16
-#endif                // CONFIG_CB1TO4_SPLIT
     };
 
     return mid_sub_block_hpart[bsize];
@@ -1572,7 +1548,6 @@ static INLINE int is_sub_partition_chroma_ref(PARTITION_TYPE partition,
     case PARTITION_HORZ_4B:
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B: return index == 3;
-#if CONFIG_CB1TO4_SPLIT
     case PARTITION_HORZ_3:
       if (parent_bsize == BLOCK_8X32) {  // Special case: multiple chroma refs.
         assert(is_offset_started == 0);
@@ -1587,10 +1562,6 @@ static INLINE int is_sub_partition_chroma_ref(PARTITION_TYPE partition,
       } else {
         return index == 3;
       }
-#else
-    case PARTITION_VERT_3:
-    case PARTITION_HORZ_3: return index == 3;
-#endif  // CONFIG_CB1TO4_SPLIT
 #else   // CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_A:
     case PARTITION_HORZ_B:
@@ -1673,16 +1644,11 @@ static INLINE void set_chroma_ref_offset_size(
     case PARTITION_HORZ_4B:
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B:
-#if !CONFIG_CB1TO4_SPLIT
-    case PARTITION_VERT_3:
-    case PARTITION_HORZ_3:
-#endif  // !CONFIG_CB1TO4_SPLIT
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
       info->mi_row_chroma_base = parent_info->mi_row_chroma_base;
       info->mi_col_chroma_base = parent_info->mi_col_chroma_base;
       info->bsize_base = parent_bsize;
       break;
-#if CONFIG_CB1TO4_SPLIT
     case PARTITION_HORZ_3:
       if (parent_bsize == BLOCK_8X32) {
         // Special case: BLOCK_8X32 has multiple chroma refs:
@@ -1722,7 +1688,6 @@ static INLINE void set_chroma_ref_offset_size(
         info->bsize_base = parent_bsize;
       }
       break;
-#endif  // CONFIG_CB1TO4_SPLIT
     case PARTITION_SPLIT:
       if (plane_w_less_than_4 && plane_h_less_than_4) {
         info->mi_row_chroma_base = parent_info->mi_row_chroma_base;

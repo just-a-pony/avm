@@ -11297,7 +11297,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
     // block, and we have searched any of the rectangular subblock.
     if (!is_partition_point(bsize)) {
       prune_ref_frames = true;
-#if CONFIG_CB1TO4_SPLIT
     } else if (bsize > BLOCK_LARGEST) {
       // Check horz sub-blocks at different row offsets.
       BLOCK_SIZE subsize = get_partition_subsize(bsize, PARTITION_HORZ);
@@ -11325,7 +11324,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           }
         }
       }
-#endif  // CONFIG_CB1TO4_SPLIT
     } else {
       for (RECT_PART_TYPE rect_type = HORZ; rect_type < NUM_RECT_PARTS;
            rect_type++) {
