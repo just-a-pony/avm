@@ -155,8 +155,6 @@ list(
   "${AOM_ROOT}/common/args.h"
   "${AOM_ROOT}/common/av1_config.c"
   "${AOM_ROOT}/common/av1_config.h"
-  "${AOM_ROOT}/common/lanczos_resample.h"
-  "${AOM_ROOT}/common/lanczos_resample.c"
   "${AOM_ROOT}/common/md5_utils.c"
   "${AOM_ROOT}/common/md5_utils.h"
   "${AOM_ROOT}/common/tools_common.c"
@@ -166,6 +164,10 @@ list(
   "${AOM_ROOT}/common/rawenc.h"
   "${AOM_ROOT}/common/y4menc.c"
   "${AOM_ROOT}/common/y4menc.h")
+
+list(APPEND AOM_LANCZOS_RESAMPLE_SOURCES
+     "${AOM_ROOT}/common/lanczos_resample.c"
+     "${AOM_ROOT}/common/lanczos_resample.h")
 
 list(
   APPEND
@@ -310,6 +312,13 @@ if(BUILD_SHARED_LIBS)
   set(AOM_LIB_TARGETS ${AOM_LIB_TARGETS} aom_static)
 endif()
 
+add_library(lanczos_resample OBJECT ${AOM_LANCZOS_RESAMPLE_SOURCES})
+list(APPEND AOM_LIB_TARGETS lanczos_resample)
+target_sources(aom PRIVATE $<TARGET_OBJECTS:lanczos_resample>)
+if(BUILD_SHARED_LIBS)
+  target_sources(aom_static PRIVATE $<TARGET_OBJECTS:lanczos_resample>)
+endif()
+
 # Setup dependencies.
 setup_aom_dsp_targets()
 setup_aom_mem_targets()
@@ -381,6 +390,7 @@ if(CONFIG_AV1_DECODER AND ENABLE_EXAMPLES)
   add_executable(
     aomdec "${AOM_ROOT}/apps/aomdec.c" $<TARGET_OBJECTS:aom_common_app_util>
            $<TARGET_OBJECTS:aom_decoder_app_util>)
+  target_sources(aomdec PRIVATE $<TARGET_OBJECTS:lanczos_resample>)
   add_executable(
     decode_to_md5
     "${AOM_ROOT}/examples/decode_to_md5.c"

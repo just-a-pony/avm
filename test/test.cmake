@@ -337,6 +337,15 @@ function(setup_aom_test_targets)
     add_dependencies(test_aom_encoder aom)
   endif()
 
+  if(CONFIG_AV1_ENCODER)
+    add_executable(encoder_link_test "${AOM_ROOT}/test/encoder_link_test.c")
+    target_link_libraries(encoder_link_test ${AOM_LIB_LINK_TYPE} aom)
+    if(CONFIG_TENSORFLOW_LITE)
+      add_dependencies(encoder_link_test tensorflow-lite)
+      target_link_libraries(encoder_link_test PRIVATE tensorflow-lite)
+    endif()
+  endif()
+
   add_executable(
     test_libaom
     ${AOM_UNIT_TEST_WRAPPER_SOURCES} $<TARGET_OBJECTS:aom_common_app_util>
