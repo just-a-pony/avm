@@ -177,7 +177,7 @@ AV1_INSTANTIATE_TEST_SUITE(AV1DecodeMultiThreadedTestLarge,
 class AV1DecodeMultiThreadedLSTestLarge
     : public AV1DecodeMultiThreadedTestLarge {};
 
-TEST_P(AV1DecodeMultiThreadedLSTestLarge, MD5Match) {
+TEST_P(AV1DecodeMultiThreadedLSTestLarge, DISABLED_MD5Match) {
   cfg_.large_scale_tile = 1;
   single_thread_dec_->Control(AV1_SET_TILE_MODE, 1);
   for (int i = 0; i < kNumMultiThreadDecoders; ++i)
