@@ -31,10 +31,8 @@
 #include "av1/encoder/motion_search_facade.h"
 #include "av1/encoder/partition_search.h"
 #include "av1/encoder/rdopt.h"
-#if CONFIG_EXT_RECUR_PARTITIONS
 #include "av1/common/idct.h"
 #include "av1/encoder/hybrid_fwd_txfm.h"
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if CONFIG_ML_PART_SPLIT
 #include "av1/encoder/part_split_prune_tflite.h"
@@ -299,15 +297,9 @@ void av1_simple_motion_search_based_split(
 
   if (score > split_only_thresh) {
     *partition_none_allowed = 0;
-#if CONFIG_EXT_RECUR_PARTITIONS
     (void)partition_horz_allowed;
     (void)partition_vert_allowed;
     (void)do_rectangular_split;
-#else
-    *partition_horz_allowed = 0;
-    *partition_vert_allowed = 0;
-    *do_rectangular_split = 0;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   }
 
   if (cpi->sf.part_sf.simple_motion_search_split >= 2 &&
@@ -522,9 +514,7 @@ void av1_simple_motion_search_prune_rect(
     int mi_row, int mi_col, BLOCK_SIZE bsize, int partition_horz_allowed,
     int partition_vert_allowed, bool *prune_horz, bool *prune_vert) {
   // TODO(urvang): Need to change for uneven 4-way partition support.
-#if CONFIG_EXT_RECUR_PARTITIONS
   assert(0 && "Not implemented");
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   aom_clear_system_state();
   const AV1_COMMON *const cm = &cpi->common;
   const int bsize_idx = convert_bsize_to_idx(bsize);
@@ -626,10 +616,8 @@ void av1_simple_motion_search_early_term_none(
     ml_mean = av1_simple_motion_search_term_none_mean_16;
     ml_std = av1_simple_motion_search_term_none_std_16;
     ml_model = av1_simple_motion_search_term_none_model_16;
-#if CONFIG_EXT_RECUR_PARTITIONS
   } else if (bsize == BLOCK_256X256) {
     return;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   } else {
     assert(0 && "Unexpected block size in simple_motion_term_none");
   }
@@ -824,11 +812,6 @@ static AOM_INLINE void get_min_bsize(const SIMPLE_MOTION_DATA_TREE *sms_tree,
       get_min_bsize(sms_tree->split[i], min_bw, min_bh);
     }
   } else {
-#if !CONFIG_EXT_RECUR_PARTITIONS
-    if (part_type == PARTITION_HORZ_A || part_type == PARTITION_HORZ_B ||
-        part_type == PARTITION_VERT_A || part_type == PARTITION_VERT_B)
-      part_type = PARTITION_SPLIT;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
     const BLOCK_SIZE subsize = get_partition_subsize(bsize, part_type);
     if (subsize != BLOCK_INVALID) {
       *min_bw = AOMMIN(*min_bw, mi_size_wide_log2[subsize]);
@@ -1107,147 +1090,6 @@ void av1_ml_prune_ab_partition(
   }
 }
 
-#if !CONFIG_EXT_RECUR_PARTITIONS
-#define FEATURES 18
-#define LABELS 4
-// Use a ML model to predict if horz4 and vert4 should be considered.
-void av1_ml_prune_4_partition(
-    const AV1_COMP *const cpi, MACROBLOCK *const x, BLOCK_SIZE bsize,
-    int part_ctx, int64_t best_rd,
-    int64_t rect_part_rd[NUM_RECT_PARTS][SUB_PARTITIONS_RECT],
-    int64_t split_rd[SUB_PARTITIONS_SPLIT], int *const partition_horz4_allowed,
-    int *const partition_vert4_allowed, unsigned int pb_source_variance,
-    int mi_row, int mi_col) {
-  if (best_rd >= 1000000000) return;
-  int64_t *horz_rd = rect_part_rd[HORZ];
-  int64_t *vert_rd = rect_part_rd[VERT];
-  const NN_CONFIG *nn_config = NULL;
-  switch (bsize) {
-    case BLOCK_16X16: nn_config = &av1_4_partition_nnconfig_16; break;
-    case BLOCK_32X32: nn_config = &av1_4_partition_nnconfig_32; break;
-    case BLOCK_64X64: nn_config = &av1_4_partition_nnconfig_64; break;
-    default: assert(0 && "Unexpected bsize.");
-  }
-  if (!nn_config) return;
-
-  aom_clear_system_state();
-
-  // Generate features.
-  float features[FEATURES];
-  int feature_index = 0;
-  features[feature_index++] = (float)part_ctx;
-  features[feature_index++] = (float)get_unsigned_bits(pb_source_variance);
-
-  const int rdcost = (int)AOMMIN(INT_MAX, best_rd);
-  int sub_block_rdcost[8] = { 0 };
-  int rd_index = 0;
-  for (int i = 0; i < SUB_PARTITIONS_RECT; ++i) {
-    if (horz_rd[i] > 0 && horz_rd[i] < 1000000000)
-      sub_block_rdcost[rd_index] = (int)horz_rd[i];
-    ++rd_index;
-  }
-  for (int i = 0; i < SUB_PARTITIONS_RECT; ++i) {
-    if (vert_rd[i] > 0 && vert_rd[i] < 1000000000)
-      sub_block_rdcost[rd_index] = (int)vert_rd[i];
-    ++rd_index;
-  }
-  for (int i = 0; i < SUB_PARTITIONS_SPLIT; ++i) {
-    if (split_rd[i] > 0 && split_rd[i] < 1000000000)
-      sub_block_rdcost[rd_index] = (int)split_rd[i];
-    ++rd_index;
-  }
-  for (int i = 0; i < 8; ++i) {
-    // Ratio between the sub-block RD and the whole-block RD.
-    float rd_ratio = 1.0f;
-    if (sub_block_rdcost[i] > 0 && sub_block_rdcost[i] < rdcost)
-      rd_ratio = (float)sub_block_rdcost[i] / (float)rdcost;
-    features[feature_index++] = rd_ratio;
-  }
-
-  // Get variance of the 1:4 and 4:1 sub-blocks.
-  unsigned int horz_4_source_var[SUB_PARTITIONS_PART4] = { 0 };
-  unsigned int vert_4_source_var[SUB_PARTITIONS_PART4] = { 0 };
-  {
-#if CONFIG_EXT_RECUR_PARTITIONS
-    BLOCK_SIZE horz_4_bs = get_partition_subsize(bsize, PARTITION_HORZ_3);
-    BLOCK_SIZE vert_4_bs = get_partition_subsize(bsize, PARTITION_VERT_3);
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-    BLOCK_SIZE horz_4_bs = get_partition_subsize(bsize, PARTITION_HORZ_4);
-    BLOCK_SIZE vert_4_bs = get_partition_subsize(bsize, PARTITION_VERT_4);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    av1_setup_src_planes(x, cpi->source, mi_row, mi_col,
-                         av1_num_planes(&cpi->common), NULL);
-    const int src_stride = x->plane[0].src.stride;
-    uint16_t *src = x->plane[0].src.buf;
-    const MACROBLOCKD *const xd = &x->e_mbd;
-
-    struct buf_2d horz_4_src, vert_4_src;
-    horz_4_src.stride = src_stride;
-    vert_4_src.stride = src_stride;
-
-    for (int i = 0; i < SUB_PARTITIONS_PART4; ++i) {
-      horz_4_src.buf = src + i * block_size_high[horz_4_bs] * src_stride;
-      vert_4_src.buf = src + i * block_size_wide[vert_4_bs];
-
-      horz_4_source_var[i] = av1_high_get_sby_perpixel_variance(
-          cpi, &horz_4_src, horz_4_bs, xd->bd);
-      vert_4_source_var[i] = av1_high_get_sby_perpixel_variance(
-          cpi, &vert_4_src, vert_4_bs, xd->bd);
-    }
-  }
-
-  const float denom = (float)(pb_source_variance + 1);
-  const float low_b = 0.1f;
-  const float high_b = 10.0f;
-  for (int i = 0; i < SUB_PARTITIONS_PART4; ++i) {
-    // Ratio between the 4:1 sub-block variance and the whole-block variance.
-    float var_ratio = (float)(horz_4_source_var[i] + 1) / denom;
-    if (var_ratio < low_b) var_ratio = low_b;
-    if (var_ratio > high_b) var_ratio = high_b;
-    features[feature_index++] = var_ratio;
-  }
-  for (int i = 0; i < SUB_PARTITIONS_PART4; ++i) {
-    // Ratio between the 1:4 sub-block RD and the whole-block RD.
-    float var_ratio = (float)(vert_4_source_var[i] + 1) / denom;
-    if (var_ratio < low_b) var_ratio = low_b;
-    if (var_ratio > high_b) var_ratio = high_b;
-    features[feature_index++] = var_ratio;
-  }
-  assert(feature_index == FEATURES);
-
-  // Calculate scores using the NN model.
-  float score[LABELS] = { 0.0f };
-  av1_nn_predict(features, nn_config, 1, score);
-  aom_clear_system_state();
-  int int_score[LABELS];
-  int max_score = -1000;
-  for (int i = 0; i < LABELS; ++i) {
-    int_score[i] = (int)(100 * score[i]);
-    max_score = AOMMAX(int_score[i], max_score);
-  }
-
-  // Make decisions based on the model scores.
-  int thresh = max_score;
-  switch (bsize) {
-    case BLOCK_16X16: thresh -= 500; break;
-    case BLOCK_32X32: thresh -= 500; break;
-    case BLOCK_64X64: thresh -= 200; break;
-    default: break;
-  }
-  *partition_horz4_allowed = 0;
-  *partition_vert4_allowed = 0;
-  for (int i = 0; i < LABELS; ++i) {
-    if (int_score[i] >= thresh) {
-      if ((i >> 0) & 1) *partition_horz4_allowed = 1;
-      if ((i >> 1) & 1) *partition_vert4_allowed = 1;
-    }
-  }
-}
-#undef FEATURES
-#undef LABELS
-
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
-
 #define FEATURES 4
 int av1_ml_predict_breakout(const AV1_COMP *const cpi, BLOCK_SIZE bsize,
                             const MACROBLOCK *const x,
@@ -1276,9 +1118,7 @@ int av1_ml_predict_breakout(const AV1_COMP *const cpi, BLOCK_SIZE bsize,
       nn_config = &av1_partition_breakout_nnconfig_128;
       thresh = cpi->sf.part_sf.ml_partition_search_breakout_thresh[4];
       break;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case BLOCK_256X256: return 0; break;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0 && "Unexpected bsize.");
   }
   if (!nn_config || thresh < 0) return 0;
@@ -1323,9 +1163,6 @@ void av1_prune_partitions_before_search(
     int *partition_vert_allowed, int *do_rectangular_split,
     int *do_square_split, bool *prune_horz, bool *prune_vert,
     const PC_TREE *pc_tree) {
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  (void)pc_tree;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   const AV1_COMMON *const cm = &cpi->common;
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   MACROBLOCKD *const xd = &x->e_mbd;
@@ -1360,9 +1197,7 @@ void av1_prune_partitions_before_search(
       cpi->sf.part_sf.simple_motion_search_split && *do_square_split &&
       bsize >= BLOCK_8X8 &&
       mi_row + mi_size_high[bsize] <= mi_params->mi_rows &&
-#if CONFIG_EXT_RECUR_PARTITIONS
       bsize < BLOCK_256X256 &&
-#endif
       mi_col + mi_size_wide[bsize] <= mi_params->mi_cols &&
       !frame_is_intra_only(cm) &&
 #if CONFIG_ENABLE_SR
@@ -1375,7 +1210,6 @@ void av1_prune_partitions_before_search(
         cpi, x, sms_tree, mi_row, mi_col, bsize, partition_none_allowed,
         partition_horz_allowed, partition_vert_allowed, do_rectangular_split,
         do_square_split);
-#if CONFIG_EXT_RECUR_PARTITIONS
     if (!*partition_none_allowed) {
       av1_cache_best_partition(x->sms_bufs, mi_row, mi_col, bsize, cm->sb_size,
                                PARTITION_HORZ, (int8_t)pc_tree->region_type);
@@ -1389,7 +1223,6 @@ void av1_prune_partitions_before_search(
                                (int8_t)pc_tree->region_type);
     }
     (void)pc_tree;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 
   // Use simple motion search to prune out rectangular partition in some
@@ -1423,12 +1256,8 @@ void av1_prune_partitions_by_max_min_bsize(
   assert(is_bsize_square(sb_enc->max_partition_size));
   assert(is_bsize_square(sb_enc->min_partition_size));
   assert(sb_enc->min_partition_size <= sb_enc->max_partition_size);
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  assert(is_bsize_square(bsize));
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   const int max_partition_size_1d = block_size_wide[sb_enc->max_partition_size];
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   assert(is_bsize_geq(sb_enc->max_partition_size, sb_enc->min_partition_size));
   const int block_height = block_size_high[bsize];
   const int block_width = block_size_wide[bsize];
@@ -1437,18 +1266,10 @@ void av1_prune_partitions_by_max_min_bsize(
                                 (block_width > max_partition_size_1d);
   (void)do_square_split;
   (void)is_not_edge_block;
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-  const int min_partition_size_1d = block_size_wide[sb_enc->min_partition_size];
-  const int bsize_1d = block_size_wide[bsize];
-  const int is_le_min_sq_part = bsize_1d <= min_partition_size_1d;
-  const int is_gt_max_sq_part = bsize_1d > max_partition_size_1d;
-  assert(min_partition_size_1d <= max_partition_size_1d);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   if (is_gt_max_sq_part) {  // current block size is larger than max size.
     // Disable some partition types to partition down to max allowed size.
     partition_search_state->prune_partition_none = true;
-#if CONFIG_EXT_RECUR_PARTITIONS
     partition_search_state->prune_partition_3[HORZ] = true;
     partition_search_state->prune_partition_3[VERT] = true;
     partition_search_state->prune_partition_4a[HORZ] = true;
@@ -1475,17 +1296,10 @@ void av1_prune_partitions_by_max_min_bsize(
         }
       }
     }
-#else                              // CONFIG_EXT_RECUR_PARTITIONS
-    // Only allow split partition.
-    partition_search_state->partition_rect_allowed[HORZ] = 0;
-    partition_search_state->partition_rect_allowed[VERT] = 0;
-    *do_square_split = 1;
-#endif                             // CONFIG_EXT_RECUR_PARTITIONS
   } else if (is_le_min_sq_part) {  // current block size is less or equal to min
     // Disallow all 2-way partitions.
     partition_search_state->prune_rect_part[HORZ] = true;
     partition_search_state->prune_rect_part[VERT] = true;
-#if CONFIG_EXT_RECUR_PARTITIONS
     // Disallow all H and uneven-4way partitions.
     partition_search_state->prune_partition_3[HORZ] = true;
     partition_search_state->prune_partition_3[VERT] = true;
@@ -1493,13 +1307,6 @@ void av1_prune_partitions_by_max_min_bsize(
     partition_search_state->prune_partition_4a[VERT] = true;
     partition_search_state->prune_partition_4b[HORZ] = true;
     partition_search_state->prune_partition_4b[VERT] = true;
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-    // only allow none if valid block large enough; only allow split otherwise.
-    // only disable square split when current block is not at the picture
-    // boundary. otherwise, inherit the square split flag from previous logic
-    if (is_not_edge_block) *do_square_split = 0;
-    *partition_none_allowed = !(*do_square_split);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 }
 
@@ -1675,7 +1482,6 @@ void av1_prune_ab_partitions(
   }
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // Gets the number of sms data in a single dimension
 static INLINE int get_sms_count_from_length(int mi_length) {
   switch (mi_length) {
@@ -2870,5 +2676,3 @@ int av1_ml_part_split_infer(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
   return final_vote;
 }
 #endif  // CONFIG_ML_PART_SPLIT
-
-#endif  // CONFIG_EXT_RECUR_PARTITIONS

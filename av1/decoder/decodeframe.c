@@ -487,7 +487,6 @@ static AOM_INLINE void decode_reconstruct_tx(AV1_COMMON *cm,
   MACROBLOCKD *const xd = &dcb->xd;
   if (plane == AOM_PLANE_U && is_cctx_allowed(cm, xd)) return;
   const struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_NEW_TX_PARTITION
   const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
   const BLOCK_SIZE bsize_base = get_bsize_base(xd, mbmi, plane);
@@ -503,15 +502,6 @@ static AOM_INLINE void decode_reconstruct_tx(AV1_COMMON *cm,
             : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
                                                          blk_col)];
 #endif  // CONFIG_NEW_TX_PARTITION
-#else
-  if (xd->tree_type == SHARED_PART)
-    assert(mbmi->sb_type[PLANE_TYPE_Y] == mbmi->sb_type[PLANE_TYPE_UV]);
-  const TX_SIZE plane_tx_size =
-      plane ? av1_get_max_uv_txsize(mbmi->sb_type[plane > 0], pd->subsampling_x,
-                                    pd->subsampling_y)
-            : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
-                                                         blk_col)];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   // Scale to match transform block unit.
   const int max_blocks_high = max_block_high(xd, plane_bsize, plane);
   const int max_blocks_wide = max_block_wide(xd, plane_bsize, plane);
@@ -996,9 +986,7 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
 #endif  // CONFIG_BRU
     av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   if (xd->tree_type != LUMA_PART) {
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     const struct macroblockd_plane *const pd_u = &xd->plane[1];
     const BLOCK_SIZE chroma_bsize_base =
         get_bsize_base(xd, xd->mi[0], AOM_PLANE_U);
@@ -1010,9 +998,7 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
                          block_size_wide[chroma_bsize_base],
                          block_size_high[chroma_bsize_base]);
     }
-#if CONFIG_EXT_RECUR_PARTITIONS
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static void dec_build_inter_predictors(const AV1_COMMON *cm,
@@ -1571,9 +1557,6 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
             const int ss_y = pd->subsampling_y;
             const BLOCK_SIZE plane_bsize =
                 get_mb_plane_block_size(xd, mbmi, plane, ss_x, ss_y);
-#if !CONFIG_EXT_RECUR_PARTITIONS
-            assert(plane_bsize == get_plane_block_size(bsize, ss_x, ss_y));
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
             const TX_SIZE max_tx_size =
                 get_vartx_max_txsize(xd, plane_bsize, plane);
             const int bh_var_tx = tx_size_high_unit[max_tx_size];
@@ -1628,11 +1611,7 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
       for (int row = 0; row < max_blocks_high; row += mu_blocks_high) {
         for (int col = 0; col < max_blocks_wide; col += mu_blocks_wide) {
           int row_offset, col_offset;
-#if CONFIG_EXT_RECUR_PARTITIONS
           get_chroma_mi_offsets(xd, &row_offset, &col_offset);
-#else
-          get_chroma_mi_offsets(xd, max_tx_size, &row_offset, &col_offset);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
           update_cctx_array(xd, 0, 0, row_offset, col_offset, max_tx_size,
                             CCTX_NONE);
         }
@@ -2166,12 +2145,10 @@ direct_recon:
           xd->mi[y * idx + x]->cfl_alpha_signs = xd->mi[0]->cfl_alpha_signs;
           xd->mi[y * idx + x]->cfl_alpha_idx = xd->mi[0]->cfl_alpha_idx;
           xd->mi[y * idx + x]->partition = xd->mi[0]->partition;
-#if CONFIG_EXT_RECUR_PARTITIONS
           xd->mi[y * idx + x]->chroma_mi_row_start =
               xd->mi[0]->chroma_mi_row_start;
           xd->mi[y * idx + x]->chroma_mi_col_start =
               xd->mi[0]->chroma_mi_col_start;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
           if (av1_allow_palette(cm->features.allow_screen_content_tools,
                                 bsize)) {
             xd->mi[y * idx + x]->palette_mode_info.palette_size[PLANE_TYPE_UV] =
@@ -2233,7 +2210,6 @@ static AOM_INLINE void decode_block(AV1Decoder *const pbi, ThreadData *const td,
   decode_token_recon_block(pbi, td, r, partition, bsize);
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 /*!\brief Maps (ext_part, 4way, 4way_type, rect_type) to partition_type. */
 static PARTITION_TYPE
     rect_part_table[2][2][NUM_UNEVEN_4WAY_PARTS][NUM_RECT_PARTS] = {
@@ -2272,15 +2248,12 @@ static PARTITION_TYPE
           },
       },
     };
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
                                      MACROBLOCKD *xd, int mi_row, int mi_col,
                                      aom_reader *r, int has_rows, int has_cols,
-#if CONFIG_EXT_RECUR_PARTITIONS
                                      const PARTITION_TREE *ptree,
                                      const PARTITION_TREE *ptree_luma,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
                                      BLOCK_SIZE bsize) {
 #if !CONFIG_NEW_PART_CTX
 #if CONFIG_PARTITION_CONTEXT_REDUCE
@@ -2294,7 +2267,6 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
 #endif  // !CONFIG_NEW_PART_CTX
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   (void)has_rows;
   (void)has_cols;
   const int plane = xd->tree_type == CHROMA_PART;
@@ -2432,44 +2404,6 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
   }
   return rect_part_table[do_ext_partition][do_uneven_4way_partition]
                         [uneven_4way_partition_type][rect_type];
-#else   // !CONFIG_EXT_RECUR_PARTITIONS
-  if (!has_rows && !has_cols) return PARTITION_SPLIT;
-
-  const int plane = xd->tree_type == CHROMA_PART;
-  if (plane == 1 && bsize == BLOCK_8X8) {
-    return PARTITION_NONE;
-  }
-  int parent_block_width = block_size_wide[bsize];
-  const CommonModeInfoParams *const mi_params = &cm->mi_params;
-  if (plane && parent_block_width >= SHARED_PART_SIZE) {
-    int luma_split_flag = get_luma_split_flag(bsize, mi_params, mi_row, mi_col);
-    // if luma blocks uses smaller blocks, then chroma will also split
-    if (luma_split_flag > 3) return PARTITION_SPLIT;
-  }
-
-  assert(ctx >= 0);
-  aom_cdf_prob *partition_cdf = ec_ctx->partition_cdf[plane][ctx];
-  if (has_rows && has_cols) {
-    return (PARTITION_TYPE)aom_read_symbol(r, partition_cdf,
-                                           partition_cdf_length(bsize),
-                                           ACCT_INFO("partition_cdf"));
-  } else if (!has_rows && has_cols) {
-    assert(bsize > BLOCK_8X8);
-    aom_cdf_prob cdf[2];
-    partition_gather_vert_alike(cdf, partition_cdf, bsize);
-    assert(cdf[1] == AOM_ICDF(CDF_PROB_TOP));
-    return aom_read_cdf(r, cdf, 2, ACCT_INFO("partition_cdf")) ? PARTITION_SPLIT
-                                                               : PARTITION_HORZ;
-  } else {
-    assert(has_rows && !has_cols);
-    assert(bsize > BLOCK_8X8);
-    aom_cdf_prob cdf[2];
-    partition_gather_horz_alike(cdf, partition_cdf, bsize);
-    assert(cdf[1] == AOM_ICDF(CDF_PROB_TOP));
-    return aom_read_cdf(r, cdf, 2, ACCT_INFO("partition_cdf")) ? PARTITION_SPLIT
-                                                               : PARTITION_VERT;
-  }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 // Set the superblock level parameters
@@ -2479,15 +2413,10 @@ static void set_sb_mv_precision(SB_INFO *sbi, AV1Decoder *const pbi) {
 }
 
 // TODO(slavarnway): eliminate bsize and subsize in future commits
-static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
-                                        ThreadData *const td, int mi_row,
-                                        int mi_col, aom_reader *reader,
-                                        BLOCK_SIZE bsize, SB_INFO *sbi,
-                                        PARTITION_TREE *ptree,
-#if CONFIG_EXT_RECUR_PARTITIONS
-                                        PARTITION_TREE *ptree_luma,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-                                        int parse_decode_flag) {
+static AOM_INLINE void decode_partition(
+    AV1Decoder *const pbi, ThreadData *const td, int mi_row, int mi_col,
+    aom_reader *reader, BLOCK_SIZE bsize, SB_INFO *sbi, PARTITION_TREE *ptree,
+    PARTITION_TREE *ptree_luma, int parse_decode_flag) {
   assert(bsize < BLOCK_SIZES_ALL);
   AV1_COMMON *const cm = &pbi->common;
   DecoderCodingBlock *const dcb = &td->dcb;
@@ -2497,15 +2426,9 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   // Half block width/height.
   const int hbs_w = mi_size_wide[bsize] / 2;
   const int hbs_h = mi_size_high[bsize] / 2;
-#if CONFIG_EXT_RECUR_PARTITIONS
   // One-eighth block width/height.
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
-#else
-  // Quarter block width/height.
-  const int qbs_w = mi_size_wide[bsize] / 4;
-  const int qbs_h = mi_size_high[bsize] / 4;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   PARTITION_TYPE partition;
   const int has_rows = (mi_row + hbs_h) < cm->mi_params.mi_rows;
   const int has_cols = (mi_col + hbs_w) < cm->mi_params.mi_cols;
@@ -2519,17 +2442,11 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   if (total_loop_num == 2 && xd->tree_type == SHARED_PART) {
     xd->tree_type = LUMA_PART;
     decode_partition(pbi, td, mi_row, mi_col, reader, bsize, sbi, ptree,
-#if CONFIG_EXT_RECUR_PARTITIONS
-                     ptree_luma,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-                     parse_decode_flag);
+                     ptree_luma, parse_decode_flag);
     xd->tree_type = CHROMA_PART;
 
     decode_partition(pbi, td, mi_row, mi_col, reader, bsize, sbi, ptree_luma,
-#if CONFIG_EXT_RECUR_PARTITIONS
-                     ptree,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-                     parse_decode_flag);
+                     ptree, parse_decode_flag);
     xd->tree_type = SHARED_PART;
     return;
   }
@@ -2615,14 +2532,10 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
         parent ? parent->bsize : BLOCK_INVALID,
         parent ? parent->partition : PARTITION_NONE, ss_x, ss_y);
 
-    partition =
-        !is_partition_point(bsize)
-            ? PARTITION_NONE
-            : read_partition(cm, xd, mi_row, mi_col, reader, has_rows, has_cols,
-#if CONFIG_EXT_RECUR_PARTITIONS
-                             ptree, ptree_luma,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-                             bsize);
+    partition = !is_partition_point(bsize)
+                    ? PARTITION_NONE
+                    : read_partition(cm, xd, mi_row, mi_col, reader, has_rows,
+                                     has_cols, ptree, ptree_luma, bsize);
 
     ptree->partition = partition;
 
@@ -2653,12 +2566,10 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
     }
 
     switch (partition) {
-#if CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_HORZ_4A:
       case PARTITION_HORZ_4B:
       case PARTITION_VERT_4A:
       case PARTITION_VERT_4B:
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_SPLIT:
         ptree->sub_tree[0] = av1_alloc_ptree_node(ptree, 0);
         ptree->sub_tree[1] = av1_alloc_ptree_node(ptree, 1);
@@ -2671,7 +2582,6 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
           ptree_luma->sub_tree[3] = av1_alloc_ptree_node(ptree_luma, 3);
         }
         break;
-#if CONFIG_EXT_RECUR_PARTITIONS
       case PARTITION_HORZ:
       case PARTITION_VERT:
         ptree->sub_tree[0] = av1_alloc_ptree_node(ptree, 0);
@@ -2696,7 +2606,6 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
           ptree_luma->sub_tree[3] = av1_alloc_ptree_node(ptree_luma, 3);
         }
         break;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       default: break;
     }
   } else {
@@ -2722,7 +2631,6 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   // Check the bitstream is conformant: if there is subsampling on the
   // chroma planes, subsize must subsample to a valid block size.
   const struct macroblockd_plane *const pd_u = &xd->plane[1];
-#if CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_SIZE test_subsize = subsize;
   if (xd->tree_type == SHARED_PART) {
     const PARTITION_TREE *parent = ptree;
@@ -2756,14 +2664,6 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
                        partition, mi_row << MI_SIZE_LOG2,
                        mi_col << MI_SIZE_LOG2);
   }
-#else
-  if (get_plane_block_size(subsize, pd_u->subsampling_x, pd_u->subsampling_y) ==
-      BLOCK_INVALID) {
-    aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
-                       "Block size %dx%d invalid with this subsampling mode",
-                       block_size_wide[subsize], block_size_high[subsize]);
-  }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #define DEC_BLOCK_STX_ARG
 #define DEC_BLOCK_EPT_ARG partition,
@@ -2771,46 +2671,24 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
   block_visit[parse_decode_flag](pbi, td, DEC_BLOCK_STX_ARG(db_r), (db_c),     \
                                  reader, DEC_BLOCK_EPT_ARG(db_subsize), ptree, \
                                  index)
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define DEC_PARTITION(db_r, db_c, db_subsize, index)                 \
   decode_partition(pbi, td, DEC_BLOCK_STX_ARG(db_r), (db_c), reader, \
                    (db_subsize), sbi, ptree->sub_tree[(index)],      \
                    get_partition_subtree_const(ptree_luma, index),   \
                    parse_decode_flag)
-#else
-#define DEC_PARTITION(db_r, db_c, db_subsize, index)                 \
-  decode_partition(pbi, td, DEC_BLOCK_STX_ARG(db_r), (db_c), reader, \
-                   (db_subsize), sbi, ptree->sub_tree[(index)],      \
-                   parse_decode_flag)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  const BLOCK_SIZE bsize2 = get_partition_subsize(bsize, PARTITION_SPLIT);
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
 
   switch (partition) {
     case PARTITION_NONE: DEC_BLOCK(mi_row, mi_col, subsize, 0); break;
     case PARTITION_HORZ:
-#if CONFIG_EXT_RECUR_PARTITIONS
       DEC_PARTITION(mi_row, mi_col, subsize, 0);
       if ((mi_row + hbs_h) < cm->mi_params.mi_rows)
         DEC_PARTITION(mi_row + hbs_h, mi_col, subsize, 1);
-#else
-      DEC_BLOCK(mi_row, mi_col, subsize, 0);
-      if (has_rows) DEC_BLOCK(mi_row + hbs_h, mi_col, subsize, 1);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
     case PARTITION_VERT:
-#if CONFIG_EXT_RECUR_PARTITIONS
       DEC_PARTITION(mi_row, mi_col, subsize, 0);
       if ((mi_col + hbs_w) < cm->mi_params.mi_cols)
         DEC_PARTITION(mi_row, mi_col + hbs_w, subsize, 1);
-#else
-      DEC_BLOCK(mi_row, mi_col, subsize, 0);
-      if (has_cols) DEC_BLOCK(mi_row, mi_col + hbs_w, subsize, 1);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_4A: {
       const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
       const BLOCK_SIZE bsize_med = subsize_lookup[PARTITION_HORZ][bsize_big];
@@ -2907,48 +2785,6 @@ static AOM_INLINE void decode_partition(AV1Decoder *const pbi,
       DEC_PARTITION(mi_row + hbs_h, mi_col, subsize, 2);
       DEC_PARTITION(mi_row + hbs_h, mi_col + hbs_w, subsize, 3);
       break;
-#else   // !CONFIG_EXT_RECUR_PARTITIONS
-    case PARTITION_SPLIT:
-      DEC_PARTITION(mi_row, mi_col, subsize, 0);
-      DEC_PARTITION(mi_row, mi_col + hbs_w, subsize, 1);
-      DEC_PARTITION(mi_row + hbs_h, mi_col, subsize, 2);
-      DEC_PARTITION(mi_row + hbs_h, mi_col + hbs_w, subsize, 3);
-      break;
-    case PARTITION_HORZ_A:
-      DEC_BLOCK(mi_row, mi_col, bsize2, 0);
-      DEC_BLOCK(mi_row, mi_col + hbs_w, bsize2, 1);
-      DEC_BLOCK(mi_row + hbs_h, mi_col, subsize, 2);
-      break;
-    case PARTITION_HORZ_B:
-      DEC_BLOCK(mi_row, mi_col, subsize, 0);
-      DEC_BLOCK(mi_row + hbs_h, mi_col, bsize2, 1);
-      DEC_BLOCK(mi_row + hbs_h, mi_col + hbs_w, bsize2, 2);
-      break;
-    case PARTITION_VERT_A:
-      DEC_BLOCK(mi_row, mi_col, bsize2, 0);
-      DEC_BLOCK(mi_row + hbs_h, mi_col, bsize2, 1);
-      DEC_BLOCK(mi_row, mi_col + hbs_w, subsize, 2);
-      break;
-    case PARTITION_VERT_B:
-      DEC_BLOCK(mi_row, mi_col, subsize, 0);
-      DEC_BLOCK(mi_row, mi_col + hbs_w, bsize2, 1);
-      DEC_BLOCK(mi_row + hbs_h, mi_col + hbs_w, bsize2, 2);
-      break;
-    case PARTITION_HORZ_4:
-      for (int i = 0; i < 4; ++i) {
-        int this_mi_row = mi_row + i * qbs_h;
-        if (i > 0 && this_mi_row >= cm->mi_params.mi_rows) break;
-        DEC_BLOCK(this_mi_row, mi_col, subsize, i);
-      }
-      break;
-    case PARTITION_VERT_4:
-      for (int i = 0; i < 4; ++i) {
-        int this_mi_col = mi_col + i * qbs_w;
-        if (i > 0 && this_mi_col >= cm->mi_params.mi_cols) break;
-        DEC_BLOCK(mi_row, this_mi_col, subsize, i);
-      }
-      break;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0 && "Invalid partition type");
   }
 
@@ -3018,9 +2854,7 @@ static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
   decode_partition(
       pbi, td, mi_row, mi_col, reader, bsize, xd->sbi,
       td->dcb.xd.sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)],
-#if CONFIG_EXT_RECUR_PARTITIONS
       (is_intra_sdp_enabled ? td->dcb.xd.sbi->ptree_root[1] : NULL),
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       parse_decode_flag);
 
 #if CONFIG_BRU
@@ -4679,23 +4513,16 @@ static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
 
 static AOM_INLINE void setup_seq_sb_size(SequenceHeader *seq_params,
                                          struct aom_read_bit_buffer *rb) {
-  static const BLOCK_SIZE sb_sizes[] = {
-#if CONFIG_EXT_RECUR_PARTITIONS
-    BLOCK_256X256,
-#endif
-    BLOCK_128X128,
-    BLOCK_64X64
-  };
+  static const BLOCK_SIZE sb_sizes[] = { BLOCK_256X256, BLOCK_128X128,
+                                         BLOCK_64X64 };
   int index = 0;
   bool bit = aom_rb_read_bit(rb);
   if (!bit) {
     index++;
-#if CONFIG_EXT_RECUR_PARTITIONS
     bit = aom_rb_read_bit(rb);
     if (!bit) {
       index++;
     }
-#endif
   }
   BLOCK_SIZE sb_size = sb_sizes[index];
   seq_params->sb_size = sb_size;
@@ -7344,13 +7171,11 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
 #else
     seq_params->enable_parity_hiding = aom_rb_read_bit(rb);
 #endif  // CONFIG_TCQ
-#if CONFIG_EXT_RECUR_PARTITIONS
   seq_params->enable_ext_partitions = aom_rb_read_bit(rb);
   if (seq_params->enable_ext_partitions)
     seq_params->enable_uneven_4way_partitions = aom_rb_read_bit(rb);
   else
     seq_params->enable_uneven_4way_partitions = 0;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_IMPROVED_GLOBAL_MOTION
   if (seq_params->reduced_still_picture_hdr) {
     seq_params->enable_global_motion = 0;

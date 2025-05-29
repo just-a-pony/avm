@@ -221,15 +221,8 @@ void cfl_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       ((xd->mi[0]->chroma_ref_info.mi_row_chroma_base + row) << MI_SIZE_LOG2);
   const int col_start =
       ((xd->mi[0]->chroma_ref_info.mi_col_chroma_base + col) << MI_SIZE_LOG2);
-#if CONFIG_EXT_RECUR_PARTITIONS
   int have_top = 0, have_left = 0;
   set_have_top_and_left(&have_top, &have_left, xd, row, col, AOM_PLANE_U);
-#else
-  const int have_top =
-      row || (sub_y ? xd->chroma_up_available : xd->up_available);
-  const int have_left =
-      col || (sub_x ? xd->chroma_left_available : xd->left_available);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   memset(cfl->recon_yuv_buf_above[0], 0, sizeof(cfl->recon_yuv_buf_above[0]));
   memset(cfl->recon_yuv_buf_left[0], 0, sizeof(cfl->recon_yuv_buf_left[0]));
@@ -393,17 +386,8 @@ void cfl_calc_luma_dc(MACROBLOCKD *const xd, int row, int col,
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   int have_top = 0, have_left = 0;
   set_have_top_and_left(&have_top, &have_left, xd, row, col, AOM_PLANE_U);
-#else
-  const int sub_x = cfl->subsampling_x;
-  const int sub_y = cfl->subsampling_y;
-  const int have_top =
-      row || (sub_y ? xd->chroma_up_available : xd->up_available);
-  const int have_left =
-      col || (sub_x ? xd->chroma_left_available : xd->left_available);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   int count = 0;
   int sum_x = 0;
@@ -462,15 +446,8 @@ void cfl_implicit_fetch_neighbor_chroma(const AV1_COMMON *cm,
   const int col_start =
       (((xd->mi[0]->chroma_ref_info.mi_col_chroma_base >> sub_x) + col)
        << MI_SIZE_LOG2);
-#if CONFIG_EXT_RECUR_PARTITIONS
   int have_top = 0, have_left = 0;
   set_have_top_and_left(&have_top, &have_left, xd, row, col, plane);
-#else
-  const int have_top =
-      row || (sub_y ? xd->chroma_up_available : xd->up_available);
-  const int have_left =
-      col || (sub_x ? xd->chroma_left_available : xd->left_available);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   memset(cfl->recon_yuv_buf_above[plane], 0,
          sizeof(cfl->recon_yuv_buf_above[plane]));
@@ -529,17 +506,8 @@ void cfl_derive_implicit_scaling_factor(MACROBLOCKD *const xd, int plane,
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   int have_top = 0, have_left = 0;
   set_have_top_and_left(&have_top, &have_left, xd, row, col, plane);
-#else
-  const int sub_x = cfl->subsampling_x;
-  const int sub_y = cfl->subsampling_y;
-  const int have_top =
-      row || (sub_y ? xd->chroma_up_available : xd->up_available);
-  const int have_left =
-      col || (sub_x ? xd->chroma_left_available : xd->left_available);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if CONFIG_CFL_SIMPLIFICATION
   // Distribute number of reference samples above and left based on the width,
@@ -933,39 +901,13 @@ void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint16_t *input,
   }
 }
 
-#if !CONFIG_EXT_RECUR_PARTITIONS
-static INLINE int max_intra_block_width(const MACROBLOCKD *xd,
-                                        BLOCK_SIZE plane_bsize, int plane,
-                                        TX_SIZE tx_size) {
-  const int max_blocks_wide = max_block_wide(xd, plane_bsize, plane)
-                              << MI_SIZE_LOG2;
-  return ALIGN_POWER_OF_TWO(max_blocks_wide, tx_size_wide_log2[tx_size]);
-}
-
-static INLINE int max_intra_block_height(const MACROBLOCKD *xd,
-                                         BLOCK_SIZE plane_bsize, int plane,
-                                         TX_SIZE tx_size) {
-  const int max_blocks_high = max_block_high(xd, plane_bsize, plane)
-                              << MI_SIZE_LOG2;
-  return ALIGN_POWER_OF_TWO(max_blocks_high, tx_size_high_log2[tx_size]);
-}
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
-
 void cfl_store_block(MACROBLOCKD *const xd, BLOCK_SIZE bsize, TX_SIZE tx_size,
                      int filter_type) {
   CFL_CTX *const cfl = &xd->cfl;
   struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_Y];
-#if CONFIG_EXT_RECUR_PARTITIONS
   // Always store full block, even if partially outside frame boundary.
   const int width = block_size_wide[bsize];
   const int height = block_size_high[bsize];
-#else
-  // Only store part of the block,inside frame boundary. The block width/heigh
-  // inside the frame boundary is guaranteed to give a valid tx size in
-  // get_tx_size(width, height) below.
-  const int width = max_intra_block_width(xd, bsize, AOM_PLANE_Y, tx_size);
-  const int height = max_intra_block_height(xd, bsize, AOM_PLANE_Y, tx_size);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   const int mi_row = -xd->mb_to_top_edge >> MI_SUBPEL_SIZE_LOG2;
   const int mi_col = -xd->mb_to_left_edge >> MI_SUBPEL_SIZE_LOG2;
   const int row_offset = mi_row - xd->mi[0]->chroma_ref_info.mi_row_chroma_base;

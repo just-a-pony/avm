@@ -58,9 +58,7 @@ static AOM_INLINE int get_mf_sb_size_log2(int sb_size, int mib_size_log2
                                           int tmvp_sample_step
 #endif  // CONFIG_TMVP_MEM_OPT
 ) {
-#if CONFIG_EXT_RECUR_PARTITIONS
   (void)mib_size_log2;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   int mi_size_log2 = INT_MIN;
   if (sb_size <= 64
@@ -70,11 +68,7 @@ static AOM_INLINE int get_mf_sb_size_log2(int sb_size, int mib_size_log2
   ) {
     mi_size_log2 = mi_size_high_log2[BLOCK_64X64];
   } else {
-#if CONFIG_EXT_RECUR_PARTITIONS
     mi_size_log2 = mi_size_high_log2[BLOCK_128X128];
-#else
-    mi_size_log2 = mib_size_log2;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
   return mi_size_log2 + MI_SIZE_LOG2;
 }
@@ -1164,7 +1158,6 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
   if (!cm->seq_params.enable_sdp || !frame_is_intra_only(cm)) {
     if (xd->is_chroma_ref && av1_num_planes(cm) > 1) {
       const struct macroblockd_plane *const pd = &xd->plane[1];
-#if CONFIG_EXT_RECUR_PARTITIONS
       if (xd->mi && xd->mi[0]) {
         const CHROMA_REF_INFO *chroma_ref_info = &xd->mi[0]->chroma_ref_info;
         const int src_left_edge_chroma =
@@ -1184,14 +1177,11 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
         if (src_left_edge_chroma < tile_left_edge) return 0;
         if (src_top_edge_chroma < tile_top_edge) return 0;
       } else {
-#endif
         if (bw < 8 && pd->subsampling_x)
           if (src_left_edge < tile_left_edge + 4 * SCALE_PX_TO_MV) return 0;
         if (bh < 8 && pd->subsampling_y)
           if (src_top_edge < tile_top_edge + 4 * SCALE_PX_TO_MV) return 0;
-#if CONFIG_EXT_RECUR_PARTITIONS
       }
-#endif
     }
   }
 
@@ -1205,7 +1195,6 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
       int tmp_bw = bw;
       if (!cm->seq_params.enable_sdp || !frame_is_intra_only(cm)) {
         if (xd->is_chroma_ref && av1_num_planes(cm) > 1) {
-#if CONFIG_EXT_RECUR_PARTITIONS
           if (xd->mi && xd->mi[0]) {
             const CHROMA_REF_INFO *chroma_ref_info =
                 &xd->mi[0]->chroma_ref_info;
@@ -1215,21 +1204,6 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
             tmp_bh = block_size_high[bsize_base];
             tmp_bw = block_size_wide[bsize_base];
           }
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-          const struct macroblockd_plane *const pd = &xd->plane[1];
-          if ((bw < 8 && pd->subsampling_x) && (bh < 8 && pd->subsampling_y)) {
-            tmp_row = mi_row / 2 * 2;
-            tmp_col = mi_col / 2 * 2;
-            tmp_bh = 8;
-            tmp_bw = 8;
-          } else if (bw < 8 && pd->subsampling_x) {
-            tmp_col = mi_col / 2 * 2;
-            tmp_bw = 8;
-          } else if (bh < 8 && pd->subsampling_y) {
-            tmp_row = mi_row / 2 * 2;
-            tmp_bh = 8;
-          }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
         }
       }
       // The size of local search range is determined by the value of

@@ -82,33 +82,15 @@ static const uint8_t
 static const uint32_t skip_pred_threshold[3][BLOCK_SIZES_ALL] = {
   {
       64, 64, 64, 70, 60, 60, 68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-#if CONFIG_EXT_RECUR_PARTITIONS
-      68, 68, 68,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      64, 64, 70, 70, 68, 68,
-#if CONFIG_EXT_RECUR_PARTITIONS
-      60, 60, 68, 68, 68, 68,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+      68, 68, 68, 64, 64, 70, 70, 68, 68, 60, 60, 68, 68, 68, 68,
   },
   {
       88, 88, 88, 86, 87, 87, 68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-#if CONFIG_EXT_RECUR_PARTITIONS
-      68, 68, 68,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      88, 88, 86, 86, 68, 68,
-#if CONFIG_EXT_RECUR_PARTITIONS
-      87, 87, 68, 68, 68, 68,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+      68, 68, 68, 88, 88, 86, 86, 68, 68, 87, 87, 68, 68, 68, 68,
   },
   {
       90, 93, 93, 90, 93, 93, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74,
-#if CONFIG_EXT_RECUR_PARTITIONS
-      74, 74, 74,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      90, 90, 90, 90, 74, 74,
-#if CONFIG_EXT_RECUR_PARTITIONS
-      93, 93, 74, 74, 74, 74,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+      74, 74, 74, 90, 90, 90, 90, 74, 74, 93, 93, 74, 74, 74, 74,
   },
 };
 
@@ -117,26 +99,19 @@ static const uint32_t skip_pred_threshold[3][BLOCK_SIZES_ALL] = {
 // if (tx_size_high[max_tx_size] > 16 || tx_size_wide[max_tx_size] > 16)
 //   max_tx_size = AOMMIN(max_txsize_lookup[bsize], TX_16X16);
 static const TX_SIZE max_predict_sf_tx_size[BLOCK_SIZES_ALL] = {
-  TX_4X4,   TX_4X8,   TX_8X4,   TX_8X8,   TX_8X16,  TX_16X8,
-  TX_16X16, TX_16X16, TX_16X16, TX_16X16, TX_16X16, TX_16X16,
-  TX_16X16, TX_16X16, TX_16X16, TX_16X16,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  TX_16X16, TX_16X16, TX_16X16,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-  TX_4X16,  TX_16X4,  TX_8X8,   TX_8X8,   TX_16X16, TX_16X16,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  TX_4X16,  TX_16X4,  TX_8X16,  TX_16X8,  TX_4X16,  TX_16X4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  TX_4X4,   TX_4X8,   TX_8X4,   TX_8X8,   TX_8X16,  TX_16X8,  TX_16X16,
+  TX_16X16, TX_16X16, TX_16X16, TX_16X16, TX_16X16, TX_16X16, TX_16X16,
+  TX_16X16, TX_16X16, TX_16X16, TX_16X16, TX_16X16, TX_4X16,  TX_16X4,
+  TX_8X8,   TX_8X8,   TX_16X16, TX_16X16, TX_4X16,  TX_16X4,  TX_8X16,
+  TX_16X8,  TX_4X16,  TX_16X4,
 };
 
 // look-up table for sqrt of number of pixels in a transform block
 // rounded up to the nearest integer.
 // Note that width or height of 64 is considered 32 instead.
 static const int sqrt_tx_pixels_2d[TX_SIZES_ALL] = {
-  4,  8,  16, 32, 32, 6,  6, 12, 12, 23, 23, 32, 32, 8, 8, 16, 16, 23, 23,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  11, 11, 16, 16, 11, 11,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  4, 8, 16, 32, 32, 6,  6,  12, 12, 23, 23, 32, 32,
+  8, 8, 16, 16, 23, 23, 11, 11, 16, 16, 11, 11,
 };
 
 // look-up table of transform partition type pruning level used to prune the
@@ -274,25 +249,21 @@ static const RD_RECORD_IDX_NODE *rd_record_tree[BLOCK_SIZES_ALL] = {
   rd_record_tree_64x128,   // BLOCK_64X128
   rd_record_tree_128x64,   // BLOCK_128X64
   rd_record_tree_128x128,  // BLOCK_128X128
-#if CONFIG_EXT_RECUR_PARTITIONS
-  NULL,                // BLOCK_128X256
-  NULL,                // BLOCK_256X128
-  NULL,                // BLOCK_256X256
-#endif                 // CONFIG_EXT_RECUR_PARTITIONS
-  NULL,                // BLOCK_4X16
-  NULL,                // BLOCK_16X4
-  rd_record_tree_1_4,  // BLOCK_8X32
-  rd_record_tree_4_1,  // BLOCK_32X8
-  rd_record_tree_1_4,  // BLOCK_16X64
-  rd_record_tree_4_1,  // BLOCK_64X16
-#if CONFIG_EXT_RECUR_PARTITIONS
-  NULL,  // BLOCK_4X32
-  NULL,  // BLOCK_32X4
-  NULL,  // BLOCK_8X64
-  NULL,  // BLOCK_64X8
-  NULL,  // BLOCK_4X64
-  NULL,  // BLOCK_64X4
-#endif   // CONFIG_EXT_RECUR_PARTITIONS
+  NULL,                    // BLOCK_128X256
+  NULL,                    // BLOCK_256X128
+  NULL,                    // BLOCK_256X256
+  NULL,                    // BLOCK_4X16
+  NULL,                    // BLOCK_16X4
+  rd_record_tree_1_4,      // BLOCK_8X32
+  rd_record_tree_4_1,      // BLOCK_32X8
+  rd_record_tree_1_4,      // BLOCK_16X64
+  rd_record_tree_4_1,      // BLOCK_64X16
+  NULL,                    // BLOCK_4X32
+  NULL,                    // BLOCK_32X4
+  NULL,                    // BLOCK_8X64
+  NULL,                    // BLOCK_64X8
+  NULL,                    // BLOCK_4X64
+  NULL,                    // BLOCK_64X4
 };
 
 static const int rd_record_tree_size[BLOCK_SIZES_ALL] = {
@@ -312,25 +283,21 @@ static const int rd_record_tree_size[BLOCK_SIZES_ALL] = {
   sizeof(rd_record_tree_64x128) / sizeof(RD_RECORD_IDX_NODE),   // BLOCK_64X128
   sizeof(rd_record_tree_128x64) / sizeof(RD_RECORD_IDX_NODE),   // BLOCK_128X64
   sizeof(rd_record_tree_128x128) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_128X128
-#if CONFIG_EXT_RECUR_PARTITIONS
-  0,    // BLOCK_128X256
-  0,    // BLOCK_256X128
-  0,    // BLOCK_256X256
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-  0,    // BLOCK_4X16
-  0,    // BLOCK_16X4
-  sizeof(rd_record_tree_1_4) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_8X32
-  sizeof(rd_record_tree_4_1) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_32X8
-  sizeof(rd_record_tree_1_4) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_16X64
-  sizeof(rd_record_tree_4_1) / sizeof(RD_RECORD_IDX_NODE),  // BLOCK_64X16
-#if CONFIG_EXT_RECUR_PARTITIONS
-  0,    // BLOCK_4X32
-  0,    // BLOCK_32X4
-  0,    // BLOCK_8X64
-  0,    // BLOCK_64X8
-  0,    // BLOCK_4X64
-  0,    // BLOCK_64X4
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  0,                                                            // BLOCK_128X256
+  0,                                                            // BLOCK_256X128
+  0,                                                            // BLOCK_256X256
+  0,                                                            // BLOCK_4X16
+  0,                                                            // BLOCK_16X4
+  sizeof(rd_record_tree_1_4) / sizeof(RD_RECORD_IDX_NODE),      // BLOCK_8X32
+  sizeof(rd_record_tree_4_1) / sizeof(RD_RECORD_IDX_NODE),      // BLOCK_32X8
+  sizeof(rd_record_tree_1_4) / sizeof(RD_RECORD_IDX_NODE),      // BLOCK_16X64
+  sizeof(rd_record_tree_4_1) / sizeof(RD_RECORD_IDX_NODE),      // BLOCK_64X16
+  0,                                                            // BLOCK_4X32
+  0,                                                            // BLOCK_32X4
+  0,                                                            // BLOCK_8X64
+  0,                                                            // BLOCK_64X8
+  0,                                                            // BLOCK_4X64
+  0,                                                            // BLOCK_64X4
 };
 
 static INLINE void init_rd_record_tree(TXB_RD_INFO_NODE *tree,
@@ -731,11 +698,8 @@ static AOM_INLINE void get_energy_distribution_fine(
   const int bh = block_size_high[bsize];
   unsigned int esq[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-  if (bsize < BLOCK_16X16 || (bsize >= BLOCK_4X16 && bsize <= BLOCK_32X8)
-#if CONFIG_EXT_RECUR_PARTITIONS
-      || (bsize >= BLOCK_4X32 && bsize <= BLOCK_64X4)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-  ) {
+  if (bsize < BLOCK_16X16 || (bsize >= BLOCK_4X16 && bsize <= BLOCK_32X8) ||
+      (bsize >= BLOCK_4X32 && bsize <= BLOCK_64X4)) {
     // Special cases: calculate 'esq' values manually, as we don't have 'vf'
     // functions for the 16 (very small) sub-blocks of this block.
     const int w_shift = (bw == 4)    ? 0
@@ -748,13 +712,8 @@ static AOM_INLINE void get_energy_distribution_fine(
                         : (bh == 16) ? 2
                         : (bh == 32) ? 3
                                      : 4;
-#if CONFIG_EXT_RECUR_PARTITIONS
     assert(bw <= 64);
     assert(bh <= 64);
-#else
-    assert(bw <= 32);
-    assert(bh <= 32);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     assert(((bw - 1) >> w_shift) + (((bh - 1) >> h_shift) << 2) == 15);
     for (int i = 0; i < bh; ++i)
       for (int j = 0; j < bw; ++j) {
@@ -1954,7 +1913,6 @@ static const float *prune_2D_adaptive_thresholds[] = {
   NULL,
   // TX_64X16
   NULL,
-#if CONFIG_EXT_RECUR_PARTITIONS
   // TX_4X32
   NULL,
   // TX_32X4
@@ -1967,7 +1925,6 @@ static const float *prune_2D_adaptive_thresholds[] = {
   NULL,
   // TX_64X4
   NULL,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 
 // Probablities are sorted in descending order.
@@ -4297,14 +4254,12 @@ static AOM_INLINE void choose_largest_tx_size(const AV1_COMP *const cpi,
       TX_32X8,   // 32x8 transform
       TX_16X32,  // 16x64 transform
       TX_32X16,  // 64x16 transform
-#if CONFIG_EXT_RECUR_PARTITIONS
-      TX_4X32,  // 4x32 transform
-      TX_32X4,  // 32x4 transform
-      TX_8X32,  // 8x64 transform
-      TX_32X8,  // 64x8 transform
-      TX_4X32,  // 4x64 transform
-      TX_32X4,  // 64x4 transform
-#endif          // CONFIG_EXT_RECUR_PARTITIONS
+      TX_4X32,   // 4x32 transform
+      TX_32X4,   // 32x4 transform
+      TX_8X32,   // 8x64 transform
+      TX_32X8,   // 64x8 transform
+      TX_4X32,   // 4x64 transform
+      TX_32X4,   // 64x4 transform
     };
 
     mbmi->tx_size = tx_size_max_32[mbmi->tx_size];

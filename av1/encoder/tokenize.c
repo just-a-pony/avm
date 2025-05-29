@@ -477,7 +477,6 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
 #if CONFIG_NEW_TX_PARTITION
   const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
 #endif  // CONFIG_NEW_TX_PARTITION
-#if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE bsize_base = get_bsize_base(xd, mbmi, plane);
 #if CONFIG_NEW_TX_PARTITION
   const TX_SIZE plane_tx_size =
@@ -491,22 +490,10 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
             : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
                                                          blk_col)];
 #endif  // CONFIG_NEW_TX_PARTITION
-#else
-  const TX_SIZE plane_tx_size =
-      plane ? av1_get_max_uv_txsize(mbmi->sb_type[xd->tree_type == CHROMA_PART],
-                                    pd->subsampling_x, pd->subsampling_y)
-            : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
-                                                         blk_col)];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   if (tx_size == plane_tx_size || plane) {
     plane_bsize = get_mb_plane_block_size(xd, mbmi, plane, pd->subsampling_x,
                                           pd->subsampling_y);
-#if !CONFIG_EXT_RECUR_PARTITIONS
-    assert(plane_bsize ==
-           get_plane_block_size(mbmi->sb_type[xd->tree_type == CHROMA_PART],
-                                pd->subsampling_x, pd->subsampling_y));
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
     av1_update_and_record_txb_context(plane, block, blk_row, blk_col,
                                       plane_bsize, tx_size, arg);
   } else {

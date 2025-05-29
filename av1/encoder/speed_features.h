@@ -265,7 +265,6 @@ enum {
 #endif  // CONFIG_ENABLE_SR
 
 /*!\endcond */
-#if CONFIG_EXT_RECUR_PARTITIONS
 /*! \brief Used with \ref MACROBLOCK::reuse_inter_mode_cache_type to determine
  * whether partition mode is reused. */
 #define REUSE_PARTITION_MODE_FLAG (1 << 0)
@@ -282,7 +281,6 @@ enum {
  * reuse of inter and intra prediction_modes, as well as ref frame. */
 #define REUSE_INTERFRAME_FLAG \
   (REUSE_INTRA_MODE_IN_INTERFRAME_FLAG | REUSE_INTER_MODE_IN_INTERFRAME_FLAG)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 /*!
  * \brief Sequence/frame level speed vs quality features
@@ -492,7 +490,6 @@ typedef struct PARTITION_SPEED_FEATURES {
   // when NONE and SPLIT partition rd_costs are INT64_MAX.
   int early_term_after_none_split;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   // Prunes PARTITION_3 if PARTITION_NONE is used instead of PARTITION_HORZ|VERT
   int prune_rect_with_none_rd;
 
@@ -547,7 +544,6 @@ typedef struct PARTITION_SPEED_FEATURES {
   int prune_part_4_with_partition_boundary;
   // Delay the search for block 256 to after block 128
   int search_256_after_128;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_ML_PART_SPLIT
   int prune_split_with_ml;
   int prune_split_ml_level;
@@ -617,11 +613,9 @@ typedef struct MV_SPEED_FEATURES {
 
   // Maximum number of iterations in WARP_CAUSAL refinement search
   int warp_search_iters;
-#if CONFIG_EXT_RECUR_PARTITIONS
   // Use faster motion search settings for partition blocks with at least one
   // dimension that's >= 256
   int fast_motion_estimation_on_block_256;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 } MV_SPEED_FEATURES;
 
 typedef struct INTER_MODE_SPEED_FEATURES {
@@ -811,12 +805,10 @@ typedef struct INTER_MODE_SPEED_FEATURES {
   // flag to skip inter mode evaluation based on rate cost.
   int skip_mode_eval_based_on_rate_cost;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   // Under ERP, determines whether to reuse partition mode and prediction mode
   // if a block with the same (mi_row, mi_col, bsize) is visited more than one
   // by the encoder.
   int reuse_erp_mode_flag;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 } INTER_MODE_SPEED_FEATURES;
 
 typedef struct INTERP_FILTER_SPEED_FEATURES {
@@ -921,11 +913,9 @@ typedef struct TX_SPEED_FEATURES {
   // transform output.
   bool prune_tx_rd_eval_sec_tx_sse;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   // On inter frames, use the largest txfm size for block_sizes smaller than
   // or equal to BLOCK_16X16.
   bool use_largest_tx_size_for_small_bsize;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if CONFIG_NEW_TX_PARTITION
   // tx_type search pruning at low qp and resolution >= 1080p

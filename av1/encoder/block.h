@@ -562,7 +562,6 @@ enum {
 } UENUM1BYTE(MV_COST_TYPE);
 /*!\endcond */
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 /*! \brief max length of start Mv list
  */
 #define kSMSMaxStartMVs 1
@@ -743,7 +742,6 @@ typedef struct SimpleMotionDataBufs {
 } SimpleMotionDataBufs;
 
 #undef MAKE_SM_DATA_BUF
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 /*! \brief Holds some parameters related to partitioning schemes in AV1.
  */
@@ -936,7 +934,6 @@ typedef struct {
   /**@{*/
   //! Cost for coding the region type.
   int region_type_cost[INTER_SDP_BSIZE_GROUP][REGION_TYPES];
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*! Cost for sending split token. */
   int do_split_cost[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS][2];
   /*! Cost for sending square split token. */
@@ -955,11 +952,6 @@ typedef struct {
                                      [PARTITION_CONTEXTS]
                                      [NUM_UNEVEN_4WAY_PARTS];
 #endif  // !CONFIG_NEW_PART_CTX
-#else
-  //! Cost for coding the partition.
-  int partition_cost[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
-                    [EXT_PARTITION_TYPES];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /**@}*/
 
   /*****************************************************************************
@@ -2019,7 +2011,6 @@ typedef struct macroblock {
   unsigned int source_variance;
   //! SSE of the current predictor.
   unsigned int pred_sse[SINGLE_REF_FRAMES];
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*! Simple motion search buffers. */
   SimpleMotionDataBufs *sms_bufs;
   /*! \brief Determines what encoding decision should be reused. */
@@ -2028,7 +2019,6 @@ typedef struct macroblock {
   MB_MODE_INFO *inter_mode_cache;
   /*! \brief Whether the whole superblock is inside the frame boudnary */
   bool is_whole_sb;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /**@}*/
 
   /*! \brief Quantization state of a transform coefficient.
@@ -2076,11 +2066,9 @@ static INLINE int is_rect_tx_allowed_bsize(BLOCK_SIZE bsize) {
     1,  // BLOCK_64X128
     1,  // BLOCK_128X64
     1,  // BLOCK_128X128
-#if CONFIG_EXT_RECUR_PARTITIONS
     1,  // BLOCK_128X256
     1,  // BLOCK_256X128
     1,  // BLOCK_256X256
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     1,  // BLOCK_4X16
     1,  // BLOCK_16X4
     1,  // BLOCK_8X32
@@ -2104,11 +2092,9 @@ static INLINE int is_rect_tx_allowed_bsize(BLOCK_SIZE bsize) {
     0,  // BLOCK_64X128
     0,  // BLOCK_128X64
     0,  // BLOCK_128X128
-#if CONFIG_EXT_RECUR_PARTITIONS
     0,  // BLOCK_128X256
     0,  // BLOCK_256X128
     0,  // BLOCK_256X256
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     1,  // BLOCK_4X16
     1,  // BLOCK_16X4
     1,  // BLOCK_8X32
@@ -2116,14 +2102,12 @@ static INLINE int is_rect_tx_allowed_bsize(BLOCK_SIZE bsize) {
     1,  // BLOCK_16X64
     1,  // BLOCK_64X16
 #endif  // CONFIG_NEW_TX_PARTITION
-#if CONFIG_EXT_RECUR_PARTITIONS
     1,  // BLOCK_4X32
     1,  // BLOCK_32X4
     1,  // BLOCK_8X64
     1,  // BLOCK_64X8
     1,  // BLOCK_4X64
     1,  // BLOCK_64X4
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   };
 
   return LUT[bsize];
@@ -2158,11 +2142,9 @@ static INLINE int is_blk_skip(uint8_t *txb_skip, int blk_idx) {
   return txb_skip[blk_idx] & 1;
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static INLINE int should_reuse_mode(const MACROBLOCK *x, int mode_flag) {
   return x->reuse_inter_mode_cache_type & mode_flag;
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 /*!\endcond */
 
 #ifdef __cplusplus

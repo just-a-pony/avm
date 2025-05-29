@@ -75,9 +75,7 @@ typedef struct SB_FIRST_PASS_STATS {
 #if WARP_CU_BANK
   WARP_PARAM_BANK warp_param_bank;
 #endif  // WARP_CU_BANK
-#if CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_SIZE min_partition_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 } SB_FIRST_PASS_STATS;
 
 // This structure contains block size related
@@ -85,10 +83,8 @@ typedef struct SB_FIRST_PASS_STATS {
 typedef struct PartitionBlkParams {
   // Half of block width to determine block edge.
   int mi_step;
-#if CONFIG_EXT_RECUR_PARTITIONS
   int mi_step_h;
   int mi_step_w;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   // Block row and column indices.
   int mi_row;
@@ -101,18 +97,8 @@ typedef struct PartitionBlkParams {
   // Block width of current partition block.
   int width;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   // Minimum partition size allowed.
   BLOCK_SIZE min_partition_size;
-#else
-  // Block width of minimum partition size allowed.
-  int min_partition_size_1d;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  // Flag to indicate if partition is 8x8 or higher size.
-  int bsize_at_least_8x8;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
 
   // Indicates that more than half of the rows / cols of this block are within
   // the frame.
@@ -146,11 +132,6 @@ typedef struct PartitionSearchState {
   // RD cost summed across all blocks of partition type.
   RD_STATS sum_rdc;
 
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  // Array holding partition type cost.
-  int tmp_partition_cost[PARTITION_TYPES];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-
   // Partition costs for each type of partition.
   int partition_cost[ALL_PARTITION_TYPES];
 
@@ -165,10 +146,8 @@ typedef struct PartitionSearchState {
   // rect_part_rd[1][i] is the RD cost of ith partition index of PARTITION_VERT.
   int64_t rect_part_rd[NUM_RECT_PARTS][SUB_PARTITIONS_RECT];
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   // New Simple Motion Result for PARTITION_NONE
   SMSPartitionStats none_data;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   // Flags indicating if the corresponding partition was winner or not.
   // Used to bypass similar blocks during AB partition evaluation.
   int is_split_ctx_is_ready[2];
@@ -179,10 +158,6 @@ typedef struct PartitionSearchState {
   int partition_none_allowed;
   int partition_rect_allowed[NUM_RECT_PARTS];
   int do_rectangular_split;
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  int do_square_split;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_EXT_RECUR_PARTITIONS
   int partition_split_allowed;
   bool prune_partition_none;
 #if CONFIG_ML_PART_SPLIT
@@ -199,7 +174,6 @@ typedef struct PartitionSearchState {
   // Used by prune_part_h_with_partition_boundary and
   // prune_part_4_with_partition_boundary.
   bool *partition_boundaries;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   bool prune_rect_part[NUM_RECT_PARTS];
   int is_block_splittable;
 
@@ -354,9 +328,7 @@ static BLOCK_SIZE dim_to_size(int dim) {
     case 32: return BLOCK_32X32;
     case 64: return BLOCK_64X64;
     case 128: return BLOCK_128X128;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case 256: return BLOCK_256X256;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0); return 0;
   }
 }

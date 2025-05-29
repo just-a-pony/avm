@@ -21,7 +21,6 @@
 #include "common/tf_lite_includes.h"
 #endif  // CONFIG_ERP_TFLITE
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define MAKE_ERP_MODEL_SWITCH_CASE(bsize)           \
   case bsize:                                       \
     return is_hd ? av1_erp_rect_hd_##bsize##_tflite \
@@ -269,4 +268,3 @@ extern "C" int av1_erp_prune_rect(BLOCK_SIZE bsize, bool is_hd,
 
   return 1;
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS

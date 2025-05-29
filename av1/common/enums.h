@@ -171,11 +171,7 @@ enum {
 #define JOINT_AMVD_SCALE_FACTOR_CNT 3
 
 // Max superblock size
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define MAX_SB_SIZE_LOG2 8
-#else
-#define MAX_SB_SIZE_LOG2 7
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #define MAX_SB_SIZE (1 << MAX_SB_SIZE_LOG2)
 #define MAX_SB_SQUARE (MAX_SB_SIZE * MAX_SB_SIZE)
 #define BLOCK_128_MI_SIZE_LOG2 5
@@ -251,7 +247,6 @@ enum {
 // Mask to extract MI offset within max MIB
 #define MAX_MIB_MASK (MAX_MIB_SIZE - 1)
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // The largest block size where we need to construct chroma blocks separately
 // from luma blocks is 64x32. With the four way partition, we can get 64x4
 // block sizes. So we only need to track results for 16 mi units.
@@ -259,15 +254,6 @@ enum {
 #define SUB_8_BITMASK_T uint16_t
 #define SUB_8_BITMASK_SIZE (16)
 #define SUB_8_BITMASK_ON (UINT16_MAX)
-#else
-// The largest block size where we need to construct chroma blocks separately
-// from luma blocks is 32x16. With the four way partition, we can get 4x16
-// block sizes. So we only need to track results for 8 mi units.
-#define MAX_MI_LUMA_SIZE_FOR_SUB_8 (32 >> MI_SIZE_LOG2)
-#define SUB_8_BITMASK_T uint8_t
-#define SUB_8_BITMASK_SIZE (8)
-#define SUB_8_BITMASK_ON (UINT8_MAX)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // Maximum number of tile rows and tile columns
 #define MAX_TILE_ROWS 64
@@ -392,31 +378,23 @@ typedef enum ATTRIBUTE_PACKED {
   BLOCK_64X128,
   BLOCK_128X64,
   BLOCK_128X128,
-#if CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_128X256,
   BLOCK_256X128,
   BLOCK_256X256,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_4X16,
   BLOCK_16X4,
   BLOCK_8X32,
   BLOCK_32X8,
   BLOCK_16X64,
   BLOCK_64X16,
-#if CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_4X32,
   BLOCK_32X4,
   BLOCK_8X64,
   BLOCK_64X8,
   BLOCK_4X64,
   BLOCK_64X4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_SIZES_ALL,
-#if CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_MAX = BLOCK_256X256,
-#else
-  BLOCK_MAX = BLOCK_128X128,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_SIZES = BLOCK_4X32,
   BLOCK_INVALID = 255,
   BLOCK_LARGEST = BLOCK_MAX
@@ -467,13 +445,8 @@ enum {
   REGION_TYPES = 2,
 } UENUM1BYTE(REGION_TYPE);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // 4X4, 8X8, 16X16, 32X32, 64X64, 128X128, 256X256
 #define SQR_BLOCK_SIZES 7
-#else
-// 4X4, 8X8, 16X16, 32X32, 64X64, 128X128
-#define SQR_BLOCK_SIZES 6
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 //  Partition types.  R: Recursive
 //
@@ -484,7 +457,6 @@ enum {
 //  |       |     |       |     |   |   |     | R | R |
 //  +-------+     +-------+     +---+---+     +---+---+
 //
-#if CONFIG_EXT_RECUR_PARTITIONS
 //  HORZ_3                 VERT_3
 //  +---------------+       +---+------+---+
 //  |               |       |   |      |   |
@@ -515,21 +487,6 @@ enum {
 //  |   |      |          |   |          |   |          |      |   |
 //  |   |      |          |   |          |   |          |      |   |
 //  +-------------------------+          +-------------------------+
-#else
-//  HORZ_A        HORZ_B        VERT_A        VERT_B
-//  +---+---+     +-------+     +---+---+     +---+---+
-//  |   |   |     |       |     |   |   |     |   |   |
-//  +---+---+     +---+---+     +---+   |     |   +---+
-//  |       |     |   |   |     |   |   |     |   |   |
-//  +-------+     +---+---+     +---+---+     +---+---+
-//
-//  HORZ_4        VERT_4
-//  +-----+       +-+-+-+
-//  +-----+       | | | |
-//  +-----+       | | | |
-//  +-----+       +-+-+-+
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_EXT_RECUR_PARTITIONS
 enum {
   PARTITION_NONE,
   PARTITION_HORZ,
@@ -546,23 +503,6 @@ enum {
   PARTITION_TYPES = PARTITION_VERT + 1,
   PARTITION_INVALID = 255
 } UENUM1BYTE(PARTITION_TYPE);
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-enum {
-  PARTITION_NONE,
-  PARTITION_HORZ,
-  PARTITION_VERT,
-  PARTITION_SPLIT,
-  PARTITION_HORZ_A,  // HORZ split and the top partition is split again
-  PARTITION_HORZ_B,  // HORZ split and the bottom partition is split again
-  PARTITION_VERT_A,  // VERT split and the left partition is split again
-  PARTITION_VERT_B,  // VERT split and the right partition is split again
-  PARTITION_HORZ_4,  // 4:1 horizontal partition
-  PARTITION_VERT_4,  // 4:1 vertical partition
-  EXT_PARTITION_TYPES,
-  PARTITION_TYPES = PARTITION_SPLIT + 1,
-  PARTITION_INVALID = 255
-} UENUM1BYTE(PARTITION_TYPE);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // Rectangular partition types.
 enum {
@@ -572,24 +512,18 @@ enum {
   RECT_INVALID = NUM_RECT_PARTS
 } UENUM1BYTE(RECT_PART_TYPE);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // Uneven 4-way partition types.
 enum {
   UNEVEN_4A = 0,
   UNEVEN_4B,
   NUM_UNEVEN_4WAY_PARTS,
 } UENUM1BYTE(UNEVEN_4WAY_PART_TYPE);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 typedef char PARTITION_CONTEXT;
 #define PARTITION_PLOFFSET 4  // number of probability models per block size
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define PARTITION_BLOCK_SIZES BLOCK_SIZES
 #define SQUARE_SPLIT_CONTEXTS (2 * PARTITION_PLOFFSET)
-#else
-#define PARTITION_BLOCK_SIZES 5
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // Extended SDP is only allowed for block samples >= 64 and <= 1024. The allowed
 // block size group is 64, 128, 256, 512, 1024, so the number of block size
@@ -599,33 +533,31 @@ typedef char PARTITION_CONTEXT;
 
 // block transform size
 enum {
-  TX_4X4,    // 4x4 transform
-  TX_8X8,    // 8x8 transform
-  TX_16X16,  // 16x16 transform
-  TX_32X32,  // 32x32 transform
-  TX_64X64,  // 64x64 transform
-  TX_4X8,    // 4x8 transform
-  TX_8X4,    // 8x4 transform
-  TX_8X16,   // 8x16 transform
-  TX_16X8,   // 16x8 transform
-  TX_16X32,  // 16x32 transform
-  TX_32X16,  // 32x16 transform
-  TX_32X64,  // 32x64 transform
-  TX_64X32,  // 64x32 transform
-  TX_4X16,   // 4x16 transform
-  TX_16X4,   // 16x4 transform
-  TX_8X32,   // 8x32 transform
-  TX_32X8,   // 32x8 transform
-  TX_16X64,  // 16x64 transform
-  TX_64X16,  // 64x16 transform
-#if CONFIG_EXT_RECUR_PARTITIONS
+  TX_4X4,             // 4x4 transform
+  TX_8X8,             // 8x8 transform
+  TX_16X16,           // 16x16 transform
+  TX_32X32,           // 32x32 transform
+  TX_64X64,           // 64x64 transform
+  TX_4X8,             // 4x8 transform
+  TX_8X4,             // 8x4 transform
+  TX_8X16,            // 8x16 transform
+  TX_16X8,            // 16x8 transform
+  TX_16X32,           // 16x32 transform
+  TX_32X16,           // 32x16 transform
+  TX_32X64,           // 32x64 transform
+  TX_64X32,           // 64x32 transform
+  TX_4X16,            // 4x16 transform
+  TX_16X4,            // 16x4 transform
+  TX_8X32,            // 8x32 transform
+  TX_32X8,            // 32x8 transform
+  TX_16X64,           // 16x64 transform
+  TX_64X16,           // 64x16 transform
   TX_4X32,            // 4x32 transform
   TX_32X4,            // 32x4 transform
   TX_8X64,            // 8x64 transform
   TX_64X8,            // 64x8 transform
   TX_4X64,            // 4x64 transform
   TX_64X4,            // 64x4 transform
-#endif                // CONFIG_EXT_RECUR_PARTITIONS
   TX_SIZES_ALL,       // Includes rectangular transforms
   TX_SIZES = TX_4X8,  // Does NOT include rectangular transforms
   TX_SIZES_LARGEST = TX_64X64,
@@ -1337,12 +1269,8 @@ enum {
 #if CONFIG_NEW_TX_PARTITION
 #if CONFIG_TX_PARTITION_CTX
 // Group size from mapping block size to tx partition context
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define TXFM_SPLIT_GROUP 9
 #define TXFM_PARTITION_GROUP 17
-#else
-#define TXFM_PARTITION_GROUP 8
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #else
 #define TXFM_PARTITION_INTER_CONTEXTS ((TX_SIZES - TX_8X8) * 6 - 3)
 #endif  // CONFIG_TX_PARTITION_CTX

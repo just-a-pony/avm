@@ -169,14 +169,12 @@ static double avg_error_ls[TX_SIZES_ALL] = {
   1.7,   // 32x8 transform
   2.0,   // 16x64 transform
   4.7,   // 64x16 transform
-#if CONFIG_EXT_RECUR_PARTITIONS
-  0.8,  // 4x32 transform
-  0.8,  // 32x4 transform
-  4.0,  // 8x64 transform
-  4.0,  // 64x8 transform
-  3.0,  // 4x64 transform
-  3.0,  // 64x4 transform
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  0.8,   // 4x32 transform
+  0.8,   // 32x4 transform
+  4.0,   // 8x64 transform
+  4.0,   // 64x8 transform
+  3.0,   // 4x64 transform
+  3.0,   // 64x4 transform
 };
 
 static double max_error_ls[TX_SIZES_ALL] = {
@@ -199,14 +197,12 @@ static double max_error_ls[TX_SIZES_ALL] = {
   13,   // 32x8 transform
   30,   // 16x64 transform
   36,   // 64x16 transform
-#if CONFIG_EXT_RECUR_PARTITIONS
   8,    // 4x32 transform
   8,    // 32x4 transform
   99,   // 8x64 transform
   99,   // 64x8 transform
   90,   // 4x64 transform
   90,   // 64x4 transform
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 
 vector<AV1FwdTxfm2dParam> GetTxfm2dParamList() {
@@ -423,9 +419,7 @@ static TX_SIZE fwd_txfm_for_sse2[] = {
   TX_4X4,  TX_8X8,  TX_16X16, TX_32X32, TX_64X64, TX_4X8,   TX_8X4,
   TX_8X16, TX_16X8, TX_16X32, TX_32X16, TX_32X64, TX_64X32, TX_4X16,
   TX_16X4, TX_8X32, TX_32X8,  TX_16X64, TX_64X16,
-#if CONFIG_EXT_RECUR_PARTITIONS
   TX_4X32, TX_32X4, TX_8X64,  TX_64X8,  TX_4X64,  TX_64X4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 /* clang-format on */
 
@@ -453,9 +447,7 @@ static TX_SIZE fwd_txfm_for_avx2[] = {
   TX_4X4,  TX_8X8,  TX_16X16, TX_32X32, TX_64X64, TX_4X8,   TX_8X4,
   TX_8X16, TX_16X8, TX_16X32, TX_32X16, TX_32X64, TX_64X32, TX_4X16,
   TX_16X4, TX_8X32, TX_32X8,  TX_16X64, TX_64X16,
-#if CONFIG_EXT_RECUR_PARTITIONS
   TX_4X32, TX_32X4, TX_8X64,  TX_64X8,  TX_4X64,  TX_64X4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 /* clang-format on */
 
@@ -650,9 +642,7 @@ static TX_SIZE Highbd_fwd_txfm_for_sse4_1[] = {
   TX_4X4,  TX_8X8,  TX_16X16, TX_32X32, TX_64X64, TX_4X8,   TX_8X4,
   TX_8X16, TX_16X8, TX_16X32, TX_32X16, TX_32X64, TX_64X32, TX_4X16,
   TX_16X4, TX_8X32, TX_32X8,  TX_16X64, TX_64X16,
-#if CONFIG_EXT_RECUR_PARTITIONS
   TX_4X32, TX_32X4, TX_8X64,  TX_64X8,  TX_4X64,  TX_64X4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 /* clang-format on */
 

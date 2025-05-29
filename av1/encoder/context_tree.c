@@ -16,11 +16,8 @@
 #include "av1/encoder/rd.h"
 
 static const BLOCK_SIZE square[MAX_SB_SIZE_LOG2 - 1] = {
-  BLOCK_4X4,     BLOCK_8X8,   BLOCK_16X16,
-  BLOCK_32X32,   BLOCK_64X64, BLOCK_128X128,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  BLOCK_256X256,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  BLOCK_4X4,   BLOCK_8X8,     BLOCK_16X16,   BLOCK_32X32,
+  BLOCK_64X64, BLOCK_128X128, BLOCK_256X256,
 };
 
 void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
@@ -54,7 +51,6 @@ void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
 
   dst_ctx->rd_stats = src_ctx->rd_stats;
   dst_ctx->rd_mode_is_ready = src_ctx->rd_mode_is_ready;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int num_pix = src_ctx->num_4x4_blk * 16;
   if (num_pix <= MAX_PALETTE_SQUARE) {
     for (int i = 0; i < 2; ++i) {
@@ -65,7 +61,6 @@ void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
              sizeof(src_ctx->color_index_map[i][0]) * color_map_size);
     }
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 void av1_setup_shared_coeff_buffer(AV1_COMMON *cm,
@@ -92,7 +87,6 @@ void av1_free_shared_coeff_buffer(PC_TREE_SHARED_BUFFERS *shared_bufs) {
   }
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // Get base block size for pick mode context allocation.
 static INLINE int get_num_pix_bsize_base(
     BLOCK_SIZE bsize, TREE_TYPE tree_type,
@@ -112,7 +106,6 @@ static INLINE int get_num_pix_bsize_base(
   assert(bsize_base != BLOCK_INVALID);
   return block_size_wide[bsize_base] * block_size_high[bsize_base];
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
                                  int mi_row, int mi_col, BLOCK_SIZE bsize,
@@ -138,19 +131,10 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
   const int num_pix = block_size_wide[bsize] * block_size_high[bsize];
   const int num_blk = num_pix / 16;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   // We need to get actual chroma block size due to possible sub-8x8 luma block
   // sizes.
   const int num_pix_bize_base = get_num_pix_bsize_base(
       bsize, tree_type, &ctx->chroma_ref_info, num_planes);
-#else
-  // Biggest chroma block covering multiple luma blocks is of size 8X8,
-  // when a 16X16 block uses a HORZ_3 / VERTICAL_3 partition.
-  // However, we don't explicitly need to allocate that minimum, because palette
-  // is only allowed for bsize >= BLOCK_8X8, and all these block sizes have at
-  // least 64 pixels.
-  const int num_pix_chroma = num_pix;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   ctx->num_4x4_blk = num_blk;
   ctx->num_4x4_blk_chroma = num_pix_bize_base / 16;
 
@@ -169,12 +153,8 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
     ctx->coeff[i] = shared_bufs->coeff_buf[i];
     ctx->qcoeff[i] = shared_bufs->qcoeff_buf[i];
     ctx->dqcoeff[i] = shared_bufs->dqcoeff_buf[i];
-#if CONFIG_EXT_RECUR_PARTITIONS
     const int num_blk_plane =
         (i == 0) ? ctx->num_4x4_blk : ctx->num_4x4_blk_chroma;
-#else
-    const int num_blk_plane = ctx->num_4x4_blk;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     AOM_CHECK_MEM_ERROR(&error, ctx->blk_skip[i],
                         aom_calloc(num_blk_plane, sizeof(*ctx->blk_skip[i])));
     AOM_CHECK_MEM_ERROR(
@@ -264,10 +244,8 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
   pc_tree->block_size = bsize;
   pc_tree->is_last_subblock = is_last;
   av1_invalid_rd_stats(&pc_tree->rd_cost);
-#if CONFIG_EXT_RECUR_PARTITIONS
   av1_invalid_rd_stats(&pc_tree->none_rd);
   pc_tree->skippable = false;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   set_chroma_ref_info(tree_type, mi_row, mi_col, index, bsize,
                       &pc_tree->chroma_ref_info,
                       parent ? &parent->chroma_ref_info : NULL,
@@ -283,7 +261,6 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
       pc_tree->horizontal[cur_region_type][i] = NULL;
       pc_tree->vertical[cur_region_type][i] = NULL;
     }
-#if CONFIG_EXT_RECUR_PARTITIONS
     for (int i = 0; i < 4; ++i) {
       pc_tree->horizontal4a[cur_region_type][i] = NULL;
       pc_tree->horizontal4b[cur_region_type][i] = NULL;
@@ -294,23 +271,10 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
       pc_tree->horizontal3[cur_region_type][i] = NULL;
       pc_tree->vertical3[cur_region_type][i] = NULL;
     }
-#else
-    for (int i = 0; i < 3; ++i) {
-      pc_tree->horizontala[cur_region_type][i] = NULL;
-      pc_tree->horizontalb[cur_region_type][i] = NULL;
-      pc_tree->verticala[cur_region_type][i] = NULL;
-      pc_tree->verticalb[cur_region_type][i] = NULL;
-    }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     for (int i = 0; i < 4; ++i) {
-#if !CONFIG_EXT_RECUR_PARTITIONS
-      pc_tree->horizontal4[cur_region_type][i] = NULL;
-      pc_tree->vertical4[cur_region_type][i] = NULL;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
       pc_tree->split[cur_region_type][i] = NULL;
     }
   }
-
   return pc_tree;
 }
 
@@ -338,7 +302,6 @@ void av1_free_pc_tree_recursive(PC_TREE *pc_tree, int num_planes, int keep_best,
       FREE_PMC_NODE(pc_tree->none[cur_region_type]);
 
     for (int i = 0; i < 2; ++i) {
-#if CONFIG_EXT_RECUR_PARTITIONS
       if ((!keep_best || (partition != PARTITION_HORZ) ||
            (cur_region_type != pc_tree->region_type)) &&
           pc_tree->horizontal[cur_region_type][i] != NULL) {
@@ -353,14 +316,7 @@ void av1_free_pc_tree_recursive(PC_TREE *pc_tree, int num_planes, int keep_best,
                                    num_planes, 0, 0);
         pc_tree->vertical[cur_region_type][i] = NULL;
       }
-#else
-      if (!keep_best || (partition != PARTITION_HORZ))
-        FREE_PMC_NODE(pc_tree->horizontal[cur_region_type][i]);
-      if (!keep_best || (partition != PARTITION_VERT))
-        FREE_PMC_NODE(pc_tree->vertical[cur_region_type][i]);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     }
-#if CONFIG_EXT_RECUR_PARTITIONS
 
     if (!keep_best || (partition != PARTITION_HORZ_4A) ||
         (cur_region_type != pc_tree->region_type)) {
@@ -421,24 +377,6 @@ void av1_free_pc_tree_recursive(PC_TREE *pc_tree, int num_planes, int keep_best,
         pc_tree->vertical3[cur_region_type][i] = NULL;
       }
     }
-#else
-    for (int i = 0; i < 3; ++i) {
-      if (!keep_best || (partition != PARTITION_HORZ_A))
-        FREE_PMC_NODE(pc_tree->horizontala[cur_region_type][i]);
-      if (!keep_best || (partition != PARTITION_HORZ_B))
-        FREE_PMC_NODE(pc_tree->horizontalb[cur_region_type][i]);
-      if (!keep_best || (partition != PARTITION_VERT_A))
-        FREE_PMC_NODE(pc_tree->verticala[cur_region_type][i]);
-      if (!keep_best || (partition != PARTITION_VERT_B))
-        FREE_PMC_NODE(pc_tree->verticalb[cur_region_type][i]);
-    }
-    for (int i = 0; i < 4; ++i) {
-      if (!keep_best || (partition != PARTITION_HORZ_4))
-        FREE_PMC_NODE(pc_tree->horizontal4[cur_region_type][i]);
-      if (!keep_best || (partition != PARTITION_VERT_4))
-        FREE_PMC_NODE(pc_tree->vertical4[cur_region_type][i]);
-    }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
     if (!keep_best || (partition != PARTITION_SPLIT) ||
         (cur_region_type != pc_tree->region_type)) {
@@ -454,7 +392,6 @@ void av1_free_pc_tree_recursive(PC_TREE *pc_tree, int num_planes, int keep_best,
   if (!keep_best && !keep_none) aom_free(pc_tree);
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
                                 PC_TREE *dst, PC_TREE *src, int ss_x, int ss_y,
                                 PC_TREE_SHARED_BUFFERS *shared_bufs,
@@ -776,20 +713,14 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
     default: assert(0 && "Not a valid partition."); break;
   }
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static AOM_INLINE int get_pc_tree_nodes(const BLOCK_SIZE sb_size,
                                         int stat_generation_stage) {
   const int is_sb_size_128 = sb_size == BLOCK_128X128;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int is_sb_size_256 = sb_size == BLOCK_256X256;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-  const int tree_nodes_inc =
-#if CONFIG_EXT_RECUR_PARTITIONS
-      is_sb_size_256 ? (1024 + 4 * 1024) :
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      is_sb_size_128 ? 1024
-                     : 0;
+  const int tree_nodes_inc = is_sb_size_256   ? (1024 + 4 * 1024)
+                             : is_sb_size_128 ? 1024
+                                              : 0;
   const int tree_nodes =
       stat_generation_stage ? 1 : (tree_nodes_inc + 256 + 64 + 16 + 4 + 1);
   return tree_nodes;
@@ -799,9 +730,7 @@ void av1_setup_sms_tree(AV1_COMP *const cpi, ThreadData *td) {
   AV1_COMMON *const cm = &cpi->common;
   const int stat_generation_stage = is_stat_generation_stage(cpi);
   const int is_sb_size_128 = cm->sb_size == BLOCK_128X128;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int is_sb_size_256 = cm->sb_size == BLOCK_256X256;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   const int tree_nodes = get_pc_tree_nodes(cm->sb_size, stat_generation_stage);
   int sms_tree_index = 0;
   SIMPLE_MOTION_DATA_TREE *this_sms;
@@ -814,12 +743,7 @@ void av1_setup_sms_tree(AV1_COMP *const cpi, ThreadData *td) {
   this_sms = &td->sms_tree[0];
 
   if (!stat_generation_stage) {
-    const int leaf_factor =
-#if CONFIG_EXT_RECUR_PARTITIONS
-        is_sb_size_256 ? 16 :
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-        is_sb_size_128 ? 4
-                       : 1;
+    const int leaf_factor = is_sb_size_256 ? 16 : is_sb_size_128 ? 4 : 1;
 
     const int leaf_nodes = 256 * leaf_factor;
 
@@ -860,7 +784,6 @@ void av1_free_sms_tree(ThreadData *td) {
   }
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 void av1_setup_sms_bufs(AV1_COMMON *cm, ThreadData *td) {
   CHECK_MEM_ERROR(cm, td->sms_bufs, aom_malloc(sizeof(*td->sms_bufs)));
 }
@@ -951,4 +874,3 @@ PC_TREE *av1_look_for_counterpart_block(PC_TREE *pc_tree) {
   // Search from the highest common ancestor
   return counterpart_from_different_partition(current, pc_tree);
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS

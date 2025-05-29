@@ -227,12 +227,7 @@ static INLINE int get_tip_ctx(const MACROBLOCKD *xd) {
 static INLINE int is_tip_allowed(const AV1_COMMON *const cm,
                                  const MACROBLOCKD *const xd) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
-  const int is_allowed_bsize =
-#if CONFIG_EXT_RECUR_PARTITIONS
-      is_tip_allowed_bsize(mbmi);
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-      is_tip_allowed_bsize(mbmi->sb_type[PLANE_TYPE_Y]);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  const int is_allowed_bsize = is_tip_allowed_bsize(mbmi);
 
   if (cm->features.tip_frame_mode && is_allowed_bsize) {
     return 1;
@@ -478,30 +473,14 @@ static INLINE int is_cctx_allowed(const AV1_COMMON *cm, const MACROBLOCKD *xd) {
 
 static INLINE void get_above_and_left_cctx_type(const AV1_COMMON *cm,
                                                 const MACROBLOCKD *xd,
-#if !CONFIG_EXT_RECUR_PARTITIONS
-                                                TX_SIZE tx_size,
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
                                                 int *above_cctx,
                                                 int *left_cctx) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const int stride = mi_params->mi_stride;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int mi_grid_idx =
       get_mi_grid_idx(mi_params, xd->mi[0]->chroma_ref_info.mi_row_chroma_base,
                       xd->mi[0]->chroma_ref_info.mi_col_chroma_base);
-#else
-  const int ss_x = xd->plane[AOM_PLANE_U].subsampling_x;
-  const int ss_y = xd->plane[AOM_PLANE_U].subsampling_y;
-  const int txh = tx_size_high_unit[tx_size];
-  const int txw = tx_size_wide_unit[tx_size];
-  // Offsets are needed for sub 8x8 blocks to reach the top left corner of the
-  // current block where the current cctx_type is applied
-  const int mi_row_offset = (xd->mi_row & 0x01) && (txh & 0x01) && ss_y;
-  const int mi_col_offset = (xd->mi_col & 0x01) && (txw & 0x01) && ss_x;
-  const int mi_grid_idx = get_mi_grid_idx(mi_params, xd->mi_row - mi_row_offset,
-                                          xd->mi_col - mi_col_offset);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   CctxType *const cur_cctx_ptr = mi_params->cctx_type_map + mi_grid_idx;
   *above_cctx = xd->chroma_up_available ? (int)cur_cctx_ptr[-stride] : -1;
   *left_cctx = xd->chroma_left_available ? (int)cur_cctx_ptr[-1] : -1;

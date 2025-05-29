@@ -306,7 +306,6 @@ void aom_highbd_convolve_copy_avx2(const uint16_t *src, ptrdiff_t src_stride,
       h -= 2;
     } while (h);
   } else {
-#if CONFIG_EXT_RECUR_PARTITIONS
     assert(w == 256);
     do {
       highbd_copy_128(src, dst);
@@ -319,8 +318,5 @@ void aom_highbd_convolve_copy_avx2(const uint16_t *src, ptrdiff_t src_stride,
       dst += dst_stride;
       h -= 2;
     } while (h);
-#else
-    assert(0);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 }

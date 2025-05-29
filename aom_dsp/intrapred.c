@@ -714,7 +714,6 @@ static INLINE void ibp_dc_predictor(uint8_t *dst, ptrdiff_t stride, int bw,
 // - Shift 'sum_w_h' right until we reach an odd number. Let the number of
 // shifts for that block size be called 'shift1' (see the parameter in
 // dc_predictor_rect() function), and let the odd number be 'd'.
-#if CONFIG_EXT_RECUR_PARTITIONS
 // d has only 4 possible values:
 // * d = 3 for a 1:2 rect block,
 // * d = 5 for a 1:4 rect block,
@@ -735,32 +734,6 @@ static INLINE void ibp_dc_predictor(uint8_t *dst, ptrdiff_t stride, int bw,
 #define HIGHBD_DC_MULTIPLIER_1X4 0x66667
 #define HIGHBD_DC_MULTIPLIER_1X8 0x38E39
 #define HIGHBD_DC_MULTIPLIER_1X16 0x1E1E2
-#else
-// d has only 2 possible values:
-// * d = 3 for a 1:2 rect block,
-// * d = 5 for a 1:4 rect block.
-// - Find multipliers for dividing by 3 and 5 using the "Algorithm 1" in:
-// - Find multipliers for (i) dividing by 3, and (ii) dividing by 5,
-// using the "Algorithm 1" in:
-// http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1467632
-// by ensuring that m + n = 17 (in that algorithm). This ensures that our 2nd
-// shift will be 17, regardless of the block size.
-
-// Note: For low bitdepth, assembly code may be optimized by using smaller
-// constants for smaller block sizes, where the range of the 'sum' is
-// restricted to fewer bits.
-
-// Note: Strictly speaking, 2nd shift needs to be 17 only when:
-// - bit depth == 12, and
-// - bw + bh is divisible by 5 (as opposed to divisible by 3).
-// All other cases can use half the multipliers with a shift of 16 instead.
-// This special optimization can be used when writing assembly code.
-#define HIGHBD_DC_SHIFT2 17
-#define HIGHBD_DC_MULTIPLIER_1X2 0xAAAB
-// Note: This constant is odd, but a smaller even constant (0x199a) with the
-// appropriate shift should work for neon in 8/10-bit.
-#define HIGHBD_DC_MULTIPLIER_1X4 0x6667
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE void highbd_dc_predictor_rect(uint16_t *dst, ptrdiff_t stride,
                                             int bw, int bh,
@@ -887,7 +860,6 @@ void aom_highbd_dc_predictor_64x32_c(uint16_t *dst, ptrdiff_t stride,
                            HIGHBD_DC_MULTIPLIER_1X2);
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 void aom_highbd_dc_predictor_4x32_c(uint16_t *dst, ptrdiff_t stride,
                                     const uint16_t *above, const uint16_t *left,
                                     int bd) {
@@ -929,14 +901,11 @@ void aom_highbd_dc_predictor_64x4_c(uint16_t *dst, ptrdiff_t stride,
   highbd_dc_predictor_rect(dst, stride, 64, 4, above, left, bd, 2,
                            HIGHBD_DC_MULTIPLIER_1X16);
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #undef HIGHBD_DC_MULTIPLIER_1X2
 #undef HIGHBD_DC_MULTIPLIER_1X4
-#if CONFIG_EXT_RECUR_PARTITIONS
 #undef HIGHBD_DC_MULTIPLIER_1X8
 #undef HIGHBD_DC_MULTIPLIER_1X16
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // This serves as a wrapper function, so that all the prediction functions
 // can be unified and accessed as a pointer array. Note that the boundary
@@ -956,7 +925,6 @@ void aom_highbd_dc_predictor_64x4_c(uint16_t *dst, ptrdiff_t stride,
   }
 
 /* clang-format off */
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define intra_pred_rectangular(type) \
   intra_pred_sized(type, 4, 8) \
   intra_pred_sized(type, 8, 4) \
@@ -998,37 +966,6 @@ void aom_highbd_dc_predictor_64x4_c(uint16_t *dst, ptrdiff_t stride,
   intra_pred_highbd_sized(type, 64, 8) \
   intra_pred_highbd_sized(type, 4, 64) \
   intra_pred_highbd_sized(type, 64, 4)
-#else
-#define intra_pred_rectangular(type) \
-  intra_pred_sized(type, 4, 8) \
-  intra_pred_sized(type, 8, 4) \
-  intra_pred_sized(type, 8, 16) \
-  intra_pred_sized(type, 16, 8) \
-  intra_pred_sized(type, 16, 32) \
-  intra_pred_sized(type, 32, 16) \
-  intra_pred_sized(type, 32, 64) \
-  intra_pred_sized(type, 64, 32) \
-  intra_pred_sized(type, 4, 16) \
-  intra_pred_sized(type, 16, 4) \
-  intra_pred_sized(type, 8, 32) \
-  intra_pred_sized(type, 32, 8) \
-  intra_pred_sized(type, 16, 64) \
-  intra_pred_sized(type, 64, 16) \
-  intra_pred_highbd_sized(type, 4, 8) \
-  intra_pred_highbd_sized(type, 8, 4) \
-  intra_pred_highbd_sized(type, 8, 16) \
-  intra_pred_highbd_sized(type, 16, 8) \
-  intra_pred_highbd_sized(type, 16, 32) \
-  intra_pred_highbd_sized(type, 32, 16) \
-  intra_pred_highbd_sized(type, 32, 64) \
-  intra_pred_highbd_sized(type, 64, 32) \
-  intra_pred_highbd_sized(type, 4, 16) \
-  intra_pred_highbd_sized(type, 16, 4) \
-  intra_pred_highbd_sized(type, 8, 32) \
-  intra_pred_highbd_sized(type, 32, 8) \
-  intra_pred_highbd_sized(type, 16, 64) \
-  intra_pred_highbd_sized(type, 64, 16)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #define intra_pred_above_4x4(type) \
   intra_pred_sized(type, 8, 8) \

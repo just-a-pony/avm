@@ -227,12 +227,8 @@ static INLINE int is_winner_mode_processing_enabled(
 static INLINE void set_tx_size_search_method(
     const AV1_COMMON *cm, const WinnerModeParams *winner_mode_params,
     TxfmSearchParams *txfm_params, int enable_winner_mode_for_tx_size_srch,
-    int is_winner_mode
-#if CONFIG_EXT_RECUR_PARTITIONS
-    ,
-    const MACROBLOCK *x, bool use_largest_tx_size_for_small_bsize
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-) {
+    int is_winner_mode, const MACROBLOCK *x,
+    bool use_largest_tx_size_for_small_bsize) {
   // Populate transform size search method/transform mode appropriately
   txfm_params->tx_size_search_method =
       winner_mode_params->tx_size_search_methods[DEFAULT_EVAL];
@@ -245,13 +241,11 @@ static INLINE void set_tx_size_search_method(
           winner_mode_params->tx_size_search_methods[MODE_EVAL];
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE bsize = x->e_mbd.mi[0]->sb_type[0];
   if (!frame_is_intra_only(cm) && x->sb_enc.min_partition_size == BLOCK_4X4 &&
       use_largest_tx_size_for_small_bsize && is_bsize_geq(BLOCK_16X16, bsize)) {
     txfm_params->tx_size_search_method = USE_LARGESTALL;
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   txfm_params->tx_mode_search_type =
       select_tx_mode(cm, txfm_params->tx_size_search_method);
 }
@@ -322,12 +316,8 @@ static INLINE void set_mode_eval_params(const struct AV1_COMP *cpi,
           winner_mode_params->coeff_opt_satd_threshold, 0, 0);
 
       // Set default transform size search method
-      set_tx_size_search_method(cm, winner_mode_params, txfm_params, 0, 0
-#if CONFIG_EXT_RECUR_PARTITIONS
-                                ,
-                                x, sf->tx_sf.use_largest_tx_size_for_small_bsize
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      );
+      set_tx_size_search_method(cm, winner_mode_params, txfm_params, 0, 0, x,
+                                sf->tx_sf.use_largest_tx_size_for_small_bsize);
       // Set default transform type prune
       set_tx_type_prune(sf, txfm_params, 0, 0);
       break;
@@ -358,12 +348,8 @@ static INLINE void set_mode_eval_params(const struct AV1_COMP *cpi,
       // Set the transform size search method for mode evaluation
       set_tx_size_search_method(
           cm, winner_mode_params, txfm_params,
-          sf->winner_mode_sf.enable_winner_mode_for_tx_size_srch, 0
-#if CONFIG_EXT_RECUR_PARTITIONS
-          ,
-          x, sf->tx_sf.use_largest_tx_size_for_small_bsize
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      );
+          sf->winner_mode_sf.enable_winner_mode_for_tx_size_srch, 0, x,
+          sf->tx_sf.use_largest_tx_size_for_small_bsize);
       // Set transform type prune for mode evaluation
       set_tx_type_prune(sf, txfm_params,
                         sf->tx_sf.tx_type_search.winner_mode_tx_type_pruning,
@@ -394,12 +380,8 @@ static INLINE void set_mode_eval_params(const struct AV1_COMP *cpi,
       // Set the transform size search method for winner mode evaluation
       set_tx_size_search_method(
           cm, winner_mode_params, txfm_params,
-          sf->winner_mode_sf.enable_winner_mode_for_tx_size_srch, 1
-#if CONFIG_EXT_RECUR_PARTITIONS
-          ,
-          x, sf->tx_sf.use_largest_tx_size_for_small_bsize
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      );
+          sf->winner_mode_sf.enable_winner_mode_for_tx_size_srch, 1, x,
+          sf->tx_sf.use_largest_tx_size_for_small_bsize);
       // Set default transform type prune mode for winner mode evaluation
       set_tx_type_prune(sf, txfm_params,
                         sf->tx_sf.tx_type_search.winner_mode_tx_type_pruning,
@@ -426,22 +408,10 @@ static INLINE CFL_ALLOWED_TYPE store_cfl_required_rdo(const AV1_COMMON *cm,
   if (cm->seq_params.monochrome || !xd->is_chroma_ref) return CFL_DISALLOWED;
 
   if (!xd->is_chroma_ref) {
-#if CONFIG_EXT_RECUR_PARTITIONS
     // CfL is available to luma partitions lesser than or equal to 32x32.
     const BLOCK_SIZE bsize = xd->mi[0]->sb_type[0];
     return (CFL_ALLOWED_TYPE)(block_size_wide[bsize] <= CFL_BUF_LINE &&
                               block_size_high[bsize] <= CFL_BUF_LINE);
-#else
-    // For non-chroma-reference blocks, we should always store the luma pixels,
-    // in case the corresponding chroma-reference block uses CfL.
-    // Note that this can only happen for block sizes which are <8 on
-    // their shortest side, as otherwise they would be chroma reference
-    // blocks.
-    // Also, their largest dimention must be <= 32.
-    assert(block_size_wide[xd->mi[0]->sb_type[0]] <= 32 &&
-           block_size_high[xd->mi[0]->sb_type[0]] <= 32);
-    return CFL_ALLOWED;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 
   // For chroma reference blocks, we should store data in the encoder iff we're

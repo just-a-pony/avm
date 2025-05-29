@@ -2419,7 +2419,6 @@ static AOM_INLINE void scan_row_mbmi(
 #endif  // CONFIG_C071_SUBBLK_WARPMV
   const int plane_type = (xd->tree_type == CHROMA_PART);
   for (int i = 0; i < end_mi;) {
-#if CONFIG_EXT_RECUR_PARTITIONS
     if (xd->mi_col + col_offset + i >= cm->mi_params.mi_cols) break;
     const int sb_mi_size = mi_size_wide[cm->sb_size];
     const int mask_row = mi_row & (sb_mi_size - 1);
@@ -2433,7 +2432,6 @@ static AOM_INLINE void scan_row_mbmi(
           ref_mask_row * xd->is_mi_coded_stride + ref_mask_col;
       if (!xd->is_mi_coded[0][ref_offset]) break;
     }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     const MB_MODE_INFO *const candidate = candidate_mi0[col_offset + i];
     assert(candidate != NULL);
 #if CONFIG_C071_SUBBLK_WARPMV
@@ -2559,7 +2557,6 @@ static AOM_INLINE void scan_col_mbmi(
   const int use_step_16 = (xd->height >= 16);
 
   for (i = 0; i < end_mi;) {
-#if CONFIG_EXT_RECUR_PARTITIONS
     if (xd->mi_row + row_offset + i >= cm->mi_params.mi_rows) break;
     const int sb_mi_size = mi_size_wide[cm->sb_size];
     const int mask_row = mi_row & (sb_mi_size - 1);
@@ -2572,7 +2569,6 @@ static AOM_INLINE void scan_col_mbmi(
           ref_mask_row * xd->is_mi_coded_stride + ref_mask_col;
       if (!xd->is_mi_coded[0][ref_offset]) break;
     }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     const MB_MODE_INFO *const candidate =
         xd->mi[(row_offset + i) * xd->mi_stride + col_offset];
     assert(candidate != NULL);
@@ -2765,7 +2761,6 @@ static AOM_INLINE void scan_blk_mbmi(
   }  // Analyze a single 8x8 block motion information.
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static int has_top_right(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                          int mi_row, int mi_col, int n4_w) {
   const int sb_mi_size = mi_size_wide[cm->sb_size];
@@ -2828,119 +2823,6 @@ static int has_bottom_left(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     return xd->is_mi_coded[av1_get_sdp_idx(xd->tree_type)][bl_offset];
   }
 }
-#else
-static int has_top_right(const AV1_COMMON *cm, const MACROBLOCKD *xd,
-                         int mi_row, int mi_col, int bs) {
-  const int sb_mi_size = mi_size_wide[cm->sb_size];
-  const int mask_row = mi_row & (sb_mi_size - 1);
-  const int mask_col = mi_col & (sb_mi_size - 1);
-
-#if !CONFIG_MVP_IMPROVEMENT
-  if (bs > mi_size_wide[BLOCK_64X64]) return 0;
-#endif  // !CONFIG_MVP_IMPROVEMENT
-
-  // In a split partition all apart from the bottom right has a top right
-  int has_tr = !((mask_row & bs) && (mask_col & bs));
-
-  // bs > 0 and bs is a power of 2
-  assert(bs > 0 && !(bs & (bs - 1)));
-
-  // For each 4x4 group of blocks, when the bottom right is decoded the blocks
-  // to the right have not been decoded therefore the bottom right does
-  // not have a top right
-  while (bs < sb_mi_size) {
-    if (mask_col & bs) {
-      if ((mask_col & (2 * bs)) && (mask_row & (2 * bs))) {
-        has_tr = 0;
-        break;
-      }
-    } else {
-      break;
-    }
-    bs <<= 1;
-  }
-
-  // In a VERTICAL or VERTICAL_4 partition, all partition before the last one
-  // always have a top right (as the block above will have been decoded).
-  if (xd->width < xd->height) {
-    if (!xd->is_last_vertical_rect) has_tr = 1;
-  }
-
-  // In a HORIZONTAL or HORIZONTAL_4 partition, partitions after the first one
-  // never have a top right (as the block to the right won't have been decoded).
-  if (xd->width > xd->height) {
-    if (!xd->is_first_horizontal_rect) has_tr = 0;
-  }
-
-  // The bottom left square of a Vertical A (in the old format) does
-  // not have a top right as it is decoded before the right hand
-  // rectangle of the partition
-  if (xd->mi[0]->partition == PARTITION_VERT_A) {
-    if (xd->width == xd->height)
-      if (mask_row & bs) has_tr = 0;
-  }
-
-  return has_tr;
-}
-
-#if CONFIG_MVP_IMPROVEMENT
-static int has_bottom_left(const AV1_COMMON *cm, const MACROBLOCKD *xd,
-                           int mi_row, int mi_col, int bs) {
-  const int sb_mi_size = mi_size_wide[cm->sb_size];
-  const int mask_row = mi_row & (sb_mi_size - 1);
-  const int mask_col = mi_col & (sb_mi_size - 1);
-
-  // In a split partition, only top left subblock has a bottom right
-  int has_bl = !((mask_row & bs) || (mask_col & bs));
-
-  // bs lareger than 64x64 or equals to sb_size case not allowed
-  if (bs > mi_size_wide[BLOCK_64X64]) has_bl = 0;
-  if (bs == mi_size_wide[cm->sb_size]) has_bl = 0;
-
-  // bs > 0 and bs is a power of 2
-  assert(bs > 0 && !(bs & (bs - 1)));
-
-  // For each 4x4 group of blocks, when the tob left is decoded the blocks
-  // to the left have been decoded therefore the top left does
-  // have a bottom left
-  while (bs < sb_mi_size) {
-    if (!(mask_col & bs)) {
-      if (2 * bs == sb_mi_size) break;
-      if (!(mask_col & (2 * bs)) && !(mask_row & (2 * bs))) {
-        has_bl = 1;
-        break;
-      }
-    } else {
-      break;
-    }
-    bs <<= 1;
-  }
-
-  // In a VERTICAL or VERTICAL_4 partition, all partition after the first one
-  // never have a bottom left (as the block to the left won't have been
-  // decoded).
-  if (xd->width < xd->height) {
-    if (!xd->is_first_vertical_rect) has_bl = 0;
-  }
-
-  // In a HORIZONTAL or HORIZONTAL_4 partition, partitions before the last one
-  // always have a bottom left (as the block above will have been decoded).
-  if (xd->width > xd->height) {
-    if (!xd->is_last_horizontal_rect) has_bl = 1;
-  }
-
-  // The bottom left square of a Vertical B (in the old format) does
-  // have a bottom left as it is decoded after the left hand
-  // rectangle of the partition
-  if (xd->mi[0]->partition == PARTITION_VERT_B) {
-    if (xd->width == xd->height)
-      if (!(mask_row & bs)) has_bl = 1;
-  }
-
-  return has_bl;
-}
-#endif  // CONFIG_MVP_IMPROVEMENT
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if !CONFIG_MVP_IMPROVEMENT
 static int check_sb_border(const int mi_row, const int mi_col,
@@ -3712,12 +3594,7 @@ static AOM_INLINE void get_row_smvp_states(const AV1_COMMON *cm,
                                            MVP_UNIT_STATUS row_smvp_state[4]) {
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int has_tr = has_top_right(cm, xd, mi_row, mi_col, xd->width);
-#else
-  const int bs = AOMMAX(xd->width, xd->height);
-  const int has_tr = has_top_right(cm, xd, mi_row, mi_col, bs);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   const int block_width_type =
       xd->width == 1 ? BLOCK_WIDTH_4
@@ -3929,22 +3806,12 @@ static AOM_INLINE void setup_ref_mv_list(
     ,
     WARP_CANDIDATE warp_param_stack[MAX_WARP_REF_CANDIDATES],
     int max_num_of_warp_candidates, uint8_t *valid_num_warp_candidates) {
-#if CONFIG_EXT_RECUR_PARTITIONS
 #if !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   const int has_tr = has_top_right(cm, xd, mi_row, mi_col, xd->width);
 #endif  // !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
 #if CONFIG_MVP_IMPROVEMENT
   const int has_bl = has_bottom_left(cm, xd, mi_row, mi_col, xd->height);
 #endif  // CONFIG_MVP_IMPROVEMENT
-#else
-  const int bs = AOMMAX(xd->width, xd->height);
-#if !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
-  const int has_tr = has_top_right(cm, xd, mi_row, mi_col, bs);
-#endif  // !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
-#if CONFIG_MVP_IMPROVEMENT
-  const int has_bl = has_bottom_left(cm, xd, mi_row, mi_col, bs);
-#endif  // CONFIG_MVP_IMPROVEMENT
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   MV_REFERENCE_FRAME rf[2];
 
   const TileInfo *const tile = &xd->tile;
@@ -8597,12 +8464,7 @@ uint8_t av1_findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int *pts,
   assert(np <= LEAST_SQUARES_SAMPLES_MAX);
 
   // Top-right block
-#if CONFIG_EXT_RECUR_PARTITIONS
   if (do_top_right && has_top_right(cm, xd, mi_row, mi_col, xd->width)) {
-#else
-  if (do_top_right &&
-      has_top_right(cm, xd, mi_row, mi_col, AOMMAX(xd->width, xd->height))) {
-#endif
     const POSITION top_right_block_pos = { -1, xd->width };
 
     if (is_inside(tile, mi_col, mi_row, &top_right_block_pos)) {
@@ -9222,19 +9084,11 @@ int allow_extend_nb(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                     const MB_MODE_INFO *mbmi, int *p_num_of_warp_neighbors) {
   const TileInfo *const tile = &xd->tile;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 #if !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   const int has_tr = has_top_right(cm, xd, xd->mi_row, xd->mi_col, xd->width);
 #endif  // !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
   const int has_bl =
       has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, xd->height);
-#else
-  const int bs = AOMMAX(xd->width, xd->height);
-#if !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
-  const int has_tr = has_top_right(cm, xd, xd->mi_row, xd->mi_col, bs);
-#endif  // !CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
-  const int has_bl = has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, bs);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   POSITION mi_pos;
 
   int allow_new_ext = 0;
@@ -9510,13 +9364,8 @@ static AOM_INLINE int get_cand_from_pos_idx(const AV1_COMMON *cm,
     get_row_smvp_states(cm, xd, row_smvp_state);
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int has_bl =
       has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, xd->height);
-#else
-  const int bs = AOMMAX(xd->width, xd->height);
-  const int has_bl = has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, bs);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   int ret_cand = 0;
 
@@ -9581,15 +9430,9 @@ static AOM_INLINE POSITION get_pos_from_pos_idx(const MACROBLOCKD *xd,
 static AOM_INLINE int get_cand_from_pos_idx(const AV1_COMMON *cm,
                                             const MACROBLOCKD *xd,
                                             int pos_idx) {
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int has_tr = has_top_right(cm, xd, xd->mi_row, xd->mi_col, xd->width);
   const int has_bl =
       has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, xd->height);
-#else
-  const int bs = AOMMAX(xd->width, xd->height);
-  const int has_tr = has_top_right(cm, xd, xd->mi_row, xd->mi_col, bs);
-  const int has_bl = has_bottom_left(cm, xd, xd->mi_row, xd->mi_col, bs);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   int ret_cand = 0;
 

@@ -635,7 +635,6 @@ int main(int argc, const char **argv) {
                      "[INTER_SDP_BSIZE_GROUP][CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Partitions");
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   cts_each_dim[0] = PARTITION_STRUCTURE_NUM;
   cts_each_dim[1] = PARTITION_CONTEXTS;
   cts_each_dim[2] = 2;
@@ -717,20 +716,6 @@ int main(int argc, const char **argv) {
       0, &total_count, do_uneven_4way_partition_type_reduce, mem_wanted,
       "Partitions");  // minus unused context entries
 #endif
-#else
-  /* block partition */
-  cts_each_dim[0] = PARTITION_STRUCTURE_NUM;
-  cts_each_dim[1] = PARTITION_CONTEXTS;
-  cts_each_dim[2] = EXT_PARTITION_TYPES;
-  int part_types_each_ctx[PARTITION_CONTEXTS] = { 4,  4,  4,  4,  10, 10, 10,
-                                                  10, 10, 10, 10, 10, 10, 10,
-                                                  10, 10, 8,  8,  8,  8 };
-  optimize_cdf_table_var_modes_3d_inner(
-      &fc.partition[0][0][0], probsfile, 3, cts_each_dim, part_types_each_ctx,
-      "static const aom_cdf_prob "
-      "default_partition_cdf[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]"
-      "[CDF_SIZE(EXT_PARTITION_TYPES)]");
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   cts_each_dim[0] = DELTA_Q_PROBS + 1;
   optimize_cdf_table(&fc.delta_q_cnts[0], probsfile, 1, cts_each_dim,

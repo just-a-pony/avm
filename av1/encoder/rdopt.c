@@ -73,9 +73,7 @@
 #include "av1/encoder/tokenize.h"
 #include "av1/encoder/tpl_model.h"
 #include "av1/encoder/tx_search.h"
-#if CONFIG_EXT_RECUR_PARTITIONS
 #include "av1/encoder/partition_strategy.h"
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #define LAST_NEW_MV_INDEX 6
 
@@ -451,13 +449,8 @@ static int64_t get_sse(const AV1_COMP *cpi, const MACROBLOCK *x,
     if (plane && !xd->is_chroma_ref) break;
     const struct macroblock_plane *const p = &x->plane[plane];
     const struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_EXT_RECUR_PARTITIONS
     const BLOCK_SIZE bs = get_mb_plane_block_size(
         xd, mbmi, plane, pd->subsampling_x, pd->subsampling_y);
-#else
-    const BLOCK_SIZE bs = get_plane_block_size(
-        mbmi->sb_type[plane > 0], pd->subsampling_x, pd->subsampling_y);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     unsigned int sse;
 
     cpi->fn_ptr[bs].vf(p->src.buf, p->src.stride, pd->dst.buf, pd->dst.stride,
@@ -7543,7 +7536,6 @@ static int is_local_intrabc(const MV dv, const AV1_COMMON *cm,
     int tmp_bw = bw;
     if (!cm->seq_params.enable_sdp || !frame_is_intra_only(cm)) {
       if (xd->is_chroma_ref && av1_num_planes(cm) > 1) {
-#if CONFIG_EXT_RECUR_PARTITIONS
         if (xd->mi && xd->mi[0]) {
           const CHROMA_REF_INFO *chroma_ref_info = &xd->mi[0]->chroma_ref_info;
           const BLOCK_SIZE bsize_base = chroma_ref_info->bsize_base;
@@ -7552,21 +7544,6 @@ static int is_local_intrabc(const MV dv, const AV1_COMMON *cm,
           tmp_bh = block_size_high[bsize_base];
           tmp_bw = block_size_wide[bsize_base];
         }
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-        const struct macroblockd_plane *const pd = &xd->plane[1];
-        if ((bw < 8 && pd->subsampling_x) && (bh < 8 && pd->subsampling_y)) {
-          tmp_row = mi_row / 2 * 2;
-          tmp_col = mi_col / 2 * 2;
-          tmp_bh = 8;
-          tmp_bw = 8;
-        } else if (bw < 8 && pd->subsampling_x) {
-          tmp_col = mi_col / 2 * 2;
-          tmp_bw = 8;
-        } else if (bh < 8 && pd->subsampling_y) {
-          tmp_row = mi_row / 2 * 2;
-          tmp_bh = 8;
-        }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       }
     }
     // The size of local search range is determined by the value of
@@ -9704,7 +9681,6 @@ static AOM_INLINE int is_ref_frame_used_by_compound_ref(
   return 0;
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static AOM_INLINE int is_ref_frame_used_in_cache(MV_REFERENCE_FRAME ref_frame,
                                                  const MB_MODE_INFO *mi_cache) {
   if (!mi_cache) {
@@ -9719,7 +9695,6 @@ static AOM_INLINE int is_ref_frame_used_in_cache(MV_REFERENCE_FRAME ref_frame,
   MV_REFERENCE_FRAME cached_ref_type = av1_ref_frame_type(mi_cache->ref_frame);
   return ref_frame == cached_ref_type;
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // Please add/modify parameter setting in this function, making it consistent
 // and easy to read and maintain.
@@ -9758,12 +9733,10 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
 #else
         if (skip_ref_frame_mask & (1 << ref_frame) &&
 #endif  // CONFIG_SAME_REF_COMPOUND
-            !is_ref_frame_used_by_compound_ref(ref_frame, skip_ref_frame_mask)
-#if CONFIG_EXT_RECUR_PARTITIONS
-            && !(should_reuse_mode(x, REUSE_INTER_MODE_IN_INTERFRAME_FLAG) &&
-                 is_ref_frame_used_in_cache(ref_frame, x->inter_mode_cache))
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-        ) {
+            !is_ref_frame_used_by_compound_ref(ref_frame,
+                                               skip_ref_frame_mask) &&
+            !(should_reuse_mode(x, REUSE_INTER_MODE_IN_INTERFRAME_FLAG) &&
+              is_ref_frame_used_in_cache(ref_frame, x->inter_mode_cache))) {
           continue;
         }
       }
@@ -9802,11 +9775,8 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
 #else
         if (skip_ref_frame_mask & (1 << ref_frame)
 #endif  // CONFIG_SAME_REF_COMPOUND
-#if CONFIG_EXT_RECUR_PARTITIONS
             && !(should_reuse_mode(x, REUSE_INTER_MODE_IN_INTERFRAME_FLAG) &&
-                 is_ref_frame_used_in_cache(ref_frame, x->inter_mode_cache))
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-        ) {
+                 is_ref_frame_used_in_cache(ref_frame, x->inter_mode_cache))) {
           continue;
         }
       }
@@ -10017,7 +9987,6 @@ static int fetch_picked_ref_frames_mask(const MACROBLOCK *const x,
   return picked_ref_frames_mask;
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static INLINE int is_mode_intra(PREDICTION_MODE mode) {
   return mode < INTRA_MODE_END;
 }
@@ -10085,7 +10054,6 @@ static INLINE int skip_inter_mode_with_cached_mode(
 
   return 0;
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // Case 1: return 0, means don't skip this mode
 // Case 2: return 1, means skip this mode completely
@@ -10118,13 +10086,11 @@ static int inter_mode_search_order_independent_skip(
   if (skip_repeated_mv(cm, x, mode, ref_frame, search_state)) {
     return 1;
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int cached_skip_ret =
       skip_inter_mode_with_cached_mode(cm, x, mode, ref_frame);
   if (cached_skip_ret > 0) {
     return cached_skip_ret;
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   const MB_MODE_INFO *const mbmi = x->e_mbd.mi[0];
   // If no valid mode has been found so far in PARTITION_NONE when finding a
@@ -10134,11 +10100,7 @@ static int inter_mode_search_order_independent_skip(
     return 0;
 
   int skip_motion_mode = 0;
-#if CONFIG_EXT_RECUR_PARTITIONS
   if (!x->inter_mode_cache && skip_ref_frame_mask) {
-#else
-  if (mbmi->partition != PARTITION_NONE && mbmi->partition != PARTITION_SPLIT) {
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_SAME_REF_COMPOUND
     assert(ref_type <
            (INTER_REFS_PER_FRAME * (INTER_REFS_PER_FRAME + 3) / 2 + 2));
@@ -10170,7 +10132,6 @@ static int inter_mode_search_order_independent_skip(
         }
       }
     }
-#if CONFIG_EXT_RECUR_PARTITIONS
     // If we are reusing the prediction from cache, and the current frame is
     // required by the cache, then we cannot prune it.
     if (should_reuse_mode(x, REUSE_INTER_MODE_IN_INTERFRAME_FLAG) &&
@@ -10182,7 +10143,6 @@ static int inter_mode_search_order_independent_skip(
       skip_motion_mode = (ref_type < INTER_REFS_PER_FRAME &&
                           x->inter_mode_cache->ref_frame[1] != INTRA_FRAME);
     }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     if (skip_ref) return 1;
   }
 
@@ -11288,7 +11248,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #else
   int picked_ref_frames_mask = 0;
 #endif  // CONFIG_SAME_REF_COMPOUND
-#if CONFIG_EXT_RECUR_PARTITIONS
   if (cpi->sf.inter_sf.prune_ref_frames && !x->inter_mode_cache) {
     bool prune_ref_frames = false;
     assert(should_reuse_mode(x, REUSE_PARTITION_MODE_FLAG));
@@ -11357,20 +11316,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           fetch_picked_ref_frames_mask(x, bsize, cm->mib_size);
     }
   }
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-  if (cpi->sf.inter_sf.prune_ref_frames && mbmi->partition != PARTITION_NONE &&
-      mbmi->partition != PARTITION_SPLIT) {
-    // prune_ref_frames = 1 implies prune only extended
-    // partition blocks. prune_ref_frames >=2
-    // implies prune for vert, horiz and extended partition blocks.
-    if ((mbmi->partition != PARTITION_VERT &&
-         mbmi->partition != PARTITION_HORZ) ||
-        cpi->sf.inter_sf.prune_ref_frames >= 2) {
-      picked_ref_frames_mask =
-          fetch_picked_ref_frames_mask(x, bsize, cm->mib_size);
-    }
-  }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   // Skip ref frames that never selected by square blocks.
 #if CONFIG_SAME_REF_COMPOUND
@@ -12007,7 +11952,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
               continue;
             }
 #endif  // CONFIG_AIMC
-#if CONFIG_EXT_RECUR_PARTITIONS
             const MB_MODE_INFO *cached_mi = x->inter_mode_cache;
             if (cached_mi) {
               const PREDICTION_MODE cached_mode = cached_mi->mode;
@@ -12020,7 +11964,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
                 continue;
               }
             }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if CONFIG_LOSSLESS_DPCM
             if (dpcm_idx > 0 &&
@@ -12116,7 +12059,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
                         mbmi->sb_type[PLANE_TYPE_Y]) &&
       !is_inter_mode(search_state.best_mbmode.mode) && rd_cost->rate < INT_MAX;
   int search_palette_mode = try_palette;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const MB_MODE_INFO *cached_mode = x->inter_mode_cache;
   if (should_reuse_mode(x, REUSE_INTRA_MODE_IN_INTERFRAME_FLAG) &&
       cached_mode &&
@@ -12124,7 +12066,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         cached_mode->palette_mode_info.palette_size[0] > 0)) {
     search_palette_mode = 0;
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   RD_STATS this_rd_cost;
   int this_skippable = 0;
   if (search_palette_mode) {

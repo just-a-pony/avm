@@ -466,7 +466,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
     RESET_CDF_COUNTER(fc->region_type_cdf[i], REGION_TYPES);
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
        plane_index++) {
     for (int i = 0; i < PARTITION_CONTEXTS; i++) {
@@ -500,22 +499,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
       }
     }
   }
-#else
-  for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
-       plane_index++) {
-    for (int i = 0; i < PARTITION_CONTEXTS; i++) {
-      if (i < 4) {
-        RESET_CDF_COUNTER_STRIDE(fc->partition_cdf[plane_index][i], 4,
-                                 CDF_SIZE(10));
-      } else if (i < 16) {
-        RESET_CDF_COUNTER(fc->partition_cdf[plane_index][i], 10);
-      } else {
-        RESET_CDF_COUNTER_STRIDE(fc->partition_cdf[plane_index][i], 8,
-                                 CDF_SIZE(10));
-      }
-    }
-  }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   RESET_CDF_COUNTER(fc->switchable_interp_cdf, SWITCHABLE_FILTERS);
 #if !CONFIG_AIMC
   RESET_CDF_COUNTER(fc->kf_y_cdf, INTRA_MODES);

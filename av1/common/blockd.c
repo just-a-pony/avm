@@ -152,7 +152,6 @@ void av1_set_entropy_contexts(const MACROBLOCKD *xd,
 
 void av1_reset_entropy_context(MACROBLOCKD *xd, BLOCK_SIZE bsize,
                                const int num_planes) {
-#if CONFIG_EXT_RECUR_PARTITIONS
   // TODO(chiyotsai): This part is needed to avoid encoder/decoder mismatch.
   // Investigate why this is the case. It seems like on the decoder side, the
   // decoder is failing to clear the context after encoding a skip_txfm chroma
@@ -168,17 +167,9 @@ void av1_reset_entropy_context(MACROBLOCKD *xd, BLOCK_SIZE bsize,
     default: assert(0);
   }
   for (int i = plane_start; i < plane_end; ++i) {
-#else
-  const int nplanes = 1 + (num_planes - 1) * xd->is_chroma_ref;
-  for (int i = 0; i < nplanes; i++) {
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     struct macroblockd_plane *const pd = &xd->plane[i];
     const BLOCK_SIZE plane_bsize = get_mb_plane_block_size(
         xd, xd->mi[0], i, pd->subsampling_x, pd->subsampling_y);
-#if !CONFIG_EXT_RECUR_PARTITIONS
-    assert(plane_bsize ==
-           get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y));
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
     (void)bsize;
     const int txs_wide = mi_size_wide[plane_bsize];
     const int txs_high = mi_size_high[plane_bsize];

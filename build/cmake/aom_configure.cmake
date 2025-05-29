@@ -306,21 +306,8 @@ else()
   add_compiler_flag_if_supported("-Wvla")
 
   if(CMAKE_C_COMPILER_ID MATCHES "GNU")
-    if(CONFIG_EXT_RECUR_PARTITIONS)
-      add_c_flag_if_supported("-Wstack-usage=960000")
-      add_cxx_flag_if_supported("-Wstack-usage=960000")
-    elseif("${SANITIZE}" MATCHES "address|undefined")
-      # This combination has more stack overhead, so we account for it by
-      # providing higher stack limit than usual.
-      add_c_flag_if_supported("-Wstack-usage=170000")
-      add_cxx_flag_if_supported("-Wstack-usage=270000")
-    elseif(CONFIG_RD_DEBUG) # Another case where higher stack usage is expected.
-      add_c_flag_if_supported("-Wstack-usage=140000")
-      add_cxx_flag_if_supported("-Wstack-usage=270000")
-    else()
-      add_c_flag_if_supported("-Wstack-usage=100000")
-      add_cxx_flag_if_supported("-Wstack-usage=240000")
-    endif()
+    add_c_flag_if_supported("-Wstack-usage=960000")
+    add_cxx_flag_if_supported("-Wstack-usage=960000")
   endif()
 
   if(CMAKE_C_COMPILER_ID MATCHES "GNU" AND SANITIZE MATCHES "address")

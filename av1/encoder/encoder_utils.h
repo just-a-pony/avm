@@ -234,7 +234,6 @@ static AOM_INLINE void init_buffer_indices(
            4;                                                               \
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_BFP_SAD_WRAPPER(aom_highbd_sad256x256)
 MAKE_BFP_SADAVG_WRAPPER(aom_highbd_sad256x256_avg)
 MAKE_BFP_SAD4D_WRAPPER(aom_highbd_sad256x256x4d)
@@ -246,7 +245,6 @@ MAKE_BFP_SAD4D_WRAPPER(aom_highbd_sad256x128x4d)
 MAKE_BFP_SAD_WRAPPER(aom_highbd_sad128x256)
 MAKE_BFP_SADAVG_WRAPPER(aom_highbd_sad128x256_avg)
 MAKE_BFP_SAD4D_WRAPPER(aom_highbd_sad128x256x4d)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 MAKE_BFP_SAD_WRAPPER(aom_highbd_sad128x128)
 MAKE_BFP_SADAVG_WRAPPER(aom_highbd_sad128x128_avg)
 MAKE_BFP_SAD4D_WRAPPER(aom_highbd_sad128x128x4d)
@@ -315,7 +313,6 @@ MAKE_BFP_SAD_WRAPPER(aom_highbd_sad64x16)
 MAKE_BFP_SADAVG_WRAPPER(aom_highbd_sad64x16_avg)
 MAKE_BFP_SAD4D_WRAPPER(aom_highbd_sad64x16x4d)
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_BFP_SAD_WRAPPER(aom_highbd_sad64x8)
 MAKE_BFP_SADAVG_WRAPPER(aom_highbd_sad64x8_avg)
 MAKE_BFP_SAD4D_WRAPPER(aom_highbd_sad64x8x4d)
@@ -340,7 +337,6 @@ MAKE_BFP_SAD4D_WRAPPER(aom_highbd_sad4x32x4d)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad256x256_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad256x128_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad128x256_avg)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad128x128_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad128x64_avg)
@@ -364,14 +360,12 @@ MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad8x32_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad32x8_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad16x64_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad64x16_avg)
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad8x64_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad64x8_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad4x64_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad64x4_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad4x32_avg)
 MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad32x4_avg)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #define HIGHBD_MBFP(BT, MCSDF, MCSVF) \
   cpi->fn_ptr[BT].msdf = MCSDF;       \
@@ -407,11 +401,9 @@ MAKE_BFP_JSADAVG_WRAPPER(aom_highbd_dist_wtd_sad32x4_avg)
            4;                                                              \
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad256x256)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad256x128)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad128x256)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad128x128)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad128x64)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad64x128)
@@ -434,14 +426,12 @@ MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad8x32)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad32x8)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad16x64)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad64x16)
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad8x64)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad64x8)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad4x64)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad64x4)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad4x32)
 MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad32x4)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #define HIGHBD_SDSFP(BT, SDSF, SDSX4DF) \
   cpi->fn_ptr[BT].sdsf = SDSF;          \
@@ -487,11 +477,9 @@ MAKE_MBFP_COMPOUND_SAD_WRAPPER(aom_highbd_masked_sad32x4)
     for (i = 0; i < 4; i++) sad_array[i] >>= 4;                                \
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_256x256)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_256x128)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_128x256)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_128x128)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_128x64)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_64x128)
@@ -511,7 +499,6 @@ MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_8x8)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_4x16)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_4x8)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_8x32)
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_8x64)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_64x8)
 MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_4x64)
@@ -522,7 +509,6 @@ MAKE_SDSF_SKIP_SAD_WRAPPER(aom_highbd_sad_skip_32x4)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_256x256x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_256x128x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_128x256x4d)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_128x128x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_128x64x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_64x128x4d)
@@ -542,14 +528,12 @@ MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_8x8x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_4x16x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_4x8x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_8x32x4d)
-#if CONFIG_EXT_RECUR_PARTITIONS
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_8x64x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_64x8x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_4x64x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_64x4x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_4x32x4d)
 MAKE_SDSF_SKIP_SAD_4D_WRAPPER(aom_highbd_sad_skip_32x4x4d)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
   AV1_COMMON *const cm = &cpi->common;
@@ -577,7 +561,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_BFP_WRAPPER(128, 128, 8)
       HIGHBD_BFP_WRAPPER(128, 64, 8)
       HIGHBD_BFP_WRAPPER(64, 128, 8)
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_BFP_WRAPPER(64, 8, 8)
       HIGHBD_BFP_WRAPPER(8, 64, 8)
       HIGHBD_BFP_WRAPPER(32, 4, 8)
@@ -591,7 +574,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_MBFP_WRAPPER(256, 256, 8)
       HIGHBD_MBFP_WRAPPER(256, 128, 8)
       HIGHBD_MBFP_WRAPPER(128, 256, 8)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_MBFP_WRAPPER(128, 128, 8)
       HIGHBD_MBFP_WRAPPER(128, 64, 8)
       HIGHBD_MBFP_WRAPPER(64, 128, 8)
@@ -614,7 +596,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_MBFP_WRAPPER(8, 32, 8)
       HIGHBD_MBFP_WRAPPER(16, 4, 8)
       HIGHBD_MBFP_WRAPPER(4, 16, 8)
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_MBFP_WRAPPER(64, 8, 8)
       HIGHBD_MBFP_WRAPPER(8, 64, 8)
       HIGHBD_MBFP_WRAPPER(32, 4, 8)
@@ -624,7 +605,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_SDSFP_WRAPPER(256, 256, 8)
       HIGHBD_SDSFP_WRAPPER(256, 128, 8)
       HIGHBD_SDSFP_WRAPPER(128, 256, 8)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_SDSFP_WRAPPER(128, 128, 8);
       HIGHBD_SDSFP_WRAPPER(128, 64, 8);
       HIGHBD_SDSFP_WRAPPER(64, 128, 8);
@@ -644,14 +624,12 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_SDSFP_WRAPPER(4, 16, 8);
       HIGHBD_SDSFP_WRAPPER(4, 8, 8);
       HIGHBD_SDSFP_WRAPPER(8, 32, 8);
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_SDSFP_WRAPPER(64, 8, 8)
       HIGHBD_SDSFP_WRAPPER(8, 64, 8)
       HIGHBD_SDSFP_WRAPPER(32, 4, 8)
       HIGHBD_SDSFP_WRAPPER(4, 32, 8)
       HIGHBD_SDSFP_WRAPPER(64, 4, 8)
       HIGHBD_SDSFP_WRAPPER(4, 64, 8)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
 
     case AOM_BITS_10:
@@ -677,7 +655,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_BFP_WRAPPER(128, 128, 10)
       HIGHBD_BFP_WRAPPER(128, 64, 10)
       HIGHBD_BFP_WRAPPER(64, 128, 10)
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_BFP_WRAPPER(64, 8, 10)
       HIGHBD_BFP_WRAPPER(8, 64, 10)
       HIGHBD_BFP_WRAPPER(32, 4, 10)
@@ -691,7 +668,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_MBFP_WRAPPER(256, 256, 10)
       HIGHBD_MBFP_WRAPPER(256, 128, 10)
       HIGHBD_MBFP_WRAPPER(128, 256, 10)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_MBFP_WRAPPER(128, 128, 10)
       HIGHBD_MBFP_WRAPPER(128, 64, 10)
       HIGHBD_MBFP_WRAPPER(64, 128, 10)
@@ -714,19 +690,15 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_MBFP_WRAPPER(8, 32, 10)
       HIGHBD_MBFP_WRAPPER(16, 4, 10)
       HIGHBD_MBFP_WRAPPER(4, 16, 10)
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_MBFP_WRAPPER(64, 8, 10)
       HIGHBD_MBFP_WRAPPER(8, 64, 10)
       HIGHBD_MBFP_WRAPPER(32, 4, 10)
       HIGHBD_MBFP_WRAPPER(4, 32, 10)
       HIGHBD_MBFP_WRAPPER(64, 4, 10)
       HIGHBD_MBFP_WRAPPER(4, 64, 10)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_SDSFP_WRAPPER(256, 256, 10)
       HIGHBD_SDSFP_WRAPPER(256, 128, 10)
       HIGHBD_SDSFP_WRAPPER(128, 256, 10)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_SDSFP_WRAPPER(128, 128, 10);
       HIGHBD_SDSFP_WRAPPER(128, 64, 10);
       HIGHBD_SDSFP_WRAPPER(64, 128, 10);
@@ -746,14 +718,12 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_SDSFP_WRAPPER(4, 16, 10);
       HIGHBD_SDSFP_WRAPPER(4, 8, 10);
       HIGHBD_SDSFP_WRAPPER(8, 32, 10);
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_SDSFP_WRAPPER(64, 8, 10)
       HIGHBD_SDSFP_WRAPPER(8, 64, 10)
       HIGHBD_SDSFP_WRAPPER(32, 4, 10)
       HIGHBD_SDSFP_WRAPPER(4, 32, 10)
       HIGHBD_SDSFP_WRAPPER(64, 4, 10)
       HIGHBD_SDSFP_WRAPPER(4, 64, 10)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
 
     case AOM_BITS_12:
@@ -779,7 +749,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_BFP_WRAPPER(128, 128, 12)
       HIGHBD_BFP_WRAPPER(128, 64, 12)
       HIGHBD_BFP_WRAPPER(64, 128, 12)
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_BFP_WRAPPER(64, 8, 12)
       HIGHBD_BFP_WRAPPER(8, 64, 12)
       HIGHBD_BFP_WRAPPER(32, 4, 12)
@@ -793,7 +762,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_MBFP_WRAPPER(128, 256, 12)
       HIGHBD_MBFP_WRAPPER(256, 128, 12)
       HIGHBD_MBFP_WRAPPER(256, 256, 12)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_MBFP_WRAPPER(128, 128, 12)
       HIGHBD_MBFP_WRAPPER(128, 64, 12)
       HIGHBD_MBFP_WRAPPER(64, 128, 12)
@@ -816,7 +784,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_MBFP_WRAPPER(8, 32, 12)
       HIGHBD_MBFP_WRAPPER(16, 4, 12)
       HIGHBD_MBFP_WRAPPER(4, 16, 12)
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_MBFP_WRAPPER(64, 8, 12)
       HIGHBD_MBFP_WRAPPER(8, 64, 12)
       HIGHBD_MBFP_WRAPPER(32, 4, 12)
@@ -826,7 +793,6 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_SDSFP_WRAPPER(256, 256, 12)
       HIGHBD_SDSFP_WRAPPER(256, 128, 12)
       HIGHBD_SDSFP_WRAPPER(128, 256, 12)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_SDSFP_WRAPPER(128, 128, 12);
       HIGHBD_SDSFP_WRAPPER(128, 64, 12);
       HIGHBD_SDSFP_WRAPPER(64, 128, 12);
@@ -846,14 +812,12 @@ static AOM_INLINE void highbd_set_var_fns(AV1_COMP *const cpi) {
       HIGHBD_SDSFP_WRAPPER(4, 16, 12);
       HIGHBD_SDSFP_WRAPPER(4, 8, 12);
       HIGHBD_SDSFP_WRAPPER(8, 32, 12);
-#if CONFIG_EXT_RECUR_PARTITIONS
       HIGHBD_SDSFP_WRAPPER(64, 8, 12)
       HIGHBD_SDSFP_WRAPPER(8, 64, 12)
       HIGHBD_SDSFP_WRAPPER(32, 4, 12)
       HIGHBD_SDSFP_WRAPPER(4, 32, 12)
       HIGHBD_SDSFP_WRAPPER(64, 4, 12)
       HIGHBD_SDSFP_WRAPPER(4, 64, 12)
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
 
     default:

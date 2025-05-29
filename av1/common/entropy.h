@@ -155,25 +155,11 @@ static INLINE ENTROPY_CONTEXT get_entropy_context_1d(const ENTROPY_CONTEXT *ctx,
                                                      int size) {
   switch (size) {
     case 4: return ctx[0] != 0;
-    case 8:
-#if CONFIG_EXT_RECUR_PARTITIONS
-      return ctx[0] != 0 || ctx[1] != 0;
-#else
-      return !!*(const uint16_t *)ctx;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    case 16:
-#if CONFIG_EXT_RECUR_PARTITIONS
-      return ctx[0] != 0 || ctx[1] != 0 || ctx[2] != 0 || ctx[3] != 0;
-#else
-      return !!*(const uint32_t *)ctx;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+    case 8: return ctx[0] != 0 || ctx[1] != 0;
+    case 16: return ctx[0] != 0 || ctx[1] != 0 || ctx[2] != 0 || ctx[3] != 0;
     case 32:
-#if CONFIG_EXT_RECUR_PARTITIONS
       return !!(*(const uint16_t *)ctx | *(const uint16_t *)(ctx + 2) |
                 *(const uint16_t *)(ctx + 4) | *(const uint16_t *)(ctx + 6));
-#else
-      return !!*(const uint64_t *)ctx;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     case 64: return !!(*(const uint64_t *)ctx | *(const uint64_t *)(ctx + 8));
     default: assert(0 && "Invalid transform 1d size."); break;
   }

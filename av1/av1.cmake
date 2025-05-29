@@ -119,10 +119,8 @@ if(CONFIG_DIP)
 endif()
 
 if(CONFIG_AV1_ENCODER)
-  if(CONFIG_EXT_RECUR_PARTITIONS)
-    list(APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/encoder/erp_tflite.cc"
-         "${AOM_ROOT}/av1/encoder/erp_tflite.h")
-  endif()
+  list(APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/encoder/erp_tflite.cc"
+       "${AOM_ROOT}/av1/encoder/erp_tflite.h")
 
   if(CONFIG_TENSORFLOW_LITE)
     list(APPEND AOM_AV1_COMMON_SOURCES

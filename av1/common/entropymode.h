@@ -632,7 +632,6 @@ typedef struct frame_contexts {
   aom_cdf_prob uv_mode_cdf[UV_MODE_CONTEXTS][CDF_SIZE(UV_INTRA_MODES - 1)];
   aom_cdf_prob cfl_cdf[CFL_CONTEXTS][CDF_SIZE(2)];
 #endif  // CONFIG_AIMC
-#if CONFIG_EXT_RECUR_PARTITIONS
   aom_cdf_prob do_split_cdf[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
                            [CDF_SIZE(2)];
   aom_cdf_prob do_square_split_cdf[PARTITION_STRUCTURE_NUM]
@@ -652,11 +651,6 @@ typedef struct frame_contexts {
                                              [PARTITION_CONTEXTS]
                                              [CDF_SIZE(NUM_UNEVEN_4WAY_PARTS)];
 #endif  // !CONFIG_NEW_PART_CTX
-#else
-  // Partition type for a square block, without limitations.
-  aom_cdf_prob partition_cdf[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
-                            [CDF_SIZE(EXT_PARTITION_TYPES)];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   aom_cdf_prob switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS]
                                     [CDF_SIZE(SWITCHABLE_FILTERS)];
 #if !CONFIG_AIMC

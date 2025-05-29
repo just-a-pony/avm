@@ -44,24 +44,18 @@ int av1_cdef_compute_sb_list(
   int maxc = mi_params->mi_cols - mi_col;
   int maxr = mi_params->mi_rows - mi_row;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   if (bs == BLOCK_256X256 || bs == BLOCK_256X128) {
     maxc = AOMMIN(maxc, MI_SIZE_256X256);
-  } else
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    if (bs == BLOCK_128X128 || bs == BLOCK_128X64)
-      maxc = AOMMIN(maxc, MI_SIZE_128X128);
-    else
-      maxc = AOMMIN(maxc, MI_SIZE_64X64);
-#if CONFIG_EXT_RECUR_PARTITIONS
+  } else if (bs == BLOCK_128X128 || bs == BLOCK_128X64)
+    maxc = AOMMIN(maxc, MI_SIZE_128X128);
+  else
+    maxc = AOMMIN(maxc, MI_SIZE_64X64);
   if (bs == BLOCK_256X256 || bs == BLOCK_128X256) {
     maxr = AOMMIN(maxr, MI_SIZE_256X256);
-  } else
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    if (bs == BLOCK_128X128 || bs == BLOCK_64X128)
-      maxr = AOMMIN(maxr, MI_SIZE_128X128);
-    else
-      maxr = AOMMIN(maxr, MI_SIZE_64X64);
+  } else if (bs == BLOCK_128X128 || bs == BLOCK_64X128)
+    maxr = AOMMIN(maxr, MI_SIZE_128X128);
+  else
+    maxr = AOMMIN(maxr, MI_SIZE_64X64);
 
   const int r_step = 2;  // mi_size_high[BLOCK_8X8]
   const int c_step = 2;  // mi_size_wide[BLOCK_8X8]

@@ -700,14 +700,8 @@ typedef struct SequenceHeader {
                                      // the ith bit in least to most significant
                                      // order to 1.
   uint8_t enable_parity_hiding;      // To turn on/off PAR_HIDING
-#if CONFIG_EXT_RECUR_PARTITIONS
-  uint8_t enable_ext_partitions;  // enable extended partitions
-#endif                            // CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_EXT_RECUR_PARTITIONS
+  uint8_t enable_ext_partitions;     // enable extended partitions
   uint8_t enable_uneven_4way_partitions;  // enable uneven 4way partition
-#else
-  uint8_t enable_1to4_partitions;  // enable 1:4 and 4:1 partition
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_IMPROVED_GLOBAL_MOTION
   bool enable_global_motion;
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
@@ -2673,10 +2667,8 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
 
   xd->mi_row = mi_row;
   xd->mi_col = mi_col;
-#if CONFIG_EXT_RECUR_PARTITIONS
   xd->mi[0]->chroma_mi_row_start = mi_row;
   xd->mi[0]->chroma_mi_col_start = mi_col;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   xd->tile.mi_col_start = tile->mi_col_start;
   xd->tile.mi_col_end = tile->mi_col_end;
@@ -2789,32 +2781,6 @@ static INLINE void set_mi_row_col(MACROBLOCKD *xd, const TileInfo *const tile,
 
   xd->height = bh;
   xd->width = bw;
-
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  xd->is_last_vertical_rect = 0;
-  if (xd->width < xd->height) {
-    if (!((mi_col + xd->width) & (xd->height - 1))) {
-      xd->is_last_vertical_rect = 1;
-    }
-  }
-
-  xd->is_first_horizontal_rect = 0;
-  if (xd->width > xd->height)
-    if (!(mi_row & (xd->width - 1))) xd->is_first_horizontal_rect = 1;
-
-#if CONFIG_MVP_IMPROVEMENT
-  xd->is_last_horizontal_rect = 0;
-  if (xd->width > xd->height) {
-    if (!((mi_row + xd->height) & (xd->width - 1))) {
-      xd->is_last_horizontal_rect = 1;
-    }
-  }
-
-  xd->is_first_vertical_rect = 0;
-  if (xd->width < xd->height)
-    if (!(mi_col & (xd->height - 1))) xd->is_first_vertical_rect = 1;
-#endif  // CONFIG_MVP_IMPROVEMENT
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
 }
 
 // Return the inter TX context based on last position value.
@@ -2964,84 +2930,14 @@ static INLINE aom_cdf_prob cdf_element_prob(const aom_cdf_prob *cdf,
   return (element > 0 ? cdf[element - 1] : CDF_PROB_TOP) - cdf[element];
 }
 
-#if !CONFIG_EXT_RECUR_PARTITIONS
-static INLINE void partition_gather_horz_alike(aom_cdf_prob *out,
-                                               const aom_cdf_prob *const in,
-                                               BLOCK_SIZE bsize) {
-  (void)bsize;
-  out[0] = CDF_PROB_TOP;
-  out[0] -= cdf_element_prob(in, PARTITION_HORZ);
-  out[0] -= cdf_element_prob(in, PARTITION_SPLIT);
-  out[0] -= cdf_element_prob(in, PARTITION_HORZ_A);
-  out[0] -= cdf_element_prob(in, PARTITION_HORZ_B);
-  out[0] -= cdf_element_prob(in, PARTITION_VERT_A);
-  if (bsize != BLOCK_128X128) out[0] -= cdf_element_prob(in, PARTITION_HORZ_4);
-  out[0] = AOM_ICDF(out[0]);
-  out[1] = AOM_ICDF(CDF_PROB_TOP);
-}
-
-static INLINE void partition_gather_vert_alike(aom_cdf_prob *out,
-                                               const aom_cdf_prob *const in,
-                                               BLOCK_SIZE bsize) {
-  (void)bsize;
-  out[0] = CDF_PROB_TOP;
-  out[0] -= cdf_element_prob(in, PARTITION_VERT);
-  out[0] -= cdf_element_prob(in, PARTITION_SPLIT);
-  out[0] -= cdf_element_prob(in, PARTITION_HORZ_A);
-  out[0] -= cdf_element_prob(in, PARTITION_VERT_A);
-  out[0] -= cdf_element_prob(in, PARTITION_VERT_B);
-  if (bsize != BLOCK_128X128) out[0] -= cdf_element_prob(in, PARTITION_VERT_4);
-  out[0] = AOM_ICDF(out[0]);
-  out[1] = AOM_ICDF(CDF_PROB_TOP);
-}
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
-
 static INLINE void update_ext_partition_context(MACROBLOCKD *xd, int mi_row,
                                                 int mi_col, BLOCK_SIZE subsize,
                                                 BLOCK_SIZE bsize,
                                                 PARTITION_TYPE partition) {
-#if CONFIG_EXT_RECUR_PARTITIONS
   if (partition == PARTITION_NONE) {
     assert(bsize == subsize);
     update_partition_context(xd, mi_row, mi_col, subsize, bsize);
   }
-#else
-  if (is_partition_point(bsize)) {
-    const int hbs = mi_size_wide[bsize] / 2;
-    const BLOCK_SIZE bsize2 = get_partition_subsize(bsize, PARTITION_SPLIT);
-    switch (partition) {
-      case PARTITION_SPLIT:
-        if (bsize != BLOCK_8X8) break;
-        AOM_FALLTHROUGH_INTENDED;
-      case PARTITION_NONE:
-      case PARTITION_HORZ:
-      case PARTITION_VERT:
-        update_partition_context(xd, mi_row, mi_col, subsize, bsize);
-        break;
-      case PARTITION_HORZ_A:
-        update_partition_context(xd, mi_row, mi_col, bsize2, subsize);
-        update_partition_context(xd, mi_row + hbs, mi_col, subsize, subsize);
-        break;
-      case PARTITION_HORZ_B:
-        update_partition_context(xd, mi_row, mi_col, subsize, subsize);
-        update_partition_context(xd, mi_row + hbs, mi_col, bsize2, subsize);
-        break;
-      case PARTITION_VERT_A:
-        update_partition_context(xd, mi_row, mi_col, bsize2, subsize);
-        update_partition_context(xd, mi_row, mi_col + hbs, subsize, subsize);
-        break;
-      case PARTITION_VERT_B:
-        update_partition_context(xd, mi_row, mi_col, subsize, subsize);
-        update_partition_context(xd, mi_row, mi_col + hbs, bsize2, subsize);
-        break;
-      case PARTITION_HORZ_4:
-      case PARTITION_VERT_4:
-        update_partition_context(xd, mi_row, mi_col, subsize, bsize);
-        break;
-      default: assert(0 && "Invalid partition type");
-    }
-  }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static INLINE int get_intra_region_context(BLOCK_SIZE bsize) {
@@ -3058,7 +2954,6 @@ static INLINE int get_intra_region_context(BLOCK_SIZE bsize) {
     return 3;
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 /*!\brief Returns the context used by \ref PARTITION_SPLIT. */
 static INLINE int square_split_context(const MACROBLOCKD *xd, int mi_row,
                                        int mi_col, BLOCK_SIZE bsize) {
@@ -3079,9 +2974,6 @@ static INLINE int square_split_context(const MACROBLOCKD *xd, int mi_row,
 
   return (left * 2 + above) + (bsize == BLOCK_256X256) * PARTITION_PLOFFSET;
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-
-#if CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE int partition_plane_context_helper(int raw_context,
                                                  BLOCK_SIZE bsize
@@ -3094,27 +2986,25 @@ static INLINE int partition_plane_context_helper(int raw_context,
 #if CONFIG_PARTITION_CONTEXT_REDUCE
 #if CONFIG_NEW_PART_CTX
   const int bsize_rect_map[BLOCK_SIZES] = {
-    0,  // BLOCK_4X4,
-    0,  // BLOCK_4X8,
-    0,  // BLOCK_8X4,
-    0,  // BLOCK_8X8,
-    1,  // BLOCK_8X16,
-    2,  // BLOCK_16X8,
-    0,  // BLOCK_16X16,
-    1,  // BLOCK_16X32,
-    2,  // BLOCK_32X16,
-    3,  // BLOCK_32X32,
-    4,  // BLOCK_32X64,
-    5,  // BLOCK_64X32,
-    6,  // BLOCK_64X64,
-    7,  // BLOCK_64X128,
-    8,  // BLOCK_128X64,
-    9,  // BLOCK_128X128,
-#if CONFIG_EXT_RECUR_PARTITIONS
+    0,   // BLOCK_4X4,
+    0,   // BLOCK_4X8,
+    0,   // BLOCK_8X4,
+    0,   // BLOCK_8X8,
+    1,   // BLOCK_8X16,
+    2,   // BLOCK_16X8,
+    0,   // BLOCK_16X16,
+    1,   // BLOCK_16X32,
+    2,   // BLOCK_32X16,
+    3,   // BLOCK_32X32,
+    4,   // BLOCK_32X64,
+    5,   // BLOCK_64X32,
+    6,   // BLOCK_64X64,
+    7,   // BLOCK_64X128,
+    8,   // BLOCK_128X64,
+    9,   // BLOCK_128X128,
     10,  // BLOCK_128X256,
     11,  // BLOCK_256X128,
     12,  // BLOCK_256X256,
-#endif   // CONFIG_EXT_RECUR_PARTITIONS
     13,  // BLOCK_4X16,
     14,  // BLOCK_16X4,
     13,  // BLOCK_8X32,
@@ -3123,27 +3013,25 @@ static INLINE int partition_plane_context_helper(int raw_context,
     14,  // BLOCK_64X16,
   };
   const int bsize_map[BLOCK_SIZES] = {
-    0,  // BLOCK_4X4,
-    0,  // BLOCK_4X8,
-    0,  // BLOCK_8X4,
-    0,  // BLOCK_8X8,
-    1,  // BLOCK_8X16,
-    1,  // BLOCK_16X8,
-    1,  // BLOCK_16X16,
-    2,  // BLOCK_16X32,
-    2,  // BLOCK_32X16,
-    2,  // BLOCK_32X32,
-    3,  // BLOCK_32X64,
-    3,  // BLOCK_64X32,
-    3,  // BLOCK_64X64,
-    4,  // BLOCK_64X128,
-    5,  // BLOCK_128X64,
-    6,  // BLOCK_128X128,
-#if CONFIG_EXT_RECUR_PARTITIONS
+    0,   // BLOCK_4X4,
+    0,   // BLOCK_4X8,
+    0,   // BLOCK_8X4,
+    0,   // BLOCK_8X8,
+    1,   // BLOCK_8X16,
+    1,   // BLOCK_16X8,
+    1,   // BLOCK_16X16,
+    2,   // BLOCK_16X32,
+    2,   // BLOCK_32X16,
+    2,   // BLOCK_32X32,
+    3,   // BLOCK_32X64,
+    3,   // BLOCK_64X32,
+    3,   // BLOCK_64X64,
+    4,   // BLOCK_64X128,
+    5,   // BLOCK_128X64,
+    6,   // BLOCK_128X128,
     7,   // BLOCK_128X256,
     8,   // BLOCK_256X128,
     9,   // BLOCK_256X256,
-#endif   // CONFIG_EXT_RECUR_PARTITIONS
     10,  // BLOCK_4X16,
     11,  // BLOCK_16X4,
     12,  // BLOCK_8X32,
@@ -3170,11 +3058,9 @@ static INLINE int partition_plane_context_helper(int raw_context,
     9,   // BLOCK_64X128,
     10,  // BLOCK_128X64,
     11,  // BLOCK_128X128,
-#if CONFIG_EXT_RECUR_PARTITIONS
     12,  // BLOCK_128X256,
     13,  // BLOCK_256X128,
     14,  // BLOCK_256X256,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     15,  // BLOCK_4X16,
     16,  // BLOCK_16X4,
     15,  // BLOCK_8X32,
@@ -3182,7 +3068,7 @@ static INLINE int partition_plane_context_helper(int raw_context,
     15,  // BLOCK_16X64,
     16,  // BLOCK_64X16,
   };
-#endif  // CONFIG_RECT_CTX
+#endif                // CONFIG_RECT_CTX
   const int bsize_map[BLOCK_SIZES] = {
     0,   // BLOCK_4X4,
     0,   // BLOCK_4X8,
@@ -3200,11 +3086,9 @@ static INLINE int partition_plane_context_helper(int raw_context,
     13,  // BLOCK_64X128,
     14,  // BLOCK_128X64,
     15,  // BLOCK_128X128,
-#if CONFIG_EXT_RECUR_PARTITIONS
     16,  // BLOCK_128X256,
     17,  // BLOCK_256X128,
     18,  // BLOCK_256X256,
-#endif                // CONFIG_EXT_RECUR_PARTITIONS
     19,  // BLOCK_4X16,
     20,  // BLOCK_16X4,
     21,  // BLOCK_8X32,
@@ -3224,8 +3108,6 @@ static INLINE int partition_plane_context_helper(int raw_context,
   assert(ctx < PARTITION_CONTEXTS);
   return ctx;
 }
-
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
                                           int mi_col, BLOCK_SIZE bsize
@@ -3247,7 +3129,6 @@ static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
       xd->above_partition_context[plane] + mi_col;
   const PARTITION_CONTEXT *left_ctx =
       xd->left_partition_context[plane] + (mi_row & MAX_MIB_MASK);
-#if CONFIG_EXT_RECUR_PARTITIONS
   assert(bsize < BLOCK_SIZES);
 #if CONFIG_NEW_PART_CTX
   int ctx, ctx1, ctx2;
@@ -3290,30 +3171,7 @@ static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
 #endif  // CONFIG_PARTITION_CONTEXT_REDUCE
   );
 #endif  // CONFIG_NEW_PART_CTX
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-  // Minimum partition point is 8x8. Offset the bsl accordingly.
-  const int bsl = mi_size_wide_log2[bsize] - mi_size_wide_log2[BLOCK_8X8];
-  int above = (*above_ctx >> bsl) & 1, left = (*left_ctx >> bsl) & 1;
-
-  assert(mi_size_wide_log2[bsize] == mi_size_high_log2[bsize]);
-  assert(bsl >= 0);
-
-  return (left * 2 + above) + bsl * PARTITION_PLOFFSET;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
-
-#if !CONFIG_EXT_RECUR_PARTITIONS
-// Return the number of elements in the partition CDF when
-// partitioning the (square) block with luma block size of bsize.
-static INLINE int partition_cdf_length(BLOCK_SIZE bsize) {
-  if (bsize <= BLOCK_8X8)
-    return PARTITION_TYPES;
-  else if (bsize == BLOCK_128X128)
-    return EXT_PARTITION_TYPES - 2;
-  else
-    return EXT_PARTITION_TYPES;
-}
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE void av1_zero_above_context(AV1_COMMON *const cm,
                                           const MACROBLOCKD *xd,
@@ -3543,7 +3401,6 @@ static AOM_INLINE int is_sdp_enabled_in_keyframe(const AV1_COMMON *const cm) {
           cm->seq_params.enable_sdp);
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // The blocksize above which chroma and luma partitions will stayed coupled.
 // Currently this is set to BLOCK_128X128 (e.g. chroma always follows luma at
 // BLOCK_128X128, but can be de-coupled later).
@@ -4066,44 +3923,6 @@ static AOM_INLINE bool is_do_uneven_4way_partition_implied(
   *implied_do_uneven_4way = true;
   return true;
 }
-#else
-// Return the number of sub-blocks whose width and height are
-// less than half of the parent block.
-static INLINE int get_luma_split_flag(
-    BLOCK_SIZE bsize, const CommonModeInfoParams *const mi_params, int mi_row,
-    int mi_col) {
-  int luma_split_flag = 0;
-  int width_unit = mi_size_wide[bsize];
-  int height_unit = mi_size_high[bsize];
-  int parent_block_width = block_size_wide[bsize];
-  const int x_inside_boundary = AOMMIN(width_unit, mi_params->mi_cols - mi_col);
-  const int y_inside_boundary =
-      AOMMIN(height_unit, mi_params->mi_rows - mi_row);
-  int x_mis_half = x_inside_boundary >> 1;
-  int y_mis_half = y_inside_boundary >> 1;
-  int half_parent_width = parent_block_width >> 1;
-  for (int y_district = 0; y_district < 2; y_district++) {
-    for (int x_district = 0; x_district < 2; x_district++) {
-      int find_small_block = 0;
-      for (int y = 0; y < y_mis_half; ++y) {
-        for (int x = 0; x < x_mis_half; ++x) {
-          int y_pos = y_district * y_mis_half + y;
-          int x_pos = x_district * x_mis_half + x;
-          MB_MODE_INFO *temp_mi = &mi_params->mi_alloc[get_alloc_mi_idx(
-              mi_params, mi_row + y_pos, mi_col + x_pos)];
-          BLOCK_SIZE temp_size = temp_mi->sb_type[PLANE_TYPE_Y];
-          if (block_size_wide[temp_size] < half_parent_width &&
-              block_size_high[temp_size] < half_parent_width) {
-            find_small_block++;
-          }
-        }
-      }
-      if (find_small_block > 0) luma_split_flag++;
-    }
-  }
-  return luma_split_flag;
-}
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE void txfm_partition_update(TXFM_CONTEXT *above_ctx,
                                          TXFM_CONTEXT *left_ctx,
@@ -4120,9 +3939,7 @@ static INLINE void txfm_partition_update(TXFM_CONTEXT *above_ctx,
 
 static INLINE TX_SIZE get_sqr_tx_size(int tx_dim) {
   switch (tx_dim) {
-#if CONFIG_EXT_RECUR_PARTITIONS
     case 256:
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     case 128:
     case 64: return TX_64X64; break;
     case 32: return TX_32X32; break;
@@ -4145,7 +3962,6 @@ static INLINE TX_SIZE get_tx_size(int width, int height) {
         case 16: return (height == 32) ? TX_16X32 : TX_INVALID;
         case 32: return (height == 64) ? TX_32X64 : TX_INVALID;
       }
-#if CONFIG_EXT_RECUR_PARTITIONS
     } else if ((4 * width) < height) {
       switch (width) {
         case 4:
@@ -4154,7 +3970,6 @@ static INLINE TX_SIZE get_tx_size(int width, int height) {
                                   : TX_INVALID;
         case 8: return (height == 64) ? TX_8X64 : TX_INVALID;
       }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     } else {
       switch (width) {
         case 4: return (height == 16) ? TX_4X16 : TX_INVALID;
@@ -4170,14 +3985,12 @@ static INLINE TX_SIZE get_tx_size(int width, int height) {
         case 16: return (width == 32) ? TX_32X16 : TX_INVALID;
         case 32: return (width == 64) ? TX_64X32 : TX_INVALID;
       }
-#if CONFIG_EXT_RECUR_PARTITIONS
     } else if ((4 * height) < width) {
       switch (height) {
         case 4:
           return (width == 32) ? TX_32X4 : (width == 64) ? TX_64X4 : TX_INVALID;
         case 8: return (width == 64) ? TX_64X8 : TX_INVALID;
       }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     } else {
       switch (height) {
         case 4: return (width == 16) ? TX_16X4 : TX_INVALID;
@@ -4537,40 +4350,18 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
       // PARTITION_HORZ_B. To distinguish the latter two, check if the lower
       // half was split.
       if (sshigh * 4 == bhigh) {
-#if CONFIG_EXT_RECUR_PARTITIONS
         return PARTITION_HORZ_4A;
-#else
-        return PARTITION_HORZ_4;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       }
-#if !CONFIG_EXT_RECUR_PARTITIONS
-      assert(sshigh * 2 == bhigh);
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
       if (mbmi_below->sb_type[plane_type] == subsize) return PARTITION_HORZ;
-#if !CONFIG_EXT_RECUR_PARTITIONS
-      else
-        return PARTITION_HORZ_B;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
     } else if (sshigh == bhigh) {
       // Smaller width but same height. Is PARTITION_VERT_4, PARTITION_VERT or
       // PARTITION_VERT_B. To distinguish the latter two, check if the right
       // half was split.
       if (sswide * 4 == bwide) {
-#if CONFIG_EXT_RECUR_PARTITIONS
         return PARTITION_VERT_4A;
-#else
-        return PARTITION_VERT_4;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       }
-#if !CONFIG_EXT_RECUR_PARTITIONS
-      assert(sswide * 2 == bhigh);
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
       if (mbmi_right->sb_type[plane_type] == subsize) return PARTITION_VERT;
 
-#if !CONFIG_EXT_RECUR_PARTITIONS
-      else
-        return PARTITION_VERT_B;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
     } else {
       // Smaller width and smaller height. Might be PARTITION_SPLIT or could be
       // PARTITION_HORZ_A or PARTITION_VERT_A. If subsize isn't halved in both
@@ -4579,19 +4370,11 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
       // PARTITION_VERT_A, the right block will have height bhigh; with
       // PARTITION_HORZ_A, the lower block with have width bwide. Otherwise
       // it's PARTITION_SPLIT.
-#if CONFIG_EXT_RECUR_PARTITIONS
       if (sswide * 2 != bwide || sshigh * 2 != bhigh) {
         if (mi_size_wide[mbmi_below->sb_type[plane_type]] < bwide &&
             mi_size_high[mbmi_right->sb_type[plane_type]] < bhigh)
           return PARTITION_SPLIT;
       }
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-      if (sswide * 2 != bwide || sshigh * 2 != bhigh) return PARTITION_SPLIT;
-      if (mi_size_wide[mbmi_below->sb_type[plane_type]] == bwide)
-        return PARTITION_HORZ_A;
-      if (mi_size_high[mbmi_right->sb_type[plane_type]] == bhigh)
-        return PARTITION_VERT_A;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       return PARTITION_SPLIT;
     }
   }
@@ -4609,13 +4392,11 @@ static INLINE PARTITION_TYPE get_partition(const AV1_COMMON *const cm,
 
 static AOM_INLINE void av1_set_frame_sb_size(AV1_COMMON *cm,
                                              BLOCK_SIZE sb_size) {
-#if CONFIG_EXT_RECUR_PARTITIONS
   // BLOCK_256X256 gives no benefits in all intra encoding, so downsize the
   // superblock size to 128x128 on key frames.
   if (frame_is_intra_only(cm) && sb_size == BLOCK_256X256) {
     sb_size = BLOCK_128X128;
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   cm->sb_size = sb_size;
   cm->mib_size = mi_size_wide[sb_size];
   cm->mib_size_log2 = mi_size_wide_log2[sb_size];

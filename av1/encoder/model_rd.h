@@ -210,9 +210,7 @@ static AOM_INLINE void model_rd_for_sb(const AV1_COMP *const cpi,
                                        int use_mrsse
 #endif  // CONFIG_MRSSE
 ) {
-#if CONFIG_EXT_RECUR_PARTITIONS
   (void)bsize;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   // Note our transform coeffs are 8 times an orthogonal transform.
   // Hence quantizer step is also 8 times. To get effective quantizer
@@ -232,13 +230,8 @@ static AOM_INLINE void model_rd_for_sb(const AV1_COMP *const cpi,
     if (plane && !xd->is_chroma_ref) break;
     struct macroblock_plane *const p = &x->plane[plane];
     struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_EXT_RECUR_PARTITIONS
     const BLOCK_SIZE plane_bsize = get_mb_plane_block_size(
         xd, xd->mi[0], plane, pd->subsampling_x, pd->subsampling_y);
-#else
-    const BLOCK_SIZE plane_bsize =
-        get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     assert(plane_bsize < BLOCK_SIZES_ALL);
     const int bw = block_size_wide[plane_bsize];
     const int bh = block_size_high[plane_bsize];
@@ -280,10 +273,7 @@ static AOM_INLINE void model_rd_for_sb_with_curvfit(
     int use_mrsse
 #endif  // CONFIG_MRSSE
 ) {
-
-#if CONFIG_EXT_RECUR_PARTITIONS
   (void)bsize;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   // Note our transform coeffs are 8 times an orthogonal transform.
   // Hence quantizer step is also 8 times. To get effective quantizer
@@ -300,13 +290,8 @@ static AOM_INLINE void model_rd_for_sb_with_curvfit(
   for (int plane = plane_from; plane <= plane_to; ++plane) {
     if (plane && !xd->is_chroma_ref) break;
     struct macroblockd_plane *const pd = &xd->plane[plane];
-#if CONFIG_EXT_RECUR_PARTITIONS
     const BLOCK_SIZE plane_bsize = get_mb_plane_block_size(
         xd, xd->mi[0], plane, pd->subsampling_x, pd->subsampling_y);
-#else
-    const BLOCK_SIZE plane_bsize =
-        get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     assert(plane_bsize < BLOCK_SIZES_ALL);
     int64_t dist, sse;
     int rate;

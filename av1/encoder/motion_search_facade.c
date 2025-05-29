@@ -1643,7 +1643,6 @@ int_mv av1_simple_motion_sse_var(AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
   return best_mv;
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 /*!\brief A simplified version for motion search used for speed features. Same
  * as \ref av1_simple_motion_search, but it is used with ERP. */
 int_mv av1_simple_motion_search_ext(AV1_COMP *const cpi,
@@ -1797,4 +1796,3 @@ int_mv av1_simple_motion_search_ext(AV1_COMP *const cpi,
 
   return best_mv;
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS

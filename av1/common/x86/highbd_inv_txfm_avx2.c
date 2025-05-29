@@ -4490,7 +4490,6 @@ void av1_highbd_inv_txfm_add_avx2(const tran_low_t *input, uint16_t *dest,
     case TX_4X16:
       av1_highbd_inv_txfm_add_4x16_sse4_1(input, dest, stride, txfm_param);
       break;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case TX_4X32:
       av1_highbd_inv_txfm_add_4x32_sse4_1(input, dest, stride, txfm_param);
       break;
@@ -4503,7 +4502,6 @@ void av1_highbd_inv_txfm_add_avx2(const tran_low_t *input, uint16_t *dest,
     case TX_64X4:
       av1_highbd_inv_txfm_add_64x4_sse4_1(input, dest, stride, txfm_param);
       break;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default:
       av1_highbd_inv_txfm2d_add_universe_avx2(
           input, dest, stride, txfm_param->tx_type, txfm_param->tx_size,

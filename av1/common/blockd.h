@@ -476,11 +476,7 @@ typedef struct TXB_POS_INFO {
 } TXB_POS_INFO;
 #endif  // CONFIG_NEW_TX_PARTITION
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define INTER_TX_SIZE_BUF_LEN 64
-#else
-#define INTER_TX_SIZE_BUF_LEN 16
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #define TXK_TYPE_BUF_LEN 64
 /*!\endcond */
 
@@ -505,12 +501,10 @@ typedef struct MB_MODE_INFO {
   int mi_row_start;
   /*! \brief Starting mi_col of current coding block */
   int mi_col_start;
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*! \brief Starting chroma mi_row of current coding block */
   int chroma_mi_row_start;
   /*! \brief Starting chroma mi_col of current coding block */
   int chroma_mi_col_start;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*! \brief The partition type of the current coding block. */
   PARTITION_TYPE partition;
   /*! \brief The region type used for the current block. */
@@ -1021,7 +1015,6 @@ static INLINE int is_square_block(BLOCK_SIZE bsize) {
   return block_size_high[bsize] == block_size_wide[bsize];
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 /*!\brief Returns whether the current block size has height > width. */
 static INLINE bool is_tall_block(BLOCK_SIZE bsize) {
   return block_size_high[bsize] > block_size_wide[bsize];
@@ -1209,7 +1202,6 @@ static AOM_INLINE RECT_PART_TYPE get_rect_part_type(PARTITION_TYPE partition) {
   assert(0 && "Rectangular partition expected!");
   return NUM_RECT_PARTS;
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE int has_second_ref(const MB_MODE_INFO *mbmi) {
   return is_inter_ref_frame(mbmi->ref_frame[1]);
@@ -1246,11 +1238,7 @@ static INLINE int is_global_mv_block(const MB_MODE_INFO *const mbmi,
 }
 
 static INLINE int is_partition_point(BLOCK_SIZE bsize) {
-#if CONFIG_EXT_RECUR_PARTITIONS
   return bsize != BLOCK_4X4 && bsize < BLOCK_SIZES;
-#else
-  return is_square_block(bsize) && bsize >= BLOCK_8X8 && bsize < BLOCK_SIZES;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static INLINE int get_sqr_bsize_idx(BLOCK_SIZE bsize) {
@@ -1261,9 +1249,7 @@ static INLINE int get_sqr_bsize_idx(BLOCK_SIZE bsize) {
     case BLOCK_32X32: return 3;
     case BLOCK_64X64: return 4;
     case BLOCK_128X128: return 5;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case BLOCK_256X256: return 6;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: return SQR_BLOCK_SIZES;
   }
 }
@@ -1278,21 +1264,13 @@ static INLINE BLOCK_SIZE get_partition_subsize(BLOCK_SIZE bsize,
   if (partition == PARTITION_INVALID) {
     return BLOCK_INVALID;
   } else {
-#if CONFIG_EXT_RECUR_PARTITIONS
     if (is_partition_point(bsize))
       return subsize_lookup[partition][bsize];
     else
       return partition == PARTITION_NONE ? bsize : BLOCK_INVALID;
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-    const int sqr_bsize_idx = get_sqr_bsize_idx(bsize);
-    return sqr_bsize_idx >= SQR_BLOCK_SIZES
-               ? BLOCK_INVALID
-               : subsize_lookup[partition][sqr_bsize_idx];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // Get the block size of the ith sub-block in a block partitioned via an
 // h-partition mode.
 static INLINE BLOCK_SIZE get_h_partition_subsize(BLOCK_SIZE bsize, int index,
@@ -1386,7 +1364,6 @@ static INLINE int get_h_partition_offset_mi_col(BLOCK_SIZE bsize, int index,
     }
   }
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE int is_partition_valid(BLOCK_SIZE bsize, PARTITION_TYPE p) {
   if (is_partition_point(bsize))
@@ -1426,11 +1403,9 @@ static INLINE int is_extended_sdp_allowed(int enable_extended_sdp,
   // Check if half block width/height is less than 8.
   const int hbw_gt_4 = bw > 8;
   const int hbh_gt_4 = bh > 8;
-#if CONFIG_EXT_RECUR_PARTITIONS
   // Check if quarter block width/height is less than 16.
   const int qbw_gt_4 = bw > 16;
   const int qbh_gt_4 = bh > 16;
-#endif  // !CONFIG_UNEVEN_4WAY || CONFIG_EXT_RECUR_PARTITIONS
   // Check if one-eighth block width/height is less than 32.
   const int ebw_gt_4 = bw > 32;
   const int ebh_gt_4 = bh > 32;
@@ -1439,21 +1414,12 @@ static INLINE int is_extended_sdp_allowed(int enable_extended_sdp,
     case PARTITION_HORZ: return bw_gt_4 && hbh_gt_4;
     case PARTITION_VERT: return hbw_gt_4 && bh_gt_4;
     case PARTITION_SPLIT: return hbw_gt_4 && hbh_gt_4;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B: return bw_gt_4 && ebh_gt_4;
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B: return ebw_gt_4 && bh_gt_4;
     case PARTITION_HORZ_3: return hbw_gt_4 && qbh_gt_4;
     case PARTITION_VERT_3: return qbw_gt_4 && hbh_gt_4;
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-    case PARTITION_HORZ_A:
-    case PARTITION_HORZ_B:
-    case PARTITION_VERT_A:
-    case PARTITION_VERT_B: return hbw_less_than_4 || hbh_less_than_4;
-    case PARTITION_HORZ_4: return bw_less_than_4 || qbh_less_than_4;
-    case PARTITION_VERT_4: return qbw_less_than_4 || bh_less_than_4;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default:
       assert(0 && "Invalid partition type!");
       return 0;
@@ -1478,31 +1444,20 @@ static INLINE int have_nz_chroma_ref_offset(BLOCK_SIZE bsize,
   // Check if quarter block width/height is less than 16.
   const int qbw_less_than_4 = bw < 16;
   const int qbh_less_than_4 = bh < 16;
-#if CONFIG_EXT_RECUR_PARTITIONS
   // Check if one-eighth block width/height is less than 32.
   const int ebw_less_than_4 = bw < 32;
   const int ebh_less_than_4 = bh < 32;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   switch (partition) {
     case PARTITION_NONE: return bw_less_than_4 || bh_less_than_4;
     case PARTITION_HORZ: return bw_less_than_4 || hbh_less_than_4;
     case PARTITION_VERT: return hbw_less_than_4 || bh_less_than_4;
     case PARTITION_SPLIT: return hbw_less_than_4 || hbh_less_than_4;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B: return bw_less_than_4 || ebh_less_than_4;
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B: return ebw_less_than_4 || bh_less_than_4;
     case PARTITION_HORZ_3: return hbw_less_than_4 || qbh_less_than_4;
     case PARTITION_VERT_3: return qbw_less_than_4 || hbh_less_than_4;
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-    case PARTITION_HORZ_A:
-    case PARTITION_HORZ_B:
-    case PARTITION_VERT_A:
-    case PARTITION_VERT_B: return hbw_less_than_4 || hbh_less_than_4;
-    case PARTITION_HORZ_4: return bw_less_than_4 || qbh_less_than_4;
-    case PARTITION_VERT_4: return qbw_less_than_4 || bh_less_than_4;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default:
       assert(0 && "Invalid partition type!");
       return 0;
@@ -1543,7 +1498,6 @@ static INLINE int is_sub_partition_chroma_ref(PARTITION_TYPE partition,
         else
           return 1;
       }
-#if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B:
     case PARTITION_VERT_4A:
@@ -1562,53 +1516,6 @@ static INLINE int is_sub_partition_chroma_ref(PARTITION_TYPE partition,
       } else {
         return index == 3;
       }
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-    case PARTITION_HORZ_A:
-    case PARTITION_HORZ_B:
-    case PARTITION_VERT_A:
-    case PARTITION_VERT_B:
-      if (is_offset_started) {
-        return index == 2;
-      } else {
-        const int smallest_w = block_size_wide[parent_bsize] >> (ss_x + 1);
-        const int smallest_h = block_size_high[parent_bsize] >> (ss_y + 1);
-        const int smallest_w_less_than_4 = smallest_w < 4;
-        const int smallest_h_less_than_4 = smallest_h < 4;
-        if (smallest_w_less_than_4 && smallest_h_less_than_4) {
-          return index == 2;
-        } else if (smallest_w_less_than_4) {
-          if (partition == PARTITION_VERT_A || partition == PARTITION_VERT_B) {
-            return index == 2;
-          } else if (partition == PARTITION_HORZ_A) {
-            return index == 1 || index == 2;
-          } else {
-            return index == 0 || index == 2;
-          }
-        } else if (smallest_h_less_than_4) {
-          if (partition == PARTITION_HORZ_A || partition == PARTITION_HORZ_B) {
-            return index == 2;
-          } else if (partition == PARTITION_VERT_A) {
-            return index == 1 || index == 2;
-          } else {
-            return index == 0 || index == 2;
-          }
-        } else {
-          return 1;
-        }
-      }
-    case PARTITION_HORZ_4:
-    case PARTITION_VERT_4:
-      if (is_offset_started) {
-        return index == 3;
-      } else {
-        if ((partition == PARTITION_HORZ_4 && plane_h_less_than_4) ||
-            (partition == PARTITION_VERT_4 && plane_w_less_than_4)) {
-          return index == 1 || index == 3;
-        } else {
-          return 1;
-        }
-      }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default:
       assert(0 && "Invalid partition type!");
       return 0;
@@ -1624,27 +1531,15 @@ static INLINE void set_chroma_ref_offset_size(
   const int plane_h = block_size_high[bsize] >> ss_y;
   const int plane_w_less_than_4 = plane_w < 4;
   const int plane_h_less_than_4 = plane_h < 4;
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  const int hpplane_w = block_size_wide[parent_bsize] >> (ss_x + 1);
-  const int hpplane_h = block_size_high[parent_bsize] >> (ss_y + 1);
-  const int hpplane_w_less_than_4 = hpplane_w < 4;
-  const int hpplane_h_less_than_4 = hpplane_h < 4;
-  const int mi_row_mid_point =
-      parent_info->mi_row_chroma_base + (mi_size_high[parent_bsize] >> 1);
-  const int mi_col_mid_point =
-      parent_info->mi_col_chroma_base + (mi_size_wide[parent_bsize] >> 1);
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   assert(parent_info->offset_started == 0);
   switch (partition) {
     case PARTITION_NONE:
     case PARTITION_HORZ:
     case PARTITION_VERT:
-#if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_4A:
     case PARTITION_HORZ_4B:
     case PARTITION_VERT_4A:
     case PARTITION_VERT_4B:
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       info->mi_row_chroma_base = parent_info->mi_row_chroma_base;
       info->mi_col_chroma_base = parent_info->mi_col_chroma_base;
       info->bsize_base = parent_bsize;
@@ -1714,59 +1609,6 @@ static INLINE void set_chroma_ref_offset_size(
         }
       }
       break;
-#if !CONFIG_EXT_RECUR_PARTITIONS
-    case PARTITION_HORZ_A:
-    case PARTITION_HORZ_B:
-    case PARTITION_VERT_A:
-    case PARTITION_VERT_B:
-      if ((hpplane_w_less_than_4 && hpplane_h_less_than_4) ||
-          (hpplane_w_less_than_4 &&
-           (partition == PARTITION_VERT_A || partition == PARTITION_VERT_B)) ||
-          (hpplane_h_less_than_4 &&
-           (partition == PARTITION_HORZ_A || partition == PARTITION_HORZ_B))) {
-        info->mi_row_chroma_base = parent_info->mi_row_chroma_base;
-        info->mi_col_chroma_base = parent_info->mi_col_chroma_base;
-        info->bsize_base = parent_bsize;
-      } else if (hpplane_w_less_than_4) {
-        info->bsize_base = get_partition_subsize(parent_bsize, PARTITION_HORZ);
-        info->mi_col_chroma_base = parent_info->mi_col_chroma_base;
-        if (mi_row == parent_info->mi_row_chroma_base) {
-          info->mi_row_chroma_base = parent_info->mi_row_chroma_base;
-        } else {
-          info->mi_row_chroma_base = parent_info->mi_row_chroma_base +
-                                     (mi_size_high[parent_bsize] >> 1);
-        }
-      } else {
-        assert(hpplane_h_less_than_4);
-        info->bsize_base = get_partition_subsize(parent_bsize, PARTITION_VERT);
-        info->mi_row_chroma_base = parent_info->mi_row_chroma_base;
-        if (mi_col == parent_info->mi_col_chroma_base) {
-          info->mi_col_chroma_base = parent_info->mi_col_chroma_base;
-        } else {
-          info->mi_col_chroma_base = parent_info->mi_col_chroma_base +
-                                     (mi_size_wide[parent_bsize] >> 1);
-        }
-      }
-      break;
-    case PARTITION_HORZ_4:
-      info->bsize_base = get_partition_subsize(parent_bsize, PARTITION_HORZ);
-      info->mi_col_chroma_base = parent_info->mi_col_chroma_base;
-      if (mi_row < mi_row_mid_point) {
-        info->mi_row_chroma_base = parent_info->mi_row_chroma_base;
-      } else {
-        info->mi_row_chroma_base = mi_row_mid_point;
-      }
-      break;
-    case PARTITION_VERT_4:
-      info->bsize_base = get_partition_subsize(parent_bsize, PARTITION_VERT);
-      info->mi_row_chroma_base = parent_info->mi_row_chroma_base;
-      if (mi_col < mi_col_mid_point) {
-        info->mi_col_chroma_base = parent_info->mi_col_chroma_base;
-      } else {
-        info->mi_col_chroma_base = mi_col_mid_point;
-      }
-      break;
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0 && "Invalid partition type!"); break;
   }
 }
@@ -1882,13 +1724,8 @@ typedef struct macroblockd_plane {
   // - Current superblock, on decoder side.
   uint8_t *color_index_map;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   // block size in pixels
   uint16_t width, height;
-#else
-  // block size in pixels
-  uint8_t width, height;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   qm_val_t *seg_iqmatrix[MAX_SEGMENTS][TX_SIZES_ALL];
   qm_val_t *seg_qmatrix[MAX_SEGMENTS][TX_SIZES_ALL];
@@ -2662,32 +2499,6 @@ typedef struct macroblockd {
    */
   uint8_t valid_num_warp_candidates[INTER_REFS_PER_FRAME];
 
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  /*!
-   * True if this is the last vertical rectangular block in a VERTICAL or
-   * VERTICAL_4 partition.
-   */
-  bool is_last_vertical_rect;
-  /*!
-   * True if this is the 1st horizontal rectangular block in a HORIZONTAL or
-   * HORIZONTAL_4 partition.
-   */
-  bool is_first_horizontal_rect;
-
-#if CONFIG_MVP_IMPROVEMENT
-  /*!
-   * True if this is the last horizontal rectangular block in a HORIZONTAL or
-   * HORIZONTAL_4 partition.
-   */
-  bool is_last_horizontal_rect;
-  /*!
-   * True if this is the 1st vertical rectangular block in a VERTICAL or
-   * VERTICAL_4 partition.
-   */
-  bool is_first_vertical_rect;
-#endif  // CONFIG_MVP_IMPROVEMENT
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
-
   /*!
    * Counts of each reference frame in the above and left neighboring blocks.
    * NOTE: Take into account both single and comp references.
@@ -3441,115 +3252,16 @@ static INLINE int av1_get_inter_tx_index(BLOCK_SIZE bsize, int blk_row,
 static INLINE int av1_get_txb_size_index(BLOCK_SIZE bsize, int blk_row,
                                          int blk_col) {
   static const uint8_t tw_w_log2_table[BLOCK_SIZES_ALL] = {
-    0,
-    0,
-    0,
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    3,
-    3,
-    3,
-    3,
-    3,
-    3,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    3,
-    3,
-    3,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    0,
-    1,
-    1,
-    2,
-    2,
-    3,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    0,
-    2,
-    1,
-    3,
-    0,
-    3,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+    0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 0, 1, 1, 2, 2, 3, 0, 2, 1, 3, 0, 3,
   };
   static const uint8_t tw_h_log2_table[BLOCK_SIZES_ALL] = {
-    0,
-    0,
-    0,
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    3,
-    3,
-    3,
-    3,
-    3,
-    3,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    3,
-    3,
-    3,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    1,
-    0,
-    2,
-    1,
-    3,
-    2,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    0,
-    3,
-    1,
-    3,
-    0,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+    0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 1, 0, 2, 1, 3, 2, 2, 0, 3, 1, 3, 0,
   };
   static const uint8_t stride_log2_table[BLOCK_SIZES_ALL] = {
-    0,
-    0,
-    1,
-    1,
-    0,
-    1,
-    1,
-    0,
-    1,
-    1,
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    3,
-    3,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    0,
-    1,
-    0,
-    1,
-    0,
-    1,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    0,
-    1,
-    0,
-    1,
-    0,
-    1,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+    0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 2, 2,
+    2, 3, 3, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
   };
   const int index =
       ((blk_row >> tw_h_log2_table[bsize]) << stride_log2_table[bsize]) +
@@ -3588,91 +3300,13 @@ static INLINE int av1_get_txk_type_index(BLOCK_SIZE bsize, int blk_row,
   return index;
 #endif  // CONFIG_NEW_TX_PARTITION
   static const uint8_t tw_w_log2_table[BLOCK_SIZES_ALL] = {
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    2,
-    2,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    0,
-    0,
-    1,
-    1,
-    2,
-    2,
+    0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 1, 2, 2,
   };
   static const uint8_t tw_h_log2_table[BLOCK_SIZES_ALL] = {
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    2,
-    2,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    0,
-    0,
-    1,
-    1,
-    2,
-    2,
+    0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 1, 2, 2,
   };
   static const uint8_t stride_log2_table[BLOCK_SIZES_ALL] = {
-    0,
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    1,
-    2,
-    2,
-    1,
-    2,
-    2,
-    2,
-    3,
-    3,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    3,
-    4,
-    4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    0,
-    2,
-    0,
-    2,
-    0,
-    2,
+    0, 0, 1, 1, 1, 2, 2, 1, 2, 2, 1, 2, 2, 2, 3, 3, 3, 4, 4, 0, 2, 0, 2, 0, 2,
   };
   index = ((blk_row >> tw_h_log2_table[bsize]) << stride_log2_table[bsize]) +
           (blk_col >> tw_w_log2_table[bsize]);
@@ -3715,23 +3349,10 @@ static INLINE int keep_chroma_c2(CctxType cctx_type) {
 
 // When the current block is chroma reference, obtain amounts of mi offsets to
 // its corresponding luma region. Otherwise set the offsets to 0.
-static INLINE void get_chroma_mi_offsets(MACROBLOCKD *const xd,
-#if !CONFIG_EXT_RECUR_PARTITIONS
-                                         TX_SIZE tx_size,
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
-                                         int *row_offset, int *col_offset) {
-#if CONFIG_EXT_RECUR_PARTITIONS
+static INLINE void get_chroma_mi_offsets(MACROBLOCKD *const xd, int *row_offset,
+                                         int *col_offset) {
   *row_offset = xd->mi_row - xd->mi[0]->chroma_ref_info.mi_row_chroma_base;
   *col_offset = xd->mi_col - xd->mi[0]->chroma_ref_info.mi_col_chroma_base;
-#else
-  const struct macroblockd_plane *const pd = &xd->plane[AOM_PLANE_U];
-  const int ss_x = pd->subsampling_x;
-  const int ss_y = pd->subsampling_y;
-  *row_offset =
-      (xd->mi_row & 0x01) && (tx_size_high_unit[tx_size] & 0x01) && ss_y;
-  *col_offset =
-      (xd->mi_col & 0x01) && (tx_size_wide_unit[tx_size] & 0x01) && ss_x;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 static INLINE void update_cctx_array(MACROBLOCKD *const xd, int blk_row,
@@ -4256,41 +3877,8 @@ void av1_setup_block_planes(MACROBLOCKD *xd, int ss_x, int ss_y,
  */
 static INLINE int bsize_to_max_depth(BLOCK_SIZE bsize) {
   static const uint8_t bsize_to_max_depth_table[BLOCK_SIZES_ALL] = {
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    2,
-    2,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+    0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   };
   return bsize_to_max_depth_table[bsize];
 }
@@ -4310,41 +3898,8 @@ static INLINE int bsize_to_max_depth(BLOCK_SIZE bsize) {
 static INLINE int bsize_to_tx_size_cat(BLOCK_SIZE bsize) {
   assert(bsize < BLOCK_SIZES_ALL);
   static const uint8_t bsize_to_tx_size_depth_table[BLOCK_SIZES_ALL] = {
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    3,
-    3,
-    3,
-    4,
-    4,
-    4,
-    4,
-    4,
-    4,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    4,
-    4,
-    4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    2,
-    2,
-    3,
-    3,
-    4,
-    4,
-#if CONFIG_EXT_RECUR_PARTITIONS
-    3,
-    3,
-    4,
-    4,
-    4,
-    4,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+    0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4, 4, 4,
   };
   const int depth = bsize_to_tx_size_depth_table[bsize];
   assert(depth <= MAX_TX_CATS);
@@ -4365,12 +3920,10 @@ static INLINE TX_SIZE av1_get_adjusted_tx_size(TX_SIZE tx_size) {
     case TX_32X64: return TX_32X32;
     case TX_64X16: return TX_32X16;
     case TX_16X64: return TX_16X32;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case TX_64X8: return TX_32X8;
     case TX_8X64: return TX_8X32;
     case TX_64X4: return TX_32X4;
     case TX_4X64: return TX_4X32;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: return tx_size;
   }
 }
@@ -4402,14 +3955,9 @@ static INLINE TX_SIZE av1_get_tx_size(int plane, const MACROBLOCKD *xd) {
 #endif  // CONFIG_IMPROVE_LOSSLESS_TXM
   if (plane == 0) return mbmi->tx_size;
   const MACROBLOCKD_PLANE *pd = &xd->plane[plane];
-#if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE bsize_base = get_bsize_base(xd, mbmi, plane);
   return av1_get_max_uv_txsize(bsize_base, pd->subsampling_x,
                                pd->subsampling_y);
-#else
-  return av1_get_max_uv_txsize(mbmi->sb_type[PLANE_TYPE_UV], pd->subsampling_x,
-                               pd->subsampling_y);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 void av1_reset_entropy_context(MACROBLOCKD *xd, BLOCK_SIZE bsize,
@@ -4493,7 +4041,6 @@ static INLINE int is_interintra_mode(const MB_MODE_INFO *mbmi) {
       (mbmi->motion_mode == INTERINTRA);
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static INLINE int is_tip_allowed_bsize(const MB_MODE_INFO *mbmi) {
   const BLOCK_SIZE bsize = mbmi->sb_type[0];
   const BLOCK_SIZE chroma_bsize_base = mbmi->chroma_ref_info.bsize_base;
@@ -4504,12 +4051,6 @@ static INLINE int is_tip_allowed_bsize(const MB_MODE_INFO *mbmi) {
   return is_chroma_ref && (bsize == chroma_bsize_base) &&
          (AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >= 8);
 }
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-static INLINE int is_tip_allowed_bsize(BLOCK_SIZE bsize) {
-  assert(bsize < BLOCK_SIZES_ALL);
-  return AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >= 8;
-}
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE int is_interintra_allowed_bsize(const BLOCK_SIZE bsize) {
   return bsize >= BLOCK_8X8 &&
@@ -4593,9 +4134,6 @@ static INLINE int is_motion_variation_allowed_bsize(BLOCK_SIZE bsize,
   if (AOMMIN(block_size_wide[bsize], block_size_high[bsize]) < 8) {
     return 0;
   }
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  assert(!(mi_row & 0x01) && !(mi_col & 0x01));
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   (void)mi_row;
   (void)mi_col;
 
@@ -4733,18 +4271,15 @@ static INLINE int av1_get_max_eob(TX_SIZE tx_size) {
   if (tx_size == TX_16X64 || tx_size == TX_64X16) {
     return 512;
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   if (tx_size == TX_8X64 || tx_size == TX_64X8) {
     return 256;
   }
   if (tx_size == TX_4X64 || tx_size == TX_64X4) {
     return 128;
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   return tx_size_2d[tx_size];
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static AOM_INLINE PARTITION_TREE *get_partition_subtree_const(
     const PARTITION_TREE *partition_tree, int idx) {
   if (!partition_tree) {
@@ -4752,7 +4287,6 @@ static AOM_INLINE PARTITION_TREE *get_partition_subtree_const(
   }
   return partition_tree->sub_tree[idx];
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // check whether compound weighted prediction can be allowed
 static INLINE int is_cwp_allowed(const MB_MODE_INFO *mbmi) {

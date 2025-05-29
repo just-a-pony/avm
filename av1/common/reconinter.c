@@ -385,23 +385,19 @@ DECLARE_ALIGNED(16, static uint8_t,
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, },
   { 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, },
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },  // not used
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 /* clang-format on */
 #endif  // !CONFIG_WEDGE_MOD_EXT
@@ -542,11 +538,9 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X32],
     wedge_tmvp_decisions[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X8],
@@ -555,7 +549,6 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
     wedge_tmvp_decisions[BLOCK_16X64] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X16],
     wedge_tmvp_decisions[BLOCK_64X16] },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X64],
@@ -564,7 +557,6 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
     wedge_tmvp_decisions[BLOCK_64X8] },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #else
 const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
@@ -586,23 +578,19 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X8] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_16X64] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X16] },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X64] },
   { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X8] },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #endif  // CONFIG_WEDGE_TMVP
 #else
@@ -634,25 +622,21 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16_hgtw, wedge_signflip_lookup[BLOCK_8X32],
     wedge_masks[BLOCK_8X32], wedge_tmvp_decisions[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16_hltw, wedge_signflip_lookup[BLOCK_32X8],
     wedge_masks[BLOCK_32X8], wedge_tmvp_decisions[BLOCK_32X8] },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #else
 const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
@@ -681,25 +665,21 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   { MAX_WEDGE_TYPES, wedge_codebook_16_hgtw, wedge_signflip_lookup[BLOCK_8X32],
     wedge_masks[BLOCK_8X32] },
   { MAX_WEDGE_TYPES, wedge_codebook_16_hltw, wedge_signflip_lookup[BLOCK_32X8],
     wedge_masks[BLOCK_32X8] },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#if CONFIG_EXT_RECUR_PARTITIONS
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL },
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 #endif  // CONFIG_WEDGE_TMVP
 #endif
@@ -1061,13 +1041,9 @@ static const uint8_t ii_weights1d[MAX_SB_SIZE] = {
 static uint8_t ii_size_scales[BLOCK_SIZES_ALL] = {
     32, 16, 16, 16, 8, 8, 8, 4,
     4,  4,  2,  2,  2, 1, 1, 1,
-#if CONFIG_EXT_RECUR_PARTITIONS
     0,  0,  0,  // unused
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     8,  8,  4,  4,  2, 2,
-#if CONFIG_EXT_RECUR_PARTITIONS
     4,  4,  2,  2,  2, 2,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 };
 /* clang-format on */
 
@@ -2779,12 +2755,10 @@ void av1_get_optflow_based_mv(
   aom_free(tmp1);
 
   for (int i = 0; i < n_blocks; i++) {
-#if OPFL_CLAMP_MV_DELTA
     vy0[i] = clamp(vy0[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
     vx0[i] = clamp(vx0[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
     vy1[i] = clamp(vy1[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
     vx1[i] = clamp(vx1[i], -OPFL_MV_DELTA_LIMIT, OPFL_MV_DELTA_LIMIT);
-#endif
     mv_refined[i * 2].as_mv.row =
         clamp(mv_refined[i * 2].as_mv.row + vy0[i], INT16_MIN, INT16_MAX);
     mv_refined[i * 2].as_mv.col =
@@ -4064,13 +4038,9 @@ static void build_inter_predictors_sub8x8(
       const int chroma_height = block_size_high[bsize] >> ss_y;
       const int pixel_row = (MI_SIZE * mi_row >> ss_y);
       const int pixel_col = (MI_SIZE * mi_col >> ss_x);
-#if CONFIG_EXT_RECUR_PARTITIONS
       // TODO(yuec): enabling compound prediction in none sub8x8 mbs in the
       // group
       bool is_compound = 0;
-#else
-      bool is_compound = has_second_ref(this_mbmi);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       struct buf_2d *const dst_buf = &pd->dst;
       uint16_t *dst = dst_buf->buf + dst_buf->stride * pixel_row + pixel_col;
       int ref = 0;
@@ -6398,9 +6368,6 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
   }
 
   if (is_sub8x8_inter(cm, xd, mi, plane, is_intrabc_block(mi, xd->tree_type))) {
-#if !CONFIG_EXT_RECUR_PARTITIONS
-    assert(bw < 8 || bh < 8);
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
     build_inter_predictors_sub8x8(cm, xd, plane, mi, mi_x, mi_y, mc_buf,
                                   calc_subpel_params_func);
   } else {
@@ -6501,27 +6468,15 @@ static AOM_INLINE void combine_interintra_highbd(
                             bd);
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 void av1_build_intra_predictors_for_interintra(const AV1_COMMON *cm,
                                                MACROBLOCKD *xd, int plane,
                                                const BUFFER_SET *ctx,
                                                uint16_t *dst, int dst_stride) {
-#else
-void av1_build_intra_predictors_for_interintra(const AV1_COMMON *cm,
-                                               MACROBLOCKD *xd,
-                                               BLOCK_SIZE bsize, int plane,
-                                               const BUFFER_SET *ctx,
-                                               uint16_t *dst, int dst_stride) {
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   struct macroblockd_plane *const pd = &xd->plane[plane];
   const int ssx = xd->plane[plane].subsampling_x;
   const int ssy = xd->plane[plane].subsampling_y;
-#if CONFIG_EXT_RECUR_PARTITIONS
   BLOCK_SIZE plane_bsize =
       get_mb_plane_block_size(xd, xd->mi[0], plane, ssx, ssy);
-#else
-  BLOCK_SIZE plane_bsize = get_plane_block_size(bsize, ssx, ssy);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   PREDICTION_MODE mode = interintra_to_intra_mode[xd->mi[0]->interintra_mode];
   assert(xd->mi[0]->angle_delta[PLANE_TYPE_Y] == 0);
   assert(xd->mi[0]->angle_delta[PLANE_TYPE_UV] == 0);
@@ -6543,9 +6498,6 @@ void av1_combine_interintra(MACROBLOCKD *xd, BLOCK_SIZE bsize, int plane,
   const int ssy = xd->plane[plane].subsampling_y;
   BLOCK_SIZE plane_bsize =
       get_mb_plane_block_size(xd, xd->mi[0], plane, ssx, ssy);
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  assert(plane_bsize == get_plane_block_size(bsize, ssx, ssy));
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
 
   combine_interintra_highbd(
       xd->mi[0]->interintra_mode, xd->mi[0]->use_wedge_interintra,
@@ -6561,13 +6513,8 @@ void av1_build_interintra_predictor(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                     BLOCK_SIZE bsize) {
   assert(bsize < BLOCK_SIZES_ALL);
   DECLARE_ALIGNED(16, uint16_t, intrapredictor[MAX_SB_SQUARE]);
-#if CONFIG_EXT_RECUR_PARTITIONS
   av1_build_intra_predictors_for_interintra(cm, xd, plane, ctx, intrapredictor,
                                             MAX_SB_SIZE);
-#else
-  av1_build_intra_predictors_for_interintra(cm, xd, bsize, plane, ctx,
-                                            intrapredictor, MAX_SB_SIZE);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   av1_combine_interintra(xd, bsize, plane, pred, stride, intrapredictor,
                          MAX_SB_SIZE);
 }

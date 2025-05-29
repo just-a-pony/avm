@@ -462,13 +462,10 @@ static INLINE int av1_use_intra_edge_upsample(int bs0, int bs1, int delta,
 static const int32_t transpose_tx_size[TX_SIZES_ALL] = {
   TX_4X4,  TX_8X8,  TX_16X16, TX_32X32, TX_64X64, TX_8X4,   TX_4X8,
   TX_16X8, TX_8X16, TX_32X16, TX_16X32, TX_64X32, TX_32X64, TX_16X4,
-  TX_4X16, TX_32X8, TX_8X32,  TX_64X16, TX_16X64,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  TX_32X4, TX_4X32, TX_64X8,  TX_8X64,  TX_64X4,  TX_4X64,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  TX_4X16, TX_32X8, TX_8X32,  TX_64X16, TX_16X64, TX_32X4,  TX_4X32,
+  TX_64X8, TX_8X64, TX_64X4,  TX_4X64,
 };
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static AOM_INLINE void set_have_top_and_left(int *have_top, int *have_left,
                                              const MACROBLOCKD *xd, int row_off,
                                              int col_off, int plane) {
@@ -476,7 +473,6 @@ static AOM_INLINE void set_have_top_and_left(int *have_top, int *have_left,
   *have_left =
       col_off || (plane ? xd->chroma_left_available : xd->left_available);
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if CONFIG_IDIF
 #define POWER_DR_INTERP_FILTER 7

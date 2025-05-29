@@ -349,11 +349,7 @@ const arg_def_t *av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.enable_restoration,
   &g_av1_codec_arg_defs.enable_rect_partitions,
   &g_av1_codec_arg_defs.enable_ab_partitions,
-#if CONFIG_EXT_RECUR_PARTITIONS
   &g_av1_codec_arg_defs.enable_uneven_4way_partitions,
-#else
-  &g_av1_codec_arg_defs.enable_1to4_partitions,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   &g_av1_codec_arg_defs.min_partition_size,
   &g_av1_codec_arg_defs.max_partition_size,
   &g_av1_codec_arg_defs.enable_chroma_deltaq,
@@ -443,11 +439,9 @@ const arg_def_t *av1_ctrl_args[] = {
 const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.disable_ml_transform_speed_features,
   &g_av1_codec_arg_defs.disable_ml_partition_speed_features,
-#if CONFIG_EXT_RECUR_PARTITIONS
   &g_av1_codec_arg_defs.erp_pruning_level,
   &g_av1_codec_arg_defs.use_ml_erp_pruning,
   &g_av1_codec_arg_defs.enable_ext_partitions,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   &g_av1_codec_arg_defs.enable_sdp,
   &g_av1_codec_arg_defs.enable_extended_sdp,
   &g_av1_codec_arg_defs.enable_mrls,
@@ -666,33 +660,18 @@ static void init_config(cfg_options_t *config) {
   /* These parameters are set in the function parseCfg.
      In absence of these parameters in the config file,
      the default values should match  */
-#if CONFIG_EXT_RECUR_PARTITIONS
   config->superblock_size = 256;
   config->max_partition_size = 256;
-#else
-  config->superblock_size = 128;
-  config->max_partition_size = 128;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   config->min_partition_size = 4;
   config->enable_ab_partitions = 1;
   config->enable_rect_partitions = 1;
-#if CONFIG_EXT_RECUR_PARTITIONS
   config->enable_uneven_4way_partitions = 1;
-#else
-  config->enable_1to4_partitions = 1;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   config->disable_ml_transform_speed_features = 0;
-#if CONFIG_EXT_RECUR_PARTITIONS
   config->disable_ml_partition_speed_features = 1;
-#else
-  config->disable_ml_partition_speed_features = 0;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-#if CONFIG_EXT_RECUR_PARTITIONS
   config->erp_pruning_level = 5;
   // ML-based partition pruning is on by default
   config->use_ml_erp_pruning = 2;
   config->enable_ext_partitions = 1;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   config->enable_sdp = 1;
   config->enable_extended_sdp = 1;
   config->enable_mrls = 1;
@@ -1589,17 +1568,11 @@ static void show_stream_config(struct stream_state *stream,
   fprintf(stdout, "Backward Reference Update      : %d\n",
           encoder_cfg->enable_bru);
 #endif  // CONFIG_BRU
-#if CONFIG_EXT_RECUR_PARTITIONS
   fprintf(
       stdout,
       "Tool setting (Partition)       : H-Type (%d), 1:2:4:1/1:4:2:1 (%d)\n",
       encoder_cfg->enable_ext_partitions,
       encoder_cfg->enable_uneven_4way_partitions);
-#else
-  fprintf(
-      stdout, "Tool setting (Partition)       : T-Type (%d), 4:1/1:4 (%d)\n",
-      encoder_cfg->enable_ab_partitions, encoder_cfg->enable_1to4_partitions);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   fprintf(stdout, "Disable ml tx speed features   : %d\n",
           encoder_cfg->disable_ml_transform_speed_features);
   fprintf(stdout, "                               : SDP (%d)\n",

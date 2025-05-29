@@ -759,92 +759,49 @@ static AOM_INLINE void collect_mv_stats_b(MV_STATS *mv_stats,
 }
 
 // Split block
-#if CONFIG_EXT_RECUR_PARTITIONS
 static AOM_INLINE void collect_mv_stats_sb(MV_STATS *mv_stats,
                                            const AV1_COMP *cpi, int mi_row,
                                            int mi_col, BLOCK_SIZE bsize,
                                            PARTITION_TREE *ptree) {
-#else
-static AOM_INLINE void collect_mv_stats_sb(MV_STATS *mv_stats,
-                                           const AV1_COMP *cpi, int mi_row,
-                                           int mi_col, BLOCK_SIZE bsize) {
-#endif  // EXT_RECUR_PARTITIONS
   assert(bsize < BLOCK_SIZES_ALL);
   const AV1_COMMON *cm = &cpi->common;
 
   if (mi_row >= cm->mi_params.mi_rows || mi_col >= cm->mi_params.mi_cols)
     return;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const PARTITION_TYPE partition = ptree->partition;
-#else
-  const PARTITION_TYPE partition =
-      get_partition(cm, SHARED_PART, mi_row, mi_col, bsize);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   const BLOCK_SIZE subsize = get_partition_subsize(bsize, partition);
 
   const int hbs_w = mi_size_wide[bsize] / 2;
   const int hbs_h = mi_size_high[bsize] / 2;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int ebs_w = mi_size_wide[bsize] / 8;
   const int ebs_h = mi_size_high[bsize] / 8;
-#else
-  const int qbs_w = mi_size_wide[bsize] / 4;
-  const int qbs_h = mi_size_high[bsize] / 4;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   switch (partition) {
     case PARTITION_NONE:
       collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
       break;
     case PARTITION_HORZ:
-#if CONFIG_EXT_RECUR_PARTITIONS
       collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col, subsize,
                           ptree->sub_tree[0]);
       collect_mv_stats_sb(mv_stats, cpi, mi_row + hbs_h, mi_col, subsize,
                           ptree->sub_tree[1]);
-#else
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row + hbs_h, mi_col);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
     case PARTITION_VERT:
-#if CONFIG_EXT_RECUR_PARTITIONS
       collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col, subsize,
                           ptree->sub_tree[0]);
       collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col + hbs_w, subsize,
                           ptree->sub_tree[1]);
-#else
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col + hbs_w);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       break;
     case PARTITION_SPLIT:
-      collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col, subsize
-#if CONFIG_EXT_RECUR_PARTITIONS
-                          ,
-                          ptree->sub_tree[0]
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      );
-      collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col + hbs_w, subsize
-#if CONFIG_EXT_RECUR_PARTITIONS
-                          ,
-                          ptree->sub_tree[1]
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      );
-      collect_mv_stats_sb(mv_stats, cpi, mi_row + hbs_h, mi_col, subsize
-#if CONFIG_EXT_RECUR_PARTITIONS
-                          ,
-                          ptree->sub_tree[2]
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      );
-      collect_mv_stats_sb(mv_stats, cpi, mi_row + hbs_h, mi_col + hbs_w, subsize
-#if CONFIG_EXT_RECUR_PARTITIONS
-                          ,
-                          ptree->sub_tree[0]
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-      );
+      collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col, subsize,
+                          ptree->sub_tree[0]);
+      collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col + hbs_w, subsize,
+                          ptree->sub_tree[1]);
+      collect_mv_stats_sb(mv_stats, cpi, mi_row + hbs_h, mi_col, subsize,
+                          ptree->sub_tree[2]);
+      collect_mv_stats_sb(mv_stats, cpi, mi_row + hbs_h, mi_col + hbs_w,
+                          subsize, ptree->sub_tree[0]);
       break;
-#if CONFIG_EXT_RECUR_PARTITIONS
     case PARTITION_HORZ_4A: {
       const BLOCK_SIZE bsize_big = get_partition_subsize(bsize, PARTITION_HORZ);
       assert(bsize_big < BLOCK_SIZES_ALL);
@@ -920,40 +877,6 @@ static AOM_INLINE void collect_mv_stats_sb(MV_STATS *mv_stats,
       }
       break;
     }
-#else   // CONFIG_EXT_RECUR_PARTITIONS
-    case PARTITION_HORZ_A:
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col + hbs_w);
-      collect_mv_stats_b(mv_stats, cpi, mi_row + hbs_h, mi_col);
-      break;
-    case PARTITION_HORZ_B:
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row + hbs_h, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row + hbs_h, mi_col + hbs_w);
-      break;
-    case PARTITION_VERT_A:
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row + hbs_h, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col + hbs_w);
-      break;
-    case PARTITION_VERT_B:
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col);
-      collect_mv_stats_b(mv_stats, cpi, mi_row, mi_col + hbs_w);
-      collect_mv_stats_b(mv_stats, cpi, mi_row + hbs_h, mi_col + hbs_w);
-      break;
-    case PARTITION_HORZ_4:
-      for (int i = 0; i < 4; ++i) {
-        const int this_mi_row = mi_row + i * qbs_h;
-        collect_mv_stats_b(mv_stats, cpi, this_mi_row, mi_col);
-      }
-      break;
-    case PARTITION_VERT_4:
-      for (int i = 0; i < 4; ++i) {
-        const int this_mi_col = mi_col + i * qbs_w;
-        collect_mv_stats_b(mv_stats, cpi, mi_row, this_mi_col);
-      }
-      break;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     default: assert(0);
   }
 }
@@ -970,13 +893,9 @@ static AOM_INLINE void collect_mv_stats_tile(MV_STATS *mv_stats,
   BLOCK_SIZE sb_size = cm->sb_size;
   for (int mi_row = mi_row_start; mi_row < mi_row_end; mi_row += sb_size_mi) {
     for (int mi_col = mi_col_start; mi_col < mi_col_end; mi_col += sb_size_mi) {
-#if CONFIG_EXT_RECUR_PARTITIONS
       const SB_INFO *sb_info = av1_get_sb_info(cm, mi_row, mi_col);
       collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col, sb_size,
                           sb_info->ptree_root[0]);
-#else
-      collect_mv_stats_sb(mv_stats, cpi, mi_row, mi_col, sb_size);
-#endif  // EXT_RECUR_PARTITIONS
     }
   }
 }

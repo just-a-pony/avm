@@ -95,7 +95,6 @@ static INLINE unsigned int highbd_sadb(const uint16_t *a, int a_stride,
     }                                                                         \
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 // 256X256
 highbd_avg_skip_sadMxN(256, 256);
 highbd_sadMxNx4D(256, 256);
@@ -107,7 +106,6 @@ highbd_sadMxNx4D(256, 128);
 // 128X256
 highbd_avg_skip_sadMxN(128, 256);
 highbd_sadMxNx4D(128, 256);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // 128x128
 highbd_avg_skip_sadMxN(128, 128);
@@ -186,7 +184,6 @@ highbd_sadMxNx4D(16, 64);
 highbd_avg_skip_sadMxN(64, 16);
 highbd_sadMxNx4D(64, 16);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 highbd_avg_skip_sadMxN(4, 32);
 highbd_sadMxNx4D(4, 32);
 highbd_avg_skip_sadMxN(32, 4);
@@ -199,4 +196,3 @@ highbd_avg_skip_sadMxN(4, 64);
 highbd_sadMxNx4D(4, 64);
 highbd_avg_skip_sadMxN(64, 4);
 highbd_sadMxNx4D(64, 4);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS

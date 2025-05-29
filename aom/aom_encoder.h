@@ -255,7 +255,6 @@ typedef struct cfg_options {
    * 0 or 1
    */
   unsigned int init_by_cfg_file;
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief Superblock size
    * 0, 64, 128 or 256
    */
@@ -268,20 +267,6 @@ typedef struct cfg_options {
    * 8, 16, 32, 64, 128, 256
    */
   unsigned int min_partition_size;
-#else
-  /*!\brief Superblock size
-   * 0, 64 or 128
-   */
-  unsigned int superblock_size;
-  /*!\brief max partition size
-   * 8, 16, 32, 64, 128
-   */
-  unsigned int max_partition_size;
-  /*!\brief min partition size
-   * 8, 16, 32, 64, 128
-   */
-  unsigned int min_partition_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief enable AB Shape partition type
    *
    */
@@ -290,22 +275,14 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_rect_partitions;
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief enable uneven 4 way partition type
    *
    */
   unsigned int enable_uneven_4way_partitions;
-#else
-  /*!\brief enable 1:4/4:1 partition type
-   *
-   */
-  unsigned int enable_1to4_partitions;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief disable ml-based speed-up for partition search
    *
    */
   unsigned int disable_ml_partition_speed_features;
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief prune partitions for ERP
    *
    */
@@ -318,7 +295,6 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_ext_partitions;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief disable ml-based speed-up for transform search
    *
    */

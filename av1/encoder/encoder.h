@@ -217,7 +217,6 @@ typedef struct {
    * disabled.
    */
   bool disable_ml_partition_speed_features;
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*!
    * Flag to indicate aggressiveness of erp pruning
    * */
@@ -230,7 +229,6 @@ typedef struct {
    * Flag to indicate if extended partitions are enabled.
    * */
   unsigned int enable_ext_partitions;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*!
    * Flag to indicate if rectanguar partitions should be enabled.
    */
@@ -239,17 +237,10 @@ typedef struct {
    * Flag to indicate if AB partitions should be enabled.
    */
   bool enable_ab_partitions;
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*!
    * Flag to indicate if 1:2:4:1 / 1:4:2:1 partitions should be enabled.
    */
   bool enable_uneven_4way_partitions;
-#else
-  /*!
-   * Flag to indicate if 1:4 / 4:1 partitions should be enabled.
-   */
-  bool enable_1to4_partitions;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   /*!
    * Flag to indicate if semi-decoupled partitioning should be enabled.
    */
@@ -1435,7 +1426,6 @@ typedef struct FRAME_COUNTS {
                                      [PALETTE_COLOR_INDEX_CONTEXTS]
                                      [PALETTE_COLORS];
   unsigned int region_type[INTER_SDP_BSIZE_GROUP][REGION_TYPES];
-#if CONFIG_EXT_RECUR_PARTITIONS
   unsigned int do_split[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS][2];
   unsigned int do_square_split[PARTITION_STRUCTURE_NUM][SQUARE_SPLIT_CONTEXTS]
                               [2];
@@ -1447,10 +1437,6 @@ typedef struct FRAME_COUNTS {
   unsigned int uneven_4way_partition_type[PARTITION_STRUCTURE_NUM]
                                          [NUM_RECT_PARTS][PARTITION_CONTEXTS]
                                          [NUM_UNEVEN_4WAY_PARTS];
-#else
-  unsigned int partition[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
-                        [EXT_PARTITION_TYPES];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   unsigned int txb_skip[TOKEN_CDF_Q_CTXS][TX_SIZES][TXB_SKIP_CONTEXTS][2];
 #if CONFIG_CONTEXT_DERIVATION
   unsigned int v_txb_skip[TOKEN_CDF_Q_CTXS][V_TXB_SKIP_CONTEXTS][2];
@@ -2027,10 +2013,8 @@ typedef struct ThreadData {
   PC_TREE_SHARED_BUFFERS shared_coeff_buf;
   SIMPLE_MOTION_DATA_TREE *sms_tree;
   SIMPLE_MOTION_DATA_TREE *sms_root;
-#if CONFIG_EXT_RECUR_PARTITIONS
   struct SimpleMotionDataBufs *sms_bufs;
   BLOCK_SIZE sb_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   uint32_t *hash_value_buffer[2][2];
   PALETTE_BUFFER *palette_buffer;
   CompoundTypeRdBuffers comp_rd_buffer;

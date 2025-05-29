@@ -64,14 +64,8 @@
 // This table is used to correct for block size.
 // The factors here are << 2 (2 = x0.5, 32 = x8 etc).
 static const uint8_t rd_thresh_block_size_factor[BLOCK_SIZES_ALL] = {
-  2,  3,  3,   4,  6,  6,  8, 12, 12, 16, 24, 24, 32, 48, 48, 64,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  96, 96, 128,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-  4,  4,  8,   8,  16, 16,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  6,  6,  12,  12, 8,  8,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  2,  3,  3,   4, 6, 6, 8, 12, 12, 16, 24, 24, 32, 48, 48, 64,
+  96, 96, 128, 4, 4, 8, 8, 16, 16, 6,  6,  12, 12, 8,  8,
 };
 
 static const int use_intra_ext_tx_for_txsize[EXT_TX_SETS_INTRA]
@@ -111,7 +105,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
     av1_cost_tokens_from_cdf(mode_costs->region_type_cost[i],
                              fc->region_type_cdf[i], NULL);
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
        plane_index++) {
     for (i = 0; i < PARTITION_CONTEXTS; ++i) {
@@ -155,15 +148,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       }
     }
   }
-#else
-  for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
-       plane_index++) {
-    for (i = 0; i < PARTITION_CONTEXTS; ++i) {
-      av1_cost_tokens_from_cdf(mode_costs->partition_cost[plane_index][i],
-                               fc->partition_cdf[plane_index][i], NULL);
-    }
-  }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   if (cm->current_frame.skip_mode_info.skip_mode_flag) {
     for (i = 0; i < SKIP_MODE_CONTEXTS; ++i) {
@@ -1981,41 +1965,8 @@ static double interp_bicubic(const double *p, int p_stride, double x,
 */
 
 static const uint8_t bsize_curvfit_model_cat_lookup[BLOCK_SIZES_ALL] = {
-  0,
-  0,
-  0,
-  1,
-  1,
-  1,
-  2,
-  2,
-  2,
-  3,
-  3,
-  3,
-  3,
-  3,
-  3,
-  3,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  3,
-  3,
-  3,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-  1,
-  1,
-  2,
-  2,
-  3,
-  3,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  1,
-  1,
-  2,
-  2,
-  2,
-  2,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 1, 1, 2, 2, 3, 3, 1, 1, 2, 2, 2, 2,
 };
 
 static int sse_norm_curvfit_model_cat_lookup(double sse_norm) {
@@ -2040,41 +1991,8 @@ static double get_rate_clamplinear(double l, double a, double b) {
 }
 
 static const uint8_t bsize_surffit_model_cat_lookup[BLOCK_SIZES_ALL] = {
-  0,
-  0,
-  0,
-  0,
-  1,
-  1,
-  2,
-  3,
-  3,
-  4,
-  5,
-  5,
-  6,
-  7,
-  7,
-  8,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  8,
-  8,
-  8,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-  0,
-  0,
-  2,
-  2,
-  4,
-  4,
-#if CONFIG_EXT_RECUR_PARTITIONS
-  1,
-  1,
-  3,
-  3,
-  2,
-  2,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
+  0, 0, 0, 0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8,
+  8, 8, 8, 0, 0, 2, 2, 4, 4, 1, 1, 3, 3, 2, 2,
 };
 
 // TODO(any): Add models for BLOCK_256

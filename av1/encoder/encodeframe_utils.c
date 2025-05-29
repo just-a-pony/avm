@@ -192,16 +192,10 @@ static void reset_tx_size(MACROBLOCK *x, MB_MODE_INFO *mbmi,
     memset(xd->tx_type_map + row * stride, DCT_DCT,
            bw * sizeof(xd->tx_type_map[0]));
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE chroma_bsize = get_bsize_base(xd, mbmi, AOM_PLANE_U);
   for (int row = 0; row < mi_size_high[chroma_bsize]; ++row)
     memset(xd->cctx_type_map + row * xd->cctx_type_map_stride, CCTX_NONE,
            mi_size_wide[chroma_bsize] * sizeof(xd->cctx_type_map[0]));
-#else
-  for (int row = 0; row < mi_size_high[mbmi->sb_type[plane_index]]; ++row)
-    memset(xd->cctx_type_map + row * xd->cctx_type_map_stride, CCTX_NONE,
-           bw * sizeof(xd->cctx_type_map[0]));
-#endif  // CONFIG_EXT_RECUR_PARTITION
   av1_zero(txfm_info->blk_skip);
   txfm_info->skip_txfm = 0;
 }
@@ -338,19 +332,14 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
   if (xd->tree_type != LUMA_PART && xd->is_chroma_ref &&
       is_cctx_allowed(cm, xd)) {
     xd->cctx_type_map = ctx->cctx_type_map;
-#if CONFIG_EXT_RECUR_PARTITIONS
     const BLOCK_SIZE chroma_bsize = get_bsize_base(xd, mi, AOM_PLANE_U);
     xd->cctx_type_map_stride = mi_size_wide[chroma_bsize];
-#else
-    xd->cctx_type_map_stride = mi_size_wide[bsize];
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     // If not dry_run, copy the cctx type data into the frame level buffer.
     // Encoder will fetch cctx types when writing bitstream.
     if (!dry_run) {
       const int mi_stride = mi_params->mi_stride;
       CctxType cur_cctx_type =
           txfm_info->skip_txfm ? CCTX_NONE : xd->cctx_type_map[0];
-#if CONFIG_EXT_RECUR_PARTITIONS
       const int chroma_bw = mi_size_wide[chroma_bsize];
       const int chroma_bh = mi_size_high[chroma_bsize];
       const int grid_idx =
@@ -361,22 +350,6 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
         memset(&cctx_type_map[blk_row * mi_stride], cur_cctx_type,
                chroma_bw * sizeof(cctx_type_map[0]));
       }
-#else
-      // If this block is sub 8x8 in luma, derive the parent >= 8x8 block area,
-      // then update its corresponding chroma area in cctx_type_map to the
-      // current cctx type
-      const int ss_x = pd[AOM_PLANE_U].subsampling_x;
-      const int ss_y = pd[AOM_PLANE_U].subsampling_y;
-      const int mi_row_offset = (mi_row & 0x01) && (bh & 0x01) && ss_y;
-      const int mi_col_offset = (mi_col & 0x01) && (bw & 0x01) && ss_x;
-      const int grid_idx = get_mi_grid_idx(mi_params, mi_row - mi_row_offset,
-                                           mi_col - mi_col_offset);
-      CctxType *const cctx_type_map = mi_params->cctx_type_map + grid_idx;
-      for (int blk_row = 0; blk_row < (mi_row_offset ? 2 : bh); ++blk_row) {
-        memset(&cctx_type_map[blk_row * mi_stride], cur_cctx_type,
-               (mi_col_offset ? 2 : bw) * sizeof(cctx_type_map[0]));
-      }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       xd->cctx_type_map = cctx_type_map;
       xd->cctx_type_map_stride = mi_stride;
     }
@@ -435,12 +408,10 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
           xd->mi[x_idx + y * mis]->cfl_alpha_signs = mi_addr->cfl_alpha_signs;
           xd->mi[x_idx + y * mis]->cfl_alpha_idx = mi_addr->cfl_alpha_idx;
           xd->mi[x_idx + y * mis]->partition = mi_addr->partition;
-#if CONFIG_EXT_RECUR_PARTITIONS
           xd->mi[x_idx + y * mis]->chroma_mi_row_start =
               mi_addr->chroma_mi_row_start;
           xd->mi[x_idx + y * mis]->chroma_mi_col_start =
               mi_addr->chroma_mi_col_start;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
           xd->mi[x_idx + y * mis]
               ->palette_mode_info.palette_size[PLANE_TYPE_UV] =
               mi_addr->palette_mode_info.palette_size[PLANE_TYPE_UV];
@@ -1454,9 +1425,6 @@ void av1_reset_simple_motion_tree_partition(SIMPLE_MOTION_DATA_TREE *sms_tree,
 void av1_update_picked_ref_frames_mask(MACROBLOCK *const x, int ref_type,
                                        BLOCK_SIZE bsize, int mib_size,
                                        int mi_row, int mi_col) {
-#if !CONFIG_EXT_RECUR_PARTITIONS
-  assert(mi_size_wide[bsize] == mi_size_high[bsize]);
-#endif  // !CONFIG_EXT_RECUR_PARTITIONS
   const int sb_size_mask = mib_size - 1;
   const int mi_row_in_sb = mi_row & sb_size_mask;
   const int mi_col_in_sb = mi_col & sb_size_mask;
@@ -1879,7 +1847,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
                 REGION_TYPES);
   }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
        plane_index++) {
     for (int i = 0; i < PARTITION_CONTEXTS; i++) {
@@ -1887,7 +1854,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
                   ctx_tr->do_split_cdf[plane_index][i], 2);
     }
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
        plane_index++) {
     for (int i = 0; i < SQUARE_SPLIT_CONTEXTS; i++) {
@@ -1895,7 +1861,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
                   ctx_tr->do_square_split_cdf[plane_index][i], 2);
     }
   }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
        plane_index++) {
     for (int i = 0; i < PARTITION_CONTEXTS; i++) {
@@ -1921,23 +1886,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
       }
     }
   }
-#else
-  for (int plane_index = 0; plane_index < PARTITION_STRUCTURE_NUM;
-       plane_index++) {
-    for (int i = 0; i < PARTITION_CONTEXTS; i++) {
-      if (i < 4) {
-        AVG_CDF_STRIDE(ctx_left->partition_cdf[plane_index][i],
-                       ctx_tr->partition_cdf[plane_index][i], 4, CDF_SIZE(10));
-      } else if (i < 16) {
-        AVERAGE_CDF(ctx_left->partition_cdf[plane_index][i],
-                    ctx_tr->partition_cdf[plane_index][i], 10);
-      } else {
-        AVG_CDF_STRIDE(ctx_left->partition_cdf[plane_index][i],
-                       ctx_tr->partition_cdf[plane_index][i], 8, CDF_SIZE(10));
-      }
-    }
-  }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   AVERAGE_CDF(ctx_left->switchable_interp_cdf, ctx_tr->switchable_interp_cdf,
               SWITCHABLE_FILTERS);
 #if !CONFIG_AIMC
@@ -2111,9 +2059,7 @@ void av1_backup_sb_state(SB_FIRST_PASS_STATS *sb_fp_stats, const AV1_COMP *cpi,
 #if WARP_CU_BANK
   sb_fp_stats->warp_param_bank = td->mb.e_mbd.warp_param_bank;
 #endif  // WARP_CU_BANK
-#if CONFIG_EXT_RECUR_PARTITIONS
   sb_fp_stats->min_partition_size = x->sb_enc.min_partition_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 void av1_restore_sb_state(const SB_FIRST_PASS_STATS *sb_fp_stats, AV1_COMP *cpi,
@@ -2147,9 +2093,7 @@ void av1_restore_sb_state(const SB_FIRST_PASS_STATS *sb_fp_stats, AV1_COMP *cpi,
 #if WARP_CU_BANK
   x->e_mbd.warp_param_bank = sb_fp_stats->warp_param_bank;
 #endif  // WARP_CU_BANK
-#if CONFIG_EXT_RECUR_PARTITIONS
   x->sb_enc.min_partition_size = sb_fp_stats->min_partition_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 // Update the rate costs of some symbols according to the frequency directed

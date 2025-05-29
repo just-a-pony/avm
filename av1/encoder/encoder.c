@@ -283,9 +283,7 @@ static void update_frame_size(AV1_COMP *cpi) {
   } else {
     av1_set_frame_sb_size(cm, sb_size);
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   cpi->td.sb_size = cm->sb_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   av1_set_tile_info(cm, &cpi->oxcf.tile_cfg);
 }
@@ -460,11 +458,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
       oxcf->motion_mode_cfg.enable_six_param_warp_delta;
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   seq->enable_ext_partitions = oxcf->part_cfg.enable_ext_partitions;
   seq->enable_uneven_4way_partitions =
       oxcf->part_cfg.enable_uneven_4way_partitions;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   seq->enable_masked_compound = oxcf->comp_type_cfg.enable_masked_comp;
   seq->enable_intra_edge_filter = oxcf->intra_mode_cfg.enable_intra_edge_filter;
   seq->enable_filter_intra = oxcf->intra_mode_cfg.enable_filter_intra;
@@ -712,9 +708,7 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
   // set sb size before allocations
   const BLOCK_SIZE sb_size = av1_select_sb_size(cpi);
   set_sb_size(cm, sb_size);
-#if CONFIG_EXT_RECUR_PARTITIONS
   cpi->td.sb_size = cm->sb_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   alloc_compressor_data(cpi);
 
   av1_update_film_grain_parameters(cpi, oxcf);
@@ -1026,9 +1020,7 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   } else {
     av1_set_frame_sb_size(cm, new_sb_size);
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   cpi->td.sb_size = cm->sb_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   if (initial_dimensions->width || sb_size != cm->sb_size) {
     if (cm->width > initial_dimensions->width ||
@@ -1036,9 +1028,7 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
       av1_free_context_buffers(cm);
       av1_free_shared_coeff_buffer(&cpi->td.shared_coeff_buf);
       av1_free_sms_tree(&cpi->td);
-#if CONFIG_EXT_RECUR_PARTITIONS
       av1_free_sms_bufs(&cpi->td);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_ML_PART_SPLIT
       av2_part_split_prune_tflite_close(&(cpi->td.partition_model));
 #endif  // CONFIG_ML_PART_SPLIT
@@ -1491,9 +1481,7 @@ static AOM_INLINE void free_thread_data(AV1_COMP *cpi) {
     thread_data->td->firstpass_ctx = NULL;
     av1_free_shared_coeff_buffer(&thread_data->td->shared_coeff_buf);
     av1_free_sms_tree(thread_data->td);
-#if CONFIG_EXT_RECUR_PARTITIONS
     av1_free_sms_bufs(thread_data->td);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_ML_PART_SPLIT
     av2_part_split_prune_tflite_close(&(thread_data->td->partition_model));
 #endif  // CONFIG_ML_PART_SPLIT
@@ -2265,9 +2253,7 @@ int av1_set_size_literal(AV1_COMP *cpi, int width, int height) {
       av1_free_context_buffers(cm);
       av1_free_shared_coeff_buffer(&cpi->td.shared_coeff_buf);
       av1_free_sms_tree(&cpi->td);
-#if CONFIG_EXT_RECUR_PARTITIONS
       av1_free_sms_bufs(&cpi->td);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_ML_PART_SPLIT
       av2_part_split_prune_tflite_close(&(cpi->td.partition_model));
 #endif  // CONFIG_ML_PART_SPLIT

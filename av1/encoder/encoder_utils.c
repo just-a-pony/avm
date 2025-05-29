@@ -828,13 +828,9 @@ BLOCK_SIZE av1_select_sb_size(const AV1_COMP *const cpi) {
       oxcf->resize_cfg.resize_mode == RESIZE_NONE && oxcf->speed > 1) {
     return AOMMIN(cm->width, cm->height) > 480 ? BLOCK_128X128 : BLOCK_64X64;
   }
-#if CONFIG_EXT_RECUR_PARTITIONS
   return AOMMIN(oxcf->frm_dim_cfg.width, oxcf->frm_dim_cfg.height) >= 720
              ? BLOCK_256X256
              : BLOCK_128X128;
-#else
-  return BLOCK_128X128;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 void reallocate_sb_size_dependent_buffers(AV1_COMP *cpi) {
@@ -847,9 +843,7 @@ void reallocate_sb_size_dependent_buffers(AV1_COMP *cpi) {
   av1_free_context_buffers(cm);
   av1_free_shared_coeff_buffer(&cpi->td.shared_coeff_buf);
   av1_free_sms_tree(&cpi->td);
-#if CONFIG_EXT_RECUR_PARTITIONS
   av1_free_sms_bufs(&cpi->td);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_ML_PART_SPLIT
   av2_part_split_prune_tflite_close(&(cpi->td.partition_model));
 #endif  // CONFIG_ML_PART_SPLIT
@@ -947,9 +941,7 @@ void av1_setup_frame(AV1_COMP *cpi) {
     }
   }
   av1_set_frame_sb_size(cm, cm->seq_params.sb_size);
-#if CONFIG_EXT_RECUR_PARTITIONS
   cpi->td.sb_size = cm->sb_size;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   av1_set_tile_info(cm, &cpi->oxcf.tile_cfg);
   if (cm->sb_size != old_sb_size) {
     // Reallocate sb_size-dependent buffers if the sb_size has changed.
@@ -958,9 +950,7 @@ void av1_setup_frame(AV1_COMP *cpi) {
     av1_free_context_buffers(cm);
     av1_free_shared_coeff_buffer(&cpi->td.shared_coeff_buf);
     av1_free_sms_tree(&cpi->td);
-#if CONFIG_EXT_RECUR_PARTITIONS
     av1_free_sms_bufs(&cpi->td);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_ML_PART_SPLIT
     av2_part_split_prune_tflite_close(&(cpi->td.partition_model));
 #endif  // CONFIG_ML_PART_SPLIT

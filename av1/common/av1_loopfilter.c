@@ -354,10 +354,8 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 #endif  // CONFIG_LF_SUB_PU
 ) {
   assert(mbmi != NULL);
-#if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE bsize_base =
       get_bsize_base_from_tree_type(mbmi, tree_type, plane);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #if CONFIG_IMPROVE_LOSSLESS_TXM
   if (xd && xd->lossless[mbmi->segment_id]) {
@@ -382,7 +380,6 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 
   TX_SIZE tx_size = TX_INVALID;
   if (plane != AOM_PLANE_Y) {
-#if CONFIG_EXT_RECUR_PARTITIONS
     tx_size = av1_get_max_uv_txsize(bsize_base, plane_ptr->subsampling_x,
                                     plane_ptr->subsampling_y);
     int chroma_mi_row_start;
@@ -393,12 +390,6 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
         tx_size, edge_dir,
         (mi_row - chroma_mi_row_start) >> plane_ptr->subsampling_y,
         (mi_col - chroma_mi_col_start) >> plane_ptr->subsampling_x);
-#else
-    tx_size = av1_get_max_uv_txsize(mbmi->sb_type[plane_type],
-
-                                    plane_ptr->subsampling_x,
-                                    plane_ptr->subsampling_y);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   }
 
   if (plane == AOM_PLANE_Y && !mbmi->skip_txfm[SHARED_PART]) {
@@ -496,22 +487,14 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
   assert(mbmi != NULL);
   if (xd && xd->lossless[mbmi->segment_id]) return TX_4X4;
   const int plane_type = av1_get_sdp_idx(tree_type);
-#if CONFIG_EXT_RECUR_PARTITIONS
   const BLOCK_SIZE bsize_base =
       get_bsize_base_from_tree_type(mbmi, tree_type, plane);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
   TX_SIZE tx_size =
       (plane == AOM_PLANE_Y)
           ? mbmi->tx_size
-#if CONFIG_EXT_RECUR_PARTITIONS
           : av1_get_max_uv_txsize(bsize_base, plane_ptr->subsampling_x,
                                   plane_ptr->subsampling_y);
-#else
-          : av1_get_max_uv_txsize(mbmi->sb_type[plane_type],
-                                  plane_ptr->subsampling_x,
-                                  plane_ptr->subsampling_y);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   assert(tx_size < TX_SIZES_ALL);
   if ((plane == AOM_PLANE_Y) && is_inter_block(mbmi, SHARED_PART) &&
       !mbmi->skip_txfm[SHARED_PART]) {

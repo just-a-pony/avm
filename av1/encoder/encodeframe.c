@@ -452,7 +452,6 @@ static AOM_INLINE void adjust_rdmult_tpl_model(AV1_COMP *cpi, MACROBLOCK *x,
 #define AVG_CDF_WEIGHT_LEFT 3
 #define AVG_CDF_WEIGHT_TOP_RIGHT 1
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static void fill_sms_buf(SimpleMotionDataBufs *data_buf,
                          SIMPLE_MOTION_DATA_TREE *sms_node, int mi_row,
                          int mi_col, BLOCK_SIZE bsize, BLOCK_SIZE sb_size,
@@ -475,7 +474,6 @@ static void fill_sms_buf(SimpleMotionDataBufs *data_buf,
     }
   }
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // This function initializes the stats for encode_rd_sb.
 static INLINE void init_encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
@@ -520,14 +518,12 @@ static INLINE void init_encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
   reset_hash_records(&x->txfm_search_info, cpi->sf.tx_sf.use_inter_txb_hash);
   av1_zero(x->picked_ref_frames_mask);
   av1_invalid_rd_stats(rd_cost);
-#if CONFIG_EXT_RECUR_PARTITIONS
   SimpleMotionDataBufs *data_bufs = x->sms_bufs;
   av1_init_sms_data_bufs(data_bufs);
   fill_sms_buf(data_bufs, sms_root, mi_row, mi_col, cm->sb_size, cm->sb_size,
                0);
   fill_sms_buf(data_bufs, sms_root, mi_row, mi_col, cm->sb_size, cm->sb_size,
                1);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   if (x->e_mbd.tree_type == CHROMA_PART) {
     assert(is_bsize_square(x->sb_enc.min_partition_size));
     x->sb_enc.min_partition_size =
@@ -540,10 +536,8 @@ static INLINE void init_encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
  * \ingroup partition_search
  * */
 typedef struct SbMultiPassParams {
-#if CONFIG_EXT_RECUR_PARTITIONS
   /*!\brief The reference partition tree template. */
   const PARTITION_TREE *template_tree;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 } SbMultiPassParams;
 
 /*!\brief Perform one pass of partition search.
@@ -568,10 +562,8 @@ static AOM_INLINE void perform_one_partition_pass(
   av1_invalid_rd_stats(&dummy_rdc);
   const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
   const int total_loop_num = intra_sdp_enabled ? 2 : 1;
-#if CONFIG_EXT_RECUR_PARTITIONS
   x->is_whole_sb = mi_row + mi_size_high[sb_size] <= cm->mi_params.mi_rows &&
                    mi_col + mi_size_wide[sb_size] <= cm->mi_params.mi_cols;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   for (int loop_idx = 0; loop_idx < total_loop_num; loop_idx++) {
     const BLOCK_SIZE min_partition_size = sb_enc->min_partition_size;
     xd->tree_type =
@@ -589,15 +581,11 @@ static AOM_INLINE void perform_one_partition_pass(
       pc_root->region_type = INTRA_REGION;
     }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
     const PARTITION_TREE *template_tree =
         multi_pass_params ? multi_pass_params->template_tree : NULL;
     assert(IMPLIES(template_tree, total_loop_num == 1) &&
            "perform_one_partition_pass cannot handle fixed partitioning for "
            "erp yet.");
-#else
-    (void)multi_pass_params;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 #if CONFIG_ML_PART_SPLIT
     int force_prune_flags[3] = { 0, 0, 0 };
 #endif  // CONFIG_ML_PART_SPLIT
@@ -605,11 +593,8 @@ static AOM_INLINE void perform_one_partition_pass(
         cpi, td, tile_data,
         (intra_sdp_enabled && xd->tree_type == CHROMA_PART) ? tp_chroma : tp,
         mi_row, mi_col, sb_size, PARTITION_NONE, &dummy_rdc, dummy_rdc, pc_root,
-#if CONFIG_EXT_RECUR_PARTITIONS
         xd->tree_type == CHROMA_PART ? xd->sbi->ptree_root[0] : NULL,
-        template_tree, INT_MAX,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-        sms_root, NULL, multi_pass_mode, NULL
+        template_tree, INT_MAX, sms_root, NULL, multi_pass_mode, NULL
 #if CONFIG_ML_PART_SPLIT
         ,
         force_prune_flags
@@ -619,9 +604,7 @@ static AOM_INLINE void perform_one_partition_pass(
   }
 
   xd->tree_type = SHARED_PART;
-#if CONFIG_EXT_RECUR_PARTITIONS
   x->is_whole_sb = 0;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 }
 
 /*!\brief Perform partition search twice (for unit testing only).
@@ -667,7 +650,6 @@ static AOM_INLINE void perform_two_partition_passes(
                              SB_WET_PASS, NULL);
 }
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 /*!\brief Set all tree nodes <= min_bsize to PARTITION_INVALID.
  *
  * \ingroup partition_search
@@ -753,7 +735,6 @@ static AOM_INLINE void perform_two_pass_partition_search(
 
   av1_free_ptree_recursive(part_ref);
 }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 /*!\brief Encode a superblock (RD-search-based)
  *
@@ -787,10 +768,8 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
   MACROBLOCKD *const xd = &x->e_mbd;
   x->e_mbd.sbi->sb_mv_precision = cm->features.fr_mv_precision;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   x->sms_bufs = td->sms_bufs;
   x->reuse_inter_mode_cache_type = cpi->sf.inter_sf.reuse_erp_mode_flag;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row, mi_col,
                     1);
   const int intra_sdp_enabled = is_sdp_enabled_in_keyframe(cm);
@@ -809,13 +788,11 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
                                : (loop_idx == 0 ? LUMA_PART : CHROMA_PART));
       init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
                         mi_col, 1);
-#if CONFIG_EXT_RECUR_PARTITIONS
       av1_reset_ptree_in_sbi(xd->sbi, xd->tree_type);
       av1_build_partition_tree_fixed_partitioning(
           cm, xd->tree_type, mi_row, mi_col, bsize,
           xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)],
           xd->tree_type == CHROMA_PART ? xd->sbi->ptree_root[0] : NULL);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       PC_TREE *const pc_root =
           av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col, sb_size, NULL,
                                  PARTITION_NONE, 0, 1, ss_x, ss_y);
@@ -823,12 +800,7 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
           cpi, td, tile_data, mi,
           (intra_sdp_enabled && xd->tree_type == CHROMA_PART) ? tp_chroma : tp,
           mi_row, mi_col, sb_size, &dummy_rate, &dummy_dist, 1,
-#if CONFIG_EXT_RECUR_PARTITIONS
-          xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)],
-#else
-          NULL,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-          pc_root);
+          xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)], pc_root);
       av1_free_pc_tree_recursive(pc_root, num_planes, 0, 0);
       x->sb_enc.min_partition_size = min_partition_size;
     }
@@ -850,23 +822,16 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
       PC_TREE *const pc_root =
           av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col, sb_size, NULL,
                                  PARTITION_NONE, 0, 1, ss_x, ss_y);
-#if CONFIG_EXT_RECUR_PARTITIONS
       av1_reset_ptree_in_sbi(xd->sbi, xd->tree_type);
       av1_build_partition_tree_fixed_partitioning(
           cm, xd->tree_type, mi_row, mi_col, bsize,
           xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)],
           xd->tree_type == CHROMA_PART ? xd->sbi->ptree_root[0] : NULL);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
       av1_rd_use_partition(
           cpi, td, tile_data, mi,
           (intra_sdp_enabled && xd->tree_type == CHROMA_PART) ? tp_chroma : tp,
           mi_row, mi_col, sb_size, &dummy_rate, &dummy_dist, 1,
-#if CONFIG_EXT_RECUR_PARTITIONS
-          xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)],
-#else
-          NULL,
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-          pc_root);
+          xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)], pc_root);
       av1_free_pc_tree_recursive(pc_root, num_planes, 0, 0);
       x->sb_enc.min_partition_size = min_partition_size;
     }
@@ -894,18 +859,14 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
     if (cpi->oxcf.unit_test_cfg.sb_multipass_unit_test) {
       perform_two_partition_passes(cpi, td, tile_data, tp, tp_chroma, mi_row,
                                    mi_col);
-    }
-#if CONFIG_EXT_RECUR_PARTITIONS
-    else if (!frame_is_intra_only(cm) &&
+    } else if (!frame_is_intra_only(cm) &&
 #if CONFIG_BRU
-             bru_is_sb_active(cm, mi_col, mi_row) &&
+               bru_is_sb_active(cm, mi_col, mi_row) &&
 #endif  // CONFIG_BRU
-             sf->part_sf.two_pass_partition_search) {
+               sf->part_sf.two_pass_partition_search) {
       perform_two_pass_partition_search(cpi, td, tile_data, tp, tp_chroma,
                                         mi_row, mi_col);
-    }
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
-    else {
+    } else {
       perform_one_partition_pass(cpi, td, tile_data, tp, tp_chroma, mi_row,
                                  mi_col, SB_SINGLE_PASS, NULL);
     }

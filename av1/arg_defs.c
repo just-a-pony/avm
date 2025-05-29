@@ -386,7 +386,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "disable-ml-partition-speed-features", 1,
               "Disable ML partition speed features "
               "(0: false (default), 1: true)"),
-#if CONFIG_EXT_RECUR_PARTITIONS
   .erp_pruning_level =
       ARG_DEF(NULL, "erp-pruning-level", 1,
               "Set the level of aggressiveness for erp pruning."
@@ -400,23 +399,16 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_ext_partitions = ARG_DEF(NULL, "enable-ext-partitions", 1,
                                    "Enable extended partitions "
                                    "(0: false, 1: true (default))."),
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   .enable_rect_partitions = ARG_DEF(NULL, "enable-rect-partitions", 1,
                                     "Enable rectangular partitions "
                                     "(0: false, 1: true (default))"),
   .enable_ab_partitions =
       ARG_DEF(NULL, "enable-ab-partitions", 1,
               "Enable ab partitions (0: false, 1: true (default))"),
-#if CONFIG_EXT_RECUR_PARTITIONS
   .enable_uneven_4way_partitions =
       ARG_DEF(NULL, "enable-uneven-4way-partitions", 1,
               "Enable 1:2:4:1 and 1:4:2:1 partitions "
               "(0: false, 1: true (default))"),
-#else
-  .enable_1to4_partitions = ARG_DEF(NULL, "enable_1to4_partitions", 1,
-                                    "Enable 1:4 and 4:1 partitions "
-                                    "(0: false, 1: true (default))"),
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   .disable_ml_transform_speed_features =
       ARG_DEF(NULL, "disable-ml-transform-speed-features", 1,
               "Disable ML transform speed features "
@@ -517,17 +509,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "(4:4x4, 8:8x8, 16:16x16, 32:32x32, 64:64x64, 128:128x128). "
               "On frame with 4k+ resolutions or higher speed settings, the min "
               "partition size will have a minimum of 8."),
-#if CONFIG_EXT_RECUR_PARTITIONS
   .max_partition_size = ARG_DEF(
       NULL, "max-partition-size", 1,
       "Set max partition size "
       "(4:4x4, 8:8x8, 16:16x16, 32:32x32, 64:64x64, 128:128x128, 256:256x256)"),
-#else
-  .max_partition_size =
-      ARG_DEF(NULL, "max-partition-size", 1,
-              "Set max partition size "
-              "(4:4x4, 8:8x8, 16:16x16, 32:32x32, 64:64x64, 128:128x128)"),
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   .enable_chroma_deltaq = ARG_DEF(NULL, "enable-chroma-deltaq", 1,
                                   "Enable chroma delta quant "
                                   "(0: false (default), 1: true)"),

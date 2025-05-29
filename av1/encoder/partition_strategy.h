@@ -190,7 +190,6 @@ void av1_prune_ab_partitions(
     int *horza_partition_allowed, int *horzb_partition_allowed,
     int *verta_partition_allowed, int *vertb_partition_allowed);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 SimpleMotionData *av1_get_sms_data_entry(SimpleMotionDataBufs *sms_bufs,
                                          int mi_row, int mi_col,
                                          BLOCK_SIZE bsize, BLOCK_SIZE sb_size,
@@ -240,7 +239,6 @@ static INLINE void av1_init_sms_partition_stats(SMSPartitionStats *stats) {
 void av1_cache_best_partition(SimpleMotionDataBufs *sms_bufs, int mi_row,
                               int mi_col, BLOCK_SIZE bsize, BLOCK_SIZE sb_size,
                               PARTITION_TYPE partition, int8_t region_type);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 // A simplified version of set_offsets meant to be used for
 // simple_motion_search.
@@ -309,7 +307,6 @@ PARTITION_TYPE av1_get_prev_partition(MACROBLOCK *x, int mi_row, int mi_col,
                                       BLOCK_SIZE bsize, BLOCK_SIZE sb_size,
                                       int8_t region_type);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static INLINE void av1_init_sms_data_bufs(SimpleMotionDataBufs *data_bufs) {
   memset(data_bufs, 0, sizeof(*data_bufs));
 }
@@ -320,7 +317,6 @@ void av1_gather_erp_rect_features(
     const PC_TREE *pc_tree,
     const struct PartitionSearchState *part_search_state, int64_t part_none_rd,
     const int (*mi_pos_rect)[SUB_PARTITIONS_RECT][2]);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 static INLINE int is_full_sb(const CommonModeInfoParams *const mi_params,
                              int mi_row, int mi_col, BLOCK_SIZE sb_size) {

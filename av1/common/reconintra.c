@@ -68,7 +68,6 @@ static const uint8_t extend_modes[INTRA_MODES] = {
   NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT,  // PAETH
 };
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 static int has_top_right(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                          BLOCK_SIZE bsize, int mi_row, int mi_col,
                          int top_available, int right_available, TX_SIZE txsz,
@@ -167,203 +166,6 @@ static int has_top_right(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     }
   }
 }
-#else
-// Tables to store if the top-right reference pixels are available. The flags
-// are represented with bits, packed into 8-bit integers. E.g., for the 32x32
-// blocks in a 128x128 superblock, the index of the "o" block is 10 (in raster
-// order), so its flag is stored at the 3rd bit of the 2nd entry in the table,
-// i.e. (table[10 / 8] >> (10 % 8)) & 1.
-//       . . . .
-//       . . . .
-//       . . o .
-//       . . . .
-static uint8_t has_tr_4x4[128] = {
-  255, 255, 255, 255, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-  127, 127, 127, 127, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-  255, 127, 255, 127, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-  127, 127, 127, 127, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-  255, 255, 255, 127, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-  127, 127, 127, 127, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-  255, 127, 255, 127, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-  127, 127, 127, 127, 85, 85, 85, 85, 119, 119, 119, 119, 85, 85, 85, 85,
-};
-static uint8_t has_tr_4x8[64] = {
-  255, 255, 255, 255, 119, 119, 119, 119, 127, 127, 127, 127, 119,
-  119, 119, 119, 255, 127, 255, 127, 119, 119, 119, 119, 127, 127,
-  127, 127, 119, 119, 119, 119, 255, 255, 255, 127, 119, 119, 119,
-  119, 127, 127, 127, 127, 119, 119, 119, 119, 255, 127, 255, 127,
-  119, 119, 119, 119, 127, 127, 127, 127, 119, 119, 119, 119,
-};
-static uint8_t has_tr_8x4[64] = {
-  255, 255, 0, 0, 85, 85, 0, 0, 119, 119, 0, 0, 85, 85, 0, 0,
-  127, 127, 0, 0, 85, 85, 0, 0, 119, 119, 0, 0, 85, 85, 0, 0,
-  255, 127, 0, 0, 85, 85, 0, 0, 119, 119, 0, 0, 85, 85, 0, 0,
-  127, 127, 0, 0, 85, 85, 0, 0, 119, 119, 0, 0, 85, 85, 0, 0,
-};
-static uint8_t has_tr_8x8[32] = {
-  255, 255, 85, 85, 119, 119, 85, 85, 127, 127, 85, 85, 119, 119, 85, 85,
-  255, 127, 85, 85, 119, 119, 85, 85, 127, 127, 85, 85, 119, 119, 85, 85,
-};
-static uint8_t has_tr_8x16[16] = {
-  255, 255, 119, 119, 127, 127, 119, 119,
-  255, 127, 119, 119, 127, 127, 119, 119,
-};
-static uint8_t has_tr_16x8[16] = {
-  255, 0, 85, 0, 119, 0, 85, 0, 127, 0, 85, 0, 119, 0, 85, 0,
-};
-static uint8_t has_tr_16x16[8] = {
-  255, 85, 119, 85, 127, 85, 119, 85,
-};
-static uint8_t has_tr_16x32[4] = { 255, 119, 127, 119 };
-static uint8_t has_tr_32x16[4] = { 15, 5, 7, 5 };
-static uint8_t has_tr_32x32[2] = { 95, 87 };
-static uint8_t has_tr_32x64[1] = { 127 };
-static uint8_t has_tr_64x32[1] = { 19 };
-static uint8_t has_tr_64x64[1] = { 7 };
-static uint8_t has_tr_64x128[1] = { 3 };
-static uint8_t has_tr_128x64[1] = { 1 };
-static uint8_t has_tr_128x128[1] = { 1 };
-static uint8_t has_tr_4x16[32] = {
-  255, 255, 255, 255, 127, 127, 127, 127, 255, 127, 255,
-  127, 127, 127, 127, 127, 255, 255, 255, 127, 127, 127,
-  127, 127, 255, 127, 255, 127, 127, 127, 127, 127,
-};
-static uint8_t has_tr_16x4[32] = {
-  255, 0, 0, 0, 85, 0, 0, 0, 119, 0, 0, 0, 85, 0, 0, 0,
-  127, 0, 0, 0, 85, 0, 0, 0, 119, 0, 0, 0, 85, 0, 0, 0,
-};
-static uint8_t has_tr_8x32[8] = {
-  255, 255, 127, 127, 255, 127, 127, 127,
-};
-static uint8_t has_tr_32x8[8] = {
-  15, 0, 5, 0, 7, 0, 5, 0,
-};
-static uint8_t has_tr_16x64[2] = { 255, 127 };
-static uint8_t has_tr_64x16[2] = { 3, 1 };
-
-static const uint8_t *const has_tr_tables[BLOCK_SIZES_ALL] = {
-  // 4X4
-  has_tr_4x4,
-  // 4X8,       8X4,            8X8
-  has_tr_4x8, has_tr_8x4, has_tr_8x8,
-  // 8X16,      16X8,           16X16
-  has_tr_8x16, has_tr_16x8, has_tr_16x16,
-  // 16X32,     32X16,          32X32
-  has_tr_16x32, has_tr_32x16, has_tr_32x32,
-  // 32X64,     64X32,          64X64
-  has_tr_32x64, has_tr_64x32, has_tr_64x64,
-  // 64x128,    128x64,         128x128
-  has_tr_64x128, has_tr_128x64, has_tr_128x128,
-  // 4x16,      16x4,            8x32
-  has_tr_4x16, has_tr_16x4, has_tr_8x32,
-  // 32x8,      16x64,           64x16
-  has_tr_32x8, has_tr_16x64, has_tr_64x16
-};
-
-static uint8_t has_tr_vert_8x8[32] = {
-  255, 255, 0, 0, 119, 119, 0, 0, 127, 127, 0, 0, 119, 119, 0, 0,
-  255, 127, 0, 0, 119, 119, 0, 0, 127, 127, 0, 0, 119, 119, 0, 0,
-};
-static uint8_t has_tr_vert_16x16[8] = {
-  255, 0, 119, 0, 127, 0, 119, 0,
-};
-static uint8_t has_tr_vert_32x32[2] = { 15, 7 };
-static uint8_t has_tr_vert_64x64[1] = { 3 };
-
-// The _vert_* tables are like the ordinary tables above, but describe the
-// order we visit square blocks when doing a PARTITION_VERT_A or
-// PARTITION_VERT_B. This is the same order as normal except for on the last
-// split where we go vertically (TL, BL, TR, BR). We treat the rectangular block
-// as a pair of squares, which means that these tables work correctly for both
-// mixed vertical partition types.
-//
-// There are tables for each of the square sizes. Vertical rectangles (like
-// BLOCK_16X32) use their respective "non-vert" table
-static const uint8_t *const has_tr_vert_tables[BLOCK_SIZES] = {
-  // 4X4
-  NULL,
-  // 4X8,      8X4,         8X8
-  has_tr_4x8, NULL, has_tr_vert_8x8,
-  // 8X16,     16X8,        16X16
-  has_tr_8x16, NULL, has_tr_vert_16x16,
-  // 16X32,    32X16,       32X32
-  has_tr_16x32, NULL, has_tr_vert_32x32,
-  // 32X64,    64X32,       64X64
-  has_tr_32x64, NULL, has_tr_vert_64x64,
-  // 64x128,   128x64,      128x128
-  has_tr_64x128, NULL, has_tr_128x128
-};
-
-static const uint8_t *get_has_tr_table(PARTITION_TYPE partition,
-                                       BLOCK_SIZE bsize) {
-  const uint8_t *ret = NULL;
-  // If this is a mixed vertical partition, look up bsize in orders_vert.
-  if (partition == PARTITION_VERT_A || partition == PARTITION_VERT_B) {
-    assert(bsize < BLOCK_SIZES);
-    ret = has_tr_vert_tables[bsize];
-  } else {
-    ret = has_tr_tables[bsize];
-  }
-  assert(ret);
-  return ret;
-}
-
-static int has_top_right(const AV1_COMMON *cm, BLOCK_SIZE bsize, int mi_row,
-                         int mi_col, int top_available, int right_available,
-                         PARTITION_TYPE partition, TX_SIZE txsz, int row_off,
-                         int col_off, int ss_x, int ss_y) {
-  if (!top_available || !right_available) return 0;
-
-  const int bw_unit = mi_size_wide[bsize];
-  const int plane_bw_unit = AOMMAX(bw_unit >> ss_x, 1);
-  const int top_right_count_unit = tx_size_wide_unit[txsz];
-
-  if (row_off > 0) {  // Just need to check if enough pixels on the right.
-    if (block_size_wide[bsize] > block_size_wide[BLOCK_64X64]) {
-      // Special case: For 128x128 blocks, the transform unit whose
-      // top-right corner is at the center of the block does in fact have
-      // pixels available at its top-right corner.
-      if (row_off == mi_size_high[BLOCK_64X64] >> ss_y &&
-          col_off + top_right_count_unit == mi_size_wide[BLOCK_64X64] >> ss_x) {
-        return 1;
-      }
-      const int plane_bw_unit_64 = mi_size_wide[BLOCK_64X64] >> ss_x;
-      const int col_off_64 = col_off % plane_bw_unit_64;
-      return col_off_64 + top_right_count_unit < plane_bw_unit_64;
-    }
-    return col_off + top_right_count_unit < plane_bw_unit;
-  } else {
-    // All top-right pixels are in the block above, which is already available.
-    if (col_off + top_right_count_unit < plane_bw_unit) return 1;
-
-    const int bw_in_mi_log2 = mi_size_wide_log2[bsize];
-    const int bh_in_mi_log2 = mi_size_high_log2[bsize];
-    const int sb_mi_size = mi_size_high[cm->sb_size];
-    const int blk_row_in_sb = (mi_row & (sb_mi_size - 1)) >> bh_in_mi_log2;
-    const int blk_col_in_sb = (mi_col & (sb_mi_size - 1)) >> bw_in_mi_log2;
-
-    // Top row of superblock: so top-right pixels are in the top and/or
-    // top-right superblocks, both of which are already available.
-    if (blk_row_in_sb == 0) return 1;
-
-    // Rightmost column of superblock (and not the top row): so top-right pixels
-    // fall in the right superblock, which is not available yet.
-    if (((blk_col_in_sb + 1) << bw_in_mi_log2) >= sb_mi_size) {
-      return 0;
-    }
-
-    // General case (neither top row nor rightmost column): check if the
-    // top-right block is coded before the current block.
-    const int this_blk_index =
-        ((blk_row_in_sb + 0) << (MAX_MIB_SIZE_LOG2 - bw_in_mi_log2)) +
-        blk_col_in_sb + 0;
-    const int idx1 = this_blk_index / 8;
-    const int idx2 = this_blk_index % 8;
-    const uint8_t *has_tr_table = get_has_tr_table(partition, bsize);
-    return (has_tr_table[idx1] >> idx2) & 1;
-  }
-}
-#endif
 
 static int has_bottom_left(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                            BLOCK_SIZE bsize, int mi_row, int mi_col,
@@ -492,7 +294,6 @@ static intra_high_pred_fn ibp_dc_pred_high[2][2][TX_SIZES_ALL];
 static void init_intra_predictors_internal(void) {
   assert(NELEMENTS(mode_to_angle_map) == INTRA_MODES);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
 #define INIT_RECTANGULAR(p, type)             \
   p[TX_4X8] = aom_##type##_predictor_4x8;     \
   p[TX_8X4] = aom_##type##_predictor_8x4;     \
@@ -514,23 +315,6 @@ static void init_intra_predictors_internal(void) {
   p[TX_64X8] = aom_##type##_predictor_64x8;   \
   p[TX_4X64] = aom_##type##_predictor_4x64;   \
   p[TX_64X4] = aom_##type##_predictor_64x4;
-#else
-#define INIT_RECTANGULAR(p, type)             \
-  p[TX_4X8] = aom_##type##_predictor_4x8;     \
-  p[TX_8X4] = aom_##type##_predictor_8x4;     \
-  p[TX_8X16] = aom_##type##_predictor_8x16;   \
-  p[TX_16X8] = aom_##type##_predictor_16x8;   \
-  p[TX_16X32] = aom_##type##_predictor_16x32; \
-  p[TX_32X16] = aom_##type##_predictor_32x16; \
-  p[TX_32X64] = aom_##type##_predictor_32x64; \
-  p[TX_64X32] = aom_##type##_predictor_64x32; \
-  p[TX_4X16] = aom_##type##_predictor_4x16;   \
-  p[TX_16X4] = aom_##type##_predictor_16x4;   \
-  p[TX_8X32] = aom_##type##_predictor_8x32;   \
-  p[TX_32X8] = aom_##type##_predictor_32x8;   \
-  p[TX_16X64] = aom_##type##_predictor_16x64; \
-  p[TX_64X16] = aom_##type##_predictor_64x16;
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
 
 #define INIT_NO_4X4(p, type)                  \
   p[TX_8X8] = aom_##type##_predictor_8x8;     \
@@ -2236,15 +2020,8 @@ void av1_predict_intra_block(
   const int txh = tx_size_high_unit[tx_size];
   const int ss_x = pd->subsampling_x;
   const int ss_y = pd->subsampling_y;
-#if CONFIG_EXT_RECUR_PARTITIONS
   int have_top = 0, have_left = 0;
   set_have_top_and_left(&have_top, &have_left, xd, row_off, col_off, plane);
-#else
-  const int have_top =
-      row_off || (ss_y ? xd->chroma_up_available : xd->up_available);
-  const int have_left =
-      col_off || (ss_x ? xd->chroma_left_available : xd->left_available);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
   const int mi_row = plane ? xd->mi[0]->chroma_ref_info.mi_row_chroma_base
                            : -xd->mb_to_top_edge >> MI_SUBPEL_SIZE_LOG2;
   const int mi_col = plane ? xd->mi[0]->chroma_ref_info.mi_col_chroma_base
@@ -2273,7 +2050,6 @@ void av1_predict_intra_block(
   const int bottom_available =
       (yd > 0) && (mi_row + ((row_off + txh) << ss_y) < xd->tile.mi_row_end);
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   int px_top_right = 0;
   const int have_top_right = has_top_right(
       cm, xd, bsize, mi_row, mi_col, have_top, right_available, tx_size,
@@ -2281,12 +2057,6 @@ void av1_predict_intra_block(
       plane,
 #endif  // CONFIG_NEW_TX_PARTITION
       row_off, col_off, ss_x, ss_y, xr, &px_top_right, bsize != init_bsize);
-#else
-  const PARTITION_TYPE partition = mbmi->partition;
-  const int have_top_right =
-      has_top_right(cm, bsize, mi_row, mi_col, have_top, right_available,
-                    partition, tx_size, row_off, col_off, ss_x, ss_y);
-#endif
 
   int px_bottom_left = 0;
   const int have_bottom_left = has_bottom_left(
@@ -2305,11 +2075,7 @@ void av1_predict_intra_block(
       xd, ref, ref_stride, dst, dst_stride, mode, angle_delta,
       filter_intra_mode, tx_size, disable_edge_filter,
       have_top ? AOMMIN(txwpx, xr + txwpx) : 0,
-#if CONFIG_EXT_RECUR_PARTITIONS
       have_top_right ? px_top_right : 0,
-#else
-      have_top_right ? AOMMIN(txwpx, xr) : 0,
-#endif
       have_left ? AOMMIN(txhpx, yd + txhpx) : 0,
       have_bottom_left ? px_bottom_left : 0, plane, is_sb_boundary,
       cm->seq_params.enable_orip, cm->seq_params.enable_ibp,
@@ -2336,15 +2102,8 @@ void mhccp_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
   const int sub_y = cfl->subsampling_y;
   int width = tx_size_wide[tx_size] << sub_x;
   int height = tx_size_high[tx_size] << sub_y;
-#if CONFIG_EXT_RECUR_PARTITIONS
   int have_top = 0, have_left = 0;
   set_have_top_and_left(&have_top, &have_left, xd, row, col, 1);
-#else
-  const int have_top =
-      row || (sub_y ? xd->chroma_up_available : xd->up_available);
-  const int have_left =
-      col || (sub_x ? xd->chroma_left_available : xd->left_available);
-#endif
   const int mi_row = -xd->mb_to_top_edge >> MI_SUBPEL_SIZE_LOG2;
   const int mi_col = -xd->mb_to_left_edge >> MI_SUBPEL_SIZE_LOG2;
   BLOCK_SIZE bsize = mbmi->sb_type[1];
@@ -2402,7 +2161,6 @@ void mhccp_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
   const int bottom_available =
       (yd > 0) && (tx_mi_row + (height >> MI_SIZE_LOG2)) < xd->tile.mi_row_end;
 
-#if CONFIG_EXT_RECUR_PARTITIONS
   int px_top_right = 0;
   const int have_top_right = has_top_right(
       cm, xd, bsize, mi_row - row_offset, mi_col - col_offset, have_top,
@@ -2411,13 +2169,7 @@ void mhccp_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       0,
 #endif  // CONFIG_NEW_TX_PARTITION
       row, col, sub_x, sub_y, xr, &px_top_right, bsize != init_bsize);
-#else
-  const int have_top_right = has_top_right(
-      cm, bsize, xd->mi_row, xd->mi_col, have_top, right_available,
-      mbmi->partition, tx_size, row, col, sub_x, sub_y);
-#endif
   int px_bottom_left = 0;
-#if CONFIG_EXT_RECUR_PARTITIONS
   const int have_bottom_left = has_bottom_left(
       cm, xd, bsize, mi_row - row_offset, mi_col - col_offset, bottom_available,
       have_left, tx_size,
@@ -2425,12 +2177,6 @@ void mhccp_implicit_fetch_neighbor_luma(const AV1_COMMON *cm,
       0,
 #endif  // CONFIG_NEW_TX_PARTITION
       row, col, sub_x, sub_y, yd, &px_bottom_left, bsize != init_bsize);
-#else
-  const int have_bottom_left =
-      has_bottom_left(cm, xd, bsize, xd->mi_row, xd->mi_col, bottom_available,
-                      have_left, tx_size, row, col, sub_x, sub_y, yd,
-                      &px_bottom_left, bsize != init_bsize);
-#endif
 
   *ref_width = AOMMIN(128, *left_lines + width +
                                (have_top_right && width > 4
@@ -2754,14 +2500,8 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
   if (plane != AOM_PLANE_Y && mbmi->uv_mode == UV_CFL_PRED) {
 #if CONFIG_DEBUG
     assert(is_cfl_allowed(xd));
-#if CONFIG_EXT_RECUR_PARTITIONS
     const BLOCK_SIZE plane_bsize = get_mb_plane_block_size(
         xd, mbmi, plane, pd->subsampling_x, pd->subsampling_y);
-#else
-    const BLOCK_SIZE plane_bsize =
-        get_plane_block_size(mbmi->sb_type[xd->tree_type == CHROMA_PART],
-                             pd->subsampling_x, pd->subsampling_y);
-#endif  // CONFIG_EXT_RECUR_PARTITIONS
     (void)plane_bsize;
     assert(plane_bsize < BLOCK_SIZES_ALL);
     if (!xd->lossless[mbmi->segment_id]) {
