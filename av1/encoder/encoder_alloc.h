@@ -258,11 +258,6 @@ static AOM_INLINE void dealloc_compressor_data(AV1_COMP *cpi) {
   aom_free(cpi->td.mb.mbmi_ext);
   cpi->td.mb.mbmi_ext = NULL;
 
-  if (cpi->td.vt64x64) {
-    aom_free(cpi->td.vt64x64);
-    cpi->td.vt64x64 = NULL;
-  }
-
   av1_free_pmc(cpi->td.firstpass_ctx, av1_num_planes(cm));
   cpi->td.firstpass_ctx = NULL;
 
@@ -328,22 +323,6 @@ static AOM_INLINE void dealloc_compressor_data(AV1_COMP *cpi) {
   cpi->alloc_width = 0;
   cpi->alloc_height = 0;
   cpi->alloc_sb_size = 0;
-}
-
-static AOM_INLINE void variance_partition_alloc(AV1_COMP *cpi) {
-  AV1_COMMON *const cm = &cpi->common;
-  const int num_64x64_blocks = (cm->sb_size == BLOCK_64X64) ? 1 : 4;
-  if (cpi->td.vt64x64) {
-    if (num_64x64_blocks != cpi->td.num_64x64_blocks) {
-      aom_free(cpi->td.vt64x64);
-      cpi->td.vt64x64 = NULL;
-    }
-  }
-  if (!cpi->td.vt64x64) {
-    CHECK_MEM_ERROR(cm, cpi->td.vt64x64,
-                    aom_malloc(sizeof(*cpi->td.vt64x64) * num_64x64_blocks));
-    cpi->td.num_64x64_blocks = num_64x64_blocks;
-  }
 }
 
 static AOM_INLINE void alloc_altref_frame_buffer(AV1_COMP *cpi) {

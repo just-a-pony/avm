@@ -16,7 +16,6 @@
 #include "aom/aom_integer.h"
 #include "av1/encoder/block.h"
 #include "av1/encoder/encoder.h"
-#include "av1/encoder/pustats.h"
 #include "av1/encoder/rdopt_utils.h"
 #include "aom_ports/system_state.h"
 #include "config/aom_dsp_rtcd.h"

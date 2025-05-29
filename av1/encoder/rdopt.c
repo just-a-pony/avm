@@ -64,7 +64,6 @@
 #include "av1/encoder/model_rd.h"
 #include "av1/encoder/motion_search_facade.h"
 #include "av1/encoder/palette.h"
-#include "av1/encoder/pustats.h"
 #include "av1/encoder/random.h"
 #include "av1/encoder/ratectrl.h"
 #include "av1/encoder/rd.h"

@@ -389,20 +389,6 @@ typedef struct PARTITION_SPEED_FEATURES {
   // Used if partition_search_type = FIXED_PARTITION
   BLOCK_SIZE fixed_partition_size;
 
-  // Prune extended partition types search
-  // Can take values 0 - 2, 0 referring to no pruning, and 1 - 2 increasing
-  // aggressiveness of pruning in order.
-  int prune_ext_partition_types_search_level;
-
-  // Use a ML model to prune horz and vert partitions
-  int ml_prune_rect_partition;
-
-  // Use a ML model to prune horz_a, horz_b, vert_a and vert_b partitions.
-  int ml_prune_ab_partition;
-
-  // Use a ML model to prune horz4 and vert4 partitions.
-  int ml_prune_4_partition;
-
   // Use a ML model to adaptively terminate partition search after trying
   // PARTITION_SPLIT. Can take values 0 - 2, 0 meaning not being enabled, and
   // 1 - 2 increasing aggressiveness in order.
@@ -420,18 +406,11 @@ typedef struct PARTITION_SPEED_FEATURES {
   // motion vector and prediction error distribution produced from 16x16
   // simple motion search
   MAX_PART_PRED_MODE auto_max_partition_based_on_simple_motion;
-  int auto_min_partition_based_on_simple_motion;
 
   // Min and max square partition size we enable (block_size) as per auto
   // min max, but also used by adjust partitioning, and pick_partitioning.
   BLOCK_SIZE default_min_partition_size;
   BLOCK_SIZE default_max_partition_size;
-
-  // Sets level of adjustment of variance-based partitioning during
-  // rd_use_partition 0 - no partition adjustment, 1 - try to merge partitions
-  // for small blocks and high QP, 2 - always try to merge leaf partitions, 3 -
-  // try to merge and split leaf partitions
-  int adjust_var_based_rd_partitioning;
 
   // Partition search early breakout thresholds.
   int64_t partition_search_breakout_dist_thr;
@@ -476,19 +455,6 @@ typedef struct PARTITION_SPEED_FEATURES {
   // Use CNN with luma pixels on source frame on each of the 64x64 subblock to
   // perform split/no_split decision on intra-frames.
   int intra_cnn_split;
-
-  // Disable extended partition search for lower block sizes.
-  BLOCK_SIZE ext_partition_eval_thresh;
-
-  // Prune 1:4 partition search based on winner info from split partitions
-  int prune_4_partition_using_split_info;
-
-  // Prune AB partition search using split and HORZ/VERT info
-  int prune_ab_partition_using_split_info;
-
-  // Terminate partition search for child partition,
-  // when NONE and SPLIT partition rd_costs are INT64_MAX.
-  int early_term_after_none_split;
 
   // Prunes PARTITION_3 if PARTITION_NONE is used instead of PARTITION_HORZ|VERT
   int prune_rect_with_none_rd;
@@ -542,8 +508,6 @@ typedef struct PARTITION_SPEED_FEATURES {
   // the current best partition's boundary after searching NONE, HORZ, VERT, and
   // H-parts.
   int prune_part_4_with_partition_boundary;
-  // Delay the search for block 256 to after block 128
-  int search_256_after_128;
 #if CONFIG_ML_PART_SPLIT
   int prune_split_with_ml;
   int prune_split_ml_level;

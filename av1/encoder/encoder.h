@@ -234,10 +234,6 @@ typedef struct {
    */
   bool enable_rect_partitions;
   /*!
-   * Flag to indicate if AB partitions should be enabled.
-   */
-  bool enable_ab_partitions;
-  /*!
    * Flag to indicate if 1:2:4:1 / 1:4:2:1 partitions should be enabled.
    */
   bool enable_uneven_4way_partitions;
@@ -2033,8 +2029,6 @@ typedef struct ThreadData {
   int deltaq_used;
   FRAME_CONTEXT *tctx;
   MB_MODE_INFO_EXT *mbmi_ext;
-  VP64x64 *vt64x64;
-  int32_t num_64x64_blocks;
   // Buffer used to store quantized and dequantized transform coefficients.
   coeff_info *coef_info;
   PICK_MODE_CONTEXT *firstpass_ctx;

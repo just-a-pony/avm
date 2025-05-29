@@ -117,7 +117,6 @@ struct av1_extracfg {
   int use_ml_erp_pruning;
   unsigned int enable_ext_partitions;
   int enable_rect_partitions;  // enable rectangular partitions for sequence
-  int enable_ab_partitions;    // enable AB partitions for sequence
   int enable_uneven_4way_partitions;  // enable 1:2:4:1 and 1:4:2:1 partitions
                                       // for sequence
   int disable_ml_transform_speed_features;  // disable all ml transform speedups
@@ -482,7 +481,6 @@ static struct av1_extracfg default_extra_cfg = {
   2,                            // use ml model for erp pruning
   1,                            // enable extended partitions
   1,                            // enable rectangular partitions
-  1,                            // enable ab shape partitions
   1,                            // enable 1:4 and 4:1 partitions
   0,                            // disable ml based transform speed features
   1,                            // enable semi-decoupled partitioning
@@ -1022,7 +1020,6 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->use_ml_erp_pruning = extra_cfg->use_ml_erp_pruning;
   cfg->enable_ext_partitions = extra_cfg->enable_ext_partitions;
   cfg->enable_rect_partitions = extra_cfg->enable_rect_partitions;
-  cfg->enable_ab_partitions = extra_cfg->enable_ab_partitions;
   cfg->enable_uneven_4way_partitions = extra_cfg->enable_uneven_4way_partitions;
   cfg->disable_ml_transform_speed_features =
       extra_cfg->disable_ml_transform_speed_features;
@@ -1170,7 +1167,6 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #endif  // CONFIG_AFFINE_REFINEMENT
   extra_cfg->enable_angle_delta = cfg->enable_angle_delta;
   extra_cfg->enable_rect_partitions = cfg->enable_rect_partitions;
-  extra_cfg->enable_ab_partitions = cfg->enable_ab_partitions;
   extra_cfg->enable_uneven_4way_partitions = cfg->enable_uneven_4way_partitions;
   extra_cfg->disable_ml_transform_speed_features =
       cfg->disable_ml_transform_speed_features;
@@ -1873,7 +1869,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   part_cfg->disable_ml_partition_speed_features =
       extra_cfg->disable_ml_partition_speed_features;
   part_cfg->enable_rect_partitions = extra_cfg->enable_rect_partitions;
-  part_cfg->enable_ab_partitions = extra_cfg->enable_ab_partitions;
   part_cfg->enable_uneven_4way_partitions =
       extra_cfg->enable_uneven_4way_partitions;
   part_cfg->enable_sdp =
@@ -2421,13 +2416,6 @@ static aom_codec_err_t ctrl_set_enable_rect_partitions(
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   extra_cfg.enable_rect_partitions =
       CAST(AV1E_SET_ENABLE_RECT_PARTITIONS, args);
-  return update_extra_cfg(ctx, &extra_cfg);
-}
-
-static aom_codec_err_t ctrl_set_enable_ab_partitions(aom_codec_alg_priv_t *ctx,
-                                                     va_list args) {
-  struct av1_extracfg extra_cfg = ctx->extra_cfg;
-  extra_cfg.enable_ab_partitions = CAST(AV1E_SET_ENABLE_AB_PARTITIONS, args);
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
@@ -4114,9 +4102,6 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               &g_av1_codec_arg_defs.enable_rect_partitions,
                               argv, err_string)) {
     extra_cfg.enable_rect_partitions = arg_parse_int_helper(&arg, err_string);
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ab_partitions,
-                              argv, err_string)) {
-    extra_cfg.enable_ab_partitions = arg_parse_int_helper(&arg, err_string);
   } else if (arg_match_helper(
                  &arg, &g_av1_codec_arg_defs.enable_uneven_4way_partitions,
                  argv, err_string)) {
@@ -4566,7 +4551,6 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
 #endif  // CONFIG_ENHANCED_FRAME_CONTEXT_INIT
   { AV1E_SET_S_FRAME_MODE, ctrl_set_s_frame_mode },
   { AV1E_SET_ENABLE_RECT_PARTITIONS, ctrl_set_enable_rect_partitions },
-  { AV1E_SET_ENABLE_AB_PARTITIONS, ctrl_set_enable_ab_partitions },
   { AV1E_SET_ENABLE_1TO4_PARTITIONS, ctrl_set_enable_uneven_4way_partitions },
   { AV1E_SET_MIN_PARTITION_SIZE, ctrl_set_min_partition_size },
   { AV1E_SET_MAX_PARTITION_SIZE, ctrl_set_max_partition_size },
@@ -4738,12 +4722,17 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
     0,                           // frame_hash_metadata;
     0,                           // frame_hash_per_plane;
     {
-        0, 128, 128, 4,
-        1, 1,   1,   1,
-        5,  // aggressiveness for erp pruning
-        0,  // use ml model for erp pruning
-        1,  // enable extended partitions
-        0, 1,   1,   /*extended sdp*/ 1,
+        0,    // init_by_cfg_file
+        128,  // superblock_size
+        128,  // max_partition_size
+        4,    // min_partition_size
+        1,    // enable_rect_partitions
+        1,    // enable_uneven_4way_partitions
+        1,    // disable_ml_partition_speed_features
+        5,    // erp_pruning_level
+        0,    // use_ml_erp_pruning
+        1,    // enable_ext_partitions
+        0,   1, 1, /*extended sdp*/ 1,
         1,
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
         1,  // MV traj
@@ -4755,7 +4744,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_D071_IMP_MSK_BLD
         1,
 #endif  // CONFIG_D071_IMP_MSK_BLD
-        1, 1,
+        1,   1,
         1,  // IST
         1,  // inter IST
 #if CONFIG_CHROMA_TX
@@ -4765,7 +4754,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
         1,  // inter DDT
 #endif      // CONFIG_INTER_DDT
         1,  // enable_cctx
-        1, 1,   1,
+        1,   1, 1,
         3,  // select_cfl_ds
         1,
 #if CONFIG_REFINEMV
@@ -4774,18 +4763,18 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_DERIVED_MVD_SIGN
         1,
 #endif  // CONFIG_DERIVED_MVD_SIGN
-        1, 1,   1,   1,
-        1, 1,   1,   1,
+        1,   1, 1, 1,
+        1,   1, 1, 1,
         1,
 #if CONFIG_LF_SUB_PU
         1,
 #endif  // CONFIG_LF_SUB_PU
-        1, 1,   1,
+        1,   1, 1,
 #if CONFIG_SIX_PARAM_WARP_DELTA
         1,
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
-        1, 1,   1,   1,
-        1, 0,   0,   1,
+        1,   1, 1, 1,
+        1,   0, 0, 1,
 #if CONFIG_IBC_SR_EXT
         1,
 #endif  // CONFIG_IBC_SR_EXT
@@ -4793,17 +4782,17 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_ENABLE_MHCCP
         1,
 #endif  // CONFIG_ENABLE_MHCCP
-        1, 1,
+        1,   1,
 #if CONFIG_DIP
         1,
 #endif  // CONFIG_DIP
-        1, 1,
+        1,   1,
 #if CONFIG_AFFINE_REFINEMENT
         1,
 #endif  // CONFIG_AFFINE_REFINEMENT
-        1, 1,   1,   1,
-        1, 1,   3,   1,
-        1, 0,   1,   0,
+        1,   1, 1, 1,
+        1,   1, 3, 1,
+        1,   0, 1, 0,
         0,
 #if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         0,

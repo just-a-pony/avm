@@ -66,7 +66,6 @@
 #include "av1/encoder/ml.h"
 #include "av1/encoder/motion_search_facade.h"
 #include "av1/encoder/partition_strategy.h"
-#include "av1/encoder/partition_model_weights.h"
 #include "av1/encoder/partition_search.h"
 #include "av1/encoder/rd.h"
 #include "av1/encoder/rdopt.h"

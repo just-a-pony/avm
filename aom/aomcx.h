@@ -739,14 +739,6 @@ enum aome_enc_control_id {
    */
   AV1E_SET_ENABLE_RECT_PARTITIONS = 73,
 
-  /*!\brief Codec control function to enable/disable AB partitions, int
-   * parameter
-   *
-   * - 0 = disable
-   * - 1 = enable (default)
-   */
-  AV1E_SET_ENABLE_AB_PARTITIONS = 74,
-
   /*!\brief Codec control function to enable/disable 1:4 and 4:1 partitions, int
    * parameter
    *
@@ -1495,9 +1487,6 @@ AOM_CTRL_USE_TYPE(AV1E_SET_TIMING_INFO_TYPE, int) /* aom_timing_info_type_t */
 
 AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_RECT_PARTITIONS, int)
 #define AOM_CTRL_AV1E_SET_ENABLE_RECT_PARTITIONS
-
-AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_AB_PARTITIONS, int)
-#define AOM_CTRL_AV1E_SET_ENABLE_AB_PARTITIONS
 
 AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_1TO4_PARTITIONS, int)
 #define AOM_CTRL_AV1E_SET_ENABLE_1TO4_PARTITIONS

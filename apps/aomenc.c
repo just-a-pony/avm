@@ -141,7 +141,6 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_SET_ENABLE_CDEF,
                                         AV1E_SET_ENABLE_RESTORATION,
                                         AV1E_SET_ENABLE_RECT_PARTITIONS,
-                                        AV1E_SET_ENABLE_AB_PARTITIONS,
                                         AV1E_SET_ENABLE_1TO4_PARTITIONS,
                                         AV1E_SET_MIN_PARTITION_SIZE,
                                         AV1E_SET_MAX_PARTITION_SIZE,
@@ -348,7 +347,6 @@ const arg_def_t *av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.enable_cdef,
   &g_av1_codec_arg_defs.enable_restoration,
   &g_av1_codec_arg_defs.enable_rect_partitions,
-  &g_av1_codec_arg_defs.enable_ab_partitions,
   &g_av1_codec_arg_defs.enable_uneven_4way_partitions,
   &g_av1_codec_arg_defs.min_partition_size,
   &g_av1_codec_arg_defs.max_partition_size,
@@ -663,7 +661,6 @@ static void init_config(cfg_options_t *config) {
   config->superblock_size = 256;
   config->max_partition_size = 256;
   config->min_partition_size = 4;
-  config->enable_ab_partitions = 1;
   config->enable_rect_partitions = 1;
   config->enable_uneven_4way_partitions = 1;
   config->disable_ml_transform_speed_features = 0;

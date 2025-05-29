@@ -110,9 +110,6 @@ typedef struct PartitionBlkParams {
 
   // Size of current sub-partition.
   BLOCK_SIZE subsize;
-
-  // Size of split partition.
-  BLOCK_SIZE split_bsize2;
 } PartitionBlkParams;
 
 // Structure holding state variables for partition search.
@@ -146,13 +143,6 @@ typedef struct PartitionSearchState {
   // rect_part_rd[1][i] is the RD cost of ith partition index of PARTITION_VERT.
   int64_t rect_part_rd[NUM_RECT_PARTS][SUB_PARTITIONS_RECT];
 
-  // New Simple Motion Result for PARTITION_NONE
-  SMSPartitionStats none_data;
-  // Flags indicating if the corresponding partition was winner or not.
-  // Used to bypass similar blocks during AB partition evaluation.
-  int is_split_ctx_is_ready[2];
-  int is_rect_ctx_is_ready[NUM_RECT_PARTS];
-
   // Flags to prune/skip particular partition size evaluation.
   int terminate_partition_search;
   int partition_none_allowed;
@@ -180,9 +170,6 @@ typedef struct PartitionSearchState {
   // Chroma subsampling in x and y directions.
   int ss_x;
   int ss_y;
-
-  // Partition plane context index.
-  int pl_ctx_idx;
 
   // This flag will be set if best partition is found from the search.
   bool found_best_partition;
@@ -305,21 +292,6 @@ static AOM_INLINE int set_segment_rdmult(const AV1_COMP *const cpi,
                              segment_qindex + cm->quant_params.y_dc_delta_q);
 }
 
-static AOM_INLINE int do_slipt_check(BLOCK_SIZE bsize) {
-  return (bsize == BLOCK_16X16 || bsize == BLOCK_32X32);
-}
-
-static AOM_INLINE const FIRSTPASS_STATS *read_one_frame_stats(const TWO_PASS *p,
-                                                              int frm) {
-  assert(frm >= 0);
-  if (frm < 0 ||
-      p->stats_buf_ctx->stats_in_start + frm > p->stats_buf_ctx->stats_in_end) {
-    return NULL;
-  }
-
-  return &p->stats_buf_ctx->stats_in_start[frm];
-}
-
 static BLOCK_SIZE dim_to_size(int dim) {
   switch (dim) {
     case 4: return BLOCK_4X4;
@@ -424,8 +396,6 @@ void av1_save_context(const MACROBLOCK *x, RD_SEARCH_MACROBLOCK_CONTEXT *ctx,
 void av1_set_fixed_partitioning(AV1_COMP *cpi, const TileInfo *const tile,
                                 MB_MODE_INFO **mib, int mi_row, int mi_col,
                                 BLOCK_SIZE bsize);
-int av1_is_leaf_split_partition(AV1_COMMON *cm, MACROBLOCKD *const xd,
-                                int mi_row, int mi_col, BLOCK_SIZE bsize);
 
 void av1_reset_simple_motion_tree_partition(SIMPLE_MOTION_DATA_TREE *sms_tree,
                                             BLOCK_SIZE bsize);

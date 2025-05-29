@@ -4082,7 +4082,6 @@ static void init_partition_search_state_params(
   blk_params->width = block_size_wide[bsize];
   blk_params->min_partition_size = x->sb_enc.min_partition_size;
   blk_params->subsize = get_partition_subsize(bsize, PARTITION_SPLIT);
-  blk_params->split_bsize2 = blk_params->subsize;
   blk_params->bsize = bsize;
 
   // Chroma subsampling.
@@ -4125,11 +4124,6 @@ static void init_partition_search_state_params(
   part_search_state->none_rd = 0;
   av1_zero(part_search_state->split_rd);
   av1_zero(part_search_state->rect_part_rd);
-
-  // Initialize SPLIT partition to be not ready.
-  av1_zero(part_search_state->is_split_ctx_is_ready);
-  // Initialize HORZ and VERT partitions to be not ready.
-  av1_zero(part_search_state->is_rect_ctx_is_ready);
 
   // Initialize partition search flags to defaults.
   part_search_state->terminate_partition_search = 0;
@@ -4975,22 +4969,6 @@ static void split_partition_search(
     sum_rdc.rate += part_search_state->this_rdc.rate;
     sum_rdc.dist += part_search_state->this_rdc.dist;
     av1_rd_cost_update(x->rdmult, &sum_rdc);
-
-    // Set split ctx as ready for use.
-    if (idx <= 1 && (bsize <= BLOCK_8X8 ||
-                     pc_tree->split[pc_tree->region_type][idx]->partitioning ==
-                         PARTITION_NONE)) {
-      const MB_MODE_INFO *const mbmi =
-          &pc_tree->split[pc_tree->region_type][idx]
-               ->none[pc_tree->region_type]
-               ->mic;
-      const PALETTE_MODE_INFO *const pmi = &mbmi->palette_mode_info;
-      // Neither palette mode nor cfl predicted.
-      if (pmi->palette_size[0] == 0 && pmi->palette_size[1] == 0) {
-        if (mbmi->uv_mode != UV_CFL_PRED)
-          part_search_state->is_split_ctx_is_ready[idx] = 1;
-      }
-    }
   }
 #if CONFIG_COLLECT_PARTITION_STATS
   if (partition_timer_on) {

@@ -1095,26 +1095,6 @@ void av1_set_fixed_partitioning(AV1_COMP *cpi, const TileInfo *const tile,
                              mi_cols_remaining, bsize, mib);
   }
 }
-int av1_is_leaf_split_partition(AV1_COMMON *cm, MACROBLOCKD *const xd,
-                                int mi_row, int mi_col, BLOCK_SIZE bsize) {
-  const int bs = mi_size_wide[bsize];
-  const int hbs = bs / 2;
-  assert(bsize >= BLOCK_8X8);
-  const BLOCK_SIZE subsize = get_partition_subsize(bsize, PARTITION_SPLIT);
-
-  for (int i = 0; i < 4; i++) {
-    int x_idx = (i & 1) * hbs;
-    int y_idx = (i >> 1) * hbs;
-    if ((mi_row + y_idx >= cm->mi_params.mi_rows) ||
-        (mi_col + x_idx >= cm->mi_params.mi_cols))
-      return 0;
-    if (get_partition(cm, xd->tree_type == CHROMA_PART, mi_row + y_idx,
-                      mi_col + x_idx, subsize) != PARTITION_NONE &&
-        subsize != BLOCK_8X8)
-      return 0;
-  }
-  return 1;
-}
 
 int av1_get_rdmult_delta(AV1_COMP *cpi, BLOCK_SIZE bsize, int mi_row,
                          int mi_col, int orig_rdmult) {

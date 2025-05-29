@@ -267,10 +267,6 @@ typedef struct cfg_options {
    * 8, 16, 32, 64, 128, 256
    */
   unsigned int min_partition_size;
-  /*!\brief enable AB Shape partition type
-   *
-   */
-  unsigned int enable_ab_partitions;
   /*!\brief enable rectangular partition type
    *
    */

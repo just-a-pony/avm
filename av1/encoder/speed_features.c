@@ -22,7 +22,6 @@
 
 #define MAX_MESH_SPEED 5  // Max speed setting for mesh motion method
 // Max speed setting for tx domain evaluation
-#define MAX_TX_DOMAIN_EVAL_SPEED 5
 static MESH_PATTERN
     good_quality_mesh_patterns[MAX_MESH_SPEED + 1][MAX_MESH_STEP] = {
       { { 64, 8 }, { 28, 4 }, { 15, 1 }, { 7, 1 } },
@@ -298,10 +297,6 @@ static void set_good_speed_features_framesize_independent(
   sf->gm_sf.disable_gm_search_based_on_stats = 1;
 
   sf->part_sf.less_rectangular_check_level = 1;
-  sf->part_sf.ml_prune_4_partition = 0;
-  sf->part_sf.ml_prune_ab_partition = 0;
-  sf->part_sf.ml_prune_rect_partition = 1;
-  sf->part_sf.prune_ext_partition_types_search_level = 1;
   sf->part_sf.simple_motion_search_prune_rect = 1;
 
   sf->inter_sf.disable_wedge_search_var_thresh = 0;
@@ -436,7 +431,6 @@ static void set_good_speed_features_framesize_independent(
     sf->part_sf.allow_partition_search_skip = 1;
     sf->part_sf.less_rectangular_check_level = 2;
     sf->part_sf.simple_motion_search_prune_agg = 1;
-    sf->part_sf.prune_4_partition_using_split_info = 1;
 
     sf->rd_sf.perform_coeff_opt = is_boosted_arf2_bwd_type ? 3 : 4;
 
@@ -527,8 +521,6 @@ static void set_good_speed_features_framesize_independent(
 
     sf->part_sf.simple_motion_search_prune_agg = 2;
     sf->part_sf.simple_motion_search_reduce_search_steps = 4;
-    sf->part_sf.prune_ab_partition_using_split_info = 1;
-    sf->part_sf.early_term_after_none_split = 1;
 
     sf->inter_sf.alt_ref_search_fp = 1;
     sf->inter_sf.txfm_rd_gate_level = boosted ? 0 : 4;
@@ -586,9 +578,6 @@ static void set_good_speed_features_framesize_independent(
 
   if (speed >= 5) {
     sf->part_sf.simple_motion_search_prune_agg = 3;
-    sf->part_sf.ext_partition_eval_thresh =
-        allow_screen_content_tools ? BLOCK_8X8 : BLOCK_16X16;
-
     sf->inter_sf.disable_interinter_wedge = 1;
     sf->inter_sf.prune_inter_modes_if_skippable = 1;
 
@@ -675,10 +664,8 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
   part_sf->less_rectangular_check_level = 0;
   part_sf->use_square_partition_only_threshold = BLOCK_128X128;
   part_sf->auto_max_partition_based_on_simple_motion = NOT_IN_USE;
-  part_sf->auto_min_partition_based_on_simple_motion = 0;
   part_sf->default_max_partition_size = BLOCK_LARGEST;
   part_sf->default_min_partition_size = BLOCK_4X4;
-  part_sf->adjust_var_based_rd_partitioning = 0;
   part_sf->allow_partition_search_skip = 0;
   part_sf->max_intra_bsize = BLOCK_LARGEST;
   // This setting only takes effect when partition_search_type is set
@@ -687,10 +674,6 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
   // Recode loop tolerance %.
   part_sf->partition_search_breakout_dist_thr = 0;
   part_sf->partition_search_breakout_rate_thr = 0;
-  part_sf->prune_ext_partition_types_search_level = 0;
-  part_sf->ml_prune_rect_partition = 0;
-  part_sf->ml_prune_ab_partition = 0;
-  part_sf->ml_prune_4_partition = 0;
   part_sf->ml_early_term_after_part_split_level = 0;
   for (int i = 0; i < PARTITION_BLOCK_SIZES; ++i) {
     part_sf->ml_partition_search_breakout_thresh[i] =
@@ -702,10 +685,6 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
   part_sf->simple_motion_search_early_term_none = 0;
   part_sf->simple_motion_search_reduce_search_steps = 0;
   part_sf->intra_cnn_split = 0;
-  part_sf->ext_partition_eval_thresh = BLOCK_8X8;
-  part_sf->prune_4_partition_using_split_info = 0;
-  part_sf->prune_ab_partition_using_split_info = 0;
-  part_sf->early_term_after_none_split = 0;
   part_sf->prune_rect_with_none_rd = 0;
   part_sf->prune_ext_part_with_part_none = 0;
   part_sf->prune_ext_part_with_part_rect = 0;
@@ -718,7 +697,6 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
   part_sf->end_part_search_after_consec_failures = 0;
   part_sf->ext_recur_depth_level = 0;
   part_sf->prune_rect_with_split_depth = 0;
-  part_sf->search_256_after_128 = 0;
   part_sf->prune_part_h_with_partition_boundary = 0;
 #if CONFIG_ML_PART_SPLIT
   part_sf->prune_split_with_ml = 0;
@@ -931,9 +909,6 @@ static void av1_disable_ml_based_transform_sf(TX_SPEED_FEATURES *const tx_sf) {
 
 static void av1_disable_ml_based_partition_sf(
     PARTITION_SPEED_FEATURES *const part_sf) {
-  part_sf->ml_prune_4_partition = 0;
-  part_sf->ml_prune_ab_partition = 0;
-  part_sf->ml_prune_rect_partition = 0;
   part_sf->ml_early_term_after_part_split_level = 0;
   part_sf->auto_max_partition_based_on_simple_motion = NOT_IN_USE;
   part_sf->intra_cnn_split = 0;
@@ -1073,7 +1048,6 @@ static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
       sf->inter_sf.reuse_erp_mode_flag =
           (REUSE_PARTITION_MODE_FLAG | REUSE_INTERFRAME_FLAG);
       sf->part_sf.prune_rect_with_none_rd = 1;
-      sf->part_sf.search_256_after_128 = 1;
       AOM_FALLTHROUGH_INTENDED;
     case 0: break;
     default: assert(0 && "Invalid ERP pruning level.");
@@ -1377,36 +1351,6 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
 #if CONFIG_NEW_TX_PARTITION
       sf->tx_sf.prune_inter_tx_part_rd_eval = true;
 #endif
-    }
-  }
-
-  if (cpi->oxcf.mode == GOOD && speed >= 3) {
-    // Disable extended partitions for lower quantizers
-    const int qindex_thresh =
-        (cm->features.allow_screen_content_tools ? 85 : 108) + qindex_offset;
-
-    if (cm->quant_params.base_qindex <= qindex_thresh && !boosted) {
-      sf->part_sf.ext_partition_eval_thresh = BLOCK_128X128;
-    }
-  }
-
-  if (cpi->oxcf.mode == GOOD && speed >= 4) {
-    // Disable extended partitions for lower quantizers
-
-    const int qindex_thresh = (boosted ? 100 : 119) + qindex_offset;
-
-    if (cm->quant_params.base_qindex <= qindex_thresh &&
-        !frame_is_intra_only(&cpi->common)) {
-      sf->part_sf.ext_partition_eval_thresh = BLOCK_128X128;
-    }
-  }
-
-  if (cpi->oxcf.mode == GOOD && speed >= 5) {
-    const int qindex_thresh = (boosted ? 108 : 143) + qindex_offset;
-
-    if (cm->quant_params.base_qindex <= qindex_thresh &&
-        !frame_is_intra_only(&cpi->common)) {
-      sf->part_sf.ext_partition_eval_thresh = BLOCK_128X128;
     }
   }
 

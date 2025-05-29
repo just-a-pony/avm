@@ -402,9 +402,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_rect_partitions = ARG_DEF(NULL, "enable-rect-partitions", 1,
                                     "Enable rectangular partitions "
                                     "(0: false, 1: true (default))"),
-  .enable_ab_partitions =
-      ARG_DEF(NULL, "enable-ab-partitions", 1,
-              "Enable ab partitions (0: false, 1: true (default))"),
   .enable_uneven_4way_partitions =
       ARG_DEF(NULL, "enable-uneven-4way-partitions", 1,
               "Enable 1:2:4:1 and 1:4:2:1 partitions "
