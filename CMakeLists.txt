@@ -972,20 +972,22 @@ if(XCODE)
 endif()
 
 if(CONFIG_TENSORFLOW_LITE AND CONFIG_AV1_ENCODER)
+  target_link_libraries(aom ${AOM_LIB_LINK_TYPE} tensorflow-lite)
+  if(BUILD_SHARED_LIBS)
+    target_link_libraries(aom_static ${AOM_LIB_LINK_TYPE} tensorflow-lite)
+  endif()
+
   if(ENABLE_EXAMPLES)
     add_executable(tf_lite_model "${AOM_ROOT}/examples/tf_lite_model.cc")
     list(APPEND AOM_EXAMPLE_TARGETS tf_lite_model)
     list(APPEND AOM_APP_TARGETS tf_lite_model)
+    add_dependencies(tf_lite_model tensorflow-lite)
+    target_link_libraries(tf_lite_model PRIVATE tensorflow-lite)
     add_executable(cnn_restore_y4m
                    "${AOM_ROOT}/examples/cnn_restore/cnn_restore_y4m.cc")
     list(APPEND AOM_APP_TARGETS cnn_restore_y4m)
-  endif()
-
-  if(ENABLE_EXAMPLES OR ENABLE_TOOLS)
-    foreach(aom_app ${AOM_APP_TARGETS})
-      add_dependencies(${aom_app} tensorflow-lite)
-      target_link_libraries(${aom_app} PRIVATE tensorflow-lite)
-    endforeach()
+    add_dependencies(cnn_restore_y4m tensorflow-lite)
+    target_link_libraries(cnn_restore_y4m PRIVATE tensorflow-lite)
   endif()
 endif()
 
@@ -1012,6 +1014,28 @@ if(ENABLE_EXAMPLES AND "${CMAKE_GENERATOR}" MATCHES "Makefiles$")
 endif()
 
 if(BUILD_SHARED_LIBS)
+  # Don't use -Wl,-z,defs with Clang's sanitizers.
+  #
+  # Clang's AddressSanitizer documentation says "When linking shared libraries,
+  # the AddressSanitizer run-time is not linked, so -Wl,-z,defs may cause link
+  # errors (don't use it with AddressSanitizer)." See
+  # https://clang.llvm.org/docs/AddressSanitizer.html#usage. Similarly, see
+  # https://clang.llvm.org/docs/MemorySanitizer.html#usage.
+  if(NOT
+     (APPLE
+      OR CYGWIN
+      OR WIN32)
+     AND NOT (CMAKE_C_COMPILER_ID MATCHES "Clang" AND SANITIZE))
+    # The -z defs linker option reports unresolved symbol references from object
+    # files when building a shared library.
+    if("${CMAKE_VERSION}" VERSION_LESS "3.13")
+      # target_link_options() is not available before CMake 3.13.
+      target_link_libraries(aom PRIVATE -Wl,-z,defs)
+    else()
+      target_link_options(aom PRIVATE LINKER:-z,defs)
+    endif()
+  endif()
+
   include("${AOM_ROOT}/build/cmake/exports.cmake")
   setup_exports_target()
 endif()

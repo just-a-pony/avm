@@ -338,11 +338,8 @@ function(setup_aom_test_targets)
 
   if(CONFIG_AV1_ENCODER)
     add_executable(encoder_link_test "${AOM_ROOT}/test/encoder_link_test.c")
+    # encoder_link_test should link with the aom library and nothing else.
     target_link_libraries(encoder_link_test ${AOM_LIB_LINK_TYPE} aom)
-    if(CONFIG_TENSORFLOW_LITE)
-      add_dependencies(encoder_link_test tensorflow-lite)
-      target_link_libraries(encoder_link_test PRIVATE tensorflow-lite)
-    endif()
   endif()
 
   add_executable(
