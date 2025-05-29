@@ -1721,7 +1721,8 @@ static void generate_psnr_packet(AV1_COMP *cpi) {
   const uint32_t in_bit_depth = cpi->oxcf.input_cfg.input_bit_depth;
   const uint32_t bit_depth = cpi->td.mb.e_mbd.bd;
   aom_calc_highbd_psnr(cpi->source, &cpi->common.cur_frame->buf, &psnr,
-                       bit_depth, in_bit_depth);
+                       bit_depth, in_bit_depth,
+                       is_lossless_requested(&cpi->oxcf.rc_cfg));
 
   for (i = 0; i < 4; ++i) {
     pkt.data.psnr.samples[i] = psnr.samples[i];
@@ -5171,7 +5172,8 @@ static void compute_internal_stats(AV1_COMP *cpi, int frame_bytes) {
       PSNR_STATS psnr;
       double frame_ssim2 = 0.0, weight = 0.0;
       aom_clear_system_state();
-      aom_calc_highbd_psnr(orig, recon, &psnr, bit_depth, in_bit_depth);
+      aom_calc_highbd_psnr(orig, recon, &psnr, bit_depth, in_bit_depth,
+                           is_lossless_requested(&cpi->oxcf.rc_cfg));
       adjust_image_stat(psnr.psnr[1], psnr.psnr[2], psnr.psnr[3], psnr.psnr[0],
                         &(cpi->psnr[0]));
       cpi->total_sq_error[0] += psnr.sse[0];
