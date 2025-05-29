@@ -57,13 +57,8 @@ void extend_ccso_border(uint16_t *buf, const int d, MACROBLOCKD *xd) {
 /* Derive the quantized index, later it can be used for retriving offset values
  * from the look-up table */
 void cal_filter_support(int *rec_luma_idx, const uint16_t *rec_y,
-#if CONFIG_CCSO_IMPROVE
-                        const int quant_step_size,
-#else
-                        const uint8_t quant_step_size,
-#endif
-                        const int inv_quant_step, const int *rec_idx,
-                        const int edge_clf) {
+                        const int quant_step_size, const int inv_quant_step,
+                        const int *rec_idx, const int edge_clf) {
   if (edge_clf == 0) {
     for (int i = 0; i < 2; i++) {
       int d = rec_y[rec_idx[i]] - rec_y[0];
@@ -88,7 +83,6 @@ void cal_filter_support(int *rec_luma_idx, const uint16_t *rec_y,
 /* Derive sample locations for CCSO */
 void derive_ccso_sample_pos(AV1_COMMON *cm, int *rec_idx, const int ccso_stride,
                             const uint8_t ext_filter_support) {
-#if CONFIG_CCSO_FT_SHAPE
   // Input sample locations for CCSO
   // 4 2 0 3 5
   // 6 1 x 1 6
@@ -122,37 +116,6 @@ void derive_ccso_sample_pos(AV1_COMMON *cm, int *rec_idx, const int ccso_stride,
       printf("wrong ccso filter shape\n");  // unit test case
     }
   }
-#else
-  // Input sample locations for CCSO
-  //         2 1 4
-  // 6 o 5 o 3 o 3 o 5 o 6
-  //         4 1 2
-  if (ext_filter_support == 0) {
-    // Sample position 1
-    rec_idx[0] = -1 * ccso_stride;
-    rec_idx[1] = 1 * ccso_stride;
-  } else if (ext_filter_support == 1) {
-    // Sample position 2
-    rec_idx[0] = -1 * ccso_stride - 1;
-    rec_idx[1] = 1 * ccso_stride + 1;
-  } else if (ext_filter_support == 2) {
-    // Sample position 3
-    rec_idx[0] = -1;
-    rec_idx[1] = 1;
-  } else if (ext_filter_support == 3) {
-    // Sample position 4
-    rec_idx[0] = 1 * ccso_stride - 1;
-    rec_idx[1] = -1 * ccso_stride + 1;
-  } else if (ext_filter_support == 4) {
-    // Sample position 5
-    rec_idx[0] = -3;
-    rec_idx[1] = 3;
-  } else {  // if(ext_filter_support == 5) {
-    // Sample position 6
-    rec_idx[0] = -5;
-    rec_idx[1] = 5;
-  }
-#endif
 }
 
 void ccso_filter_block_hbd_wo_buf_c(
@@ -208,12 +171,7 @@ void ccso_apply_luma_mb_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
 #if CCSO_REFACTORING
                                const int proc_unit_log2,
 #endif  // CCSO_REFACTORING
-#if CONFIG_CCSO_IMPROVE
-                               const uint16_t thr,
-#else
-                               const uint8_t thr,
-#endif  // CONFIG_CCSO_IMPROVE
-                               const uint8_t filter_sup,
+                               const uint16_t thr, const uint8_t filter_sup,
                                const uint8_t max_band_log2,
                                const int edge_clf) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
@@ -340,12 +298,7 @@ void ccso_apply_luma_sb_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
 #if CCSO_REFACTORING
                                const int proc_unit_log2,
 #endif  // CCSO_REFACTORING
-#if CONFIG_CCSO_IMPROVE
-                               const uint16_t thr,
-#else
-                               const uint8_t thr,
-#endif  // CONFIG_CCSO_IMPROVE
-                               const uint8_t filter_sup,
+                               const uint16_t thr, const uint8_t filter_sup,
                                const uint8_t max_band_log2,
                                const int edge_clf) {
   (void)max_band_log2;
@@ -473,12 +426,7 @@ void ccso_apply_chroma_mb_filter(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CCSO_REFACTORING
                                  const int proc_unit_log2,
 #endif  // CCSO_REFACTORING
-#if CONFIG_CCSO_IMPROVE
-                                 const uint16_t thr,
-#else
-                                 const uint8_t thr,
-#endif  // CONFIG_CCSO_IMPROVE
-                                 const uint8_t filter_sup,
+                                 const uint16_t thr, const uint8_t filter_sup,
                                  const uint8_t max_band_log2,
                                  const int edge_clf) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
@@ -618,12 +566,7 @@ void ccso_apply_chroma_sb_filter(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CCSO_REFACTORING
                                  const int proc_unit_log2,
 #endif  // CCSO_REFACTORING
-#if CONFIG_CCSO_IMPROVE
-                                 const uint16_t thr,
-#else
-                                 const uint8_t thr,
-#endif  // CONFIG_CCSO_IMPROVE
-                                 const uint8_t filter_sup,
+                                 const uint16_t thr, const uint8_t filter_sup,
                                  const uint8_t max_band_log2,
                                  const int edge_clf) {
   (void)max_band_log2;
@@ -763,23 +706,15 @@ void ccso_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd,
   const int num_planes = av1_num_planes(cm);
   av1_setup_dst_planes(xd->plane, frame, 0, 0, 0, num_planes, NULL);
 
-#if CONFIG_CCSO_IMPROVE
   const uint16_t quant_sz[4][4] = { { 16, 8, 32, 0 },
                                     { 32, 16, 64, 128 },
                                     { 48, 24, 96, 192 },
                                     { 64, 32, 128, 256 } };
-#else
-  const uint8_t quant_sz[4] = { 16, 8, 32, 64 };
-#endif  // CONFIG_CCSO_IMPROVE
 
   for (int plane = 0; plane < num_planes; plane++) {
     const int dst_stride = xd->plane[plane].dst.stride;
-#if CONFIG_CCSO_IMPROVE
     const uint16_t quant_step_size = quant_sz[cm->ccso_info.scale_idx[plane]]
                                              [cm->ccso_info.quant_idx[plane]];
-#else
-    const uint8_t quant_step_size = quant_sz[cm->ccso_info.quant_idx[plane]];
-#endif  // CONFIG_CCSO_IMPROVE
     if (cm->ccso_info.ccso_enable[plane]) {
       CCSO_FILTER_FUNC apply_ccso_filter_func =
           cm->ccso_info.max_band_log2[plane]
@@ -801,7 +736,6 @@ void ccso_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd,
   }
 }
 
-#if CONFIG_CCSO_IMPROVE
 // This function is to copy ccso filter parameters between frames when
 // ccso_reuse is true.
 void av1_copy_ccso_filters(CcsoInfo *to, CcsoInfo *from, int plane,
@@ -826,4 +760,3 @@ void av1_copy_ccso_filters(CcsoInfo *to, CcsoInfo *from, int plane,
 
   to->ccso_enable[plane] = from->ccso_enable[plane];
 }
-#endif  // CONFIG_CCSO_IMPROVE

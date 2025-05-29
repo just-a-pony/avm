@@ -406,7 +406,6 @@ set_aom_config_var(CONFIG_BANK_IMPROVE 1
                    "Enable to improve refmv bank and warp parameter bank")
 set_aom_config_var(CONFIG_PARTITION_CONTEXT_REDUCE 1
                    "Enable to reduce partition contexts")
-set_aom_config_var(CONFIG_CCSO_IMPROVE 1 "Enable CCSO improvements")
 set_aom_config_var(CONFIG_CCSO_FU_BUGFIX 1 "Bugfix to CCSO FU size")
 
 set_aom_config_var(CONFIG_OPT_INTER_MODE_CTX 1
@@ -473,8 +472,6 @@ set_aom_config_var(CONFIG_E125_MHCCP_SIMPLIFY 1
                    "Simplify the parameter derivation for MHCCP")
 set_aom_config_var(CONFIG_MHCCP_CONVOLVE_SIMPLIFY 1
                    "Simplify the convolve for MHCCP")
-set_aom_config_var(CONFIG_CCSO_FT_SHAPE 1
-                   "Change CCSO filter shape to meet hardware requirement")
 
 set_aom_config_var(CONFIG_E149_MHCCP_4PARA 1 "Using 4 parameters in MHCCP")
 set_aom_config_var(
@@ -562,9 +559,6 @@ set_aom_config_var(CONFIG_SCC_DETERMINATION 1
 set_aom_config_var(CONFIG_IST_ANY_SET 1
                    "Enable R-D Optimized IST set selection from CWG-D159.")
 
-set_aom_config_var(CONFIG_D143_CCSO_FM_FLAG 1
-                   "Enable CCSO frame level joint flag.")
-
 set_aom_config_var(CONFIG_CCSO_BO_REDUCE 1 "Reduce band only 128 case.")
 
 set_aom_config_var(
@@ -590,8 +584,6 @@ set_aom_config_var(CONFIG_VQ_MVD_CODING 1 "Enable VQ based MVD coding")
 set_aom_config_var(CONFIG_QM_SIMPLIFY 1
                    "Enable new QMs based on 8x8, 8x4, and 4x8 sizes.")
 set_aom_config_var(CONFIG_OPFL_BI 1 "Enable bilinear for initial opfl.")
-set_aom_config_var(CONFIG_CCSO_SIGFIX 1 "Enable signaling fix for CCSO.")
-
 set_aom_config_var(CONFIG_SUBBLK_REF_EXT 1
                    "Enable extension for subblock MV refinement.")
 set_aom_config_var(CONFIG_SUBBLK_REF_DS 1

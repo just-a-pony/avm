@@ -24,11 +24,7 @@ extern "C" {
 
 void ccso_search(AV1_COMMON *cm, MACROBLOCKD *xd, int rdmult,
                  const uint16_t *ext_rec_y, uint16_t *rec_uv[3],
-                 uint16_t *org_uv[3]
-#if CONFIG_CCSO_IMPROVE
-                 ,
-                 bool error_resilient_frame_seen
-#endif
+                 uint16_t *org_uv[3], bool error_resilient_frame_seen
 #if CONFIG_ENTROPY_STATS
                  ,
                  ThreadData *td
