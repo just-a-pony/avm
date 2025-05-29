@@ -4601,9 +4601,7 @@ void av1_get_reference_area_with_padding(const AV1_COMMON *cm, MACROBLOCKD *xd,
   struct macroblockd_plane *const pd = &xd->plane[plane];
 
 #if CONFIG_IMPROVE_REFINED_MV
-  if (is_tip &&
-      ((bw >> pd->subsampling_x) < 8 && (bh >> pd->subsampling_y) < 8))
-    return;
+  if (is_tip && bw < 8 && bh < 8) return;
 #endif  // CONFIG_IMPROVE_REFINED_MV
 
   int row_start = 0;
@@ -5663,10 +5661,13 @@ static void build_inter_predictors_8x8_and_bigger(
         // of the sub-block
         const int sub_mi_x = mi_x + w * (1 << pd->subsampling_x);
         const int sub_mi_y = mi_y + h * (1 << pd->subsampling_y);
-        av1_get_reference_area_with_padding(
-            cm, xd, plane, mi, mi_mv, refinemv_sb_size_width,
-            refinemv_sb_size_height, sub_mi_x, sub_mi_y, ref_area, pu_width,
-            pu_height);
+        const int comp_bw = tip_ref_frame ? (refinemv_sb_size_width >> ss_x)
+                                          : refinemv_sb_size_width;
+        const int comp_bh = tip_ref_frame ? (refinemv_sb_size_height >> ss_y)
+                                          : refinemv_sb_size_height;
+        av1_get_reference_area_with_padding(cm, xd, plane, mi, mi_mv, comp_bw,
+                                            comp_bh, sub_mi_x, sub_mi_y,
+                                            ref_area, pu_width, pu_height);
 #endif  // CONFIG_SUBBLK_PAD
         // mi_x, and mi_y are the top-left position of the luma samples of the
         // sub-block
