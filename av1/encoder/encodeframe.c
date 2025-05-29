@@ -1587,10 +1587,8 @@ static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
   ThreadData *const td = &cpi->td;
 #endif  // !CONFIG_TIP_ENHANCEMENT
   AV1_COMMON *const cm = &cpi->common;
-#if CONFIG_TIP_DIRECT_FRAME_MV
   cm->tip_global_motion.as_int = 0;
   cm->tip_interp_filter = MULTITAP_SHARP;
-#endif  // CONFIG_TIP_DIRECT_FRAME_MV
 #if CONFIG_TIP_ENHANCEMENT
   cm->tip_global_wtd_index = 0;
 #endif  // CONFIG_TIP_ENHANCEMENT
@@ -1616,9 +1614,9 @@ static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
 #endif
       av1_setup_tip_motion_field(cm, 1);
       if (cm->features.tip_frame_mode) {
-#if CONFIG_OPTFLOW_ON_TIP && !CONFIG_TIP_LD
+#if !CONFIG_TIP_LD
         cm->features.use_optflow_tip = 1;
-#endif  // CONFIG_OPTFLOW_ON_TIP && !CONFIG_TIP_LD
+#endif  // !CONFIG_TIP_LD
 #if CONFIG_TIP_ENHANCEMENT
         decide_tip_setting_and_setup_tip_frame(cpi);
 #else

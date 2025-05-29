@@ -309,10 +309,6 @@ set_aom_config_var(CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT 1
                    "Enable enhanced frame output order derivation")
 set_aom_config_var(CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY 1
                    "Enable temporal scalability")
-set_aom_config_var(CONFIG_OPTFLOW_ON_TIP 1
-                   "Enable optical flow refinement on top of TIP")
-set_aom_config_var(CONFIG_TIP_DIRECT_FRAME_MV 1
-                   "Enable frame level MV for TIP direct mode")
 set_aom_config_var(CONFIG_SAME_REF_COMPOUND 1
                    "Allow compound mode to refer to the same reference frame")
 set_aom_config_var(CONFIG_DISPLAY_ORDER_HINT_FIX 1
@@ -396,10 +392,6 @@ set_aom_config_var(
   CONFIG_TX_TYPE_FLEX_IMPROVE 1
   "Enable transform type flexbility improvement for large transform blocks")
 
-set_aom_config_var(CONFIG_TIP_DIRECT_MODE_SIGNALING 1
-                   "Enable to optimize the signaling of TIP direct output mode")
-set_aom_config_var(CONFIG_OPTIMIZE_CTX_TIP_WARP 1
-                   "Optimize entropy contexts of TIP, warp extended, TIP DRL")
 set_aom_config_var(CONFIG_CWG_E099_DRL_WRL_SIMPLIFY 1
                    "Enable the simplification of DRL and WRL")
 set_aom_config_var(CONFIG_BANK_IMPROVE 1

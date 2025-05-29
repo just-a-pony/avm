@@ -127,7 +127,6 @@ static AOM_INLINE void write_inter_mode(
     const MB_MODE_INFO *mbmi, BLOCK_SIZE bsize
 
 ) {
-#if CONFIG_OPTIMIZE_CTX_TIP_WARP
   if (is_tip_ref_frame(mbmi->ref_frame[0])) {
     const int tip_pred_index =
         tip_pred_mode_to_index[mode - SINGLE_INTER_MODE_START];
@@ -135,7 +134,6 @@ static AOM_INLINE void write_inter_mode(
                      TIP_PRED_MODES);
     return;
   }
-#endif  // CONFIG_OPTIMIZE_CTX_TIP_WARP
 
   if (is_warpmv_mode_allowed(cm, mbmi, bsize)) {
     const int16_t iswarpmvmode_ctx = inter_warpmv_mode_ctx(cm, xd, mbmi);
@@ -869,16 +867,9 @@ static AOM_INLINE void write_motion_mode(
       return;
 
     if (allowed_motion_modes & (1 << WARP_EXTEND)) {
-#if CONFIG_OPTIMIZE_CTX_TIP_WARP
       const int ctx = av1_get_warp_extend_ctx(xd);
       aom_write_symbol(w, motion_mode == WARP_EXTEND,
                        xd->tile_ctx->warp_extend_cdf[ctx], 2);
-#else
-      const int ctx1 = av1_get_warp_extend_ctx1(xd, mbmi);
-      const int ctx2 = av1_get_warp_extend_ctx2(xd, mbmi);
-      aom_write_symbol(w, motion_mode == WARP_EXTEND,
-                       xd->tile_ctx->warp_extend_cdf[ctx1][ctx2], 2);
-#endif  // CONFIG_OPTIMIZE_CTX_TIP_WARP
       if (motion_mode == WARP_EXTEND) {
         return;
       }
@@ -941,16 +932,9 @@ static AOM_INLINE void write_motion_mode(
 
 #if !CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
   if (allowed_motion_modes & (1 << WARP_EXTEND)) {
-#if CONFIG_OPTIMIZE_CTX_TIP_WARP
     const int ctx = av1_get_warp_extend_ctx(xd);
     aom_write_symbol(w, motion_mode == WARP_EXTEND,
                      xd->tile_ctx->warp_extend_cdf[ctx], 2);
-#else
-    const int ctx1 = av1_get_warp_extend_ctx1(xd, mbmi);
-    const int ctx2 = av1_get_warp_extend_ctx2(xd, mbmi);
-    aom_write_symbol(w, motion_mode == WARP_EXTEND,
-                     xd->tile_ctx->warp_extend_cdf[ctx1][ctx2], 2);
-#endif  // CONFIG_OPTIMIZE_CTX_TIP_WARP
     if (motion_mode == WARP_EXTEND) {
       return;
     }
@@ -7406,7 +7390,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
         }
 #endif  // CONFIG_LF_SUB_PU
 
-#if CONFIG_TIP_DIRECT_FRAME_MV
         if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
           aom_wb_write_bit(wb, cm->tip_global_motion.as_int == 0);
           if (cm->tip_global_motion.as_int != 0) {
@@ -7419,7 +7402,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
           }
           aom_wb_write_bit(wb, cm->tip_interp_filter == MULTITAP_SHARP);
         }
-#endif  // CONFIG_TIP_DIRECT_FRAME_MV
       }
 
 #if CONFIG_BRU
@@ -7506,9 +7488,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
 
 #if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
-#if !CONFIG_TIP_DIRECT_MODE_SIGNALING
-    write_tile_info(cm, saved_wb, wb);
-#endif  // !CONFIG_TIP_DIRECT_MODE_SIGNALING
     if (seq_params->film_grain_params_present &&
         (cm->show_frame || cm->showable_frame))
       write_film_grain_params(cpi, wb);
@@ -7548,9 +7527,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
                                ? QINDEX_BITS_UNEXT
                                : QINDEX_BITS);
 #endif  // CONFIG_TIP_IMPLICIT_QUANT
-#if !CONFIG_TIP_DIRECT_MODE_SIGNALING
-    write_tile_info(cm, saved_wb, wb);
-#endif  // !CONFIG_TIP_DIRECT_MODE_SIGNALING
     if (seq_params->film_grain_params_present &&
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
         (cm->seq_params.enable_frame_output_order || cm->show_frame ||
