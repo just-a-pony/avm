@@ -125,7 +125,6 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
   const int row = ci >> bwl;
   const int col = ci - (row << bwl);
   int limits = get_lf_limits(row, col, tx_class, plane);
-#if CONFIG_CHROMA_CODING
   const int(*base_lf_eob_cost_ptr)[LF_BASE_SYMBOLS - 1] =
       plane > 0 ? txb_costs->base_lf_eob_cost_uv : txb_costs->base_lf_eob_cost;
   const int(*base_eob_cost_ptr)[3] =
@@ -134,17 +133,7 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
   cost += limits ? base_lf_eob_cost_ptr[coeff_ctx]
                                        [AOMMIN(abs_qc, LF_BASE_SYMBOLS - 1) - 1]
                  : base_eob_cost_ptr[coeff_ctx][AOMMIN(abs_qc, 3) - 1];
-#else
-  if (limits) {
-    cost +=
-        txb_costs->base_lf_eob_cost[coeff_ctx]
-                                   [AOMMIN(abs_qc, LF_BASE_SYMBOLS - 1) - 1];
-  } else {
-    cost += txb_costs->base_eob_cost[coeff_ctx][AOMMIN(abs_qc, 3) - 1];
-  }
-#endif  // CONFIG_CHROMA_CODING
   if (abs_qc != 0) {
-#if CONFIG_IMPROVEIDTX
     const int dc_ph_group = 0;  // PH disabled
     const bool dc_2dtx = (ci == 0);
     const bool dc_hor = (col == 0) && tx_class == TX_CLASS_HORIZ;
@@ -164,28 +153,6 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
         cost += av1_cost_literal(1);
 #endif  // CONFIG_CTX_V_AC_SIGN
     }
-#else
-    if (ci == 0) {
-#if CONFIG_CONTEXT_DERIVATION
-      if (plane == AOM_PLANE_V)
-        cost += txb_costs->v_dc_sign_cost[t_sign][dc_sign_ctx][sign];
-      else
-        cost += txb_costs->dc_sign_cost[dc_sign_ctx][sign];
-#else
-      cost += txb_costs->dc_sign_cost[dc_sign_ctx][sign];
-#endif  // CONFIG_CONTEXT_DERIVATION
-    } else {
-#if CONFIG_CONTEXT_DERIVATION
-      if (plane == AOM_PLANE_V)
-        cost += txb_costs->v_ac_sign_cost[t_sign][sign];
-      else
-        cost += av1_cost_literal(1);
-#else
-      cost += av1_cost_literal(1);
-#endif  // CONFIG_CONTEXT_DERIVATION
-    }
-#endif  // CONFIG_IMPROVEIDTX
-#if CONFIG_CHROMA_CODING
     if (plane > 0) {
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
@@ -211,19 +178,6 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
         }
       }
     }
-#else
-    if (limits) {
-      if (abs_qc > LF_NUM_BASE_LEVELS) {
-        int br_ctx = get_br_ctx_lf_eob(ci, tx_class);
-        cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
-      }
-    } else {
-      if (abs_qc > NUM_BASE_LEVELS) {
-        int br_ctx = 0; /* get_br_ctx_eob */
-        cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[br_ctx]);
-      }
-    }
-#endif  // CONFIG_CHROMA_CODING
   }
   return cost;
 }

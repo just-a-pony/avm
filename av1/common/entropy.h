@@ -53,7 +53,6 @@ extern "C" {
 #define COEFF_BASE_PH_CONTEXTS 5
 #define COEFF_BR_PH_CONTEXTS 7
 
-#if CONFIG_CHROMA_CODING
 // Number of coefficient coding chroma contexts for the low-frequency region
 // for 2D and 1D transforms
 #define LF_SIG_COEF_CONTEXTS_2D_UV 8
@@ -65,7 +64,6 @@ extern "C" {
 // for 2D and 1D transforms
 #define SIG_COEF_CONTEXTS_UV 12  // base range contexts
 #define LEVEL_CONTEXTS_UV 4      // low range contexts
-#endif                           // CONFIG_CHROMA_CODING
 
 #if CONFIG_TCQ
 // Add an additional dimension to base coeff CDFs
@@ -99,9 +97,7 @@ extern "C" {
 #define LF_RC_LIM_UV 1  // row or column limit for chroma
 
 #define COEFF_BASE_CONTEXTS (SIG_COEF_CONTEXTS)
-#if CONFIG_IMPROVEIDTX
 #define DC_SIGN_GROUPS 2
-#endif  // CONFIG_IMPROVEIDTX
 #define DC_SIGN_CONTEXTS 3
 
 #define BR_TMP_OFFSET 12

@@ -129,12 +129,7 @@ static AOM_FORCE_INLINE int get_br_ctx_skip(const uint8_t *const levels,
   mag += levels[pos - stride];
 #endif  // CONFIG_COEFF_HR_LR1
   mag = AOMMIN(mag, 6);
-#if CONFIG_IMPROVEIDTX
   return mag;
-#else
-  if ((row < 2) && (col < (2 + TX_PAD_LEFT))) return mag;
-  return mag + 7;
-#endif  // CONFIG_IMPROVEIDTX
 }
 
 static INLINE int get_br_ctx_2d(const uint8_t *const levels,
@@ -152,7 +147,6 @@ static INLINE int get_br_ctx_2d(const uint8_t *const levels,
   return mag;
 }
 
-#if CONFIG_CHROMA_CODING
 static AOM_FORCE_INLINE int get_br_ctx_lf_eob_chroma(const int c,
                                                      const TX_CLASS tx_class) {
   if (tx_class == TX_CLASS_2D && c == 0) return 0;
@@ -172,7 +166,6 @@ static INLINE int get_br_ctx_2d_chroma(const uint8_t *const levels, const int c,
   mag = AOMMIN((mag + 1) >> 1, 3);
   return mag;
 }
-#endif  // CONFIG_CHROMA_CODING
 
 // This function returns the low range context index for
 // the low-frequency region for the EOB coefficient.
@@ -182,7 +175,6 @@ static AOM_FORCE_INLINE int get_br_ctx_lf_eob(const int c,  // raster order
   return 7;
 }
 
-#if CONFIG_CHROMA_CODING
 // This function returns the low range context index/increment for the
 // coefficients residing in the low-frequency region for 2D transforms.
 // For chroma components only and not used for the DC term.
@@ -253,7 +245,6 @@ static AOM_FORCE_INLINE int get_br_ctx_chroma(const uint8_t *const levels,
   mag = AOMMIN((mag + 1) >> 1, 3);
   return mag;
 }
-#endif  // CONFIG_CHROMA_CODING
 
 // This function returns the low range context index/increment for the
 // coefficients residing in the low-frequency region for 2D transforms.
@@ -378,12 +369,8 @@ static AOM_FORCE_INLINE int get_nz_mag_skip(const uint8_t *const levels,
                                             const int bwl) {
   int mag = clip_max3[levels[-1]];                      // { 0, -1 }
   mag += clip_max3[levels[-(1 << bwl) - TX_PAD_LEFT]];  // { -1, 0 }
-#if CONFIG_IMPROVEIDTX
   const int ctx = AOMMIN(mag, 6);
   return ctx;
-#else
-  return mag;
-#endif  // CONFIG_IMPROVEIDTX
 }
 
 /*
@@ -395,19 +382,11 @@ static AOM_FORCE_INLINE int get_sign_skip(const int8_t *const signs,
                                           const uint8_t *const levels,
                                           const int bwl) {
   int signc = 0;
-#if CONFIG_IMPROVEIDTX
   if (levels[-1]) signc += signs[-1];  // { 0, -1 }
   if (levels[-(1 << bwl) - TX_PAD_LEFT])
     signc += signs[-(1 << bwl) - TX_PAD_LEFT];  // { -1, 0 }
   if (levels[-(1 << bwl) - TX_PAD_LEFT - 1])
     signc += signs[-(1 << bwl) - TX_PAD_LEFT - 1];  // { -1, -1 }
-#else
-  if (levels[1]) signc += signs[1];  // { 0, +1 }
-  if (levels[(1 << bwl) + TX_PAD_LEFT])
-    signc += signs[(1 << bwl) + TX_PAD_LEFT];  // { +1, 0 }
-  if (levels[(1 << bwl) + TX_PAD_LEFT + 1])
-    signc += signs[(1 << bwl) + TX_PAD_LEFT + 1];  // { +1, +1 }
-#endif  // CONFIG_IMPROVEIDTX
   if (signc > 2) return 5;
   if (signc < -2) return 6;
   if (signc > 0) return 1;
@@ -419,18 +398,13 @@ static AOM_FORCE_INLINE int get_sign_skip(const int8_t *const signs,
 static INLINE int get_sign_ctx_skip(const int8_t *const signs,
                                     const uint8_t *const levels,
                                     const int coeff_idx, const int bwl) {
-#if CONFIG_IMPROVEIDTX
   const int8_t *const signs_pt = signs + get_padded_idx_left(coeff_idx, bwl);
-#else
-  const int8_t *const signs_pt = signs + get_padded_idx(coeff_idx, bwl);
-#endif  // CONFIG_IMPROVEIDTX
   const uint8_t *const level_pt = levels + get_padded_idx_left(coeff_idx, bwl);
   int sign_ctx = get_sign_skip(signs_pt, level_pt, bwl);
   if (level_pt[0] > COEFF_BASE_RANGE && sign_ctx != 0) sign_ctx += 2;
   return sign_ctx;
 }
 
-#if CONFIG_CHROMA_CODING
 // This function returns the template sum of absolute values
 // for coefficient coding for the low-frequency region for chroma.
 static AOM_FORCE_INLINE int get_nz_mag_lf_chroma(const uint8_t *const levels,
@@ -460,7 +434,6 @@ static AOM_FORCE_INLINE int get_nz_mag_chroma(const uint8_t *const levels,
   }
   return mag;
 }
-#endif  // CONFIG_CHROMA_CODING
 
 // This function returns the template sum of absolute values
 // for coefficient coding for the low-frequency region.
@@ -539,7 +512,6 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats_skip(const int stats,
   return ctx + 7;
 }
 
-#if CONFIG_CHROMA_CODING
 // This function returns the base range context index/increment for the
 // coefficients residing in the low-frequency region for 1D/2D transforms for
 // chroma.
@@ -553,7 +525,6 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats_lf_chroma(
   }
   return 0;
 }
-#endif  // CONFIG_CHROMA_CODING
 
 // This function returns the base range context index/increment for the
 // coefficients residing in the low-frequency region for 1D/2D transforms.
@@ -605,7 +576,6 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats_lf(
   return 0;
 }
 
-#if CONFIG_CHROMA_CODING
 // This function returns the base range context index/increment for the
 // coefficients residing in the higher-frequency region for 1D/2D transforms for
 // chroma.
@@ -620,28 +590,20 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats_chroma(
   }
   return ctx + LF_SIG_COEF_CONTEXTS_2D_UV;
 }
-#endif  // CONFIG_CHROMA_CODING
 
 // This function returns the base range context index/increment for the
 // coefficients residing in the higher-frequency region for 1D/2D transforms.
 static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats(
     const int stats,
     const int coeff_idx,  // raster order
-    const int bwl, const TX_CLASS tx_class
-#if CONFIG_CHROMA_CODING
-    ,
-    const int plane
-#endif  // CONFIG_CHROMA_CODING
-) {
+    const int bwl, const TX_CLASS tx_class, const int plane) {
   // tx_class == 0(TX_CLASS_2D)
   if ((tx_class | coeff_idx) == 0) return 0;
   int ctx = (stats + 1) >> 1;
   ctx = AOMMIN(ctx, 4);
   switch (tx_class) {
     case TX_CLASS_2D: {
-#if CONFIG_CHROMA_CODING
       if (plane > 0) return ctx;
-#endif  // CONFIG_CHROMA_CODING
       const int row = coeff_idx >> bwl;
       const int col = coeff_idx - (row << bwl);
       if (row + col < 6) return ctx;
@@ -655,7 +617,7 @@ static AOM_FORCE_INLINE int get_nz_map_ctx_from_stats(
   return 0;
 }
 
-#if CONFIG_TCQ && CONFIG_CHROMA_CODING
+#if CONFIG_TCQ
 typedef aom_cdf_prob (*base_lf_cdf_arr)[TCQ_CTXS][CDF_SIZE(LF_BASE_SYMBOLS)];
 typedef aom_cdf_prob (*base_cdf_arr)[TCQ_CTXS][CDF_SIZE(4)];
 #else
@@ -728,17 +690,9 @@ static AOM_FORCE_INLINE int get_upper_levels_ctx_2d(const uint8_t *levels,
   mag = AOMMIN(levels[-1], 3);                          // { 0, -1 }
   mag += AOMMIN(levels[-(1 << bwl) - TX_PAD_LEFT], 3);  // { -1, 0 }
   const int ctx = AOMMIN(mag, 6);
-#if CONFIG_IMPROVEIDTX
   return ctx;
-#else
-  const int row = (coeff_idx >> bwl);
-  const int col = (coeff_idx - (row << bwl)) + TX_PAD_LEFT;
-  if ((row < 2) && (col < (2 + TX_PAD_LEFT))) return ctx;
-  return ctx + 7;
-#endif  // CONFIG_IMPROVEIDTX
 }
 
-#if CONFIG_CHROMA_CODING
 // This function returns the base range context index/increment for the
 // coefficients residing in the low-frequency region for 2D transforms.
 static AOM_FORCE_INLINE int get_lower_levels_ctx_lf_2d_chroma(
@@ -779,7 +733,6 @@ static INLINE int get_lower_levels_ctx_2d_chroma(const uint8_t *levels,
     return ctx + 4;
   }
 }
-#endif  // CONFIG_CHROMA_CODING
 
 // This function returns the base range context index/increment for the
 // coefficients residing in the low-frequency region for 2D transforms.
@@ -818,12 +771,7 @@ static AOM_FORCE_INLINE int get_lower_levels_lf_ctx(const uint8_t *levels,
 }
 
 static INLINE int get_lower_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
-                                          int bwl
-#if CONFIG_CHROMA_CODING
-                                          ,
-                                          int plane
-#endif  // CONFIG_CHROMA_CODING
-) {
+                                          int bwl, int plane) {
   assert(coeff_idx > 0);
   int mag = 0;
   // Note: AOMMIN(level, 3) is useless for decoder since level < 3.
@@ -835,9 +783,7 @@ static INLINE int get_lower_levels_ctx_2d(const uint8_t *levels, int coeff_idx,
   mag += AOMMIN(levels[(2 << bwl) + (2 << TX_PAD_HOR_LOG2)], 3);  // { 2, 0 }
 
   const int ctx = AOMMIN((mag + 1) >> 1, 4);
-#if CONFIG_CHROMA_CODING
   if (plane > 0) return ctx;
-#endif  // CONFIG_CHROMA_CODING
   const int row = coeff_idx >> bwl;
   const int col = coeff_idx - (row << bwl);
   if (row + col < 6) return ctx;
@@ -863,7 +809,6 @@ static AOM_FORCE_INLINE int get_lf_limits(int row, int col, TX_CLASS tx_class,
   return limits;
 }
 
-#if CONFIG_CHROMA_CODING
 static AOM_FORCE_INLINE int get_lower_levels_ctx_chroma(const uint8_t *levels,
                                                         int coeff_idx, int bwl,
                                                         TX_CLASS tx_class,
@@ -872,28 +817,15 @@ static AOM_FORCE_INLINE int get_lower_levels_ctx_chroma(const uint8_t *levels,
       get_nz_mag_chroma(levels + get_padded_idx(coeff_idx, bwl), bwl, tx_class);
   return get_nz_map_ctx_from_stats_chroma(stats, coeff_idx, tx_class, plane);
 }
-#endif  // CONFIG_CHROMA_CODING
 
 static AOM_FORCE_INLINE int get_lower_levels_ctx(const uint8_t *levels,
                                                  int coeff_idx, int bwl,
-                                                 TX_CLASS tx_class
-#if CONFIG_CHROMA_CODING
-                                                 ,
-                                                 int plane
-#endif  // CONFIG_CHROMA_CODING
-) {
+                                                 TX_CLASS tx_class, int plane) {
   const int stats =
       get_nz_mag(levels + get_padded_idx(coeff_idx, bwl), bwl, tx_class);
-  return get_nz_map_ctx_from_stats(stats, coeff_idx, bwl, tx_class
-#if CONFIG_CHROMA_CODING
-
-                                   ,
-                                   plane
-#endif  // CONFIG_CHROMA_CODING
-  );
+  return get_nz_map_ctx_from_stats(stats, coeff_idx, bwl, tx_class, plane);
 }
 
-#if CONFIG_IMPROVEIDTX
 // This function determines the context index for 2D IDTX residual coding
 // used primarily by the trellis optimization for IDTX.
 static INLINE int get_upper_levels_ctx_general(int is_first, int scan_idx,
@@ -907,7 +839,6 @@ static INLINE int get_upper_levels_ctx_general(int is_first, int scan_idx,
   }
   return get_upper_levels_ctx_2d(levels, coeff_idx, bwl);
 }
-#endif  // CONFIG_IMPROVEIDTX
 
 static INLINE int get_lower_levels_ctx_general(int is_last, int scan_idx,
                                                int bwl, int height,
@@ -924,7 +855,6 @@ static INLINE int get_lower_levels_ctx_general(int is_last, int scan_idx,
   const int col = coeff_idx - (row << bwl);
   int limits = get_lf_limits(row, col, tx_class, plane);
 
-#if CONFIG_CHROMA_CODING
   if (plane > 0) {
     if (limits) {
       return get_lower_levels_lf_ctx_chroma(levels, coeff_idx, bwl, tx_class,
@@ -937,26 +867,9 @@ static INLINE int get_lower_levels_ctx_general(int is_last, int scan_idx,
     if (limits) {
       return get_lower_levels_lf_ctx(levels, coeff_idx, bwl, tx_class);
     } else {
-      return get_lower_levels_ctx(levels, coeff_idx, bwl, tx_class
-#if CONFIG_CHROMA_CODING
-                                  ,
-                                  plane
-#endif  // CONFIG_CHROMA_CODING
-      );
+      return get_lower_levels_ctx(levels, coeff_idx, bwl, tx_class, plane);
     }
   }
-#else
-  if (limits) {
-    return get_lower_levels_lf_ctx(levels, coeff_idx, bwl, tx_class);
-  } else {
-    return get_lower_levels_ctx(levels, coeff_idx, bwl, tx_class
-#if CONFIG_CHROMA_CODING
-                                ,
-                                plane
-#endif  // CONFIG_CHROMA_CODING
-    );
-  }
-#endif  // CONFIG_CHROMA_CODING
 }
 
 static INLINE void set_dc_sign(int *cul_level, int dc_val) {
