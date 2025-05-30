@@ -1206,8 +1206,9 @@ void av1_first_pass(AV1_COMP *cpi, const int64_t ts_duration) {
        ((this_frame_stats->intra_error /
          DOUBLE_DIVIDE_CHECK(this_frame_stats->coded_error)) > 2.0))) {
     if (golden_frame != NULL) {
+      int golden_frame_idx = get_ref_frame_map_idx(cm, GOLDEN_FRAME_PROXY);
       assign_frame_buffer_p(
-          &cm->ref_frame_map[get_ref_frame_map_idx(cm, GOLDEN_FRAME_PROXY)],
+          &cm->ref_frame_map[golden_frame_idx],
           cm->ref_frame_map[get_ref_frame_map_idx(cm, LAST_FRAME_PROXY)]);
     }
     twopass->sr_update_lag = 1;
