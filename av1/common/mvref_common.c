@@ -7232,152 +7232,6 @@ static void fill_id_offset_sample_gap(AV1_COMMON *cm) {
     }
   }
 }
-
-// Interpolate the sampled blk_id_map.
-static void fill_block_id_sample_gap(AV1_COMMON *cm) {
-  assert(cm->tmvp_sample_step > 0);
-  if (cm->tmvp_sample_step != 2) {
-    return;
-  }
-  const int mvs_rows =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
-  const int mvs_cols =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
-#if CONFIG_MF_IMPROVEMENT
-  const SequenceHeader *const seq_params = &cm->seq_params;
-  const int sb_size = block_size_high[seq_params->sb_size];
-  const int mf_sb_size_log2 = get_mf_sb_size_log2(sb_size, cm->mib_size_log2
-#if CONFIG_TMVP_MEM_OPT
-                                                  ,
-                                                  cm->tmvp_sample_step
-#endif  // CONFIG_TMVP_MEM_OPT
-  );
-  const int mf_sb_size = (1 << mf_sb_size_log2);
-  const int sb_tmvp_size = (mf_sb_size >> TMVP_MI_SZ_LOG2);
-  const int sb_tmvp_size_log2 = mf_sb_size_log2 - TMVP_MI_SZ_LOG2;
-#endif  // CONFIG_MF_IMPROVEMENT
-  for (int rf = 0; rf < cm->ref_frames_info.num_total_refs; rf++) {
-    for (int r = 0; r < mvs_rows; r += cm->tmvp_sample_step) {
-      for (int c = 0; c < mvs_cols; c += cm->tmvp_sample_step) {
-        int offset = r * mvs_cols + c;
-        if (cm->blk_id_map[0][rf][offset] == -1) continue;
-
-        int count[3] = { 0 };   // [hor, ver, diag]
-        int avg[3][2] = { 0 };  // [hor, ver, diag][row, col]
-
-        int this_traj_row = -1;
-        int this_traj_col = -1;
-        // this
-        if (cm->blk_id_map[0][rf][offset] != -1) {
-          this_traj_row = cm->blk_id_map[0][rf][offset] / mvs_cols;
-          this_traj_col = cm->blk_id_map[0][rf][offset] % mvs_cols;
-
-          count[0]++;
-          count[1]++;
-          count[2]++;
-
-          avg[0][0] += this_traj_row;
-          avg[1][0] += this_traj_row + 1;
-          avg[2][0] += this_traj_row + 1;
-
-          avg[0][1] += this_traj_col + 1;
-          avg[1][1] += this_traj_col;
-          avg[2][1] += this_traj_col + 1;
-        }
-
-        if (DO_AVG_FILL) {
-#if CONFIG_MF_IMPROVEMENT
-          const int base_blk_row = (r >> sb_tmvp_size_log2)
-                                   << sb_tmvp_size_log2;
-          const int base_blk_col = (c >> sb_tmvp_size_log2)
-                                   << sb_tmvp_size_log2;
-#endif  // CONFIG_MF_IMPROVEMENT
-
-          // right
-          int offset_right = offset + cm->tmvp_sample_step;
-          if (c + cm->tmvp_sample_step < mvs_cols &&
-              c + cm->tmvp_sample_step < base_blk_col + sb_tmvp_size &&
-              cm->blk_id_map[0][rf][offset_right] != -1) {
-            int traj_row = cm->blk_id_map[0][rf][offset_right] / mvs_cols;
-            int traj_col = cm->blk_id_map[0][rf][offset_right] % mvs_cols;
-            count[0]++;
-            count[2]++;
-
-            avg[0][0] += traj_row;
-            avg[2][0] += traj_row + 1;
-
-            avg[0][1] += traj_col - 1;
-            avg[2][1] += traj_col - 1;
-          }
-
-          // lower
-          int offset_lower = offset + cm->tmvp_sample_step * mvs_cols;
-          if (r + cm->tmvp_sample_step < mvs_rows &&
-              r + cm->tmvp_sample_step < base_blk_row + sb_tmvp_size &&
-              cm->blk_id_map[0][rf][offset_lower] != -1) {
-            int traj_row = cm->blk_id_map[0][rf][offset_lower] / mvs_cols;
-            int traj_col = cm->blk_id_map[0][rf][offset_lower] % mvs_cols;
-            count[1]++;
-            count[2]++;
-
-            avg[1][0] += traj_row - 1;
-            avg[2][0] += traj_row - 1;
-
-            avg[1][1] += traj_col;
-            avg[2][1] += traj_col + 1;
-          }
-
-          // lower_right
-          int offset_lower_right =
-              offset + cm->tmvp_sample_step * mvs_cols + cm->tmvp_sample_step;
-          if (r + cm->tmvp_sample_step < mvs_rows &&
-              r + cm->tmvp_sample_step < base_blk_row + sb_tmvp_size &&
-              c + cm->tmvp_sample_step < mvs_cols &&
-              c + cm->tmvp_sample_step < base_blk_col + sb_tmvp_size &&
-              cm->blk_id_map[0][rf][offset_lower_right] != -1) {
-            int traj_row = cm->blk_id_map[0][rf][offset_lower_right] / mvs_cols;
-            int traj_col = cm->blk_id_map[0][rf][offset_lower_right] % mvs_cols;
-
-            count[2]++;
-
-            avg[2][0] += traj_row - 1;
-            avg[2][1] += traj_col - 1;
-          }
-        }
-
-        if (c + 1 < mvs_cols && count[0] > 0) {
-          assert(cm->blk_id_map[0][rf][offset + 1] == -1);
-          const int traj_row = calc_avg(avg[0][0], count[0]);
-          const int traj_col = calc_avg(avg[0][1], count[0]);
-          if (traj_row >= 0 && traj_row < mvs_rows && traj_col >= 0 &&
-              traj_col < mvs_cols) {
-            cm->blk_id_map[0][rf][offset + 1] = traj_row * mvs_cols + traj_col;
-          }
-        }
-        if (r + 1 < mvs_rows && count[1] > 0) {
-          assert(cm->blk_id_map[0][rf][offset + mvs_cols] == -1);
-          const int traj_row = calc_avg(avg[1][0], count[1]);
-          const int traj_col = calc_avg(avg[1][1], count[1]);
-          if (traj_row >= 0 && traj_row < mvs_rows && traj_col >= 0 &&
-              traj_col < mvs_cols) {
-            cm->blk_id_map[0][rf][offset + mvs_cols] =
-                traj_row * mvs_cols + traj_col;
-          }
-        }
-        if (r + 1 < mvs_rows && c + 1 < mvs_cols && count[2] > 0) {
-          assert(cm->blk_id_map[0][rf][offset + mvs_cols + 1] == -1);
-          const int traj_row = calc_avg(avg[2][0], count[2]);
-          const int traj_col = calc_avg(avg[2][1], count[2]);
-          if (traj_row >= 0 && traj_row < mvs_rows && traj_col >= 0 &&
-              traj_col < mvs_cols) {
-            cm->blk_id_map[0][rf][offset + mvs_cols + 1] =
-                traj_row * mvs_cols + traj_col;
-          }
-        }
-      }
-    }
-  }
-}
 #endif  // CONFIG_MV_TRAJECTORY
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
 #else
@@ -8092,11 +7946,11 @@ void av1_setup_motion_field(AV1_COMMON *cm) {
 #if CONFIG_MV_TRAJECTORY
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085
   if (cm->seq_params.enable_mv_traj) {
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
     fill_id_offset_sample_gap(cm);
-    fill_block_id_sample_gap(cm);
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
   }
+#else
+  fill_id_offset_sample_gap(cm);
+  fill_block_id_sample_gap(cm);
 #endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
 #endif  // CONFIG_MV_TRAJECTORY
 #else
