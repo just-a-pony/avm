@@ -383,9 +383,9 @@ static INLINE void full_pel_lower_mv_precision_one_comp(
 #if CONFIG_VQ_MVD_CODING
 // Get the index value of AMVD MVD from the MVD value
 static INLINE int16_t get_index_from_amvd_mvd(int this_mvd_comp) {
-  int index = -1;
+  int index;
   for (index = 0; index <= MAX_AMVD_INDEX; index++) {
-    if (abs(this_mvd_comp) == amvd_index_to_mvd[abs(index)]) break;
+    if (abs(this_mvd_comp) == amvd_index_to_mvd[index]) break;
   }
   assert(index >= 0 && index <= MAX_AMVD_INDEX);
   index = this_mvd_comp < 0 ? -1 * index : index;
@@ -420,9 +420,9 @@ static INLINE void get_adaptive_mvd_from_ref_mv(MV mv, MV ref_mv, MV *mvd) {
 
 #if CONFIG_INTER_MODE_CONSOLIDATION
 static INLINE int16_t get_amvd_index_from_mvd(int mve) {
-  int index = -1;
+  int index;
   for (index = 0; index <= MAX_AMVD_INDEX; index++) {
-    if (abs(mve) == amvd_index_to_mvd[abs(index)]) break;
+    if (abs(mve) == amvd_index_to_mvd[index]) break;
   }
   index = mve < 0 ? -1 * index : index;
   return index;
