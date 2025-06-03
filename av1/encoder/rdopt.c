@@ -3452,7 +3452,7 @@ static int64_t motion_mode_rd(
               const MB_MODE_INFO *neighbor_mi =
                   xd->mi[base_pos.row * xd->mi_stride + base_pos.col];
 
-              if (is_tip_ref_frame(neighbor_mi->ref_frame[0])) continue;
+              assert(!is_tip_ref_frame(neighbor_mi->ref_frame[0]));
 
               if (mbmi->mode == NEARMV) {
                 assert(is_warp_mode(neighbor_mi->motion_mode));

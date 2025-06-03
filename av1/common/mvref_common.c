@@ -9526,14 +9526,16 @@ int get_extend_base_pos(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   if (mvp_col_offset == -1 || mvp_row_offset == -1) {
     const MB_MODE_INFO *neighbor_mi =
         xd->mi[mvp_row_offset * xd->mi_stride + mvp_col_offset];
-    if ((is_warp_mode(neighbor_mi->motion_mode) && mbmi->mode == NEARMV) ||
+    if (!is_tip_ref_frame(neighbor_mi->ref_frame[0])) {
+      if ((is_warp_mode(neighbor_mi->motion_mode) && mbmi->mode == NEARMV) ||
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-        mbmi->mode == WARP_NEWMV ||
+          mbmi->mode == WARP_NEWMV ||
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-        mbmi->mode == NEWMV) {
-      base_pos->row = mvp_row_offset;
-      base_pos->col = mvp_col_offset;
-      return 1;
+          mbmi->mode == NEWMV) {
+        base_pos->row = mvp_row_offset;
+        base_pos->col = mvp_col_offset;
+        return 1;
+      }
     }
   }
 
