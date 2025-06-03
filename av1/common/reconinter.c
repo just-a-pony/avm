@@ -2153,19 +2153,19 @@ int av1_opfl_affine_refinement(const int16_t *pdiff, int pstride,
   if (!solver_4d(mat_a, vec_b, prec_bits, vec_x)) return 1;
 
   assert(WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS >= 0);
-  am_params->rot_angle = (int)clamp64(vec_x[0], INT32_MIN, INT32_MAX);
-  am_params->scale_alpha =
-      (int)clamp64(vec_x[1] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
-                   INT32_MIN, INT32_MAX);
-  am_params->scale_beta =
-      (int)clamp64(vec_x[1] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
-                   INT32_MIN, INT32_MAX);
-  am_params->tran_x =
-      (int)clamp64(vec_x[2] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
-                   INT32_MIN, INT32_MAX);
-  am_params->tran_y =
-      (int)clamp64(vec_x[3] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
-                   INT32_MIN, INT32_MAX);
+  am_params->rot_angle = vec_x[0];
+  am_params->scale_alpha = (int)clamp64(
+      (int64_t)vec_x[1] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
+      INT32_MIN, INT32_MAX);
+  am_params->scale_beta = (int)clamp64(
+      (int64_t)vec_x[1] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
+      INT32_MIN, INT32_MAX);
+  am_params->tran_x = (int)clamp64(
+      (int64_t)vec_x[2] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
+      INT32_MIN, INT32_MAX);
+  am_params->tran_y = (int)clamp64(
+      (int64_t)vec_x[3] * (1 << (WARPEDMODEL_PREC_BITS - AFFINE_PREC_BITS)),
+      INT32_MIN, INT32_MAX);
   return 0;
 }
 #endif  // CONFIG_AFFINE_REFINEMENT
