@@ -7512,6 +7512,12 @@ static INLINE int get_disp_order_hint(AV1_COMMON *const cm) {
     if (cur_disp_order_hint > max_disp_order_hint) return cur_disp_order_hint;
     cur_disp_order_hint += display_order_hint_factor;
   }
+  // We restrict the derived display order hint to a range, to avoid 32 bit
+  // integer overflow and some corner cases when display order hint operations
+  // are performed in DISPLAY_ORDER_HINT_BITS bit range
+  if (cur_disp_order_hint >= (1 << (DISPLAY_ORDER_HINT_BITS - 1)))
+    aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                       "Derived display order hint is invalid");
   return cur_disp_order_hint;
 }
 
@@ -7537,6 +7543,12 @@ static INLINE int get_ref_frame_disp_order_hint(AV1_COMMON *const cm,
 
     disp_order_hint += display_order_hint_factor;
   }
+  // We restrict the derived display order hint to a range, to avoid 32 bit
+  // integer overflow and some corner cases when display order hint operations
+  // are performed in DISPLAY_ORDER_HINT_BITS bit range
+  if (disp_order_hint >= (1 << (DISPLAY_ORDER_HINT_BITS - 1)))
+    aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                       "Derived display order hint is invalid");
   return disp_order_hint;
 }
 #endif  // CONFIG_EXPLICIT_TEMPORAL_DIST_CALC
@@ -8362,12 +8374,15 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           int ref = cm->remapped_ref_idx[i];
           scores[i].distance =
               seq_params->order_hint_info.enable_order_hint
-                  ? ((int)current_frame->display_order_hint -
+                  ? get_relative_dist(
+                        &seq_params->order_hint_info,
+                        (int)current_frame->display_order_hint,
 #if CONFIG_PRIMARY_REF_FRAME_OPT
-                     (int)cm->ref_frame_map_pairs[ref].disp_order)
+                        (int)cm->ref_frame_map_pairs[ref].disp_order
 #else
-                       (int)ref_frame_map_pairs[ref].disp_order)
+                          (int)ref_frame_map_pairs[ref].disp_order
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
+                        )
                   : 1;
           cm->ref_frames_info.ref_frame_distance[i] = scores[i].distance;
         }
