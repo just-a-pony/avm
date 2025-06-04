@@ -35,7 +35,6 @@
 #include "common/md5_utils.h"
 #include "common/rawenc.h"
 
-#include "av1/common/blockd.h"
 #include "av1/common/cdef.h"
 #include "av1/common/ccso.h"
 #include "av1/common/cfl.h"
