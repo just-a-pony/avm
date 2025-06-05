@@ -14,6 +14,8 @@
 #define AOM_AOM_PORTS_BITOPS_H_
 
 #include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #include "aom_ports/msvc.h"
 #include "config/aom_config.h"
@@ -71,6 +73,22 @@ static INLINE int get_msb(unsigned int n) {
   return log;
 }
 #endif
+
+#if CONFIG_AFFINE_REFINEMENT || CONFIG_OPFL_MV_SEARCH || \
+    CONFIG_E125_MHCCP_SIMPLIFY
+static INLINE int get_msb_signed(int32_t n) {
+  return n == 0 ? 0 : get_msb((unsigned int)abs(n));
+}
+
+static INLINE int get_msb_signed_64(int64_t n) {
+  uint64_t n_abs = (uint64_t)llabs(n);
+  unsigned int high32 = n_abs >> 32;
+  unsigned int low32 = n_abs & 0x00000000ffffffffULL;
+  if (high32 != 0) return 32 + get_msb(high32);
+  return low32 == 0 ? 0 : get_msb((unsigned int)low32);
+}
+#endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_OPFL_MV_SEARCH ||
+        // CONFIG_E125_MHCCP_SIMPLIFY
 
 #ifdef __cplusplus
 }  // extern "C"
