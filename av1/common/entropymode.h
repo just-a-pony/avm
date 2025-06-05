@@ -13,6 +13,7 @@
 #ifndef AOM_AV1_COMMON_ENTROPYMODE_H_
 #define AOM_AV1_COMMON_ENTROPYMODE_H_
 
+#include "aom_ports/bitops.h"
 #include "av1/common/entropy.h"
 #include "av1/common/entropymv.h"
 #include "av1/common/enums.h"
@@ -839,13 +840,7 @@ static INLINE int get_msb_signed_64(int64_t n) {
 // Returns (int)ceil(log2(n)).
 static INLINE int av1_ceil_log2(int n) {
   if (n < 2) return 0;
-  int i = 1;
-  unsigned int p = 2;
-  while (p < (unsigned int)n) {
-    i++;
-    p = p << 1;
-  }
-  return i;
+  return get_msb(n - 1) + 1;
 }
 
 static INLINE int16_t inter_single_mode_ctx(int16_t mode_ctx) {
