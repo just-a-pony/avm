@@ -837,11 +837,11 @@ static INLINE int get_msb_signed_64(int64_t n) {
         // CONFIG_E125_MHCCP_SIMPLIFY
 
 // Returns (int)ceil(log2(n)).
-// NOTE: This implementation only works for n <= 2^30.
 static INLINE int av1_ceil_log2(int n) {
   if (n < 2) return 0;
-  int i = 1, p = 2;
-  while (p < n) {
+  int i = 1;
+  unsigned int p = 2;
+  while (p < (unsigned int)n) {
     i++;
     p = p << 1;
   }
