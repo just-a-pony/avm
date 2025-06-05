@@ -1525,14 +1525,14 @@ static AOM_INLINE void delta_encode_palette_colors(const int *colors, int num,
     if (delta > max_delta) max_delta = delta;
   }
   const int min_bits = bit_depth - 3;
-  int bits = AOMMAX(av1_ceil_log2(max_delta + 1 - min_val), min_bits);
+  int bits = AOMMAX(aom_ceil_log2(max_delta + 1 - min_val), min_bits);
   assert(bits <= bit_depth);
   int range = (1 << bit_depth) - colors[0] - min_val;
   aom_write_literal(w, bits - min_bits, 2);
   for (int i = 0; i < num - 1; ++i) {
     aom_write_literal(w, deltas[i] - min_val, bits);
     range -= deltas[i];
-    bits = AOMMIN(bits, av1_ceil_log2(range));
+    bits = AOMMIN(bits, aom_ceil_log2(range));
   }
 }
 
@@ -4457,7 +4457,7 @@ static AOM_INLINE void encode_restoration_mode(
             if (rsi->temporal_pred_flag && num_ref_frames > 1)
               aom_wb_write_literal(
                   wb, rsi->rst_ref_pic_idx,
-                  av1_ceil_log2(num_ref_frames));  // write_lr_reference_idx
+                  aom_ceil_log2(num_ref_frames));  // write_lr_reference_idx
           }
           if (!rsi->temporal_pred_flag) {
 #endif  // CONFIG_TEMP_LR

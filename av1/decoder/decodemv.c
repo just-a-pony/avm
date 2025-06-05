@@ -41,6 +41,7 @@
 #if CONFIG_VQ_MVD_CODING
 #include "aom_dsp/binary_codes_reader.h"
 #endif  // CONFIG_VQ_MVD_CODING
+#include "aom_ports/bitops.h"
 
 #if CONFIG_GDF
 #include "av1/common/gdf.h"
@@ -1436,7 +1437,7 @@ static void read_palette_colors_y(MACROBLOCKD *const xd, int bit_depth,
         pmi->palette_colors[idx] = clamp(pmi->palette_colors[idx - 1] + delta,
                                          0, (1 << bit_depth) - 1);
         range -= (pmi->palette_colors[idx] - pmi->palette_colors[idx - 1]);
-        bits = AOMMIN(bits, av1_ceil_log2(range));
+        bits = AOMMIN(bits, aom_ceil_log2(range));
       }
     }
   }
@@ -1473,7 +1474,7 @@ static void read_palette_colors_y(MACROBLOCKD *const xd, int bit_depth,
         pmi->palette_colors[idx] = clamp(pmi->palette_colors[idx - 1] + delta,
                                          0, (1 << bit_depth) - 1);
         range -= (pmi->palette_colors[idx] - pmi->palette_colors[idx - 1]);
-        bits = AOMMIN(bits, av1_ceil_log2(range));
+        bits = AOMMIN(bits, aom_ceil_log2(range));
       }
     }
     merge_colors(pmi->palette_colors, cached_colors, n, n_cached_colors);
@@ -1508,7 +1509,7 @@ static void read_palette_colors_uv(MACROBLOCKD *const xd, int bit_depth,
         pmi->palette_colors[idx] = clamp(pmi->palette_colors[idx - 1] + delta,
                                          0, (1 << bit_depth) - 1);
         range -= (pmi->palette_colors[idx] - pmi->palette_colors[idx - 1]);
-        bits = AOMMIN(bits, av1_ceil_log2(range));
+        bits = AOMMIN(bits, aom_ceil_log2(range));
       }
     }
   }
@@ -1549,7 +1550,7 @@ static void read_palette_colors_uv(MACROBLOCKD *const xd, int bit_depth,
         pmi->palette_colors[idx] = clamp(pmi->palette_colors[idx - 1] + delta,
                                          0, (1 << bit_depth) - 1);
         range -= (pmi->palette_colors[idx] - pmi->palette_colors[idx - 1]);
-        bits = AOMMIN(bits, av1_ceil_log2(range));
+        bits = AOMMIN(bits, aom_ceil_log2(range));
       }
     }
     merge_colors(pmi->palette_colors + PALETTE_MAX_SIZE, cached_colors, n,

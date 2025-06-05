@@ -3048,7 +3048,7 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
             if (rsi->temporal_pred_flag && num_ref_frames > 1) {
               rsi->rst_ref_pic_idx = aom_rb_read_literal(
                   rb,
-                  av1_ceil_log2(num_ref_frames));  // read_lr_reference_idx
+                  aom_ceil_log2(num_ref_frames));  // read_lr_reference_idx
             }
           }
 

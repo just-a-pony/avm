@@ -90,6 +90,12 @@ static INLINE int get_msb_signed_64(int64_t n) {
 #endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_OPFL_MV_SEARCH ||
         // CONFIG_E125_MHCCP_SIMPLIFY
 
+// Returns (int)ceil(log2(n)).
+static inline int aom_ceil_log2(int n) {
+  if (n < 2) return 0;
+  return get_msb(n - 1) + 1;
+}
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
