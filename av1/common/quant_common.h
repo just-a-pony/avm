@@ -49,6 +49,9 @@ extern "C" {
 // Total number of QM sets stored
 #define QM_LEVEL_BITS 4
 #define NUM_QM_LEVELS (1 << QM_LEVEL_BITS)
+#define QM_TOTAL_SIZE                  \
+  (4 * 4 + 8 * 8 + 16 * 16 + 32 * 32 + \
+   2 * (4 * 8 + 8 * 16 + 16 * 32 + 4 * 16 + 8 * 32 + 4 * 32))
 /* Range of QMS is between first and last value, with offset applied to inter
  * blocks*/
 #define DEFAULT_QM_Y 10

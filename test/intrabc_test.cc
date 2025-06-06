@@ -14,6 +14,7 @@
 
 #include "config/aom_config.h"
 
+#include "aom_mem/aom_mem.h"
 #include "av1/common/av1_common_int.h"
 #include "av1/common/blockd.h"
 #include "av1/common/enums.h"
@@ -151,31 +152,38 @@ TEST(IntrabcTest, DvValidation) {
       false },
   };
 
-  MACROBLOCKD xd;
-  memset(&xd, 0, sizeof(xd));
-  xd.tile.mi_row_start = 8 * MAX_MIB_SIZE;
-  xd.tile.mi_row_end = 16 * MAX_MIB_SIZE;
-  xd.tile.mi_col_start = 24 * MAX_MIB_SIZE;
-  xd.tile.mi_col_end = xd.tile.mi_col_start + kTileMaxMibWidth * MAX_MIB_SIZE;
-  xd.plane[1].subsampling_x = 1;
-  xd.plane[1].subsampling_y = 1;
-  xd.plane[2].subsampling_x = 1;
-  xd.plane[2].subsampling_y = 1;
-  xd.mi = NULL;
+  auto xd = reinterpret_cast<MACROBLOCKD *>(
+      aom_memalign(alignof(MACROBLOCKD), sizeof(MACROBLOCKD)));
+  ASSERT_NE(xd, nullptr);
+  memset(xd, 0, sizeof(*xd));
+  xd->tile.mi_row_start = 8 * MAX_MIB_SIZE;
+  xd->tile.mi_row_end = 16 * MAX_MIB_SIZE;
+  xd->tile.mi_col_start = 24 * MAX_MIB_SIZE;
+  xd->tile.mi_col_end = xd->tile.mi_col_start + kTileMaxMibWidth * MAX_MIB_SIZE;
+  xd->plane[1].subsampling_x = 1;
+  xd->plane[1].subsampling_y = 1;
+  xd->plane[2].subsampling_x = 1;
+  xd->plane[2].subsampling_y = 1;
+  xd->mi = NULL;
 
-  AV1_COMMON cm;
-  memset(&cm, 0, sizeof(cm));
+  auto cm = reinterpret_cast<AV1_COMMON *>(
+      aom_memalign(alignof(AV1_COMMON), sizeof(AV1_COMMON)));
+  ASSERT_NE(cm, nullptr);
+  memset(cm, 0, sizeof(*cm));
 #if CONFIG_IBC_SR_EXT
-  cm.features.allow_global_intrabc = 1;
+  cm->features.allow_global_intrabc = 1;
 #endif  // CONFIG_IBC_SR_EXT
 
   for (const DvTestCase &dv_case : kDvCases) {
-    const int mi_row = xd.tile.mi_row_start + dv_case.mi_row_offset;
-    const int mi_col = xd.tile.mi_col_start + dv_case.mi_col_offset;
-    xd.is_chroma_ref = 1;
+    const int mi_row = xd->tile.mi_row_start + dv_case.mi_row_offset;
+    const int mi_col = xd->tile.mi_col_start + dv_case.mi_col_offset;
+    xd->is_chroma_ref = 1;
     EXPECT_EQ(static_cast<int>(dv_case.valid),
-              av1_is_dv_valid(dv_case.dv, &cm, &xd, mi_row, mi_col,
-                              dv_case.bsize, MAX_MIB_SIZE_LOG2));
+              av1_is_dv_valid(dv_case.dv, cm, xd, mi_row, mi_col, dv_case.bsize,
+                              MAX_MIB_SIZE_LOG2));
   }
+
+  aom_free(xd);
+  aom_free(cm);
 }
 }  // namespace

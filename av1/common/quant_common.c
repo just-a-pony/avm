@@ -310,14 +310,6 @@ const qm_val_t *av1_get_qmatrix(const CommonQuantParams *quant_params,
              : quant_params->gqmatrix[NUM_QM_LEVELS - 1][0][qm_tx_size];
 }
 
-#define QM_TOTAL_SIZE                  \
-  (4 * 4 + 8 * 8 + 16 * 16 + 32 * 32 + \
-   2 * (4 * 8 + 8 * 16 + 16 * 32 + 4 * 16 + 8 * 32 + 4 * 32))
-
-// We only use wt_matrix_ref[q] and iwt_matrix_ref[q]
-// for q = 0, ..., NUM_QM_LEVELS - 2.
-static qm_val_t wt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE];
-static qm_val_t iwt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE];
 static const qm_val_t source_8x8_iwt_base_matrix[NUM_QM_LEVELS - 1][2][64];
 static const qm_val_t source_8x4_iwt_base_matrix[NUM_QM_LEVELS - 1][2][8 * 4];
 static const qm_val_t source_4x8_iwt_base_matrix[NUM_QM_LEVELS - 1][2][4 * 8];
@@ -412,13 +404,15 @@ void av1_qm_init(CommonQuantParams *quant_params, int num_planes) {
           assert(current + size <= QM_TOTAL_SIZE);
           // Generate the iwt and wt matrices from the base matrices.
           int plane = (c >= 1);
-          scale_tx(t, q, plane, &iwt_matrix_ref[q][c >= 1][current]);
-          calc_wt_matrix(t, &iwt_matrix_ref[q][c >= 1][current],
-                         &wt_matrix_ref[q][c >= 1][current]);
+          scale_tx(t, q, plane,
+                   &quant_params->iwt_matrix_ref[q][c >= 1][current]);
+          calc_wt_matrix(t, &quant_params->iwt_matrix_ref[q][c >= 1][current],
+                         &quant_params->wt_matrix_ref[q][c >= 1][current]);
 
-          quant_params->gqmatrix[q][c][t] = &wt_matrix_ref[q][c >= 1][current];
+          quant_params->gqmatrix[q][c][t] =
+              &quant_params->wt_matrix_ref[q][c >= 1][current];
           quant_params->giqmatrix[q][c][t] =
-              &iwt_matrix_ref[q][c >= 1][current];
+              &quant_params->iwt_matrix_ref[q][c >= 1][current];
           current += size;
         }
       }

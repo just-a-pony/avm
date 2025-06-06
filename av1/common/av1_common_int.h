@@ -1314,6 +1314,22 @@ struct CommonQuantParams {
   /**@}*/
 
   /**
+   * \name Raw quantization matrix tables.
+   * We only use wt_matrix_ref[q] and iwt_matrix_ref[q]
+   * for q = 0, ..., NUM_QM_LEVELS - 2.
+   */
+  /**@{*/
+  /*!
+   * Raw quantization matrix table (accessed via gqmatrix).
+   */
+  qm_val_t wt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE];
+  /*!
+   * Raw dquantization matrix table (accessed via giqmatrix).
+   */
+  qm_val_t iwt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE];
+  /**@}*/
+
+  /**
    * \name Global quantization matrix tables.
    */
   /**@{*/
