@@ -73,13 +73,10 @@ Coverage Report:
   script:
     - mkdir -p coverage-html
     - cd aom_nightly_build
-    # the find can be replace with --add-tracefile "coverage_*.json" once
-    # next release of gcovr is done (current is gcovr 4.2)
-    # additionally --html-self-contained could then be used.
     - >-
       gcovr
       --gcov-executable gcov-12
-      $(find . -name 'coverage_*.json' -printf '--add-tracefile %p ')
+      --add-tracefile "coverage_*.json"
       --exclude '../third_party/'
       --xml ../coverage.xml
       --html --html-details ../coverage-html/coverage.html
