@@ -50,6 +50,7 @@ Linux All Unit Test:
     - cd aom_nightly_build
     - ./test_libaom
     - gcovr
+      --gcov-executable gcov-12
       --exclude '../third_party/'
       --json -o "coverage_${CI_NODE_INDEX}.json"
       -r ../ .
@@ -77,6 +78,7 @@ Coverage Report:
     # additionally --html-self-contained could then be used.
     - >-
       gcovr
+      --gcov-executable gcov-12
       $(find . -name 'coverage_*.json' -printf '--add-tracefile %p ')
       --exclude '../third_party/'
       --xml ../coverage.xml
