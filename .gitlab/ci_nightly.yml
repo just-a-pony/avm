@@ -49,9 +49,16 @@ Linux All Unit Test:
   script:
     - cd aom_nightly_build
     - ./test_libaom
-    - gcovr
+    - >-
+      gcovr
       --gcov-executable gcov-12
-      --exclude '../third_party/'
+      --exclude ../third_party --exclude _deps --exclude abseil-cpp --exclude
+      benchmark --exclude cpuinfo --exclude eigen --exclude farmhash --exclude
+      fft2d --exclude flatbuffers --exclude flatbuffers-flatc --exclude fp16
+      --exclude FP16 --exclude FXdiv --exclude psimd  --exclude ml_dtypes
+      --exclude neon2sse  --exclude protobuf --exclude pthreadpool --exclude
+      pthreadpool-source --exclude ruy --exclude xnnpack --exclude XNNPACK
+      --exclude gemmlowp  --exclude googletest
       --json -o "coverage_${CI_NODE_INDEX}.json"
       -r ../ .
   needs:
@@ -77,7 +84,13 @@ Coverage Report:
       gcovr
       --gcov-executable gcov-12
       --add-tracefile "coverage_*.json"
-      --exclude '../third_party/'
+      --exclude ../third_party --exclude _deps --exclude abseil-cpp --exclude
+      benchmark --exclude cpuinfo --exclude eigen --exclude farmhash --exclude
+      fft2d --exclude flatbuffers --exclude flatbuffers-flatc --exclude fp16
+      --exclude FP16 --exclude FXdiv --exclude psimd  --exclude ml_dtypes
+      --exclude neon2sse  --exclude protobuf --exclude pthreadpool --exclude
+      pthreadpool-source --exclude ruy --exclude xnnpack --exclude XNNPACK
+      --exclude gemmlowp  --exclude googletest
       --xml ../coverage.xml
       --html --html-details ../coverage-html/coverage.html
       --print-summary
