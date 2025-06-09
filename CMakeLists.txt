@@ -458,8 +458,6 @@ if(CONFIG_AV1_DECODER AND ENABLE_EXAMPLES)
          "${AOM_ROOT}/tools/extract_proto/enum_mappings.h")
     set(AVM_FRAME_PROTO_PATH "${AOM_ROOT}/tools/extract_proto/avm_frame.proto")
     find_package(Protobuf REQUIRED)
-    set(CMAKE_CXX_STANDARD 17)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(ABSL_PROPAGATE_CXX_STD ON)
     include_directories(${Protobuf_INCLUDE_DIRS})
     protobuf_generate_cpp(AVM_FRAME_PROTO_SRCS AVM_FRAME_PROTO_HDRS

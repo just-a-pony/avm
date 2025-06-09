@@ -274,6 +274,8 @@ endif()
 
 # Test compiler flags.
 if(MSVC)
+  # It isn't possible to specify C99 conformance for MSVC.
+  add_cxx_flag_if_supported("/std:c++17")
   add_compiler_flag_if_supported("/W3")
 
   # Disable MSVC warnings that suggest making code non-portable.
@@ -283,13 +285,7 @@ if(MSVC)
   endif()
 else()
   require_c_flag("-std=c99" YES)
-  if(CONFIG_TENSORFLOW_LITE)
-    require_cxx_flag_nomsvc("-std=c++17" YES)
-  elseif(WIN32 AND NOT MINGW)
-    require_cxx_flag_nomsvc("-std=c++14" YES)
-  else()
-    require_cxx_flag_nomsvc("-std=c++11" YES)
-  endif()
+  require_cxx_flag_nomsvc("-std=c++17" YES)
   add_compiler_flag_if_supported("-Wall")
   add_compiler_flag_if_supported("-Wdisabled-optimization")
   add_compiler_flag_if_supported("-Wextra")
