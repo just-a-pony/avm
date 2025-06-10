@@ -9,6 +9,13 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
+#ifndef AOM_AV1_COMMON_INTRA_MATRIX_H_
+#define AOM_AV1_COMMON_INTRA_MATRIX_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define DIP_ROWS 64
 #define DIP_COLS 16
 #define DIP_BITS 12
@@ -20,3 +27,9 @@ extern const uint16_t av1_intra_matrix_weights[][DIP_ROWS][DIP_COLS];
 
 void av1_intra_matrix_pred(const uint16_t *input, int mode, uint16_t *output,
                            int bd);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
+
+#endif  // AOM_AV1_COMMON_INTRA_MATRIX_H

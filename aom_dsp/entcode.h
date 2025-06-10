@@ -17,6 +17,10 @@
 #include <stddef.h>
 #include "av1/common/odintrin.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*OPT: od_ec_window must be at least 32 bits, but if you have fast arithmetic
    on a larger type, you can speed up the decoder by using it here.*/
 #if CONFIG_BYPASS_IMPROVEMENT
@@ -42,5 +46,9 @@ extern const uint16_t av1_prob_inc_tbl[15][16];
 
 OD_WARN_UNUSED_RESULT uint64_t od_ec_tell_frac(uint32_t nbits_total,
                                                uint32_t rng);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif  // AOM_AOM_DSP_ENTCODE_H_
