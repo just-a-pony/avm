@@ -629,6 +629,9 @@ if(CONFIG_AV1_ENCODER)
         EXTRACT_TF_UPDATE_DEPS_CMAKE_CONFIG
         "cd ${CMAKE_CURRENT_SOURCE_DIR}/third_party;"
         "tar -xzf tensorflow.tar.gz; "
+        "cd tensorflow; "
+        "patch -p1 < ../tensorflow-designated-initializers.patch; "
+        "cd ..; "
         "tar -xzf deps_cmake.tar.gz; "
         "cp deps_cmake/abseil-cpp.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "
         "cp deps_cmake/cpuinfo.cmake ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow/tensorflow/lite/tools/cmake/modules; "

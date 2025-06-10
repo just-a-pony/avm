@@ -1,0 +1,117 @@
+diff --git a/tensorflow/lite/core/c/operator.cc b/tensorflow/lite/core/c/operator.cc
+index ee67da2dcb2..2ae7d71f1d3 100644
+--- a/tensorflow/lite/core/c/operator.cc
++++ b/tensorflow/lite/core/c/operator.cc
+@@ -32,17 +32,17 @@ TfLiteOperator* TfLiteOperatorCreate(TfLiteBuiltinOperator builtin_code,
+ TfLiteOperator* TfLiteOperatorCreateWithData(TfLiteBuiltinOperator builtin_code,
+                                              const char* custom_name,
+                                              int version, void* user_data) {
+-  return new TfLiteOperator{.custom_name = custom_name,
+-                            .version = version,
+-                            .init = nullptr,
+-                            .free = nullptr,
+-                            .prepare = nullptr,
+-                            .invoke = nullptr,
+-                            .async_kernel = nullptr,
+-                            .builtin_code = builtin_code,
+-                            .node_index = -1,
+-                            .inplace_operator = kTfLiteInplaceOpNone,
+-                            .user_data = user_data};
++  return new TfLiteOperator{/*custom_name=*/custom_name,
++                            /*version=*/version,
++                            /*init=*/nullptr,
++                            /*free=*/nullptr,
++                            /*prepare=*/nullptr,
++                            /*invoke=*/nullptr,
++                            /*async_kernel=*/nullptr,
++                            /*builtin_code=*/builtin_code,
++                            /*node_index=*/-1,
++                            /*inplace_operator=*/kTfLiteInplaceOpNone,
++                            /*user_data=*/user_data};
+ }
+
+ void TfLiteOperatorDelete(TfLiteOperator* reg) { delete reg; }
+diff --git a/tensorflow/lite/delegates/xnnpack/weight_cache.cc b/tensorflow/lite/delegates/xnnpack/weight_cache.cc
+index aa7307386ff..085d699be04 100644
+--- a/tensorflow/lite/delegates/xnnpack/weight_cache.cc
++++ b/tensorflow/lite/delegates/xnnpack/weight_cache.cc
+@@ -203,15 +203,17 @@ BufferLocation WeightCacheBuilder::Append(PackIdentifier pack_id,
+     std::memcpy(reserved_data, data, size);
+     append_data = reserved_data;
+   }
+-  BufferLocation loc{.offset = reinterpret_cast<uintptr_t>(append_data) -
+-                               reinterpret_cast<uintptr_t>(buffer_data_.data()),
+-                     .size = size};
+-  schema_.buffers.push_back(std::make_unique<cache::schema::BufferT>(
+-      cache::schema::BufferT{.packing_algorithm_id = pack_id.pack_algorithm_id,
+-                             .weights_id = pack_id.weights_id,
+-                             .bias_id = pack_id.bias_id,
+-                             .offset = loc.offset,
+-                             .size = loc.size}));
++  BufferLocation loc{/*offset=*/reinterpret_cast<uintptr_t>(append_data) -
++                         reinterpret_cast<uintptr_t>(buffer_data_.data()),
++                     /*size=*/size};
++  cache::schema::BufferT buffer;
++  buffer.packing_algorithm_id = pack_id.pack_algorithm_id;
++  buffer.weights_id = pack_id.weights_id;
++  buffer.bias_id = pack_id.bias_id;
++  buffer.offset = loc.offset;
++  buffer.size = loc.size;
++  schema_.buffers.push_back(std::make_unique<cache::schema::BufferT>(buffer));
++
+   return loc;
+ }
+
+@@ -377,10 +379,10 @@ bool MMapWeightCacheProvider::Load() {
+         return false;
+       }
+       cache_key_to_offset_.emplace(
+-          PackIdentifier{.pack_algorithm_id = buffer->packing_algorithm_id(),
+-                         .weights_id = buffer->weights_id(),
+-                         .bias_id = buffer->bias_id()},
+-          BufferLocation{.offset = buffer->offset(), .size = buffer->size()});
++          PackIdentifier{/*pack_algorithm_id=*/buffer->packing_algorithm_id(),
++                         /*weights_id=*/buffer->weights_id(),
++                         /*bias_id=*/buffer->bias_id()},
++          BufferLocation{/*offset=*/buffer->offset(), /*size=*/buffer->size()});
+     }
+   }
+   return true;
+@@ -515,9 +517,9 @@ PackIdentifier MMapWeightCacheProvider::BuildPackIdentifier(
+     }
+     return PackIdentifier::kNoId;
+   };
+-  return PackIdentifier{.pack_algorithm_id = key.seed,
+-                        .weights_id = get_buffer_id(key.kernel),
+-                        .bias_id = get_buffer_id(key.bias)};
++  return PackIdentifier{/*pack_algorithm_id=*/key.seed,
++                        /*weights_id=*/get_buffer_id(key.kernel),
++                        /*bias_id=*/get_buffer_id(key.bias)};
+ }
+
+ }  // namespace tflite::xnnpack
+diff --git a/tensorflow/lite/delegates/xnnpack/weight_cache.h b/tensorflow/lite/delegates/xnnpack/weight_cache.h
+index 0eb66308a37..71780650515 100644
+--- a/tensorflow/lite/delegates/xnnpack/weight_cache.h
++++ b/tensorflow/lite/delegates/xnnpack/weight_cache.h
+@@ -273,13 +273,13 @@ class MMapWeightCacheProvider {
+
+   // Cache provider implementation for XNNPack.
+   xnn_weights_cache_provider cache_provider_{
+-      .context = this,
+-      .look_up = MMapWeightCacheProvider::look_up,
+-      .reserve_space = MMapWeightCacheProvider::reserve_space,
+-      .look_up_or_insert = MMapWeightCacheProvider::look_up_or_insert,
+-      .is_finalized = MMapWeightCacheProvider::is_finalized,
+-      .offset_to_addr = MMapWeightCacheProvider::offset_to_addr,
+-      .delete_cache = MMapWeightCacheProvider::delete_cache};
++      /*context=*/this,
++      /*look_up=*/MMapWeightCacheProvider::look_up,
++      /*reserve_space=*/MMapWeightCacheProvider::reserve_space,
++      /*look_up_or_insert=*/MMapWeightCacheProvider::look_up_or_insert,
++      /*is_finalized=*/MMapWeightCacheProvider::is_finalized,
++      /*offset_to_addr=*/MMapWeightCacheProvider::offset_to_addr,
++      /*delete_cache=*/MMapWeightCacheProvider::delete_cache};
+
+   // Path to the cache file.
+   std::string file_path_;
