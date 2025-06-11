@@ -408,11 +408,11 @@ RefCntBuffer *bru_swap_common(AV1_COMMON *cm) {
                      : CCSO_BLK_SIZE - cm->seq_params.subsampling_x;
 #else
       const int log2_filter_unit_size_y =
-          pli > 0 ? CCSO_BLK_SIZE
-                  : CCSO_BLK_SIZE + cm->seq_params.subsampling_y;
+          plane > 0 ? CCSO_BLK_SIZE
+                    : CCSO_BLK_SIZE + cm->seq_params.subsampling_y;
       const int log2_filter_unit_size_x =
-          pli > 0 ? CCSO_BLK_SIZE
-                  : CCSO_BLK_SIZE + cm->seq_params.subsampling_x;
+          plane > 0 ? CCSO_BLK_SIZE
+                    : CCSO_BLK_SIZE + cm->seq_params.subsampling_x;
 #endif  // CONFIG_CCSO_FU_BUGFIX
 
       const int ccso_nvfb = ((cm->mi_params.mi_rows >>

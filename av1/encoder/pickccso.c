@@ -1836,7 +1836,7 @@ static void derive_ccso_filter(CcsoCtx *ctx, AV1_COMMON *cm, const int plane,
                            (1 << CCSO_BLK_SIZE >>
                             (MI_SIZE_LOG2 - xd->plane[1].subsampling_x)) *
                                col]
-                      ->ccso_blk_y = 0
+                      ->ccso_blk_y = 0;
 #endif  // CONFIG_CCSO_FU_BUGFIX
                 } else
 #endif  // CONFIG_BRU
