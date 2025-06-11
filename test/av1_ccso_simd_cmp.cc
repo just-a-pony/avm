@@ -30,6 +30,12 @@ using libaom_test::FunctionEquivalenceTest;
 
 namespace {
 
+#if CONFIG_CCSO_FU_BUGFIX
+#define CCSO_BLK_SIZE_PARAMS(blk_size_x, blk_size_y) blk_size_x, blk_size_y
+#else
+#define CCSO_BLK_SIZE_PARAMS(blk_size_x, blk_size_y) blk_size_y
+#endif  // CONFIG_CCSO_FU_BUGFIX
+
 //////////////////////////////////////////////////////////////////////////////
 // ccso_filter_block_hbd_wo_buf
 //////////////////////////////////////////////////////////////////////////////
@@ -127,19 +133,14 @@ class CCSOWOBUFTest : public CCSOFilterTest<CCSO_WO_BUF> {
     params_.ref_func(src_y_, dst_ref_, 0, 0, pic_width_, pic_height_, src_cls_,
                      offset_buf_, src_y_stride_, dst_stride_, y_uv_hscale_,
                      y_uv_vscale_, thr_, neg_thr_, src_loc_, max_val_,
-#if CONFIG_CCSO_FU_BUGFIX
-                     blk_size_,
-#endif  // CONFIG_CCSO_FU_BUGFIX
-                     blk_size_, isSingleBand_, shift_bits_, edge_clf_, 0);
+                     CCSO_BLK_SIZE_PARAMS(blk_size_, blk_size_), isSingleBand_,
+                     shift_bits_, edge_clf_, 0);
 
     ASM_REGISTER_STATE_CHECK(params_.tst_func(
         src_y_, dst_tst_, 0, 0, pic_width_, pic_height_, src_cls_, offset_buf_,
         src_y_stride_, dst_stride_, y_uv_hscale_, y_uv_vscale_, thr_, neg_thr_,
-        src_loc_, max_val_,
-#if CONFIG_CCSO_FU_BUGFIX
-        blk_size_,
-#endif  // CONFIG_CCSO_FU_BUGFIX
-        blk_size_, isSingleBand_, shift_bits_, edge_clf_, 0));
+        src_loc_, max_val_, CCSO_BLK_SIZE_PARAMS(blk_size_, blk_size_),
+        isSingleBand_, shift_bits_, edge_clf_, 0));
 
     for (int r = 0; r < blk_size_; ++r) {
       for (int c = 0; c < blk_size_; ++c) {
@@ -190,21 +191,16 @@ class CCSOWITHBUFTest : public CCSOFilterTest<CCSO_With_BUF> {
  protected:
   void Execute() {
     ccso_stride_ = src_y_stride_ - (CCSO_PADDING_SIZE << 1);
-    params_.ref_func(
-        src_y_, dst_ref_, src_cls0_, src_cls1_, src_y_stride_, dst_stride_,
-        ccso_stride_, 0, 0, pic_width_, pic_height_, offset_buf_,
-#if CONFIG_CCSO_FU_BUGFIX
-        blk_size_,
-#endif  // CONFIG_CCSO_FU_BUGFIX
-        blk_size_, y_uv_hscale_, y_uv_vscale_, max_val_, shift_bits_, 0);
+    params_.ref_func(src_y_, dst_ref_, src_cls0_, src_cls1_, src_y_stride_,
+                     dst_stride_, ccso_stride_, 0, 0, pic_width_, pic_height_,
+                     offset_buf_, CCSO_BLK_SIZE_PARAMS(blk_size_, blk_size_),
+                     y_uv_hscale_, y_uv_vscale_, max_val_, shift_bits_, 0);
 
     ASM_REGISTER_STATE_CHECK(params_.tst_func(
         src_y_, dst_tst_, src_cls0_, src_cls1_, src_y_stride_, dst_stride_,
-        ccso_stride_, 0, 0, pic_width_, pic_height_, offset_buf_, blk_size_,
-#if CONFIG_CCSO_FU_BUGFIX
-        blk_size_,
-#endif  // CONFIG_CCSO_FU_BUGFIX
-        y_uv_hscale_, y_uv_vscale_, max_val_, shift_bits_, 0));
+        ccso_stride_, 0, 0, pic_width_, pic_height_, offset_buf_,
+        CCSO_BLK_SIZE_PARAMS(blk_size_, blk_size_), y_uv_hscale_, y_uv_vscale_,
+        max_val_, shift_bits_, 0));
 
     for (int r = 0; r < blk_size_; ++r) {
       for (int c = 0; c < blk_size_; ++c) {
@@ -261,19 +257,12 @@ class CCSODeriveSrcTest : public CCSOFilterTest<CCSO_Derive_Src> {
     params_.ref_func(src_y_, src_cls0_ref, src_cls1_ref, src_y_stride_,
                      ccso_stride_, 0, 0, pic_width_, pic_height_, y_uv_hscale_,
                      y_uv_vscale_, thr_, neg_thr_, src_loc_,
-#if CONFIG_CCSO_FU_BUGFIX
-                     blk_size_,
-#endif  // CONFIG_CCSO_FU_BUGFIX
-                     blk_size_, edge_clf_);
+                     CCSO_BLK_SIZE_PARAMS(blk_size_, blk_size_), edge_clf_);
 
-    ASM_REGISTER_STATE_CHECK(
-        params_.tst_func(src_y_, src_cls0_tst, src_cls1_tst, src_y_stride_,
-                         ccso_stride_, 0, 0, pic_width_, pic_height_,
-                         y_uv_hscale_, y_uv_vscale_, thr_, neg_thr_, src_loc_,
-#if CONFIG_CCSO_FU_BUGFIX
-                         blk_size_,
-#endif  // CONFIG_CCSO_FU_BUGFIX
-                         blk_size_, edge_clf_));
+    ASM_REGISTER_STATE_CHECK(params_.tst_func(
+        src_y_, src_cls0_tst, src_cls1_tst, src_y_stride_, ccso_stride_, 0, 0,
+        pic_width_, pic_height_, y_uv_hscale_, y_uv_vscale_, thr_, neg_thr_,
+        src_loc_, CCSO_BLK_SIZE_PARAMS(blk_size_, blk_size_), edge_clf_));
 
     for (int r = 0; r < blk_size_; ++r) {
       for (int c = 0; c < blk_size_; ++c) {
