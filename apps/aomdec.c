@@ -217,9 +217,8 @@ static INLINE int lanczos_scale(aom_image_t *src, aom_image_t *dst, int bd) {
   }
   return 0;
 }
-#endif  // CONFIG_LANCZOS_RESAMPLE
 
-#if CONFIG_LIBYUV
+#elif CONFIG_LIBYUV
 static INLINE int libyuv_scale(aom_image_t *src, aom_image_t *dst,
                                FilterModeEnum mode) {
   if (src->fmt == AOM_IMG_FMT_I42016) {
