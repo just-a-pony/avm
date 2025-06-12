@@ -351,8 +351,8 @@ static void downsample(const int input_w, const int input_h, const int output_w,
 
 // Given output tx size and QM level, output the correctly scaled matrix based
 // on the source matrices.
-void scale_tx(const int txsize, const int level, const int plane,
-              qm_val_t *output) {
+static void scale_tx(const int txsize, const int level, const int plane,
+                     qm_val_t *output) {
   int height = tx_size_high[txsize];
   int width = tx_size_wide[txsize];
   if (width == 4 && height == 4) {
@@ -374,8 +374,8 @@ void scale_tx(const int txsize, const int level, const int plane,
 }
 
 // Inverts the iwt matrix to get the wt matrix.
-void calc_wt_matrix(const int txsize, const qm_val_t *iwt_matrix,
-                    qm_val_t *wt_matrix) {
+static void calc_wt_matrix(const int txsize, const qm_val_t *iwt_matrix,
+                           qm_val_t *wt_matrix) {
   const int size = tx_size_2d[txsize];
   for (int i = 0; i < size; ++i) {
     assert(iwt_matrix[i] != 0);
@@ -403,16 +403,18 @@ void av1_qm_init(CommonQuantParams *quant_params, int num_planes) {
         } else {
           assert(current + size <= QM_TOTAL_SIZE);
           // Generate the iwt and wt matrices from the base matrices.
-          int plane = (c >= 1);
-          scale_tx(t, q, plane,
-                   &quant_params->iwt_matrix_ref[q][c >= 1][current]);
-          calc_wt_matrix(t, &quant_params->iwt_matrix_ref[q][c >= 1][current],
-                         &quant_params->wt_matrix_ref[q][c >= 1][current]);
+          const int plane = (c >= 1);
+          if (c < 2) {
+            scale_tx(t, q, plane,
+                     &quant_params->iwt_matrix_ref[q][plane][current]);
+            calc_wt_matrix(t, &quant_params->iwt_matrix_ref[q][plane][current],
+                           &quant_params->wt_matrix_ref[q][plane][current]);
+          }
 
           quant_params->gqmatrix[q][c][t] =
-              &quant_params->wt_matrix_ref[q][c >= 1][current];
+              &quant_params->wt_matrix_ref[q][plane][current];
           quant_params->giqmatrix[q][c][t] =
-              &quant_params->iwt_matrix_ref[q][c >= 1][current];
+              &quant_params->iwt_matrix_ref[q][plane][current];
           current += size;
         }
       }
