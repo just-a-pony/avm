@@ -91,7 +91,9 @@ static INLINE void segfeatures_copy(struct segmentation *dst,
   }
   dst->segid_preskip = src->segid_preskip;
   dst->last_active_segid = src->last_active_segid;
+#if CONFIG_EXT_SEG
   dst->enable_ext_seg = src->enable_ext_seg;
+#endif  // CONFIG_EXT_SEG
 }
 
 void av1_clearall_segfeatures(struct segmentation *seg);

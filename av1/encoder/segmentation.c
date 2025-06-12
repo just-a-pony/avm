@@ -268,4 +268,7 @@ void av1_reset_segment_features(AV1_COMMON *cm) {
   seg->update_map = 0;
   seg->update_data = 0;
   av1_clearall_segfeatures(seg);
+#if CONFIG_EXT_SEG
+  seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
+#endif  // CONFIG_EXT_SEG
 }

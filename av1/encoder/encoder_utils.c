@@ -1166,6 +1166,9 @@ void av1_determine_sc_tools_with_encoding(AV1_COMP *cpi, const int q_orig) {
   }
   segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
   cm->cur_frame->seg.enabled = cm->seg.enabled;
+#if CONFIG_EXT_SEG
+  cm->cur_frame->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
+#endif
 
   // The two encoding passes aim to help determine whether to use screen
   // content tools, with a high q and fixed partition.
