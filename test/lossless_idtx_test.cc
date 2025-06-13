@@ -37,7 +37,7 @@ typedef void (*FwdFunc)(const int16_t *in, tran_low_t *out, int stride,
 typedef void (*InvFunc)(const tran_low_t *in, uint16_t *out, int stride,
                         const TxfmParam *);
 
-typedef std::tuple<FwdFunc, InvFunc, int, aom_bit_depth_t> LosslessParam;
+typedef std::tuple<FwdFunc, InvFunc, TX_SIZE, aom_bit_depth_t> LosslessParam;
 
 class LosslessIdtxTest : public libaom_test::TransformTestBase<tran_low_t>,
                          public ::testing::TestWithParam<LosslessParam> {
@@ -84,11 +84,13 @@ TEST_P(LosslessIdtxTest, MemCheck) { RunMemCheck(); }
 
 TEST_P(LosslessIdtxTest, InvAccuracyCheck) { RunInvAccuracyCheck(0); }
 
+constexpr TX_SIZE kTxSizes[] = { TX_4X4, TX_8X8 };
+
 INSTANTIATE_TEST_SUITE_P(
     C, LosslessIdtxTest,
     ::testing::Combine(::testing::Values(&av1_lossless_fwd_idtx_c),
                        ::testing::Values(&av1_lossless_inv_idtx_add_c),
-                       ::testing::Values(TX_4X4, TX_8X8),
+                       ::testing::ValuesIn(kTxSizes),
                        ::testing::Values(AOM_BITS_8, AOM_BITS_10,
                                          AOM_BITS_12)));
 
@@ -97,7 +99,7 @@ INSTANTIATE_TEST_SUITE_P(
     AVX2, LosslessIdtxTest,
     ::testing::Combine(::testing::Values(&av1_lossless_fwd_idtx_avx2),
                        ::testing::Values(&av1_lossless_inv_idtx_add_avx2),
-                       ::testing::Values(TX_4X4, TX_8X8),
+                       ::testing::ValuesIn(kTxSizes),
                        ::testing::Values(AOM_BITS_8, AOM_BITS_10,
                                          AOM_BITS_12)));
 #endif  // HAVE_AVX2
