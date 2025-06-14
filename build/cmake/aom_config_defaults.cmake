@@ -196,6 +196,9 @@ set_aom_config_var(
 set_aom_config_var(CONFIG_24_FULL_SEARCH_DMVR 1
                    "AV2 DMVR with 24-neighbor full search")
 
+set_aom_config_var(CONFIG_DMVR_OFF_IN_TIP_DIRECT 1
+                   "Disable DMVR in TIP-direct mode")
+
 set_aom_config_var(
   CONFIG_IDIF 1
   "AV2 experiment flag to enable Intra Directional Interpolation Filter.")

@@ -1203,7 +1203,12 @@ static INLINE int is_refinemv_allowed_tip_blocks(const AV1_COMMON *const cm,
 #if !CONFIG_ACROSS_SCALE_REFINEMV && CONFIG_ENABLE_SR
          cm->superres_scale_denominator == SCALE_NUMERATOR &&
 #endif  //! ALLOW_REFINEMV_TIP_SUPERRES && CONFIG_ENABLE_SR
+#if CONFIG_DMVR_OFF_IN_TIP_DIRECT
+         is_refinemv_allowed_reference(cm, mbmi) &&
+         (cm->features.tip_frame_mode != TIP_FRAME_AS_OUTPUT);
+#else
          is_refinemv_allowed_reference(cm, mbmi);
+#endif  // CONFIG_DMVR_OFF_IN_TIP_DIRECT
 }
 
 // check if the refinemv mode is allowed for a given block for skip mode
