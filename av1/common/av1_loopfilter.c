@@ -359,16 +359,28 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 
 #if CONFIG_IMPROVE_LOSSLESS_TXM
   if (xd && xd->lossless[mbmi->segment_id]) {
-    *tu_edge = true;
+    TX_SIZE tx_size = TX_INVALID;
 
     const bool is_fsc = mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
                         get_plane_type(plane) == PLANE_TYPE_Y;
     const int is_inter = is_inter_block(mbmi, xd->tree_type);
     if (block_size_wide[bsize_base] < 8 || block_size_high[bsize_base] < 8 ||
         plane || (!is_inter && !is_fsc))
-      return TX_4X4;
+      tx_size = TX_4X4;
     else
-      return mbmi->tx_size;
+      tx_size = mbmi->tx_size;
+
+    int mi_row_start = mbmi->mi_row_start;
+    int mi_col_start = mbmi->mi_col_start;
+
+    if (plane != AOM_PLANE_Y) {
+      get_chroma_start_location(mbmi, tree_type, &mi_row_start, &mi_col_start);
+    }
+    *tu_edge = is_tu_edge_helper(
+        tx_size, edge_dir, (mi_row - mi_row_start) >> plane_ptr->subsampling_y,
+        (mi_col - mi_col_start) >> plane_ptr->subsampling_x);
+    assert(IMPLIES((plane != AOM_PLANE_Y), (*tu_edge == 1)));
+    return tx_size;
   }
 #else
   if (xd && xd->lossless[mbmi->segment_id]) {
@@ -593,8 +605,9 @@ static AOM_INLINE void check_opfl_edge(const AV1_COMMON *const cm,
 #endif  // CONFIG_AFFINE_REFINEMENT
   if (plane > 0) return;
   if (is_opfl_mode) {
+    const BLOCK_SIZE bsize_base = mbmi->sb_type[PLANE_TYPE_Y];
     *opfl_edge = 1;
-    const int opfl_ts = TX_8X8;
+    const int opfl_ts = (bsize_base == BLOCK_8X8) ? TX_4X4 : TX_8X8;
     *ts = opfl_ts;
   }
 }
