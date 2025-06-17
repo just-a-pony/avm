@@ -3331,7 +3331,7 @@ static aom_codec_err_t encoder_encode(aom_codec_alg_priv_t *ctx,
       // May need to allocate larger buffer to use hbd internal.
       if (!(img->fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
         hbd_img = aom_img_alloc(NULL, img->fmt | AOM_IMG_FMT_HIGHBITDEPTH,
-                                img->w, img->h, 32);
+                                img->d_w, img->d_h, 32);
         if (!hbd_img) return AOM_CODEC_MEM_ERROR;
         image2yuvconfig_upshift(hbd_img, img, &sd);
       } else {
