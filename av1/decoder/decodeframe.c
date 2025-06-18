@@ -8143,14 +8143,14 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_PRIMARY_REF_FRAME_OPT
       init_ref_map_pair(cm, cm->ref_frame_map_pairs,
                         current_frame->frame_type == KEY_FRAME);
-      int n_ranked = av1_get_ref_frames(cm, current_frame->display_order_hint,
-                                        cm->ref_frame_map_pairs);
+      av1_get_ref_frames(cm, current_frame->display_order_hint,
+                         cm->ref_frame_map_pairs);
 #else
         RefFrameMapPair ref_frame_map_pairs[REF_FRAMES];
         init_ref_map_pair(cm, ref_frame_map_pairs,
                           current_frame->frame_type == KEY_FRAME);
-        int n_ranked = av1_get_ref_frames(cm, current_frame->display_order_hint,
-                                          ref_frame_map_pairs);
+        av1_get_ref_frames(cm, current_frame->display_order_hint,
+                           ref_frame_map_pairs);
 #endif  // CONFIG_PRIMARY_REF_FRAME_OPT
 
       // Reference rankings have been implicitly derived in av1_get_ref_frames.
@@ -8171,11 +8171,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       if (explicit_ref_frame_map) {
         cm->ref_frames_info.num_total_refs =
             aom_rb_read_literal(rb, REF_FRAMES_LOG2);
-        // Check whether num_total_refs read is valid and not greater than
-        // n_ranked (using a reference frame more than once is not allowed).
+        // Check whether num_total_refs read is valid
         if (cm->ref_frames_info.num_total_refs <= 0 ||
-            (seq_params->order_hint_info.enable_order_hint &&
-             cm->ref_frames_info.num_total_refs > n_ranked) ||
             cm->ref_frames_info.num_total_refs >
                 seq_params->max_reference_frames)
           aom_internal_error(&cm->error, AOM_CODEC_ERROR,
