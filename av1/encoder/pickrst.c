@@ -4790,7 +4790,7 @@ static double optimize_frame_filters_for_target_classes(
 
   const int work_array_dim = (int)rsc->wienerns_stats->size;
   double *work_cost_array =
-      (double *)(aom_malloc((work_array_dim + 1) * sizeof(*work_cost_array)));
+      (double *)(aom_malloc(work_array_dim * sizeof(*work_cost_array)));
 
   // First run is with the initial stats. Then we try to refine
   // num_ru_perc_to_try times. Then a final round to better optimize the best
@@ -4837,7 +4837,8 @@ static double optimize_frame_filters_for_target_classes(
             cost_compar);
 
       const int pnt =
-          (int)(fraction_rus_to_include[cnt - 1][0] * work_array_dim + .5);
+          (int)(fraction_rus_to_include[cnt - 1][0] * (work_array_dim - 1) +
+                .5);
       const double max_cost_allowed = work_cost_array[pnt];
 
       int stat_slot = -1;
