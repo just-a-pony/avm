@@ -1516,11 +1516,13 @@ typedef struct FRAME_COUNTS {
   unsigned int compound_type[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
   unsigned int warp_causal_cnt[WARP_CAUSAL_MODE_CTX][2];
+#if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
 #if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warp_causal_warpmv[CDF_SIZE(2)];
 #else
   unsigned int warp_causal_warpmv[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
+#endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
 #if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warpmv_with_mvd_flag[CDF_SIZE(2)];
 #else

@@ -607,6 +607,9 @@ static AOM_INLINE void write_motion_mode(
 #endif  // !CONFIG_INTERINTRA_IMPROVEMENT
 
   if (mbmi->mode == WARPMV) {
+#if CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
+    assert(mbmi->motion_mode == WARP_DELTA);
+#else
     assert(mbmi->motion_mode == WARP_DELTA || mbmi->motion_mode == WARP_CAUSAL);
     // Signal if the motion mode is WARP_CAUSAL or WARP_DELTA
     if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
@@ -618,6 +621,7 @@ static AOM_INLINE void write_motion_mode(
 #endif  // CONFIG_D149_CTX_MODELING_OPT
                        2);
     }
+#endif  // CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
     return;
   }
 

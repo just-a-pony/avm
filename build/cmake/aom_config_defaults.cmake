@@ -328,6 +328,9 @@ set_aom_config_var(CONFIG_MV_RANGE_EXTENSION 1
 set_aom_config_var(CONFIG_WRL_CORNER_MVS 1
                    "Improve the WRL from the 3 corner MVs")
 
+set_aom_config_var(CONFIG_WARPMV_WARP_CAUSAL_REMOVAL 1
+                   "Remove the WARP_CAUSAL in WARPMV")
+
 set_aom_config_var(CONFIG_IMPROVED_CFL 1
                    "Enable improved CfL mode from CWG-C044")
 set_aom_config_var(

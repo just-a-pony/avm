@@ -748,6 +748,7 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
       motion_mode_allowed(cm, xd, xd->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
 
   if (mbmi->mode == WARPMV) {
+#if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
     if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
       int use_warp_causal =
 #if CONFIG_D149_CTX_MODELING_OPT
@@ -759,6 +760,7 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
 #endif  // CONFIG_D149_CTX_MODELING_OPT
       return use_warp_causal ? WARP_CAUSAL : WARP_DELTA;
     }
+#endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
     return WARP_DELTA;
   }
 

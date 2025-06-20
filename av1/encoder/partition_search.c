@@ -1343,6 +1343,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           cm, xd, mbmi_ext->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
       MOTION_MODE motion_mode = mbmi->motion_mode;
 
+#if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
       if (mbmi->mode == WARPMV) {
         if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
 #if CONFIG_D149_CTX_MODELING_OPT
@@ -1359,6 +1360,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif  // CONFIG_D149_CTX_MODELING_OPT
         }
       }
+#endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
 
       bool continue_motion_mode_signaling =
           (mbmi->mode == WARPMV) ? false : true;

@@ -270,7 +270,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->refinemv_flag_cdf, REFINEMV_NUM_MODES);
 
   RESET_CDF_COUNTER(fc->warp_causal_cdf, 2);
+#if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
   RESET_CDF_COUNTER(fc->warp_causal_warpmv_cdf, 2);
+#endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
   RESET_CDF_COUNTER(fc->warp_ref_idx_cdf[0], 2);
   RESET_CDF_COUNTER(fc->warp_ref_idx_cdf[1], 2);
   RESET_CDF_COUNTER(fc->warp_ref_idx_cdf[2], 2);

@@ -3291,19 +3291,23 @@ static int64_t motion_mode_rd(
             }
 
             if (mbmi->mode == WARPMV) {
-              if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
-                rd_stats->rate +=
+#if CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
+              assert(motion_mode == WARP_DELTA);
+#else
+            if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
+              rd_stats->rate +=
 #if CONFIG_D149_CTX_MODELING_OPT
-                    mode_costs
-                        ->warp_causal_warpmv_cost[motion_mode != WARP_DELTA];
+                  mode_costs
+                      ->warp_causal_warpmv_cost[motion_mode != WARP_DELTA];
 #else
                   mode_costs->warp_causal_warpmv_cost[bsize][motion_mode !=
                                                              WARP_DELTA];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-              } else {
-                assert(motion_mode == WARP_DELTA);
-              }
+            } else {
+              assert(motion_mode == WARP_DELTA);
+            }
+#endif  // CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
               if (allow_warpmv_with_mvd_coding(cm, mbmi)) {
                 rd_stats->rate +=
 #if CONFIG_D149_CTX_MODELING_OPT

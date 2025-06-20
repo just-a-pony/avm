@@ -1405,6 +1405,7 @@ int main(int argc, const char **argv) {
                      "default_warp_extend_cdf[WARP_EXTEND_CTX]CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
 
+#if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.warp_causal_warpmv[0], probsfile, 1, cts_each_dim,
@@ -1420,6 +1421,7 @@ int main(int argc, const char **argv) {
       "default_warp_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
       0, &total_count, 0, mem_wanted, "Inter");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
+#endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
 
 #if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;

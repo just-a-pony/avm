@@ -4853,6 +4853,8 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
   // only WARP_DELTA and WARP_CAUSAL are supported for WARPMV mode
   if (mbmi->mode == WARPMV) {
     int allowed_motion_mode_warpmv = (1 << WARP_DELTA);
+
+#if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
     int frame_warp_causal_allowed =
         cm->features.enabled_motion_modes & (1 << WARP_CAUSAL);
 #if CONFIG_COMPOUND_WARP_CAUSAL
@@ -4862,6 +4864,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
       allowed_motion_mode_warpmv |= (1 << WARP_CAUSAL);
     }
+#endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
     return (allowed_motion_mode_warpmv & enabled_motion_modes);
   }
 
