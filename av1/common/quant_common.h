@@ -124,9 +124,13 @@ static INLINE int32_t av1_dc_quant_QTX_tcq(int qindex, int delta,
                                            int base_dc_delta_q,
                                            aom_bit_depth_t bit_depth,
                                            int use_tcq_offset) {
+#if !CONFIG_TCQ_FOR_ALL_FRAMES
   if (use_tcq_offset && qindex != 0) {
     qindex = get_new_qindex(qindex, bit_depth);
   }
+#else
+  (void)use_tcq_offset;
+#endif
   return av1_dc_quant_QTX(qindex, delta, base_dc_delta_q, bit_depth);
 }
 
@@ -135,9 +139,13 @@ static INLINE int32_t av1_ac_quant_QTX_tcq(int qindex, int delta,
                                            int base_ac_delta_q,
                                            aom_bit_depth_t bit_depth,
                                            int use_tcq_offset) {
+#if !CONFIG_TCQ_FOR_ALL_FRAMES
   if (use_tcq_offset && qindex != 0) {
     qindex = get_new_qindex(qindex, bit_depth);
   }
+#else
+  (void)use_tcq_offset;
+#endif
   return av1_ac_quant_QTX(qindex, delta, base_ac_delta_q, bit_depth);
 }
 #endif  // CONFIG_TCQ

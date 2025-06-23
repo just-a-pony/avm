@@ -809,6 +809,9 @@ typedef struct {
   // Indicates whether user-defined quantization matrices should be used
   bool user_defined_qmatrix;
   bool qm_data_present[NUM_CUSTOM_QMS];
+#if CONFIG_TCQ_FOR_ALL_FRAMES
+  bool is_ra;
+#endif
 } QuantizationCfg;
 
 /*!\endcond */

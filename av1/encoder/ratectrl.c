@@ -1084,6 +1084,36 @@ static int get_q_using_fixed_offsets(const AV1EncoderConfig *const oxcf,
   return AOMMAX(qp + delta_qindex, 0);
 }
 
+#if CONFIG_TCQ_FOR_ALL_FRAMES
+// Adjust qindex for better RDO since tcq is always on.
+// This is an encoder-only adjustment. No implicit offset at the decoder side.
+static int apply_tcq_qp_offset(const AV1_COMP *cpi, int qp_tcq) {
+  int tcq_qp_offset_shift = 0;
+  const int bit_depth = cpi->common.seq_params.bit_depth;
+  if (frame_is_intra_only(&cpi->common)) {
+    tcq_qp_offset_shift = bit_depth == AOM_BITS_8 ? 2
+                          : AOM_BITS_10           ? 4
+                                                  : QINDEX_INCR;
+  } else if (cpi->common.current_frame.pyramid_level <= 1) {
+    if (cpi->oxcf.q_cfg.is_ra) {
+      tcq_qp_offset_shift = bit_depth == AOM_BITS_8 ? 1
+                            : AOM_BITS_10           ? 2
+                                                    : QINDEX_INCR;
+    } else {
+      tcq_qp_offset_shift = bit_depth == AOM_BITS_8 ? 2
+                            : AOM_BITS_10           ? 4
+                                                    : QINDEX_INCR;
+    }
+  } else {
+    tcq_qp_offset_shift = 0;
+  }
+  int max_qp = bit_depth == AOM_BITS_8    ? MAXQ_8_BITS
+               : bit_depth == AOM_BITS_10 ? MAXQ_10_BITS
+                                          : MAXQ;
+  return clamp(qp_tcq + tcq_qp_offset_shift, 0, max_qp);
+}
+#endif
+
 /*!\brief Picks q and q bounds given non-CBR rate control params in \c cpi->rc.
  *
  * Handles the special case when using:
@@ -1130,8 +1160,12 @@ static int rc_pick_q_and_bounds_no_stats(const AV1_COMP *cpi, int width,
   const int bit_depth = cm->seq_params.bit_depth;
 
   if (oxcf->q_cfg.use_fixed_qp_offsets) {
-    return get_q_using_fixed_offsets(oxcf, rc, gf_group, gf_index, qp,
-                                     bit_depth);
+    int qp_tcq =
+        get_q_using_fixed_offsets(oxcf, rc, gf_group, gf_index, qp, bit_depth);
+#if CONFIG_TCQ_FOR_ALL_FRAMES
+    qp_tcq = apply_tcq_qp_offset(cpi, qp_tcq);
+#endif
+    return qp_tcq;
   }
 
   int active_best_quality;
@@ -1611,8 +1645,12 @@ static int rc_pick_q_and_bounds(const AV1_COMP *cpi, int width, int height,
   const int bit_depth = cm->seq_params.bit_depth;
 
   if (oxcf->q_cfg.use_fixed_qp_offsets) {
-    return get_q_using_fixed_offsets(oxcf, rc, gf_group, gf_group->index, qp,
-                                     bit_depth);
+    int qp_tcq = get_q_using_fixed_offsets(oxcf, rc, gf_group, gf_group->index,
+                                           qp, bit_depth);
+#if CONFIG_TCQ_FOR_ALL_FRAMES
+    qp_tcq = apply_tcq_qp_offset(cpi, qp_tcq);
+#endif
+    return qp_tcq;
   }
 
   int active_best_quality = 0;

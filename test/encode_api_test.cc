@@ -360,7 +360,7 @@ TEST(EncodeAPI, AvmIssue749) {
   aom_codec_ctx_t enc;
   EXPECT_EQ(aom_codec_enc_init(&enc, iface, &cfg, AOM_CODEC_USE_PSNR),
             AOM_CODEC_OK);
-  EXPECT_EQ(aom_codec_control(&enc, AOME_SET_QP, 125), AOM_CODEC_OK);
+  EXPECT_EQ(aom_codec_control(&enc, AOME_SET_QP, 127), AOM_CODEC_OK);
   EXPECT_EQ(aom_codec_control(&enc, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE),
             AOM_CODEC_OK);
   EXPECT_EQ(aom_codec_set_option(&enc, "enable-ext-partitions", "0"),

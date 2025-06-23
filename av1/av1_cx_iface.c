@@ -1626,6 +1626,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   q_cfg->use_fixed_qp_offsets =
       cfg->use_fixed_qp_offsets && (rc_cfg->mode == AOM_Q);
   q_cfg->q_based_qp_offsets = (cfg->use_fixed_qp_offsets == 2) ? 1 : 0;
+#if CONFIG_TCQ_FOR_ALL_FRAMES
+  q_cfg->is_ra = cfg->g_lag_in_frames > 0;
+#endif
 
   for (int i = 0; i < FIXED_QP_OFFSET_COUNT; ++i) {
     if (q_cfg->use_fixed_qp_offsets) {
@@ -4740,7 +4743,11 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
     0,            // monochrome
     0,            // full_still_picture_hdr
 #if CONFIG_TCQ
+#if CONFIG_TCQ_FOR_ALL_FRAMES
+    1,  // enable_tcq
+#else
     2,  // enable_tcq
+#endif
 #endif
     0,                           // save_as_annexb
     0,                           // tile_width_count
