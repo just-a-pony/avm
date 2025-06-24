@@ -255,7 +255,7 @@ extern "C" int av1_erp_prune_rect(BLOCK_SIZE bsize, bool is_hd,
     case BLOCK_8X16: thresh = threshes[is_hd][3]; break;
     case BLOCK_8X8: thresh = threshes[is_hd][4]; break;
     default:
-      assert("Unexpected block size in erp pruning model!\n");
+      assert(0 && "Unexpected block size in erp pruning model!\n");
       thresh = 0.0f;
   }
 
