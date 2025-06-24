@@ -4740,7 +4740,7 @@ static double obtain_temp_pred_frame_filters_cost(RestSearchCtxt *rsc,
 
   const int work_array_dim = (int)rsc->wienerns_stats->size;
   double *work_cost_array =
-      (double *)(aom_malloc((work_array_dim + 1) * sizeof(*work_cost_array)));
+      (double *)(aom_malloc(work_array_dim * sizeof(*work_cost_array)));
   RestorationUnitInfo rui;
   initialize_rui_for_nonsep_search(rsc, &rui);
   rui.restoration_type = RESTORE_WIENER_NONSEP;
@@ -4836,9 +4836,8 @@ static double optimize_frame_filters_for_target_classes(
       qsort(work_cost_array, work_array_dim, sizeof(*work_cost_array),
             cost_compar);
 
-      const int pnt =
-          (int)(fraction_rus_to_include[cnt - 1][0] * (work_array_dim - 1) +
-                .5);
+      const int pnt = (int)round(fraction_rus_to_include[cnt - 1][0] *
+                                 (work_array_dim - 1));
       const double max_cost_allowed = work_cost_array[pnt];
 
       int stat_slot = -1;
@@ -4958,9 +4957,9 @@ static void find_optimal_num_classes_and_frame_filters(RestSearchCtxt *rsc) {
 
   const int work_array_dim = (int)rsc->wienerns_stats->size;
   double *best_cost_array =
-      (double *)(aom_malloc((work_array_dim + 1) * sizeof(*best_cost_array)));
+      (double *)(aom_malloc(work_array_dim * sizeof(*best_cost_array)));
   double *work_cost_array =
-      (double *)(aom_malloc((work_array_dim + 1) * sizeof(*work_cost_array)));
+      (double *)(aom_malloc(work_array_dim * sizeof(*work_cost_array)));
   double best_cost = DBL_MAX;
   int best_utilization = 0;
   int best_num_classes = -1;
