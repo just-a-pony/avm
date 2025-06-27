@@ -111,7 +111,7 @@ TEST(EC_TEST, random_ec_test_Large) {
         }
         case 4: {
           data[j] &= 1;
-          uint16_t cdf[2];
+          uint16_t cdf[16] = {};
           cdf[0] = OD_ICDF(fz[j]);
           cdf[1] = OD_ICDF(1U << fts[j]);
           od_ec_encode_cdf_q15(&enc, data[j], cdf, 2);
@@ -124,7 +124,7 @@ TEST(EC_TEST, random_ec_test_Large) {
           break;
         }
         case 4: {
-          uint16_t cdf[2];
+          uint16_t cdf[16] = {};
           cdf[0] = OD_ICDF(fz[j]);
           cdf[1] = OD_ICDF(1U << fts[j]);
           od_ec_encode_cdf_q15(&enc, data[j], cdf, 2);
@@ -176,7 +176,7 @@ TEST(EC_TEST, random_ec_test_Large) {
           break;
         }
         case 4: {
-          uint16_t cdf[2];
+          uint16_t cdf[16] = {};
           cdf[0] = OD_ICDF(fz[j]);
           cdf[1] = OD_ICDF(1U << fts[j]);
           sym = od_ec_decode_cdf_q15(&dec, cdf, 2);
@@ -196,7 +196,7 @@ TEST(EC_TEST, random_ec_test_Large) {
           break;
         }
         case 4: {
-          uint16_t cdf[2];
+          uint16_t cdf[16] = {};
           cdf[0] = OD_ICDF(fz[j]);
           cdf[1] = OD_ICDF(1U << fts[j]);
           sym = od_ec_decode_cdf_q15(&dec, cdf, 2);
