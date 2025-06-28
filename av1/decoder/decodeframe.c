@@ -3958,6 +3958,11 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
             cm->ccso_info.quant_idx[plane] = aom_rb_read_literal(rb, 2);
             cm->ccso_info.ext_filter_support[plane] =
                 aom_rb_read_literal(rb, 3);
+            if (cm->ccso_info.ext_filter_support[plane] == 7) {
+              aom_internal_error(
+                  &cm->error, AOM_CODEC_CORRUPT_FRAME,
+                  "Invalid ccso_ext_filter: ccso_ext_filter == 7");
+            }
             cm->ccso_info.edge_clf[plane] = aom_rb_read_bit(rb);
             cm->ccso_info.max_band_log2[plane] = aom_rb_read_literal(rb, 2);
           }

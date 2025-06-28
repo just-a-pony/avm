@@ -81,12 +81,13 @@ void cal_filter_support(int *rec_luma_idx, const uint16_t *rec_y,
 }
 
 /* Derive sample locations for CCSO */
-void derive_ccso_sample_pos(AV1_COMMON *cm, int *rec_idx, const int ccso_stride,
+void derive_ccso_sample_pos(int *rec_idx, const int ccso_stride,
                             const uint8_t ext_filter_support) {
   // Input sample locations for CCSO
   // 4 2 0 3 5
   // 6 1 x 1 6
   // 5 3 0 2 4
+  assert(ext_filter_support < 7);
   if (ext_filter_support == 0) {
     rec_idx[0] = -1 * ccso_stride;
     rec_idx[1] = 1 * ccso_stride;
@@ -105,16 +106,9 @@ void derive_ccso_sample_pos(AV1_COMMON *cm, int *rec_idx, const int ccso_stride,
   } else if (ext_filter_support == 3) {
     rec_idx[0] = -1 * ccso_stride + 1;
     rec_idx[1] = 1 * ccso_stride - 1;
-  } else if (ext_filter_support == 6) {
+  } else {  // ext_filter_support == 6
     rec_idx[0] = 2;
     rec_idx[1] = -2;
-  } else {
-    if (cm != NULL) {
-      aom_internal_error(&cm->error, AOM_CODEC_ERROR,
-                         "wrong ccso filter shape");
-    } else {
-      printf("wrong ccso filter shape\n");  // unit test case
-    }
   }
 }
 
@@ -183,7 +177,7 @@ void ccso_apply_luma_mb_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
   int src_cls[2];
   const int neg_thr = thr * -1;
   int src_loc[2];
-  derive_ccso_sample_pos(cm, src_loc, ccso_ext_stride, filter_sup);
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
 #if CONFIG_CCSO_FU_BUGFIX
   assert(plane == 0);  // function must only be called for plane == 0
   const int blk_log2 = CCSO_BLK_SIZE;
@@ -311,7 +305,7 @@ void ccso_apply_luma_sb_filter(AV1_COMMON *cm, MACROBLOCKD *xd, const int plane,
   int src_cls[2];
   const int neg_thr = thr * -1;
   int src_loc[2];
-  derive_ccso_sample_pos(cm, src_loc, ccso_ext_stride, filter_sup);
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
 #if CONFIG_CCSO_FU_BUGFIX
   assert(plane == 0);  // function must only be called for plane == 0
   const int blk_log2 = CCSO_BLK_SIZE;
@@ -440,7 +434,7 @@ void ccso_apply_chroma_mb_filter(AV1_COMMON *cm, MACROBLOCKD *xd,
   int src_cls[2];
   const int neg_thr = thr * -1;
   int src_loc[2];
-  derive_ccso_sample_pos(cm, src_loc, ccso_ext_stride, filter_sup);
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
 #if CONFIG_CCSO_FU_BUGFIX
   assert(plane > 0);  // function must only be called for plane > 0
   const int blk_size = 1 << CCSO_BLK_SIZE;
@@ -582,7 +576,7 @@ void ccso_apply_chroma_sb_filter(AV1_COMMON *cm, MACROBLOCKD *xd,
   int src_cls[2];
   const int neg_thr = thr * -1;
   int src_loc[2];
-  derive_ccso_sample_pos(cm, src_loc, ccso_ext_stride, filter_sup);
+  derive_ccso_sample_pos(src_loc, ccso_ext_stride, filter_sup);
 #if CONFIG_CCSO_FU_BUGFIX
   assert(plane > 0);  // function must only be called for plane > 0
   const int blk_size = 1 << CCSO_BLK_SIZE;

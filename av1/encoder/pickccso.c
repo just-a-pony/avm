@@ -112,7 +112,7 @@ static void ccso_derive_src_info(AV1_COMMON *cm, MACROBLOCKD *xd,
   const int y_uv_vscale = xd->plane[plane].subsampling_y;
   const int neg_qstep = qstep * -1;
   int src_loc[2];
-  derive_ccso_sample_pos(cm, src_loc, ccso_stride_ext, filter_sup);
+  derive_ccso_sample_pos(src_loc, ccso_stride_ext, filter_sup);
 #if CONFIG_CCSO_FU_BUGFIX
   const int blk_log2_y = CCSO_BLK_SIZE - xd->plane[plane].subsampling_y;
   const int blk_log2_x = CCSO_BLK_SIZE - xd->plane[plane].subsampling_x;

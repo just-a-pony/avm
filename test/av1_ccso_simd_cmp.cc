@@ -85,8 +85,8 @@ class CCSOFilterTest : public FunctionEquivalenceTest<F> {
         this->rng_(kMaxWidth + 1 - 32) + 32 + (CCSO_PADDING_SIZE << 1);
     dst_stride_ = this->rng_(kMaxWidth + 1 - 32) + 32;
 
-    filter_sup_ = this->rng_(6);
-    derive_ccso_sample_pos(NULL, src_loc_, src_y_stride_, filter_sup_);
+    filter_sup_ = this->rng_(7);
+    derive_ccso_sample_pos(src_loc_, src_y_stride_, filter_sup_);
 
     const uint8_t quant_sz[4] = { 16, 8, 32, 64 };
     thr_ = quant_sz[this->rng_(4)];
@@ -376,6 +376,11 @@ INSTANTIATE_TEST_SUITE_P(
     AVX2, CCSOWOBUFTest,
     ::testing::Values(TestFuncsCCSO_WO_BUF(ccso_filter_block_hbd_wo_buf_c,
                                            ccso_filter_block_hbd_wo_buf_avx2)));
+#else
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CCSOWOBUFTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CCSOWITHBUFTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CCSODeriveSrcTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CCSODistBlockTest);
 #endif  // HAVE_AVX2
 
 }  // namespace
