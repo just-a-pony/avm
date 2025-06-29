@@ -498,11 +498,11 @@ static int cost_prediction_mode(const ModeCosts *const mode_costs,
     int use_optical_flow_cost = 0;
     const int comp_mode_idx = opfl_get_comp_idx(mode);
     if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-        opfl_allowed_for_cur_refs(cm,
+        opfl_allowed_cur_refs_bsize(cm,
 #if CONFIG_COMPOUND_4XN
-                                  xd,
+                                    xd,
 #endif  // CONFIG_COMPOUND_4XN
-                                  mbmi)) {
+                                    mbmi)) {
       const int use_optical_flow = mode >= NEAR_NEARMV_OPTFLOW;
 #if CONFIG_AFFINE_REFINEMENT
       const int allow_translational = is_translational_refinement_allowed(
@@ -8296,11 +8296,11 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
 #if !CONFIG_SKIP_MODE_NO_REFINEMENTS
   const PREDICTION_MODE this_mode =
       cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-              opfl_allowed_for_cur_refs(cm,
+              opfl_allowed_cur_refs_bsize(cm,
 #if CONFIG_COMPOUND_4XN
-                                        xd,
+                                          xd,
 #endif  // CONFIG_COMPOUND_4XN
-                                        mbmi) &&
+                                          mbmi) &&
               !cm->features.enable_cwp
           ? NEAR_NEARMV_OPTFLOW
           : NEAR_NEARMV;
@@ -8381,11 +8381,11 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
 
 #if !CONFIG_SKIP_MODE_NO_REFINEMENTS
   assert(this_mode == (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-                               opfl_allowed_for_cur_refs(cm,
+                               opfl_allowed_cur_refs_bsize(cm,
 #if CONFIG_COMPOUND_4XN
-                                                         xd,
+                                                           xd,
 #endif  // CONFIG_COMPOUND_4XN
-                                                         mbmi) &&
+                                                           mbmi) &&
                                !cm->features.enable_cwp
                            ? NEAR_NEARMV_OPTFLOW
                            : NEAR_NEARMV));
@@ -8671,11 +8671,11 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
           !is_compound ? NEARMV :
 #endif  // CONFIG_D072_SKIP_MODE_IMPROVE
                        (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-                                opfl_allowed_for_cur_refs(cm,
+                                opfl_allowed_cur_refs_bsize(cm,
 #if CONFIG_COMPOUND_4XN
-                                                          xd,
+                                                            xd,
 #endif  // CONFIG_COMPOUND_4XN
-                                                          mbmi) &&
+                                                            mbmi) &&
                                 !cm->features.enable_cwp
                             ? NEAR_NEARMV_OPTFLOW
                             : NEAR_NEARMV);
@@ -11252,11 +11252,11 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
         // Optical flow compound modes are only enabled with enable_order_hint
         // and when prediction is bi-directional
         if (this_mode >= NEAR_NEARMV_OPTFLOW &&
-            (!opfl_allowed_for_cur_refs(cm,
+            (!opfl_allowed_cur_refs_bsize(cm,
 #if CONFIG_COMPOUND_4XN
-                                        xd,
+                                          xd,
 #endif  // CONFIG_COMPOUND_4XN
-                                        mbmi) ||
+                                          mbmi) ||
              cm->features.opfl_refine_type == REFINE_ALL))
           continue;
 #if CONFIG_COMPOUND_4XN
@@ -11265,7 +11265,6 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           continue;
 #endif  // CONFIG_COMPOUND_4XN
 
-#if CONFIG_AFFINE_REFINEMENT
 #if CONFIG_INTER_MODE_CONSOLIDATION
         int num_amvd_modes = 1 + allow_amvd_mode(mbmi->mode);
         for (int use_amvd_mode = 0; use_amvd_mode < num_amvd_modes;
@@ -11283,7 +11282,10 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
             }
           }
 #endif  // CONFIG_INTER_MODE_CONSOLIDATION
-        //  Search compound refine type
+#if CONFIG_AFFINE_REFINEMENT
+          //  Search compound refine type. cwp_idx has not been searched here,
+          //  and it needs to be reset here to obtain the correct mask.
+          mbmi->cwp_idx = CWP_EQUAL;
           const int allowed_comp_refine_mask =
               get_allowed_comp_refine_type_mask(cm, xd, mbmi);
           for (CompoundRefineType comp_refine_type = COMP_REFINE_START;
