@@ -11,6 +11,7 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -6684,7 +6685,10 @@ static AOM_INLINE void decode_qm_data(
           continue;
         }
       }
-      if (tsize == TX_4X8) {
+      bool qm_8x8_is_symmetric;
+      if (tsize == TX_8X8) {
+        qm_8x8_is_symmetric = aom_rb_read_bit(rb);
+      } else if (tsize == TX_4X8) {
         const bool qm_4x8_is_transpose_of_8x4 = aom_rb_read_bit(rb);
 
         if (qm_4x8_is_transpose_of_8x4) {
@@ -6704,22 +6708,36 @@ static AOM_INLINE void decode_qm_data(
       }
 
       qm_val_t *mat = fund_mat[t][level][c];
+      bool coef_repeat_until_end = false;
       int16_t prev = 32;
       for (int i = 0; i < tx_size_2d[tsize]; i++) {
-        const int32_t delta = aom_rb_read_svlc(rb);
-        // The valid range of quantization matrix coefficients is 1..255.
-        // Therefore the valid range of delta values is -254..254.
-        if (delta < -254 || delta > 254) {
-          aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
-                             "Invalid matrix_coef_delta: %d", delta);
+        const int pos = s->scan[i];
+        if (tsize == TX_8X8 && qm_8x8_is_symmetric) {
+          const int row = pos / width;
+          const int col = pos % width;
+          if (col > row) {
+            mat[pos] = mat[col * width + row];
+            continue;
+          }
         }
-        prev = (prev + delta + NUM_QM_VALS) % NUM_QM_VALS;
-        if (prev < 1) {
-          aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
-                             "Invalid quantization matrix coefficient: %d",
-                             prev);
+
+        if (!coef_repeat_until_end) {
+          const int32_t delta = aom_rb_read_svlc(rb);
+          // The valid range of quantization matrix coefficients is 1..255.
+          // Therefore the valid range of delta values is -254..254.
+          if (delta < -254 || delta > 254) {
+            aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
+                               "Invalid matrix_coef_delta: %d", delta);
+          }
+          const int32_t coef = prev + delta;
+          if (coef == 0 || coef == 256) {
+            coef_repeat_until_end = true;
+          } else {
+            prev = (coef + NUM_QM_VALS) % NUM_QM_VALS;
+            assert(prev >= 1);
+          }
         }
-        mat[s->scan[i]] = prev;
+        mat[pos] = prev;
       }
     }
   }

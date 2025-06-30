@@ -5707,6 +5707,26 @@ static bool qm_matrices_are_equal(const qm_val_t *mat_a, const qm_val_t *mat_b,
   return memcmp(mat_a, mat_b, width * height * sizeof(qm_val_t)) == 0;
 }
 
+/*!\brief Verifies if the matrix is a symmetric matrix
+ *
+ * \param[in] mat     Pointer to the matrix
+ * \param[in] width   Width of the matrix
+ * \param[in] height  Height of the matrix
+ */
+static bool qm_matrix_is_symmetric(const qm_val_t *mat, int width, int height) {
+  if (width != height) {
+    return false;
+  }
+  for (int i = 1; i < height; i++) {
+    for (int j = 0; j < i; j++) {
+      if (mat[i * width + j] != mat[j * width + i]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 /*!\brief Verifies if the candidate matrix is a transpose of the current matrix
  *
  * \param[in] cand_mat  Pointer to the candidate matrix
@@ -5733,6 +5753,40 @@ static bool qm_candidate_is_transpose_of_current_matrix(
   return true;
 }
 
+// Returns the number of repeating matrix coefficients at the end of the scan
+// order. The fictitious zeroth coefficient (of value 32) is considered. The
+// first coefficient in the run of identical coefficients is excluded from the
+// count.
+int qm_num_repeating_coefs(const qm_val_t *mat, int width, int height,
+                           const SCAN_ORDER *s, bool is_symmetric) {
+  // Starting from the end of the scan order, go backward and count how many
+  // coefficients are equal to the last coefficient.
+  const qm_val_t mat_end = mat[width * height - 1];
+  int count = 0;
+  int i;
+  for (i = width * height - 2; i >= 0; i--) {
+    const int pos = s->scan[i];
+    if (is_symmetric) {
+      const int row = pos / width;
+      const int col = pos % width;
+      if (col > row) {
+        continue;
+      }
+    }
+
+    if (mat[pos] == mat_end) {
+      count++;
+    } else {
+      break;
+    }
+  }
+  // Check the fictitious zeroth coefficient of value 32.
+  if (i < 0 && 32 == mat_end) {
+    count++;
+  }
+  return count;
+}
+
 // Encodes the user-defined quantization matrices for the given level in
 // seq_params.
 static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
@@ -5750,11 +5804,11 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
     const SCAN_ORDER *s = get_scan(tsize, DCT_DCT);
 
     for (int c = 0; c < num_planes; c++) {
+      const qm_val_t *mat = fund_mat[t][level][c];
       if (c > 0) {
-        const qm_val_t *mat_a = fund_mat[t][level][c - 1];
-        const qm_val_t *mat_b = fund_mat[t][level][c];
+        const qm_val_t *prev_mat = fund_mat[t][level][c - 1];
         const bool qm_copy_from_previous_plane =
-            qm_matrices_are_equal(mat_a, mat_b, width, height);
+            qm_matrices_are_equal(prev_mat, mat, width, height);
 
         aom_wb_write_bit(wb, qm_copy_from_previous_plane);
         if (qm_copy_from_previous_plane) {
@@ -5762,23 +5816,58 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
         }
       }
 
-      if (tsize == TX_4X8) {
+      bool qm_8x8_is_symmetric = false;
+      if (tsize == TX_8X8) {
+        qm_8x8_is_symmetric = qm_matrix_is_symmetric(mat, width, height);
+        aom_wb_write_bit(wb, qm_8x8_is_symmetric);
+      } else if (tsize == TX_4X8) {
         assert(fund_tsize[t - 1] == TX_8X4);
         const qm_val_t *cand_mat = fund_mat[t - 1][level][c];
-        const qm_val_t *curr_mat = fund_mat[t][level][c];
         const bool qm_4x8_is_transpose_of_8x4 =
-            qm_candidate_is_transpose_of_current_matrix(cand_mat, curr_mat,
-                                                        width, height);
+            qm_candidate_is_transpose_of_current_matrix(cand_mat, mat, width,
+                                                        height);
         aom_wb_write_bit(wb, qm_4x8_is_transpose_of_8x4);
         if (qm_4x8_is_transpose_of_8x4) {
           continue;
         }
       }
 
-      const qm_val_t *mat = fund_mat[t][level][c];
+      // The number of repeating coefficients at the end of the scan order. This
+      // count excludes the first coefficient of the run. So this is the number
+      // of zero delta values. Zero is coded in one bit in svlc().
+      const int num_repeating_coefs =
+          qm_num_repeating_coefs(mat, width, height, s, qm_8x8_is_symmetric);
+      // Next, calculate the length in bits of the stop symbol in svlc(). The
+      // delta between mat_end and the stop symbol (0) is 0 - mat_end. An
+      // equivalent delta, modulo 256, is 256 - mat_end. The length of svlc()
+      // depends on on the absolute value. So pick the delta with the smaller
+      // absolute value.
+      const int num_coefs = tx_size_2d[tsize];
+      const int mat_end = mat[num_coefs - 1];
+      const int abs_zero_delta = (mat_end < 128) ? mat_end : 256 - mat_end;
+      const int abs_zero_delta_bits = 2 * get_msb(2 * abs_zero_delta) + 1;
+      // If the stop symbol is shorter, set stop_symbol_idx to the index of the
+      // stop symbol in the scan order. Otherwise, set stop_symbol_idx to -1 to
+      // not code a stop symbol.
+      int stop_symbol_idx = -1;
+      if (abs_zero_delta_bits < num_repeating_coefs) {
+        const int num_coded_coefs = qm_8x8_is_symmetric ? 36 : num_coefs;
+        stop_symbol_idx = num_coded_coefs - num_repeating_coefs;
+      }
+
       int16_t prev = 32;
-      for (int i = 0; i < tx_size_2d[tsize]; i++) {
-        int16_t coeff = mat[s->scan[i]];
+      int symbol_idx = 0;
+      for (int i = 0; i < num_coefs; i++) {
+        const int pos = s->scan[i];
+        if (qm_8x8_is_symmetric) {
+          const int row = pos / width;
+          const int col = pos % width;
+          if (col > row) {
+            continue;
+          }
+        }
+
+        int16_t coeff = (symbol_idx == stop_symbol_idx) ? 0 : mat[pos];
         int16_t delta = coeff - prev;
         // The decoder reconstructs the matrix coefficient by calculating
         // (prev + delta + NUM_QM_VALS) % NUM_QM_VALS. Therefore delta,
@@ -5794,7 +5883,11 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
           delta -= NUM_QM_VALS;
         }
         aom_wb_write_svlc(wb, delta);
+        if (symbol_idx == stop_symbol_idx) {
+          break;
+        }
         prev = coeff;
+        symbol_idx++;
       }
     }
   }

@@ -87,6 +87,52 @@ constexpr uint8_t user_defined_qm_4x8[2][4 * 8] = {
         54,  52,  61,  76,
     },
 };
+constexpr uint8_t flat_qm_8x8[8 * 8] = {
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+};
+constexpr uint8_t flat_qm_8x4[8 * 4] = {
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+    32,  32,  32,  32,  32,  32,  32,  32,
+};
+constexpr uint8_t flat_qm_4x8[4 * 8] = {
+    32,  32,  32,  32,
+    32,  32,  32,  32,
+    32,  32,  32,  32,
+    32,  32,  32,  32,
+    32,  32,  32,  32,
+    32,  32,  32,  32,
+    32,  32,  32,  32,
+    32,  32,  32,  32,
+};
+constexpr uint8_t jpeg_luma_qm_8x8[8 * 8] = {
+    16,  11,  10,  16,  24,  40,  51,  61,
+    12,  12,  14,  19,  26,  58,  60,  55,
+    14,  13,  16,  24,  40,  57,  69,  56,
+    14,  17,  22,  29,  51,  87,  80,  62,
+    18,  22,  37,  56,  68,  109, 103, 77,
+    24,  35,  55,  64,  81,  104, 113, 92,
+    49,  64,  78,  87,  103, 121, 120, 101,
+    72,  92,  95,  98,  112, 100, 103, 99,
+};
+constexpr uint8_t jpeg_chroma_qm_8x8[8 * 8] = {
+    17,  18,  24,  47,  99,  99,  99,  99,
+    18,  21,  26,  66,  99,  99,  99,  99,
+    24,  26,  56,  99,  99,  99,  99,  99,
+    47,  66,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+};
 // clang-format off
 
 class QMTest
@@ -109,7 +155,7 @@ class QMTest
       encoder->Control(AV1E_SET_ENABLE_QM, 1);
       encoder->Control(AV1E_SET_QM_MIN, qm_min_);
       encoder->Control(AV1E_SET_QM_MAX, qm_max_);
-      if (user_defined_qmatrix_) {
+      if (user_defined_qmatrix_ == 1) {
         ASSERT_EQ(qm_min_, qm_max_);
         aom_user_defined_qm_t qm;
         qm.level = qm_min_;
@@ -128,6 +174,48 @@ class QMTest
           qm.qm_4x8[0] = user_defined_qm_4x8[0];
           qm.qm_4x8[1] = user_defined_qm_4x8[1];
           qm.qm_4x8[2] = user_defined_qm_4x8[1];
+        }
+        encoder->Control(AV1E_SET_USER_DEFINED_QMATRIX, &qm);
+      } else if (user_defined_qmatrix_ == 2) {
+        ASSERT_EQ(qm_min_, qm_max_);
+        aom_user_defined_qm_t qm;
+        qm.level = qm_min_;
+        qm.num_planes = monochrome_ ? 1 : 3;
+        if (monochrome_) {
+          qm.qm_8x8[0] = flat_qm_8x8;
+          qm.qm_8x4[0] = flat_qm_8x4;
+          qm.qm_4x8[0] = flat_qm_4x8;
+        } else {
+          qm.qm_8x8[0] = flat_qm_8x8;
+          qm.qm_8x8[1] = flat_qm_8x8;
+          qm.qm_8x8[2] = flat_qm_8x8;
+          qm.qm_8x4[0] = flat_qm_8x4;
+          qm.qm_8x4[1] = flat_qm_8x4;
+          qm.qm_8x4[2] = flat_qm_8x4;
+          qm.qm_4x8[0] = flat_qm_4x8;
+          qm.qm_4x8[1] = flat_qm_4x8;
+          qm.qm_4x8[2] = flat_qm_4x8;
+        }
+        encoder->Control(AV1E_SET_USER_DEFINED_QMATRIX, &qm);
+      } else if (user_defined_qmatrix_ == 3) {
+        ASSERT_EQ(qm_min_, qm_max_);
+        aom_user_defined_qm_t qm;
+        qm.level = qm_min_;
+        qm.num_planes = monochrome_ ? 1 : 3;
+        if (monochrome_) {
+          qm.qm_8x8[0] = jpeg_luma_qm_8x8;
+          qm.qm_8x4[0] = flat_qm_8x4;
+          qm.qm_4x8[0] = flat_qm_4x8;
+        } else {
+          qm.qm_8x8[0] = jpeg_luma_qm_8x8;
+          qm.qm_8x8[1] = jpeg_chroma_qm_8x8;
+          qm.qm_8x8[2] = jpeg_chroma_qm_8x8;
+          qm.qm_8x4[0] = flat_qm_8x4;
+          qm.qm_8x4[1] = flat_qm_8x4;
+          qm.qm_8x4[2] = flat_qm_8x4;
+          qm.qm_4x8[0] = flat_qm_4x8;
+          qm.qm_4x8[1] = flat_qm_4x8;
+          qm.qm_4x8[2] = flat_qm_4x8;
         }
         encoder->Control(AV1E_SET_USER_DEFINED_QMATRIX, &qm);
       }
@@ -160,7 +248,7 @@ class QMTest
   int set_cpu_used_;
   int qm_min_;
   int qm_max_;
-  bool user_defined_qmatrix_ = false;
+  int user_defined_qmatrix_ = 0;
 };
 
 // encodes and decodes without a mismatch.
@@ -180,14 +268,40 @@ TEST_P(QMTest, TestNoMisMatchQM4) {
 
 // encodes and decodes without a mismatch.
 TEST_P(QMTest, TestNoMisMatchQM5) {
-  user_defined_qmatrix_ = true;
+  user_defined_qmatrix_ = 1;
   DoTest(0, 0);
 }
 
 // encodes and decodes without a mismatch.
 TEST_P(QMTest, TestNoMisMatchQM6) {
   monochrome_ = true;
-  user_defined_qmatrix_ = true;
+  user_defined_qmatrix_ = 1;
+  DoTest(0, 0);
+}
+
+// encodes and decodes without a mismatch.
+TEST_P(QMTest, TestNoMisMatchQM7) {
+  user_defined_qmatrix_ = 2;
+  DoTest(0, 0);
+}
+
+// encodes and decodes without a mismatch.
+TEST_P(QMTest, TestNoMisMatchQM8) {
+  monochrome_ = true;
+  user_defined_qmatrix_ = 2;
+  DoTest(0, 0);
+}
+
+// encodes and decodes without a mismatch.
+TEST_P(QMTest, TestNoMisMatchQM9) {
+  user_defined_qmatrix_ = 3;
+  DoTest(0, 0);
+}
+
+// encodes and decodes without a mismatch.
+TEST_P(QMTest, TestNoMisMatchQM10) {
+  monochrome_ = true;
+  user_defined_qmatrix_ = 3;
   DoTest(0, 0);
 }
 
