@@ -2397,31 +2397,35 @@ static INLINE int get_ref_frame_map_idx(const AV1_COMMON *const cm,
 static INLINE void get_secondary_reference_frame_idx(const AV1_COMMON *const cm,
                                                      int *ref_frame_used,
                                                      int *secondary_map_idx) {
-  const int map_idx = get_ref_frame_map_idx(cm, cm->features.primary_ref_frame);
+  if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
+    *secondary_map_idx = INVALID_IDX;
+    *ref_frame_used = PRIMARY_REF_NONE;
+    return;
+  }
   *ref_frame_used =
       (cm->features.primary_ref_frame == cm->features.derived_primary_ref_frame)
           ? cm->features.derived_secondary_ref_frame
           : cm->features.derived_primary_ref_frame;
   *secondary_map_idx = get_ref_frame_map_idx(cm, *ref_frame_used);
-  if ((*ref_frame_used == PRIMARY_REF_NONE) || (map_idx == INVALID_IDX) ||
+  if ((*ref_frame_used == PRIMARY_REF_NONE) ||
+      (*secondary_map_idx == INVALID_IDX) ||
       (*ref_frame_used == cm->features.primary_ref_frame)) {
-    int iter_map_idx = 0;
     int ref_frame = 0;
     for (; ref_frame < cm->ref_frames_info.num_total_refs; ref_frame++) {
-      iter_map_idx = get_ref_frame_map_idx(cm, ref_frame);
-      if (iter_map_idx == INVALID_IDX ||
-          ref_frame == cm->features.primary_ref_frame)
+      RefFrameMapPair cur_ref =
+          cm->ref_frame_map_pairs[get_ref_frame_map_idx(cm, ref_frame)];
+      if (cur_ref.ref_frame_for_inference == -1 ||
+          cur_ref.frame_type != INTER_FRAME)
         continue;
-      RefFrameMapPair cur_ref = cm->ref_frame_map_pairs[iter_map_idx];
-      if ((cur_ref.ref_frame_for_inference == -1) ||
-          (cur_ref.frame_type != INTER_FRAME)) {
-        iter_map_idx = INVALID_IDX;
-        continue;
-      }
       break;
     }
-    *secondary_map_idx = iter_map_idx;
-    *ref_frame_used = ref_frame;
+    if (ref_frame == cm->features.primary_ref_frame) {
+      *secondary_map_idx = INVALID_IDX;
+      *ref_frame_used = PRIMARY_REF_NONE;
+    } else {
+      *secondary_map_idx = get_ref_frame_map_idx(cm, ref_frame);
+      *ref_frame_used = ref_frame;
+    }
   }
 }
 
