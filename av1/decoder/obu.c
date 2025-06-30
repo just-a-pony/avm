@@ -264,7 +264,7 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
   seq_params->film_grain_params_present = aom_rb_read_bit(rb);
 
   // Sequence header for coding tools beyond AV1
-  av1_read_sequence_header_beyond_av1(rb, seq_params);
+  av1_read_sequence_header_beyond_av1(rb, seq_params, &cm->error);
 #if CONFIG_QM_EXTENSION
   int num_planes = seq_params->monochrome ? 1 : MAX_MB_PLANE;
   qm_val_t ***fund_mat[3] = { seq_params->quantizer_matrix_8x8,

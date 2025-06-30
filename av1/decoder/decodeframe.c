@@ -6986,9 +6986,9 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
 #if CONFIG_QM_EXTENSION
 // Decodes the user-defined quantization matrices for the given level and stores
 // them in seq_params.
-static AOM_INLINE void decode_qm_data(SequenceHeader *const seq_params,
-                                      struct aom_read_bit_buffer *rb, int level,
-                                      int num_planes) {
+static AOM_INLINE void decode_qm_data(
+    SequenceHeader *const seq_params, struct aom_read_bit_buffer *rb, int level,
+    int num_planes, struct aom_internal_error_info *error_info) {
   const TX_SIZE fund_tsize[3] = { TX_8X8, TX_8X4, TX_4X8 };
   qm_val_t ***fund_mat[3] = { seq_params->quantizer_matrix_8x8,
                               seq_params->quantizer_matrix_8x4,
@@ -7034,6 +7034,10 @@ static AOM_INLINE void decode_qm_data(SequenceHeader *const seq_params,
       int16_t prev = 32;
       for (int i = 0; i < tx_size_2d[tsize]; i++) {
         const int32_t delta = aom_rb_read_svlc(rb);
+        if (delta == INT32_MIN) {
+          aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
+                             "Invalid matrix_coef_delta");
+        }
         prev = (prev + delta + NUM_QM_VALS) % NUM_QM_VALS;
         mat[s->scan[i]] = prev;
       }
@@ -7042,9 +7046,9 @@ static AOM_INLINE void decode_qm_data(SequenceHeader *const seq_params,
 }
 
 // Decodes all user-defined quantization matrices and stores them in seq_params.
-static AOM_INLINE void decode_user_defined_qm(SequenceHeader *const seq_params,
-                                              struct aom_read_bit_buffer *rb,
-                                              int num_planes) {
+static AOM_INLINE void decode_user_defined_qm(
+    SequenceHeader *const seq_params, struct aom_read_bit_buffer *rb,
+    int num_planes, struct aom_internal_error_info *error_info) {
   for (int i = 0; i < NUM_CUSTOM_QMS; i++) {
     seq_params->qm_data_present[i] = aom_rb_read_bit(rb);
 #if CONFIG_QM_DEBUG
@@ -7052,14 +7056,15 @@ static AOM_INLINE void decode_user_defined_qm(SequenceHeader *const seq_params,
            seq_params->qm_data_present[i]);
 #endif
     if (seq_params->qm_data_present[i]) {
-      decode_qm_data(seq_params, rb, i, num_planes);
+      decode_qm_data(seq_params, rb, i, num_planes, error_info);
     }
   }
 }
 #endif  // CONFIG_QM_EXTENSION
 
-void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
-                                         SequenceHeader *seq_params) {
+void av1_read_sequence_header_beyond_av1(
+    struct aom_read_bit_buffer *rb, SequenceHeader *seq_params,
+    struct aom_internal_error_info *error_info) {
   // printf("print sps\n");
   seq_params->enable_refmvbank = aom_rb_read_bit(rb);
 #if CONFIG_DRL_REORDER_CONTROL
@@ -7240,12 +7245,14 @@ void av1_read_sequence_header_beyond_av1(struct aom_read_bit_buffer *rb,
          seq_params->user_defined_qmatrix);
 #endif
   if (seq_params->user_defined_qmatrix) {
-    decode_user_defined_qm(seq_params, rb, num_planes);
+    decode_user_defined_qm(seq_params, rb, num_planes, error_info);
   } else {
     for (uint16_t i = 0; i < NUM_CUSTOM_QMS; i++) {
       seq_params->qm_data_present[i] = false;
     }
   }
+#else
+    (void)error_info;
 #endif  // CONFIG_QM_EXTENSION
 }
 
