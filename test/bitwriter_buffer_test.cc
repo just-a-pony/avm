@@ -100,4 +100,123 @@ TEST(BitwriterBufferTest, Uvlc31LeadingZeros) {
   }
 }
 
+// Test the examples in Table 25 and Table 26 in ITU-T H.274 (V3) (09/2023) and
+// a few more.
+//
+// Bit string    codeNum    syntax element value
+//     1            0                 0
+//    010           1                 1
+//    011           2                -1
+//   00100          3                 2
+//   00101          4                -2
+//   00110          5                 3
+//   00111          6                -3
+//  0001000         7                 4
+//  0001001         8                -4
+//  0001010         9                 5
+//  0001011        10                -5
+//  0001100        11                 6
+//  0001101        12                -6
+//  0001110        13                 7
+//  0001111        14                -7
+TEST(BitwriterBufferTest, SvlcOneByte) {
+  static constexpr struct {
+    uint32_t bit_offset;
+    uint8_t byte;
+  } kExpected[] = {
+    { 1, 0x80 },  // 0
+    { 3, 0x40 },  // 1
+    { 3, 0x60 },  // -1
+    { 5, 0x20 },  // 2
+    { 5, 0x28 },  // -2
+    { 5, 0x30 },  // 3
+    { 5, 0x38 },  // -3
+    { 7, 0x10 },  // 4
+    { 7, 0x12 },  // -4
+    { 7, 0x14 },  // 5
+    { 7, 0x16 },  // -5
+    { 7, 0x18 },  // 6
+    { 7, 0x1a },  // -6
+    { 7, 0x1c },  // 7
+    { 7, 0x1e },  // -7
+  };
+  uint8_t dst[1];
+
+  int32_t sign = 1;
+  for (int i = 0; i < 15; i++) {
+    // input = (-1)^(i + 1) * Ceil( i / 2.0 )
+    sign *= -1;
+    const int32_t input = sign * ((i + 1) / 2);
+    struct aom_write_bit_buffer wb = { dst, 0 };
+    aom_wb_write_svlc(&wb, input);
+    ASSERT_EQ(wb.bit_offset, kExpected[i].bit_offset);
+    EXPECT_EQ(wb.bit_buffer[0], kExpected[i].byte);
+  }
+}
+
+// Tests four values with the maximum number (31) of leading zero bits.
+TEST(BitwriterBufferTest, Svlc31LeadingZeros) {
+  uint8_t dst[8];
+
+  // 2^30
+  {
+    struct aom_write_bit_buffer wb = { dst, 0 };
+    aom_wb_write_svlc(&wb, 1 << 30);
+    ASSERT_EQ(wb.bit_offset, 63u);
+    EXPECT_EQ(wb.bit_buffer[0], 0x00);
+    EXPECT_EQ(wb.bit_buffer[1], 0x00);
+    EXPECT_EQ(wb.bit_buffer[2], 0x00);
+    EXPECT_EQ(wb.bit_buffer[3], 0x01);
+    EXPECT_EQ(wb.bit_buffer[4], 0x00);
+    EXPECT_EQ(wb.bit_buffer[5], 0x00);
+    EXPECT_EQ(wb.bit_buffer[6], 0x00);
+    EXPECT_EQ(wb.bit_buffer[7], 0x00);
+  }
+
+  // -2^30
+  {
+    struct aom_write_bit_buffer wb = { dst, 0 };
+    aom_wb_write_svlc(&wb, -(1 << 30));
+    ASSERT_EQ(wb.bit_offset, 63u);
+    EXPECT_EQ(wb.bit_buffer[0], 0x00);
+    EXPECT_EQ(wb.bit_buffer[1], 0x00);
+    EXPECT_EQ(wb.bit_buffer[2], 0x00);
+    EXPECT_EQ(wb.bit_buffer[3], 0x01);
+    EXPECT_EQ(wb.bit_buffer[4], 0x00);
+    EXPECT_EQ(wb.bit_buffer[5], 0x00);
+    EXPECT_EQ(wb.bit_buffer[6], 0x00);
+    EXPECT_EQ(wb.bit_buffer[7], 0x02);
+  }
+
+  // 2^31 - 1
+  {
+    struct aom_write_bit_buffer wb = { dst, 0 };
+    aom_wb_write_svlc(&wb, INT32_MAX);
+    ASSERT_EQ(wb.bit_offset, 63u);
+    EXPECT_EQ(wb.bit_buffer[0], 0x00);
+    EXPECT_EQ(wb.bit_buffer[1], 0x00);
+    EXPECT_EQ(wb.bit_buffer[2], 0x00);
+    EXPECT_EQ(wb.bit_buffer[3], 0x01);
+    EXPECT_EQ(wb.bit_buffer[4], 0xff);
+    EXPECT_EQ(wb.bit_buffer[5], 0xff);
+    EXPECT_EQ(wb.bit_buffer[6], 0xff);
+    EXPECT_EQ(wb.bit_buffer[7], 0xfc);
+  }
+
+  // -2^31 + 1
+  {
+    struct aom_write_bit_buffer wb = { dst, 0 };
+    aom_wb_write_svlc(&wb, INT32_MIN + 1);
+    ASSERT_EQ(wb.bit_offset, 63u);
+    EXPECT_EQ(wb.bit_buffer[0], 0x00);
+    EXPECT_EQ(wb.bit_buffer[1], 0x00);
+    EXPECT_EQ(wb.bit_buffer[2], 0x00);
+    EXPECT_EQ(wb.bit_buffer[3], 0x01);
+    EXPECT_EQ(wb.bit_buffer[4], 0xff);
+    EXPECT_EQ(wb.bit_buffer[5], 0xff);
+    EXPECT_EQ(wb.bit_buffer[6], 0xff);
+    EXPECT_EQ(wb.bit_buffer[7], 0xfe);
+  }
+}
+
 }  // namespace
