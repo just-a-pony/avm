@@ -409,8 +409,10 @@ static void calc_wt_matrix(const int txsize, const qm_val_t *iwt_matrix,
                            qm_val_t *wt_matrix) {
   const int size = tx_size_2d[txsize];
   for (int i = 0; i < size; ++i) {
-    assert(iwt_matrix[i] != 0);
-    wt_matrix[i] = (int)1024 / iwt_matrix[i];
+    // If iwt_matrix[i] <= 4, then 1024 / iwt_matrix[i] >= 256, which cannot be
+    // stored in wt_matrix[i] without losing integer precision.
+    assert(iwt_matrix[i] > 4);
+    wt_matrix[i] = 1024 / iwt_matrix[i];
   }
 }
 

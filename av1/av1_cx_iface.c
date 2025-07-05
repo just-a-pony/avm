@@ -2424,15 +2424,35 @@ static aom_codec_err_t ctrl_set_user_defined_qmatrix(aom_codec_alg_priv_t *ctx,
     if (!user_defined_qm->qm_8x8[c]) {
       return AOM_CODEC_INVALID_PARAM;
     }
+    // In calc_wt_matrix() we will divide 1024 by these quantization matrix
+    // coefficients and store the quotients in qm_val_t (uint8_t) arrays. These
+    // coefficients must be greater than 4, otherwise the quotients will be
+    // greater than or equal to 1024 / 4 = 256, which cannot be converted to
+    // qm_val_t without losing integer precision.
+    for (int i = 0; i < 8 * 8; i++) {
+      if (user_defined_qm->qm_8x8[c][i] <= 4) {
+        return AOM_CODEC_INVALID_PARAM;
+      }
+    }
     memcpy(seq_params->quantizer_matrix_8x8[level][c],
            user_defined_qm->qm_8x8[c], 8 * 8 * sizeof(qm_val_t));
     if (!user_defined_qm->qm_8x4[c]) {
       return AOM_CODEC_INVALID_PARAM;
     }
+    for (int i = 0; i < 8 * 4; i++) {
+      if (user_defined_qm->qm_8x4[c][i] <= 4) {
+        return AOM_CODEC_INVALID_PARAM;
+      }
+    }
     memcpy(seq_params->quantizer_matrix_8x4[level][c],
            user_defined_qm->qm_8x4[c], 8 * 4 * sizeof(qm_val_t));
     if (!user_defined_qm->qm_4x8[c]) {
       return AOM_CODEC_INVALID_PARAM;
+    }
+    for (int i = 0; i < 4 * 8; i++) {
+      if (user_defined_qm->qm_4x8[c][i] <= 4) {
+        return AOM_CODEC_INVALID_PARAM;
+      }
     }
     memcpy(seq_params->quantizer_matrix_4x8[level][c],
            user_defined_qm->qm_4x8[c], 4 * 8 * sizeof(qm_val_t));

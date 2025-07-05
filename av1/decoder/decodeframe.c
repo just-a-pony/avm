@@ -7049,11 +7049,18 @@ static AOM_INLINE void decode_qm_data(
       int16_t prev = 32;
       for (int i = 0; i < tx_size_2d[tsize]; i++) {
         const int32_t delta = aom_rb_read_svlc(rb);
-        if (delta == INT32_MIN) {
+        // The valid range of quantization matrix coefficients is 1..255.
+        // Therefore the valid range of delta values is -254..254.
+        if (delta < -254 || delta > 254) {
           aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
-                             "Invalid matrix_coef_delta");
+                             "Invalid matrix_coef_delta: %d", delta);
         }
         prev = (prev + delta + NUM_QM_VALS) % NUM_QM_VALS;
+        if (prev < 1) {
+          aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
+                             "Invalid quantization matrix coefficient: %d",
+                             prev);
+        }
         mat[s->scan[i]] = prev;
       }
     }
