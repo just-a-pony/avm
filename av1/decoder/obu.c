@@ -270,7 +270,7 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
   qm_val_t ***fund_mat[3] = { seq_params->quantizer_matrix_8x8,
                               seq_params->quantizer_matrix_8x4,
                               seq_params->quantizer_matrix_4x8 };
-  av1_qm_init(&cm->quant_params, num_planes, fund_mat);
+  av1_qm_init_dequant_only(&cm->quant_params, num_planes, fund_mat);
 #endif  // CONFIG_QM_EXTENSION
 #if CONFIG_BRU
   if (seq_params->enable_bru && !seq_params->explicit_ref_frame_map) {

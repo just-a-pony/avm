@@ -513,6 +513,50 @@ void av1_qm_init(CommonQuantParams *quant_params, int num_planes) {
 }
 
 #if CONFIG_QM_EXTENSION
+void av1_qm_init_dequant_only(CommonQuantParams *quant_params, int num_planes,
+                              qm_val_t ****fund_matrices) {
+#else
+void av1_qm_init_dequant_only(CommonQuantParams *quant_params, int num_planes) {
+#endif  // CONFIG_QM_EXTENSION
+  for (int q = 0; q < NUM_QM_LEVELS; ++q) {
+    for (int c = 0; c < num_planes; ++c) {
+      // Generate matrices for each tx size
+      int current = 0;
+      for (int t = 0; t < TX_SIZES_ALL; ++t) {
+        const int size = tx_size_2d[t];
+        const int qm_tx_size = av1_get_adjusted_tx_size(t);
+        if (q == NUM_QM_LEVELS - 1) {
+          quant_params->giqmatrix[q][c][t] = NULL;
+        } else if (t != qm_tx_size) {  // Reuse matrices for 'qm_tx_size'
+          assert(t > qm_tx_size);
+          quant_params->giqmatrix[q][c][t] =
+              quant_params->giqmatrix[q][c][qm_tx_size];
+        } else {
+          assert(current + size <= QM_TOTAL_SIZE);
+          // Generate the iwt matrices from the base matrices.
+#if CONFIG_QM_EXTENSION
+          const int plane = c;
+          scale_tx(t, q, plane,
+                   &quant_params->iwt_matrix_ref[q][plane][current],
+                   fund_matrices);
+#else
+          const int plane = (c >= 1);
+          if (c < 2) {
+            scale_tx(t, q, plane,
+                     &quant_params->iwt_matrix_ref[q][plane][current]);
+          }
+#endif  // CONFIG_QM_EXTENSION
+
+          quant_params->giqmatrix[q][c][t] =
+              &quant_params->iwt_matrix_ref[q][plane][current];
+          current += size;
+        }
+      }
+    }
+  }
+}
+
+#if CONFIG_QM_EXTENSION
 void av1_qm_replace_level(CommonQuantParams *quant_params, int level,
                           int num_planes, qm_val_t ****fund_matrices) {
   const int q = level;

@@ -179,7 +179,7 @@ void av1_init_qmatrix(qm_val_t ***qm_8x8, qm_val_t ***qm_8x4,
                       qm_val_t ***qm_4x8, int num_planes);
 #endif  // CONFIG_QM_EXTENSION
 
-// Initialize all global quant/dequant matrices.
+// Initialize all global quant/dequant matrices. Used by the encoder.
 #if CONFIG_QM_EXTENSION
 void av1_qm_init(struct CommonQuantParams *quant_params, int num_planes,
                  qm_val_t ****fund_matrices);
@@ -187,9 +187,18 @@ void av1_qm_init(struct CommonQuantParams *quant_params, int num_planes,
 void av1_qm_init(struct CommonQuantParams *quant_params, int num_planes);
 #endif  // CONFIG_QM_EXTENSION
 
+// Initialize all global dequant matrices. Used by the decoder.
+#if CONFIG_QM_EXTENSION
+void av1_qm_init_dequant_only(struct CommonQuantParams *quant_params,
+                              int num_planes, qm_val_t ****fund_matrices);
+#else
+void av1_qm_init_dequant_only(struct CommonQuantParams *quant_params,
+                              int num_planes);
+#endif  // CONFIG_QM_EXTENSION
+
 #if CONFIG_QM_EXTENSION
 // Replaces a level of quantization matrices based on the fundamental matrices
-// for that level. Assumes av1_qm_init() has been called.
+// for that level. Assumes av1_qm_init() has been called. Used by the encoder.
 void av1_qm_replace_level(struct CommonQuantParams *quant_params, int level,
                           int num_planes, qm_val_t ****fund_matrices);
 #endif  // CONFIG_QM_EXTENSION
