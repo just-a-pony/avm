@@ -914,7 +914,8 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
 #endif
 
 #if CONFIG_TCQ
-  int tcq_mode = tcq_enable(cm->features.tcq_mode, plane, tx_class);
+  int tcq_mode = tcq_enable(cm->features.tcq_mode,
+                            xd->lossless[mbmi->segment_id], plane, tx_class);
   int state = tcq_init_state(tcq_mode);
 #endif  // CONFIG_TCQ
 

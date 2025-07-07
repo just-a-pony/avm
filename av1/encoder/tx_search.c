@@ -2701,7 +2701,8 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #if CONFIG_TCQ
       const TX_CLASS tx_class =
           tx_type_to_class[get_primary_tx_type(best_tx_type)];
-      if (tcq_enable(cm->features.tcq_mode, plane, tx_class))
+      if (tcq_enable(cm->features.tcq_mode, xd->lossless[xd->mi[0]->segment_id],
+                     plane, tx_class))
         // perform_block_coeff_opt : Whether trellis optimization is done.
         // we do not skip any optimization in loop of txfm search. so make sure
         // each block is optimized.
@@ -2778,7 +2779,8 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   // TODO(any): Experiment with variance and mean based thresholds
   int perform_block_coeff_opt = 0;
 #if CONFIG_TCQ
-  if (tcq_enable(cm->features.tcq_mode, plane, TX_CLASS_2D)) {
+  if (tcq_enable(cm->features.tcq_mode, xd->lossless[xd->mi[0]->segment_id],
+                 plane, TX_CLASS_2D)) {
     perform_block_coeff_opt = 1;
   } else
 #endif  // CONFIG_TCQ
@@ -3066,7 +3068,8 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
 #if CONFIG_TCQ
         const TX_CLASS tx_class =
             tx_type_to_class[get_primary_tx_type(tx_type)];
-        if (tcq_enable(cm->features.tcq_mode, plane, tx_class)) {
+        if (tcq_enable(cm->features.tcq_mode,
+                       xd->lossless[xd->mi[0]->segment_id], plane, tx_class)) {
           skip_trellis_based_on_satd[txfm_param.tx_type] = skip_trellis;
         } else
 #endif  // CONFIG_TCQ

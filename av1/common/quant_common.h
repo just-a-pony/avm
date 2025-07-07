@@ -82,8 +82,9 @@ static INLINE bool tcq_quant(const int state) { return state & 2; }
 #define TCQMIN 0
 #define TCQMAX 1024
 // Determine whether to run tcq or regular quant in a block
-static INLINE bool tcq_enable(int enable_tcq, int plane, TX_CLASS tx_class) {
-  int dq_en = enable_tcq != 0;
+static INLINE bool tcq_enable(int enable_tcq, int lossless, int plane,
+                              TX_CLASS tx_class) {
+  int dq_en = (!lossless && enable_tcq != 0);
   if (TCQ_DIS_CHR) {
     dq_en &= plane == 0;
   }

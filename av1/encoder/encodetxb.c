@@ -1063,7 +1063,9 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
 
   const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
 #if CONFIG_TCQ
-  const int tcq_mode = tcq_enable(cm->features.tcq_mode, plane, tx_class);
+  const int tcq_mode =
+      tcq_enable(cm->features.tcq_mode, xd->lossless[xd->mi[0]->segment_id],
+                 plane, tx_class);
 #else
   const int tcq_mode = 0;
 #endif  // CONFIG_TCQ
@@ -5404,7 +5406,9 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
         !xd->lossless[xd->mi[0]->segment_id] && plane == PLANE_TYPE_Y &&
         ph_allowed_tx_types[get_primary_tx_type(tx_type)] && (eob > PHTHRESH);
 #if CONFIG_TCQ
-    int tcq_mode = tcq_enable(cm->features.tcq_mode, plane, tx_class);
+    int tcq_mode =
+        tcq_enable(cm->features.tcq_mode, xd->lossless[xd->mi[0]->segment_id],
+                   plane, tx_class);
     int state = tcq_init_state(tcq_mode);
 #endif  // CONFIG_TCQ
 
