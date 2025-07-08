@@ -6051,7 +6051,21 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
       int16_t prev = 32;
       for (int i = 0; i < tx_size_2d[tsize]; i++) {
         int16_t coeff = mat[s->scan[i]];
-        aom_wb_write_svlc(wb, coeff - prev);
+        int16_t delta = coeff - prev;
+        // The decoder reconstructs the matrix coefficient by calculating
+        // (prev + delta + NUM_QM_VALS) % NUM_QM_VALS. Therefore delta,
+        // delta + NUM_QM_VALS, and delta - NUM_QM_VALS are all equivalent
+        // because they are equal modulo NUM_QM_VALS. If delta + NUM_QM_VALS or
+        // delta - NUM_QM_VALS has a smaller absolute value than delta, it is
+        // likely to have a shorter svlc() code, so we will write it instead.
+        // In other words, for each delta value, we aim to find an equivalent
+        // value (modulo NUM_QM_VALS) that has the shortest svlc() code.
+        if (delta < -(NUM_QM_VALS / 2)) {
+          delta += NUM_QM_VALS;
+        } else if (delta >= NUM_QM_VALS / 2) {
+          delta -= NUM_QM_VALS;
+        }
+        aom_wb_write_svlc(wb, delta);
         prev = coeff;
       }
     }
