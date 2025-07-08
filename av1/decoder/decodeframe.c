@@ -8481,7 +8481,19 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
   xd->cur_frame_force_integer_mv = features->cur_frame_force_integer_mv;
 
-  for (int i = 0; i < MAX_SEGMENTS; ++i) {
+  if (!cm->seg.enabled && quant_params->using_qmatrix &&
+      quant_params->qm_index_bits > 0) {
+    aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                       "The frame does not use segmentation but uses "
+                       "per-segment quantizer matrices");
+  }
+#if CONFIG_EXT_SEG
+  const int max_seg_num =
+      cm->seg.enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
+#else   // CONFIG_EXT_SEG
+  const int max_seg_num = MAX_SEGMENTS;
+#endif  // CONFIG_EXT_SEG
+  for (int i = 0; i < max_seg_num; i++) {
     const int qindex = av1_get_qindex(&cm->seg, i, quant_params->base_qindex,
                                       cm->seq_params.bit_depth);
     xd->lossless[i] =
