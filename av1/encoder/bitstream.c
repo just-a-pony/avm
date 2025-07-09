@@ -5984,9 +5984,9 @@ static bool qm_matrices_are_equal(const qm_val_t *mat_a, const qm_val_t *mat_b,
  * \param[in] cand_mat  Pointer to the candidate matrix
  * \param[in] curr_mat  Pointer to the current matrix
  * \param[in] width     Width of the current matrix (height of the candidate
- * matrix)
+ *                      matrix)
  * \param[in] height    Height of the current matrix (width of the candidate
- * matrix)
+ *                      matrix)
  */
 static bool qm_candidate_is_transpose_of_current_matrix(
     const qm_val_t *cand_mat, const qm_val_t *curr_mat, int width, int height) {
