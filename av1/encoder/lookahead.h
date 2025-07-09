@@ -68,14 +68,15 @@ struct lookahead_ctx {
  * The lookahead stage is a queue of frame buffers on which some analysis
  * may be done when buffers are enqueued.
  */
-struct lookahead_ctx *av1_lookahead_init(
-    unsigned int width, unsigned int height, unsigned int subsampling_x,
-    unsigned int subsampling_y, unsigned int depth, const int border_in_pixels,
-    int byte_alignment, int num_lap_buffers,
+struct lookahead_ctx *av1_lookahead_init(int width, int height,
+                                         int subsampling_x, int subsampling_y,
+                                         int depth, const int border_in_pixels,
+                                         int byte_alignment,
+                                         int num_lap_buffers,
 #if CONFIG_BRU
-    int num_extra_buffers,
+                                         int num_extra_buffers,
 #endif  // CONFIG_BRU
-    bool alloc_pyramid);
+                                         bool alloc_pyramid);
 
 /**\brief Destroys the lookahead stage
  */
@@ -152,8 +153,7 @@ void bru_lookahead_buf_refresh(struct lookahead_ctx *ctx,
 
 /**\brief Get the number of frames currently in the lookahead queue
  */
-unsigned int av1_lookahead_depth(struct lookahead_ctx *ctx,
-                                 COMPRESSOR_STAGE stage);
+int av1_lookahead_depth(struct lookahead_ctx *ctx, COMPRESSOR_STAGE stage);
 
 /**\brief Get pop_sz value
  */

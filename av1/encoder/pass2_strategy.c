@@ -1413,7 +1413,7 @@ static void calculate_gf_length(AV1_COMP *cpi, int max_gop_length,
 
 static void correct_frames_to_key(AV1_COMP *cpi) {
   int lookahead_size =
-      (int)av1_lookahead_depth(cpi->lookahead, cpi->compressor_stage);
+      av1_lookahead_depth(cpi->lookahead, cpi->compressor_stage);
   if (lookahead_size <
       av1_lookahead_pop_sz(cpi->lookahead, cpi->compressor_stage)) {
     cpi->rc.frames_to_key = AOMMIN(cpi->rc.frames_to_key, lookahead_size);
@@ -1425,7 +1425,7 @@ static void correct_frames_to_key(AV1_COMP *cpi) {
 
 static int is_last_subgop(AV1_COMP *cpi) {
   const int lookahead_size =
-      (int)av1_lookahead_depth(cpi->lookahead, cpi->compressor_stage);
+      av1_lookahead_depth(cpi->lookahead, cpi->compressor_stage);
   // Check if last subgop in the clip.
   const int is_last_sub = (cpi->oxcf.gf_cfg.lag_in_frames > lookahead_size) &&
                           (lookahead_size == cpi->rc.frames_to_key);
