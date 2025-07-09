@@ -285,9 +285,6 @@ set_aom_config_var(CONFIG_SKIP_MODE_SSE_BUG_FIX 1
                    "AV2 experiment flag to fix the SSE calc bug for skip mode.")
 set_aom_config_var(CONFIG_SKIP_MODE_ENHANCEMENT 1
                    "AV2 experiment flag to enable skip mode enhancement.")
-set_aom_config_var(
-  CONFIG_SKIP_MODE_PARSING_DEPENDENCY_REMOVAL 1
-  "AV2 experiment flag to remove parsing dependency of skip mode.")
 set_aom_config_var(CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT 1
                    "Enable enhanced frame output order derivation")
 set_aom_config_var(CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY 1
@@ -424,6 +421,10 @@ set_aom_config_var(CONFIG_QM_EXTENSION 1
 set_aom_config_var(
   CONFIG_QM_DEBUG 0
   "Enable debug information for extension to AV1 quantization matrices.")
+
+set_aom_config_var(
+  CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL 1
+  "Enhanced parsing dependency removal and simplification of skip mode.")
 
 # This is an encode-only change.
 set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1

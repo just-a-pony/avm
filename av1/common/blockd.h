@@ -929,9 +929,6 @@ static INLINE int is_tip_ref_frame(MV_REFERENCE_FRAME ref_frame) {
 
 static INLINE int is_inter_block(const MB_MODE_INFO *mbmi, int tree_type) {
   return is_intrabc_block(mbmi, tree_type) ||
-#if CONFIG_SKIP_MODE_PARSING_DEPENDENCY_REMOVAL
-         mbmi->skip_mode == 1 ||
-#endif  // CONFIG_SKIP_MODE_PARSING_DEPENDENCY_REMOVAL
          is_inter_ref_frame(mbmi->ref_frame[0]);
 }
 
@@ -2125,10 +2122,12 @@ typedef struct {
 typedef struct {
   //! MV list
   CANDIDATE_MV ref_mv_stack[USABLE_REF_MV_STACK_SIZE];
+#if !CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL
   //! reference list 0 reference frame index
   MV_REFERENCE_FRAME ref_frame0[USABLE_REF_MV_STACK_SIZE];
   //! reference list 1 reference frame index
   MV_REFERENCE_FRAME ref_frame1[USABLE_REF_MV_STACK_SIZE];
+#endif  // !CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL
   //! The weights used to compute the ref mvs.
   uint16_t weight[USABLE_REF_MV_STACK_SIZE];
   //! Number of ref mvs in the drl.
