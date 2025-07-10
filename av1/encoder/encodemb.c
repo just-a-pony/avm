@@ -225,11 +225,11 @@ void av1_subtract_block_dpcm(const MACROBLOCKD *xd, int rows, int cols,
         (plane == AOM_PLANE_Y) ? mbmi->use_dpcm_y : mbmi->use_dpcm_uv;
     int cur_angle_delta = (plane == AOM_PLANE_Y) ? mbmi->angle_delta[0] : 0;
     if (cur_pred_mode == V_PRED && cur_angle_delta == 0 && cur_dpcm_flag > 0) {
-      av1_subtract_block_vert(xd, cols, rows, diff, diff_stride, src,
+      av1_subtract_block_vert(xd, rows, cols, diff, diff_stride, src,
                               src_stride, pred, pred_stride);
     } else if (cur_pred_mode == H_PRED && cur_angle_delta == 0 &&
                cur_dpcm_flag > 0) {
-      av1_subtract_block_horz(xd, cols, rows, diff, diff_stride, src,
+      av1_subtract_block_horz(xd, rows, cols, diff, diff_stride, src,
                               src_stride, pred, pred_stride);
     } else {
       aom_highbd_subtract_block(rows, cols, diff, diff_stride, src, src_stride,
