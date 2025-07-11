@@ -466,8 +466,12 @@ static INLINE int64_t pixel_diff_dist(
   const int16_t *diff = x->plane[plane].src_diff;
 
   diff += ((blk_row * diff_stride + blk_col) << MI_SIZE_LOG2);
-  uint64_t sse =
-      aom_sum_squares_2d_i16(diff, diff_stride, visible_cols, visible_rows);
+  uint64_t sse;
+  if (visible_cols > 0 && visible_rows > 0) {
+    sse = aom_sum_squares_2d_i16(diff, diff_stride, visible_cols, visible_rows);
+  } else {
+    sse = 0;
+  }
   if (block_mse_q8 != NULL) {
     if (visible_cols > 0 && visible_rows > 0)
       *block_mse_q8 =

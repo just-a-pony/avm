@@ -16,6 +16,7 @@
 
 uint64_t aom_sum_squares_2d_i16_c(const int16_t *src, int src_stride, int width,
                                   int height) {
+  assert(width > 0 && height > 0);
   int r, c;
   uint64_t ss = 0;
 

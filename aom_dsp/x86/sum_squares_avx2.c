@@ -10,6 +10,7 @@
  * aomedia.org/license/patent-license/.
  */
 
+#include <assert.h>
 #include <immintrin.h>
 #include <smmintrin.h>
 
@@ -66,6 +67,7 @@ static uint64_t aom_sum_squares_2d_i16_nxn_avx2(const int16_t *src, int stride,
 
 uint64_t aom_sum_squares_2d_i16_avx2(const int16_t *src, int stride, int width,
                                      int height) {
+  assert(width > 0 && height > 0);
   if (LIKELY(width == 4 && height == 4)) {
     return aom_sum_squares_2d_i16_4x4_sse2(src, stride);
   } else if (LIKELY(width == 4 && (height & 3) == 0)) {

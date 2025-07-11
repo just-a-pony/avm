@@ -221,6 +221,7 @@ aom_sum_sse_2d_i16_nxn_sse2(const int16_t *src, int stride, int width,
 
 uint64_t aom_sum_squares_2d_i16_sse2(const int16_t *src, int stride, int width,
                                      int height) {
+  assert(width > 0 && height > 0);
   // 4 elements per row only requires half an XMM register, so this
   // must be a special case, but also note that over 75% of all calls
   // are with size == 4, so it is also the common case.
