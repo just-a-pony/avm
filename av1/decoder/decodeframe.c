@@ -2415,6 +2415,11 @@ static AOM_INLINE void decode_partition(
                                                      parse_decode_block };
   const int is_sb_root = bsize == cm->sb_size;
   if (is_sb_root) {
+#if CONFIG_SDP_CFL_LATENCY_FIX
+    xd->is_cfl_allowed_in_sdp =
+        is_cfl_allowed_for_sdp(cm, xd, ptree_luma, PARTITION_NONE, bsize);
+    ptree->is_cfl_allowed_for_this_chroma_partition = CFL_DISALLOWED_FOR_CHROMA;
+#endif  // CONFIG_SDP_CFL_LATENCY_FIX
     if (!frame_is_intra_only(cm)) {
       ptree->region_type = MIXED_INTER_INTRA_REGION;
       ptree->extended_sdp_allowed_flag = cm->seq_params.enable_extended_sdp;
@@ -2478,6 +2483,10 @@ static AOM_INLINE void decode_partition(
       ptree_luma->mi_row = mi_row;
       ptree_luma->mi_col = mi_col;
       ptree_luma->is_settled = 1;
+#if CONFIG_SDP_CFL_LATENCY_FIX
+      ptree_luma->is_cfl_allowed_for_this_chroma_partition =
+          CFL_DISALLOWED_FOR_CHROMA;
+#endif  // CONFIG_SDP_CFL_LATENCY_FIX
     }
 
     PARTITION_TREE *parent = ptree->parent;
@@ -2491,7 +2500,12 @@ static AOM_INLINE void decode_partition(
                     ? PARTITION_NONE
                     : read_partition(cm, xd, mi_row, mi_col, reader, has_rows,
                                      has_cols, ptree, ptree_luma, bsize);
-
+#if CONFIG_SDP_CFL_LATENCY_FIX
+    ptree->is_cfl_allowed_for_this_chroma_partition |=
+        is_cfl_allowed_for_sdp(cm, xd, ptree_luma, partition, bsize);
+    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_in_sdp =
+        ptree->is_cfl_allowed_for_this_chroma_partition;
+#endif  // CONFIG_SDP_CFL_LATENCY_FIX
     ptree->partition = partition;
 
     if (!is_sb_root && parent) {
@@ -2563,6 +2577,37 @@ static AOM_INLINE void decode_partition(
         break;
       default: break;
     }
+#if CONFIG_SDP_CFL_LATENCY_FIX
+    switch (partition) {
+      case PARTITION_NONE:
+        xd->is_cfl_allowed_in_sdp = is_cfl_allowed_in_sdp;
+        break;
+      case PARTITION_HORZ_4A:
+      case PARTITION_HORZ_4B:
+      case PARTITION_VERT_4A:
+      case PARTITION_VERT_4B:
+      case PARTITION_HORZ_3:
+      case PARTITION_VERT_3:
+      case PARTITION_SPLIT:
+        ptree->sub_tree[0]->is_cfl_allowed_for_this_chroma_partition =
+            is_cfl_allowed_in_sdp;
+        ptree->sub_tree[1]->is_cfl_allowed_for_this_chroma_partition =
+            is_cfl_allowed_in_sdp;
+        ptree->sub_tree[2]->is_cfl_allowed_for_this_chroma_partition =
+            is_cfl_allowed_in_sdp;
+        ptree->sub_tree[3]->is_cfl_allowed_for_this_chroma_partition =
+            is_cfl_allowed_in_sdp;
+        break;
+      case PARTITION_HORZ:
+      case PARTITION_VERT:
+        ptree->sub_tree[0]->is_cfl_allowed_for_this_chroma_partition =
+            is_cfl_allowed_in_sdp;
+        ptree->sub_tree[1]->is_cfl_allowed_for_this_chroma_partition =
+            is_cfl_allowed_in_sdp;
+        break;
+      default: break;
+    }
+#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   } else {
     partition = ptree->partition;
     const PARTITION_TREE *parent = ptree->parent;
