@@ -434,6 +434,8 @@ Build Documentation:
   stage: build
   interruptible: true
   script:
+    # Force doxygen warnings to be treated as errors.
+    - sed -i 's/WARN_AS_ERROR\s\+= NO/WARN_AS_ERROR        = YES/g'  libs.doxy_template
     - cmake -B aom_docs_build -GNinja
         -DENABLE_DOCS=1
         -DENABLE_EXAMPLES=0
