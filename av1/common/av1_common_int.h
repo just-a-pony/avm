@@ -70,17 +70,12 @@ extern "C" {
 
 #define DEBUG_EXTQUANT 0
 
-#define FRAME_CONTEXTS (FRAME_BUFFERS + 1)
-// Extra frame context which is always kept at default values
-#define FRAME_CONTEXT_DEFAULTS (FRAME_CONTEXTS - 1)
 #if CONFIG_EXTRA_DPB
 #define PRIMARY_REF_BITS MAX_REFS_PER_FRAME_LOG2
 #else
 #define PRIMARY_REF_BITS REF_FRAMES_LOG2
 #endif  // CONFIG_EXTRA_DPB
 #define PRIMARY_REF_NONE INTER_REFS_PER_FRAME
-
-#define NUM_PING_PONG_BUFFERS 2
 
 #define MAX_NUM_TEMPORAL_LAYERS 8
 #define MAX_NUM_SPATIAL_LAYERS 4
@@ -127,35 +122,7 @@ extern "C" {
 #define MAX_SB_TMVP_SIZE_LOG2 (MAX_MIB_SIZE_LOG2 - TMVP_SHIFT_BITS)
 #define MAX_SB_TMVP_SIZE (1 << MAX_SB_TMVP_SIZE_LOG2)
 
-#define TMVP_SAMPLE_STEP 2
-
 #define MIN_BSIZE_WARP_DELTA 8
-
-// Using the WARP_DELTA motion mode, we can use a nearby block's warp model as
-// a prediction and then modify it with an explicitly coded delta.
-//
-// If this flag is set to 0, then any spatial reference block (ie, a DRL entry
-// which came from a block in the current frame) can provide a warp model which
-// we can use as a prediction.
-//
-// If this flag is set to 1, then only directly adjacent blocks can be used
-// as references (similar to WARP_EXTEND), meaning that we only need to store
-// one above row and one left column of warp models. This can be enabled if
-// the above behaviour causes concerns for hardware implementations.
-//
-// Interaction with different modes:
-//
-// For GLOBALMV, WARP_DELTA can always be used, and uses the global warp model
-// (if any) as a base. If no global warp model was given, we use a translational
-// model as a base.
-//
-// For NEARMV, WARP_DELTA can only be used if the reference block selected from
-// the DRL can provide a warp model under the logic mentioned above.
-//
-// For NEWMV, WARP_DELTA can always be used. If the reference block can provide
-// a warp model, then this is used as a base; otherwise the global warp model
-// (or a translational model) is used.
-#define WARP_DELTA_REQUIRES_NEIGHBOR 1
 
 /*!\cond */
 
@@ -1510,13 +1477,6 @@ typedef struct TIP_Buffer {
    * Scale factors of tip frame.
    */
   struct scale_factors scale_factor;
-  /*!
-   * Buffer into which the scaled interpolated tip frame will be stored and
-   * other related info. This is required for generating inter prediction and
-   * will be non-identity for a reference frame, if it has different dimensions
-   * than the coded dimensions of the current frame.
-   */
-  RefCntBuffer *scaled_tip_frame;
   /*!
    * Check the motion field of TIP block is within the frame
    */
@@ -2901,22 +2861,6 @@ static INLINE void update_partition_context(MACROBLOCKD *xd, int mi_row,
   const int bh = mi_size_high[bsize];
   memset(above_ctx, partition_context_lookup[subsize].above, bw);
   memset(left_ctx, partition_context_lookup[subsize].left, bh);
-}
-
-static INLINE int is_chroma_reference(int mi_row, int mi_col, BLOCK_SIZE bsize,
-                                      int subsampling_x, int subsampling_y) {
-  assert(bsize < BLOCK_SIZES_ALL);
-  const int bw = mi_size_wide[bsize];
-  const int bh = mi_size_high[bsize];
-  int ref_pos = ((mi_row & 0x01) || !(bh & 0x01) || !subsampling_y) &&
-                ((mi_col & 0x01) || !(bw & 0x01) || !subsampling_x);
-  return ref_pos;
-}
-
-static INLINE aom_cdf_prob cdf_element_prob(const aom_cdf_prob *cdf,
-                                            size_t element) {
-  assert(cdf != NULL);
-  return (element > 0 ? cdf[element - 1] : CDF_PROB_TOP) - cdf[element];
 }
 
 static INLINE void update_ext_partition_context(MACROBLOCKD *xd, int mi_row,
