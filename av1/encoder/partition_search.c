@@ -3664,6 +3664,8 @@ reference for future sub-partitions
 pre-calculated partition tree (if any) for the current block
 * \param[in]    pc_tree   Pointer to the PC_TREE node holding the picked
 partitions and mode info for the current block
+* \param[in]    ptree_luma Pointer to the luma partition tree so that the
+*                          encoder can estimate the partition type for chroma.
 *
 * Nothing is returned. The pc_tree struct is modified to store the
 * picked partition and modes. The rate and dist are also updated with those
@@ -7063,7 +7065,7 @@ size of MI_SIZE
 picked partitions and mode info for the
 current block
 * \param[in]    ptree_luma Pointer to the luma partition tree so that the
-*                          encoder to estimate the partition type for chroma.
+*                          encoder can estimate the partition type for chroma.
 * \param[in]    template_tree      A partial tree that contains the partition
 *                                  structure to be used as a template.
 * \param[in]    max_recursion_depth The maximum level of recursion allowed
