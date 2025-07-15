@@ -313,6 +313,8 @@ set_aom_config_var(CONFIG_MVD_CDF_REDUCTION 1
                    "Enable reduction of the CDFs for MVD related sybmols")
 set_aom_config_var(CONFIG_LOCAL_INTRABC_ALIGN_RNG 1
                    "CWG F177 align inter/intra local intraBC search range")
+set_aom_config_var(CONFIG_GLOBAL_INTRABC_DELAY_OPT 1
+                   "Enable alignment of global intraBC boundary")
 
 set_aom_config_var(
   CONFIG_QM_DEBUG 0
