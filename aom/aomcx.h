@@ -1253,7 +1253,6 @@ enum aome_enc_control_id {
    */
   AV1E_GET_ENABLE_BRU = 170,
 #endif  // CONFIG_BRU
-#if CONFIG_QM_EXTENSION
   /*!\brief Control to set the user defined quantization matrices for a level,
    * const aom_user_defined_qm_t* parameter
    */
@@ -1265,7 +1264,6 @@ enum aome_enc_control_id {
    * \note This is only used in quantization matrix unit test.
    */
   AV1E_SET_FRAME_MULTI_QMATRIX_UNIT_TEST = 172,
-#endif  // CONFIG_QM_EXTENSION
 };
 
 /*!\brief aom 1-D scaling mode
@@ -1501,13 +1499,11 @@ AOM_CTRL_USE_TYPE(AV1E_SET_QM_U, unsigned int)
 AOM_CTRL_USE_TYPE(AV1E_SET_QM_V, unsigned int)
 #define AOM_CTRL_AV1E_SET_QM_V
 
-#if CONFIG_QM_EXTENSION
 AOM_CTRL_USE_TYPE(AV1E_SET_USER_DEFINED_QMATRIX, const aom_user_defined_qm_t *)
 #define AOM_CTRL_AV1E_SET_USER_DEFINED_QMATRIX
 
 AOM_CTRL_USE_TYPE(AV1E_SET_FRAME_MULTI_QMATRIX_UNIT_TEST, unsigned int)
 #define AOM_CTRL_AV1E_SET_FRAME_MULTI_QMATRIX_UNIT_TEST
-#endif  // CONFIG_QM_EXTENSION
 
 AOM_CTRL_USE_TYPE(AV1E_SET_NUM_TG, unsigned int)
 #define AOM_CTRL_AV1E_SET_NUM_TG

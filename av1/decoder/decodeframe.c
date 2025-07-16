@@ -4140,7 +4140,6 @@ static AOM_INLINE void setup_quantization(CommonQuantParams *quant_params,
     quant_params->v_ac_delta_q = 0;
   }
   quant_params->using_qmatrix = aom_rb_read_bit(rb);
-#if CONFIG_QM_EXTENSION
 #if CONFIG_QM_DEBUG
   printf("[DEC-FRM] using_qmatrix: %d\n", quant_params->using_qmatrix);
 #endif
@@ -4185,20 +4184,6 @@ static AOM_INLINE void setup_quantization(CommonQuantParams *quant_params,
       quant_params->qm_v[i] = 0;
     }
   }
-#else
-  if (quant_params->using_qmatrix) {
-    quant_params->qmatrix_level_y = aom_rb_read_literal(rb, QM_LEVEL_BITS);
-    quant_params->qmatrix_level_u = aom_rb_read_literal(rb, QM_LEVEL_BITS);
-    if (!separate_uv_delta_q)
-      quant_params->qmatrix_level_v = quant_params->qmatrix_level_u;
-    else
-      quant_params->qmatrix_level_v = aom_rb_read_literal(rb, QM_LEVEL_BITS);
-  } else {
-    quant_params->qmatrix_level_y = 0;
-    quant_params->qmatrix_level_u = 0;
-    quant_params->qmatrix_level_v = 0;
-  }
-#endif  // CONFIG_QM_EXTENSION
 }
 
 // Build y/uv dequant values based on segmentation.
@@ -4274,7 +4259,6 @@ static AOM_INLINE void setup_segmentation_dequant(AV1_COMMON *const cm,
     const int use_qmatrix = av1_use_qmatrix(quant_params, xd, i);
     // NB: depends on base index so there is only 1 set per frame
     // No quant weighting when lossless or signalled not using QM
-#if CONFIG_QM_EXTENSION
     const int qm_index = quant_params->qm_index[i];
     const int qmlevel_y =
         use_qmatrix ? quant_params->qm_y[qm_index] : NUM_QM_LEVELS - 1;
@@ -4305,26 +4289,6 @@ static AOM_INLINE void setup_segmentation_dequant(AV1_COMMON *const cm,
       printf("[DEC-FRM] qmlevel_y[%d]: (%d)\n", i, qmlevel_y);
 #endif
     }
-#else
-    const int qmlevel_y =
-        use_qmatrix ? quant_params->qmatrix_level_y : NUM_QM_LEVELS - 1;
-    for (int j = 0; j < TX_SIZES_ALL; ++j) {
-      quant_params->y_iqmatrix[i][j] =
-          av1_iqmatrix(quant_params, qmlevel_y, AOM_PLANE_Y, j);
-    }
-    const int qmlevel_u =
-        use_qmatrix ? quant_params->qmatrix_level_u : NUM_QM_LEVELS - 1;
-    for (int j = 0; j < TX_SIZES_ALL; ++j) {
-      quant_params->u_iqmatrix[i][j] =
-          av1_iqmatrix(quant_params, qmlevel_u, AOM_PLANE_U, j);
-    }
-    const int qmlevel_v =
-        use_qmatrix ? quant_params->qmatrix_level_v : NUM_QM_LEVELS - 1;
-    for (int j = 0; j < TX_SIZES_ALL; ++j) {
-      quant_params->v_iqmatrix[i][j] =
-          av1_iqmatrix(quant_params, qmlevel_v, AOM_PLANE_V, j);
-    }
-#endif  // CONFIG_QM_EXTENSION
   }
 }
 
@@ -7048,7 +7012,6 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
   }
 }
 
-#if CONFIG_QM_EXTENSION
 // Decodes the user-defined quantization matrices for the given level and stores
 // them in seq_params.
 static AOM_INLINE void decode_qm_data(
@@ -7132,7 +7095,6 @@ static AOM_INLINE void decode_user_defined_qm(
     }
   }
 }
-#endif  // CONFIG_QM_EXTENSION
 
 void av1_read_sequence_header_beyond_av1(
     struct aom_read_bit_buffer *rb, SequenceHeader *seq_params,
@@ -7308,7 +7270,6 @@ void av1_read_sequence_header_beyond_av1(
 #if CONFIG_EXT_SEG
   seq_params->enable_ext_seg = aom_rb_read_bit(rb);
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_QM_EXTENSION
   int num_planes = seq_params->monochrome ? 1 : MAX_MB_PLANE;
   av1_init_qmatrix(seq_params->quantizer_matrix_8x8,
                    seq_params->quantizer_matrix_8x4,
@@ -7325,9 +7286,6 @@ void av1_read_sequence_header_beyond_av1(
       seq_params->qm_data_present[i] = false;
     }
   }
-#else
-    (void)error_info;
-#endif  // CONFIG_QM_EXTENSION
 }
 
 static int read_global_motion_params(WarpedMotionParams *params,
@@ -9111,7 +9069,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           quant_params->u_ac_delta_q <= 0 && quant_params->v_ac_delta_q <= 0;
 #endif  // CONFIG_EXT_QUANT_UPD
     xd->qindex[i] = qindex;
-#if CONFIG_QM_EXTENSION
     if (av1_use_qmatrix(quant_params, xd, i)) {
       if (quant_params->qm_index_bits > 0) {
         quant_params->qm_index[i] =
@@ -9129,7 +9086,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         quant_params->qm_index[i] = 0;
       }
     }
-#endif  // CONFIG_QM_EXTENSION
   }
   features->coded_lossless = is_coded_lossless(cm, xd);
   features->all_lossless = features->coded_lossless

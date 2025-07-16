@@ -21,7 +21,6 @@
 
 namespace {
 
-#if CONFIG_QM_EXTENSION
 // Level 6 of the default quantization matrices.
 // clang-format off
 constexpr uint8_t user_defined_qm_8x8[2][8 * 8] = {
@@ -89,7 +88,6 @@ constexpr uint8_t user_defined_qm_4x8[2][4 * 8] = {
     },
 };
 // clang-format off
-#endif  // CONFIG_QM_EXTENSION
 
 class QMTest
     : public ::libaom_test::CodecTestWith2Params<libaom_test::TestMode, int>,
@@ -111,7 +109,6 @@ class QMTest
       encoder->Control(AV1E_SET_ENABLE_QM, 1);
       encoder->Control(AV1E_SET_QM_MIN, qm_min_);
       encoder->Control(AV1E_SET_QM_MAX, qm_max_);
-#if CONFIG_QM_EXTENSION
       if (user_defined_qmatrix_) {
         ASSERT_EQ(qm_min_, qm_max_);
         aom_user_defined_qm_t qm;
@@ -134,7 +131,6 @@ class QMTest
         }
         encoder->Control(AV1E_SET_USER_DEFINED_QMATRIX, &qm);
       }
-#endif  // CONFIG_QM_EXTENSION
 
       encoder->Control(AOME_SET_MAX_INTRA_BITRATE_PCT, 100);
     }
@@ -164,9 +160,7 @@ class QMTest
   int set_cpu_used_;
   int qm_min_;
   int qm_max_;
-#if CONFIG_QM_EXTENSION
   bool user_defined_qmatrix_ = false;
-#endif  // CONFIG_QM_EXTENSION
 };
 
 // encodes and decodes without a mismatch.
@@ -184,7 +178,6 @@ TEST_P(QMTest, TestNoMisMatchQM4) {
   DoTest(5, 9);
 }
 
-#if CONFIG_QM_EXTENSION
 // encodes and decodes without a mismatch.
 TEST_P(QMTest, TestNoMisMatchQM5) {
   user_defined_qmatrix_ = true;
@@ -197,7 +190,6 @@ TEST_P(QMTest, TestNoMisMatchQM6) {
   user_defined_qmatrix_ = true;
   DoTest(0, 0);
 }
-#endif  // CONFIG_QM_EXTENSION
 
 AV1_INSTANTIATE_TEST_SUITE(QMTest,
                            ::testing::Values(::libaom_test::kOnePassGood),

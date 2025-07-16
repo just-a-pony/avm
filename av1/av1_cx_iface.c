@@ -84,11 +84,9 @@ struct av1_extracfg {
   unsigned int qm_v;
   unsigned int qm_min;
   unsigned int qm_max;
-#if CONFIG_QM_EXTENSION
   unsigned int user_defined_qmatrix;
   unsigned int qm_data_present[NUM_CUSTOM_QMS];
   unsigned int frame_multi_qmatrix_unit_test;
-#endif  // CONFIG_QM_EXTENSION
   unsigned int num_tg;
   unsigned int mtu_size;
 
@@ -454,11 +452,9 @@ static struct av1_extracfg default_extra_cfg = {
   DEFAULT_QM_V,                 // qm_v
   DEFAULT_QM_FIRST,             // qm_min
   DEFAULT_QM_LAST,              // qm_max
-#if CONFIG_QM_EXTENSION
   0,                                                // user-defined qmatrix
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },  // qm_data_present
   0,                            // enable frame multi qmatrix unit test
-#endif                          // CONFIG_QM_EXTENSION
   1,                            // max number of tile groups
   0,                            // mtu_size
   AOM_TIMING_UNSPECIFIED,       // No picture timing signaling in bitstream
@@ -916,9 +912,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK_HI(extra_cfg, chroma_subsampling_y, 1);
 
   RANGE_CHECK_HI(extra_cfg, enable_trellis_quant, 3);
-#if CONFIG_QM_EXTENSION
   RANGE_CHECK_HI(extra_cfg, frame_multi_qmatrix_unit_test, 4);
-#endif  // CONFIG_QM_EXTENSION
   RANGE_CHECK(extra_cfg, coeff_cost_upd_freq, 0, 2);
   RANGE_CHECK(extra_cfg, mode_cost_upd_freq, 0, 2);
   RANGE_CHECK(extra_cfg, mv_cost_upd_freq, 0, 3);
@@ -1665,12 +1659,10 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   q_cfg->using_qm = extra_cfg->enable_qm;
   q_cfg->qm_minlevel = extra_cfg->qm_min;
   q_cfg->qm_maxlevel = extra_cfg->qm_max;
-#if CONFIG_QM_EXTENSION
   q_cfg->user_defined_qmatrix = extra_cfg->user_defined_qmatrix != 0;
   for (int i = 0; i < NUM_CUSTOM_QMS; i++) {
     q_cfg->qm_data_present[i] = extra_cfg->qm_data_present[i];
   }
-#endif  // CONFIG_QM_EXTENSION
   q_cfg->quant_b_adapt = extra_cfg->quant_b_adapt;
   q_cfg->enable_chroma_deltaq = extra_cfg->enable_chroma_deltaq;
   q_cfg->aq_mode = extra_cfg->aq_mode;
@@ -2018,10 +2010,8 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   oxcf->unit_test_cfg.sb_multipass_unit_test =
       extra_cfg->sb_multipass_unit_test;
   oxcf->unit_test_cfg.enable_subgop_stats = extra_cfg->enable_subgop_stats;
-#if CONFIG_QM_EXTENSION
   oxcf->unit_test_cfg.frame_multi_qmatrix_unit_test =
       extra_cfg->frame_multi_qmatrix_unit_test;
-#endif  // CONFIG_QM_EXTENSION
 
   oxcf->border_in_pixels = (resize_cfg->resize_mode
 #if CONFIG_ENABLE_SR
@@ -2400,7 +2390,6 @@ static aom_codec_err_t ctrl_set_qm_max(aom_codec_alg_priv_t *ctx,
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
-#if CONFIG_QM_EXTENSION
 static aom_codec_err_t ctrl_set_user_defined_qmatrix(aom_codec_alg_priv_t *ctx,
                                                      va_list args) {
   const aom_user_defined_qm_t *user_defined_qm =
@@ -2482,7 +2471,6 @@ static aom_codec_err_t ctrl_set_frame_multi_qmatrix_unit_test(
       CAST(AV1E_SET_FRAME_MULTI_QMATRIX_UNIT_TEST, args);
   return update_extra_cfg(ctx, &extra_cfg);
 }
-#endif  // CONFIG_QM_EXTENSION
 
 static aom_codec_err_t ctrl_set_num_tg(aom_codec_alg_priv_t *ctx,
                                        va_list args) {
@@ -4638,11 +4626,9 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_QM_V, ctrl_set_qm_v },
   { AV1E_SET_QM_MIN, ctrl_set_qm_min },
   { AV1E_SET_QM_MAX, ctrl_set_qm_max },
-#if CONFIG_QM_EXTENSION
   { AV1E_SET_USER_DEFINED_QMATRIX, ctrl_set_user_defined_qmatrix },
   { AV1E_SET_FRAME_MULTI_QMATRIX_UNIT_TEST,
     ctrl_set_frame_multi_qmatrix_unit_test },
-#endif  // CONFIG_QM_EXTENSION
   { AV1E_SET_NUM_TG, ctrl_set_num_tg },
   { AV1E_SET_MTU, ctrl_set_mtu },
   { AV1E_SET_TIMING_INFO_TYPE, ctrl_set_timing_info_type },

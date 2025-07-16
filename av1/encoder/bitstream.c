@@ -5381,7 +5381,6 @@ static AOM_INLINE void encode_quantization(
   }
   aom_wb_write_bit(wb, quant_params->using_qmatrix);
   if (quant_params->using_qmatrix) {
-#if CONFIG_QM_EXTENSION
     aom_wb_write_literal(wb, quant_params->pic_qm_num - 1, 2);
 #if CONFIG_QM_DEBUG
     printf("[ENC-FRM] pic_qm_num: %d\n", quant_params->pic_qm_num);
@@ -5416,14 +5415,6 @@ static AOM_INLINE void encode_quantization(
       }
 #endif
     }
-#else
-    aom_wb_write_literal(wb, quant_params->qmatrix_level_y, QM_LEVEL_BITS);
-    aom_wb_write_literal(wb, quant_params->qmatrix_level_u, QM_LEVEL_BITS);
-    if (!separate_uv_delta_q)
-      assert(quant_params->qmatrix_level_u == quant_params->qmatrix_level_v);
-    else
-      aom_wb_write_literal(wb, quant_params->qmatrix_level_v, QM_LEVEL_BITS);
-#endif  // CONFIG_QM_EXTENSION
   }
 }
 #if CONFIG_BRU
@@ -5988,7 +5979,6 @@ static AOM_INLINE void write_film_grain_params(
   aom_wb_write_bit(wb, pars->clip_to_restricted_range);
 }
 
-#if CONFIG_QM_EXTENSION
 static bool qm_matrices_are_equal(const qm_val_t *mat_a, const qm_val_t *mat_b,
                                   int width, int height) {
   return memcmp(mat_a, mat_b, width * height * sizeof(qm_val_t)) == 0;
@@ -6102,7 +6092,6 @@ static AOM_INLINE void code_user_defined_qm(
     }
   }
 }
-#endif  // CONFIG_QM_EXTENSION
 
 static AOM_INLINE void write_sb_size(const SequenceHeader *const seq_params,
                                      struct aom_write_bit_buffer *wb) {
@@ -6403,7 +6392,6 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_EXT_SEG
   aom_wb_write_bit(wb, seq_params->enable_ext_seg);
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_QM_EXTENSION
 
 #if CONFIG_QM_DEBUG
   printf("[ENC-SEQ] user_defined_qmatrix=%d\n",
@@ -6414,7 +6402,6 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
     int num_planes = seq_params->monochrome ? 1 : MAX_MB_PLANE;
     code_user_defined_qm(wb, seq_params, num_planes);
   }
-#endif  // CONFIG_QM_EXTENSION
 }
 
 static AOM_INLINE void write_global_motion_params(
@@ -7252,7 +7239,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
     }
   }
 
-#if CONFIG_QM_EXTENSION
   if (quant_params->using_qmatrix) {
     const struct segmentation *seg = &cm->seg;
     for (int i = 0; i < MAX_SEGMENTS; i++) {
@@ -7272,7 +7258,7 @@ static AOM_INLINE void write_uncompressed_header_obu(
            0) &&
           (quant_params->v_ac_delta_q + cm->seq_params.base_uv_ac_delta_q <= 0);
 #else
-          quant_params->u_ac_delta_q <= 0 && quant_params->v_ac_delta_q <= 0;
+            quant_params->u_ac_delta_q <= 0 && quant_params->v_ac_delta_q <= 0;
 #endif  // CONFIG_EXT_QUANT_UPD
 
       if (!lossless && (quant_params->qm_index_bits > 0)) {
@@ -7284,7 +7270,6 @@ static AOM_INLINE void write_uncompressed_header_obu(
       }
     }
   }
-#endif  // CONFIG_QM_EXTENSION
 
 #if CONFIG_TCQ
   // Encode adaptive frame-level TCQ flag, if applicable.

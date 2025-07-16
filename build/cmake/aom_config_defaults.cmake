@@ -421,8 +421,6 @@ set_aom_config_var(CONFIG_ENABLE_SR 0 "Enable super resolution mode")
 set_aom_config_var(CONFIG_TIP_MV_SIMPLIFICATION 1
                    "Enable to address the motion field range issue in TIP")
 
-set_aom_config_var(CONFIG_QM_EXTENSION 1
-                   "Extension for AV1 quantization matrices.")
 set_aom_config_var(
   CONFIG_QM_DEBUG 0
   "Enable debug information for extension to AV1 quantization matrices.")

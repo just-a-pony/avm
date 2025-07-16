@@ -85,9 +85,7 @@ extern "C" {
 #define MAX_NUM_TEMPORAL_LAYERS 8
 #define MAX_NUM_SPATIAL_LAYERS 4
 
-#if CONFIG_QM_EXTENSION
 #define NUM_QM_VALS 256
-#endif
 
 /* clang-format off */
 // clang-format seems to think this is a pointer dereference and not a
@@ -723,8 +721,7 @@ typedef struct SequenceHeader {
 #endif  // CONFIG_REFRESH_FLAG
 #if CONFIG_EXT_SEG
   uint8_t enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
-#if CONFIG_QM_EXTENSION
+#endif                                   // CONFIG_EXT_SEG
   bool user_defined_qmatrix;             // User defined quantizer matrix
   bool qm_data_present[NUM_CUSTOM_QMS];  // User defined QM data present
   // Note: qm_copy_from_previous_plane and qm_4x8_is_transpose_of_8x4 flags
@@ -735,7 +732,6 @@ typedef struct SequenceHeader {
   qm_val_t ***quantizer_matrix_8x8;
   qm_val_t ***quantizer_matrix_8x4;
   qm_val_t ***quantizer_matrix_4x8;
-#endif  // CONFIG_QM_EXTENSION
 
   BITSTREAM_PROFILE profile;
 
@@ -1345,23 +1341,13 @@ struct CommonQuantParams {
   /*!
    * Raw quantization matrix table (accessed via gqmatrix).
    */
-#if CONFIG_QM_EXTENSION
   // Second index: 0:Y, 1:U, 2:V
   qm_val_t wt_matrix_ref[NUM_QM_LEVELS - 1][3][QM_TOTAL_SIZE];
-#else
-  // Second index: 0:luma, 1:chroma
-  qm_val_t wt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE];
-#endif  // CONFIG_QM_EXTENSION
   /*!
    * Raw dquantization matrix table (accessed via giqmatrix).
    */
-#if CONFIG_QM_EXTENSION
   // Second index: 0:Y, 1:U, 2:V
   qm_val_t iwt_matrix_ref[NUM_QM_LEVELS - 1][3][QM_TOTAL_SIZE];
-#else
-  // Second index: 0:luma, 1:chroma
-  qm_val_t iwt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE];
-#endif  // CONFIG_QM_EXTENSION
   /**@}*/
 
   /**
@@ -1409,7 +1395,6 @@ struct CommonQuantParams {
    * matrix tables.
    */
 
-#if CONFIG_QM_EXTENSION
   /**@{*/
   /*!
    * Number of QM levels available for use by the segments in the frame.
@@ -1426,13 +1411,6 @@ struct CommonQuantParams {
    */
   uint8_t qm_index[MAX_SEGMENTS];
   /**@}*/
-#else
-  /**@{*/
-  int qmatrix_level_y; /*!< Level index for Y plane */
-  int qmatrix_level_u; /*!< Level index for U plane */
-  int qmatrix_level_v; /*!< Level index for V plane */
-  /**@}*/
-#endif  // CONFIG_QM_EXTENSION
 };
 
 typedef struct CommonContexts CommonContexts;
