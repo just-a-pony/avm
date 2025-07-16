@@ -10,7 +10,7 @@ stages:
   - test
   - report
 
-image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2204:20231216164605
+image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2404:20250715040929
 
 default:
   tags:
@@ -32,7 +32,7 @@ Style Check:
   script:
     - 'echo "Diff ref is: $DIFF_REF"'
     - git fetch --unshallow
-    - export PATH="/usr/lib/llvm-15/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-18/bin:${PATH}"
     - clang-format --version
     - cmake-format --version
     - |
@@ -123,7 +123,9 @@ Test Data:
   variables:
     LIBAOM_TEST_DATA_PATH: ${CI_PROJECT_DIR}/libaom-test-data
   script:
-    - cmake -B aom_testdata -GNinja
+    # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
+    # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+    - cmake -B aom_testdata -GNinja -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     - cmake --build aom_testdata --target testdata
   artifacts:
     expire_in: 1 day
@@ -175,7 +177,9 @@ Test Data Check:
   interruptible: true
   extends: .ccache-common
   variables:
-    CMAKE_FLAGS: -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DENABLE_DOCS=0
+    # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
+    # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+    CMAKE_FLAGS: -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DENABLE_CCACHE=1 -DENABLE_WERROR=1 -DENABLE_DOCS=0
     INSTALLROOT_FOLDER: installroot
   parallel:
     matrix:
@@ -192,7 +196,7 @@ Test Data Check:
           - no-examples
           - debug
   script:
-    - export PATH="/usr/lib/llvm-15/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-18/bin:${PATH}"
     - |
       case $AOM_BUILD_CONFIG in
         internal-stats)
@@ -251,6 +255,7 @@ Test Data Check:
           exit 1
           ;;
       esac
+      cmake --version
       echo "CMake Flags:       $CMAKE_FLAGS"
       echo "Extra CMake Flags: $EXTRA_CMAKE_FLAGS"
       echo "Configuration:     $AOM_BUILD_CONFIG"
@@ -330,7 +335,7 @@ Build (bawp-across-scales-fix):
 
 Build (x86-linux-gcc):
   extends: .build-common
-  image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2204-multilib:20231215235031
+  image: registry.gitlab.com/aomediacodec/aom-testing/ubuntu2404-multilib:20250702215355
   variables:
     EXTRA_CMAKE_FLAGS: >-
       -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/x86-linux.cmake
@@ -436,7 +441,11 @@ Build Documentation:
   script:
     # Force doxygen warnings to be treated as errors.
     - sed -i 's/WARN_AS_ERROR\s\+= NO/WARN_AS_ERROR        = YES/g'  libs.doxy_template
+    - cmake --version
+    # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
+    # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
     - cmake -B aom_docs_build -GNinja
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         -DENABLE_DOCS=1
         -DENABLE_EXAMPLES=0
         -DBUILD_SHARED_LIBS=0
@@ -465,7 +474,11 @@ Example Build (x86_64-gcc):
     GIT_FETCH_EXTRA_FLAGS: --tags
   script:
     - git fetch --unshallow
+    - cmake --version
+    # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
+    # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
     - cmake -B aom_example_build
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         -DENABLE_ASSERTS=1
         -DENABLE_EXAMPLES=1
         -DBUILD_SHARED_LIBS=0
@@ -485,7 +498,10 @@ Linux Sanitizers (x86_64-clang):
   interruptible: true
   variables:
     SANITIZER_IGNORES_FILE: .gitlab/SanitizerIgnores.txt
+    # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
+    # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
     CMAKE_FLAGS: >-
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       -DENABLE_CCACHE=1
       -DCMAKE_C_COMPILER=clang
       -DCMAKE_CXX_COMPILER=clang++
@@ -500,7 +516,7 @@ Linux Sanitizers (x86_64-clang):
           # CFI Sanitizer commented for now, as lto build does not work
           #- cfi
   script:
-    - export PATH="/usr/lib/llvm-15/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-18/bin:${PATH}"
     - |
       SANITIZER_BLACKLIST_FLAG="-fsanitize-blacklist=${PWD}/${SANITIZER_IGNORES_FILE}"
 
@@ -565,7 +581,7 @@ Example Test (x86_64):
      :fast_unwind_on_fatal=1\
      :allocator_may_return_null=1"
   before_script:
-    - export PATH="/usr/lib/llvm-15/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-18/bin:${PATH}"
     - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
   script:
     - |
@@ -941,14 +957,16 @@ Static Analyzer:
           - shallow
           - deep
   script:
-    - export PATH="/usr/lib/llvm-15/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-18/bin:${PATH}"
     - mkdir output-${ANALYZER_MODE}
     - |
       scan_build() {
         scan-build --exclude third_party --exclude _deps --exclude abseil-cpp --exclude benchmark --exclude cpuinfo --exclude eigen --exclude farmhash --exclude fft2d --exclude flatbuffers --exclude flatbuffers-flatc --exclude fp16  --exclude FP16 --exclude FXdiv --exclude psimd  --exclude ml_dtypes --exclude neon2sse  --exclude protobuf --exclude pthreadpool --exclude pthreadpool-source --exclude ruy --exclude xnnpack --exclude XNNPACK  --exclude googletest -o output-${ANALYZER_MODE} -analyzer-config mode=${ANALYZER_MODE} $*
       }
     - |
-      scan_build cmake -B aom_build -GNinja -DCMAKE_BUILD_TYPE=Debug
+      # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
+      # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+      scan_build cmake -B aom_build -GNinja -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Debug
       exit_code=0
       scan_build --status-bugs cmake --build aom_build || exit_code=$?
       if [ ${exit_code} -ne 0 ]; then

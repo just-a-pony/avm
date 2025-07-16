@@ -14,8 +14,11 @@ default:
 Linux Nightly Build:
   stage: build
   interruptible: true
+  # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
+  # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
   variables:
     CMAKE_FLAGS: >-
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       -DCMAKE_BUILD_TYPE=RelWithDebInfo
       -DAOM_EXTRA_C_FLAGS="--coverage"
       -DAOM_EXTRA_CXX_FLAGS="--coverage"
@@ -50,7 +53,7 @@ Linux All Unit Test:
     - ./test_libaom
     - >-
       gcovr
-      --gcov-executable gcov-12
+      --gcov-executable gcov-14
       --exclude ../third_party --exclude _deps --exclude abseil-cpp --exclude
       benchmark --exclude cpuinfo --exclude eigen --exclude farmhash --exclude
       fft2d --exclude flatbuffers --exclude flatbuffers-flatc --exclude fp16
@@ -82,7 +85,7 @@ Coverage Report:
     - cd aom_nightly_build
     - >-
       gcovr
-      --gcov-executable gcov-12
+      --gcov-executable gcov-14
       --add-tracefile "coverage_*.json"
       --exclude ../third_party --exclude _deps --exclude abseil-cpp --exclude
       benchmark --exclude cpuinfo --exclude eigen --exclude farmhash --exclude
@@ -197,7 +200,7 @@ Linux Unit (x86_64, sse4_2):
      :fast_unwind_on_fatal=1\
      :allocator_may_return_null=1"
   before_script:
-    - export PATH="/usr/lib/llvm-15/bin:${PATH}"
+    - export PATH="/usr/lib/llvm-18/bin:${PATH}"
     - export GTEST_SHARD_INDEX=$((CI_NODE_INDEX - 1))
   script:
     - |
