@@ -3166,11 +3166,11 @@ static int encode_without_recode(AV1_COMP *cpi) {
   } else {
     memset(&cm->seg, 0, sizeof(cm->seg));
   }
+#if CONFIG_EXT_SEG
+  cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
+#endif
   segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
   cm->cur_frame->seg.enabled = cm->seg.enabled;
-#if CONFIG_EXT_SEG
-  cm->cur_frame->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
   start_timing(cpi, av1_encode_frame_time);
@@ -3396,11 +3396,11 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
     } else {
       memset(&cm->seg, 0, sizeof(cm->seg));
     }
+#if CONFIG_EXT_SEG
+    cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
+#endif
     segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
     cm->cur_frame->seg.enabled = cm->seg.enabled;
-#if CONFIG_EXT_SEG
-    cm->cur_frame->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
     start_timing(cpi, av1_encode_frame_time);

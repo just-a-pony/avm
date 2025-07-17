@@ -2695,6 +2695,9 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
     seg->update_map = 1;
     seg->temporal_update = 0;
     seg->update_data = 1;
+#if CONFIG_EXT_SEG
+    seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
+#endif  // CONFIG_EXT_SEG
   } else {
     seg->update_map = aom_rb_read_bit(rb);
     if (seg->update_map) {
@@ -8942,8 +8945,11 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
     cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
     segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
-#else
+#else  // CONFIG_TIP_LD
       av1_setup_past_independence(cm);
+#if CONFIG_EXT_SEG
+      cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
+#endif  // CONFIG_EXT_SEG
       segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
 #endif  // CONFIG_TIP_LD
     if (!cm->tiles.large_scale) {
