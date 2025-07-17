@@ -61,10 +61,9 @@ static void aom_fdct4x4_helper(const int16_t *input, int stride,
     // fdct_round_shift
     int16x4_t out_1 = vrshrn_n_s32(temp3, DCT_CONST_BITS);
     int16x4_t out_3 = vrshrn_n_s32(temp4, DCT_CONST_BITS);
-    // Only transpose the first pass
-    if (i == 0) {
-      transpose_elems_inplace_s16_4x4(&out_0, &out_1, &out_2, &out_3);
-    }
+
+    transpose_elems_inplace_s16_4x4(&out_0, &out_1, &out_2, &out_3);
+
     *input_0 = out_0;
     *input_1 = out_1;
     *input_2 = out_2;
