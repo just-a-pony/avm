@@ -176,10 +176,6 @@ set_aom_config_var(CONFIG_WARP_PARAM_CLIP 1
                    "AV2 warp parameter range clamp unification")
 set_aom_config_var(CONFIG_RELAX_AFFINE_CONSTRAINTS 1
                    "AV2 relax affine constraints")
-set_aom_config_var(CONFIG_NEW_TX_PARTITION 1
-                   "AV2 new transform partitions experiment flag.")
-set_aom_config_var(CONFIG_4WAY_5WAY_TX_PARTITION 1
-                   "AV2 4way+5way txfm partitions experiment flag.")
 set_aom_config_var(CONFIG_INTER_COMPOUND_BY_JOINT 1
                    "AV2 inter compound mode by joint.")
 set_aom_config_var(CONFIG_NO_JOINTMODE_WHEN_SAME_REFINDEX 1
@@ -332,9 +328,6 @@ set_aom_config_var(CONFIG_EXTRA_DPB 1 "Use extra dpb")
 
 # CWG-E230: On core transform for AV2
 set_aom_config_var(CONFIG_CORE_TX 1 "AV2 core transform")
-
-set_aom_config_var(CONFIG_TX_PARTITION_CTX 1
-                   "Enable to optimize txfm partition context")
 set_aom_config_var(CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING 1
                    "TX partition type signalling bugfix")
 set_aom_config_var(CONFIG_INTERINTRA_IMPROVEMENT 1
@@ -595,8 +588,6 @@ set_aom_config_var(CONFIG_NEW_PART_CTX 1 "New partition context models")
 set_aom_config_var(CONFIG_EXT_SEG 1
                    "Extend the maximum number of segments to 16, CWG-F069.")
 
-set_aom_config_var(CONFIG_TX_PARTITION_RESTRICT 1
-                   "Disallow transform partition for large coding blocks.")
 set_aom_config_var(CONFIG_INTER_MODE_CONSOLIDATION 1
                    "Inter modes redesign and consolidation.")
 set_aom_config_var(

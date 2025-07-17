@@ -543,7 +543,6 @@ enum {
   TX_INVALID = 255  // Invalid transform size
 } UENUM1BYTE(TX_SIZE);
 
-#if CONFIG_NEW_TX_PARTITION
 //  Baseline transform partition types
 //
 //  Square:
@@ -579,35 +578,41 @@ enum {
 //  |       |      |   |   |
 //  +-------+      +---+---+
 //
-//  HORZ_M          VERT_M
-//  +-------+      +--+----+--+
-//  |       |      |  |    |  |
-//  +-------+      |  |    |  |
-//  |       |      |  |    |  |
-//  |       |      +--+----+--+
+//  HORZ4          VERT4
+//  +-------+      +--+--+--+--+
+//  |       |      |  |  |  |  |
+//  +-------+      |  |  |  |  |
+//  |       |      |  |  |  |  |
+//  +-------+      |  |  |  |  |
+//  |       |      +--+--+--+--+
 //  +-------+
 //  |       |
 //  +-------+
+//
+//  HORZ5          VERT5
+//  +---+---+      +--+----+--+
+//  |   |   |      |  |    |  |
+//  +---+---+      +--+    +--+
+//  |       |      |  |    |  |
+//  |       |      +--+----+--+
+//  +---+---+
+//  |   |   |
+//  +---+---+
 enum {
   TX_PARTITION_NONE,
   TX_PARTITION_SPLIT,
   TX_PARTITION_HORZ,
   TX_PARTITION_VERT,
-#if CONFIG_4WAY_5WAY_TX_PARTITION
   TX_PARTITION_HORZ4,
   TX_PARTITION_VERT4,
   TX_PARTITION_HORZ5,
   TX_PARTITION_VERT5,
-#endif  // CONFIG_4WAY_5WAY_TX_PARTITION
   TX_PARTITION_TYPES,
   TX_PARTITION_TYPES_INTRA = TX_PARTITION_TYPES,
   TX_PARTITION_INVALID = 255
 } UENUM1BYTE(TX_PARTITION_TYPE);
-#endif  // CONFIG_NEW_TX_PARTITION
 
-#if CONFIG_NEW_TX_PARTITION
 #define TX_PARTITION_TYPE_NUM (TX_PARTITION_TYPES - 1)
-#endif  // CONFIG_NEW_TX_PARTITION
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #define TX_PARTITION_TYPE_NUM_VERT_AND_HORZ 14
 #define TX_PARTITION_TYPE_NUM_VERT_OR_HORZ 3
@@ -1238,17 +1243,9 @@ enum {
 #define COMP_REF_TYPE_CONTEXTS 5
 #define UNI_COMP_REF_CONTEXTS 3
 
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
 // Group size from mapping block size to tx partition context
 #define TXFM_SPLIT_GROUP 9
 #define TXFM_PARTITION_GROUP 17
-#else
-#define TXFM_PARTITION_INTER_CONTEXTS ((TX_SIZES - TX_8X8) * 6 - 3)
-#endif  // CONFIG_TX_PARTITION_CTX
-#else
-#define TXFM_PARTITION_CONTEXTS ((TX_SIZES - TX_8X8) * 6 - 3)
-#endif  // CONFIG_NEW_TX_PARTITION
 typedef uint16_t TXFM_CONTEXT;
 
 typedef uint8_t INTRA_REGION_CONTEXT;

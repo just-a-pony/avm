@@ -879,14 +879,15 @@ typedef struct TX_SPEED_FEATURES {
   // or equal to BLOCK_16X16.
   bool use_largest_tx_size_for_small_bsize;
 
-#if CONFIG_NEW_TX_PARTITION
   // tx_type search pruning at low qp and resolution >= 1080p
   int restrict_tx_partition_type_search;
 
   // Prune RD evaluation of transform block using RD Cost of NONE transform
   // partition of inter modes that are evaluated so far
   bool prune_inter_tx_part_rd_eval;
-#endif  // CONFIG_NEW_TX_PARTITION
+
+  // Enable txfm partition search
+  bool enable_tx_partition;
 } TX_SPEED_FEATURES;
 
 typedef struct RD_CALC_SPEED_FEATURES {

@@ -474,22 +474,12 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
   const int max_blocks_wide = max_block_wide(xd, plane_bsize, plane);
 
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
-#if CONFIG_NEW_TX_PARTITION
   const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
-#endif  // CONFIG_NEW_TX_PARTITION
   const BLOCK_SIZE bsize_base = get_bsize_base(xd, mbmi, plane);
-#if CONFIG_NEW_TX_PARTITION
   const TX_SIZE plane_tx_size =
       plane ? av1_get_max_uv_txsize(bsize_base, pd->subsampling_x,
                                     pd->subsampling_y)
             : mbmi->inter_tx_size[index];
-#else
-  const TX_SIZE plane_tx_size =
-      plane ? av1_get_max_uv_txsize(bsize_base, pd->subsampling_x,
-                                    pd->subsampling_y)
-            : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
-                                                         blk_col)];
-#endif  // CONFIG_NEW_TX_PARTITION
 
   if (tx_size == plane_tx_size || plane) {
     plane_bsize = get_mb_plane_block_size(xd, mbmi, plane, pd->subsampling_x,
@@ -497,7 +487,6 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
     av1_update_and_record_txb_context(plane, block, blk_row, blk_col,
                                       plane_bsize, tx_size, arg);
   } else {
-#if CONFIG_NEW_TX_PARTITION
     TXB_POS_INFO txb_pos;
     TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
     get_tx_partition_sizes(mbmi->tx_partition_type[index], tx_size, &txb_pos,
@@ -517,28 +506,6 @@ static void tokenize_vartx(ThreadData *td, TX_SIZE tx_size,
                                         plane_bsize, sub_tx, arg);
       block += sub_step;
     }
-#else
-    // Half the block size in transform block unit.
-    const TX_SIZE sub_txs = sub_tx_size_map[tx_size];
-    const int bsw = tx_size_wide_unit[sub_txs];
-    const int bsh = tx_size_high_unit[sub_txs];
-    const int step = bsw * bsh;
-
-    assert(bsw > 0 && bsh > 0);
-
-    for (int row = 0; row < tx_size_high_unit[tx_size]; row += bsh) {
-      for (int col = 0; col < tx_size_wide_unit[tx_size]; col += bsw) {
-        const int offsetr = blk_row + row;
-        const int offsetc = blk_col + col;
-
-        if (offsetr >= max_blocks_high || offsetc >= max_blocks_wide) continue;
-
-        tokenize_vartx(td, sub_txs, plane_bsize, offsetr, offsetc, block, plane,
-                       arg);
-        block += step;
-      }
-    }
-#endif  // CONFIG_NEW_TX_PARTITION
   }
 }
 

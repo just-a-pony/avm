@@ -411,10 +411,8 @@ typedef struct {
   TX_SIZE tx_size;
   //! Txfm sizes used if the current mode is inter mode.
   TX_SIZE inter_tx_size[INTER_TX_SIZE_BUF_LEN];
-#if CONFIG_NEW_TX_PARTITION
   //! Txfm partitions used if the current mode is inter mode.
   TX_PARTITION_TYPE tx_partition_type[INTER_TX_SIZE_BUF_LEN];
-#endif  // CONFIG_NEW_TX_PARTITION
   //! Map showing which txfm block skips the txfm process.
   uint8_t blk_skip[MAX_MIB_SIZE * MAX_MIB_SIZE];
   //! Map showing the txfm types for each blcok.
@@ -1329,8 +1327,6 @@ typedef struct {
   /**@{*/
   //! skip_txfm_cost
   int skip_txfm_cost[SKIP_CONTEXTS][2];
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
   //! txfm_do_partition_cost
   int txfm_do_partition_cost[FSC_MODES][2][TXFM_SPLIT_GROUP][2];
   //! txfm_4way_partition_type_cost
@@ -1348,26 +1344,7 @@ typedef struct {
                                        [TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1]
                                        [2];
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#else
-  //! intra_4way_txfm_partition_cost
-  int intra_4way_txfm_partition_cost[2][TX_SIZE_CONTEXTS][4];
-  //! intra_2way_txfm_partition_cost
-  int intra_2way_txfm_partition_cost[2];
-  //! intra_2way_rect_txfm_partition_cost
-  int intra_2way_rect_txfm_partition_cost[2];
-  //! inter_4way_txfm_partition_cost
-  int inter_4way_txfm_partition_cost[2][TXFM_PARTITION_INTER_CONTEXTS][4];
-  //! inter_2way_txfm_partition_cost
-  int inter_2way_txfm_partition_cost[2];
-  //! inter_2way_rect_txfm_partition_cost
-  int inter_2way_rect_txfm_partition_cost[2];
-#endif  // CONFIG_TX_PARTITION_CTX
-#else   // CONFIG_NEW_TX_PARTITION
-  //! tx_size_cost
-  int tx_size_cost[TX_SIZES - 1][TX_SIZE_CONTEXTS][TX_SIZES];
-  //! txfm_partition_cost
-  int txfm_partition_cost[TXFM_PARTITION_CONTEXTS][2];
-#endif  // CONFIG_NEW_TX_PARTITION
+
 #if CONFIG_IMPROVE_LOSSLESS_TXM
   /*! Cost of signaling lossless transform size (4x4 or 8x8) */
   int lossless_tx_size_cost[BLOCK_SIZE_GROUPS][2][2];
@@ -2009,7 +1986,6 @@ typedef struct macroblock {
 /*!\cond */
 static INLINE int is_rect_tx_allowed_bsize(BLOCK_SIZE bsize) {
   static const char LUT[BLOCK_SIZES_ALL] = {
-#if CONFIG_NEW_TX_PARTITION
     0,  // BLOCK_4X4
     1,  // BLOCK_4X8
     1,  // BLOCK_8X4
@@ -2035,33 +2011,7 @@ static INLINE int is_rect_tx_allowed_bsize(BLOCK_SIZE bsize) {
     1,  // BLOCK_32X8
     1,  // BLOCK_16X64
     1,  // BLOCK_64X16
-#else
-    0,  // BLOCK_4X4
-    1,  // BLOCK_4X8
-    1,  // BLOCK_8X4
-    0,  // BLOCK_8X8
-    1,  // BLOCK_8X16
-    1,  // BLOCK_16X8
-    0,  // BLOCK_16X16
-    1,  // BLOCK_16X32
-    1,  // BLOCK_32X16
-    0,  // BLOCK_32X32
-    1,  // BLOCK_32X64
-    1,  // BLOCK_64X32
-    0,  // BLOCK_64X64
-    0,  // BLOCK_64X128
-    0,  // BLOCK_128X64
-    0,  // BLOCK_128X128
-    0,  // BLOCK_128X256
-    0,  // BLOCK_256X128
-    0,  // BLOCK_256X256
-    1,  // BLOCK_4X16
-    1,  // BLOCK_16X4
-    1,  // BLOCK_8X32
-    1,  // BLOCK_32X8
-    1,  // BLOCK_16X64
-    1,  // BLOCK_64X16
-#endif  // CONFIG_NEW_TX_PARTITION
+
     1,  // BLOCK_4X32
     1,  // BLOCK_32X4
     1,  // BLOCK_8X64

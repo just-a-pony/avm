@@ -2337,13 +2337,6 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
 #endif  // CONFIG_DIP
   }
 
-#if !CONFIG_TX_PARTITION_CTX
-  const int mi_row = xd->mi_row;
-  const int mi_col = xd->mi_col;
-  xd->above_txfm_context = cm->above_contexts.txfm[xd->tile.tile_row] + mi_col;
-  xd->left_txfm_context =
-      xd->left_txfm_context_buffer + (mi_row & MAX_MIB_MASK);
-#endif  // !CONFIG_TX_PARTITION_CTX
   if (av1_allow_intrabc(cm, xd
 #if CONFIG_ENABLE_IBC_NAT
                         ,
@@ -4815,13 +4808,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 #endif  // !CONFIG_SKIP_TXFM_OPT
 
   mbmi->current_qindex = xd->current_base_qindex;
-
-#if !CONFIG_TX_PARTITION_CTX
-  xd->above_txfm_context =
-      cm->above_contexts.txfm[xd->tile.tile_row] + xd->mi_col;
-  xd->left_txfm_context =
-      xd->left_txfm_context_buffer + (xd->mi_row & MAX_MIB_MASK);
-#endif  // !CONFIG_TX_PARTITION_CTX
 
 #if CONFIG_IBC_SR_EXT
   if (!inter_block &&

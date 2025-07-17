@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 3-Clause Clear License
@@ -1269,20 +1269,13 @@ static void encode_block_inter(int plane, int block, int blk_row, int blk_col,
   const int max_blocks_wide = max_block_wide(xd, plane_bsize, plane);
 
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
-#if CONFIG_NEW_TX_PARTITION
   const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
   const BLOCK_SIZE bsize_base = get_bsize_base(xd, mbmi, plane);
   const TX_SIZE plane_tx_size =
       plane ? av1_get_max_uv_txsize(bsize_base, pd->subsampling_x,
                                     pd->subsampling_y)
             : mbmi->inter_tx_size[index];
-#else
-  const TX_SIZE plane_tx_size =
-      plane ? av1_get_max_uv_txsize(mbmi->sb_type[xd->tree_type == CHROMA_PART],
-                                    pd->subsampling_x, pd->subsampling_y)
-            : mbmi->inter_tx_size[av1_get_txb_size_index(plane_bsize, blk_row,
-                                                         blk_col)];
-#endif  // CONFIG_NEW_TX_PARTITION
+
   if (!plane) {
     assert(tx_size_wide[tx_size] >= tx_size_wide[plane_tx_size] &&
            tx_size_high[tx_size] >= tx_size_high[plane_tx_size]);
@@ -1292,7 +1285,6 @@ static void encode_block_inter(int plane, int block, int blk_row, int blk_col,
     encode_block(plane, block, blk_row, blk_col, plane_bsize, tx_size, arg,
                  dry_run);
   } else {
-#if CONFIG_NEW_TX_PARTITION
     get_tx_partition_sizes(mbmi->tx_partition_type[index], tx_size,
                            &mbmi->txb_pos, mbmi->sub_txs);
     for (int txb_idx = 0; txb_idx < mbmi->txb_pos.n_partitions; ++txb_idx) {
@@ -1307,30 +1299,6 @@ static void encode_block_inter(int plane, int block, int blk_row, int blk_col,
                    dry_run);
       block += sub_step;
     }
-#else
-    assert(tx_size < TX_SIZES_ALL);
-    const TX_SIZE sub_txs = sub_tx_size_map[tx_size];
-    assert(IMPLIES(tx_size <= TX_4X4, sub_txs == tx_size));
-    assert(IMPLIES(tx_size > TX_4X4, sub_txs < tx_size));
-    // This is the square transform block partition entry point.
-    const int bsw = tx_size_wide_unit[sub_txs];
-    const int bsh = tx_size_high_unit[sub_txs];
-    const int step = bsh * bsw;
-    assert(bsw > 0 && bsh > 0);
-
-    for (int row = 0; row < tx_size_high_unit[tx_size]; row += bsh) {
-      for (int col = 0; col < tx_size_wide_unit[tx_size]; col += bsw) {
-        const int offsetr = blk_row + row;
-        const int offsetc = blk_col + col;
-
-        if (offsetr >= max_blocks_high || offsetc >= max_blocks_wide) continue;
-
-        encode_block_inter(plane, block, offsetr, offsetc, plane_bsize, sub_txs,
-                           arg, dry_run);
-        block += step;
-      }
-    }
-#endif  // CONFIG_NEW_TX_PARTITION
   }
 }
 
@@ -1828,7 +1796,6 @@ void av1_encode_intra_block_plane(const struct AV1_COMP *cpi, MACROBLOCK *x,
   if (enable_optimize_b) {
     av1_get_entropy_contexts(plane_bsize, pd, ta, tl);
   }
-#if CONFIG_NEW_TX_PARTITION
   if (plane == AOM_PLANE_Y && !xd->lossless[xd->mi[0]->segment_id]) {
     MB_MODE_INFO *mbmi = xd->mi[0];
     const TX_SIZE max_tx_size = max_txsize_rect_lookup[plane_bsize];
@@ -1879,10 +1846,6 @@ void av1_encode_intra_block_plane(const struct AV1_COMP *cpi, MACROBLOCK *x,
     av1_foreach_transformed_block_in_plane(
         xd, plane_bsize, plane, encode_block_intra_and_set_context, &arg);
   }
-#else
-  av1_foreach_transformed_block_in_plane(
-      xd, plane_bsize, plane, encode_block_intra_and_set_context, &arg);
-#endif  // CONFIG_NEW_TX_PARTITION
 }
 
 // Jointly encode two chroma components for an intra block.

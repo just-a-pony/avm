@@ -119,6 +119,7 @@ struct av1_extracfg {
   unsigned int erp_pruning_level;
   int use_ml_erp_pruning;
   unsigned int enable_ext_partitions;
+  unsigned int enable_tx_partition;
   int enable_rect_partitions;  // enable rectangular partitions for sequence
   int enable_uneven_4way_partitions;  // enable 1:2:4:1 and 1:4:2:1 partitions
                                       // for sequence
@@ -481,6 +482,7 @@ static struct av1_extracfg default_extra_cfg = {
   5,                            // aggressiveness for erp pruning
   2,                            // use ml model for erp pruning
   1,                            // enable extended partitions
+  1,                            // enable txfm partition
   1,                            // enable rectangular partitions
   1,                            // enable 1:4 and 4:1 partitions
   0,                            // disable ml based transform speed features
@@ -1016,6 +1018,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->erp_pruning_level = extra_cfg->erp_pruning_level;
   cfg->use_ml_erp_pruning = extra_cfg->use_ml_erp_pruning;
   cfg->enable_ext_partitions = extra_cfg->enable_ext_partitions;
+  cfg->enable_tx_partition = extra_cfg->enable_tx_partition;
   cfg->enable_rect_partitions = extra_cfg->enable_rect_partitions;
   cfg->enable_uneven_4way_partitions = extra_cfg->enable_uneven_4way_partitions;
   cfg->disable_ml_transform_speed_features =
@@ -1166,6 +1169,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->erp_pruning_level = cfg->erp_pruning_level;
   extra_cfg->use_ml_erp_pruning = cfg->use_ml_erp_pruning;
   extra_cfg->enable_ext_partitions = cfg->enable_ext_partitions;
+  extra_cfg->enable_tx_partition = cfg->enable_tx_partition;
   extra_cfg->enable_sdp = cfg->enable_sdp;
   extra_cfg->enable_extended_sdp = cfg->enable_extended_sdp;
   extra_cfg->enable_mrls = cfg->enable_mrls;
@@ -1894,6 +1898,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   txfm_cfg->use_intra_default_tx_only = extra_cfg->use_intra_default_tx_only;
   txfm_cfg->disable_ml_transform_speed_features =
       extra_cfg->disable_ml_transform_speed_features;
+  txfm_cfg->enable_tx_partition = extra_cfg->enable_tx_partition;
   txfm_cfg->enable_ist = extra_cfg->enable_ist && !extra_cfg->lossless;
   txfm_cfg->enable_inter_ist =
       extra_cfg->enable_inter_ist && !extra_cfg->lossless;
@@ -4186,6 +4191,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ext_partitions,
                               argv, err_string)) {
     extra_cfg.enable_ext_partitions = arg_parse_int_helper(&arg, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tx_partition,
+                              argv, err_string)) {
+    extra_cfg.enable_tx_partition = arg_parse_int_helper(&arg, err_string);
   } else if (arg_match_helper(
                  &arg,
                  &g_av1_codec_arg_defs.disable_ml_transform_speed_features,
@@ -4796,6 +4804,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
         5,    // erp_pruning_level
         0,    // use_ml_erp_pruning
         1,    // enable_ext_partitions
+        1,    // enable_tx_partition
         0,   1, 1, /*extended sdp*/ 1,
         1,
 #if CONFIG_TMVP_SIMPLIFICATIONS_F085

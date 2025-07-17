@@ -291,6 +291,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_ext_partitions;
+  /*!\brief enable txfm partitions
+   *
+   */
+  unsigned int enable_tx_partition;
   /*!\brief disable ml-based speed-up for transform search
    *
    */

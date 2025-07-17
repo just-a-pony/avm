@@ -618,14 +618,9 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
 #endif  // !CONFIG_INSPECTION
 
   if (is_inter_block(mbmi, xd->tree_type)) {
-#if CONFIG_NEW_TX_PARTITION
     const int txb_idx = get_tx_partition_idx(mbmi, plane);
     mbmi->is_wide_angle[plane > 0][txb_idx] = 0;
     mbmi->mapped_intra_mode[plane > 0][txb_idx] = DC_PRED;
-#else
-    mbmi->is_wide_angle[plane > 0] = 0;
-    mbmi->mapped_intra_mode[plane > 0] = DC_PRED;
-#endif  // CONFIG_NEW_TX_PARTITION
   } else {
     PREDICTION_MODE mode = (plane == PLANE_TYPE_Y ? mbmi->mode : mbmi->uv_mode);
     const int angle_delta =

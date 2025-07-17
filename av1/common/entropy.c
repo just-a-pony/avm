@@ -324,23 +324,11 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->single_ref_cdf, 2);
   RESET_CDF_COUNTER(fc->comp_ref0_cdf, 2);
   RESET_CDF_COUNTER(fc->comp_ref1_cdf, 2);
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
   RESET_CDF_COUNTER(fc->txfm_do_partition_cdf, 2);
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   RESET_CDF_COUNTER(fc->txfm_2or3_way_partition_type_cdf, 2);
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   RESET_CDF_COUNTER(fc->txfm_4way_partition_type_cdf, TX_PARTITION_TYPE_NUM);
-#else
-  // Square blocks
-  RESET_CDF_COUNTER(fc->inter_4way_txfm_partition_cdf[0], 4);
-  // Rectangular blocks
-  RESET_CDF_COUNTER(fc->inter_4way_txfm_partition_cdf[1], 4);
-  RESET_CDF_COUNTER(fc->inter_2way_txfm_partition_cdf, 2);
-#endif  // CONFIG_TX_PARTITION_CTX
-#else   // CONFIG_NEW_TX_PARTITION
-  RESET_CDF_COUNTER(fc->txfm_partition_cdf, 2);
-#endif  // CONFIG_NEW_TX_PARTITION
 #if CONFIG_IMPROVE_LOSSLESS_TXM
   RESET_CDF_COUNTER(fc->lossless_tx_size_cdf, 2);
   RESET_CDF_COUNTER(fc->lossless_inter_tx_type_cdf, 2);
@@ -464,20 +452,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
     }
   }
   RESET_CDF_COUNTER(fc->switchable_interp_cdf, SWITCHABLE_FILTERS);
-#if CONFIG_NEW_TX_PARTITION
-#if !CONFIG_TX_PARTITION_CTX
-  RESET_CDF_COUNTER(fc->intra_4way_txfm_partition_cdf[0], 4);
-  // Rectangular blocks
-  RESET_CDF_COUNTER(fc->intra_4way_txfm_partition_cdf[1], 4);
-  RESET_CDF_COUNTER(fc->intra_2way_txfm_partition_cdf, 2);
-#endif  // !CONFIG_TX_PARTITION_CTX
-#else
-  RESET_CDF_COUNTER_STRIDE(fc->tx_size_cdf[0], MAX_TX_DEPTH,
-                           CDF_SIZE(MAX_TX_DEPTH + 1));
-  RESET_CDF_COUNTER(fc->tx_size_cdf[1], MAX_TX_DEPTH + 1);
-  RESET_CDF_COUNTER(fc->tx_size_cdf[2], MAX_TX_DEPTH + 1);
-  RESET_CDF_COUNTER(fc->tx_size_cdf[3], MAX_TX_DEPTH + 1);
-#endif  // CONFIG_NEW_TX_PARTITION
   RESET_CDF_COUNTER(fc->delta_q_cdf, DELTA_Q_PROBS + 1);
   RESET_CDF_COUNTER(fc->delta_lf_cdf, DELTA_LF_PROBS + 1);
   for (int i = 0; i < FRAME_LF_COUNT; i++) {

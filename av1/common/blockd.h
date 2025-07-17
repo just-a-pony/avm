@@ -461,20 +461,14 @@ typedef struct CHROMA_REF_INFO {
   BLOCK_SIZE bsize_base;
 } CHROMA_REF_INFO;
 
-#if CONFIG_4WAY_5WAY_TX_PARTITION
 #define MAX_TX_PARTITIONS 5
-#else
-#define MAX_TX_PARTITIONS 4
-#endif  // CONFIG_4WAY_5WAY_TX_PARTITION
 
-#if CONFIG_NEW_TX_PARTITION
 // txfm block position information inside a coding block.
 typedef struct TXB_POS_INFO {
   int row_offset[MAX_TX_PARTITIONS];  // row starting offset
   int col_offset[MAX_TX_PARTITIONS];  // column starting offset
   int n_partitions;                   // number of txfm partitions
 } TXB_POS_INFO;
-#endif  // CONFIG_NEW_TX_PARTITION
 
 #define INTER_TX_SIZE_BUF_LEN 64
 #define TXK_TYPE_BUF_LEN 64
@@ -533,10 +527,8 @@ typedef struct MB_MODE_INFO {
   int_mv mv[2];
   /*! \brief The reference frames for the MV */
   MV_REFERENCE_FRAME ref_frame[2];
-#if CONFIG_NEW_TX_PARTITION
   /*! \brief Transform partition type. */
   TX_PARTITION_TYPE tx_partition_type[INTER_TX_SIZE_BUF_LEN];
-#endif  // CONFIG_NEW_TX_PARTITION
   /*! \brief Filter used in subpel interpolation. */
   int interp_fltr;
   /*! The maximum mv_precision allowed for the given partition block. */
@@ -628,17 +620,10 @@ typedef struct MB_MODE_INFO {
    * reference line selection. */
   bool multi_line_mrl;
 #if CONFIG_WAIP
-#if CONFIG_NEW_TX_PARTITION
   /*! \brief Whether this luma/chroma mode is wide angle mode. */
   uint8_t is_wide_angle[2][MAX_TX_PARTITIONS];
   /*! \brief The mapped luma/chroma prediction mode */
   PREDICTION_MODE mapped_intra_mode[2][MAX_TX_PARTITIONS];
-#else
-  /*! \brief Whether this luma/chroma mode is wide angle mode. */
-  uint8_t is_wide_angle[2];
-  /*! \brief The mapped luma/chroma prediction mode */
-  PREDICTION_MODE mapped_intra_mode[2];
-#endif  // CONFIG_NEW_TX_PARTITION
 #endif  // CONFIG_WAIP
 
 #if CONFIG_LOSSLESS_DPCM
@@ -674,14 +659,12 @@ typedef struct MB_MODE_INFO {
   TX_SIZE tx_size;
   /*! \brief Transform size when recursive txfm tree is on. */
   uint8_t inter_tx_size[INTER_TX_SIZE_BUF_LEN];
-#if CONFIG_NEW_TX_PARTITION
   /*! \brief Transform block relative position information. */
   struct TXB_POS_INFO txb_pos;
   /*! \brief Transform size stored for each txfm partition sub-block. */
   TX_SIZE sub_txs[MAX_TX_PARTITIONS];
   /*! \brief Transform partition sub-block indexes. */
   int txb_idx;
-#endif  // CONFIG_NEW_TX_PARTITION
   /**@}*/
   /*****************************************************************************
    * \name Loop Filter Info
@@ -940,26 +923,17 @@ static INLINE int is_inter_block(const MB_MODE_INFO *mbmi, int tree_type) {
 static INLINE int get_intra_mode(const MB_MODE_INFO *mbmi, int plane) {
   if (plane == AOM_PLANE_Y)
 #if CONFIG_WAIP
-#if CONFIG_NEW_TX_PARTITION
     return mbmi->is_wide_angle[0][mbmi->txb_idx]
                ? mbmi->mapped_intra_mode[0][mbmi->txb_idx]
                : mbmi->mode;
-#else
-    return mbmi->is_wide_angle[0] ? mbmi->mapped_intra_mode[0] : mbmi->mode;
-#endif  // CONFIG_NEW_TX_PARTITION
 #else
     return mbmi->mode;
 #endif  // CONFIG_WAIP
   else
 #if CONFIG_WAIP
-#if CONFIG_NEW_TX_PARTITION
     return mbmi->is_wide_angle[1][0]
                ? get_uv_mode(mbmi->mapped_intra_mode[1][0])
                : get_uv_mode(mbmi->uv_mode);
-#else
-    return mbmi->is_wide_angle[1] ? get_uv_mode(mbmi->mapped_intra_mode[1])
-                                  : get_uv_mode(mbmi->uv_mode);
-#endif  // CONFIG_NEW_TX_PARTITION
 #else
     return get_uv_mode(mbmi->uv_mode);
 #endif  // CONFIG_WAIP
@@ -2387,30 +2361,6 @@ typedef struct macroblockd {
    * Note: These contain actual data, NOT pointers.
    */
   PARTITION_CONTEXT left_partition_context[MAX_MB_PLANE][MAX_MIB_SIZE];
-#if !CONFIG_TX_PARTITION_CTX
-  /*!
-   * Transform contexts for the above blocks.
-   * above_txfm_context[i] corresponds to above transform context for ith mi col
-   * from the current position (mi row and mi column) for this *frame*.
-   * This is a pointer into 'cm->above_contexts.txfm'.
-   */
-  TXFM_CONTEXT *above_txfm_context;
-  /*!
-   * Transform contexts for the left blocks.
-   * left_txfm_context[i] corresponds to left transform context for ith mi row
-   * from the current position (mi_row and mi_col) for this *superblock*.
-   * This is a pointer into 'left_txfm_context_buffer'.
-   */
-  TXFM_CONTEXT *left_txfm_context;
-
-  /*!
-   * left_txfm_context_buffer[i] is the left transform context for ith mi_row
-   * in this *superblock*.
-   * Behaves like an internal actual buffer which 'left_txt_context' points to,
-   * and never accessed directly except to fill in initial default values.
-   */
-  TXFM_CONTEXT left_txfm_context_buffer[MAX_MIB_SIZE];
-#endif  // !CONFIG_TX_PARTITION_CTX
 
   /**
    * \name Default values for the two restoration filters for each plane.
@@ -3137,7 +3087,6 @@ static INLINE BLOCK_SIZE get_mb_plane_block_size_from_tree_type(
  * const int bw_uint_log2 = mi_size_wide_log2[bsize];
  * const int stride_log2 = bw_uint_log2 - tx_w_log2;
  */
-#if CONFIG_NEW_TX_PARTITION
 static INLINE int av1_get_txb_size_index(BLOCK_SIZE bsize, int blk_row,
                                          int blk_col) {
   (void)bsize;
@@ -3159,28 +3108,6 @@ static INLINE int av1_get_inter_tx_index(BLOCK_SIZE bsize, int blk_row,
   assert(index < 1024);
   return index;
 }
-#else
-static INLINE int av1_get_txb_size_index(BLOCK_SIZE bsize, int blk_row,
-                                         int blk_col) {
-  static const uint8_t tw_w_log2_table[BLOCK_SIZES_ALL] = {
-    0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 0, 1, 1, 2, 2, 3, 0, 2, 1, 3, 0, 3,
-  };
-  static const uint8_t tw_h_log2_table[BLOCK_SIZES_ALL] = {
-    0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 1, 0, 2, 1, 3, 2, 2, 0, 3, 1, 3, 0,
-  };
-  static const uint8_t stride_log2_table[BLOCK_SIZES_ALL] = {
-    0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 2, 2,
-    2, 3, 3, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
-  };
-  const int index =
-      ((blk_row >> tw_h_log2_table[bsize]) << stride_log2_table[bsize]) +
-      (blk_col >> tw_w_log2_table[bsize]);
-  assert(index < INTER_TX_SIZE_BUF_LEN);
-  return index;
-}
-#endif  // CONFIG_NEW_TX_PARTITION
 
 #if CONFIG_INSPECTION
 /*
@@ -3197,7 +3124,6 @@ static INLINE int av1_get_txb_size_index(BLOCK_SIZE bsize, int blk_row,
 static INLINE int av1_get_txk_type_index(BLOCK_SIZE bsize, int blk_row,
                                          int blk_col) {
   int index = 0;
-#if CONFIG_NEW_TX_PARTITION
   assert(bsize < BLOCK_SIZES_ALL);
   TX_SIZE txs = max_txsize_rect_lookup[bsize];
   // Get smallest possible sub_tx size
@@ -3209,7 +3135,7 @@ static INLINE int av1_get_txk_type_index(BLOCK_SIZE bsize, int blk_row,
   index = ((blk_row >> tx_h_log2) << stride_log2) + (blk_col >> tx_w_log2);
   assert(index < TXK_TYPE_BUF_LEN);
   return index;
-#endif  // CONFIG_NEW_TX_PARTITION
+
   static const uint8_t tw_w_log2_table[BLOCK_SIZES_ALL] = {
     0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 1, 2, 2,
   };
@@ -3304,19 +3230,6 @@ static INLINE int tx_size_is_depth0(TX_SIZE tx_size, BLOCK_SIZE bsize) {
   TX_SIZE ctx_size = max_txsize_rect_lookup[bsize];
   return ctx_size == tx_size;
 }
-
-#if !CONFIG_NEW_TX_PARTITION
-static INLINE int tx_size_to_depth(TX_SIZE tx_size, BLOCK_SIZE bsize) {
-  TX_SIZE ctx_size = max_txsize_rect_lookup[bsize];
-  int depth = 0;
-  while (tx_size != ctx_size) {
-    depth++;
-    ctx_size = sub_tx_size_map[ctx_size];
-    assert(depth <= MAX_TX_DEPTH);
-  }
-  return depth;
-}
-#endif
 
 #define PRIMARY_TX_BITS 4  // # of bits for primary tx
 

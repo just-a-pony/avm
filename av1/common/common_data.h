@@ -70,8 +70,6 @@ static const uint8_t size_group_lookup[BLOCK_SIZES_ALL] = {
   3, 3, 3, 0, 0, 1, 1, 2, 2, 1, 1, 2, 2, 2, 2,
 };
 
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
 // Maps a block size to a transform partition context.
 // 1) 0: for block sizes do not allow 4way partition
 // 2) For 8x8 <= square block size < 64x64, assuming i mapping value is a used
@@ -84,7 +82,6 @@ static const uint8_t size_to_tx_part_group_lookup[BLOCK_SIZES_ALL] = {
   0, 0, 0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 7, 7,
   7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 };
-#endif  // CONFIG_TX_PARTITION_CTX
 
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 /*
@@ -173,21 +170,6 @@ static const uint8_t size_to_tx_type_group_lookup[BLOCK_SIZES_ALL] = {
   0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 10, 10, 10,
   10, 10, 10, 11, 12, 13, 14, 15, 16, 11, 12, 13, 14, 11, 12
 };
-#else
-#if CONFIG_TX_PARTITION_CTX
-// Maps a block size to a transform partition context.
-// 1) 0: for block sizes do not allow 4way partition
-// 2) For 8x8 <= square block size < 64x64, assuming i mapping value is a used
-//    for NxN square block size, then (i + 1) is the mapping value of (N)x(2N)
-//    and (2N)x(N) sizes.
-// 3) For block size >= 64x64, the mapping value is 7
-// 4) For 1:4/4:1 and 1:8/8:1 block sizes, mapping value is 8
-static const uint8_t size_to_tx_part_group_lookup[BLOCK_SIZES_ALL] = {
-  0, 0, 0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 7, 7,
-  7, 7, 7, 0, 0, 8, 8, 8, 8, 0, 0, 8, 8, 0, 0
-};
-#endif  // CONFIG_TX_PARTITION_CTX
-#endif  // CONFIG_NEW_TX_PARTITION
 
 static const uint8_t fsc_bsize_groups[BLOCK_SIZES_ALL] = {
   0, 1, 1, 2, 3, 3, 4, 5, 5, 5, 6, 6, 6, 6, 6, 6,
@@ -508,7 +490,7 @@ static const TX_TYPE_1D htx_tab[TX_TYPES] = {
 
 /* clang-format on */
 
-#if CONFIG_NEW_TX_PARTITION && CONFIG_INSPECTION
+#if CONFIG_INSPECTION
 // Smallest sub_tx size units. Used to compute the index in the
 // tx type map.
 // TODO(urvang): Is this even required?
@@ -533,7 +515,7 @@ static const TX_SIZE smallest_sub_tx_size_map[TX_SIZES_ALL] = {
   TX_4X16,   // TX_16X64
   TX_16X4,   // TX_64X16
 };
-#endif  // CONFIG_NEW_TX_PARTITION && CONFIG_INSPECTION
+#endif  // CONFIG_INSPECTION
 
 static const TX_SIZE sub_tx_size_map[TX_SIZES_ALL] = {
   TX_4X4,    // TX_4X4

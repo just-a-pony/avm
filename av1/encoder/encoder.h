@@ -328,6 +328,10 @@ typedef struct {
    */
   bool disable_ml_transform_speed_features;
   /*!
+   * Flag to enable txfm partition.
+   */
+  bool enable_tx_partition;
+  /*!
    * Flag to indicate if 64-pt transform should be enabled.
    */
   bool enable_tx64;
@@ -1656,8 +1660,6 @@ typedef struct FRAME_COUNTS {
 #if CONFIG_MORPH_PRED
   unsigned int morph_pred_count[3][2];
 #endif  // CONFIG_MORPH_PRED
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
   unsigned int txfm_do_partition[FSC_MODES][2][TXFM_SPLIT_GROUP][2];
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   unsigned int txfm_4way_partition_type[FSC_MODES][2]
@@ -1670,16 +1672,6 @@ typedef struct FRAME_COUNTS {
   unsigned int txfm_4way_partition_type[FSC_MODES][2][TXFM_PARTITION_GROUP - 1]
                                        [TX_PARTITION_TYPE_NUM];
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#else
-  unsigned int intra_4way_txfm_partition[2][TX_SIZE_CONTEXTS][4];
-  unsigned int intra_2way_txfm_partition[2];
-  unsigned int inter_4way_txfm_partition[2][TXFM_PARTITION_INTER_CONTEXTS][4];
-  unsigned int inter_2way_txfm_partition[2];
-#endif  // CONFIG_TX_PARTITION_CTX
-#else
-  unsigned int txfm_partition[TXFM_PARTITION_CONTEXTS][2];
-  unsigned int intra_tx_size[MAX_TX_CATS][TX_SIZE_CONTEXTS][MAX_TX_DEPTH + 1];
-#endif  // CONFIG_NEW_TX_PARTITION
   unsigned int skip_mode_cnts[SKIP_MODE_CONTEXTS][2];
   unsigned int skip_txfm[SKIP_CONTEXTS][2];
   unsigned int comp_group_idx[COMP_GROUP_IDX_CONTEXTS][2];

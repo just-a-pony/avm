@@ -378,12 +378,10 @@ static int64_t intra_model_yrd(const AV1_COMP *const cpi, MACROBLOCK *const x,
   }
 #endif  // CONFIG_IMPROVE_LOSSLESS_TXM
 
-#if CONFIG_NEW_TX_PARTITION
   mbmi->tx_partition_type[0] = TX_PARTITION_NONE;
   get_tx_partition_sizes(mbmi->tx_partition_type[0], tx_size, &mbmi->txb_pos,
                          mbmi->sub_txs);
   mbmi->txb_idx = 0;
-#endif  // CONFIG_NEW_TX_PARTITION
 
   // Prediction.
   for (row = 0; row < max_blocks_high; row += stepr) {

@@ -440,8 +440,6 @@ typedef struct frame_contexts {
                             [CDF_SIZE(2)];
   aom_cdf_prob comp_ref1_cdf[REF_CONTEXTS][COMPREF_BIT_TYPES]
                             [INTER_REFS_PER_FRAME - 1][CDF_SIZE(2)];
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
   aom_cdf_prob txfm_do_partition_cdf[FSC_MODES][2][TXFM_SPLIT_GROUP]
                                     [CDF_SIZE(2)];
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
@@ -457,14 +455,7 @@ typedef struct frame_contexts {
                                            [TXFM_PARTITION_GROUP - 1]
                                            [CDF_SIZE(TX_PARTITION_TYPE_NUM)];
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#else
-  aom_cdf_prob inter_4way_txfm_partition_cdf[2][TXFM_PARTITION_INTER_CONTEXTS]
-                                            [CDF_SIZE(4)];
-  aom_cdf_prob inter_2way_txfm_partition_cdf[CDF_SIZE(2)];
-#endif  // CONFIG_TX_PARTITION_CTX
-#else   // CONFIG_NEW_TX_PARTITION
-  aom_cdf_prob txfm_partition_cdf[TXFM_PARTITION_CONTEXTS][CDF_SIZE(2)];
-#endif  // CONFIG_NEW_TX_PARTITION
+
 #if CONFIG_IMPROVE_LOSSLESS_TXM
   aom_cdf_prob lossless_tx_size_cdf[BLOCK_SIZE_GROUPS][2][CDF_SIZE(2)];
   aom_cdf_prob lossless_inter_tx_type_cdf[CDF_SIZE(2)];
@@ -590,15 +581,6 @@ typedef struct frame_contexts {
 #endif  // !CONFIG_NEW_PART_CTX
   aom_cdf_prob switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS]
                                     [CDF_SIZE(SWITCHABLE_FILTERS)];
-#if CONFIG_NEW_TX_PARTITION
-#if !CONFIG_TX_PARTITION_CTX
-  aom_cdf_prob intra_4way_txfm_partition_cdf[2][TX_SIZE_CONTEXTS][CDF_SIZE(4)];
-  aom_cdf_prob intra_2way_txfm_partition_cdf[CDF_SIZE(2)];
-#endif  // !CONFIG_TX_PARTITION_CTX
-#else
-  aom_cdf_prob tx_size_cdf[MAX_TX_CATS][TX_SIZE_CONTEXTS]
-                          [CDF_SIZE(MAX_TX_DEPTH + 1)];
-#endif  // CONFIG_NEW_TX_PARTITION
   aom_cdf_prob delta_q_cdf[CDF_SIZE(DELTA_Q_PROBS + 1)];
   aom_cdf_prob delta_lf_multi_cdf[FRAME_LF_COUNT][CDF_SIZE(DELTA_LF_PROBS + 1)];
   aom_cdf_prob delta_lf_cdf[CDF_SIZE(DELTA_LF_PROBS + 1)];

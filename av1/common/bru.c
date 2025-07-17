@@ -293,12 +293,7 @@ void bru_set_default_inter_mb_mode_info(const AV1_COMMON *const cm,
   set_default_precision_set(cm, mbmi, cm->seq_params.sb_size);
   set_most_probable_mv_precision(cm, mbmi, cm->seq_params.sb_size);
   mbmi->interp_fltr = MULTITAP_SHARP;
-#if !CONFIG_TX_PARTITION_CTX
-  xd->above_txfm_context =
-      cm->above_contexts.txfm[xd->tile.tile_row] + xd->mi_col;
-  xd->left_txfm_context =
-      xd->left_txfm_context_buffer + (xd->mi_row & MAX_MIB_MASK);
-#endif
+
   if (is_bru_not_active_and_not_on_partial_border(cm, xd->mi_col, xd->mi_row,
                                                   bsize)) {
     mbmi->tx_size = TX_64X64;

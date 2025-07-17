@@ -324,7 +324,6 @@ static bool is_tu_edge_helper(TX_SIZE tx_size, EDGE_DIR edge_dir,
   return !(relative_coord & tu_mask);
 }
 
-#if CONFIG_NEW_TX_PARTITION
 static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
                                   const MB_MODE_INFO *const mbmi,
                                   const EDGE_DIR edge_dir, const int mi_row,
@@ -403,7 +402,6 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
     const TX_PARTITION_TYPE partition = mbmi->tx_partition_type[txp_index];
 
     const TX_SIZE max_tx_size = max_txsize_rect_lookup[sb_type];
-#if CONFIG_4WAY_5WAY_TX_PARTITION
     if (partition == TX_PARTITION_HORZ5 || partition == TX_PARTITION_VERT5) {
 #if CONFIG_LF_SUB_PU
       if (is_tx_m_partition != NULL) {
@@ -448,9 +446,7 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 
       assert(tmp_tx_size < TX_SIZES_ALL);
       tx_size = tmp_tx_size;
-    } else
-#endif  // CONFIG_4WAY_5WAY_TX_PARTITION
-    {
+    } else {
       tx_size = get_tx_partition_one_size(partition, max_tx_size);
       *tu_edge = is_tu_edge_helper(tx_size, edge_dir, blk_row, blk_col);
     }
@@ -473,47 +469,6 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 
   return tx_size;
 }
-#else
-static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
-                                  const MB_MODE_INFO *const mbmi,
-                                  const EDGE_DIR edge_dir, const int mi_row,
-                                  const int mi_col, const int plane,
-                                  const TREE_TYPE tree_type,
-                                  const struct macroblockd_plane *plane_ptr) {
-  assert(mbmi != NULL);
-  if (xd && xd->lossless[mbmi->segment_id]) return TX_4X4;
-  const int plane_type = av1_get_sdp_idx(tree_type);
-  const BLOCK_SIZE bsize_base =
-      get_bsize_base_from_tree_type(mbmi, tree_type, plane);
-
-  TX_SIZE tx_size =
-      (plane == AOM_PLANE_Y)
-          ? mbmi->tx_size
-          : av1_get_max_uv_txsize(bsize_base, plane_ptr->subsampling_x,
-                                  plane_ptr->subsampling_y);
-  assert(tx_size < TX_SIZES_ALL);
-  if ((plane == AOM_PLANE_Y) && is_inter_block(mbmi, SHARED_PART) &&
-      !mbmi->skip_txfm[SHARED_PART]) {
-    const BLOCK_SIZE sb_type = mbmi->sb_type[plane_type];
-    const int blk_row = mi_row - mbmi->mi_row_start;
-    const int blk_col = mi_col - mbmi->mi_col_start;
-    assert(blk_row >= 0);
-    assert(blk_col >= 0);
-    const TX_SIZE mb_tx_size =
-        mbmi->inter_tx_size[av1_get_txb_size_index(sb_type, blk_row, blk_col)];
-    assert(mb_tx_size < TX_SIZES_ALL);
-    tx_size = mb_tx_size;
-  }
-
-  // since in case of chrominance or non-square transform need to convert
-  // transform size into transform size in particular direction.
-  // for vertical edge, filter direction is horizontal, for horizontal
-  // edge, filter direction is vertical.
-  tx_size = (VERT_EDGE == edge_dir) ? txsize_horz_map[tx_size]
-                                    : txsize_vert_map[tx_size];
-  return tx_size;
-}
-#endif  // CONFIG_NEW_TX_PARTITION
 
 typedef struct AV1_DEBLOCKING_PARAMETERS {
   // length of the filter applied to the outer edge

@@ -42,9 +42,7 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
   int filter_intra_selected_flag = 0;
   FILTER_INTRA_MODE mode;
   TX_SIZE best_tx_size = TX_8X8;
-#if CONFIG_NEW_TX_PARTITION
   TX_PARTITION_TYPE best_tx_partition = TX_PARTITION_NONE;
-#endif  // CONFIG_NEW_TX_PARTITION
   FILTER_INTRA_MODE_INFO filter_intra_mode_info;
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   (void)ctx;
@@ -103,9 +101,7 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
     if (this_rd < *best_rd) {
       *best_rd = this_rd;
       best_tx_size = mbmi->tx_size;
-#if CONFIG_NEW_TX_PARTITION
       best_tx_partition = mbmi->tx_partition_type[0];
-#endif  // CONFIG_NEW_TX_PARTITION
       filter_intra_mode_info = mbmi->filter_intra_mode_info;
       av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
       memcpy(ctx->blk_skip[AOM_PLANE_Y],
@@ -123,9 +119,7 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
   if (filter_intra_selected_flag) {
     mbmi->mode = DC_PRED;
     mbmi->tx_size = best_tx_size;
-#if CONFIG_NEW_TX_PARTITION
     mbmi->tx_partition_type[0] = best_tx_partition;
-#endif  // CONFIG_NEW_TX_PARTITION
     mbmi->filter_intra_mode_info = filter_intra_mode_info;
     av1_copy_array(ctx->tx_type_map, best_tx_type_map, ctx->num_4x4_blk);
     mbmi->joint_y_mode_delta_angle = DC_PRED;
@@ -246,9 +240,7 @@ static int rd_pick_intra_dip_sby(const AV1_COMP *const cpi, ThreadData *td,
   int intra_dip_selected_flag = 0;
   int best_ml_mode = 0;
   TX_SIZE best_tx_size = TX_8X8;
-#if CONFIG_NEW_TX_PARTITION
   TX_PARTITION_TYPE best_tx_partition = TX_PARTITION_NONE;
-#endif  // CONFIG_NEW_TX_PARTITION
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   (void)ctx;
   mbmi->use_intra_dip = 1;
@@ -373,9 +365,7 @@ static int rd_pick_intra_dip_sby(const AV1_COMP *const cpi, ThreadData *td,
           if (this_rd < *best_rd) {
             *best_rd = this_rd;
             best_tx_size = mbmi->tx_size;
-#if CONFIG_NEW_TX_PARTITION
             best_tx_partition = mbmi->tx_partition_type[0];
-#endif  // CONFIG_NEW_TX_PARTITION
             av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
             memcpy(ctx->blk_skip[AOM_PLANE_Y],
                    x->txfm_search_info.blk_skip[AOM_PLANE_Y],
@@ -399,9 +389,7 @@ static int rd_pick_intra_dip_sby(const AV1_COMP *const cpi, ThreadData *td,
     mbmi->intra_dip_mode = best_ml_mode;
     mbmi->mode = DC_PRED;
     mbmi->tx_size = best_tx_size;
-#if CONFIG_NEW_TX_PARTITION
     mbmi->tx_partition_type[0] = best_tx_partition;
-#endif  // CONFIG_NEW_TX_PARTITION
     av1_copy_array(ctx->tx_type_map, best_tx_type_map, ctx->num_4x4_blk);
     mbmi->joint_y_mode_delta_angle = DC_PRED;
     mbmi->y_mode_idx = DC_PRED;
@@ -784,13 +772,8 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
   init_sbuv_mode(mbmi);
 
 #if CONFIG_WAIP
-#if CONFIG_NEW_TX_PARTITION
   mbmi->is_wide_angle[1][0] = 0;
   mbmi->mapped_intra_mode[1][0] = DC_PRED;
-#else
-  mbmi->is_wide_angle[1] = 0;
-  mbmi->mapped_intra_mode[1] = DC_PRED;
-#endif  // CONFIG_NEW_TX_PARTITION
 #endif  // CONFIG_WAIP
 
   // Return if the current block does not correspond to a chroma block.
@@ -1293,9 +1276,7 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
   memcpy(best_blk_skip, x->txfm_search_info.blk_skip[AOM_PLANE_Y],
          sizeof(best_blk_skip[0]) * ctx->num_4x4_blk);
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
-#if CONFIG_NEW_TX_PARTITION
   TX_SIZE best_tx_partition = mbmi->tx_partition_type[0];
-#endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
   mbmi->filter_intra_mode_info.use_filter_intra = 1;
 #if CONFIG_DIP
@@ -1318,9 +1299,7 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
     }
     if (this_rd_tmp < best_rd_so_far) {
       best_tx_size = mbmi->tx_size;
-#if CONFIG_NEW_TX_PARTITION
       best_tx_partition = mbmi->tx_partition_type[0];
-#endif  // CONFIG_NEW_TX_PARTITION
       av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
       memcpy(best_blk_skip, x->txfm_search_info.blk_skip[AOM_PLANE_Y],
              sizeof(best_blk_skip[0]) * ctx->num_4x4_blk);
@@ -1332,9 +1311,7 @@ static INLINE void handle_filter_intra_mode(const AV1_COMP *cpi, MACROBLOCK *x,
   }
 
   mbmi->tx_size = best_tx_size;
-#if CONFIG_NEW_TX_PARTITION
   mbmi->tx_partition_type[0] = best_tx_partition;
-#endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(xd->tx_type_map, best_tx_type_map, ctx->num_4x4_blk);
   memcpy(x->txfm_search_info.blk_skip[AOM_PLANE_Y], best_blk_skip,
          sizeof(*x->txfm_search_info.blk_skip[AOM_PLANE_Y]) * ctx->num_4x4_blk);
@@ -1393,9 +1370,7 @@ static INLINE void handle_intra_dip_mode(const AV1_COMP *cpi, MACROBLOCK *x,
   memcpy(best_blk_skip, x->txfm_search_info.blk_skip[AOM_PLANE_Y],
          sizeof(best_blk_skip[0]) * ctx->num_4x4_blk);
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
-#if CONFIG_NEW_TX_PARTITION
   TX_SIZE best_tx_partition = mbmi->tx_partition_type[0];
-#endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
   mbmi->filter_intra_mode_info.use_filter_intra = 0;
   mbmi->use_intra_dip = 1;
@@ -1424,9 +1399,7 @@ static INLINE void handle_intra_dip_mode(const AV1_COMP *cpi, MACROBLOCK *x,
       }
       if (this_rd_tmp < best_rd_so_far) {
         best_tx_size = mbmi->tx_size;
-#if CONFIG_NEW_TX_PARTITION
         best_tx_partition = mbmi->tx_partition_type[0];
-#endif  // CONFIG_NEW_TX_PARTITION
         av1_copy_array(best_tx_type_map, xd->tx_type_map, ctx->num_4x4_blk);
         memcpy(best_blk_skip, x->txfm_search_info.blk_skip[AOM_PLANE_Y],
                sizeof(best_blk_skip[0]) * ctx->num_4x4_blk);
@@ -1439,9 +1412,7 @@ static INLINE void handle_intra_dip_mode(const AV1_COMP *cpi, MACROBLOCK *x,
   }
 
   mbmi->tx_size = best_tx_size;
-#if CONFIG_NEW_TX_PARTITION
   mbmi->tx_partition_type[0] = best_tx_partition;
-#endif  // CONFIG_NEW_TX_PARTITION
   av1_copy_array(xd->tx_type_map, best_tx_type_map, ctx->num_4x4_blk);
   memcpy(x->txfm_search_info.blk_skip[AOM_PLANE_Y], best_blk_skip,
          sizeof(*x->txfm_search_info.blk_skip[AOM_PLANE_Y]) * ctx->num_4x4_blk);
@@ -1808,10 +1779,8 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
   uint8_t best_fsc_mode = 0;
   PREDICTION_MODE best_intra_mode = best_mbmi->mode;
   TX_SIZE best_tx_size = best_mbmi->tx_size;
-#if CONFIG_NEW_TX_PARTITION
   TX_PARTITION_TYPE best_tx_partition_type[INTER_TX_SIZE_BUF_LEN];
   av1_copy(best_tx_partition_type, best_mbmi->tx_partition_type);
-#endif  // CONFIG_NEW_TX_PARTITION
   uint8_t best_filt = mbmi->filter_intra_mode_info.use_filter_intra;
   TX_TYPE best_tx_type_map[MAX_MIB_SIZE * MAX_MIB_SIZE];
   int8_t best_angle_delta = best_mbmi->angle_delta[PLANE_TYPE_Y];
@@ -1991,9 +1960,7 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
           if (this_rd < *best_rd) {
             *best_rd = this_rd;
             best_tx_size = mbmi->tx_size;
-#if CONFIG_NEW_TX_PARTITION
             av1_copy(best_tx_partition_type, mbmi->tx_partition_type);
-#endif  // CONFIG_NEW_TX_PARTITION
             best_intra_mode = mbmi->mode;
             best_y_mode_idx = mbmi->y_mode_idx;
             best_joint_ymode = mbmi->joint_y_mode_delta_angle;
@@ -2036,9 +2003,7 @@ void search_fsc_mode(const AV1_COMP *const cpi, MACROBLOCK *x, int *rate,
     }
 #endif  // CONFIG_LOSSLESS_DPCM
     mbmi->tx_size = best_tx_size;
-#if CONFIG_NEW_TX_PARTITION
     av1_copy(mbmi->tx_partition_type, best_tx_partition_type);
-#endif  // CONFIG_NEW_TX_PARTITION
     mbmi->mrl_index = best_mrl;
     mbmi->multi_line_mrl = best_multi_line_mrl;
     mbmi->filter_intra_mode_info.use_filter_intra = best_filt;
@@ -2104,13 +2069,8 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, ThreadData *td,
 
   get_y_intra_mode_set(mbmi, xd);
 #if CONFIG_WAIP
-#if CONFIG_NEW_TX_PARTITION
   mbmi->is_wide_angle[0][mbmi->txb_idx] = 0;
   mbmi->mapped_intra_mode[0][mbmi->txb_idx] = DC_PRED;
-#else
-  mbmi->is_wide_angle[0] = 0;
-  mbmi->mapped_intra_mode[0] = DC_PRED;
-#endif  // CONFIG_NEW_TX_PARTITION
 #endif  // CONFIG_WAIP
 
   MB_MODE_INFO best_mbmi = *mbmi;

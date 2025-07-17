@@ -397,11 +397,7 @@ static void set_good_speed_features_framesize_independent(
     sf->tx_sf.inter_tx_size_search_init_depth_sqr = 1;
     sf->tx_sf.intra_tx_size_search_init_depth_rect = 1;
     sf->tx_sf.model_based_prune_tx_search_level = 0;
-#if CONFIG_NEW_TX_PARTITION
     sf->tx_sf.tx_type_search.ml_tx_split_thresh = 400;
-#else
-    sf->tx_sf.tx_type_search.ml_tx_split_thresh = 4000;
-#endif  // CONFIG_NEW_TX_PARTITION
     sf->tx_sf.tx_type_search.prune_2d_txfm_mode = TX_TYPE_PRUNE_2;
     sf->tx_sf.tx_type_search.skip_tx_search = 1;
     sf->tx_sf.use_intra_txb_hash = 1;
@@ -809,11 +805,7 @@ static AOM_INLINE void init_tx_sf(TX_SPEED_FEATURES *tx_sf) {
   tx_sf->tx_size_search_lgr_block = 0;
   tx_sf->model_based_prune_tx_search_level = 0;
   tx_sf->tx_type_search.prune_2d_txfm_mode = TX_TYPE_PRUNE_1;
-#if CONFIG_NEW_TX_PARTITION
   tx_sf->tx_type_search.ml_tx_split_thresh = 400;
-#else
-  tx_sf->tx_type_search.ml_tx_split_thresh = 8500;
-#endif  // CONFIG_NEW_TX_PARTITION
   tx_sf->tx_type_search.use_skip_flag_prediction = 1;
   tx_sf->tx_type_search.use_reduced_intra_txset = 0;
   tx_sf->tx_type_search.fast_intra_tx_type_search = 0;
@@ -830,10 +822,9 @@ static AOM_INLINE void init_tx_sf(TX_SPEED_FEATURES *tx_sf) {
   tx_sf->refine_fast_tx_search_results = 1;
   tx_sf->prune_tx_rd_eval_sec_tx_sse = false;
   tx_sf->use_largest_tx_size_for_small_bsize = false;
-#if CONFIG_NEW_TX_PARTITION
   tx_sf->restrict_tx_partition_type_search = 0;
   tx_sf->prune_inter_tx_part_rd_eval = false;
-#endif  // CONFIG_NEW_TX_PARTITION
+  tx_sf->enable_tx_partition = true;
 }
 
 static AOM_INLINE void init_rd_sf(RD_CALC_SPEED_FEATURES *rd_sf,
@@ -986,6 +977,10 @@ void av1_set_speed_features_framesize_dependent(AV1_COMP *cpi, int speed) {
 
   if (oxcf->txfm_cfg.disable_ml_transform_speed_features)
     av1_disable_ml_based_transform_sf(&sf->tx_sf);
+
+  if (oxcf->txfm_cfg.enable_tx_partition == 0) {
+    sf->tx_sf.enable_tx_partition = false;
+  }
 }
 
 static AOM_INLINE void set_erp_speed_features(AV1_COMP *cpi) {
@@ -1306,11 +1301,7 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
         sf->inter_sf.selective_ref_frame = 2;
         sf->rd_sf.tx_domain_dist_level = boosted ? 1 : 2;
         sf->rd_sf.tx_domain_dist_thres_level = 1;
-#if CONFIG_NEW_TX_PARTITION
         sf->tx_sf.tx_type_search.ml_tx_split_thresh = 400;
-#else
-        sf->tx_sf.tx_type_search.ml_tx_split_thresh = 4000;
-#endif  // CONFIG_NEW_TX_PARTITION
         sf->interp_sf.cb_pred_filter_search = 0;
         sf->tx_sf.tx_type_search.prune_2d_txfm_mode = TX_TYPE_PRUNE_2;
         sf->tx_sf.tx_type_search.skip_tx_search = 1;
@@ -1321,7 +1312,6 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
 
   if (cpi->oxcf.mode == GOOD && speed >= 0) {
     const int qindex_thresh = 135 + qindex_offset;
-#if CONFIG_NEW_TX_PARTITION
     const int qindex_thresh2 = 113 + qindex_offset;
     if (cpi->oxcf.gf_cfg.lag_in_frames == 0) {
       if (cm->quant_params.base_qindex <= (frame_is_intra_only(&cpi->common)
@@ -1334,13 +1324,11 @@ void av1_set_speed_features_qindex_dependent(AV1_COMP *cpi, int speed) {
         sf->tx_sf.restrict_tx_partition_type_search = 1;
       }
     }
-#endif  // CONFIG_NEW_TX_PARTITION
+
     if (cm->quant_params.base_qindex <= qindex_thresh &&
         !cm->features.allow_screen_content_tools) {
       sf->flexmv_sf.prune_mv_prec_using_best_mv_prec_so_far = boosted ? 0 : 1;
-#if CONFIG_NEW_TX_PARTITION
       sf->tx_sf.prune_inter_tx_part_rd_eval = true;
-#endif
     }
   }
 

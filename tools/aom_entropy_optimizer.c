@@ -1624,8 +1624,6 @@ int main(int argc, const char **argv) {
       0, &total_count, mem_wanted, "Coefficients");
 
   /* Transform size */
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
   cts_each_dim[0] = FSC_MODES;
   cts_each_dim[1] = 2;
   cts_each_dim[2] = TXFM_SPLIT_GROUP;
@@ -1669,48 +1667,6 @@ int main(int argc, const char **argv) {
       "1][CDF_SIZE(TX_PARTITION_TYPE_NUM)]",
       0, &total_count, 0, mem_wanted, "Partitions");
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#else
-  cts_each_dim[0] = 2;
-  cts_each_dim[1] = TXFM_PARTITION_INTER_CONTEXTS;
-  cts_each_dim[2] = 4;
-  optimize_cdf_table(
-      &fc.inter_4way_txfm_partition[0][0][0], probsfile, 3, cts_each_dim,
-      "static const aom_cdf_prob default_inter_4way_txfm_partition_cdf "
-      "[2][TXFM_PARTITION_INTER_CONTEXTS][CDF_SIZE(4)]",
-      0, &total_count, 0, mem_wanted, "Partitions");
-
-  cts_each_dim[0] = 2;
-  optimize_cdf_table(
-      &fc.inter_2way_txfm_partition[0], probsfile, 1, cts_each_dim,
-      "static const aom_cdf_prob default_inter_2way_txfm_partition_cdf "
-      "[CDF_SIZE(2)]",
-      0, &total_count, 0, mem_wanted, "Partitions");
-
-  cts_each_dim[0] = 2;
-  cts_each_dim[1] = TX_SIZE_CONTEXTS;
-  cts_each_dim[2] = 4;
-  optimize_cdf_table(
-      &fc.intra_4way_txfm_partition[0][0][0], probsfile, 3, cts_each_dim,
-      "static const aom_cdf_prob default_intra_4way_txfm_partition_cdf "
-      "[2][TX_SIZE_CONTEXTS][CDF_SIZE(4)]",
-      0, &total_count, 0, mem_wanted, "Partitions");
-
-  cts_each_dim[0] = 2;
-  optimize_cdf_table(
-      &fc.intra_2way_txfm_partition[0], probsfile, 1, cts_each_dim,
-      "static const aom_cdf_prob default_intra_2way_txfm_partition_cdf "
-      "[CDF_SIZE(2)]",
-      0, &total_count, 0, mem_wanted, "Partitions");
-#endif  // CONFIG_TX_PARTITION_CTX
-#else   // CONFIG_NEW_TX_PARTITION
-  cts_each_dim[0] = TXFM_PARTITION_CONTEXTS;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(
-      &fc.txfm_partition[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob\n"
-      "default_txfm_partition_cdf[TXFM_PARTITION_CONTEXTS][CDF_SIZE(2)]",
-      0, &total_count, 0, mem_wanted, "Partitions");
-#endif  // CONFIG_NEW_TX_PARTITION
 
   /* Skip flag */
   cts_each_dim[0] = SKIP_CONTEXTS;
@@ -1911,20 +1867,6 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob default_merged_param_cdf"
                      "[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Filters");
-
-  /* intra tx size */
-#if !CONFIG_NEW_TX_PARTITION
-  cts_each_dim[0] = MAX_TX_CATS;
-  cts_each_dim[1] = TX_SIZE_CONTEXTS;
-  cts_each_dim[2] = MAX_TX_DEPTH + 1;
-  int intra_tx_sizes_each_ctx[MAX_TX_CATS] = { 2, 3, 3, 3 };
-  optimize_cdf_table_var_modes_3d(
-      &fc.intra_tx_size[0][0][0], probsfile, 3, cts_each_dim,
-      intra_tx_sizes_each_ctx,
-      "static const aom_cdf_prob default_tx_size_cdf"
-      "[MAX_TX_CATS][TX_SIZE_CONTEXTS][CDF_SIZE(MAX_TX_DEPTH + 1)]",
-      0, &total_count, mem_wanted, "Partitions");
-#endif  // !CONFIG_NEW_TX_PARTITION
 
   /* transform coding */
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;

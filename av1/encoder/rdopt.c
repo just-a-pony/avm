@@ -8702,13 +8702,6 @@ static AOM_INLINE void rd_pick_motion_copy_mode(
         memset(search_state->best_mbmode.inter_tx_size,
                search_state->best_mbmode.tx_size,
                sizeof(search_state->best_mbmode.inter_tx_size));
-#if !CONFIG_TX_PARTITION_CTX
-        set_txfm_ctxs(
-            search_state->best_mbmode.tx_size, xd->width, xd->height,
-            search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART] &&
-                is_inter_block(mbmi, xd->tree_type),
-            xd);
-#endif  // !CONFIG_TX_PARTITION_CTX
 
         x->txfm_search_info.skip_txfm = 1;
         search_state->best_mode_skippable = 1;
@@ -8934,13 +8927,6 @@ static AOM_INLINE void rd_pick_skip_mode(
     memset(search_state->best_mbmode.inter_tx_size,
            search_state->best_mbmode.tx_size,
            sizeof(search_state->best_mbmode.inter_tx_size));
-#if !CONFIG_TX_PARTITION_CTX
-    set_txfm_ctxs(
-        search_state->best_mbmode.tx_size, xd->width, xd->height,
-        search_state->best_mbmode.skip_txfm[xd->tree_type == CHROMA_PART] &&
-            is_inter_block(mbmi, xd->tree_type),
-        xd);
-#endif  // !CONFIG_TX_PARTITION_CTX
 
     // Set up color-related variables for skip mode.
     search_state->best_mbmode.uv_mode = UV_DC_PRED;
@@ -9848,19 +9834,12 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
   mbmi->refinemv_flag = 0;
 #endif  // CONFIG_REFINEMV
 #if CONFIG_WAIP
-#if CONFIG_NEW_TX_PARTITION
   for (int i = 0; i < MAX_TX_PARTITIONS; ++i) {
     mbmi->is_wide_angle[0][i] = 0;
     mbmi->is_wide_angle[1][i] = 0;
     mbmi->mapped_intra_mode[0][i] = DC_PRED;
     mbmi->mapped_intra_mode[1][i] = DC_PRED;
   }
-#else
-  mbmi->is_wide_angle[0] = 0;
-  mbmi->is_wide_angle[1] = 0;
-  mbmi->mapped_intra_mode[0] = DC_PRED;
-  mbmi->mapped_intra_mode[1] = DC_PRED;
-#endif  // CONFIG_NEW_TX_PARTITION
 #endif  // CONFIG_WAIP
   set_default_interp_filters(mbmi, cm,
 #if CONFIG_COMPOUND_4XN
@@ -10798,7 +10777,7 @@ static INLINE int is_compound_mode_disallowed(PREDICTION_MODE mode,
   return 0;
 }
 #endif  // CONFIG_OPT_INTER_MODE_CTX
-#if CONFIG_NEW_TX_PARTITION
+
 // Initialize the table that stores best RD Costs of NONE transform partition
 static INLINE void init_top_tx_part_rd_for_inter_modes(
     MACROBLOCK *const x, bool prune_inter_tx_part_rd_eval) {
@@ -10810,7 +10789,7 @@ static INLINE void init_top_tx_part_rd_for_inter_modes(
     }
   }
 }
-#endif
+
 // TODO(chiyotsai@google.com): See the todo for av1_rd_pick_intra_mode_sb.
 void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
                                struct TileDataEnc *tile_data,
@@ -11110,9 +11089,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
     mode_thresh_mul_fact = mode_threshold_mul_factor[x->qindex];
   }
 
-#if CONFIG_NEW_TX_PARTITION
   init_top_tx_part_rd_for_inter_modes(x, sf->tx_sf.prune_inter_tx_part_rd_eval);
-#endif
 
   // Initialize arguments for mode loop speed features
   InterModeSFArgs sf_args = { &args.skip_motion_mode,

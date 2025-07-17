@@ -1473,7 +1473,6 @@ typedef struct encode_txb_args {
   aom_writer *w;
 } ENCODE_TXB_ARGS;
 
-#if CONFIG_NEW_TX_PARTITION
 void av1_write_intra_coeffs_mb(const AV1_COMMON *const cm, MACROBLOCK *x,
                                aom_writer *w, BLOCK_SIZE bsize) {
   MACROBLOCKD *xd = &x->e_mbd;
@@ -1600,86 +1599,6 @@ void av1_write_intra_coeffs_mb(const AV1_COMMON *const cm, MACROBLOCK *x,
     }
   }
 }
-#else
-void av1_write_intra_coeffs_mb(const AV1_COMMON *const cm, MACROBLOCK *x,
-                               aom_writer *w, BLOCK_SIZE bsize) {
-  MACROBLOCKD *xd = &x->e_mbd;
-  const MB_MODE_INFO *const mbmi = xd->mi[0];
-  const int is_inter = is_inter_block(mbmi, xd->tree_type);
-  int block[MAX_MB_PLANE] = { 0 };
-  int row, col;
-  assert(bsize == get_plane_block_size(bsize, xd->plane[0].subsampling_x,
-                                       xd->plane[0].subsampling_y));
-  const int max_blocks_wide = max_block_wide(xd, bsize, 0);
-  const int max_blocks_high = max_block_high(xd, bsize, 0);
-  const BLOCK_SIZE max_unit_bsize = BLOCK_64X64;
-  int mu_blocks_wide = mi_size_wide[max_unit_bsize];
-  int mu_blocks_high = mi_size_high[max_unit_bsize];
-  mu_blocks_wide = AOMMIN(max_blocks_wide, mu_blocks_wide);
-  mu_blocks_high = AOMMIN(max_blocks_high, mu_blocks_high);
-
-  for (row = 0; row < max_blocks_high; row += mu_blocks_high) {
-    for (col = 0; col < max_blocks_wide; col += mu_blocks_wide) {
-      const int plane_start = get_partition_plane_start(xd->tree_type);
-      const int plane_end =
-          get_partition_plane_end(xd->tree_type, av1_num_planes(cm));
-      for (int plane = plane_start; plane < plane_end; ++plane) {
-        if (plane && !xd->is_chroma_ref) break;
-        if (plane == AOM_PLANE_U && is_cctx_allowed(cm, xd)) continue;
-        const TX_SIZE tx_size = av1_get_tx_size(plane, xd);
-        const int stepr = tx_size_high_unit[tx_size];
-        const int stepc = tx_size_wide_unit[tx_size];
-        const int step = stepr * stepc;
-        const struct macroblockd_plane *const pd = &xd->plane[plane];
-        const int ss_x = pd->subsampling_x;
-        const int ss_y = pd->subsampling_y;
-        const BLOCK_SIZE plane_bsize =
-            get_mb_plane_block_size(xd, mbmi, plane, ss_x, ss_y);
-        const int plane_unit_height =
-            get_plane_tx_unit_height(xd, plane_bsize, plane, row, ss_y);
-        const int plane_unit_width =
-            get_plane_tx_unit_width(xd, plane_bsize, plane, col, ss_x);
-        for (int blk_row = row >> ss_y; blk_row < plane_unit_height;
-             blk_row += stepr) {
-          for (int blk_col = col >> ss_x; blk_col < plane_unit_width;
-               blk_col += stepc) {
-            // Loop order for the two chroma planes is changed for CCTX
-            // because the transform information for both planes are needed at
-            // once at the decoder side.
-            if (plane == AOM_PLANE_V && is_cctx_allowed(cm, xd)) {
-              const int code_rest =
-                  av1_write_sig_txtype(cm, x, w, blk_row, blk_col, AOM_PLANE_U,
-                                       block[AOM_PLANE_U], tx_size);
-              if (code_rest)
-                av1_write_coeffs_txb(cm, x, w, blk_row, blk_col, AOM_PLANE_U,
-                                     block[AOM_PLANE_U], tx_size);
-              block[AOM_PLANE_U] += step;
-            }
-            const int code_rest = av1_write_sig_txtype(
-                cm, x, w, blk_row, blk_col, plane, block[plane], tx_size);
-            const TX_TYPE tx_type = av1_get_tx_type(
-                xd, get_plane_type(plane), blk_row, blk_col, tx_size,
-                is_reduced_tx_set_used(cm, get_plane_type(plane)));
-            if (code_rest) {
-              if ((mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
-                   get_primary_tx_type(tx_type) == IDTX &&
-                   plane == PLANE_TYPE_Y) ||
-                  use_inter_fsc(cm, plane, tx_type, is_inter)) {
-                av1_write_coeffs_txb_skip(cm, x, w, blk_row, blk_col, plane,
-                                          block[plane], tx_size);
-              } else {
-                av1_write_coeffs_txb(cm, x, w, blk_row, blk_col, plane,
-                                     block[plane], tx_size);
-              }
-            }
-            block[plane] += step;
-          }
-        }
-      }
-    }
-  }
-}
-#endif  // CONFIG_NEW_TX_PARTITION
 
 int get_cctx_type_cost(const AV1_COMMON *cm, const MACROBLOCK *x,
                        const MACROBLOCKD *xd, int plane, TX_SIZE tx_size,
@@ -4882,13 +4801,8 @@ static void update_tx_type_count(const AV1_COMP *cpi, const AV1_COMMON *cm,
           intra_dir = fimode_to_intradir[mbmi->filter_intra_mode_info
                                              .filter_intra_mode];
 #if CONFIG_WAIP
-#if CONFIG_NEW_TX_PARTITION
         else if (mbmi->is_wide_angle[0][mbmi->txb_idx])
           intra_dir = mbmi->mapped_intra_mode[0][mbmi->txb_idx];
-#else
-        else if (mbmi->is_wide_angle[0])
-          intra_dir = mbmi->mapped_intra_mode[0];
-#endif  // CONFIG_NEW_TX_PARTITION
 #endif  // CONFIG_WAIP
         else
           intra_dir = mbmi->mode;
@@ -5914,7 +5828,6 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
                            blk_col, blk_row);
 }
 
-#if CONFIG_NEW_TX_PARTITION
 // Update context for each intra txfm block. We put Luma plane handling
 // separately because the txfm block derivation is different from Chroma plane.
 void av1_update_intra_mb_txb_context(const AV1_COMP *cpi, ThreadData *td,
@@ -5993,35 +5906,6 @@ void av1_update_intra_mb_txb_context(const AV1_COMP *cpi, ThreadData *td,
     }
   }
 }
-#else
-void av1_update_intra_mb_txb_context(const AV1_COMP *cpi, ThreadData *td,
-                                     RUN_TYPE dry_run, BLOCK_SIZE bsize,
-                                     uint8_t allow_update_cdf) {
-  const AV1_COMMON *const cm = &cpi->common;
-  const int num_planes = av1_num_planes(cm);
-  MACROBLOCK *const x = &td->mb;
-  MACROBLOCKD *const xd = &x->e_mbd;
-  MB_MODE_INFO *const mbmi = xd->mi[0];
-  struct tokenize_b_args arg = { cpi, td, 0, allow_update_cdf, dry_run };
-  if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
-    assert(bsize == mbmi->sb_type[av1_get_sdp_idx(xd->tree_type)]);
-    av1_reset_entropy_context(xd, bsize, num_planes);
-    return;
-  }
-  const int plane_start = get_partition_plane_start(xd->tree_type);
-  const int plane_end = get_partition_plane_end(xd->tree_type, num_planes);
-  for (int plane = plane_start; plane < plane_end; ++plane) {
-    if (plane && !xd->is_chroma_ref) break;
-    const struct macroblockd_plane *const pd = &xd->plane[plane];
-    const int ss_x = pd->subsampling_x;
-    const int ss_y = pd->subsampling_y;
-    const BLOCK_SIZE plane_bsize =
-        get_mb_plane_block_size(xd, mbmi, plane, ss_x, ss_y);
-    av1_foreach_transformed_block_in_plane(
-        xd, plane_bsize, plane, av1_update_and_record_txb_context, &arg);
-  }
-}
-#endif  // CONFIG_NEW_TX_PARTITION
 
 CB_COEFF_BUFFER *av1_get_cb_coeff_buffer(const struct AV1_COMP *cpi, int mi_row,
                                          int mi_col) {

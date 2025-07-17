@@ -34,25 +34,16 @@ enum {
   FTXS_USE_TRANSFORM_DOMAIN = 1 << 2
 } UENUM1BYTE(FAST_TX_SEARCH_MODE);
 
-#if CONFIG_NEW_TX_PARTITION
-#if CONFIG_TX_PARTITION_CTX
 static AOM_INLINE int inter_tx_partition_cost(const MACROBLOCK *const x,
                                               TX_PARTITION_TYPE partition,
                                               BLOCK_SIZE bsize,
                                               TX_SIZE max_tx_size) {
-#else
-static AOM_INLINE int inter_tx_partition_cost(
-    const MACROBLOCK *const x, int is_rect, TX_PARTITION_TYPE partition,
-    const TXFM_CONTEXT *const above_ctx, const TXFM_CONTEXT *const left_ctx,
-    BLOCK_SIZE bsize, TX_SIZE max_tx_size) {
-#endif  // CONFIG_TX_PARTITION_CTX
   int cost = 0;
   const int allow_horz = allow_tx_horz_split(bsize, max_tx_size);
   const int allow_vert = allow_tx_vert_split(bsize, max_tx_size);
   const MACROBLOCKD *const xd = &x->e_mbd;
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const int is_fsc = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART]);
-#if CONFIG_TX_PARTITION_CTX
   const int bsize_group = size_to_tx_part_group_lookup[bsize];
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   const int txsize_group_h_and_v = get_vert_and_horz_group(bsize);
@@ -88,9 +79,7 @@ static AOM_INLINE int inter_tx_partition_cost(
                   .txfm_4way_partition_type_cost[is_fsc][1][txsize_group - 1]
                                                 [split4_partition - 1];
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-    }
-#if CONFIG_4WAY_5WAY_TX_PARTITION
-    else if (allow_horz || allow_vert) {
+    } else if (allow_horz || allow_vert) {
       int has_first_split = 0;
       if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
         has_first_split = 1;
@@ -109,30 +98,12 @@ static AOM_INLINE int inter_tx_partition_cost(
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       }
     }
-#endif  // CONFIG_4WAY_5WAY_TX_PARTITION
   }
-#else
-  if (allow_horz && allow_vert) {
-    const int split4_ctx_0 = txfm_partition_split4_inter_context(
-        above_ctx, left_ctx, bsize, max_tx_size);
-    const TX_PARTITION_TYPE split4_partition = get_split4_partition(partition);
-    cost += x->mode_costs.inter_4way_txfm_partition_cost[is_rect][split4_ctx_0]
-                                                        [split4_partition];
-  } else if (allow_horz || allow_vert) {
-    const int has_first_split = partition != TX_PARTITION_NONE;
-    cost += x->mode_costs.inter_2way_txfm_partition_cost[has_first_split];
-  } else {
-    assert(!allow_horz && !allow_vert);
-    assert(partition == PARTITION_NONE);
-  }
-#endif  // CONFIG_TX_PARTITION_CTX
+
   return cost;
 }
 
 static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
-#if !CONFIG_TX_PARTITION_CTX
-                                              int is_rect,
-#endif  // !CONFIG_TX_PARTITION_CTX
                                               TX_PARTITION_TYPE partition,
                                               TX_SIZE max_tx_size) {
   int cost = 0;
@@ -141,7 +112,6 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
   const int allow_horz = allow_tx_horz_split(bsize, max_tx_size);
   const int allow_vert = allow_tx_vert_split(bsize, max_tx_size);
-#if CONFIG_TX_PARTITION_CTX
   const int bsize_group = size_to_tx_part_group_lookup[bsize];
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   const int txsize_group_h_and_v = get_vert_and_horz_group(bsize);
@@ -178,9 +148,7 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
                   .txfm_4way_partition_type_cost[is_fsc][0][txsize_group - 1]
                                                 [split4_partition - 1];
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-    }
-#if CONFIG_4WAY_5WAY_TX_PARTITION
-    else if (allow_horz || allow_vert) {
+    } else if (allow_horz || allow_vert) {
       int has_first_split = 0;
       if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
         has_first_split = 1;
@@ -199,25 +167,10 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
 #endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       }
     }
-#endif  // CONFIG_4WAY_5WAY_TX_PARTITION
   }
-#else
-  if (allow_horz && allow_vert) {
-    const int split4_ctx_0 = get_tx_size_context(xd);
-    const TX_PARTITION_TYPE split4_partition = get_split4_partition(partition);
-    cost += x->mode_costs.intra_4way_txfm_partition_cost[is_rect][split4_ctx_0]
-                                                        [split4_partition];
-  } else if (allow_horz || allow_vert) {
-    const int has_first_split = partition != TX_PARTITION_NONE;
-    cost += x->mode_costs.intra_2way_txfm_partition_cost[has_first_split];
-  } else {
-    assert(!allow_horz && !allow_vert);
-    assert(partition == PARTITION_NONE);
-  }
-#endif  // CONFIG_TX_PARTITION_CTX
+
   return cost;
 }
-#endif  // CONFIG_NEW_TX_PARTITION
 
 static AOM_INLINE int tx_size_cost(const MACROBLOCK *const x, BLOCK_SIZE bsize,
                                    TX_SIZE tx_size) {
@@ -227,25 +180,12 @@ static AOM_INLINE int tx_size_cost(const MACROBLOCK *const x, BLOCK_SIZE bsize,
     return 0;
 
   const MACROBLOCKD *const xd = &x->e_mbd;
-#if CONFIG_NEW_TX_PARTITION
   if (bsize >= BLOCK_SIZES_ALL) return INT_MAX;
 
   (void)tx_size;
   MB_MODE_INFO *const mbmi = xd->mi[0];
   const TX_SIZE max_tx_size = max_txsize_rect_lookup[bsize];
-#if CONFIG_TX_PARTITION_CTX
   return intra_tx_partition_cost(x, mbmi->tx_partition_type[0], max_tx_size);
-#else
-  const int is_rect = is_rect_tx(max_tx_size);
-  return intra_tx_partition_cost(x, is_rect, mbmi->tx_partition_type[0],
-                                 max_tx_size);
-#endif  // CONFIG_TX_PARTITION_CTX
-#else
-  const int32_t tx_size_cat = bsize_to_tx_size_cat(bsize);
-  const int depth = tx_size_to_depth(tx_size, bsize);
-  const int tx_size_ctx = get_tx_size_context(xd);
-  return x->mode_costs.tx_size_cost[tx_size_cat][tx_size_ctx][depth];
-#endif  // CONFIG_NEW_TX_PARTITION
 }
 
 static AOM_INLINE int skip_cctx_eval_based_on_eob(int plane, int is_inter,

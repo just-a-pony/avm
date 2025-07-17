@@ -637,44 +637,6 @@ static INLINE aom_cdf_prob *av1_get_pred_cdf_compound_ref(
                            xd, ref, num_total_refs)][bit_type][ref];
 }
 
-#if !CONFIG_TX_PARTITION_CTX
-// Returns a context number for the given MB prediction signal
-// The mode info data structure has a one element border above and to the
-// left of the entries corresponding to real blocks.
-// The prediction flags in these dummy entries are initialized to 0.
-static INLINE int get_tx_size_context(const MACROBLOCKD *xd) {
-  const MB_MODE_INFO *mbmi = xd->mi[0];
-  const MB_MODE_INFO *const above_mbmi = xd->above_mbmi;
-  const MB_MODE_INFO *const left_mbmi = xd->left_mbmi;
-  const TX_SIZE max_tx_size =
-      max_txsize_rect_lookup[mbmi->sb_type[PLANE_TYPE_Y]];
-  const int max_tx_wide = tx_size_wide[max_tx_size];
-  const int max_tx_high = tx_size_high[max_tx_size];
-  const int has_above = xd->up_available;
-  const int has_left = xd->left_available;
-
-  int above = xd->above_txfm_context[0] >= max_tx_wide;
-  int left = xd->left_txfm_context[0] >= max_tx_high;
-
-  if (has_above)
-    if (is_inter_block(above_mbmi, xd->tree_type))
-      above = block_size_wide[above_mbmi->sb_type[PLANE_TYPE_Y]] >= max_tx_wide;
-
-  if (has_left)
-    if (is_inter_block(left_mbmi, xd->tree_type))
-      left = block_size_high[left_mbmi->sb_type[PLANE_TYPE_Y]] >= max_tx_high;
-
-  if (has_above && has_left)
-    return (above + left);
-  else if (has_above)
-    return above;
-  else if (has_left)
-    return left;
-  else
-    return 0;
-}
-#endif  // !CONFIG_TX_PARTITION_CTX
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif
