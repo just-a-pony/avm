@@ -332,9 +332,6 @@ set_aom_config_var(CONFIG_EXT_WARP_FILTER 1 "Enable extended warp filter")
 set_aom_config_var(CONFIG_IMPROVE_EXT_WARP 1
                    "Enable ext warp filter for chroma blocks with bw=4 or bh=4")
 
-set_aom_config_var(CONFIG_ADST_TUNED 1
-                   "AV2 experiment to replace the ADST 4, 8 and 16 basis")
-
 # CWG-F082: Extended DPB mode for AV2 in RTC
 set_aom_config_var(CONFIG_EXTRA_DPB 1 "Use extra dpb")
 
@@ -459,9 +456,6 @@ set_aom_config_var(CONFIG_NEW_CONTEXT_MODELING 1
                    "Enable to improve the context modeling")
 set_aom_config_var(CONFIG_WEDGE_MOD_EXT 1 "AV2 wedge modes extensions.")
 
-set_aom_config_var(CONFIG_INTER_DDT 1
-                   "Use data driven transform to replace ADST for inter.")
-
 set_aom_config_var(CONFIG_MF_IMPROVEMENT 1
                    "Enable to improve temporal motion projection")
 
@@ -583,9 +577,6 @@ set_aom_config_var(
   1
   "Enables improved secondary reference frame derivation for frame context initialization."
 )
-
-set_aom_config_var(CONFIG_FIX_INTER_DDT_PRECISION 1
-                   "Fix precision of inter DDT.")
 
 set_aom_config_var(CONFIG_WEDGE_SIMPL 1 "Wedge mode simplificaitons.")
 set_aom_config_var(CONFIG_WARP_PRECISION 1 "Enable precisions of warp models.")
