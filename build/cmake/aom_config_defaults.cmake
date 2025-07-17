@@ -176,10 +176,6 @@ set_aom_config_var(CONFIG_WARP_PARAM_CLIP 1
                    "AV2 warp parameter range clamp unification")
 set_aom_config_var(CONFIG_RELAX_AFFINE_CONSTRAINTS 1
                    "AV2 relax affine constraints")
-set_aom_config_var(CONFIG_INTER_COMPOUND_BY_JOINT 1
-                   "AV2 inter compound mode by joint.")
-set_aom_config_var(CONFIG_NO_JOINTMODE_WHEN_SAME_REFINDEX 1
-                   "AV2 no joint mode when same ref index.")
 set_aom_config_var(CONFIG_DISABLE_4X4_INTER 1 "Disable 4x4 inter blocks")
 
 set_aom_config_var(
@@ -589,9 +585,6 @@ set_aom_config_var(CONFIG_NEW_PART_CTX 1 "New partition context models")
 
 set_aom_config_var(CONFIG_EXT_SEG 1
                    "Extend the maximum number of segments to 16, CWG-F069.")
-
-set_aom_config_var(CONFIG_INTER_MODE_CONSOLIDATION 1
-                   "Inter modes redesign and consolidation.")
 set_aom_config_var(
   CONFIG_F054_PIC_BOUNDARY
   1

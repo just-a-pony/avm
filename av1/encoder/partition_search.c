@@ -797,7 +797,7 @@ static void update_skip_drl_index_stats(int max_drl_bits, FRAME_CONTEXT *fc,
 #endif  // CONFIG_SEP_COMP_DRL
   }
 }
-#if CONFIG_INTER_MODE_CONSOLIDATION
+
 static void update_tip_drl_index_stats(int max_drl_bits, FRAME_CONTEXT *fc,
                                        FRAME_COUNTS *counts,
                                        const MB_MODE_INFO *mbmi) {
@@ -828,18 +828,13 @@ static void update_tip_drl_index_stats(int max_drl_bits, FRAME_CONTEXT *fc,
 #endif  // CONFIG_SEP_COMP_DRL
   }
 }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
 static void update_drl_index_stats(int max_drl_bits, const int16_t mode_ctx,
                                    FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
                                    const MB_MODE_INFO *mbmi) {
   if (is_tip_ref_frame(mbmi->ref_frame[0])) {
-#if CONFIG_INTER_MODE_CONSOLIDATION
     update_tip_drl_index_stats(max_drl_bits, fc, counts, mbmi);
-#else
-    update_skip_drl_index_stats(max_drl_bits, fc, counts, mbmi);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
     return;
   }
 
@@ -849,9 +844,6 @@ static void update_drl_index_stats(int max_drl_bits, const int16_t mode_ctx,
   assert(have_drl_index(mbmi->mode));
   assert(IMPLIES(mbmi->mode == WARPMV, 0));
 
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-  if (mbmi->mode == AMVDNEWMV) max_drl_bits = AOMMIN(max_drl_bits, 1);
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
 #if CONFIG_SEP_COMP_DRL
   assert(mbmi->ref_mv_idx[0] < max_drl_bits + 1);
   assert(mbmi->ref_mv_idx[1] < max_drl_bits + 1);
@@ -1446,11 +1438,8 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           const int ctx_index =
               (mbmi->mode == NEARMV)
                   ? 0
-#if CONFIG_INTER_MODE_CONSOLIDATION
                   : ((mbmi->mode == NEWMV && mbmi->use_amvd) ? 1 : 2);
-#else
-                  : (mbmi->mode == AMVDNEWMV ? 1 : 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
+
           update_cdf(fc->explicit_bawp_cdf[ctx_index], mbmi->bawp_flag[0] > 1,
                      2);
           if (mbmi->bawp_flag[0] > 1) {
@@ -1743,12 +1732,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #if CONFIG_REFINEMV
           && (!mbmi->refinemv_flag || !is_refinemv_signaled)
 #endif  // CONFIG_REFINEMV
-          && !is_joint_amvd_coding_mode(mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                                        ,
-                                        mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-                                        )) {
+          && !is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd)) {
 #if CONFIG_COMPOUND_WARP_CAUSAL
 #if CONFIG_COMPOUND_4XN
         assert(current_frame->reference_mode != SINGLE_REFERENCE &&
@@ -1886,27 +1870,12 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
                    signal_mode_idx, INTER_COMPOUND_SAME_REFS_TYPES);
       } else {
 #endif  // CONFIG_OPT_INTER_MODE_CTX
-
-#if CONFIG_INTER_COMPOUND_BY_JOINT
         const bool is_joint =
-#if CONFIG_INTER_MODE_CONSOLIDATION
             (comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV));
-#else
-            ((comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV)) ||
-             (comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_AMVDNEWMV)));
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
         update_cdf(fc->inter_compound_mode_is_joint_cdf
                        [get_inter_compound_mode_is_joint_context(cm, mbmi)],
                    is_joint, NUM_OPTIONS_IS_JOINT);
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-        if (is_joint) {
-          update_cdf(fc->inter_compound_mode_joint_type_cdf[0],
-                     comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV),
-                     NUM_OPTIONS_JOINT_TYPE);
-        } else {
-#else
         if (!is_joint) {
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
           update_cdf(fc->inter_compound_mode_non_joint_type_cdf[mode_ctx],
                      comp_mode_idx, NUM_OPTIONS_NON_JOINT_TYPE);
         }
@@ -1923,26 +1892,13 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         }
 #endif  // CONFIG_ENTROPY_STATS
 
-#else
-
-#if CONFIG_ENTROPY_STATS
-      ++counts->inter_compound_mode[mode_ctx][comp_mode_idx];
-#endif
-      update_cdf(fc->inter_compound_mode_cdf[mode_ctx], comp_mode_idx,
-                 INTER_COMPOUND_REF_TYPES);
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
-
 #if CONFIG_OPT_INTER_MODE_CTX
       }
 #endif  // CONFIG_OPT_INTER_MODE_CTX
 
       if (is_joint_mvd_coding_mode(mbmi->mode)) {
-        const int is_joint_amvd_mode = is_joint_amvd_coding_mode(mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                                                                 ,
-                                                                 mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-        );
+        const int is_joint_amvd_mode =
+            is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd);
         aom_cdf_prob *jmvd_scale_mode_cdf = is_joint_amvd_mode
                                                 ? fc->jmvd_amvd_scale_mode_cdf
                                                 : fc->jmvd_scale_mode_cdf;
@@ -1958,7 +1914,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       );
     }
 
-#if CONFIG_INTER_MODE_CONSOLIDATION
     if (allow_amvd_mode(mbmi->mode)) {
       int amvd_index = amvd_mode_to_index(mbmi->mode);
       assert(amvd_index >= 0);
@@ -1968,7 +1923,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       ++counts->amvd_mode[amvd_index][amvd_ctx][mbmi->use_amvd];
 #endif
     }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 
     const int new_mv = have_newmv_in_each_reference(mbmi->mode);
     const int jmvd_base_ref_list = is_joint_mvd_coding_mode(mbmi->mode)

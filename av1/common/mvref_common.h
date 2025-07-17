@@ -635,11 +635,7 @@ static INLINE aom_cdf_prob *av1_get_drl_cdf(const MB_MODE_INFO *const mbmi,
                                             FRAME_CONTEXT *ec_ctx,
                                             const int16_t mode_ctx, int idx) {
   if (is_tip_ref_frame(mbmi->ref_frame[0])) {
-#if CONFIG_INTER_MODE_CONSOLIDATION
     return ec_ctx->tip_drl_cdf[AOMMIN(idx, 2)];
-#else
-    return ec_ctx->skip_drl_cdf[AOMMIN(idx, 2)];
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
   }
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT
@@ -727,7 +723,6 @@ static INLINE int enable_refined_mvs_in_tmvp(const AV1_COMMON *cm,
 }
 #endif  // CONFIG_IMPROVE_REFINED_MV
 
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static INLINE int allow_amvd_mode(PREDICTION_MODE mode) {
   return (mode == NEAR_NEWMV || mode == NEW_NEARMV ||
           mode == NEAR_NEWMV_OPTFLOW || mode == NEW_NEARMV_OPTFLOW ||
@@ -770,7 +765,6 @@ static INLINE int get_amvd_context(const MACROBLOCKD *const xd) {
   }
   return ctx;
 }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 
 #if CONFIG_REFINED_MVS_IN_TMVP
 void av1_copy_frame_refined_mvs(const AV1_COMMON *const cm,

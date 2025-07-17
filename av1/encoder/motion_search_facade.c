@@ -1093,12 +1093,8 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     pb_mv_precision = mbmi->pb_mv_precision;
   }
 #endif
-  if (is_adaptive_mvd && !is_joint_amvd_coding_mode(mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                                                    ,
-                                                    mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-                                                    )) {
+  if (is_adaptive_mvd &&
+      !is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd)) {
     int dis; /* TODO: use dis in distortion calculation later. */
     unsigned int sse;
     SUBPEL_MOTION_SEARCH_PARAMS ms_params;
@@ -1118,11 +1114,8 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
 #if CONFIG_VQ_MVD_CODING
     if (bestsme == INT_MAX) best_mv.as_int = INVALID_MV;
 #endif  // CONFIG_VQ_MVD_CODING
-  } else if ((mbmi->mode == JOINT_NEWMV || mbmi->mode == JOINT_NEWMV_OPTFLOW)
-#if CONFIG_INTER_MODE_CONSOLIDATION
-             && mbmi->use_amvd == 0
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-  ) {
+  } else if ((mbmi->mode == JOINT_NEWMV || mbmi->mode == JOINT_NEWMV_OPTFLOW) &&
+             mbmi->use_amvd == 0) {
     int dis; /* TODO: use dis in distortion calculation later. */
     unsigned int sse;
     SUBPEL_MOTION_SEARCH_PARAMS ms_params;
@@ -1148,13 +1141,8 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
                                  &best_other_mv.as_mv, second_pred,
                                  &inter_pred_params, NULL);
     }
-#if CONFIG_INTER_MODE_CONSOLIDATION
   } else if ((mbmi->mode == JOINT_NEWMV || mbmi->mode == JOINT_NEWMV_OPTFLOW) &&
              mbmi->use_amvd) {
-#else
-  } else if (mbmi->mode == JOINT_AMVDNEWMV ||
-             mbmi->mode == JOINT_AMVDNEWMV_OPTFLOW) {
-#endif       // CONFIG_INTER_MODE_CONSOLIDATION
     int dis; /* TODO: use dis in distortion calculation later. */
     unsigned int sse;
     SUBPEL_MOTION_SEARCH_PARAMS ms_params;
@@ -1184,9 +1172,7 @@ void av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     }
 #endif  // CONFIG_VQ_MVD_CODING
   } else {
-#if CONFIG_INTER_MODE_CONSOLIDATION
     if (mbmi->use_amvd) assert(0);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
     // Make motion search params
     FULLPEL_MOTION_SEARCH_PARAMS full_ms_params;
 
@@ -1402,12 +1388,10 @@ static AOM_INLINE void do_masked_motion_search_indexed(
     av1_compound_single_motion_search_interinter(cpi, x, bsize, tmp_mv, mask,
                                                  mask_stride, rate_mv, which);
   } else if (which == 2) {
-#if CONFIG_INTER_MODE_CONSOLIDATION
     if (mbmi->use_amvd)
       av1_amvd_joint_motion_search(cpi, x, bsize, tmp_mv, mask, mask_stride,
                                    rate_mv);
     else
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
       av1_joint_motion_search(cpi, x, bsize, tmp_mv, mask, mask_stride,
                               rate_mv);
   }
@@ -1463,9 +1447,7 @@ int_mv av1_simple_motion_search(AV1_COMP *const cpi, MACROBLOCK *x, int mi_row,
   mbmi->ref_frame[1] = NONE_FRAME;
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   mbmi->interp_fltr = EIGHTTAP_REGULAR;
-#if CONFIG_INTER_MODE_CONSOLIDATION
   mbmi->use_amvd = 0;
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 
 #if CONFIG_IBC_SR_EXT
   mbmi->use_intrabc[0] = 0;

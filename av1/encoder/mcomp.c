@@ -3722,21 +3722,15 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       const MV cur_mvd = { cur_mv.row - ref_mv.row, cur_mv.col - ref_mv.col };
       MV other_mvd = { 0, 0 };
       MV other_cand_mv = { 0, 0 };
-#if CONFIG_INTER_MODE_CONSOLIDATION
       if (mbmi->use_amvd) {
         if (!check_mvd_valid_amvd(cur_mvd)) continue;
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
       do_refine_search_grid[grid_coord] = 1;
       if (av1_is_subpelmv_in_range(mv_limits, cur_mv)) {
         // fprintf(stdout, "has happened\n");
         get_mv_projection(&other_mvd, cur_mvd, other_ref_dist, cur_ref_dist);
-        scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                        ,
-                        mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-        );
+        scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode,
+                        mbmi->use_amvd);
 #if !CONFIG_C071_SUBBLK_WARPMV
         lower_mv_precision(&other_mvd, cm->features.fr_mv_precision);
 #endif  // !CONFIG_C071_SUBBLK_WARPMV
@@ -3814,18 +3808,12 @@ int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 
       const MV final_mvd = { candidate_mv[0].row - ref_mv.row,
                              candidate_mv[0].col - ref_mv.col };
-#if CONFIG_INTER_MODE_CONSOLIDATION
       if (mbmi->use_amvd) {
         if (!check_mvd_valid_amvd(final_mvd)) continue;
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
       get_mv_projection(&other_mvd, final_mvd, other_ref_dist, cur_ref_dist);
-      scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                      ,
-                      mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-      );
+      scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode,
+                      mbmi->use_amvd);
 
 #if !CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&other_mvd, cm->features.fr_mv_precision);
@@ -3928,12 +3916,8 @@ int low_precision_joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 
       if (av1_is_subpelmv_in_range(mv_limits, cur_mv)) {
         get_mv_projection(&other_mvd, cur_mvd, other_ref_dist, cur_ref_dist);
-        scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                        ,
-                        mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-        );
+        scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode,
+                        mbmi->use_amvd);
 #if !CONFIG_C071_SUBBLK_WARPMV
         lower_mv_precision(&other_mvd, cm->features.fr_mv_precision);
 #endif  // !CONFIG_C071_SUBBLK_WARPMV
@@ -3977,7 +3961,6 @@ int low_precision_joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   return besterr;
 }
 
-#if CONFIG_INTER_MODE_CONSOLIDATION
 void av1_amvd_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
                                   BLOCK_SIZE bsize, int_mv *cur_mv,
                                   const uint8_t *mask, int mask_stride,
@@ -4182,7 +4165,6 @@ void av1_amvd_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
                                 is_adaptive_mvd);
   }
 }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 
 // motion search for near_new and new_near mode when adaptive MVD resolution is
 // applied
@@ -4411,12 +4393,8 @@ int av1_joint_amvd_motion_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       candidate_mv[0].col = iter_center_mv.col + cur_mvd.col;
 
       get_mv_projection(&other_mvd, cur_mvd, other_ref_dist, cur_ref_dist);
-      scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                      ,
-                      mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-      );
+      scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode,
+                      mbmi->use_amvd);
 #if !CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&other_mvd,
 #if BUGFIX_AMVD_AMVR
@@ -5387,13 +5365,12 @@ unsigned int av1_refine_warped_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
 
       MV this_mv = { best_mv->row + neighbors[idx].row * (1 << mv_shift),
                      best_mv->col + neighbors[idx].col * (1 << mv_shift) };
-#if CONFIG_INTER_MODE_CONSOLIDATION
+
       if (mbmi->use_amvd) {
         MV diff_mv = { this_mv.row - ms_params->mv_cost_params.ref_mv->row,
                        this_mv.col - ms_params->mv_cost_params.ref_mv->col };
         if (!check_mvd_valid_amvd(diff_mv)) continue;
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 
       if (av1_is_subpelmv_in_range(mv_limits, this_mv)) {
         memcpy(pts, pts0, total_samples * 2 * sizeof(*pts0));
@@ -5605,13 +5582,13 @@ static void refine_translational_mv(
     for (int idx = 0; idx < num_neighbors; ++idx) {
       MV this_mv = { best_mv->row + neighbors[idx].row * (1 << mv_shift),
                      best_mv->col + neighbors[idx].col * (1 << mv_shift) };
-#if CONFIG_INTER_MODE_CONSOLIDATION
+
       if (mbmi->use_amvd) {
         MV diff_mv = { this_mv.row - ms_params->mv_cost_params.ref_mv->row,
                        this_mv.col - ms_params->mv_cost_params.ref_mv->col };
         if (!check_mvd_valid_amvd(diff_mv)) continue;
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
+
       if (av1_is_subpelmv_in_range(mv_limits, this_mv)) {
         // Update model and costs according to the motion vector which
         // is being tried out this iteration
@@ -6199,13 +6176,13 @@ int av1_refine_mv_for_base_param_warp_model(
 
       MV this_mv = { best_mv->row + neighbors[idx].row * (1 << mv_shift),
                      best_mv->col + neighbors[idx].col * (1 << mv_shift) };
-#if CONFIG_INTER_MODE_CONSOLIDATION
+
       if (mbmi->use_amvd) {
         MV diff_mv = { this_mv.row - ms_params->mv_cost_params.ref_mv->row,
                        this_mv.col - ms_params->mv_cost_params.ref_mv->col };
         if (!check_mvd_valid_amvd(diff_mv)) continue;
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
+
       if (av1_is_subpelmv_in_range(mv_limits, this_mv)) {
         // Update model and costs according to the motion vector which
         // is being tried out this iteration
@@ -6294,13 +6271,13 @@ void av1_refine_mv_for_warp_extend(const AV1_COMMON *cm, MACROBLOCKD *xd,
 
       MV this_mv = { best_mv->row + neighbors[idx].row * (1 << mv_shift),
                      best_mv->col + neighbors[idx].col * (1 << mv_shift) };
-#if CONFIG_INTER_MODE_CONSOLIDATION
+
       if (mbmi->use_amvd) {
         MV diff_mv = { this_mv.row - ms_params->mv_cost_params.ref_mv->row,
                        this_mv.col - ms_params->mv_cost_params.ref_mv->col };
         if (!check_mvd_valid_amvd(diff_mv)) continue;
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
+
       if (av1_is_subpelmv_in_range(mv_limits, this_mv)) {
         if (!av1_extend_warp_model(
                 neighbor_is_above, bsize, &this_mv, mi_row, mi_col,

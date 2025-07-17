@@ -246,12 +246,8 @@ static void write_warpmv_with_mvd_flag(FRAME_CONTEXT *ec_ctx,
 static AOM_INLINE void write_jmvd_scale_mode(MACROBLOCKD *xd, aom_writer *w,
                                              const MB_MODE_INFO *const mbmi) {
   if (!is_joint_mvd_coding_mode(mbmi->mode)) return;
-  const int is_joint_amvd_mode = is_joint_amvd_coding_mode(mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                                                           ,
-                                                           mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-  );
+  const int is_joint_amvd_mode =
+      is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd);
   aom_cdf_prob *jmvd_scale_mode_cdf =
       is_joint_amvd_mode ? xd->tile_ctx->jmvd_amvd_scale_mode_cdf
                          : xd->tile_ctx->jmvd_scale_mode_cdf;
@@ -296,39 +292,18 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
   } else {
 #endif  // CONFIG_OPT_INTER_MODE_CTX
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-    const bool is_joint =
-        ((comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV)) ||
-         (comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_AMVDNEWMV)));
-#else
     const bool is_joint = (comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV));
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
     aom_write_symbol(w, is_joint,
                      xd->tile_ctx->inter_compound_mode_is_joint_cdf
                          [get_inter_compound_mode_is_joint_context(cm, mbmi)],
                      NUM_OPTIONS_IS_JOINT);
 
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-    if (is_joint) {
-      aom_write_symbol(w, comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV),
-                       xd->tile_ctx->inter_compound_mode_joint_type_cdf[0],
-                       NUM_OPTIONS_JOINT_TYPE);
-    } else {
-#else
     if (!is_joint) {
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
       aom_write_symbol(
           w, comp_mode_idx,
           xd->tile_ctx->inter_compound_mode_non_joint_type_cdf[mode_ctx],
           NUM_OPTIONS_NON_JOINT_TYPE);
     }
-
-#else
-  aom_write_symbol(w, comp_mode_idx,
-                   xd->tile_ctx->inter_compound_mode_cdf[mode_ctx],
-                   INTER_COMPOUND_REF_TYPES);
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 #if CONFIG_OPT_INTER_MODE_CTX
   }
@@ -2529,7 +2504,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
         write_inter_compound_mode(xd, w, mode, cm, mbmi, mode_ctx);
       else if (is_inter_singleref_mode(mode))
         write_inter_mode(w, mode, ec_ctx, mode_ctx, cm, xd, mbmi, bsize);
-#if CONFIG_INTER_MODE_CONSOLIDATION
+
       if (cm->seq_params.enable_adaptive_mvd && allow_amvd_mode(mode)) {
         int amvd_index = amvd_mode_to_index(mbmi->mode);
         assert(amvd_index >= 0);
@@ -2537,7 +2512,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
         aom_write_symbol(w, mbmi->use_amvd,
                          ec_ctx->amvd_mode_cdf[amvd_index][amvd_ctx], 2);
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
       if (cm->features.enable_bawp &&
           av1_allow_bawp(cm, mbmi, xd->mi_row, xd->mi_col)) {
         aom_write_symbol(w, mbmi->bawp_flag[0] > 0, xd->tile_ctx->bawp_cdf[0],
@@ -2546,11 +2520,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
           const int ctx_index =
               (mbmi->mode == NEARMV)
                   ? 0
-#if CONFIG_INTER_MODE_CONSOLIDATION
                   : ((mbmi->mode == NEWMV && mbmi->use_amvd) ? 1 : 2);
-#else
-                  : (mbmi->mode == AMVDNEWMV ? 1 : 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
           aom_write_symbol(w, mbmi->bawp_flag[0] > 1,
                            xd->tile_ctx->explicit_bawp_cdf[ctx_index], 2);
           if (mbmi->bawp_flag[0] > 1) {
@@ -2599,9 +2569,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
       write_jmvd_scale_mode(xd, w, mbmi);
       int max_drl_bits = cm->features.max_drl_bits;
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-      if (mbmi->mode == AMVDNEWMV) max_drl_bits = AOMMIN(max_drl_bits, 1);
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
       if (have_drl_index(mode)) {
         write_drl_idx(max_drl_bits, mbmi_ext_frame->mode_context, ec_ctx, mbmi,
                       mbmi_ext_frame, w);
@@ -2836,12 +2803,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #if CONFIG_REFINEMV
         && (!mbmi->refinemv_flag || !switchable_refinemv_flag(cm, mbmi))
 #endif  // CONFIG_REFINEMV
-        && !is_joint_amvd_coding_mode(mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                                      ,
-                                      mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-                                      )) {
+        && !is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd)) {
       const int masked_compound_used = is_any_masked_compound_used(bsize) &&
                                        cm->seq_params.enable_masked_compound;
 

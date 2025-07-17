@@ -9009,13 +9009,7 @@ void av1_find_warp_delta_base_candidates(
          MAX_WARP_REF_CANDIDATES * sizeof(wrl_list[0]));
   if (p_valid_num_candidates) {
     // for NEARMV mode, the maximum number of candidates is 1
-    *p_valid_num_candidates = (mbmi->mode == NEARMV
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-                               || mbmi->mode == AMVDNEWMV
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-                               )
-                                  ? 1
-                                  : num_wrl_cand;
+    *p_valid_num_candidates = (mbmi->mode == NEARMV) ? 1 : num_wrl_cand;
   }
 }
 

@@ -420,7 +420,6 @@ static INLINE void get_adaptive_mvd_from_ref_mv(MV mv, MV ref_mv, MV *mvd) {
   mvd->col = mv.col - ref_mv.col;
 }
 
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static INLINE int16_t get_amvd_index_from_mvd(int mve) {
   int index;
   for (index = 0; index <= MAX_AMVD_INDEX; index++) {
@@ -439,7 +438,6 @@ static INLINE int check_mvd_valid_amvd(const MV mvd) {
 
   return (abs(row_index) <= MAX_AMVD_INDEX && abs(col_index) <= MAX_AMVD_INDEX);
 }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_VQ_MVD_CODING
 
 // Calculation precision for warp models

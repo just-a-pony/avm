@@ -5028,21 +5028,12 @@ static const aom_cdf_prob
 static const aom_cdf_prob
     default_inter_single_mode_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
         INTER_SINGLE_MODES)] = {
-#if CONFIG_INTER_MODE_CONSOLIDATION
       { AOM_CDF3(11516, 11715), 0 }, { AOM_CDF3(24656, 24680), 0 },
       { AOM_CDF3(27225, 27243), 0 }, { AOM_CDF3(13331, 13366), 0 },
       { AOM_CDF3(16063, 16170), 0 },
-#else
-      { AOM_CDF4(11339, 11624, 30039), 31 },
-      { AOM_CDF4(24644, 24688, 30865), 6 },
-      { AOM_CDF4(27689, 27719, 31612), 7 },
-      { AOM_CDF4(13726, 13846, 27717), 1 },
-      { AOM_CDF4(16389, 16521, 29001), 6 },
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
     };
 #else
 #if CONFIG_C076_INTER_MOD_CTX
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static const aom_cdf_prob
     default_inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS][CDF_SIZE(
         INTER_SINGLE_MODES)] = {
@@ -5053,17 +5044,6 @@ static const aom_cdf_prob
       { AOM_CDF3(27225, 27243), 0 }, { AOM_CDF3(10923, 21845), 0 },
       { AOM_CDF3(17901, 17941), 0 }, { AOM_CDF3(13331, 13366), 0 }
     };
-#else
-default_inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS][CDF_SIZE(
-    INTER_SINGLE_MODES)] = {
-  { AOM_CDF4(7049, 7186, 31694), 31 },  { AOM_CDF4(8192, 16384, 24576), 0 },
-  { AOM_CDF4(8192, 16384, 24576), 0 },  { AOM_CDF4(8192, 16384, 24576), 0 },
-  { AOM_CDF4(21243, 21266, 30741), 6 }, { AOM_CDF4(8192, 16384, 24576), 0 },
-  { AOM_CDF4(13186, 13218, 27617), 1 }, { AOM_CDF4(10898, 10994, 23939), 7 },
-  { AOM_CDF4(23759, 23782, 30601), 7 }, { AOM_CDF4(8192, 16384, 24576), 0 },
-  { AOM_CDF4(17664, 17690, 27521), 6 }, { AOM_CDF4(13399, 13523, 25524), 1 },
-};
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #else
 static const aom_cdf_prob
     default_inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS][CDF_SIZE(
@@ -5193,23 +5173,13 @@ static const aom_cdf_prob default_jmvd_amvd_scale_mode_cdf[CDF_SIZE(
     JOINT_AMVD_SCALE_FACTOR_CNT)] = { AOM_CDF3(24903, 28074), 75 };
 
 #if CONFIG_SKIP_MODE_ENHANCEMENT
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static const aom_cdf_prob default_skip_drl_cdf[3][CDF_SIZE(2)] = {
   { AOM_CDF2(25396), 0 }, { AOM_CDF2(23881), 0 }, { AOM_CDF2(21508), 0 }
 };
-#else
-static const aom_cdf_prob default_skip_drl_cdf[3][CDF_SIZE(2)] = {
-  { AOM_CDF2(18247), 0 },
-  { AOM_CDF2(20001), 90 },
-  { AOM_CDF2(19850), 118 },
-};
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static const aom_cdf_prob default_tip_drl_cdf[3][CDF_SIZE(2)] = {
   { AOM_CDF2(31561) }, { AOM_CDF2(27203) }, { AOM_CDF2(21916) }
 };
-#endif
 #if CONFIG_OPT_INTER_MODE_CTX
 #if CONFIG_OPFL_CTX_OPT
 static const aom_cdf_prob default_use_optflow_cdf[OPFL_MODE_CONTEXTS]
@@ -5225,8 +5195,6 @@ static const aom_cdf_prob
     };
 #endif  // CONFIG_OPFL_CTX_OPT
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static const aom_cdf_prob
     default_inter_compound_mode_is_joint_cdf[NUM_CTX_IS_JOINT]
                                             [CDF_SIZE(NUM_OPTIONS_IS_JOINT)] = {
@@ -5242,59 +5210,15 @@ static const aom_cdf_prob default_inter_compound_mode_non_joint_type_cdf
       { AOM_CDF5(17660, 22114, 26307, 27200) },
       { AOM_CDF5(21832, 24917, 28451, 28996) }
     };
-#else
-static const aom_cdf_prob
-    default_inter_compound_mode_is_joint_cdf[NUM_CTX_IS_JOINT]
-                                            [CDF_SIZE(NUM_OPTIONS_IS_JOINT)] = {
-                                              { AOM_CDF2(16384) },
-                                              { AOM_CDF2(32752) },
-                                            };
-
-static const aom_cdf_prob default_inter_compound_mode_non_joint_type_cdf
-    [NUM_CTX_NON_JOINT_TYPE][CDF_SIZE(NUM_OPTIONS_NON_JOINT_TYPE)] = {
-      { AOM_CDF5(15595, 24373, 27298, 27816) },
-      { AOM_CDF5(21488, 26280, 28926, 29475) },
-      { AOM_CDF5(26399, 28508, 30156, 30906) },
-      { AOM_CDF5(13688, 20940, 25305, 25462) },
-      { AOM_CDF5(18077, 21902, 25229, 25641) }
-    };
-
-static const aom_cdf_prob
-    default_inter_compound_mode_joint_type_cdf[NUM_CTX_JOINT_TYPE][CDF_SIZE(
-        NUM_OPTIONS_JOINT_TYPE)] = {
-      { AOM_CDF2(16384) },
-    };
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-#else
-static const aom_cdf_prob
-    default_inter_compound_mode_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
-        INTER_COMPOUND_REF_TYPES)] = {
-      { AOM_CDF7(15145, 23670, 26510, 27013, 31822, 32123), 1 },
-      { AOM_CDF7(19679, 24068, 26491, 26994, 30009, 30935), 1 },
-      { AOM_CDF7(22866, 24693, 26120, 26770, 28382, 29803), 76 },
-      { AOM_CDF7(11666, 17847, 21567, 21701, 27927, 29225), 1 },
-      { AOM_CDF7(12678, 15361, 17694, 17983, 22981, 25711), 6 }
-    };
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 static const aom_cdf_prob
     default_inter_compound_mode_same_refs_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
-        INTER_COMPOUND_SAME_REFS_TYPES)] = {
-#if CONFIG_NO_JOINTMODE_WHEN_SAME_REFINDEX
-      { AOM_CDF4(10155, 29278, 29355) },
-      { AOM_CDF4(16755, 29980, 30097) },
-      { AOM_CDF4(20563, 30064, 30344) },
-      { AOM_CDF4(12042, 28942, 29047) },
-      { AOM_CDF4(13526, 28071, 28214) }
-#else   // CONFIG_NO_JOINTMODE_WHEN_SAME_REFINDEX
-      { AOM_CDF6(10146, 29250, 29327, 32736, 32740), 1 },
-      { AOM_CDF6(16739, 29951, 30068, 32736, 32740), 1 },
-      { AOM_CDF6(20543, 30035, 30315, 32736, 32740), 76 },
-      { AOM_CDF6(12031, 28914, 29019, 32736, 32740), 1 },
-      { AOM_CDF6(13513, 28044, 28187, 32736, 32740), 6 }
-#endif  // CONFIG_NO_JOINTMODE_WHEN_SAME_REFINDEX
-
-    };
+        INTER_COMPOUND_SAME_REFS_TYPES)] = { { AOM_CDF4(10155, 29278, 29355) },
+                                             { AOM_CDF4(16755, 29980, 30097) },
+                                             { AOM_CDF4(20563, 30064, 30344) },
+                                             { AOM_CDF4(12042, 28942, 29047) },
+                                             { AOM_CDF4(13526, 28071,
+                                                        28214) } };
 #else
 #if CONFIG_C076_INTER_MOD_CTX
 static const aom_cdf_prob
@@ -5306,21 +5230,12 @@ static const aom_cdf_prob
 static const aom_cdf_prob
     default_inter_compound_mode_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(
         INTER_COMPOUND_REF_TYPES)] = {
-#if CONFIG_INTER_MODE_CONSOLIDATION
       { AOM_CDF6(14997, 26933, 28901, 29961, 31809), 0 },
       { AOM_CDF6(5461, 10923, 16384, 21845, 27307), 0 },
       { AOM_CDF6(25053, 28785, 28943, 29391, 30659), 0 },
       { AOM_CDF6(16094, 23781, 24431, 25602, 28594), 0 },
       { AOM_CDF6(28585, 29699, 29856, 30052, 30535), 0 },
       { AOM_CDF6(18297, 21832, 22738, 23442, 25214), 0 }
-#else
-      { AOM_CDF7(9967, 23734, 27123, 27502, 30774, 32039), 1 },
-      { AOM_CDF7(4681, 9362, 14043, 18725, 23406, 28087), 0 },
-      { AOM_CDF7(15975, 20288, 23514, 23575, 25932, 29006), 1 },
-      { AOM_CDF7(7601, 15010, 19863, 19907, 24870, 28126), 6 },
-      { AOM_CDF7(20022, 21644, 23250, 23348, 24690, 27825), 75 },
-      { AOM_CDF7(8179, 11165, 13971, 14207, 19868, 23899), 6 },
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
     };
 static const aom_cdf_prob
     default_use_optflow_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(2)] = {
@@ -5408,7 +5323,6 @@ static const aom_cdf_prob default_compound_type_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
   { AOM_CDF2(16384) },
 };
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static const aom_cdf_prob
     default_amvd_mode_cdf[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][CDF_SIZE(2)] = {
       { { AOM_CDF2(11007) }, { AOM_CDF2(11114) }, { AOM_CDF2(10230) } },
@@ -5421,7 +5335,6 @@ static const aom_cdf_prob
       { { AOM_CDF2(9396) }, { AOM_CDF2(8093) }, { AOM_CDF2(10339) } },
       { { AOM_CDF2(13855) }, { AOM_CDF2(11902) }, { AOM_CDF2(11445) } },
     };
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #if CONFIG_WEDGE_MOD_EXT
 /*wedge_angle_dir is first decoded. Depending on the wedge angle_dir, the
  * wedge_angle is decoded. Depending on the wedge_angle, the wedge_dist is
@@ -5855,13 +5768,8 @@ static const aom_cdf_prob default_tip_cdf[3][CDF_SIZE(2)] = {
   { AOM_CDF2(8752), 90 },
 };
 
-#if CONFIG_INTER_MODE_CONSOLIDATION
 static const aom_cdf_prob default_tip_pred_mode_cdf[CDF_SIZE(
     TIP_PRED_MODES)] = { AOM_CDF2(29069), 0 };
-#else
-static const aom_cdf_prob default_tip_pred_mode_cdf[CDF_SIZE(
-    TIP_PRED_MODES)] = { AOM_CDF3(10923, 21845), 0 };
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 
 #if CONFIG_NEW_CONTEXT_MODELING
 static const aom_cdf_prob
@@ -7386,9 +7294,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->warp_extend_cdf, default_warp_extend_cdf);
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   av1_copy(fc->skip_drl_cdf, default_skip_drl_cdf);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   av1_copy(fc->tip_drl_cdf, default_tip_drl_cdf);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
   av1_copy(fc->bawp_cdf[0], default_bawp_cdf[0]);
   av1_copy(fc->bawp_cdf[1], default_bawp_cdf[1]);
@@ -7400,27 +7306,17 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->jmvd_scale_mode_cdf, default_jmvd_scale_mode_cdf);
   av1_copy(fc->jmvd_amvd_scale_mode_cdf, default_jmvd_amvd_scale_mode_cdf);
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
   av1_copy(fc->inter_compound_mode_is_joint_cdf,
            default_inter_compound_mode_is_joint_cdf);
   av1_copy(fc->inter_compound_mode_non_joint_type_cdf,
            default_inter_compound_mode_non_joint_type_cdf);
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-  av1_copy(fc->inter_compound_mode_joint_type_cdf,
-           default_inter_compound_mode_joint_type_cdf);
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-#else
-  av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 #if CONFIG_OPT_INTER_MODE_CTX
   av1_copy(fc->inter_compound_mode_same_refs_cdf,
            default_inter_compound_mode_same_refs_cdf);
 #endif  // CONFIG_OPT_INTER_MODE_CTX
   av1_copy(fc->compound_type_cdf, default_compound_type_cdf);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   av1_copy(fc->amvd_mode_cdf, default_amvd_mode_cdf);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   av1_copy(fc->wedge_quad_cdf, default_wedge_quad_cdf);
@@ -7759,29 +7655,16 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
   CUMULATIVE_AVERAGE_CDF(ctx_left->drl_cdf, ctx_tr->drl_cdf, 2);
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   CUMULATIVE_AVERAGE_CDF(ctx_left->skip_drl_cdf, ctx_tr->skip_drl_cdf, 2);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   CUMULATIVE_AVERAGE_CDF(ctx_left->tip_drl_cdf, ctx_tr->tip_drl_cdf, 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
   CUMULATIVE_AVERAGE_CDF(ctx_left->use_optflow_cdf, ctx_tr->use_optflow_cdf, 2);
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
   CUMULATIVE_AVERAGE_CDF(ctx_left->inter_compound_mode_is_joint_cdf,
                          ctx_tr->inter_compound_mode_is_joint_cdf,
                          NUM_OPTIONS_IS_JOINT);
   CUMULATIVE_AVERAGE_CDF(ctx_left->inter_compound_mode_non_joint_type_cdf,
                          ctx_tr->inter_compound_mode_non_joint_type_cdf,
                          NUM_OPTIONS_NON_JOINT_TYPE);
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-  CUMULATIVE_AVERAGE_CDF(ctx_left->inter_compound_mode_joint_type_cdf,
-                         ctx_tr->inter_compound_mode_joint_type_cdf,
-                         NUM_OPTIONS_JOINT_TYPE);
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-#else
-  CUMULATIVE_AVERAGE_CDF(ctx_left->inter_compound_mode_cdf,
-                         ctx_tr->inter_compound_mode_cdf,
-                         INTER_COMPOUND_REF_TYPES);
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 #if CONFIG_OPT_INTER_MODE_CTX
   CUMULATIVE_AVERAGE_CDF(ctx_left->inter_compound_mode_same_refs_cdf,
@@ -7789,9 +7672,7 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          INTER_COMPOUND_SAME_REFS_TYPES);
 #endif  // CONFIG_OPT_INTER_MODE_CTX
   CUMULATIVE_AVERAGE_CDF(ctx_left->cwp_idx_cdf, ctx_tr->cwp_idx_cdf, 2);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   CUMULATIVE_AVERAGE_CDF(ctx_left->amvd_mode_cdf, ctx_tr->amvd_mode_cdf, 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
   CUMULATIVE_AVERAGE_CDF(ctx_left->jmvd_scale_mode_cdf,
                          ctx_tr->jmvd_scale_mode_cdf,
                          JOINT_NEWMV_SCALE_FACTOR_CNT);
@@ -8232,32 +8113,20 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   SHIFT_CDF(ctx_ptr->drl_cdf, 2);
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   SHIFT_CDF(ctx_ptr->skip_drl_cdf, 2);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   SHIFT_CDF(ctx_ptr->tip_drl_cdf, 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
   SHIFT_CDF(ctx_ptr->use_optflow_cdf, 2);
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
   SHIFT_CDF(ctx_ptr->inter_compound_mode_is_joint_cdf, NUM_OPTIONS_IS_JOINT);
   SHIFT_CDF(ctx_ptr->inter_compound_mode_non_joint_type_cdf,
             NUM_OPTIONS_NON_JOINT_TYPE);
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-  SHIFT_CDF(ctx_ptr->inter_compound_mode_joint_type_cdf,
-            NUM_OPTIONS_JOINT_TYPE);
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-#else
-  SHIFT_CDF(ctx_ptr->inter_compound_mode_cdf, INTER_COMPOUND_REF_TYPES);
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 #if CONFIG_OPT_INTER_MODE_CTX
   SHIFT_CDF(ctx_ptr->inter_compound_mode_same_refs_cdf,
             INTER_COMPOUND_SAME_REFS_TYPES);
 #endif  // CONFIG_OPT_INTER_MODE_CTX
   SHIFT_CDF(ctx_ptr->cwp_idx_cdf, 2);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   SHIFT_CDF(ctx_ptr->amvd_mode_cdf, 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
   SHIFT_CDF(ctx_ptr->jmvd_scale_mode_cdf, JOINT_NEWMV_SCALE_FACTOR_CNT);
   SHIFT_CDF(ctx_ptr->jmvd_amvd_scale_mode_cdf, JOINT_AMVD_SCALE_FACTOR_CNT);
   SHIFT_CDF(ctx_ptr->compound_type_cdf, MASKED_COMPOUND_TYPES);
@@ -8640,28 +8509,16 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->drl_cdf, ctx_tr->drl_cdf, 2);
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   AVERAGE_CDF(ctx_left->skip_drl_cdf, ctx_tr->skip_drl_cdf, 2);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   AVERAGE_CDF(ctx_left->tip_drl_cdf, ctx_tr->tip_drl_cdf, 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
 
   AVERAGE_CDF(ctx_left->use_optflow_cdf, ctx_tr->use_optflow_cdf, 2);
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
   AVERAGE_CDF(ctx_left->inter_compound_mode_is_joint_cdf,
               ctx_tr->inter_compound_mode_is_joint_cdf, NUM_OPTIONS_IS_JOINT);
   AVERAGE_CDF(ctx_left->inter_compound_mode_non_joint_type_cdf,
               ctx_tr->inter_compound_mode_non_joint_type_cdf,
               NUM_OPTIONS_NON_JOINT_TYPE);
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-  AVERAGE_CDF(ctx_left->inter_compound_mode_joint_type_cdf,
-              ctx_tr->inter_compound_mode_joint_type_cdf,
-              NUM_OPTIONS_JOINT_TYPE);
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-#else
-  AVERAGE_CDF(ctx_left->inter_compound_mode_cdf,
-              ctx_tr->inter_compound_mode_cdf, INTER_COMPOUND_REF_TYPES);
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 #if CONFIG_OPT_INTER_MODE_CTX
   AVERAGE_CDF(ctx_left->inter_compound_mode_same_refs_cdf,
@@ -8669,9 +8526,7 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
               INTER_COMPOUND_SAME_REFS_TYPES);
 #endif  // CONFIG_OPT_INTER_MODE_CTX
   AVERAGE_CDF(ctx_left->cwp_idx_cdf, ctx_tr->cwp_idx_cdf, 2);
-#if CONFIG_INTER_MODE_CONSOLIDATION
   AVERAGE_CDF(ctx_left->amvd_mode_cdf, ctx_tr->amvd_mode_cdf, 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
   AVERAGE_CDF(ctx_left->jmvd_scale_mode_cdf, ctx_tr->jmvd_scale_mode_cdf,
               JOINT_NEWMV_SCALE_FACTOR_CNT);
   AVERAGE_CDF(ctx_left->jmvd_amvd_scale_mode_cdf,

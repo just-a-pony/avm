@@ -1531,9 +1531,7 @@ typedef struct FRAME_COUNTS {
 #if CONFIG_SKIP_MODE_ENHANCEMENT
   unsigned int skip_drl_cnts[3][2];
 #endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-#if CONFIG_INTER_MODE_CONSOLIDATION
   unsigned int tip_drl_mode[3][2];
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 
   unsigned int
       jmvd_scale_mode_cnts[JOINT_NEWMV_SCALE_FACTOR_CNT];  // placeholder
@@ -1545,17 +1543,12 @@ typedef struct FRAME_COUNTS {
 #if CONFIG_OPT_INTER_MODE_CTX
   unsigned int use_optflow[INTER_MODE_CONTEXTS][2];
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
   unsigned int inter_compound_mode_is_joint[NUM_CTX_IS_JOINT]
                                            [NUM_OPTIONS_IS_JOINT];
   unsigned int inter_compound_mode_non_joint_type[NUM_CTX_NON_JOINT_TYPE]
                                                  [NUM_OPTIONS_NON_JOINT_TYPE];
   unsigned int inter_compound_mode_joint_type[NUM_CTX_JOINT_TYPE]
                                              [NUM_OPTIONS_JOINT_TYPE];
-#else
-  unsigned int inter_compound_mode[INTER_MODE_CONTEXTS]
-                                  [INTER_COMPOUND_REF_TYPES];
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
   unsigned int
       inter_compound_mode_same_refs_cnt[INTER_MODE_CONTEXTS]
@@ -1565,9 +1558,7 @@ typedef struct FRAME_COUNTS {
   unsigned int inter_compound_mode[INTER_COMPOUND_MODE_CONTEXTS]
                                   [INTER_COMPOUND_REF_TYPES];
 #endif  // CONFIG_OPT_INTER_MODE_CTX
-#if CONFIG_INTER_MODE_CONSOLIDATION
   unsigned int amvd_mode[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][2];
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE

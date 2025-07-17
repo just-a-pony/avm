@@ -1002,12 +1002,8 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
 static PREDICTION_MODE read_jmvd_scale_mode(MACROBLOCKD *xd, aom_reader *r,
                                             MB_MODE_INFO *const mbmi) {
   if (!is_joint_mvd_coding_mode(mbmi->mode)) return 0;
-  const int is_joint_amvd_mode = is_joint_amvd_coding_mode(mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                                                           ,
-                                                           mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-  );
+  const int is_joint_amvd_mode =
+      is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd);
   aom_cdf_prob *jmvd_scale_mode_cdf =
       is_joint_amvd_mode ? xd->tile_ctx->jmvd_amvd_scale_mode_cdf
                          : xd->tile_ctx->jmvd_scale_mode_cdf;
@@ -1061,37 +1057,19 @@ static PREDICTION_MODE read_inter_compound_mode(MACROBLOCKD *xd, aom_reader *r,
   } else {
 #endif  // CONFIG_OPT_INTER_MODE_CTX
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
-
     const int is_joint = aom_read_symbol(
         r,
         xd->tile_ctx->inter_compound_mode_is_joint_cdf
             [get_inter_compound_mode_is_joint_context(cm, mbmi)],
         NUM_OPTIONS_IS_JOINT, ACCT_INFO("inter_compound_mode_is_joint_cdf"));
     if (is_joint) {
-#if CONFIG_INTER_MODE_CONSOLIDATION
       mode = INTER_COMPOUND_OFFSET(JOINT_NEWMV);
-#else
-      const int is_comp_mode_joint_newmv = aom_read_symbol(
-          r, xd->tile_ctx->inter_compound_mode_joint_type_cdf[0],
-          NUM_OPTIONS_JOINT_TYPE,
-          ACCT_INFO("inter_compound_mode_is_joint_cdf"));
-      mode = (is_comp_mode_joint_newmv)
-                 ? INTER_COMPOUND_OFFSET(JOINT_NEWMV)
-                 : INTER_COMPOUND_OFFSET(JOINT_AMVDNEWMV);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
     } else {
       mode = aom_read_symbol(
           r, xd->tile_ctx->inter_compound_mode_non_joint_type_cdf[ctx],
           NUM_OPTIONS_NON_JOINT_TYPE,
           ACCT_INFO("inter_compound_mode_non_joint_type_cdf"));
     }
-
-#else
-  mode = aom_read_symbol(r, xd->tile_ctx->inter_compound_mode_cdf[ctx],
-                         INTER_COMPOUND_REF_TYPES,
-                         ACCT_INFO("inter_compound_mode_cdf"));
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 #if CONFIG_OPT_INTER_MODE_CTX
   }
@@ -2349,9 +2327,7 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
 #if CONFIG_LOSSLESS_DPCM
       mbmi->use_dpcm_y = 0;
       mbmi->dpcm_mode_y = 0;
-#if CONFIG_INTER_MODE_CONSOLIDATION
       mbmi->use_amvd = 0;
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_LOSSLESS_DPCM
       return;
     }
@@ -3348,9 +3324,6 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
     case WARP_NEWMV:
 #endif  // CONFIG_REDESIGN_WARP_MODES_SIGNALING_FLOW
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-    case AMVDNEWMV:
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
     case NEWMV: {
       nmv_context *const nmvc = &ec_ctx->nmvc;
 #if CONFIG_DERIVED_MVD_SIGN
@@ -3530,10 +3503,6 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
       break;
     }
     case JOINT_NEWMV_OPTFLOW:
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-    case JOINT_AMVDNEWMV_OPTFLOW:
-    case JOINT_AMVDNEWMV:
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
     case JOINT_NEWMV: {
       nmv_context *const nmvc = &ec_ctx->nmvc;
       assert(is_compound);
@@ -3688,12 +3657,8 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
       diff.row = mv[jmvd_base_ref_list].as_mv.row - low_prec_refmv.row;
       diff.col = mv[jmvd_base_ref_list].as_mv.col - low_prec_refmv.col;
       get_mv_projection(&other_mvd, diff, sec_ref_dist, first_ref_dist);
-      scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                      ,
-                      mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-      );
+      scale_other_mvd(&other_mvd, mbmi->jmvd_scale_mode, mbmi->mode,
+                      mbmi->use_amvd);
 #if !CONFIG_C071_SUBBLK_WARPMV
       // TODO(Mohammed): Do we need to apply block level lower mv precision?
       lower_mv_precision(&other_mvd, features->fr_mv_precision);
@@ -4033,7 +3998,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
         mbmi->mode = read_inter_compound_mode(xd, r, cm, mbmi, mode_ctx);
       else
         mbmi->mode = read_inter_mode(ec_ctx, r, mode_ctx, cm, xd, mbmi, bsize);
-#if CONFIG_INTER_MODE_CONSOLIDATION
+
       mbmi->use_amvd = 0;
       if (cm->seq_params.enable_adaptive_mvd && allow_amvd_mode(mbmi->mode)) {
         int amvd_index = amvd_mode_to_index(mbmi->mode);
@@ -4043,7 +4008,6 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
             aom_read_symbol(r, ec_ctx->amvd_mode_cdf[amvd_index][amvd_ctx], 2,
                             ACCT_INFO("use_amvd"));
       }
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #if CONFIG_SEP_COMP_DRL
       av1_find_mv_refs(
           cm, xd, mbmi, ref_frame, dcb->ref_mv_count, xd->ref_mv_stack,
@@ -4066,11 +4030,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
           const int ctx_index =
               (mbmi->mode == NEARMV)
                   ? 0
-#if CONFIG_INTER_MODE_CONSOLIDATION
                   : ((mbmi->mode == NEWMV && mbmi->use_amvd) ? 1 : 2);
-#else
-                  : (mbmi->mode == AMVDNEWMV ? 1 : 2);
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
           mbmi->bawp_flag[0] +=
               aom_read_symbol(r, xd->tile_ctx->explicit_bawp_cdf[ctx_index], 2,
                               ACCT_INFO("explicit_bawp_flag"));
@@ -4121,11 +4081,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
         mbmi->max_num_warp_candidates = MAX_WARP_REF_CANDIDATES;
 #else
         mbmi->max_num_warp_candidates =
-            (mbmi->mode == GLOBALMV || mbmi->mode == NEARMV
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-             || mbmi->mode == AMVDNEWMV
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-             )
+            (mbmi->mode == GLOBALMV || mbmi->mode == NEARMV)
                 ? 1
                 : MAX_WARP_REF_CANDIDATES;
         if (is_warpmv_warp_causal) {
@@ -4149,10 +4105,6 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       }
       mbmi->jmvd_scale_mode = read_jmvd_scale_mode(xd, r, mbmi);
       int max_drl_bits = cm->features.max_drl_bits;
-
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-      if (mbmi->mode == AMVDNEWMV) max_drl_bits = AOMMIN(max_drl_bits, 1);
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
 
       if (have_drl_index(mbmi->mode))
         read_drl_idx(max_drl_bits,
@@ -4364,12 +4316,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #if CONFIG_REFINEMV
       (!mbmi->refinemv_flag || !switchable_refinemv_flag(cm, mbmi)) &&
 #endif  // CONFIG_REFINEMV
-      !is_joint_amvd_coding_mode(mbmi->mode
-#if CONFIG_INTER_MODE_CONSOLIDATION
-                                 ,
-                                 mbmi->use_amvd
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
-                                 ) &&
+      !is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd) &&
       !mbmi->skip_mode) {
     // Read idx to indicate current compound inter prediction mode group
     const int masked_compound_used = is_any_masked_compound_used(bsize) &&
@@ -4827,9 +4774,7 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 #if CONFIG_LOSSLESS_DPCM
       mbmi->use_dpcm_y = 0;
       mbmi->dpcm_mode_y = 0;
-#if CONFIG_INTER_MODE_CONSOLIDATION
       mbmi->use_amvd = 0;
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 #endif  // CONFIG_LOSSLESS_DPCM
       return;
     }

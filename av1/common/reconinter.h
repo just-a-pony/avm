@@ -436,18 +436,10 @@ static INLINE int get_cwp_coding_idx(int val, int encode,
 static INLINE int enable_adaptive_mvd_resolution(const AV1_COMMON *const cm,
                                                  const MB_MODE_INFO *mbmi) {
   const int mode = mbmi->mode;
-#if CONFIG_INTER_MODE_CONSOLIDATION
   if (allow_amvd_mode(mode) == 0) return 0;
   if (cm->seq_params.enable_adaptive_mvd == 0) return 0;
 
   return mbmi->use_amvd;
-#else
-  return (mode == NEAR_NEWMV || mode == NEW_NEARMV ||
-          mode == NEAR_NEWMV_OPTFLOW || mode == NEW_NEARMV_OPTFLOW ||
-          mode == JOINT_AMVDNEWMV_OPTFLOW || mode == AMVDNEWMV ||
-          mode == JOINT_AMVDNEWMV) &&
-         cm->seq_params.enable_adaptive_mvd;
-#endif  // CONFIG_INTER_MODE_CONSOLIDATION
 }
 
 // get the base reference frame list for joint MVD coding, the MVD for base
@@ -486,7 +478,6 @@ static INLINE int is_ref_frame_same_side(const AV1_COMMON *const cm,
   return is_same_side;
 }
 
-#if CONFIG_INTER_COMPOUND_BY_JOINT
 // check whether the distance of to the two reference frames are the same
 static INLINE int is_ref_frame_same_dist(const AV1_COMMON *const cm,
                                          const MB_MODE_INFO *mbmi) {
@@ -508,8 +499,6 @@ static INLINE int get_inter_compound_mode_is_joint_context(
   return (is_ref_frame_same_side(cm, mbmi) ||
           (!is_ref_frame_same_dist(cm, mbmi)));
 }
-
-#endif  // CONFIG_INTER_COMPOUND_BY_JOINT
 
 void av1_init_comp_mode(InterPredParams *inter_pred_params);
 
@@ -1033,11 +1022,8 @@ static INLINE int is_refinemv_allowed_mode_precision(
 #endif  // CONFIG_AFFINE_REFINEMENT
 
   if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-      (mode == JOINT_NEWMV
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-       || mode == JOINT_AMVDNEWMV
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-       || mode == NEAR_NEWMV || mode == NEW_NEARMV || mode == NEW_NEWMV))
+      (mode == JOINT_NEWMV || mode == NEAR_NEWMV || mode == NEW_NEARMV ||
+       mode == NEW_NEWMV))
     return 0;
 
 #if CONFIG_AFFINE_REFINEMENT
@@ -1047,11 +1033,7 @@ static INLINE int is_refinemv_allowed_mode_precision(
     return mode == NEAR_NEARMV;
   }
 #endif
-  return (mode >= NEAR_NEARMV
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-          && mode <= JOINT_AMVDNEWMV_OPTFLOW
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-  );
+  return (mode >= NEAR_NEARMV);
 }
 
 // check if the prediction mode infered to refimemv to always 1.
@@ -1613,11 +1595,7 @@ static INLINE int av1_allow_bawp(const AV1_COMMON *const cm,
 }
 
 static INLINE int av1_allow_explicit_bawp(const MB_MODE_INFO *mbmi) {
-  return mbmi->mode == NEWMV || mbmi->mode == NEARMV
-#if !CONFIG_INTER_MODE_CONSOLIDATION
-         || mbmi->mode == AMVDNEWMV
-#endif  //! CONFIG_INTER_MODE_CONSOLIDATION
-      ;
+  return mbmi->mode == NEWMV || mbmi->mode == NEARMV;
 }
 
 // derive the context of the mpp_flag
