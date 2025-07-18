@@ -6697,7 +6697,7 @@ static AOM_INLINE void decode_qm_data(
 
       qm_val_t *mat = fund_mat[t][level][c];
       bool coef_repeat_until_end = false;
-      int16_t prev = 32;
+      qm_val_t prev = 32;
       for (int i = 0; i < tx_size_2d[tsize]; i++) {
         const int pos = s->scan[i];
         if (tsize == TX_8X8 && qm_8x8_is_symmetric) {
@@ -6712,17 +6712,18 @@ static AOM_INLINE void decode_qm_data(
         if (!coef_repeat_until_end) {
           const int32_t delta = aom_rb_read_svlc(rb);
           // The valid range of quantization matrix coefficients is 1..255.
-          // Therefore the valid range of delta values is -254..254.
-          if (delta < -254 || delta > 254) {
+          // Therefore the valid range of delta values is -254..254. Because of
+          // the % 256 operation, the valid range of delta values can be reduced
+          // to -128..127 to shorten the svlc() code.
+          if (delta < -128 || delta > 127) {
             aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
                                "Invalid matrix_coef_delta: %d", delta);
           }
-          const int32_t coef = prev + delta;
-          if (coef == 0 || coef == 256) {
+          const qm_val_t coef = (prev + delta + 256) % 256;
+          if (coef == 0) {
             coef_repeat_until_end = true;
           } else {
-            prev = (coef + NUM_QM_VALS) % NUM_QM_VALS;
-            assert(prev >= 1);
+            prev = coef;
           }
         }
         mat[pos] = prev;

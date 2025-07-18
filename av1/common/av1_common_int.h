@@ -85,8 +85,6 @@ extern "C" {
 #define MAX_NUM_TEMPORAL_LAYERS 8
 #define MAX_NUM_SPATIAL_LAYERS 4
 
-#define NUM_QM_VALS 256
-
 /* clang-format off */
 // clang-format seems to think this is a pointer dereference and not a
 // multiplication.
