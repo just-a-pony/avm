@@ -197,7 +197,6 @@ set_aom_config_var(CONFIG_ORIP_DC_DISABLED 0
                    "AV2 experiment flag to disable ORIP for DC mode.")
 set_aom_config_var(CONFIG_ORIP_NONDC_DISABLED 0
                    "AV2 experiment flag to disable ORIP for non-DC modes.")
-set_aom_config_var(CONFIG_MVP_IMPROVEMENT 1 "Enable MVP improvement")
 set_aom_config_var(CONFIG_WAIP 1 "AV2 wide angular intra prediction flag.")
 set_aom_config_var(CONFIG_MORPH_PRED 1 "AV2 intra prediction mode flag.")
 set_aom_config_var(CONFIG_IMPROVED_MORPH_PRED 1
@@ -334,8 +333,6 @@ set_aom_config_var(CONFIG_D149_CTX_MODELING_OPT 1
 set_aom_config_var(
   CONFIG_COMPOUND_WARP_CAUSAL 0
   "AV2 experiment flag to enable compound new_newmv warp_causal mode")
-set_aom_config_var(CONFIG_DSMVP_REFBANK_MV_SWAP 1
-                   "Swap ref bank mv and derived smvp in DRL generation")
 set_aom_config_var(CONFIG_D072_SKIP_MODE_IMPROVE 1
                    "Enable to improve skip mode")
 
@@ -345,8 +342,6 @@ set_aom_config_var(CONFIG_SKIP_MODE_NO_REFINEMENTS 1
 set_aom_config_var(CONFIG_MF_HOLE_FILL_ALWAYS_ENABLE 1
                    "Always enable motion field hole filling")
 
-set_aom_config_var(CONFIG_CWG_E099_DRL_WRL_SIMPLIFY 1
-                   "Enable the simplification of DRL and WRL")
 set_aom_config_var(CONFIG_BANK_IMPROVE 1
                    "Enable to improve refmv bank and warp parameter bank")
 set_aom_config_var(CONFIG_PARTITION_CONTEXT_REDUCE 1
@@ -359,9 +354,6 @@ set_aom_config_var(CONFIG_WRL_PRUNE_FOUR_PARAMETERS 1
 
 set_aom_config_var(CONFIG_KEY_OVERLAY 1
                    "Enable to support the key overlay frame")
-
-set_aom_config_var(CONFIG_DRL_REORDER_CONTROL 1
-                   "Enable to have a flag to turn on and off DRL reorder")
 set_aom_config_var(CONFIG_OPFL_CTX_OPT 1
                    "Enable optimization of the CDFs for use optflow flag")
 
@@ -371,15 +363,8 @@ set_aom_config_var(CONFIG_MVD_CDF_REDUCTION 1
 set_aom_config_var(CONFIG_TMVP_SIMPLIFICATIONS_F085 1
                    "Improvements to TMVP & MV trajectory")
 
-set_aom_config_var(CONFIG_TMVP_SIMPLIFICATION 1
-                   "Enable to reduce the number of TMVP candidates")
 set_aom_config_var(CONFIG_IMPROVE_TIP_SMVP 1 "Improve SMVP with TIP (F043)")
 set_aom_config_var(CONFIG_TMVP_MV_COMPRESSION 1 "Enable to compress TMVP MV")
-set_aom_config_var(
-  CONFIG_DRL_WRL_LINE_BUFFER_REDUCTION
-  1
-  "Reduce the line buffer size for DRL and WRL. The access unit is changed from 4x4 to 8x8"
-)
 set_aom_config_var(CONFIG_ENABLE_SR 0 "Enable super resolution mode")
 
 set_aom_config_var(CONFIG_TIP_MV_SIMPLIFICATION 1
@@ -444,8 +429,6 @@ set_aom_config_var(CONFIG_WEDGE_MOD_EXT 1 "AV2 wedge modes extensions.")
 set_aom_config_var(CONFIG_MF_IMPROVEMENT 1
                    "Enable to improve temporal motion projection")
 
-set_aom_config_var(CONFIG_MVP_SIMPLIFY 1
-                   "Enable to simplify MVP list construction")
 set_aom_config_var(CONFIG_BRU 1 "enable BRU update")
 set_aom_config_var(CONFIG_SDP_CFL_LATENCY_FIX 1 "Reduce SDP-CFL latency")
 
@@ -458,8 +441,6 @@ set_aom_config_var(
   CONFIG_IST_REDUCTION 1
   "Non-normatively use 4 sets for IST encoder search from CWG-E142.")
 
-set_aom_config_var(CONFIG_TMVP_IMPROVE 1
-                   "Enable to improve TMVP candidate selection in DRL list")
 set_aom_config_var(CONFIG_COMPOUND_4XN 1
                    "Enable compound modes for 4XN/Nx4 blocks")
 

@@ -4924,9 +4924,6 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
        mi_row += cm->mib_size) {
     av1_zero_left_context(xd);
     av1_zero(xd->ref_mv_bank);
-#if !CONFIG_MVP_IMPROVEMENT
-    xd->ref_mv_bank_pt = &td->ref_mv_bank;
-#endif
 
     av1_zero(xd->warp_param_bank);
 #if !WARP_CU_BANK
@@ -4951,9 +4948,6 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
 #else
         xd->ref_mv_bank.rmb_sb_hits = 0;
 #endif  // CONFIG_BANK_IMPROVE
-#if !CONFIG_MVP_IMPROVEMENT
-      td->ref_mv_bank = xd->ref_mv_bank;
-#endif  // !CONFIG_MVP_IMPROVEMENT
 
 #if !CONFIG_BANK_IMPROVE
       xd->warp_param_bank.wpb_sb_hits = 0;
@@ -5455,9 +5449,6 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
        mi_row += cm->mib_size) {
     av1_zero_left_context(xd);
     av1_zero(xd->ref_mv_bank);
-#if !CONFIG_MVP_IMPROVEMENT
-    xd->ref_mv_bank_pt = &td->ref_mv_bank;
-#endif
 
     av1_zero(xd->warp_param_bank);
 #if !WARP_CU_BANK
@@ -5480,9 +5471,6 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
 #else
         xd->ref_mv_bank.rmb_sb_hits = 0;
 #endif  // CONFIG_BANK_IMPROVE
-#if !CONFIG_MVP_IMPROVEMENT
-      td->ref_mv_bank = xd->ref_mv_bank;
-#endif  // !CONFIG_MVP_IMPROVEMENT
 
 #if !CONFIG_BANK_IMPROVE
       xd->warp_param_bank.wpb_sb_hits = 0;
@@ -6764,14 +6752,13 @@ void av1_read_sequence_header_beyond_av1(
     struct aom_internal_error_info *error_info) {
   // printf("print sps\n");
   seq_params->enable_refmvbank = aom_rb_read_bit(rb);
-#if CONFIG_DRL_REORDER_CONTROL
   if (aom_rb_read_bit(rb)) {
     seq_params->enable_drl_reorder = DRL_REORDER_DISABLED;
   } else {
     seq_params->enable_drl_reorder =
         aom_rb_read_bit(rb) ? DRL_REORDER_CONSTRAINT : DRL_REORDER_ALWAYS;
   }
-#endif  // CONFIG_DRL_REORDER_CONTROL
+
   if (aom_rb_read_bit(rb)) {
     seq_params->enable_cdef_on_skip_txfm = CDEF_ON_SKIP_TXFM_ALWAYS_ON;
   } else {
@@ -9046,11 +9033,10 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
 
   cm->mi_params.setup_mi(&cm->mi_params);
 
-  if (cm->features.allow_ref_frame_mvs) av1_setup_motion_field(cm);
-#if CONFIG_MVP_IMPROVEMENT
+  if (cm->features.allow_ref_frame_mvs)
+    av1_setup_motion_field(cm);
   else
     av1_setup_ref_frame_sides(cm);
-#endif  // CONFIG_MVP_IMPROVEMENT
 
 #if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
