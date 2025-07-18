@@ -1438,15 +1438,10 @@ int av1_trellis_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
     non_skip_cost = txb_costs->v_txb_skip_cost[txb_skip_ctx][0];
     skip_cost = txb_costs->v_txb_skip_cost[txb_skip_ctx][1];
   } else {
-#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
     const int pred_mode_ctx =
         (is_inter || mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) ? 1 : 0;
     non_skip_cost = txb_costs->txb_skip_cost[pred_mode_ctx][txb_skip_ctx][0];
     skip_cost = txb_costs->txb_skip_cost[pred_mode_ctx][txb_skip_ctx][1];
-#else
-    non_skip_cost = txb_costs->txb_skip_cost[txb_skip_ctx][0];
-    skip_cost = txb_costs->txb_skip_cost[txb_skip_ctx][1];
-#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
   }
 #else
   const int non_skip_cost = txb_costs->txb_skip_cost[txb_ctx->txb_skip_ctx][0];

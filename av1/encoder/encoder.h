@@ -1624,12 +1624,7 @@ typedef struct FRAME_COUNTS {
   unsigned int warp_delta_param_high[2][WARP_DELTA_NUMSYMBOLS_HIGH];
 #endif  // CONFIG_WARP_PRECISION
   unsigned int warp_extend[WARP_EXTEND_CTX][2];
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-  unsigned int intra_inter[INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS]
-                          [2];
-#else
   unsigned int intra_inter[INTRA_INTER_CONTEXTS][2];
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   int8_t cwp_idx[MAX_CWP_NUM - 1][2];
   unsigned int bawp[2];
   unsigned int tip_ref[TIP_CONTEXTS][2];

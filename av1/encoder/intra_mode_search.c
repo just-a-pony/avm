@@ -1176,15 +1176,8 @@ int av1_search_palette_mode(IntraModeSearchState *intra_search_state,
   if (skippable) {
     rate2 -= rd_stats_y.rate;
     if (num_planes > 1) rate2 -= intra_search_state->rate_uv_tokenonly;
-#if !CONFIG_SKIP_TXFM_OPT
-    rate2 += mode_costs->skip_txfm_cost[av1_get_skip_txfm_context(xd)][1];
-#endif  // !CONFIG_SKIP_TXFM_OPT
   }
-#if !CONFIG_SKIP_TXFM_OPT
-  else {
-    rate2 += mode_costs->skip_txfm_cost[av1_get_skip_txfm_context(xd)][0];
-  }
-#endif  // !CONFIG_SKIP_TXFM_OPT
+
   this_rd = RDCOST(x->rdmult, rate2, distortion2);
   this_rd_cost->rate = rate2;
   this_rd_cost->dist = distortion2;
@@ -1539,16 +1532,9 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
   const int intra_cost_penalty = av1_get_intra_cost_penalty(
       cm->quant_params.base_qindex, cm->quant_params.y_dc_delta_q,
       cm->seq_params.base_y_dc_delta_q, cm->seq_params.bit_depth);
-#if !CONFIG_SKIP_TXFM_OPT
-  const int skip_ctx = av1_get_skip_txfm_context(xd);
-#endif  // !CONFIG_SKIP_TXFM_OPT
 
   int known_rate = mode_cost;
   if (mode != DC_PRED && mode != PAETH_PRED) known_rate += intra_cost_penalty;
-#if !CONFIG_SKIP_TXFM_OPT
-  known_rate += AOMMIN(mode_costs->skip_txfm_cost[skip_ctx][0],
-                       mode_costs->skip_txfm_cost[skip_ctx][1]);
-#endif  // !CONFIG_SKIP_TXFM_OPT
   const int64_t known_rd = RDCOST(x->rdmult, known_rate, 0);
   if (known_rd > best_rd) {
     intra_search_state->skip_intra_modes = 1;
@@ -1647,13 +1633,7 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
         av1_allow_palette(cm->features.allow_screen_content_tools,
                           mbmi->sb_type[PLANE_TYPE_Y]);
     // If no good uv-predictor had been found, search for it.
-#if CONFIG_SKIP_TXFM_OPT
     const int rate_y = rd_stats_y->rate;
-#else
-    const int rate_y = rd_stats_y->skip_txfm
-                           ? mode_costs->skip_txfm_cost[skip_ctx][1]
-                           : rd_stats_y->rate;
-#endif  // CONFIG_SKIP_TXFM_OPT
     const int64_t rdy =
         RDCOST(x->rdmult, rate_y + mode_cost_y, rd_stats_y->dist);
     if (best_rd < (INT64_MAX / 2) && rdy > (best_rd + (best_rd >> 2))) {
@@ -1731,10 +1711,6 @@ int64_t av1_handle_intra_mode(IntraModeSearchState *intra_search_state,
   // Intra block is always coded as non-skip
   rd_stats->skip_txfm = 0;
   rd_stats->dist = rd_stats_y->dist + rd_stats_uv->dist;
-#if !CONFIG_SKIP_TXFM_OPT
-  // Add in the cost of the no skip flag.
-  rd_stats->rate += mode_costs->skip_txfm_cost[skip_ctx][0];
-#endif  // !CONFIG_SKIP_TXFM_OPT
   // Calculate the final RD estimate for this mode.
   const int64_t this_rd = RDCOST(x->rdmult, rd_stats->rate, rd_stats->dist);
   // Keep record of best intra rd

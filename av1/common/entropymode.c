@@ -5728,31 +5728,6 @@ static const aom_cdf_prob
 static const aom_cdf_prob default_explicit_bawp_scale_cdf[CDF_SIZE(
     EXPLICIT_BAWP_SCALE_CNT)] = { AOM_CDF2(16384) };
 
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-#if CONFIG_NEW_CONTEXT_MODELING
-static const aom_cdf_prob default_intra_inter_cdf
-    [INTRA_INTER_SKIP_TXFM_CONTEXTS][INTRA_INTER_CONTEXTS][CDF_SIZE(2)] = {
-      { { AOM_CDF2(2981) },
-        { AOM_CDF2(16980) },
-        { AOM_CDF2(16384) },
-        { AOM_CDF2(29992) } },
-      { { AOM_CDF2(4) }, { AOM_CDF2(4) }, { AOM_CDF2(16384) }, { AOM_CDF2(4) } }
-    };
-#else
-static const aom_cdf_prob
-    default_intra_inter_cdf[INTRA_INTER_SKIP_TXFM_CONTEXTS]
-                           [INTRA_INTER_CONTEXTS][CDF_SIZE(2)] = {
-                             { { AOM_CDF2(806) },
-                               { AOM_CDF2(16662) },
-                               { AOM_CDF2(20186) },
-                               { AOM_CDF2(26538) } },
-                             { { AOM_CDF2(806) },
-                               { AOM_CDF2(16662) },
-                               { AOM_CDF2(20186) },
-                               { AOM_CDF2(26538) } },
-                           };
-#endif  // CONFIG_NEW_CONTEXT_MODELING
-#else
 static const aom_cdf_prob default_intra_inter_cdf[INTRA_INTER_CONTEXTS]
                                                  [CDF_SIZE(2)] = {
                                                    { AOM_CDF2(2375), 75 },
@@ -5760,7 +5735,6 @@ static const aom_cdf_prob default_intra_inter_cdf[INTRA_INTER_CONTEXTS]
                                                    { AOM_CDF2(16384), 0 },
                                                    { AOM_CDF2(29584), 0 },
                                                  };
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 
 static const aom_cdf_prob default_tip_cdf[3][CDF_SIZE(2)] = {
   { AOM_CDF2(31852), 118 },
@@ -7404,12 +7378,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #endif  // CONFIG_BRU
   av1_copy(fc->skip_mode_cdfs, default_skip_mode_cdfs);
   av1_copy(fc->skip_txfm_cdfs, default_skip_txfm_cdfs);
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-  av1_copy(fc->intra_inter_cdf[0], default_intra_inter_cdf[0]);
-  av1_copy(fc->intra_inter_cdf[1], default_intra_inter_cdf[1]);
-#else
   av1_copy(fc->intra_inter_cdf, default_intra_inter_cdf);
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   for (int i = 0; i < SPATIAL_PREDICTION_PROBS; i++)
     av1_copy(fc->seg.spatial_pred_seg_cdf[i],
              default_spatial_pred_seg_tree_cdf[i]);
@@ -7808,11 +7777,7 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
 #endif  // CONFIG_BRU
   CUMULATIVE_AVERAGE_CDF(ctx_left->skip_mode_cdfs, ctx_tr->skip_mode_cdfs, 2);
   CUMULATIVE_AVERAGE_CDF(ctx_left->skip_txfm_cdfs, ctx_tr->skip_txfm_cdfs, 2);
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   CUMULATIVE_AVERAGE_CDF(ctx_left->intra_inter_cdf, ctx_tr->intra_inter_cdf, 2);
-#else
-  CUMULATIVE_AVERAGE_CDF(ctx_left->intra_inter_cdf, ctx_tr->intra_inter_cdf, 2);
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   cumulative_avg_nmv(&ctx_left->nmvc, &ctx_tr->nmvc, total_tiles_log2);
   cumulative_avg_nmv(&ctx_left->ndvc, &ctx_tr->ndvc, total_tiles_log2);
   CUMULATIVE_AVERAGE_CDF(ctx_left->intrabc_cdf, ctx_tr->intrabc_cdf, 2);
@@ -8215,11 +8180,7 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
 #endif  // CONFIG_BRU
   SHIFT_CDF(ctx_ptr->skip_mode_cdfs, 2);
   SHIFT_CDF(ctx_ptr->skip_txfm_cdfs, 2);
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   SHIFT_CDF(ctx_ptr->intra_inter_cdf, 2);
-#else
-  SHIFT_CDF(ctx_ptr->intra_inter_cdf, 2);
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   shift_nmv(&ctx_ptr->nmvc, total_tiles_log2);
   shift_nmv(&ctx_ptr->ndvc, total_tiles_log2);
   SHIFT_CDF(ctx_ptr->intrabc_cdf, 2);

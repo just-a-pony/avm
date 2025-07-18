@@ -35,12 +35,8 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   cm->coef_cdf_category = index;
 #endif
 
-#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
   av1_copy(cm->fc->txb_skip_cdf[0], av1_default_txb_skip_cdfs[index][0]);
   av1_copy(cm->fc->txb_skip_cdf[1], av1_default_txb_skip_cdfs[index][1]);
-#else
-  av1_copy(cm->fc->txb_skip_cdf, av1_default_txb_skip_cdfs[index]);
-#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
 #if CONFIG_CONTEXT_DERIVATION
   av1_copy(cm->fc->v_txb_skip_cdf, av1_default_v_txb_skip_cdfs[index]);
 #endif  // CONFIG_CONTEXT_DERIVATION
@@ -325,12 +321,7 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
 #if CONFIG_BRU
   RESET_CDF_COUNTER(fc->bru_mode_cdf, 3);
 #endif  // CONFIG_BRU
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-  RESET_CDF_COUNTER(fc->intra_inter_cdf[0], 2);
-  RESET_CDF_COUNTER(fc->intra_inter_cdf[1], 2);
-#else
   RESET_CDF_COUNTER(fc->intra_inter_cdf, 2);
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   RESET_CDF_COUNTER(fc->skip_txfm_cdfs, 2);
   reset_nmv_counter(&fc->nmvc);
   reset_nmv_counter(&fc->ndvc);

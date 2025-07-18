@@ -1466,15 +1466,6 @@ int main(int argc, const char **argv) {
                      "default_bawp_cdf[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
   /* Intra/inter flag */
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-  cts_each_dim[0] = INTRA_INTER_SKIP_TXFM_CONTEXTS;
-  cts_each_dim[1] = INTRA_INTER_CONTEXTS;
-  cts_each_dim[2] = 2;
-  optimize_cdf_table(&fc.intra_inter[0][0][0], probsfile, 3, cts_each_dim,
-                     "static const aom_cdf_prob\n"
-                     "default_intra_inter_cdf[INTRA_INTER_SKIP_TXFM_CONTEXTS]["
-                     "INTRA_INTER_CONTEXTS][CDF_SIZE(2)]");
-#else
   cts_each_dim[0] = INTRA_INTER_CONTEXTS;
   cts_each_dim[1] = 2;
   optimize_cdf_table(
@@ -1482,7 +1473,6 @@ int main(int argc, const char **argv) {
       "static const aom_cdf_prob "
       "default_intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)]",
       0, &total_count, 0, mem_wanted, "Inter");
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   /* Single/comp ref flag */
   cts_each_dim[0] = COMP_INTER_CONTEXTS;
   cts_each_dim[1] = 2;

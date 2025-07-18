@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 3-Clause Clear License
@@ -390,17 +390,12 @@ static AOM_INLINE void set_skip_txfm(MACROBLOCK *x, RD_STATS *rd_stats,
   TXB_CTX txb_ctx;
   get_txb_ctx(bsize, tx_size, 0, ta, tl, &txb_ctx,
               mbmi->fsc_mode[xd->tree_type == CHROMA_PART]);
-#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   const int pred_mode_ctx =
       (is_inter || mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) ? 1 : 0;
   const int zero_blk_rate =
       x->coeff_costs.coeff_costs[txs_ctx][PLANE_TYPE_Y]
           .txb_skip_cost[pred_mode_ctx][txb_ctx.txb_skip_ctx][1];
-#else
-  const int zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][PLANE_TYPE_Y]
-                                .txb_skip_cost[txb_ctx.txb_skip_ctx][1];
-#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
   rd_stats->rate = zero_blk_rate *
                    (block_size_wide[bsize] >> tx_size_wide_log2[tx_size]) *
                    (block_size_high[bsize] >> tx_size_high_log2[tx_size]);
@@ -2315,17 +2310,12 @@ static INLINE void predict_dc_only_block(
 #if CONFIG_CONTEXT_DERIVATION
     int zero_blk_rate = 0;
     if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U) {
-#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
       const int is_inter = is_inter_block(mbmi, xd->tree_type);
       const int pred_mode_ctx =
           (is_inter || mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) ? 1 : 0;
       zero_blk_rate =
           x->coeff_costs.coeff_costs[txs_ctx][plane_type]
               .txb_skip_cost[pred_mode_ctx][txb_ctx_tmp.txb_skip_ctx][1];
-#else
-      zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][plane_type]
-                          .txb_skip_cost[txb_ctx_tmp.txb_skip_ctx][1];
-#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
     } else {
       zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][plane_type]
                           .v_txb_skip_cost[txb_ctx_tmp.txb_skip_ctx][1];
@@ -3355,17 +3345,12 @@ static AOM_INLINE void try_tx_block_no_split(
   TXB_CTX txb_ctx;
   get_txb_ctx(plane_bsize, tx_size, 0, pta, ptl, &txb_ctx,
               mbmi->fsc_mode[xd->tree_type == CHROMA_PART]);
-#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   const int pred_mode_ctx =
       (is_inter || mbmi->fsc_mode[xd->tree_type == CHROMA_PART]) ? 1 : 0;
   const int zero_blk_rate =
       x->coeff_costs.coeff_costs[txs_ctx][PLANE_TYPE_Y]
           .txb_skip_cost[pred_mode_ctx][txb_ctx.txb_skip_ctx][1];
-#else
-  const int zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][PLANE_TYPE_Y]
-                                .txb_skip_cost[txb_ctx.txb_skip_ctx][1];
-#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
   rd_stats->zero_rate = zero_blk_rate;
   const int index = av1_get_txb_size_index(plane_bsize, blk_row, blk_col);
   mbmi->inter_tx_size[index] = tx_size;
@@ -3745,13 +3730,9 @@ static AOM_INLINE void choose_largest_tx_size(const AV1_COMP *const cpi,
   const int64_t skip_txfm_rd = is_inter_block(mbmi, xd->tree_type)
                                    ? RDCOST(x->rdmult, skip_txfm_rate, 0)
                                    : INT64_MAX;
-#if CONFIG_SKIP_TXFM_OPT
   const int64_t no_skip_txfm_rd = is_inter_block(mbmi, xd->tree_type)
                                       ? RDCOST(x->rdmult, no_skip_txfm_rate, 0)
                                       : 0;
-#else
-  const int64_t no_skip_txfm_rd = RDCOST(x->rdmult, no_skip_txfm_rate, 0);
-#endif  // CONFIG_SKIP_TXFM_OPT
   const int skip_trellis = 0;
   av1_txfm_rd_in_plane(x, cpi, rd_stats, ref_best_rd,
                        AOMMIN(no_skip_txfm_rd, skip_txfm_rd), AOM_PLANE_Y, bs,
@@ -4081,13 +4062,8 @@ int64_t av1_uniform_txfm_yrd(const AV1_COMP *const cpi, MACROBLOCK *x,
   const int skip_txfm_rate = mode_costs->skip_txfm_cost[skip_ctx][1];
   const int64_t skip_txfm_rd =
       is_inter ? RDCOST(x->rdmult, skip_txfm_rate, 0) : INT64_MAX;
-#if CONFIG_SKIP_TXFM_OPT
   const int64_t no_this_rd =
       is_inter ? RDCOST(x->rdmult, no_skip_txfm_rate + tx_size_rate, 0) : 0;
-#else
-  const int64_t no_this_rd =
-      RDCOST(x->rdmult, no_skip_txfm_rate + tx_size_rate, 0);
-#endif  // CONFIG_SKIP_TXFM_OPT
 #if CONFIG_IMPROVE_LOSSLESS_TXM
   if (xd->lossless[mbmi->segment_id]) {
     get_tx_partition_sizes(mbmi->tx_partition_type[0], TX_4X4, &mbmi->txb_pos,

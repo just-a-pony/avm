@@ -1997,18 +1997,6 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   MB_MODE_INFO *const mbmi = xd->mi[0];
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   assert(xd->tree_type != CHROMA_PART);
-#if !CONFIG_SKIP_TXFM_OPT
-#if CONFIG_NEW_CONTEXT_MODELING
-  mbmi->use_intrabc[0] = 0;
-  mbmi->use_intrabc[1] = 0;
-  const int intrabc_ctx = get_intrabc_ctx(xd);
-  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
-      aom_read_symbol(r, ec_ctx->intrabc_cdf[intrabc_ctx], 2, ACCT_INFO());
-#else
-  mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
-      aom_read_symbol(r, ec_ctx->intrabc_cdf, 2, ACCT_INFO());
-#endif  // CONFIG_NEW_CONTEXT_MODELING
-#endif  // !CONFIG_SKIP_TXFM_OPT
   if (xd->tree_type == CHROMA_PART)
     assert(mbmi->use_intrabc[PLANE_TYPE_UV] == 0);
   if (mbmi->use_intrabc[xd->tree_type == CHROMA_PART]) {
@@ -2249,7 +2237,6 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
   mbmi->refinemv_flag = 0;
 #endif  // CONFIG_REFINEMV
 
-#if CONFIG_SKIP_TXFM_OPT
   if (av1_allow_intrabc(cm, xd
 #if CONFIG_ENABLE_IBC_NAT
                         ,
@@ -2280,10 +2267,6 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
     }
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
   }
-#else
-  mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
-      read_skip_txfm(cm, xd, mbmi->segment_id, r);
-#endif  // CONFIG_SKIP_TXFM_OPT
 
   if (!seg->segid_preskip && xd->tree_type != CHROMA_PART)
     mbmi->segment_id = read_intra_segment_id(
@@ -3679,12 +3662,7 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 }
 
 static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
-                               int segment_id, aom_reader *r
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-                               ,
-                               const int skip_txfm
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-) {
+                               int segment_id, aom_reader *r) {
 #if CONFIG_DISABLE_4X4_INTER
   if (xd->mi[0]->sb_type[PLANE_TYPE_Y] == BLOCK_4X4) {
     return 0;
@@ -3697,12 +3675,7 @@ static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
   const int ctx = av1_get_intra_inter_context(xd);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   const int is_inter =
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-      aom_read_symbol(r, ec_ctx->intra_inter_cdf[skip_txfm][ctx], 2,
-                      ACCT_INFO());
-#else
       aom_read_symbol(r, ec_ctx->intra_inter_cdf[ctx], 2, ACCT_INFO());
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   return is_inter;
 }
 
@@ -4656,7 +4629,7 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
     mbmi->morph_pred = 0;
 #endif  // CONFIG_MORPH_PRED
   }
-#if CONFIG_SKIP_TXFM_OPT
+
   if (!mbmi->skip_mode) {
     inter_block = read_is_inter_block(cm, xd, mbmi->segment_id, r);
   }
@@ -4708,15 +4681,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
     }
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 0;
   }
-#else
-#if !CONFIG_SKIP_MODE_ENHANCEMENT
-  if (mbmi->skip_mode)
-    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] = 1;
-  else
-#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
-    mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
-        read_skip_txfm(cm, xd, mbmi->segment_id, r);
-#endif  // CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_SIX_PARAM_WARP_DELTA
   mbmi->six_param_warp_model_flag = 0;
@@ -4742,17 +4706,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
     read_ccso(cm, r, xd);
 
   read_delta_q_params(cm, xd, r);
-
-#if !CONFIG_SKIP_TXFM_OPT
-  if (!mbmi->skip_mode)
-    inter_block =
-        read_is_inter_block(cm, xd, mbmi->segment_id, r
-#if CONFIG_CONTEXT_DERIVATION
-                            ,
-                            mbmi->skip_txfm[xd->tree_type == CHROMA_PART]
-#endif  // CONFIG_CONTEXT_DERIVATION
-        );
-#endif  // !CONFIG_SKIP_TXFM_OPT
 
   mbmi->current_qindex = xd->current_base_qindex;
 

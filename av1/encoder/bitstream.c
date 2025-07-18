@@ -474,12 +474,7 @@ static int write_skip_mode(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 
 static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
                                       const MACROBLOCKD *xd, int segment_id,
-                                      aom_writer *w, const int is_inter
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-                                      ,
-                                      const int skip_txfm
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-) {
+                                      aom_writer *w, const int is_inter) {
 #if CONFIG_DISABLE_4X4_INTER
   if (xd->mi[0]->sb_type[PLANE_TYPE_Y] == BLOCK_4X4) {
     assert(!is_inter);
@@ -493,11 +488,7 @@ static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
   }
   const int ctx = av1_get_intra_inter_context(xd);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-  aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[skip_txfm][ctx], 2);
-#else
   aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[ctx], 2);
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 }
 
 #if CONFIG_WEDGE_MOD_EXT
@@ -2346,7 +2337,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
   write_skip_mode(cm, xd, mbmi, w);
 
-#if CONFIG_SKIP_TXFM_OPT
   if (!mbmi->skip_mode) {
     write_is_inter(cm, xd, mbmi->segment_id, w, is_inter);
 
@@ -2385,16 +2375,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
     skip = mbmi->skip_mode ? 1 : write_skip(cm, xd, segment_id, mbmi, w);
 #endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
   }
-#else
-#if CONFIG_SKIP_MODE_ENHANCEMENT
-  const int skip = write_skip(cm, xd, segment_id, mbmi, w);
-#else
-  assert(
-      IMPLIES(mbmi->skip_mode, mbmi->skip_txfm[xd->tree_type == CHROMA_PART]));
-  const int skip =
-      mbmi->skip_mode ? 1 : write_skip(cm, xd, segment_id, mbmi, w);
-#endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
-#endif  // CONFIG_SKIP_TXFM_OPT
+
   if (xd->tree_type != CHROMA_PART)
     write_inter_segment_id(cpi, w, seg, segp, skip, 0);
 
@@ -2436,16 +2417,6 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
     assert(mbmi->pb_mv_precision == mbmi->max_mv_precision);
     assert(mbmi->bawp_flag[0] == 0);
   }
-
-#if !CONFIG_SKIP_TXFM_OPT
-  if (!mbmi->skip_mode)
-    write_is_inter(cm, xd, mbmi->segment_id, w, is_inter
-#if CONFIG_CONTEXT_DERIVATION
-                   ,
-                   skip
-#endif  // CONFIG_CONTEXT_DERIVATION
-    );
-#endif  // !CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_IBC_SR_EXT
   if (!is_inter &&
@@ -2909,14 +2880,6 @@ static AOM_INLINE void write_intrabc_info(
   int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
-#if !CONFIG_SKIP_TXFM_OPT
-#if CONFIG_NEW_CONTEXT_MODELING
-  const int intrabc_ctx = get_intrabc_ctx(xd);
-  aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
-#else
-  aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
-#endif  // CONFIG_NEW_CONTEXT_MODELING
-#endif  // !CONFIG_SKIP_TXFM_OPT
 
   if (use_intrabc) {
     assert(mbmi->mode == DC_PRED);
@@ -3039,7 +3002,6 @@ static AOM_INLINE void write_mb_modes_kf(
   if (seg->segid_preskip && xd->tree_type != CHROMA_PART)
     write_segment_id(cpi, mbmi, w, seg, segp, 0);
 
-#if CONFIG_SKIP_TXFM_OPT
   if (av1_allow_intrabc(cm, xd
 #if CONFIG_ENABLE_IBC_NAT
                         ,
@@ -3061,9 +3023,7 @@ static AOM_INLINE void write_mb_modes_kf(
   if (is_intrabc_block(mbmi, xd->tree_type)) {
     skip = write_skip(cm, xd, mbmi->segment_id, mbmi, w);
   }
-#else
-  const int skip = write_skip(cm, xd, mbmi->segment_id, mbmi, w);
-#endif  // CONFIG_SKIP_TXFM_OPT
+
   if (!seg->segid_preskip && seg->update_map && xd->tree_type != CHROMA_PART)
     write_segment_id(cpi, mbmi, w, seg, segp, skip);
 

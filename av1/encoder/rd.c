@@ -471,19 +471,10 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       }
     }
 
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-    for (j = 0; j < INTRA_INTER_SKIP_TXFM_CONTEXTS; ++j) {
-      for (i = 0; i < INTRA_INTER_CONTEXTS; ++i) {
-        av1_cost_tokens_from_cdf(mode_costs->intra_inter_cost[j][i],
-                                 fc->intra_inter_cdf[j][i], NULL);
-      }
-    }
-#else
     for (i = 0; i < INTRA_INTER_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->intra_inter_cost[i],
                                fc->intra_inter_cdf[i], NULL);
     }
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_OPT_INTER_MODE_CTX
     for (i = 0; i < INTER_MODE_CONTEXTS; ++i) {
@@ -1061,18 +1052,12 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
     for (int plane = 0; plane < nplanes; ++plane) {
       LV_MAP_COEFF_COST *pcost = &coeff_costs->coeff_costs[tx_size][plane];
 
-      for (int ctx = 0; ctx < TXB_SKIP_CONTEXTS; ++ctx)
-#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
-      {
+      for (int ctx = 0; ctx < TXB_SKIP_CONTEXTS; ++ctx) {
         av1_cost_tokens_from_cdf(pcost->txb_skip_cost[0][ctx],
                                  fc->txb_skip_cdf[0][tx_size][ctx], NULL);
         av1_cost_tokens_from_cdf(pcost->txb_skip_cost[1][ctx],
                                  fc->txb_skip_cdf[1][tx_size][ctx], NULL);
       }
-#else
-        av1_cost_tokens_from_cdf(pcost->txb_skip_cost[ctx],
-                                 fc->txb_skip_cdf[tx_size][ctx], NULL);
-#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
 
 #if CONFIG_CONTEXT_DERIVATION
       for (int ctx = 0; ctx < V_TXB_SKIP_CONTEXTS; ++ctx)

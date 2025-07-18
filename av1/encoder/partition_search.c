@@ -1059,7 +1059,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
     update_cdf(fc->skip_mode_cdfs[skip_mode_ctx], mbmi->skip_mode, 2);
   }
 
-#if CONFIG_SKIP_TXFM_OPT
   const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   if (!seg_ref_active) {
     if (!mbmi->skip_mode && !frame_is_intra_only(cm) &&
@@ -1112,21 +1111,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif  // !CONFIG_SKIP_MODE_ENHANCEMENT
     }
   }
-#else
-#if CONFIG_SKIP_MODE_ENHANCEMENT
-  if (!seg_ref_active) {
-#else
-  if (!mbmi->skip_mode && !seg_ref_active) {
-#endif  // CONFIG_SKIP_MODE_ENHANCEMENT
-    const int skip_ctx = av1_get_skip_txfm_context(xd);
-#if CONFIG_ENTROPY_STATS
-    td->counts
-        ->skip_txfm[skip_ctx][mbmi->skip_txfm[xd->tree_type == CHROMA_PART]]++;
-#endif
-    update_cdf(fc->skip_txfm_cdfs[skip_ctx],
-               mbmi->skip_txfm[xd->tree_type == CHROMA_PART], 2);
-  }
-#endif  // CONFIG_SKIP_TXFM_OPT
 
 #if CONFIG_ENTROPY_STATS
   // delta quant applies to both intra and inter
@@ -1182,21 +1166,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif  // CONFIG_ENABLE_IBC_NAT
                         ) &&
       xd->tree_type != CHROMA_PART) {
-#if !CONFIG_SKIP_TXFM_OPT
-    const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
-#if CONFIG_NEW_CONTEXT_MODELING
-    const int intrabc_ctx = get_intrabc_ctx(xd);
-    update_cdf(fc->intrabc_cdf[intrabc_ctx], use_intrabc, 2);
-#if CONFIG_ENTROPY_STATS
-    ++td->counts->intrabc[intrabc_ctx][use_intrabc];
-#endif  // CONFIG_ENTROPY_STATS
-#else
-    update_cdf(fc->intrabc_cdf, use_intrabc, 2);
-#if CONFIG_ENTROPY_STATS
-    ++td->counts->intrabc[use_intrabc];
-#endif  // CONFIG_ENTROPY_STATS
-#endif  // CONFIG_NEW_CONTEXT_MODELING
-#endif  // !CONFIG_SKIP_TXFM_OPT
 #if CONFIG_IBC_BV_IMPROVEMENT
     if (use_intrabc) {
       const int_mv ref_mv = mbmi_ext->ref_mv_stack[INTRA_FRAME][0].this_mv;
@@ -1314,23 +1283,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   FRAME_COUNTS *const counts = td->counts;
 
   if (!seg_ref_active) {
-#if !CONFIG_SKIP_TXFM_OPT
-#if CONFIG_ENTROPY_STATS && !CONFIG_CONTEXT_DERIVATION
-    counts->intra_inter[av1_get_intra_inter_context(xd)][inter_block]++;
-#endif  // CONFIG_ENTROPY_STATS && !CONFIG_CONTEXT_DERIVATION
-#if CONFIG_CONTEXT_DERIVATION
-    const int skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
-#if CONFIG_ENTROPY_STATS
-    counts->intra_inter[skip_txfm][av1_get_intra_inter_context(xd)]
-                       [inter_block]++;
-#endif  // CONFIG_ENTROPY_STATS
-    update_cdf(fc->intra_inter_cdf[skip_txfm][av1_get_intra_inter_context(xd)],
-               inter_block, 2);
-#else
-    update_cdf(fc->intra_inter_cdf[av1_get_intra_inter_context(xd)],
-               inter_block, 2);
-#endif  // CONFIG_CONTEXT_DERIVATION
-#endif  // !CONFIG_SKIP_TXFM_OPT
     // If the segment reference feature is enabled we have only a single
     // reference frame allowed for the segment so exclude it from
     // the reference frame counts used to work out probabilities.

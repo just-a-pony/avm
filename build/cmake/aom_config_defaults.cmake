@@ -296,8 +296,6 @@ set_aom_config_var(CONFIG_IMPROVED_INTRA_DIR_PRED 1 "Improved intra prediction")
 set_aom_config_var(CONFIG_D071_IMP_MSK_BLD 1
                    "Enable single reference mode for frame boundary")
 
-set_aom_config_var(CONFIG_SKIP_TXFM_OPT 1
-                   "Enable to optimize the signaling of skip_txfm")
 set_aom_config_var(CONFIG_REFINEMV 1 "Enable refinemv modes")
 
 set_aom_config_var(CONFIG_EXPLICIT_TEMPORAL_DIST_CALC 1
@@ -505,10 +503,6 @@ set_aom_config_var(CONFIG_SCC_DETERMINATION 1
 
 set_aom_config_var(CONFIG_IST_ANY_SET 1
                    "Enable R-D Optimized IST set selection from CWG-D159.")
-
-set_aom_config_var(
-  CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX 1
-  "CWG-D086: Context modeling for transform block zero flag signaling")
 
 set_aom_config_var(CONFIG_REFINED_MVS_IN_TMVP 1
                    "Keep optical flow refined MVs in TMVP list.")

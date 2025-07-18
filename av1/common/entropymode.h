@@ -178,11 +178,7 @@ typedef struct {
 } SCAN_ORDER;
 
 typedef struct frame_contexts {
-#if CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
   aom_cdf_prob txb_skip_cdf[2][TX_SIZES][TXB_SKIP_CONTEXTS][CDF_SIZE(2)];
-#else
-  aom_cdf_prob txb_skip_cdf[TX_SIZES][TXB_SKIP_CONTEXTS][CDF_SIZE(2)];
-#endif  // CONFIG_TX_SKIP_FLAG_MODE_DEP_CTX
 #if CONFIG_CONTEXT_DERIVATION
   aom_cdf_prob v_txb_skip_cdf[V_TXB_SKIP_CONTEXTS][CDF_SIZE(2)];
 #endif  // CONFIG_CONTEXT_DERIVATION
@@ -451,12 +447,7 @@ typedef struct frame_contexts {
 #endif  // CONFIG_BRU
   aom_cdf_prob skip_mode_cdfs[SKIP_MODE_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob skip_txfm_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)];
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
-  aom_cdf_prob intra_inter_cdf[INTRA_INTER_SKIP_TXFM_CONTEXTS]
-                              [INTRA_INTER_CONTEXTS][CDF_SIZE(2)];
-#else
   aom_cdf_prob intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)];
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_SKIP_TXFM_OPT
   nmv_context nmvc;
   nmv_context ndvc;
 #if CONFIG_NEW_CONTEXT_MODELING
