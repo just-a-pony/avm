@@ -109,14 +109,11 @@ list(
   "${AOM_ROOT}/av1/common/entropy_inits_mv.h"
   "${AOM_ROOT}/av1/common/entropy_sideinfo.h")
 
-if(CONFIG_DIP)
-  list(
-    APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/common/intra_matrix.c"
-    "${AOM_ROOT}/av1/common/intra_matrix.h"
-    "${AOM_ROOT}/av1/common/intra_dip.cc" "${AOM_ROOT}/av1/common/intra_dip.h")
-  list(APPEND AOM_AV1_COMMON_INTRIN_AVX2
-       "${AOM_ROOT}/av1/common/x86/intra_matrix_avx2.c")
-endif()
+list(APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/common/intra_matrix.c"
+     "${AOM_ROOT}/av1/common/intra_matrix.h"
+     "${AOM_ROOT}/av1/common/intra_dip.cc" "${AOM_ROOT}/av1/common/intra_dip.h")
+list(APPEND AOM_AV1_COMMON_INTRIN_AVX2
+     "${AOM_ROOT}/av1/common/x86/intra_matrix_avx2.c")
 
 if(CONFIG_AV1_ENCODER)
   list(APPEND AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/encoder/erp_tflite.cc"
