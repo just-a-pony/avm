@@ -354,6 +354,10 @@ static void pick_cdef_from_qp(AV1_COMMON *const cm) {
     }
     mbmi += MI_SIZE_64X64 * mi_params->mi_stride;
   }
+
+  cdef_info->cdef_frame_enable =
+      (cdef_info->nb_cdef_strengths > 1 || cdef_info->cdef_strengths[0] ||
+       cdef_info->cdef_uv_strengths[0]);
 }
 
 static AOM_INLINE int get_cdef_context(const AV1_COMMON *const cm,
