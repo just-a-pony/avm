@@ -283,7 +283,6 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
           xd->tile_ctx->inter_compound_mode_non_joint_type_cdf[mode_ctx],
           NUM_OPTIONS_NON_JOINT_TYPE);
     }
-
 #if CONFIG_OPT_INTER_MODE_CTX
   }
 #endif  // CONFIG_OPT_INTER_MODE_CTX
@@ -295,37 +294,27 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
 #endif  // CONFIG_COMPOUND_4XN
                                   mbmi)) {
     const int use_optical_flow = mode >= NEAR_NEARMV_OPTFLOW;
-#if CONFIG_AFFINE_REFINEMENT
-    const int allow_translational = is_translational_refinement_allowed(
-        cm,
+    const int allow_translational_refinement =
+        is_translational_refinement_allowed(
+            cm,
 #if CONFIG_COMPOUND_4XN
-        mbmi->sb_type[xd->tree_type == CHROMA_PART],
+            mbmi->sb_type[xd->tree_type == CHROMA_PART],
 #endif  // CONFIG_COMPOUND_4XN
 #if CONFIG_ACROSS_SCALE_WARP
-        xd,
+            xd,
 #endif  // CONFIG_ACROSS_SCALE_WARP
-        comp_idx_to_opfl_mode[comp_mode_idx]);
-    const int allow_affine = is_affine_refinement_allowed(
-        cm, xd, comp_idx_to_opfl_mode[comp_mode_idx]);
-    if (use_optical_flow) {
-      assert(IMPLIES(allow_translational,
-                     mbmi->comp_refine_type > COMP_REFINE_NONE));
-      assert(IMPLIES(allow_affine,
-                     mbmi->comp_refine_type >= COMP_AFFINE_REFINE_START));
-    }
-    if (allow_affine || allow_translational)
-#endif  // CONFIG_AFFINE_REFINEMENT
+            comp_idx_to_opfl_mode[comp_mode_idx]);
+    if (allow_translational_refinement) {
 #if CONFIG_OPFL_CTX_OPT
-    {
       const int opfl_ctx =
           get_optflow_context(comp_idx_to_opfl_mode[comp_mode_idx]);
       aom_write_symbol(w, use_optical_flow,
                        xd->tile_ctx->use_optflow_cdf[opfl_ctx], 2);
-    }
 #else
-    aom_write_symbol(w, use_optical_flow,
-                     xd->tile_ctx->use_optflow_cdf[mode_ctx], 2);
+      aom_write_symbol(w, use_optical_flow,
+                       xd->tile_ctx->use_optflow_cdf[mode_ctx], 2);
 #endif  // CONFIG_OPFL_CTX_OPT
+    }
   }
 }
 
@@ -5976,10 +5965,6 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->enable_orip);
   if (seq_params->order_hint_info.enable_order_hint) {
     aom_wb_write_literal(wb, seq_params->enable_opfl_refine, 2);
-#if CONFIG_AFFINE_REFINEMENT
-    if (seq_params->enable_opfl_refine)
-      aom_wb_write_bit(wb, seq_params->enable_affine_refine);
-#endif  // CONFIG_AFFINE_REFINEMENT
   }
   aom_wb_write_bit(wb, seq_params->enable_ibp);
   aom_wb_write_bit(wb, seq_params->enable_adaptive_mvd);

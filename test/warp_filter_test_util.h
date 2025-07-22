@@ -74,17 +74,14 @@ class AV1WarpFilterTest : public ::testing::TestWithParam<WarpTestParams> {
 }  // namespace AV1WarpFilter
 
 namespace AV1HighbdWarpFilter {
-typedef void (*highbd_warp_affine_func)(
-    const int32_t *mat, const uint16_t *ref, int width, int height, int stride,
-    uint16_t *pred, int p_col, int p_row, int p_width, int p_height,
-    int p_stride, int subsampling_x, int subsampling_y, int bd,
-    ConvolveParams *conv_params, int16_t alpha, int16_t beta, int16_t gamma,
-    int16_t delta
-#if CONFIG_OPFL_MEMBW_REDUCTION
-    ,
-    int use_damr_padding, ReferenceArea *ref_area
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
-);
+typedef void (*highbd_warp_affine_func)(const int32_t *mat, const uint16_t *ref,
+                                        int width, int height, int stride,
+                                        uint16_t *pred, int p_col, int p_row,
+                                        int p_width, int p_height, int p_stride,
+                                        int subsampling_x, int subsampling_y,
+                                        int bd, ConvolveParams *conv_params,
+                                        int16_t alpha, int16_t beta,
+                                        int16_t gamma, int16_t delta);
 
 typedef std::tuple<int, int, int, int, highbd_warp_affine_func>
     HighbdWarpTestParam;
@@ -111,46 +108,6 @@ class AV1HighbdWarpFilterTest
 
 }  // namespace AV1HighbdWarpFilter
 
-#if CONFIG_AFFINE_REFINEMENT
-#if AFFINE_FAST_WARP_METHOD == 3
-namespace AV1HighbdWarpBilinearFilter {
-typedef void (*highbd_warp_plane_bilinear_func)(
-    WarpedMotionParams *wm, int bd, const uint16_t *ref, int width, int height,
-    int stride, uint16_t *pred, int p_col, int p_row, int p_width, int p_height,
-    int p_stride, int subsampling_x, int subsampling_y,
-    ConvolveParams *conv_params
-#if CONFIG_DAMR_CLEAN_UP
-    ,
-    ReferenceArea *ref_area
-#endif  // CONFIG_DAMR_CLEAN_UP
-);
-
-typedef std::tuple<int, int, int, int, highbd_warp_plane_bilinear_func>
-    HighbdWarpBilinearTestParam;
-typedef std::tuple<HighbdWarpBilinearTestParam, int, int, int, int>
-    HighbdWarpBilinearTestParams;
-
-::testing::internal::ParamGenerator<HighbdWarpBilinearTestParams> BuildParams(
-    highbd_warp_plane_bilinear_func filter);
-
-class AV1HighbdWarpBilinearFilterTest
-    : public ::testing::TestWithParam<HighbdWarpBilinearTestParams> {
- public:
-  virtual ~AV1HighbdWarpBilinearFilterTest();
-  virtual void SetUp();
-
-  virtual void TearDown();
-
- protected:
-  void RunCheckOutput(highbd_warp_plane_bilinear_func test_impl);
-  void RunTest_ExtremeValues(highbd_warp_plane_bilinear_func test_impl);
-  void RunSpeedTest(highbd_warp_plane_bilinear_func test_impl);
-  libaom_test::ACMRandom rnd_;
-};
-}  // namespace AV1HighbdWarpBilinearFilter
-#endif  // AFFINE_FAST_WARP_METHOD == 3
-#endif  // CONFIG_AFFINE_REFINEMENT
-
 #if CONFIG_EXT_WARP_FILTER
 namespace AV1ExtHighbdWarpFilter {
 typedef void (*ext_highbd_warp_affine_func)(
@@ -160,8 +117,7 @@ typedef void (*ext_highbd_warp_affine_func)(
     ConvolveParams *conv_params
 #if CONFIG_WARP_BD_BOX
     ,
-    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box, int use_warp_bd_damr,
-    WarpBoundaryBox *warp_bd_box_damr
+    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
 );
 

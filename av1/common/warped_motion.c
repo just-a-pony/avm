@@ -823,19 +823,12 @@ void av1_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
                               int p_stride, int subsampling_x,
                               int subsampling_y, int bd,
                               ConvolveParams *conv_params, int16_t alpha,
-                              int16_t beta, int16_t gamma, int16_t delta
+                              int16_t beta, int16_t gamma, int16_t delta) {
 #if CONFIG_OPFL_MEMBW_REDUCTION
-                              ,
-                              int use_damr_padding, ReferenceArea *ref_area
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
-) {
-#if CONFIG_OPFL_MEMBW_REDUCTION
-  const int left_limit = use_damr_padding ? ref_area->pad_block.x0 : 0;
-  const int right_limit =
-      use_damr_padding ? ref_area->pad_block.x1 - 1 : width - 1;
-  const int top_limit = use_damr_padding ? ref_area->pad_block.y0 : 0;
-  const int bottom_limit =
-      use_damr_padding ? ref_area->pad_block.y1 - 1 : height - 1;
+  const int left_limit = 0;
+  const int right_limit = width - 1;
+  const int top_limit = 0;
+  const int bottom_limit = height - 1;
 #endif  // CONFIG_OPFL_MEMBW_REDUCTION
   int32_t tmp[15 * 8];
   const int reduce_bits_horiz = conv_params->round_0;
@@ -1001,15 +994,16 @@ void av1_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
    apply some form of deblocking to the output of this function. This is handled
    separately.
 */
-void av1_ext_highbd_warp_affine_c(
-    const int32_t *mat, const uint16_t *ref, int width, int height, int stride,
-    uint16_t *pred, int p_col, int p_row, int p_width, int p_height,
-    int p_stride, int subsampling_x, int subsampling_y, int bd,
-    ConvolveParams *conv_params
+void av1_ext_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
+                                  int width, int height, int stride,
+                                  uint16_t *pred, int p_col, int p_row,
+                                  int p_width, int p_height, int p_stride,
+                                  int subsampling_x, int subsampling_y, int bd,
+                                  ConvolveParams *conv_params
 #if CONFIG_WARP_BD_BOX
-    ,
-    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box, int use_warp_bd_damr,
-    WarpBoundaryBox *warp_bd_box_damr
+                                  ,
+                                  int use_warp_bd_box,
+                                  WarpBoundaryBox *warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
 ) {
   int32_t im_block[(4 + EXT_WARP_TAPS - 1) * 4];
@@ -1053,12 +1047,6 @@ void av1_ext_highbd_warp_affine_c(
         right_limit = warp_bd_box[box_idx].x1 - 1;
         top_limit = warp_bd_box[box_idx].y0;
         bottom_limit = warp_bd_box[box_idx].y1 - 1;
-      }
-      if (use_warp_bd_damr) {
-        left_limit = warp_bd_box_damr->x0;
-        right_limit = warp_bd_box_damr->x1 - 1;
-        top_limit = warp_bd_box_damr->y0;
-        bottom_limit = warp_bd_box_damr->y1 - 1;
       }
 #endif  // CONFIG_WARP_BD_BOX
       // Calculate the center of this 4x4 block,
@@ -1167,8 +1155,7 @@ void av1_ext_highbd_warp_affine_scaled_c(
     ConvolveParams *conv_params, const struct scale_factors *sf
 #if CONFIG_WARP_BD_BOX
     ,
-    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box, int use_warp_bd_damr,
-    WarpBoundaryBox *warp_bd_box_damr
+    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
 ) {
   //  int32_t im_block[(4 + EXT_WARP_TAPS - 1) * 4];
@@ -1215,12 +1202,6 @@ void av1_ext_highbd_warp_affine_scaled_c(
         right_limit = warp_bd_box[box_idx].x1 - 1;
         top_limit = warp_bd_box[box_idx].y0;
         bottom_limit = warp_bd_box[box_idx].y1 - 1;
-      }
-      if (use_warp_bd_damr) {
-        left_limit = warp_bd_box_damr->x0;
-        right_limit = warp_bd_box_damr->x1 - 1;
-        top_limit = warp_bd_box_damr->y0;
-        bottom_limit = warp_bd_box_damr->y1 - 1;
       }
 #endif  // CONFIG_WARP_BD_BOX
       // Calculate the center of this 4x4 block,
@@ -1354,30 +1335,6 @@ void av1_ext_highbd_warp_affine_scaled_c(
   }
 }
 #endif  // CONFIG_ACROSS_SCALE_WARP
-
-#if CONFIG_AFFINE_REFINEMENT
-void av1_warp_plane_ext(WarpedMotionParams *wm, int bd, const uint16_t *ref,
-                        int width, int height, int stride, uint16_t *pred,
-                        int p_col, int p_row, int p_width, int p_height,
-                        int p_stride, int subsampling_x, int subsampling_y,
-                        ConvolveParams *conv_params) {
-  assert(wm->wmtype <= AFFINE);
-  if (wm->wmtype == ROTZOOM) {
-    wm->wmmat[5] = wm->wmmat[2];
-    wm->wmmat[4] = -wm->wmmat[3];
-  }
-  const int32_t *const mat = wm->wmmat;
-
-  av1_ext_highbd_warp_affine(mat, ref, width, height, stride, pred, p_col,
-                             p_row, p_width, p_height, p_stride, subsampling_x,
-                             subsampling_y, bd, conv_params
-#if CONFIG_WARP_BD_BOX
-                             ,
-                             0, NULL, 0, NULL
-#endif  // CONFIG_WARP_BD_BOX
-  );
-}
-#endif  // CONFIG_AFFINE_REFINEMENT
 #endif  // CONFIG_EXT_WARP_FILTER
 
 void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
@@ -1389,14 +1346,9 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
                        ,
                        const struct scale_factors *sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_OPFL_MEMBW_REDUCTION
-                       ,
-                       int use_damr_padding, ReferenceArea *ref_area
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
 #if CONFIG_WARP_BD_BOX
                        ,
-                       int use_warp_bd_box, WarpBoundaryBox *warp_bd_box,
-                       int use_warp_bd_damr, WarpBoundaryBox *warp_bd_box_damr
+                       int use_warp_bd_box, WarpBoundaryBox *warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
 ) {
 
@@ -1426,13 +1378,12 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
 #endif  // CONFIG_ACROSS_SCALE_WARP
 
   if (!wm->use_affine_filter
-#if CONFIG_AFFINE_REFINEMENT
+#if CONFIG_IMPROVE_EXT_WARP
       || p_width < 8 || p_height < 8
-#endif  // CONFIG_AFFINE_REFINEMENT
+#endif  // CONFIG_IMPROVE_EXT_WARP
 #if CONFIG_ACROSS_SCALE_WARP
       || is_scaled
 #endif  // CONFIG_ACROSS_SCALE_WARP
-
   ) {
     WarpedMotionParams wm_scaled = *wm;
 #if CONFIG_ACROSS_SCALE_WARP
@@ -1443,18 +1394,18 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
           conv_params, sf
 #if CONFIG_WARP_BD_BOX
           ,
-          use_warp_bd_box, warp_bd_box, use_warp_bd_damr, warp_bd_box_damr
+          use_warp_bd_box, warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
       );
     } else {
 #endif  // CONFIG_ACROSS_SCALE_WARP
-      av1_ext_highbd_warp_affine(
-          &wm_scaled.wmmat[0], ref, width, height, stride, pred, p_col, p_row,
-          p_width, p_height, p_stride, subsampling_x, subsampling_y, bd,
-          conv_params
+      av1_ext_highbd_warp_affine(&wm_scaled.wmmat[0], ref, width, height,
+                                 stride, pred, p_col, p_row, p_width, p_height,
+                                 p_stride, subsampling_x, subsampling_y, bd,
+                                 conv_params
 #if CONFIG_WARP_BD_BOX
-          ,
-          use_warp_bd_box, warp_bd_box, use_warp_bd_damr, warp_bd_box_damr
+                                 ,
+                                 use_warp_bd_box, warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
       );
 #if CONFIG_ACROSS_SCALE_WARP
@@ -1466,12 +1417,7 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
     av1_highbd_warp_affine(mat, ref, width, height, stride, pred, p_col, p_row,
                            p_width, p_height, p_stride, subsampling_x,
                            subsampling_y, bd, conv_params, alpha, beta, gamma,
-                           delta
-#if CONFIG_OPFL_MEMBW_REDUCTION
-                           ,
-                           use_damr_padding, ref_area
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
-    );
+                           delta);
   }
 }
 
@@ -1484,30 +1430,21 @@ void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint16_t *ref,
                     ,
                     const struct scale_factors *sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_OPFL_MEMBW_REDUCTION
-                    ,
-                    int use_damr_padding, ReferenceArea *ref_area
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
 #if CONFIG_WARP_BD_BOX
                     ,
-                    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box,
-                    int use_warp_bd_damr, WarpBoundaryBox *warp_bd_box_damr
+                    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
 ) {
-  highbd_warp_plane(
-      wm, ref, width, height, stride, pred, p_col, p_row, p_width, p_height,
-      p_stride, subsampling_x, subsampling_y, bd, conv_params
+  highbd_warp_plane(wm, ref, width, height, stride, pred, p_col, p_row, p_width,
+                    p_height, p_stride, subsampling_x, subsampling_y, bd,
+                    conv_params
 #if CONFIG_ACROSS_SCALE_WARP
-      ,
-      sf
+                    ,
+                    sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_OPFL_MEMBW_REDUCTION
-      ,
-      use_damr_padding, ref_area
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
 #if CONFIG_WARP_BD_BOX
-      ,
-      use_warp_bd_box, warp_bd_box, use_warp_bd_damr, warp_bd_box_damr
+                    ,
+                    use_warp_bd_box, warp_bd_box
 #endif  // CONFIG_WARP_BD_BOX
   );
 }
