@@ -127,9 +127,7 @@ extern "C" {
 #define MAX_SB_TMVP_SIZE_LOG2 (MAX_MIB_SIZE_LOG2 - TMVP_SHIFT_BITS)
 #define MAX_SB_TMVP_SIZE (1 << MAX_SB_TMVP_SIZE_LOG2)
 
-#if CONFIG_TMVP_MEM_OPT
 #define TMVP_SAMPLE_STEP 2
-#endif  // CONFIG_TMVP_MEM_OPT
 
 #define MIN_BSIZE_WARP_DELTA 8
 
@@ -355,10 +353,8 @@ typedef struct RefCntBuffer {
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
 
   MV_REF *mvs;
-#if CONFIG_TMVP_MEM_OPT
   int64_t avg_row[2];
   int64_t avg_col[2];
-#endif  // CONFIG_TMVP_MEM_OPT
   uint8_t *seg_map;
   struct segmentation seg;
   int mi_rows;
@@ -591,9 +587,7 @@ typedef struct SequenceHeader {
   uint8_t enable_tip;   // enables/disables temporal interpolated prediction
   uint8_t enable_tip_hole_fill;    // enables/disables hole fill for TIP
   uint8_t enable_tip_explicit_qp;  // enables/disables explicit qp for TIP
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
-  uint8_t enable_mv_traj;  // enables/disables mv trajectory tracking
-#endif                     // CONFIG_TMVP_SIMPLIFICATIONS_F085
+  uint8_t enable_mv_traj;          // enables/disables mv trajectory tracking
   uint8_t enable_bawp;  // enables/disables block adaptive weighted prediction
   uint8_t enable_cwp;   // enables/disables compound weighted prediction
 #if CONFIG_D071_IMP_MSK_BLD
@@ -1985,12 +1979,10 @@ typedef struct AV1Common {
    */
   TPL_MV_REF *tpl_mvs;
 
-#if CONFIG_TMVP_MEM_OPT
   /*!
    * Step size for tmvp sampling. Should be 1 (no sampling) or 2.
    */
   int tmvp_sample_step;
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
   /*!
    * The processing unit size used
    */
@@ -2003,8 +1995,6 @@ typedef struct AV1Common {
    * Projection range extension in col
    */
   int tmvp_col_offset;
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
-#endif  // CONFIG_TMVP_MEM_OPT
 
 #if CONFIG_MV_TRAJECTORY
   /*!
@@ -2014,11 +2004,7 @@ typedef struct AV1Common {
   /*!
    * Mapping table from block location to trajectory id.
    */
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
   int *blk_id_map[3][INTER_REFS_PER_FRAME];
-#else
-  int *blk_id_map[INTER_REFS_PER_FRAME];
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
 #endif  // CONFIG_MV_TRAJECTORY
 
   /*!
@@ -2454,10 +2440,8 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
         cm, buf->seg_map,
         (uint8_t *)aom_calloc(mi_params->mi_rows * mi_params->mi_cols,
                               sizeof(*buf->seg_map)));
-#if CONFIG_TMVP_MEM_OPT
     buf->avg_row[0] = -1;
     buf->avg_row[1] = -1;
-#endif  // CONFIG_TMVP_MEM_OPT
   }
 
   if (buf->ccso_info.sb_filter_control[0] == NULL ||
@@ -2505,7 +2489,6 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
       aom_free(cm->id_offset_map[rf]);
       cm->id_offset_map[rf] =
           (int_mv *)aom_malloc(mem_size * sizeof(*cm->id_offset_map[rf]));
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
       for (int k = 0; k < 3; k++) {
         aom_free(cm->blk_id_map[k][rf]);
       }
@@ -2513,11 +2496,6 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
         cm->blk_id_map[k][rf] =
             (int *)aom_malloc(mem_size * sizeof(*cm->blk_id_map[k][rf]));
       }
-#else
-      aom_free(cm->blk_id_map[rf]);
-      cm->blk_id_map[rf] =
-          (int *)aom_malloc(mem_size * sizeof(*cm->blk_id_map[rf]));
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
     }
 #endif  // CONFIG_MV_TRAJECTORY
   }

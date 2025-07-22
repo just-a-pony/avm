@@ -195,7 +195,6 @@ static AOM_INLINE void convert_fullmv_to_mv(int_mv *mv) {
   mv->as_mv = get_mv_from_fullmv(&mv->as_fullmv);
 }
 
-#if CONFIG_TMVP_MV_COMPRESSION
 // Actual mapping algorithm to compress the TMVP MV
 static inline int compute_mapping_val(int16_t range_interval_start_abs,
                                       int16_t domain_interval_start_abs,
@@ -297,7 +296,6 @@ static AOM_INLINE void fetch_mv_from_tmvp(MV *mv) {
   mv->row = uncompression_mv(mv->row);
   mv->col = uncompression_mv(mv->col);
 }
-#endif  // CONFIG_TMVP_MV_COMPRESSION
 
 #define ABS(x) (((x) >= 0) ? (x) : (-(x)))
 // Reduce the precision of the MV to the target precision
@@ -716,7 +714,6 @@ static INLINE void clamp_fullmv(FULLPEL_MV *mv, const FullMvLimits *mv_limits) {
   mv->row = clamp(mv->row, mv_limits->row_min, mv_limits->row_max);
 }
 
-#if CONFIG_IMPROVE_REFINED_MV
 // Convert the 1/8th pel motion vector to 1/16th pel.
 static INLINE MV convert_mv_to_1_16th_pel(const MV *in_mv) {
   MV mv;
@@ -724,7 +721,6 @@ static INLINE MV convert_mv_to_1_16th_pel(const MV *in_mv) {
   mv.row = clamp((in_mv->row * 2), INT16_MIN, INT16_MAX);
   return mv;
 }
-#endif  // CONFIG_IMPROVE_REFINED_MV
 
 #if CONFIG_MV_RANGE_EXTENSION
 static INLINE int get_map_shell_class(const int shell_class) {

@@ -333,9 +333,6 @@ set_aom_config_var(CONFIG_D072_SKIP_MODE_IMPROVE 1
 set_aom_config_var(CONFIG_SKIP_MODE_NO_REFINEMENTS 1
                    "Disable refinement algorithms for the skip mode")
 
-set_aom_config_var(CONFIG_MF_HOLE_FILL_ALWAYS_ENABLE 1
-                   "Always enable motion field hole filling")
-
 set_aom_config_var(CONFIG_BANK_IMPROVE 1
                    "Enable to improve refmv bank and warp parameter bank")
 set_aom_config_var(CONFIG_PARTITION_CONTEXT_REDUCE 1
@@ -355,15 +352,7 @@ set_aom_config_var(CONFIG_OPFL_CTX_OPT 1
 set_aom_config_var(CONFIG_MVD_CDF_REDUCTION 1
                    "Enable reduction of the CDFs for MVD related sybmols")
 
-set_aom_config_var(CONFIG_TMVP_SIMPLIFICATIONS_F085 1
-                   "Improvements to TMVP & MV trajectory")
-
-set_aom_config_var(CONFIG_IMPROVE_TIP_SMVP 1 "Improve SMVP with TIP (F043)")
-set_aom_config_var(CONFIG_TMVP_MV_COMPRESSION 1 "Enable to compress TMVP MV")
 set_aom_config_var(CONFIG_ENABLE_SR 0 "Enable super resolution mode")
-
-set_aom_config_var(CONFIG_TIP_MV_SIMPLIFICATION 1
-                   "Enable to address the motion field range issue in TIP")
 
 set_aom_config_var(
   CONFIG_QM_DEBUG 0
@@ -424,9 +413,6 @@ set_aom_config_var(CONFIG_NEW_CONTEXT_MODELING 1
                    "Enable to improve the context modeling")
 set_aom_config_var(CONFIG_WEDGE_MOD_EXT 1 "AV2 wedge modes extensions.")
 
-set_aom_config_var(CONFIG_MF_IMPROVEMENT 1
-                   "Enable to improve temporal motion projection")
-
 set_aom_config_var(CONFIG_BRU 1 "enable BRU update")
 set_aom_config_var(CONFIG_SDP_CFL_LATENCY_FIX 1 "Reduce SDP-CFL latency")
 
@@ -482,12 +468,6 @@ set_aom_config_var(CONFIG_SCC_DETERMINATION 1
 
 set_aom_config_var(CONFIG_IST_ANY_SET 1
                    "Enable R-D Optimized IST set selection from CWG-D159.")
-
-set_aom_config_var(CONFIG_REFINED_MVS_IN_TMVP 1
-                   "Keep optical flow refined MVs in TMVP list.")
-set_aom_config_var(CONFIG_IMPROVE_REFINED_MV 1
-                   "Keep refined MVs in TMVP list for TIP modes.")
-set_aom_config_var(CONFIG_IMPROVE_TMVP_LIST 1 "Improve TMVP list population.")
 set_aom_config_var(CONFIG_AFFINE_REFINEMENT 1
                    "Decoder side affine motion refinement.")
 set_aom_config_var(CONFIG_AFFINE_REFINEMENT_SB 1
@@ -515,11 +495,6 @@ set_aom_config_var(CONFIG_E124_IST_REDUCE_METHOD4 1
                    "AV2 remove worst-case multiplications.")
 set_aom_config_var(CONFIG_COEFF_HR_ADAPTIVE 1
                    "AV2 enable adaptive coding of HR coefficients.")
-set_aom_config_var(CONFIG_WEDGE_TMVP 1
-                   "Improvements to tmvp MV storing for wedge mode.")
-set_aom_config_var(
-  CONFIG_TMVP_MEM_OPT 1
-  "Enables directional storage and adaptive sampling for TMVP MVs.")
 set_aom_config_var(CONFIG_MV_TRAJECTORY 1
                    "Enables TMVP MV trajectory tracking.")
 set_aom_config_var(CONFIG_ADAPTATION_RATE_IMPROVE 1

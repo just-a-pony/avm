@@ -419,19 +419,15 @@ DECLARE_ALIGNED(
 DECLARE_ALIGNED(
     16, static uint8_t,
     wedge_mask_buf[2 * MAX_WEDGE_TYPES * H_WEDGE_ANGLES * MAX_WEDGE_SQUARE]);
-#if CONFIG_WEDGE_TMVP
 DECLARE_ALIGNED(16, static uint8_t,
                 wedge_tmvp_decision_buf[2 * MAX_WEDGE_TYPES * H_WEDGE_ANGLES *
                                         MAX_WEDGE_SQUARE]);
-#endif  // CONFIG_WEDGE_TMVP
 #else
 DECLARE_ALIGNED(16, static uint8_t,
                 wedge_mask_buf[2 * MAX_WEDGE_TYPES * 4 * MAX_WEDGE_SQUARE]);
-#if CONFIG_WEDGE_TMVP
 DECLARE_ALIGNED(
     16, static uint8_t,
     wedge_tmvp_decision_buf[2 * MAX_WEDGE_TYPES * 4 * MAX_WEDGE_SQUARE]);
-#endif  // CONFIG_WEDGE_TMVP
 #endif  // CONFIG_WEDGE_MOD_EXT
 
 DECLARE_ALIGNED(16, static uint8_t,
@@ -441,9 +437,7 @@ DECLARE_ALIGNED(16, static uint8_t,
 DECLARE_ALIGNED(16, static int8_t, cwp_mask[2][MAX_CWP_NUM][MAX_SB_SQUARE]);
 
 static wedge_masks_type wedge_masks[BLOCK_SIZES_ALL][2];
-#if CONFIG_WEDGE_TMVP
 static wedge_decisions_type wedge_tmvp_decisions[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_WEDGE_TMVP
 
 #if CONFIG_WEDGE_MOD_EXT
 static const wedge_code_type wedge_codebook_16[MAX_WEDGE_TYPES] = {
@@ -507,7 +501,6 @@ static const wedge_code_type wedge_codebook_16_heqw[16] = {
 #endif  // CONFIG_WEDGE_MOD_EXT
 
 #if CONFIG_WEDGE_MOD_EXT
-#if CONFIG_WEDGE_TMVP
 // Look up table of params for wedge mode for different block sizes.
 const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
@@ -559,42 +552,6 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
 };
 #else
-const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X8] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X16] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_16X8] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_16X16] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_16X32] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X16] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X32] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X64] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X32] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X64] },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X32] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_32X8] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_16X64] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X16] },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_8X64] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16, NULL, wedge_masks[BLOCK_64X8] },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-};
-#endif  // CONFIG_WEDGE_TMVP
-#else
-#if CONFIG_WEDGE_TMVP
 // Look up table of params for wedge mode for different block sizes.
 const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
@@ -638,50 +595,6 @@ const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
   { 0, NULL, NULL, NULL, NULL },
   { 0, NULL, NULL, NULL, NULL },
 };
-#else
-const wedge_params_type av1_wedge_params_lookup[BLOCK_SIZES_ALL] = {
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_heqw, wedge_signflip_lookup[BLOCK_8X8],
-    wedge_masks[BLOCK_8X8] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_hgtw, wedge_signflip_lookup[BLOCK_8X16],
-    wedge_masks[BLOCK_8X16] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_hltw, wedge_signflip_lookup[BLOCK_16X8],
-    wedge_masks[BLOCK_16X8] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_heqw, wedge_signflip_lookup[BLOCK_16X16],
-    wedge_masks[BLOCK_16X16] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_hgtw, wedge_signflip_lookup[BLOCK_16X32],
-    wedge_masks[BLOCK_16X32] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_hltw, wedge_signflip_lookup[BLOCK_32X16],
-    wedge_masks[BLOCK_32X16] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_heqw, wedge_signflip_lookup[BLOCK_32X32],
-    wedge_masks[BLOCK_32X32] },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_hgtw, wedge_signflip_lookup[BLOCK_8X32],
-    wedge_masks[BLOCK_8X32] },
-  { MAX_WEDGE_TYPES, wedge_codebook_16_hltw, wedge_signflip_lookup[BLOCK_32X8],
-    wedge_masks[BLOCK_32X8] },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-  { 0, NULL, NULL, NULL },
-};
-#endif  // CONFIG_WEDGE_TMVP
 #endif
 
 // Init the cwp masks, called by init_cwp_masks
@@ -738,7 +651,6 @@ static const uint8_t *get_wedge_mask_inplace(int wedge_index, int neg,
   return master;
 }
 
-#if CONFIG_WEDGE_TMVP
 // For each 8x8 block, decide (if using wedge mode), whether it should store
 // both MVs as the TMVP MVs, or just 1 of them (and in this case which one to
 // store).
@@ -774,7 +686,6 @@ static void get_wedge_tmvp_decision(const uint8_t *mask, int mask_stride,
     }
   }
 }
-#endif  // CONFIG_WEDGE_TMVP
 
 const uint8_t *av1_get_compound_type_mask(
     const INTERINTER_COMPOUND_DATA *const comp_data, BLOCK_SIZE sb_type) {
@@ -989,10 +900,8 @@ static AOM_INLINE void init_wedge_masks() {
   uint8_t *dst = wedge_mask_buf;
   BLOCK_SIZE bsize;
   memset(wedge_masks, 0, sizeof(wedge_masks));
-#if CONFIG_WEDGE_TMVP
   uint8_t *dst_tmvp_decision = wedge_tmvp_decision_buf;
   memset(wedge_tmvp_decisions, 0, sizeof(wedge_tmvp_decisions));
-#endif  // CONFIG_WEDGE_TMVP
   for (bsize = BLOCK_4X4; bsize < BLOCK_SIZES_ALL; ++bsize) {
     const wedge_params_type *wedge_params = &av1_wedge_params_lookup[bsize];
     const int wtypes = wedge_params->wedge_types;
@@ -1006,22 +915,18 @@ static AOM_INLINE void init_wedge_masks() {
       aom_convolve_copy(mask, MASK_MASTER_STRIDE, dst, bw /* dst_stride */, bw,
                         bh);
       wedge_params->masks[0][w] = dst;
-#if CONFIG_WEDGE_TMVP
       get_wedge_tmvp_decision(dst, bw, bw, bh, dst_tmvp_decision, bw);
       wedge_params->tmvp_mv_decisions[0][w] = dst_tmvp_decision;
       dst_tmvp_decision += bw * bh;
-#endif  // CONFIG_WEDGE_TMVP
       dst += bw * bh;
 
       mask = get_wedge_mask_inplace(w, 1, bsize);
       aom_convolve_copy(mask, MASK_MASTER_STRIDE, dst, bw /* dst_stride */, bw,
                         bh);
       wedge_params->masks[1][w] = dst;
-#if CONFIG_WEDGE_TMVP
       wedge_params->tmvp_mv_decisions[1][w] = dst_tmvp_decision;
       get_wedge_tmvp_decision(dst, bw, bw, bh, dst_tmvp_decision, bw);
       dst_tmvp_decision += bw * bh;
-#endif  // CONFIG_WEDGE_TMVP
       dst += bw * bh;
     }
     assert(sizeof(wedge_mask_buf) >= (size_t)(dst - wedge_mask_buf));
@@ -1699,7 +1604,6 @@ void av1_opfl_build_inter_predictor(
 
   assert(mi->interinter_comp.type == COMPOUND_AVERAGE);
 
-#if CONFIG_IMPROVE_REFINED_MV
 #if CONFIG_REFINEMV
   const MV mv_1_16th_pel = convert_mv_to_1_16th_pel(src_mv);
 #else
@@ -1709,16 +1613,6 @@ void av1_opfl_build_inter_predictor(
   av1_build_one_inter_predictor(pred_dst, bw, &mv_1_16th_pel, inter_pred_params,
                                 xd, mi_x, mi_y, ref, mc_buf,
                                 calc_subpel_params_func);
-#else
-  av1_build_one_inter_predictor(pred_dst, bw,
-#if CONFIG_REFINEMV
-                                src_mv,
-#else
-                                &mi->mv[ref].as_mv,
-#endif  // CONFIG_REFINEMV
-                                inter_pred_params, xd, mi_x, mi_y, ref, mc_buf,
-                                calc_subpel_params_func);
-#endif  // CONFIG_IMPROVE_REFINED_MV
 }
 
 void av1_bicubic_grad_interpolation_highbd_c(const int16_t *pred_src,
@@ -3351,12 +3245,8 @@ void av1_build_one_inter_predictor(
   uint16_t *src;
   int src_stride;
   calc_subpel_params_func(src_mv, inter_pred_params, xd, mi_x, mi_y, ref,
-#if CONFIG_IMPROVE_REFINED_MV
-                          1 /* is_mv_1_16th_pel  */,
-#else
-                          0,
-#endif  // CONFIG_IMPROVE_REFINED_MV
-                          mc_buf, &src, &subpel_params, &src_stride);
+                          1 /* is_mv_1_16th_pel  */, mc_buf, &src,
+                          &subpel_params, &src_stride);
 
 #if CONFIG_D071_IMP_MSK_BLD
   int use_bacp = 0;
@@ -4052,15 +3942,8 @@ static void build_inter_predictors_sub8x8(
       }
 #endif  // CONFIG_COMPOUND_4XN
 
-#if CONFIG_IMPROVE_REFINED_MV
       const MV mv_1_16th_pel = convert_mv_to_1_16th_pel(&mv);
-#endif  // CONFIG_IMPROVE_REFINED_MV
-      av1_build_one_inter_predictor(dst, dst_buf->stride,
-#if CONFIG_IMPROVE_REFINED_MV
-                                    &mv_1_16th_pel,
-#else
-                                    &mv,
-#endif  // CONFIG_IMPROVE_REFINED_MV
+      av1_build_one_inter_predictor(dst, dst_buf->stride, &mv_1_16th_pel,
                                     &inter_pred_params, xd, mi_x + pixel_col,
                                     mi_y + pixel_row, ref, mc_buf,
                                     calc_subpel_params_func);
@@ -4628,9 +4511,7 @@ void av1_get_reference_area_with_padding(const AV1_COMMON *cm, MACROBLOCKD *xd,
   assert(!is_intrabc_block(mi, xd->tree_type));
   struct macroblockd_plane *const pd = &xd->plane[plane];
 
-#if CONFIG_IMPROVE_REFINED_MV
   if (is_tip && bw < 8 && bh < 8) return;
-#endif  // CONFIG_IMPROVE_REFINED_MV
 
   int row_start = 0;
   int col_start = 0;
@@ -5033,9 +4914,6 @@ best_mv_ref[1].col = center_mvs[1].col - 8 * best_offset.col;
 // blocks and non-TIP ref mode blocks.
 static AOM_INLINE int is_sub_block_refinemv_enabled(const AV1_COMMON *cm,
                                                     const MB_MODE_INFO *mi,
-#if !CONFIG_IMPROVE_REFINED_MV
-                                                    int plane,
-#endif  // !CONFIG_IMPROVE_REFINED_MV
                                                     int tip_ref_frame) {
   if (!cm->seq_params.enable_refinemv) return 0;
 
@@ -5043,24 +4921,12 @@ static AOM_INLINE int is_sub_block_refinemv_enabled(const AV1_COMMON *cm,
 #if CONFIG_TIP_ENHANCEMENT
     const int tip_wtd_index = cm->tip_global_wtd_index;
     const int8_t tip_weight = tip_weighting_factors[tip_wtd_index];
-    return (
-#if !CONFIG_IMPROVE_REFINED_MV
-        plane == 0 &&
-#endif  // !CONFIG_IMPROVE_REFINED_MV
-        cm->has_both_sides_refs && tip_weight == TIP_EQUAL_WTD);
+    return (cm->has_both_sides_refs && tip_weight == TIP_EQUAL_WTD);
 #else
 #if CONFIG_TIP_LD
-    return (
-#if !CONFIG_IMPROVE_REFINED_MV
-        plane == 0 &&
-#endif  // !CONFIG_IMPROVE_REFINED_MV
-        cm->has_both_sides_refs);
+    return (cm->has_both_sides_refs);
 #else
-#if CONFIG_IMPROVE_REFINED_MV
       return 1;
-#else
-      return (plane == 0);
-#endif  // CONFIG_IMPROVE_REFINED_MV
 #endif  // CONFIG_TIP_LD
 #endif  // CONFIG_TIP_ENHANCEMENT
   } else {
@@ -5156,18 +5022,11 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
 #endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
     int bw, int bh, int mi_x, int mi_y, uint16_t **mc_buf, MV mi_mv[2],
     CalcSubpelParamsFunc calc_subpel_params_func, uint16_t *dst, int dst_stride,
-#if CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
-    int subblk_start_x, int subblk_start_y,
-#endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
-    int pu_width, int pu_height, uint16_t *dst0_16_refinemv,
-    uint16_t *dst1_16_refinemv, int row_start, int col_start, MV *sb_refined_mv,
-    MV *chroma_refined_mv, int build_for_refine_mv_only,
-    ReferenceArea ref_area[2], int_mv *mv_refined
-#if CONFIG_IMPROVE_REFINED_MV
-    ,
-    int *opfl_vxy_bufs
-#endif  // CONFIG_IMPROVE_REFINED_MV
-) {
+    int subblk_start_x, int subblk_start_y, int pu_width, int pu_height,
+    uint16_t *dst0_16_refinemv, uint16_t *dst1_16_refinemv, int row_start,
+    int col_start, MV *sb_refined_mv, MV *chroma_refined_mv,
+    int build_for_refine_mv_only, ReferenceArea ref_area[2], int_mv *mv_refined,
+    int *opfl_vxy_bufs) {
   const int tip_ref_frame = is_tip_ref_frame(mi->ref_frame[0]);
   const int is_compound = has_second_ref(mi) || tip_ref_frame;
   struct macroblockd_plane *const pd = &xd->plane[plane];
@@ -5226,18 +5085,9 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
     best_mv_ref[1] = chroma_refined_mv[1];
   }
 
-  if (tip_ref_frame
-#if CONFIG_IMPROVE_REFINED_MV
-      && plane == 0) {
+  if (tip_ref_frame && plane == 0) {
     mv_refined[0].as_mv = convert_mv_to_1_16th_pel(&best_mv_ref[0]);
     mv_refined[1].as_mv = convert_mv_to_1_16th_pel(&best_mv_ref[1]);
-#else
-  ) {
-    mv_refined[0].as_mv.row = best_mv_ref[0].row * (1 << (1 - ss_y));
-    mv_refined[0].as_mv.col = best_mv_ref[0].col * (1 << (1 - ss_x));
-    mv_refined[1].as_mv.row = best_mv_ref[1].row * (1 << (1 - ss_y));
-    mv_refined[1].as_mv.col = best_mv_ref[1].col * (1 << (1 - ss_x));
-#endif  // CONFIG_IMPROVE_REFINED_MV
   }
   int use_optflow_refinement =
       is_optflow_refinement_enabled(cm,
@@ -5346,17 +5196,10 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
           mv_refined[2 * mvidx + 1].as_mv =
               mv_refined_sb[2 * mvidx_sb + 1].as_mv;
           // Store subblock MV delta at the prediction block level
-#if CONFIG_IMPROVE_REFINED_MV
           opfl_vxy_bufs[mvidx] = vx0_sb[mvidx_sb];
           opfl_vxy_bufs[N_OF_OFFSETS * 1 + mvidx] = vx1_sb[mvidx_sb];
           opfl_vxy_bufs[N_OF_OFFSETS * 2 + mvidx] = vy0_sb[mvidx_sb];
           opfl_vxy_bufs[N_OF_OFFSETS * 3 + mvidx] = vy1_sb[mvidx_sb];
-#else
-          xd->opfl_vxy_bufs[mvidx] = vx0_sb[mvidx_sb];
-          xd->opfl_vxy_bufs[N_OF_OFFSETS * 1 + mvidx] = vx1_sb[mvidx_sb];
-          xd->opfl_vxy_bufs[N_OF_OFFSETS * 2 + mvidx] = vy0_sb[mvidx_sb];
-          xd->opfl_vxy_bufs[N_OF_OFFSETS * 3 + mvidx] = vy1_sb[mvidx_sb];
-#endif  // CONFIG_IMPROVE_REFINED_MV
         }
       }
 #if CONFIG_AFFINE_REFINEMENT
@@ -5387,11 +5230,7 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
                       : xd->block_ref_scale_factors[ref];
     struct buf_2d *const pre_buf = &pd->pre[ref];
 
-#if CONFIG_IMPROVE_REFINED_MV
     MV mv = best_mv_ref[ref];
-#else
-    const MV mv = best_mv_ref[ref];
-#endif  // CONFIG_IMPROVE_REFINED_MV
     const WarpTypesAllowed warp_types = { is_global[ref],
                                           is_warp_mode(mi->motion_mode) };
     InterPredParams inter_pred_params;
@@ -5404,22 +5243,14 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
 #if CONFIG_REFINEMV
 #if CONFIG_OPFL_MEMBW_REDUCTION
     const int use_ref_padding =
-#if CONFIG_IMPROVE_REFINED_MV
         tip_ref_frame ? ((apply_refinemv || use_optflow_refinement) ||
                          (plane && (comp_bw > 4 || comp_bh > 4)))
                       : 1;
 #else
-        tip_ref_frame ? (apply_refinemv || use_optflow_refinement) : 1;
-#endif  // CONFIG_IMPROVE_REFINED_MV
-#else
     const int use_ref_padding =
-#if CONFIG_IMPROVE_REFINED_MV
         tip_ref_frame
             ? apply_refinemv || (plane && (comp_bw > 4 || comp_bh > 4))
             : 1;
-#else
-        tip_ref_frame ? apply_refinemv : 1;
-#endif  // CONFIG_IMPROVE_REFINED_MV
 #endif  // CONFIG_OPFL_MEMBW_REDUCTION
     if (use_ref_padding) {
       inter_pred_params.use_ref_padding = 1;
@@ -5464,13 +5295,8 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
                                                        opfl_sub_bh);
 
       av1_opfl_rebuild_inter_predictor(
-          dst, dst_stride, plane, mv_refined_sb,
-#if CONFIG_IMPROVE_REFINED_MV
-          opfl_vxy_bufs,
-#else
-          xd->opfl_vxy_bufs,
-#endif  // CONFIG_IMPROVE_REFINED_MV
-          N_OF_OFFSETS, &inter_pred_params, xd, mi_x, mi_y,
+          dst, dst_stride, plane, mv_refined_sb, opfl_vxy_bufs, N_OF_OFFSETS,
+          &inter_pred_params, xd, mi_x, mi_y,
 #if CONFIG_E191_OFS_PRED_RES_HANDLE
           build_for_decode,
 #endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
@@ -5494,17 +5320,10 @@ static void build_inter_predictors_8x8_and_bigger_refinemv(
       );
       continue;
     }
-#if CONFIG_IMPROVE_REFINED_MV
     const MV mv_1_16th_pel = (tip_ref_frame && plane)
                                  ? mv_refined[ref].as_mv
                                  : convert_mv_to_1_16th_pel(&mv);
-#endif  // CONFIG_IMPROVE_REFINED_MV
-    av1_build_one_inter_predictor(dst, dst_stride,
-#if CONFIG_IMPROVE_REFINED_MV
-                                  &mv_1_16th_pel,
-#else
-                                  &mv,
-#endif  // CONFIG_IMPROVE_REFINED_MV
+    av1_build_one_inter_predictor(dst, dst_stride, &mv_1_16th_pel,
                                   &inter_pred_params, xd, mi_x, mi_y, ref,
                                   mc_buf, calc_subpel_params_func);
   }
@@ -5523,12 +5342,8 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_REFINEMV
     int build_for_refine_mv_only,
 #endif  // CONFIG_REFINEMV
-    bool *ext_warp_used, int_mv *mv_refined
-#if CONFIG_IMPROVE_REFINED_MV
-    ,
-    REFINEMV_SUBMB_INFO *block_refinemv_subinfo, int *opfl_vxy_bufs
-#endif  // CONFIG_IMPROVE_REFINED_MV
-) {
+    bool *ext_warp_used, int_mv *mv_refined,
+    REFINEMV_SUBMB_INFO *block_refinemv_subinfo, int *opfl_vxy_bufs) {
 #if CONFIG_COMPOUND_4XN
   // In case of chroma, even for 4xN and Nx4 blocks, single prediction is used.
   int singleref_for_compound =
@@ -5595,15 +5410,8 @@ static void build_inter_predictors_8x8_and_bigger(
   }
 #endif  // CONFIG_COMPOUND_4XN
 
-  if (is_sub_block_refinemv_enabled(cm, mi,
-#if !CONFIG_IMPROVE_REFINED_MV
-                                    plane,
-#endif  // !CONFIG_IMPROVE_REFINED_MV
-                                    tip_ref_frame)) {
+  if (is_sub_block_refinemv_enabled(cm, mi, tip_ref_frame)) {
     assert(IMPLIES(mi->refinemv_flag, mi->cwp_idx == CWP_EQUAL));
-#if !CONFIG_IMPROVE_REFINED_MV
-    assert(IMPLIES(tip_ref_frame, plane == 0));
-#endif  // !CONFIG_IMPROVE_REFINED_MV
     int refinemv_sb_size_width =
         AOMMIN((REFINEMV_SUBBLOCK_WIDTH >> pd->subsampling_x), bw);
     int refinemv_sb_size_height =
@@ -5657,13 +5465,8 @@ static void build_inter_predictors_8x8_and_bigger(
             plane ? (mi->chroma_ref_info.mi_row_chroma_base - mi_row) : 0;
         int col_start =
             plane ? (mi->chroma_ref_info.mi_col_chroma_base - mi_col) : 0;
-        MV luma_refined_mv[2] =
-#if CONFIG_IMPROVE_REFINED_MV
-            { { mi_mv[0].row, mi_mv[0].col }, { mi_mv[1].row, mi_mv[1].col } };
-#else
-            { { mi->mv[0].as_mv.row, mi->mv[0].as_mv.col },
-              { mi->mv[1].as_mv.row, mi->mv[1].as_mv.col } };
-#endif  // CONFIG_IMPROVE_REFINED_MV
+        MV luma_refined_mv[2] = { { mi_mv[0].row, mi_mv[0].col },
+                                  { mi_mv[1].row, mi_mv[1].col } };
 
         MV chroma_refined_mv[2] = {
           { mi->mv[0].as_mv.row, mi->mv[0].as_mv.col },
@@ -5674,13 +5477,8 @@ static void build_inter_predictors_8x8_and_bigger(
           int luma_h = (h << pd->subsampling_y);
           int luma_w = (w << pd->subsampling_x);
           REFINEMV_SUBMB_INFO *refinemv_subinfo =
-#if CONFIG_IMPROVE_REFINED_MV
               &block_refinemv_subinfo[(luma_h >> MI_SIZE_LOG2) * MAX_MIB_SIZE +
                                       (luma_w >> MI_SIZE_LOG2)];
-#else
-              &xd->refinemv_subinfo[(luma_h >> MI_SIZE_LOG2) * MAX_MIB_SIZE +
-                                    (luma_w >> MI_SIZE_LOG2)];
-#endif  // CONFIG_IMPROVE_REFINED_MV
           chroma_refined_mv[0] = refinemv_subinfo->refinemv[0].as_mv;
           chroma_refined_mv[1] = refinemv_subinfo->refinemv[1].as_mv;
         }
@@ -5707,32 +5505,15 @@ static void build_inter_predictors_8x8_and_bigger(
             refinemv_sb_size_width, refinemv_sb_size_height,
             mi_x + w * (1 << pd->subsampling_x),
             mi_y + h * (1 << pd->subsampling_y), mc_buf, mi_mv,
-            calc_subpel_params_func, dst_buf, dst_stride,
-#if CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
-            w, h,
-#endif  // CONFIG_AFFINE_REFINEMENT || CONFIG_REFINED_MVS_IN_TMVP
-            pu_width, pu_height, dst0_16_refinemv, dst1_16_refinemv, row_start,
-            col_start, plane == 0 ? luma_refined_mv : NULL, chroma_refined_mv,
-            build_for_refine_mv_only, ref_area, mv_refined
-#if CONFIG_IMPROVE_REFINED_MV
-            ,
-            opfl_vxy_bufs
-#endif  // CONFIG_IMPROVE_REFINED_MV
-        );
+            calc_subpel_params_func, dst_buf, dst_stride, w, h, pu_width,
+            pu_height, dst0_16_refinemv, dst1_16_refinemv, row_start, col_start,
+            plane == 0 ? luma_refined_mv : NULL, chroma_refined_mv,
+            build_for_refine_mv_only, ref_area, mv_refined, opfl_vxy_bufs);
 
-        if (plane == 0
-#if !CONFIG_IMPROVE_REFINED_MV
-            && !tip_ref_frame
-#endif  // !CONFIG_IMPROVE_REFINED_MV
-        ) {
+        if (plane == 0) {
           REFINEMV_SUBMB_INFO *refinemv_subinfo =
-#if CONFIG_IMPROVE_REFINED_MV
               &block_refinemv_subinfo[(h >> MI_SIZE_LOG2) * MAX_MIB_SIZE +
                                       (w >> MI_SIZE_LOG2)];
-#else
-              &xd->refinemv_subinfo[(h >> MI_SIZE_LOG2) * MAX_MIB_SIZE +
-                                    (w >> MI_SIZE_LOG2)];
-#endif  // CONFIG_IMPROVE_REFINED_MV
           fill_subblock_refine_mv(refinemv_subinfo, refinemv_sb_size_width,
                                   refinemv_sb_size_height, luma_refined_mv[0],
                                   luma_refined_mv[1]);
@@ -5764,18 +5545,9 @@ static void build_inter_predictors_8x8_and_bigger(
 #if CONFIG_REFINEMV
   MV best_mv_ref[2] = { mi_mv[0], mi_mv[1] };
 #endif  // CONFIG_REFINEMV
-  if (tip_ref_frame
-#if CONFIG_IMPROVE_REFINED_MV
-      && plane == 0) {
+  if (tip_ref_frame && plane == 0) {
     mv_refined[0].as_mv = convert_mv_to_1_16th_pel(&best_mv_ref[0]);
     mv_refined[1].as_mv = convert_mv_to_1_16th_pel(&best_mv_ref[1]);
-#else
-  ) {
-    mv_refined[0].as_mv.row = best_mv_ref[0].row * (1 << (1 - ss_y));
-    mv_refined[0].as_mv.col = best_mv_ref[0].col * (1 << (1 - ss_x));
-    mv_refined[1].as_mv.row = best_mv_ref[1].row * (1 << (1 - ss_y));
-    mv_refined[1].as_mv.col = best_mv_ref[1].col * (1 << (1 - ss_x));
-#endif  // CONFIG_IMPROVE_REFINED_MV
   }
   int use_optflow_refinement =
       is_optflow_refinement_enabled(cm,
@@ -5814,11 +5586,7 @@ static void build_inter_predictors_8x8_and_bigger(
   WarpedMotionParams wms[2 * NUM_AFFINE_PARAMS];
   for (int i = 0; i < 2 * wm_blocks; i++) wms[i] = default_warp_params;
 #if AFFINE_CHROMA_REFINE_METHOD > 0
-  if (use_optflow_refinement && plane
-#if CONFIG_IMPROVE_REFINED_MV
-      && !tip_ref_frame
-#endif  // CONFIG_IMPROVE_REFINED_MV
-  ) {
+  if (use_optflow_refinement && plane && !tip_ref_frame) {
     use_affine_opfl = xd->use_affine_opfl;
     memcpy(wms, xd->wm_params_sb, 2 * NUM_AFFINE_PARAMS * sizeof(wms[0]));
   }
@@ -5846,17 +5614,10 @@ static void build_inter_predictors_8x8_and_bigger(
 
   if (use_optflow_refinement && plane == 0) {
     // Pointers to hold optical flow MV offsets.
-#if CONFIG_IMPROVE_REFINED_MV
     int *vx0 = opfl_vxy_bufs;
     int *vx1 = opfl_vxy_bufs + (N_OF_OFFSETS * 1);
     int *vy0 = opfl_vxy_bufs + (N_OF_OFFSETS * 2);
     int *vy1 = opfl_vxy_bufs + (N_OF_OFFSETS * 3);
-#else
-    int *vx0 = xd->opfl_vxy_bufs;
-    int *vx1 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 1);
-    int *vy0 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 2);
-    int *vy1 = xd->opfl_vxy_bufs + (N_OF_OFFSETS * 3);
-#endif  // CONFIG_IMPROVE_REFINED_MV
 
 #if CONFIG_AFFINE_REFINEMENT
     assert(mi->comp_refine_type > COMP_REFINE_NONE);
@@ -5956,11 +5717,7 @@ static void build_inter_predictors_8x8_and_bigger(
                       : (is_intrabc ? &cm->sf_identity
                                     : xd->block_ref_scale_factors[ref]);
     struct buf_2d *const pre_buf = is_intrabc ? &pd->dst : &pd->pre[ref];
-#if CONFIG_IMPROVE_REFINED_MV
     MV mv = mi_mv[ref];
-#else
-    const MV mv = mi_mv[ref];
-#endif  // CONFIG_IMPROVE_REFINED_MV
     const WarpTypesAllowed warp_types = { is_global[ref],
                                           is_warp_mode(mi->motion_mode) };
 
@@ -6099,13 +5856,8 @@ static void build_inter_predictors_8x8_and_bigger(
           av1_get_interp_filter_params_with_block_size(mi->interp_fltr,
                                                        opfl_sub_bh);
       av1_opfl_rebuild_inter_predictor(
-          dst, dst_stride, plane, mv_refined,
-#if CONFIG_IMPROVE_REFINED_MV
-          opfl_vxy_bufs,
-#else
-          xd->opfl_vxy_bufs,
-#endif  // CONFIG_IMPROVE_REFINED_MV
-          N_OF_OFFSETS, &inter_pred_params, xd, mi_x, mi_y,
+          dst, dst_stride, plane, mv_refined, opfl_vxy_bufs, N_OF_OFFSETS,
+          &inter_pred_params, xd, mi_x, mi_y,
 #if CONFIG_E191_OFS_PRED_RES_HANDLE
           build_for_decode,
 #endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
@@ -6142,17 +5894,10 @@ static void build_inter_predictors_8x8_and_bigger(
     }
 #endif  // CONFIG_TIP_ENHANCEMENT
 
-#if CONFIG_IMPROVE_REFINED_MV
     const MV mv_1_16th_pel = (tip_ref_frame && plane)
                                  ? mv_refined[ref].as_mv
                                  : convert_mv_to_1_16th_pel(&mv);
-#endif  // CONFIG_IMPROVE_REFINED_MV
-    av1_build_one_inter_predictor(dst, dst_stride,
-#if CONFIG_IMPROVE_REFINED_MV
-                                  &mv_1_16th_pel,
-#else
-                                  &mv,
-#endif  // CONFIG_IMPROVE_REFINED_MV
+    av1_build_one_inter_predictor(dst, dst_stride, &mv_1_16th_pel,
                                   &inter_pred_params, xd, mi_x, mi_y, ref,
                                   mc_buf, calc_subpel_params_func);
   }
@@ -6198,7 +5943,6 @@ static void build_inter_predictors_8x8_and_bigger_facade(
         const int col_offset = (pixel_col - mi_x) >> TMVP_MI_SZ_LOG2;
         const int tip_mv_offset = (row_offset * TIP_MV_STRIDE + col_offset)
                                   << 1;
-#if CONFIG_IMPROVE_REFINED_MV
         const int refinemv_offset =
             ((pixel_row - mi_y) >> MI_SIZE_LOG2) * MAX_MIB_SIZE +
             ((pixel_col - mi_x) >> MI_SIZE_LOG2);
@@ -6206,7 +5950,6 @@ static void build_inter_predictors_8x8_and_bigger_facade(
             ((pixel_row - mi_y) >> OF_BSIZE_LOG2) *
                 (xd->width >> (OF_BSIZE_LOG2 - MI_SIZE_LOG2)) +
             ((pixel_col - mi_x) >> OF_BSIZE_LOG2);
-#endif  // CONFIG_IMPROVE_REFINED_MV
         const int ss_x = pd->subsampling_x;
         const int ss_y = pd->subsampling_y;
         MV tip_mv[2];
@@ -6230,7 +5973,6 @@ static void build_inter_predictors_8x8_and_bigger_facade(
 
         tip_mv[0] = tip_mv_tmp[0].as_mv;
         tip_mv[1] = tip_mv_tmp[1].as_mv;
-#if CONFIG_IMPROVE_REFINED_MV
         if (plane == 0) {
           REFINEMV_SUBMB_INFO *refinemv_subinfo =
               &xd->refinemv_subinfo[refinemv_offset];
@@ -6241,7 +5983,6 @@ static void build_inter_predictors_8x8_and_bigger_facade(
           xd->opfl_vxy_bufs[N_OF_OFFSETS * 2 + opfl_vxy_offset] = 0;
           xd->opfl_vxy_bufs[N_OF_OFFSETS * 3 + opfl_vxy_offset] = 0;
         }
-#endif  // CONFIG_IMPROVE_REFINED_MV
         dst_buf->buf = dst +
                        ((row_offset << TMVP_MI_SZ_LOG2) >> ss_y) * dst_stride +
                        ((col_offset << TMVP_MI_SZ_LOG2) >> ss_x);
@@ -6256,13 +5997,9 @@ static void build_inter_predictors_8x8_and_bigger_facade(
 #if CONFIG_REFINEMV
             build_for_refine_mv_only,
 #endif  // CONFIG_REFINEMV
-            &ext_warp_used, &xd->mv_refined[tip_mv_offset]
-#if CONFIG_IMPROVE_REFINED_MV
-            ,
+            &ext_warp_used, &xd->mv_refined[tip_mv_offset],
             &xd->refinemv_subinfo[refinemv_offset],
-            &xd->opfl_vxy_bufs[opfl_vxy_offset]
-#endif  // CONFIG_IMPROVE_REFINED_MV
-        );
+            &xd->opfl_vxy_bufs[opfl_vxy_offset]);
       }
     }
 
@@ -6279,12 +6016,8 @@ static void build_inter_predictors_8x8_and_bigger_facade(
 #if CONFIG_REFINEMV
         build_for_refine_mv_only,
 #endif  // CONFIG_REFINEMV
-        &ext_warp_used, xd->mv_refined
-#if CONFIG_IMPROVE_REFINED_MV
-        ,
-        xd->refinemv_subinfo, xd->opfl_vxy_bufs
-#endif  // CONFIG_IMPROVE_REFINED_MV
-    );
+        &ext_warp_used, xd->mv_refined, xd->refinemv_subinfo,
+        xd->opfl_vxy_bufs);
   }
 }
 

@@ -867,11 +867,8 @@ static void av1_dec_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd,
                                     CONV_BUF_TYPE *tmp_conv_dst) {
   av1_setup_tip_motion_field(cm);
   av1_setup_tip_frame(cm, xd, mc_buf, tmp_conv_dst,
-                      dec_calc_subpel_params_and_extend
-#if CONFIG_IMPROVE_REFINED_MV
-                      ,
+                      dec_calc_subpel_params_and_extend,
                       1 /* copy_refined_mvs */
-#endif                  // CONFIG_IMPROVE_REFINED_MV
   );
   if (cm->seq_params.enable_tip_explicit_qp == 0) {
     const int avg_u_ac_delta_q =
@@ -1162,7 +1159,6 @@ static AOM_INLINE void predict_inter_block(AV1_COMMON *const cm,
 #endif  // CONFIG_INSPECTION
 }
 
-#if CONFIG_REFINED_MVS_IN_TMVP
 static AOM_INLINE void copy_frame_mvs_inter_block(AV1_COMMON *const cm,
                                                   DecoderCodingBlock *dcb,
                                                   BLOCK_SIZE bsize) {
@@ -1176,19 +1172,7 @@ static AOM_INLINE void copy_frame_mvs_inter_block(AV1_COMMON *const cm,
         AOMMIN(bw, cm->mi_params.mi_cols - xd->mi_col);
     const int y_inside_boundary =
         AOMMIN(bh, cm->mi_params.mi_rows - xd->mi_row);
-#if CONFIG_IMPROVE_REFINED_MV
     if (enable_refined_mvs_in_tmvp(cm, xd, mi)) {
-#else
-    if (opfl_allowed_for_cur_block(cm,
-#if CONFIG_COMPOUND_4XN
-                                   xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                   mi)
-#if CONFIG_REFINEMV
-        || (mi->refinemv_flag && mi->interinter_comp.type == COMPOUND_AVERAGE)
-#endif  // CONFIG_REFINEMV
-    ) {
-#endif  // CONFIG_IMPROVE_REFINED_MV
       av1_copy_frame_refined_mvs(cm, xd, mi, xd->mi_row, xd->mi_col,
                                  x_inside_boundary, y_inside_boundary);
     }
@@ -1200,7 +1184,6 @@ static AOM_INLINE void copy_frame_mvs_inter_block(AV1_COMMON *const cm,
 #endif  // CONFIG_TMVP_MVS_WRITING_FLOW_OPT
   }
 }
-#endif  // CONFIG_REFINED_MVS_IN_TMVP
 
 static AOM_INLINE void set_color_index_map_offset(MACROBLOCKD *const xd,
                                                   int plane, aom_reader *r) {
@@ -4869,9 +4852,7 @@ static AOM_INLINE void set_decode_func_pointers(ThreadData *td,
   td->inverse_tx_inter_block_visit = decode_block_void;
   td->inverse_cctx_block_visit = decode_block_void;
   td->predict_inter_block_visit = predict_inter_block_void;
-#if CONFIG_REFINED_MVS_IN_TMVP
   td->copy_frame_mvs_block_visit = predict_inter_block_void;
-#endif  // CONFIG_REFINED_MVS_IN_TMVP
   td->cfl_store_inter_block_visit = cfl_store_inter_block_void;
 
   if (parse_decode_flag & 0x1) {
@@ -4884,9 +4865,7 @@ static AOM_INLINE void set_decode_func_pointers(ThreadData *td,
     td->inverse_tx_inter_block_visit = inverse_transform_inter_block;
     td->inverse_cctx_block_visit = inverse_cross_chroma_transform_block;
     td->predict_inter_block_visit = predict_inter_block;
-#if CONFIG_REFINED_MVS_IN_TMVP
     td->copy_frame_mvs_block_visit = copy_frame_mvs_inter_block;
-#endif  // CONFIG_REFINED_MVS_IN_TMVP
     td->cfl_store_inter_block_visit = cfl_store_inter_block;
   }
 }
@@ -6828,9 +6807,7 @@ void av1_read_sequence_header_beyond_av1(
   } else {
     seq_params->enable_tip_hole_fill = 0;
   }
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
   seq_params->enable_mv_traj = aom_rb_read_bit(rb);
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
   seq_params->enable_bawp = aom_rb_read_bit(rb);
   seq_params->enable_cwp = aom_rb_read_bit(rb);
 #if CONFIG_D071_IMP_MSK_BLD
@@ -8194,7 +8171,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       else
         features->allow_ref_frame_mvs = 0;
 
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
       if (features->allow_ref_frame_mvs &&
           cm->ref_frames_info.num_total_refs > 1 &&
           seq_params->order_hint_info.enable_order_hint) {
@@ -8203,7 +8179,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       } else {
         cm->tmvp_sample_step = 1;
       }
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
 
 #if CONFIG_LF_SUB_PU
       if (cm->seq_params.enable_lf_sub_pu) {
@@ -8906,19 +8881,15 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
 
   if (!cm->features.allow_ref_frame_mvs) return;
 
-#if CONFIG_TMVP_MEM_OPT
   if (cm->features.tip_frame_mode == TIP_FRAME_DISABLED) {
     // TPL mvs at non-sampled locations will be filled after it is hole-filled
     // and smoothed.
     av1_fill_tpl_mvs_sample_gap(cm);
     return;
   }
-#endif  // CONFIG_TMVP_MEM_OPT
 
   if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
-#if CONFIG_IMPROVE_REFINED_MV
     xd->opfl_vxy_bufs = pbi->td.opfl_vxy_bufs;
-#endif  // CONFIG_IMPROVE_REFINED_MV
     av1_dec_setup_tip_frame(cm, xd, pbi->td.mc_buf, pbi->td.tmp_conv_dst);
   } else if (cm->features.tip_frame_mode == TIP_FRAME_AS_REF) {
     av1_setup_tip_motion_field(cm);
@@ -8928,9 +8899,6 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
     for (int plane = 0; plane < av1_num_planes(cm); plane++) {
       cm->cur_frame->ccso_info.ccso_enable[plane] = 0;
     }
-#if !CONFIG_IMPROVE_REFINED_MV
-    av1_copy_tip_frame_tmvp_mvs(cm);
-#endif  // !CONFIG_IMPROVE_REFINED_MV
     aom_yv12_copy_frame(&cm->tip_ref.tip_frame->buf, &cm->cur_frame->buf,
                         num_planes);
     for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {

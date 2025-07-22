@@ -438,9 +438,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_tip = tool_cfg->enable_tip;
   seq->enable_tip_hole_fill = seq->enable_tip != 0;
   seq->enable_tip_explicit_qp = 0;
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
   seq->enable_mv_traj = tool_cfg->enable_mv_traj;
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
   seq->enable_bawp = tool_cfg->enable_bawp;
   seq->enable_cwp = tool_cfg->enable_cwp;
 #if CONFIG_D071_IMP_MSK_BLD
@@ -1828,7 +1826,6 @@ static void set_mv_search_params(AV1_COMP *cpi) {
 static void set_hole_fill_decision(AV1_COMP *cpi, int width, int height,
                                    int blk_w, int blk_h, int counts_1,
                                    int counts_2) {
-#if CONFIG_MF_HOLE_FILL_ALWAYS_ENABLE
   (void)width;
   (void)height;
   (void)blk_w;
@@ -1837,28 +1834,6 @@ static void set_hole_fill_decision(AV1_COMP *cpi, int width, int height,
   (void)counts_2;
   AV1_COMMON *const cm = &cpi->common;
   cm->seq_params.enable_tip_hole_fill = 1;
-#else
-  AV1_COMMON *const cm = &cpi->common;
-  const bool is_720p_or_larger = AOMMIN(cm->width, cm->height) >= 720;
-  const bool is_4k_or_larger = AOMMIN(cm->width, cm->height) >= 2160;
-  if (is_4k_or_larger) {
-    cm->seq_params.enable_tip_hole_fill = 1;
-  } else if (!is_720p_or_larger) {
-    cm->seq_params.enable_tip_hole_fill = 0;
-  } else {
-    const int a[4] = { 168, -555, -7690, 25007 };
-    const int norm = (width * height) / (blk_h * blk_w);
-    const int64_t decision =
-        a[0] + (int64_t)a[1] * counts_1 / norm +
-        (int64_t)a[2] * counts_2 / norm +
-        (int64_t)a[3] * counts_1 * counts_2 / (norm * norm);
-    if (decision > 0) {
-      cm->seq_params.enable_tip_hole_fill = 1;
-    } else {
-      cm->seq_params.enable_tip_hole_fill = 0;
-    }
-  }
-#endif  // CONFIG_MF_HOLE_FILL_ALWAYS_ENABLE
 }
 
 static void subtract_average_c(uint16_t *src, int16_t *dst, int width,
@@ -3552,11 +3527,7 @@ static INLINE int compute_tip_direct_output_mode_RD(AV1_COMP *cpi,
 
     ThreadData *const td = &cpi->td;
     av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                        av1_enc_calc_subpel_params
-#if CONFIG_IMPROVE_REFINED_MV
-                        ,
-                        0 /* copy_refined_mvs */
-#endif                    // CONFIG_IMPROVE_REFINED_MV
+                        av1_enc_calc_subpel_params, 0 /* copy_refined_mvs */
     );
 
     const int64_t rdmult =
@@ -3637,11 +3608,7 @@ static INLINE int compute_tip_direct_output_mode_RD(AV1_COMP *cpi,
 
         cm->tip_global_motion.as_int = ref_mv.as_int;
         av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                            av1_enc_calc_subpel_params
-#if CONFIG_IMPROVE_REFINED_MV
-                            ,
-                            0 /* copy_refined_mvs */
-#endif                        // CONFIG_IMPROVE_REFINED_MV
+                            av1_enc_calc_subpel_params, 0 /* copy_refined_mvs */
         );
 #if CONFIG_LF_SUB_PU
         if (cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu) {
@@ -3683,11 +3650,7 @@ static INLINE int compute_tip_direct_output_mode_RD(AV1_COMP *cpi,
 
       cm->tip_interp_filter = interp_filter;
       av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                          av1_enc_calc_subpel_params
-#if CONFIG_IMPROVE_REFINED_MV
-                          ,
-                          0 /* copy_refined_mvs */
-#endif                      // CONFIG_IMPROVE_REFINED_MV
+                          av1_enc_calc_subpel_params, 0 /* copy_refined_mvs */
       );
 #if CONFIG_LF_SUB_PU
       if (cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu) {
@@ -3825,16 +3788,9 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
     }
 
     const int num_planes = av1_num_planes(cm);
-#if !CONFIG_IMPROVE_REFINED_MV
-    av1_copy_tip_frame_tmvp_mvs(cm);
-#endif  // !CONFIG_IMPROVE_REFINED_MV
     ThreadData *const td = &cpi->td;
     av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                        av1_enc_calc_subpel_params
-#if CONFIG_IMPROVE_REFINED_MV
-                        ,
-                        1 /* copy_refined_mvs */
-#endif                    // CONFIG_IMPROVE_REFINED_MV
+                        av1_enc_calc_subpel_params, 1 /* copy_refined_mvs */
     );
 #if CONFIG_LF_SUB_PU
     if (cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu) {

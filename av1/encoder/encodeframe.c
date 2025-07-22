@@ -1441,11 +1441,7 @@ static AOM_INLINE void decide_tip_setting_and_setup_tip_frame(AV1_COMP *cpi) {
       for (int8_t wtd_index = 0; wtd_index < MAX_TIP_WTD_NUM; wtd_index++) {
         cm->tip_global_wtd_index = wtd_index;
         av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                            av1_enc_calc_subpel_params
-#if CONFIG_IMPROVE_REFINED_MV
-                            ,
-                            0 /* copy_refined_mvs */
-#endif                        // CONFIG_IMPROVE_REFINED_MV
+                            av1_enc_calc_subpel_params, 0 /* copy_refined_mvs */
         );
 
         int64_t this_sse = aom_highbd_get_y_sse(cpi->source, tip_frame_buf);
@@ -1468,11 +1464,7 @@ static AOM_INLINE void decide_tip_setting_and_setup_tip_frame(AV1_COMP *cpi) {
     }
 
     av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                        av1_enc_calc_subpel_params
-#if CONFIG_IMPROVE_REFINED_MV
-                        ,
-                        0 /* copy_refined_mvs */
-#endif                    // CONFIG_IMPROVE_REFINED_MV
+                        av1_enc_calc_subpel_params, 0 /* copy_refined_mvs */
     );
   }
 }
@@ -1514,11 +1506,7 @@ static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
         decide_tip_setting_and_setup_tip_frame(cpi);
 #else
         av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
-                            av1_enc_calc_subpel_params
-#if CONFIG_IMPROVE_REFINED_MV
-                            ,
-                            0 /* copy_refined_mvs */
-#endif  // CONFIG_IMPROVE_REFINED_MV
+                            av1_enc_calc_subpel_params, 0 /* copy_refined_mvs */
         );
 #endif  // CONFIG_TIP_ENHANCEMENT
       }
@@ -1532,14 +1520,12 @@ static AOM_INLINE void av1_enc_setup_tip_frame(AV1_COMP *cpi) {
     cm->features.tip_frame_mode = TIP_FRAME_DISABLED;
   }
 
-#if CONFIG_TMVP_MEM_OPT
   if (cm->features.allow_ref_frame_mvs &&
       cm->features.tip_frame_mode == TIP_FRAME_DISABLED) {
     // TPL mvs at non-sampled locations will be filled after it is hole-filled
     // and smoothed.
     av1_fill_tpl_mvs_sample_gap(cm);
   }
-#endif  // CONFIG_TMVP_MEM_OPT
 
 #if CONFIG_TIP_LD
   const int cur_order_hint = cm->current_frame.display_order_hint;
@@ -1844,7 +1830,6 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
   start_timing(cpi, av1_setup_motion_field_time);
 #endif
 
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
   cm->tmvp_sample_step = 1;
   if (features->allow_ref_frame_mvs) {
     cm->tmvp_sample_step = -1;
@@ -1852,13 +1837,7 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
     if (cm->tmvp_sample_step < 0) {
       cm->tmvp_sample_step = 1;
     }
-  }
-#else
-  if (features->allow_ref_frame_mvs) {
-    av1_setup_motion_field(cm);
-  }
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
-  else {
+  } else {
     av1_setup_ref_frame_sides(cm);
   }
 #if CONFIG_COLLECT_COMPONENT_TIMING

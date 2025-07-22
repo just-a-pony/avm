@@ -23,16 +23,8 @@ extern "C" {
 #define MVREF_ROWS 1
 #define MVREF_COLS 2
 
-#if CONFIG_TMVP_MV_COMPRESSION
 // Set the upper limit of the motion vector component magnitude.
 #define REFMVS_LIMIT ((1 << 11) - 1)
-#else
-// Set the upper limit of the motion vector component magnitude.
-// This would make a motion vector fit in 26 bits. Plus 3 bits for the
-// reference frame index. A tuple of motion vector can hence be stored within
-// 32 bit range for efficient load/store operations.
-#define REFMVS_LIMIT ((1 << 12) - 1)
-#endif  // CONFIG_TMVP_MV_COMPRESSION
 
 typedef struct position {
   int row;
@@ -44,20 +36,12 @@ typedef struct position {
 #define MAX_OFFSET_HEIGHT_LOG2 (MAX_OFFSET_HEIGHT >> TMVP_MI_SZ_LOG2)
 #define MAX_OFFSET_WIDTH_LOG2 (MAX_OFFSET_WIDTH >> TMVP_MI_SZ_LOG2)
 
-static AOM_INLINE int get_mf_sb_size_log2(int sb_size, int mib_size_log2
-#if CONFIG_TMVP_MEM_OPT
-                                          ,
-                                          int tmvp_sample_step
-#endif  // CONFIG_TMVP_MEM_OPT
-) {
+static AOM_INLINE int get_mf_sb_size_log2(int sb_size, int mib_size_log2,
+                                          int tmvp_sample_step) {
   (void)mib_size_log2;
 
   int mi_size_log2 = INT_MIN;
-  if (sb_size <= 64
-#if CONFIG_TMVP_MEM_OPT
-      || tmvp_sample_step == 1
-#endif  // CONFIG_TMVP_MEM_OPT
-  ) {
+  if (sb_size <= 64 || tmvp_sample_step == 1) {
     mi_size_log2 = mi_size_high_log2[BLOCK_64X64];
   } else {
     mi_size_log2 = mi_size_high_log2[BLOCK_128X128];
@@ -68,24 +52,15 @@ static AOM_INLINE int get_mf_sb_size_log2(int sb_size, int mib_size_log2
 static AOM_INLINE int get_block_position(const AV1_COMMON *cm, int *mi_r,
                                          int *mi_c, int blk_row, int blk_col,
                                          MV mv, int sign_bias) {
-#if CONFIG_MF_IMPROVEMENT
   const SequenceHeader *const seq_params = &cm->seq_params;
   const int sb_size = block_size_high[seq_params->sb_size];
-  const int mf_sb_size_log2 = get_mf_sb_size_log2(sb_size, cm->mib_size_log2
-#if CONFIG_TMVP_MEM_OPT
-                                                  ,
-                                                  cm->tmvp_sample_step
-#endif  // CONFIG_TMVP_MEM_OPT
-  );
+  const int mf_sb_size_log2 =
+      get_mf_sb_size_log2(sb_size, cm->mib_size_log2, cm->tmvp_sample_step);
   const int mf_sb_size = (1 << mf_sb_size_log2);
   const int sb_tmvp_size = (mf_sb_size >> TMVP_MI_SZ_LOG2);
   const int sb_tmvp_size_log2 = mf_sb_size_log2 - TMVP_MI_SZ_LOG2;
   const int base_blk_row = (blk_row >> sb_tmvp_size_log2) << sb_tmvp_size_log2;
   const int base_blk_col = (blk_col >> sb_tmvp_size_log2) << sb_tmvp_size_log2;
-#else
-  const int base_blk_row = (blk_row >> TMVP_MI_SZ_LOG2) << TMVP_MI_SZ_LOG2;
-  const int base_blk_col = (blk_col >> TMVP_MI_SZ_LOG2) << TMVP_MI_SZ_LOG2;
-#endif  // CONFIG_MF_IMPROVEMENT
 
   // The motion vector in units of 1/8-pel
   const int shift = (3 + TMVP_MI_SZ_LOG2);
@@ -103,41 +78,19 @@ static AOM_INLINE int get_block_position(const AV1_COMMON *cm, int *mi_r,
       col >= (cm->mi_params.mi_cols >> TMVP_SHIFT_BITS))
     return 0;
 
-#if CONFIG_TMVP_MEM_OPT
-  if (cm->tmvp_sample_step > 1
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
-      || (sb_size < 256 && sb_size != 64)
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
-  ) {
-#endif  // CONFIG_TMVP_MEM_OPT
-#if CONFIG_MF_IMPROVEMENT
+  if (cm->tmvp_sample_step > 1 || (sb_size < 256 && sb_size != 64)) {
     if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
         row >= base_blk_row + sb_tmvp_size + MAX_OFFSET_HEIGHT_LOG2 ||
         col < base_blk_col - sb_tmvp_size ||
         col >= base_blk_col + (sb_tmvp_size << 1))
-#else
-  if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
-      row >= base_blk_row + TMVP_MI_SIZE + MAX_OFFSET_HEIGHT_LOG2 ||
-      col < base_blk_col - MAX_OFFSET_WIDTH_LOG2 ||
-      col >= base_blk_col + TMVP_MI_SIZE + MAX_OFFSET_WIDTH_LOG2)
-#endif  // CONFIG_MF_IMPROVEMENT
       return 0;
-#if CONFIG_TMVP_MEM_OPT
   } else {
-#if CONFIG_MF_IMPROVEMENT
     if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
         row >= base_blk_row + sb_tmvp_size + MAX_OFFSET_HEIGHT_LOG2 ||
         col < base_blk_col - (sb_tmvp_size >> 1) ||
         col >= base_blk_col + sb_tmvp_size + (sb_tmvp_size >> 1))
-#else
-    if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
-        row >= base_blk_row + TMVP_MI_SIZE + MAX_OFFSET_HEIGHT_LOG2 ||
-        col < base_blk_col - MAX_OFFSET_WIDTH_LOG2 ||
-        col >= base_blk_col + TMVP_MI_SIZE + MAX_OFFSET_WIDTH_LOG2)
-#endif  // CONFIG_MF_IMPROVEMENT
       return 0;
   }
-#endif  // CONFIG_TMVP_MEM_OPT
 
   *mi_r = row;
   *mi_c = col;
@@ -145,7 +98,6 @@ static AOM_INLINE int get_block_position(const AV1_COMMON *cm, int *mi_r,
   return 1;
 }
 
-#if CONFIG_TMVP_SIMPLIFICATIONS_F085
 static AOM_INLINE void get_proc_size_and_offset(const AV1_COMMON *cm,
                                                 int *proc_blk_size,
                                                 int *row_blk_offset,
@@ -170,60 +122,33 @@ static AOM_INLINE void get_proc_size_and_offset(const AV1_COMMON *cm,
 
 static AOM_INLINE int check_block_position(const AV1_COMMON *cm, int row,
                                            int col, int blk_row, int blk_col) {
-#if CONFIG_MF_IMPROVEMENT
   const SequenceHeader *const seq_params = &cm->seq_params;
   const int sb_size = block_size_high[seq_params->sb_size];
-  const int mf_sb_size_log2 = get_mf_sb_size_log2(sb_size, cm->mib_size_log2
-#if CONFIG_TMVP_MEM_OPT
-                                                  ,
-                                                  cm->tmvp_sample_step
-#endif  // CONFIG_TMVP_MEM_OPT
-  );
+  const int mf_sb_size_log2 =
+      get_mf_sb_size_log2(sb_size, cm->mib_size_log2, cm->tmvp_sample_step);
   const int mf_sb_size = (1 << mf_sb_size_log2);
   const int sb_tmvp_size = (mf_sb_size >> TMVP_MI_SZ_LOG2);
   const int sb_tmvp_size_log2 = mf_sb_size_log2 - TMVP_MI_SZ_LOG2;
   const int base_blk_row = (blk_row >> sb_tmvp_size_log2) << sb_tmvp_size_log2;
   const int base_blk_col = (blk_col >> sb_tmvp_size_log2) << sb_tmvp_size_log2;
-#else
-  const int base_blk_row = (blk_row >> TMVP_MI_SZ_LOG2) << TMVP_MI_SZ_LOG2;
-  const int base_blk_col = (blk_col >> TMVP_MI_SZ_LOG2) << TMVP_MI_SZ_LOG2;
-#endif  // CONFIG_MF_IMPROVEMENT
 
   if (row < 0 || row >= (cm->mi_params.mi_rows >> TMVP_SHIFT_BITS) || col < 0 ||
       col >= (cm->mi_params.mi_cols >> TMVP_SHIFT_BITS))
     return 0;
 
-#if CONFIG_TMVP_MEM_OPT
   if (cm->tmvp_sample_step > 1 || (sb_size < 256 && sb_size != 64)) {
-#endif  // CONFIG_TMVP_MEM_OPT
-#if CONFIG_MF_IMPROVEMENT
     if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
         row >= base_blk_row + sb_tmvp_size + MAX_OFFSET_HEIGHT_LOG2 ||
         col < base_blk_col - sb_tmvp_size ||
         col >= base_blk_col + (sb_tmvp_size << 1))
-#else
-  if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
-      row >= base_blk_row + TMVP_MI_SIZE + MAX_OFFSET_HEIGHT_LOG2 ||
-      col < base_blk_col - MAX_OFFSET_WIDTH_LOG2 ||
-      col >= base_blk_col + TMVP_MI_SIZE + MAX_OFFSET_WIDTH_LOG2)
-#endif  // CONFIG_MF_IMPROVEMENT
       return 0;
-#if CONFIG_TMVP_MEM_OPT
   } else {
-#if CONFIG_MF_IMPROVEMENT
     if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
         row >= base_blk_row + sb_tmvp_size + MAX_OFFSET_HEIGHT_LOG2 ||
         col < base_blk_col - (sb_tmvp_size >> 1) ||
         col >= base_blk_col + sb_tmvp_size + (sb_tmvp_size >> 1))
-#else
-    if (row < base_blk_row - MAX_OFFSET_HEIGHT_LOG2 ||
-        row >= base_blk_row + TMVP_MI_SIZE + MAX_OFFSET_HEIGHT_LOG2 ||
-        col < base_blk_col - MAX_OFFSET_WIDTH_LOG2 ||
-        col >= base_blk_col + TMVP_MI_SIZE + MAX_OFFSET_WIDTH_LOG2)
-#endif  // CONFIG_MF_IMPROVEMENT
       return 0;
   }
-#endif  // CONFIG_TMVP_MEM_OPT
 
   return 1;
 }
@@ -253,7 +178,6 @@ static AOM_INLINE int get_block_position_no_constraint(const AV1_COMMON *cm,
 
   return 1;
 }
-#endif  // CONFIG_TMVP_SIMPLIFICATIONS_F085
 
 // clamp_mv_ref
 #define MV_BORDER (16 << 3)  // Allow 16 pels in 1/8th pel units
@@ -409,19 +333,9 @@ static INLINE int_mv get_int_warp_mv_for_fb(const MACROBLOCKD *xd,
   const int yc =
       get_subblk_offset_y_hp(mat, x, y, (1 << WARPEDMODEL_PREC_BITS));
 
-#if CONFIG_IMPROVE_TMVP_LIST
   // down shift to 1/8th pel, match with warped_motion.c
   tx = xc >> (WARPEDMODEL_PREC_BITS - 3);
   ty = yc >> (WARPEDMODEL_PREC_BITS - 3);
-#else
-  // down shift to int, match with warped_motion.c
-  int abs_xc = xc > 0 ? xc : -xc;
-  int abs_yc = yc > 0 ? yc : -yc;
-  int abs_tx = (abs_xc >> WARPEDMODEL_PREC_BITS) << 3;
-  int abs_ty = (abs_yc >> WARPEDMODEL_PREC_BITS) << 3;
-  tx = xc > 0 ? abs_tx : -abs_tx;
-  ty = yc > 0 ? abs_ty : -abs_ty;
-#endif  // CONFIG_IMPROVE_TMVP_LIST
 
   res.as_mv.row = clamp(ty, MV_LOW + 1, MV_UPP - 1);
   res.as_mv.col = clamp(tx, MV_LOW + 1, MV_UPP - 1);
@@ -691,7 +605,6 @@ static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   }
 }
 
-#if CONFIG_IMPROVE_REFINED_MV
 // Check if refined MV needs to be stored in the TMVP list.
 static INLINE int enable_refined_mvs_in_tmvp(const AV1_COMMON *cm,
 #if CONFIG_COMPOUND_4XN
@@ -709,7 +622,6 @@ static INLINE int enable_refined_mvs_in_tmvp(const AV1_COMMON *cm,
 #endif  // CONFIG_REFINEMV
       || is_tip_ref_frame(mbmi->ref_frame[0]));
 }
-#endif  // CONFIG_IMPROVE_REFINED_MV
 
 static INLINE int allow_amvd_mode(PREDICTION_MODE mode) {
   return (mode == NEAR_NEWMV || mode == NEW_NEARMV ||
@@ -754,13 +666,12 @@ static INLINE int get_amvd_context(const MACROBLOCKD *const xd) {
   return ctx;
 }
 
-#if CONFIG_REFINED_MVS_IN_TMVP
 void av1_copy_frame_refined_mvs(const AV1_COMMON *const cm,
                                 const MACROBLOCKD *xd,
                                 const MB_MODE_INFO *const mi, int mi_row,
                                 int mi_col, int x_inside_boundary,
                                 int y_inside_boundary);
-#endif  // CONFIG_REFINED_MVS_IN_TMVP
+
 #if CONFIG_BRU
 void bru_copy_sb_mvs(const AV1_COMMON *const cm, int src_ref_idx,
                      int dst_ref_idx, int mi_row, int mi_col,
@@ -1402,9 +1313,7 @@ bool is_warp_candidate_inside_of_frame(const AV1_COMMON *cm,
 int16_t inter_warpmv_mode_ctx(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                               const MB_MODE_INFO *mbmi);
 
-#if CONFIG_TMVP_MEM_OPT
 void av1_fill_tpl_mvs_sample_gap(AV1_COMMON *cm);
-#endif  // CONFIG_TMVP_MEM_OPT
 
 static INLINE int is_ref_motion_field_eligible(
     const AV1_COMMON *const cm, const RefCntBuffer *const start_frame_buf) {
@@ -1442,9 +1351,6 @@ static AOM_INLINE void tip_get_mv_projection(MV *output, MV ref,
 
 // Compute TMVP unit offset related to block mv
 static AOM_INLINE int derive_block_mv_tpl_offset(const AV1_COMMON *const cm,
-#if !CONFIG_TIP_MV_SIMPLIFICATION
-                                                 const MV *mv,
-#endif  // !CONFIG_TIP_MV_SIMPLIFICATION
                                                  const int blk_tpl_row,
                                                  const int blk_tpl_col) {
   const int frame_mvs_tpl_cols =
@@ -1452,15 +1358,8 @@ static AOM_INLINE int derive_block_mv_tpl_offset(const AV1_COMMON *const cm,
   const int frame_mvs_tpl_rows =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
 
-#if CONFIG_TIP_MV_SIMPLIFICATION
   int tpl_row_offset = 0;
   int tpl_col_offset = 0;
-#else
-  FULLPEL_MV fullmv = get_fullmv_from_mv(mv);
-  int tpl_row_offset = ROUND_POWER_OF_TWO_SIGNED(fullmv.row, TMVP_MI_SZ_LOG2);
-  int tpl_col_offset = ROUND_POWER_OF_TWO_SIGNED(fullmv.col, TMVP_MI_SZ_LOG2);
-#endif  // CONFIG_TIP_MV_SIMPLIFICATION
-
   if (blk_tpl_row + tpl_row_offset >= frame_mvs_tpl_rows) {
     tpl_row_offset = frame_mvs_tpl_rows - 1 - blk_tpl_row;
   } else if (blk_tpl_row + tpl_row_offset < 0) {
@@ -1483,17 +1382,10 @@ static AOM_INLINE void get_tip_mv(const AV1_COMMON *cm, const MV *block_mv,
   const int mvs_stride =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
 
-#if CONFIG_TIP_MV_SIMPLIFICATION
   const int offset_to_within_frame =
       derive_block_mv_tpl_offset(cm, blk_row, blk_col);
   const int tpl_offset =
       blk_row * mvs_stride + blk_col + offset_to_within_frame;
-#else
-  const int blk_to_tip_frame_offset =
-      derive_block_mv_tpl_offset(cm, block_mv, blk_row, blk_col);
-  const int tpl_offset =
-      blk_row * mvs_stride + blk_col + blk_to_tip_frame_offset;
-#endif  // CONFIG_TIP_MV_SIMPLIFICATION
   const TPL_MV_REF *tpl_mvs = cm->tpl_mvs + tpl_offset;
 
   if (tpl_mvs->mfmv0.as_int != 0 && tpl_mvs->mfmv0.as_int != INVALID_MV) {
