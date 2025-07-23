@@ -301,7 +301,6 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv,
   mv_limits->row_max = AOMMAX(mv_limits->row_min, mv_limits->row_max);
 }
 
-#if CONFIG_OPFL_MV_SEARCH
 // Obtain number of iterations for optical flow based MV search.
 int get_opfl_mv_iterations(const AV1_COMP *cpi, const MB_MODE_INFO *mbmi) {
   // Allowed only for screen content
@@ -387,12 +386,10 @@ int opfl_refine_fullpel_mv_one_sided(
   // The SIMD version performs refinement for every 4x8 or 8x8 region. It is
   // only applicable when n == 8 in optical flow based MV search
   if (n == 8)
-    av1_opfl_mv_refinement_nxn(
-        tmp1, bw, gx0, gy0, bw, n, n, n, 1, 0, grad_prec_bits, bits,
-#if CONFIG_E191_OFS_PRED_RES_HANDLE
-        0, 0, cm->mi_params.mi_cols, cm->mi_params.mi_rows, 0,
-#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
-        &vx0, &vy0, &vx1, &vy1);
+    av1_opfl_mv_refinement_nxn(tmp1, bw, gx0, gy0, bw, n, n, n, 1, 0,
+                               grad_prec_bits, bits, 0, 0,
+                               cm->mi_params.mi_cols, cm->mi_params.mi_rows, 0,
+                               &vx0, &vy0, &vx1, &vy1);
   else
     av1_opfl_mv_refinement(tmp1, bw, gx0, gy0, bw, n, n, 1, 0, grad_prec_bits,
                            bits, &vx0, &vy0, &vx1, &vy1);
@@ -411,7 +408,6 @@ int opfl_refine_fullpel_mv_one_sided(
   mv_refined[0].as_mv.col += vx0;
   return 0;
 }
-#endif  // CONFIG_OPFL_MV_SEARCH
 
 int av1_init_search_range(int size
 #if CONFIG_MV_RANGE_EXTENSION

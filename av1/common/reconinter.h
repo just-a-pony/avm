@@ -192,11 +192,7 @@ struct build_prediction_ctxt {
 };
 
 #if CONFIG_REFINEMV
-#if CONFIG_OPFL_MEMBW_REDUCTION
 #define REFINE_MV_MAX_OFFSET 0
-#else
-#define REFINE_MV_MAX_OFFSET 1
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
 #define REF_TOP_BORDER (AOM_INTERP_EXTEND - 1 + REFINE_MV_MAX_OFFSET)
 #define REF_LEFT_BORDER (AOM_INTERP_EXTEND - 1 + REFINE_MV_MAX_OFFSET)
 #define REF_RIGHT_BORDER (AOM_INTERP_EXTEND + REFINE_MV_MAX_OFFSET)
@@ -595,11 +591,8 @@ void av1_build_inter_predictors(const AV1_COMMON *cm, MACROBLOCKD *xd,
 #if CONFIG_REFINEMV
                                 int build_for_refine_mv_only,
 #endif  // CONFIG_REFINEMV
-#if CONFIG_E191_OFS_PRED_RES_HANDLE
-                                int build_for_decode,
-#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
-                                int bw, int bh, int mi_x, int mi_y,
-                                uint16_t **mc_buf,
+                                int build_for_decode, int bw, int bh, int mi_x,
+                                int mi_y, uint16_t **mc_buf,
                                 CalcSubpelParamsFunc calc_subpel_params_func);
 
 // Precision of refined MV returned, 0 being integer pel. For now, only 1/8 or
@@ -631,18 +624,18 @@ void av1_opfl_build_inter_predictor(
 );
 
 // Generate refined MVs using optflow refinement
-void av1_get_optflow_based_mv(
-    const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mbmi,
-    int_mv *mv_refined, int bw, int bh, int mi_x, int mi_y,
-#if CONFIG_E191_OFS_PRED_RES_HANDLE
-    int build_for_decode,
-#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
-    uint16_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func,
-    int16_t *gx0, int16_t *gy0, int16_t *gx1, int16_t *gy1, int *vx0, int *vy0,
-    int *vx1, int *vy1, uint16_t *dst0, uint16_t *dst1, int do_pred, int use_4x4
+void av1_get_optflow_based_mv(const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
+                              const MB_MODE_INFO *mbmi, int_mv *mv_refined,
+                              int bw, int bh, int mi_x, int mi_y,
+                              int build_for_decode, uint16_t **mc_buf,
+                              CalcSubpelParamsFunc calc_subpel_params_func,
+                              int16_t *gx0, int16_t *gy0, int16_t *gx1,
+                              int16_t *gy1, int *vx0, int *vy0, int *vx1,
+                              int *vy1, uint16_t *dst0, uint16_t *dst1,
+                              int do_pred, int use_4x4
 #if CONFIG_REFINEMV
-    ,
-    MV *best_mv_ref, int pu_width, int pu_height
+                              ,
+                              MV *best_mv_ref, int pu_width, int pu_height
 #endif  // CONFIG_REFINEMV
 );
 
@@ -650,11 +643,9 @@ void av1_get_optflow_based_mv(
 void av1_opfl_rebuild_inter_predictor(
     uint16_t *dst, int dst_stride, int plane, int_mv *const mv_refined,
     InterPredParams *inter_pred_params, MACROBLOCKD *xd, int mi_x, int mi_y,
-#if CONFIG_E191_OFS_PRED_RES_HANDLE
-    int build_for_decode,
-#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
-    const AV1_COMMON *cm, int pu_width, int ref, uint16_t **mc_buf,
-    CalcSubpelParamsFunc calc_subpel_params_func, int use_4x4);
+    int build_for_decode, const AV1_COMMON *cm, int pu_width, int ref,
+    uint16_t **mc_buf, CalcSubpelParamsFunc calc_subpel_params_func,
+    int use_4x4);
 
 // We consider this tunable number K=MAX_LS_BITS-1 (sign bit excluded)
 // as the target maximum bit depth of all intermediate results for LS problem.
@@ -763,12 +754,10 @@ int av1_get_refinemv_context(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 void fill_subblock_refine_mv(REFINEMV_SUBMB_INFO *refinemv_subinfo, int bw,
                              int bh, MV mv0, MV mv1);
 
-#if CONFIG_OPFL_MEMBW_REDUCTION
 void av1_get_reference_area_with_padding_single(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mi,
     const MV mv, int bw, int bh, int mi_x, int mi_y, ReferenceArea *ref_area,
     int pu_width, int pu_height, int ref);
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
 #if CONFIG_WARP_BD_BOX
 void av1_get_reference_area_with_padding_single_warp(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, MB_MODE_INFO *mi,
@@ -1005,12 +994,7 @@ void apply_mv_refinement(const AV1_COMMON *cm, MACROBLOCKD *xd, int plane,
                          CalcSubpelParamsFunc calc_subpel_params_func,
                          int pre_x, int pre_y, uint16_t *dst_ref0,
                          uint16_t *dst_ref1, MV *best_mv_ref, int pu_width,
-                         int pu_height
-#if CONFIG_OPFL_MEMBW_REDUCTION
-                         ,
-                         ReferenceArea ref_area[2]
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
-);
+                         int pu_height, ReferenceArea ref_area[2]);
 
 // check if padding is required during motion compensation
 // return 1 means reference pixel is outside of the reference range and padding
@@ -1022,14 +1006,12 @@ int update_extend_mc_border_params(const struct scale_factors *const sf,
                                    int *x_pad, int *y_pad,
                                    const ReferenceArea *ref_area);
 
-#if CONFIG_OPFL_MEMBW_REDUCTION
 int update_extend_mc_border_params_bi(const struct scale_factors *const sf,
                                       struct buf_2d *const pre_buf,
                                       MV32 scaled_mv, PadBlock *block,
                                       int subpel_x_mv, int subpel_y_mv,
                                       int do_warp, int is_intrabc,
                                       const ReferenceArea *ref_area);
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
 
 // Derive the sub-pixel related parameters of refinemv non-TIP blocks
 // Sub-pel related parameters are stored in the structures pointed by
@@ -1469,13 +1451,11 @@ bool av1_build_morph_pred(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
                           const int mi_col);
 #endif  // CONFIG_MORPH_PRED
 
-#if CONFIG_E191_OFS_PRED_RES_HANDLE
 static AOM_INLINE bool is_subblock_outside(int x, int y, int mi_cols,
                                            int mi_rows, int build_for_decode) {
   if (!build_for_decode) return 0;
   return (x >= mi_cols * MI_SIZE || y >= mi_rows * MI_SIZE);
 }
-#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -654,12 +654,7 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
 
     apply_mv_refinement(cm, xd, plane, mbmi, bw, bh, mi_x, mi_y, mc_buf, mv,
                         calc_subpel_params_func, comp_pixel_x, comp_pixel_y,
-                        dst_ref0, dst_ref1, best_mv_ref, bw, bh
-#if CONFIG_OPFL_MEMBW_REDUCTION
-                        ,
-                        ref_area
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
-    );
+                        dst_ref0, dst_ref1, best_mv_ref, bw, bh, ref_area);
     REFINEMV_SUBMB_INFO *refinemv_subinfo = &xd->refinemv_subinfo[0];
     fill_subblock_refine_mv(refinemv_subinfo, bw, bh, best_mv_ref[0],
                             best_mv_ref[1]);
@@ -737,12 +732,9 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
     // Refine MV using optical flow. The final output MV will be in 1/16
     // precision.
     av1_get_optflow_based_mv(cm, xd, plane, mbmi, mv_refined, bw, bh, mi_x,
-                             mi_y,
-#if CONFIG_E191_OFS_PRED_RES_HANDLE
-                             0 /* build_for_decode */,
-#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
-                             mc_buf, calc_subpel_params_func, gx0, gy0, gx1,
-                             gy1, vx0, vy0, vx1, vy1, dst0, dst1, 0, use_4x4
+                             mi_y, 0 /* build_for_decode */, mc_buf,
+                             calc_subpel_params_func, gx0, gy0, gx1, gy1, vx0,
+                             vy0, vx1, vy1, dst0, dst1, 0, use_4x4
 #if CONFIG_REFINEMV
                              ,
                              best_mv_ref, bw, bh
@@ -778,11 +770,7 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
                           cm->tip_interp_filter);
 
 #if CONFIG_REFINEMV
-#if CONFIG_OPFL_MEMBW_REDUCTION
     if (apply_refinemv || do_opfl) {
-#else
-    if (apply_refinemv) {
-#endif  // CONFIG_OPFL_MEMBW_REDUCTION
       inter_pred_params.use_ref_padding = 1;
       inter_pred_params.ref_area = &ref_area[ref];
     }
@@ -802,13 +790,10 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
         get_conv_params_no_round(ref, plane, tmp_conv_dst, MAX_SB_SIZE, 1, bd);
 
     if (do_opfl) {
-      av1_opfl_rebuild_inter_predictor(dst, dst_stride, plane, mv_refined,
-                                       &inter_pred_params, xd, mi_x, mi_y,
-#if CONFIG_E191_OFS_PRED_RES_HANDLE
-                                       0 /* build_for_decode */,
-#endif  // CONFIG_E191_OFS_PRED_RES_HANDLE
-                                       cm, bw, ref, mc_buf,
-                                       calc_subpel_params_func, use_4x4);
+      av1_opfl_rebuild_inter_predictor(
+          dst, dst_stride, plane, mv_refined, &inter_pred_params, xd, mi_x,
+          mi_y, 0 /* build_for_decode */, cm, bw, ref, mc_buf,
+          calc_subpel_params_func, use_4x4);
     } else {
 #if CONFIG_REFINEMV
       const MV mv_1_16th_pel = convert_mv_to_1_16th_pel(&best_mv_ref[ref]);

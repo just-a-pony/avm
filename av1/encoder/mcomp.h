@@ -365,7 +365,6 @@ void av1_set_mv_search_range(FullMvLimits *mv_limits, const MV *mv,
 
 );
 
-#if CONFIG_OPFL_MV_SEARCH
 #define OMVS_AVG_POOLING 1
 #define OMVS_RANGE_THR 2
 #define OMVS_BIG_STEP 4
@@ -387,7 +386,6 @@ static INLINE int get_opfl_mv_upshift_bits(const MB_MODE_INFO *mbmi) {
 
 int get_opfl_mv_iterations(const struct AV1_COMP *cpi,
                            const MB_MODE_INFO *mbmi);
-#endif  // CONFIG_OPFL_MV_SEARCH
 
 int av1_init_search_range(int size
 #if CONFIG_MV_RANGE_EXTENSION
@@ -461,7 +459,6 @@ typedef struct {
   SUBPEL_SEARCH_VAR_PARAMS var_params;
 } SUBPEL_MOTION_SEARCH_PARAMS;
 
-#if CONFIG_SKIP_ME_FOR_OPFL_MODES
 #define MAX_COMP_MV_STATS 128
 
 typedef struct {
@@ -529,14 +526,11 @@ typedef struct {
   int use_amvd;
   int_mv mv[2];
 } JOINT_AMVDNEWMV_STATS;
-#endif  // CONFIG_SKIP_ME_FOR_OPFL_MODES
 
-#if CONFIG_OPFL_MV_SEARCH
 int opfl_refine_fullpel_mv_one_sided(
     const AV1_COMMON *cm, MACROBLOCKD *xd,
     const FULLPEL_MOTION_SEARCH_PARAMS *ms_params, MB_MODE_INFO *mbmi,
     const FULLPEL_MV *const smv, int_mv *mv_refined, BLOCK_SIZE bsize);
-#endif  // CONFIG_OPFL_MV_SEARCH
 
 // motion search for joint MVD coding
 int joint_mvd_search(const AV1_COMMON *const cm, MACROBLOCKD *xd,

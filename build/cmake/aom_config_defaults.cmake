@@ -137,8 +137,6 @@ set_aom_config_var(CONFIG_COLLECT_COMPONENT_TIMING 0
 set_aom_config_var(CONFIG_AV1_TEMPORAL_DENOISING 0
                    "Build with temporal denoising support.")
 set_aom_config_var(CONFIG_NN_V2 0 "Fully-connected neural nets ver.2.")
-set_aom_config_var(CONFIG_OPTICAL_FLOW_API 0
-                   "AV1 experiment flag for optical flow API.")
 set_aom_config_var(CONFIG_AV2CTC_PSNR_PEAK 1
                    "Use AV2 CTC type PSNR peak for 10- and 12-bit")
 set_aom_config_var(CONFIG_ZERO_OFFSET_BITUPSHIFT 1
@@ -294,12 +292,6 @@ set_aom_config_var(CONFIG_EXPLICIT_TEMPORAL_DIST_CALC 1
 set_aom_config_var(CONFIG_IMPROVED_GLOBAL_MOTION 1
                    "New global motion syntax for AV2")
 
-set_aom_config_var(CONFIG_SKIP_ME_FOR_OPFL_MODES 1
-                   "Reuse the mvs of compound mode from non-opfl path")
-
-set_aom_config_var(CONFIG_E191_OFS_PRED_RES_HANDLE 1
-                   "Enable outside frame boundary block handling")
-
 set_aom_config_var(CONFIG_EXT_WARP_FILTER 1 "Enable extended warp filter")
 
 set_aom_config_var(CONFIG_IMPROVE_EXT_WARP 1
@@ -444,8 +436,6 @@ set_aom_config_var(CONFIG_FIX_RESIZE_PSNR 1
 set_aom_config_var(CONFIG_MOTION_MODE_RD_PRUNE 1
                    "Enable fast motion mode search")
 
-set_aom_config_var(CONFIG_OPFL_MV_SEARCH 1 "Optical flow based MV search")
-
 set_aom_config_var(CONFIG_MRSSE 0 "Enable MRSSE")
 
 set_aom_config_var(CONFIG_MAX_PB_RATIO 1
@@ -465,7 +455,6 @@ set_aom_config_var(CONFIG_LF_SUB_PU 1 "AV2 enable LF on sub blocks")
 set_aom_config_var(CONFIG_ASYM_DF 1 "Enable asymmetric DF")
 set_aom_config_var(CONFIG_DERIVED_MVD_SIGN 1 "Enable MVD sign derivations")
 set_aom_config_var(CONFIG_VQ_MVD_CODING 1 "Enable VQ based MVD coding")
-set_aom_config_var(CONFIG_OPFL_BI 1 "Enable bilinear for initial opfl.")
 set_aom_config_var(CONFIG_SUBBLK_REF_EXT 1
                    "Enable extension for subblock MV refinement.")
 set_aom_config_var(CONFIG_SUBBLK_REF_DS 1
@@ -497,9 +486,6 @@ set_aom_config_var(
 
 set_aom_config_var(CONFIG_WARP_INTER_INTRA 1
                    "Enable inter-intra mode for warp block.")
-
-set_aom_config_var(CONFIG_OPFL_MEMBW_REDUCTION 1
-                   "Reduce memory bandwith for OPFL/subblk ref/DAMR to 15x15.")
 
 set_aom_config_var(CONFIG_WARP_BD_BOX 1 "4x4 warp constraints.")
 
