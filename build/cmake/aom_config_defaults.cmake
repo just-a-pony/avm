@@ -321,8 +321,6 @@ set_aom_config_var(CONFIG_REDUCE_CCTX_CTX 1 "Reduce CCTX contexts")
 set_aom_config_var(CONFIG_WRL_PRUNE_FOUR_PARAMETERS 1
                    "Enable WRL only prune four non-translational parameters")
 
-set_aom_config_var(CONFIG_KEY_OVERLAY 1
-                   "Enable to support the key overlay frame")
 set_aom_config_var(CONFIG_OPFL_CTX_OPT 1
                    "Enable optimization of the CDFs for use optflow flag")
 

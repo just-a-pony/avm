@@ -401,11 +401,7 @@ static struct av1_extracfg default_extra_cfg = {
   0,  // tile_columns
   0,  // tile_rows
   1,  // enable_tpl_model
-#if CONFIG_KEY_OVERLAY
   2,  // enable_keyframe_filtering
-#else
-  1,  // enable_keyframe_filtering
-#endif            // CONFIG_KEY_OVERLAY
   7,              // arnr_max_frames
   5,              // arnr_strength
   0,              // min_gf_interval; 0 -> default decision
@@ -1669,13 +1665,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   kf_cfg->sframe_mode = cfg->sframe_mode;
   kf_cfg->enable_sframe = extra_cfg->s_frame_mode;
 
-#if CONFIG_KEY_OVERLAY
   kf_cfg->enable_keyframe_filtering =
       kf_cfg->fwd_kf_enabled ? AOMMIN(extra_cfg->enable_keyframe_filtering, 1)
                              : extra_cfg->enable_keyframe_filtering;
-#else
-  kf_cfg->enable_keyframe_filtering = extra_cfg->enable_keyframe_filtering;
-#endif  // CONFIG_KEY_OVERLAY
 
   kf_cfg->enable_intrabc = extra_cfg->enable_intrabc;
 #if CONFIG_IBC_SR_EXT
@@ -2054,18 +2046,13 @@ static aom_codec_err_t ctrl_get_enc_sub_gop_config(aom_codec_alg_priv_t *ctx,
   const SubGOPCfg *const subgop_cfg = gf_group->subgop_cfg;
   subgop_info->gf_interval = cpi->rc.baseline_gf_interval;
   subgop_info->frames_to_key = cpi->rc.frames_to_key;
-#if CONFIG_KEY_OVERLAY
   subgop_info->has_key_overlay =
       gf_group->update_type[1] == KFFLT_OVERLAY_UPDATE;
-#endif  // CONFIG_KEY_OVERLAY
 
   // As key frame is not part of sub-gop configuration,
   // parameters are assigned separately.
-  if (cpi->common.current_frame.frame_type == KEY_FRAME
-#if CONFIG_KEY_OVERLAY
-      || gf_group->update_type[1] == KFFLT_OVERLAY_UPDATE
-#endif  // CONFIG_KEY_OVERLAY
-  ) {
+  if (cpi->common.current_frame.frame_type == KEY_FRAME ||
+      gf_group->update_type[1] == KFFLT_OVERLAY_UPDATE) {
     subgop_info->size = 1;
     subgop_info->is_user_specified = 0;
     return AOM_CODEC_OK;
@@ -3168,7 +3155,6 @@ static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
       const RefCntBuffer *const buf = get_ref_frame_buf(cm, ref_frame);
       ref_poc[ref_idx] = buf ? (int)buf->absolute_poc : -1;
 
-#if CONFIG_KEY_OVERLAY
       // Currently, "enable_keyframe_filtering > 1" is the only exception case
       // in AVM. Later, if more cases arise, this condition can be made general
       // based on frame type.
@@ -3180,11 +3166,6 @@ static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
            !valid_ref_case)
               ? -1
               : ref_poc[ref_idx];
-#else
-      ref_poc[ref_idx] = (ref_poc[ref_idx] == (int)cm->cur_frame->absolute_poc)
-                             ? -1
-                             : ref_poc[ref_idx];
-#endif  // CONFIG_KEY_OVERLAY
     }
     if (cpi->b_calculate_psnr >= 1) {
       const bool use_hbd_psnr = (cpi->b_calculate_psnr == 2);

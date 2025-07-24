@@ -1294,7 +1294,6 @@ static void tf_setup_filtering_buffer(const AV1_COMP *cpi,
     adjust_num = 2;
   }
 
-#if CONFIG_KEY_OVERLAY
   const GF_GROUP *const gf_group = &cpi->gf_group;
   if (gf_group->update_type[gf_group->index] == KFFLT_UPDATE) {
     // In "enable_keyframe_filtering = 2" case, filter_frame_lookahead_idx is 0
@@ -1303,9 +1302,6 @@ static void tf_setup_filtering_buffer(const AV1_COMP *cpi,
   } else {
     num_frames = AOMMIN(num_frames + adjust_num, lookahead_depth_to_kf + 1);
   }
-#else
-  num_frames = AOMMIN(num_frames + adjust_num, lookahead_depth_to_kf + 1);
-#endif  // CONFIG_KEY_OVERLAY
 
   if (filter_frame_lookahead_idx == -1 ||
       filter_frame_lookahead_idx == 0) {  // Key frame.
@@ -1430,10 +1426,8 @@ int av1_temporal_filter(AV1_COMP *cpi, const int filter_frame_lookahead_idx,
 #endif  // !CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
         (cpi->oxcf.algo_cfg.enable_overlay == 0);
 
-#if CONFIG_KEY_OVERLAY
     if (gf_group->update_type[gf_group->index] == KFFLT_UPDATE)
       cpi->common.showable_frame = 0;
-#endif  // CONFIG_KEY_OVERLAY
   }
 
   // Do filtering.
@@ -1450,10 +1444,8 @@ int av1_temporal_filter(AV1_COMP *cpi, const int filter_frame_lookahead_idx,
                       is_key_frame, TF_BLOCK_SIZE, &sf, noise_levels);
 
   if (is_key_frame) {  // Key frame should always be filtered.
-#if CONFIG_KEY_OVERLAY
     assert(gf_group->update_type[gf_group->index] != KFFLT_UPDATE ||
            *show_existing_arf == 0);
-#endif  // CONFIG_KEY_OVERLAY
     return 1;
   }
 

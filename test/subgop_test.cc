@@ -306,14 +306,10 @@ class SubGopTestLarge
   }
 
   int is_key_frame() {
-#if CONFIG_KEY_OVERLAY
     // In the key overlay case, this function is called after the key overlay
     // frame. Then frame_type_test_ is INTER. Need to add the extra condition
     // to identify key overlay frame case.
     return frame_type_test_ == KEY_FRAME || subgop_info_.has_key_overlay;
-#else
-    return frame_type_test_ == KEY_FRAME;
-#endif  // CONFIG_KEY_OVERLAY
   }
 
   void DetermineSubgopCode(libaom_test::Encoder *encoder) {
@@ -978,11 +974,7 @@ class SubGopSwitchingTestLarge
       // Compute sub-gop size
       subgop_size_ = subgop_info_.gf_interval;
       // Include KF in sub-gop size
-      if (frame_type == KEY_FRAME
-#if CONFIG_KEY_OVERLAY
-          || subgop_info_.has_key_overlay
-#endif  // CONFIG_KEY_OVERLAY
-      )
+      if (frame_type == KEY_FRAME || subgop_info_.has_key_overlay)
         subgop_size_++;
 
       // Update count of subgop cfg usage by the encoder
