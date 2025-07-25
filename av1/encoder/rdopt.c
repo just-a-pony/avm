@@ -2757,14 +2757,16 @@ static int64_t motion_mode_rd(
               memcpy(pts, pts0, total_samples0 * 2 * sizeof(*pts0));
               memcpy(pts_inref, pts_inref0,
                      total_samples0 * 2 * sizeof(*pts_inref0));
+#if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
               // Select the samples according to motion vector difference
               if (mbmi->num_proj_ref[0] > 1) {
                 mbmi->num_proj_ref[0] =
                     av1_selectSamples(&mbmi->mv[0].as_mv, pts, pts_inref,
                                       mbmi->num_proj_ref[0], bsize);
               }
-              // Compute the warped motion parameters with a least squares fit
-              //  using the collected samples
+#endif  // !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
+        // Compute the warped motion parameters with a least squares fit
+        //  using the collected samples
               mbmi->wm_params[0].invalid = l0_invalid = av1_find_projection(
                   mbmi->num_proj_ref[0], pts, pts_inref, bsize,
                   mbmi->mv[0].as_mv, &mbmi->wm_params[0], mi_row, mi_col
@@ -2778,14 +2780,16 @@ static int64_t motion_mode_rd(
                 memcpy(pts, pts1, total_samples1 * 2 * sizeof(*pts1));
                 memcpy(pts_inref, pts_inref1,
                        total_samples1 * 2 * sizeof(*pts_inref1));
+#if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
                 // Select the samples according to motion vector difference
                 if (mbmi->num_proj_ref[1] > 1) {
                   mbmi->num_proj_ref[1] =
                       av1_selectSamples(&mbmi->mv[1].as_mv, pts, pts_inref,
                                         mbmi->num_proj_ref[1], bsize);
                 }
-                // Compute the warped motion parameters with a least squares fit
-                //  using the collected samples
+#endif  // !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
+        //  Compute the warped motion parameters with a least squares fit
+        //   using the collected samples
                 mbmi->wm_params[1].invalid = l1_invalid = av1_find_projection(
                     mbmi->num_proj_ref[1], pts, pts_inref, bsize,
                     mbmi->mv[1].as_mv, &mbmi->wm_params[1], mi_row, mi_col
@@ -2801,12 +2805,13 @@ static int64_t motion_mode_rd(
           memcpy(pts, pts0, total_samples * 2 * sizeof(*pts0));
           memcpy(pts_inref, pts_inref0,
                  total_samples * 2 * sizeof(*pts_inref0));
+#if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
           // Select the samples according to motion vector difference
           if (mbmi->num_proj_ref > 1) {
             mbmi->num_proj_ref = av1_selectSamples(
                 &mbmi->mv[0].as_mv, pts, pts_inref, mbmi->num_proj_ref, bsize);
           }
-
+#endif  // !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
           int l0_invalid = av1_find_projection(
               mbmi->num_proj_ref, pts, pts_inref, bsize, mbmi->mv[0].as_mv,
               &mbmi->wm_params[0], mi_row, mi_col
@@ -10565,17 +10570,21 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
                                                                 mbmi))) {
     int pts0[SAMPLES_ARRAY_SIZE], pts0_inref[SAMPLES_ARRAY_SIZE];
     mbmi->num_proj_ref[0] = av1_findSamples(cm, xd, pts0, pts0_inref, 0);
+#if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
     // Select the samples according to motion vector difference
     if (mbmi->num_proj_ref[0] > 1)
       mbmi->num_proj_ref[0] = av1_selectSamples(
           &mbmi->mv[0].as_mv, pts0, pts0_inref, mbmi->num_proj_ref[0], bsize);
+#endif  // !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
     if (has_second_ref(mbmi)) {
       int pts1[SAMPLES_ARRAY_SIZE], pts1_inref[SAMPLES_ARRAY_SIZE];
       mbmi->num_proj_ref[1] = av1_findSamples(cm, xd, pts1, pts1_inref, 1);
+#if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
       // Select the samples according to motion vector difference
       if (mbmi->num_proj_ref[1] > 1)
         mbmi->num_proj_ref[1] = av1_selectSamples(
             &mbmi->mv[1].as_mv, pts1, pts1_inref, mbmi->num_proj_ref[1], bsize);
+#endif  // !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
     }
   }
 #else
@@ -10583,10 +10592,12 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
       !has_second_ref(mbmi)) {
     int pts[SAMPLES_ARRAY_SIZE], pts_inref[SAMPLES_ARRAY_SIZE];
     mbmi->num_proj_ref = av1_findSamples(cm, xd, pts, pts_inref);
+#if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
     // Select the samples according to motion vector difference
     if (mbmi->num_proj_ref > 1)
       mbmi->num_proj_ref = av1_selectSamples(&mbmi->mv[0].as_mv, pts, pts_inref,
                                              mbmi->num_proj_ref, bsize);
+#endif  // !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
   }
 #endif
 

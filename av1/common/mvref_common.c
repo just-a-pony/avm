@@ -4897,7 +4897,7 @@ static INLINE void record_samples(const MB_MODE_INFO *mbmi,
   pts_inref[0] = GET_MV_SUBPEL(x) + mbmi->mv[ref].as_mv.col;
   pts_inref[1] = GET_MV_SUBPEL(y) + mbmi->mv[ref].as_mv.row;
 }
-
+#if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
 // Select samples according to the motion vector difference.
 uint8_t av1_selectSamples(MV *mv, int *pts, int *pts_inref, int len,
                           BLOCK_SIZE bsize) {
@@ -4943,7 +4943,7 @@ uint8_t av1_selectSamples(MV *mv, int *pts, int *pts_inref, int len,
 
   return ret;
 }
-
+#endif  // !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
 // Note: Samples returned are at 1/8-pel precision
 // Sample are the neighbor block center point's coordinates relative to the
 // left-top pixel of current block.
