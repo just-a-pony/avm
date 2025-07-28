@@ -197,12 +197,10 @@ struct build_prediction_ctxt {
 #define REF_BOTTOM_BORDER (AOM_INTERP_EXTEND + REFINE_MV_MAX_OFFSET)
 #endif  // CONFIG_REFINEMV
 
-#if CONFIG_WARP_BD_BOX
 #define REF_TOP_BORDER_WARP (AOM_INTERP_EXTEND - 1)
 #define REF_LEFT_BORDER_WARP (AOM_INTERP_EXTEND - 1)
 #define REF_RIGHT_BORDER_WARP (AOM_INTERP_EXTEND)
 #define REF_BOTTOM_BORDER_WARP (AOM_INTERP_EXTEND)
-#endif  // CONFIG_WARP_BD_BOX
 
 typedef enum InterPredMode {
   TRANSLATION_PRED,
@@ -262,10 +260,8 @@ typedef struct InterPredParams {
   ReferenceArea *ref_area;
 #endif  // CONFIG_REFINEMV
 
-#if CONFIG_WARP_BD_BOX
   int use_warp_bd_box;
   WarpBoundaryBox *warp_bd_box;
-#endif  // CONFIG_WARP_BD_BOX
 
   INTERINTER_COMPOUND_BORDER_DATA border_data;
 } InterPredParams;
@@ -732,12 +728,10 @@ void av1_get_reference_area_with_padding_single(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, const MB_MODE_INFO *mi,
     const MV mv, int bw, int bh, int mi_x, int mi_y, ReferenceArea *ref_area,
     int pu_width, int pu_height, int ref);
-#if CONFIG_WARP_BD_BOX
 void av1_get_reference_area_with_padding_single_warp(
     const AV1_COMMON *cm, MACROBLOCKD *xd, int plane, MB_MODE_INFO *mi,
     const MV mv, int bw, int bh, int mi_x, int mi_y, WarpBoundaryBox *ref_area,
     int pu_width, int pu_height, int ref);
-#endif  // CONFIG_WARP_BD_BOX
 
 // Generate the reference area ( bounding box) based on the signaled MV
 void av1_get_reference_area_with_padding(const AV1_COMMON *cm, MACROBLOCKD *xd,

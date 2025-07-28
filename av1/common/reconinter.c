@@ -96,10 +96,8 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
   inter_pred_params->ref_area = NULL;
 #endif  // CONFIG_REFINEMV
 
-#if CONFIG_WARP_BD_BOX
   inter_pred_params->use_warp_bd_box = 0;
   inter_pred_params->warp_bd_box = NULL;
-#endif  // CONFIG_WARP_BD_BOX
 
   inter_pred_params->border_data.enable_bacp = 0;
   inter_pred_params->border_data.bacp_block_data = NULL;
@@ -163,11 +161,8 @@ void av1_make_inter_predictor(const uint16_t *src, int src_stride,
         ,
         inter_pred_params->scale_factors
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_WARP_BD_BOX
         ,
-        inter_pred_params->use_warp_bd_box, inter_pred_params->warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-    );
+        inter_pred_params->use_warp_bd_box, inter_pred_params->warp_bd_box);
   } else if (inter_pred_params->mode == TRANSLATION_PRED) {
     highbd_inter_predictor(
         src, src_stride, dst, dst_stride, subpel_params,
@@ -3101,7 +3096,6 @@ void av1_get_reference_area_with_padding_single(
                     &subpel_params, &src_stride, ref_area);
 }
 
-#if CONFIG_WARP_BD_BOX
 static void get_ref_area_info_warp(const MV *const src_mv,
                                    InterPredParams *const inter_pred_params,
                                    MACROBLOCKD *const xd, int mi_x, int mi_y,
@@ -3174,7 +3168,6 @@ void av1_get_reference_area_with_padding_single_warp(
   get_ref_area_info_warp(src_mv, &inter_pred_params, xd, mi_x, mi_y, 0, &src,
                          &subpel_params, &src_stride, ref_area);
 }
-#endif  // CONFIG_WARP_BD_BOX
 
 void av1_get_reference_area_with_padding(const AV1_COMMON *cm, MACROBLOCKD *xd,
                                          int plane, MB_MODE_INFO *mi,
@@ -4208,9 +4201,7 @@ static void build_inter_predictors_8x8_and_bigger(
                                mi->cwp_idx == CWP_EQUAL &&
                                cm->features.enable_imp_msk_bld;
 
-#if CONFIG_WARP_BD_BOX
   WarpBoundaryBox warp_bd_box_mem[MAX_WARP_BD_SQ];
-#endif  // CONFIG_WARP_BD_BOX
 
 #if CONFIG_COMPOUND_4XN
   assert(IMPLIES(singleref_for_compound, !is_compound));
@@ -4256,7 +4247,6 @@ static void build_inter_predictors_8x8_and_bigger(
 #endif  // CONFIG_ACROSS_SCALE_WARP
          (comp_bw < 8 || comp_bh < 8))) {
       *ext_warp_used = true;
-#if CONFIG_WARP_BD_BOX
       inter_pred_params.use_warp_bd_box = 1;
       inter_pred_params.warp_bd_box = &warp_bd_box_mem[0];
       const BLOCK_SIZE bsize = xd->mi[0]->sb_type[PLANE_TYPE_Y];
@@ -4288,7 +4278,6 @@ static void build_inter_predictors_8x8_and_bigger(
           }
         }
       }
-#endif  // CONFIG_WARP_BD_BOX
     }
 
     if (is_compound) {

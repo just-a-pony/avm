@@ -914,13 +914,9 @@ void av1_ext_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
                                   uint16_t *pred, int p_col, int p_row,
                                   int p_width, int p_height, int p_stride,
                                   int subsampling_x, int subsampling_y, int bd,
-                                  ConvolveParams *conv_params
-#if CONFIG_WARP_BD_BOX
-                                  ,
+                                  ConvolveParams *conv_params,
                                   int use_warp_bd_box,
-                                  WarpBoundaryBox *warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-) {
+                                  WarpBoundaryBox *warp_bd_box) {
   int32_t im_block[(4 + EXT_WARP_TAPS - 1) * 4];
   const int reduce_bits_horiz = conv_params->round_0;
   const int reduce_bits_vert = conv_params->is_compound
@@ -942,18 +938,15 @@ void av1_ext_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
   const int taps = EXT_WARP_TAPS;
   const int taps_half = taps >> 1;
 
-#if CONFIG_WARP_BD_BOX
   int left_limit = 0;
   int right_limit = width - 1;
   int top_limit = 0;
   int bottom_limit = height - 1;
   int warp_bd_box_mem_stride = MAX_WARP_BD_SIZE;
   int box_idx, x_loc, y_loc;
-#endif  // CONFIG_WARP_BD_BOX
 
   for (int i = p_row; i < p_row + p_height; i += 4) {
     for (int j = p_col; j < p_col + p_width; j += 4) {
-#if CONFIG_WARP_BD_BOX
       if (use_warp_bd_box) {
         x_loc = j - p_col;
         y_loc = i - p_row;
@@ -963,7 +956,6 @@ void av1_ext_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
         top_limit = warp_bd_box[box_idx].y0;
         bottom_limit = warp_bd_box[box_idx].y1 - 1;
       }
-#endif  // CONFIG_WARP_BD_BOX
       // Calculate the center of this 4x4 block,
       // project to luma coordinates (if in a subsampled chroma plane),
       // apply the affine transformation,
@@ -988,22 +980,14 @@ void av1_ext_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
       const int16_t *coeffs_x = av1_ext_warped_filter[offs_x];
 
       for (int k = -(taps_half + 1); k < taps_half + 2; ++k) {
-#if CONFIG_WARP_BD_BOX
         const int iy = clamp(iy4 + k, top_limit, bottom_limit);
-#else
-        const int iy = clamp(iy4 + k, 0, height - 1);
-#endif  // CONFIG_WARP_BD_BOX
 
         for (int l = -2; l < 2; ++l) {
           int ix = ix4 + l - (taps_half - 1);
 
           int32_t sum = 1 << offset_bits_horiz;
           for (int m = 0; m < taps; ++m) {
-#if CONFIG_WARP_BD_BOX
             const int sample_x = clamp(ix + m, left_limit, right_limit);
-#else
-            const int sample_x = clamp(ix + m, 0, width - 1);
-#endif  // CONFIG_WARP_BD_BOX
             sum += ref[iy * stride + sample_x] * coeffs_x[m];
           }
           sum = ROUND_POWER_OF_TWO(sum, reduce_bits_horiz);
@@ -1067,12 +1051,8 @@ void av1_ext_highbd_warp_affine_scaled_c(
     const int32_t *mat, const uint16_t *ref, int width, int height, int stride,
     uint16_t *pred, int p_col, int p_row, int p_width, int p_height,
     int p_stride, int subsampling_x, int subsampling_y, int bd,
-    ConvolveParams *conv_params, const struct scale_factors *sf
-#if CONFIG_WARP_BD_BOX
-    ,
-    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-) {
+    ConvolveParams *conv_params, const struct scale_factors *sf,
+    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box) {
   //  int32_t im_block[(4 + EXT_WARP_TAPS - 1) * 4];
   int32_t im_block[(2 * 4 + EXT_WARP_TAPS) * 4];
   const int reduce_bits_horiz = conv_params->round_0;
@@ -1097,7 +1077,6 @@ void av1_ext_highbd_warp_affine_scaled_c(
   const int fo_vert = taps_half - 1;
   const int fo_horiz = taps_half - 1;
 
-#if CONFIG_WARP_BD_BOX
   int left_limit = 0;
   int right_limit = width - 1;
   int top_limit = 0;
@@ -1105,11 +1084,9 @@ void av1_ext_highbd_warp_affine_scaled_c(
   int warp_bd_box_mem_stride = MAX_WARP_BD_SIZE;
   int box_idx, x_loc, y_loc;
   assert(use_warp_bd_box);
-#endif  // CONFIG_WARP_BD_BOX
 
   for (int i = p_row; i < p_row + p_height; i += 4) {
     for (int j = p_col; j < p_col + p_width; j += 4) {
-#if CONFIG_WARP_BD_BOX
       if (use_warp_bd_box) {
         x_loc = j - p_col;
         y_loc = i - p_row;
@@ -1119,7 +1096,6 @@ void av1_ext_highbd_warp_affine_scaled_c(
         top_limit = warp_bd_box[box_idx].y0;
         bottom_limit = warp_bd_box[box_idx].y1 - 1;
       }
-#endif  // CONFIG_WARP_BD_BOX
       // Calculate the center of this 4x4 block,
       // project to luma coordinates (if in a subsampled chroma plane),
       // apply the affine transformation,
@@ -1161,11 +1137,7 @@ void av1_ext_highbd_warp_affine_scaled_c(
 
       for (int y = 0; y < im_h; ++y) {
         const int y_pos = init_y + y;
-#if CONFIG_WARP_BD_BOX
         const int iy = clamp(y_pos, top_limit, bottom_limit);
-#else
-        const int iy = clamp(y_pos, 0, height - 1);
-#endif  // CONFIG_WARP_BD_BOX
         int64_t x_qn = x4;
         for (int x = 0; x < 4; ++x, x_qn += x_step_qn) {
           // Extract the filter parameters
@@ -1179,12 +1151,8 @@ void av1_ext_highbd_warp_affine_scaled_c(
 
           int32_t sum = 1 << offset_bits_horiz;
           for (int m = 0; m < taps; ++m) {
-#if CONFIG_WARP_BD_BOX
             const int sample_x =
                 clamp(ix - fo_horiz + m, left_limit, right_limit);
-#else
-            const int sample_x = clamp(ix - fo_horiz + m, 0, width - 1);
-#endif  // CONFIG_WARP_BD_BOX
             sum += ref[iy * stride + sample_x] * coeffs_x[m];
           }
           sum = ROUND_POWER_OF_TWO(sum, reduce_bits_horiz);
@@ -1261,11 +1229,8 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
                        ,
                        const struct scale_factors *sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_WARP_BD_BOX
                        ,
-                       int use_warp_bd_box, WarpBoundaryBox *warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-) {
+                       int use_warp_bd_box, WarpBoundaryBox *warp_bd_box) {
 
 #if CONFIG_ACROSS_SCALE_WARP
   const int is_scaled = sf ? av1_is_scaled(sf) : 0;
@@ -1303,23 +1268,13 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
       av1_ext_highbd_warp_affine_scaled_c(
           &wm_scaled.wmmat[0], ref, width, height, stride, pred, p_col, p_row,
           p_width, p_height, p_stride, subsampling_x, subsampling_y, bd,
-          conv_params, sf
-#if CONFIG_WARP_BD_BOX
-          ,
-          use_warp_bd_box, warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-      );
+          conv_params, sf, use_warp_bd_box, warp_bd_box);
     } else {
 #endif  // CONFIG_ACROSS_SCALE_WARP
       av1_ext_highbd_warp_affine(&wm_scaled.wmmat[0], ref, width, height,
                                  stride, pred, p_col, p_row, p_width, p_height,
                                  p_stride, subsampling_x, subsampling_y, bd,
-                                 conv_params
-#if CONFIG_WARP_BD_BOX
-                                 ,
-                                 use_warp_bd_box, warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-      );
+                                 conv_params, use_warp_bd_box, warp_bd_box);
 #if CONFIG_ACROSS_SCALE_WARP
     }
 #endif  // CONFIG_ACROSS_SCALE_WARP
@@ -1341,11 +1296,8 @@ void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint16_t *ref,
                     ,
                     const struct scale_factors *sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_WARP_BD_BOX
                     ,
-                    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-) {
+                    int use_warp_bd_box, WarpBoundaryBox *warp_bd_box) {
   highbd_warp_plane(wm, ref, width, height, stride, pred, p_col, p_row, p_width,
                     p_height, p_stride, subsampling_x, subsampling_y, bd,
                     conv_params
@@ -1353,11 +1305,8 @@ void av1_warp_plane(WarpedMotionParams *wm, int bd, const uint16_t *ref,
                     ,
                     sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_WARP_BD_BOX
                     ,
-                    use_warp_bd_box, warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-  );
+                    use_warp_bd_box, warp_bd_box);
 }
 
 #define LS_MV_MAX 256  // max mv in 1/8-pel

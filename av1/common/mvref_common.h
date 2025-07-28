@@ -299,7 +299,6 @@ static INLINE int_mv get_warp_motion_vector(const MACROBLOCKD *xd,
   return res;
 }
 
-#if CONFIG_WARP_BD_BOX
 // compute the center motion vector from warp model, aligned funcitons within
 // warped_motion.c
 static INLINE int_mv get_int_warp_mv_for_fb(const MACROBLOCKD *xd,
@@ -340,7 +339,6 @@ static INLINE int_mv get_int_warp_mv_for_fb(const MACROBLOCKD *xd,
                xd->height << MI_SIZE_LOG2, xd);
   return res;
 }
-#endif  // CONFIG_WARP_BD_BOX
 
 static INLINE int_mv get_block_mv(const MB_MODE_INFO *candidate,
                                   const SUBMB_INFO *submi, int which_mv) {

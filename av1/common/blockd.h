@@ -365,7 +365,6 @@ typedef struct PadBlock {
   int y1;
 } PadBlock;
 
-#if CONFIG_WARP_BD_BOX
 // boundary box for 4x4 warp reference samples
 typedef struct WarpBoundaryBox {
   uint16_t x0;
@@ -373,7 +372,6 @@ typedef struct WarpBoundaryBox {
   uint16_t y0;
   uint16_t y1;
 } WarpBoundaryBox;
-#endif  // CONFIG_WARP_BD_BOX
 
 typedef struct PadArea {
   PadBlock pad_block;

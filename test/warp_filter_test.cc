@@ -44,13 +44,6 @@ INSTANTIATE_TEST_SUITE_P(SSE4_1, AV1ExtHighbdWarpFilterTest,
                          libaom_test::AV1ExtHighbdWarpFilter::BuildParams(
                              av1_ext_highbd_warp_affine_sse4_1));
 #endif  // HAVE_SSE4_1
-#if HAVE_AVX2
-#if !CONFIG_WARP_BD_BOX
-INSTANTIATE_TEST_SUITE_P(AVX2, AV1ExtHighbdWarpFilterTest,
-                         libaom_test::AV1ExtHighbdWarpFilter::BuildParams(
-                             av1_ext_highbd_warp_affine_avx2));
-#endif  // HAVE_AVX2
-#endif  // !COFNIG_WARP_BD
 
 #if HAVE_AVX2
 INSTANTIATE_TEST_SUITE_P(

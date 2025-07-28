@@ -743,22 +743,14 @@ void av1_ext_highbd_warp_affine_avx2(const int32_t *mat, const uint16_t *ref,
                                      uint16_t *pred, int p_col, int p_row,
                                      int p_width, int p_height, int p_stride,
                                      int subsampling_x, int subsampling_y,
-                                     int bd, ConvolveParams *conv_params
-#if CONFIG_WARP_BD_BOX
-                                     ,
+                                     int bd, ConvolveParams *conv_params,
                                      int use_warp_bd_box,
-                                     WarpBoundaryBox *warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-) {
+                                     WarpBoundaryBox *warp_bd_box) {
   if (p_width == 4) {
     av1_ext_highbd_warp_affine_sse4_1(
         mat, ref, width, height, stride, pred, p_col, p_row, p_width, p_height,
-        p_stride, subsampling_x, subsampling_y, bd, conv_params
-#if CONFIG_WARP_BD_BOX
-        ,
-        use_warp_bd_box, warp_bd_box
-#endif  // CONFIG_WARP_BD_BOX
-    );
+        p_stride, subsampling_x, subsampling_y, bd, conv_params,
+        use_warp_bd_box, warp_bd_box);
   } else {
     assert(p_width % 8 == 0);
     __m256i tmp[9];

@@ -47,11 +47,9 @@ extern "C" {
 #define NUM_CTX_JOINT_TYPE 1
 #define NUM_OPTIONS_JOINT_TYPE 2
 
-#if CONFIG_WARP_BD_BOX
 // maximum warp bound boxes.
 #define MAX_WARP_BD_SIZE (1 << (8 - 3))
 #define MAX_WARP_BD_SQ (MAX_WARP_BD_SIZE * MAX_WARP_BD_SIZE)
-#endif  // CONFIG_WARP_BD_BOX
 
 #if CONFIG_SUBBLK_REF_EXT
 #define SUBBLK_REF_EXT_LINES 2
