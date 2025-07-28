@@ -4975,8 +4975,7 @@ static AOM_INLINE void encode_segmentation(AV1_COMMON *cm, MACROBLOCKD *xd,
   // Segmentation data
   if (seg->update_data) {
 #if CONFIG_EXT_SEG
-    const int max_seg_num =
-        cm->seg.enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
+    const int max_seg_num = seg->enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
 #else   // CONFIG_EXT_SEG
     const int max_seg_num = MAX_SEGMENTS;
 #endif  // CONFIG_EXT_SEG
@@ -5618,7 +5617,7 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
       // Next, calculate the length in bits of the stop symbol in svlc(). The
       // delta between mat_end and the stop symbol (0) is 0 - mat_end. An
       // equivalent delta, modulo 256, is 256 - mat_end. The length of svlc()
-      // depends on on the absolute value. So pick the delta with the smaller
+      // depends on the absolute value. So pick the delta with the smaller
       // absolute value.
       const int num_coefs = tx_size_2d[tsize];
       const int mat_end = mat[num_coefs - 1];
