@@ -563,10 +563,8 @@ static void write_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   // Such models can still be signalled, but are effectively useless
   // as we'll just fall back to translational motion
   assert(!params->invalid);
-#if CONFIG_SIX_PARAM_WARP_DELTA
   assert(mbmi->six_param_warp_model_flag ==
          get_default_six_param_flag(cm, mbmi));
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
   aom_write_symbol(
       w, mbmi->warp_precision_idx,
@@ -578,11 +576,7 @@ static void write_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   int max_coded_index = 0;
   get_warp_model_steps(mbmi, &step_size, &max_coded_index);
 
-  for (uint8_t index = 2; index < (
-#if CONFIG_SIX_PARAM_WARP_DELTA
-                                      mbmi->six_param_warp_model_flag ? 6 :
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-                                                                      4);
+  for (uint8_t index = 2; index < (mbmi->six_param_warp_model_flag ? 6 : 4);
        index++) {
     int32_t value = params->wmmat[index] - base_params.wmmat[index];
     coded_delta_param[index] = (value / step_size);
@@ -5605,9 +5599,7 @@ static AOM_INLINE void write_sequence_header(
       aom_wb_write_bit(wb, enabled);
     }
 
-#if CONFIG_SIX_PARAM_WARP_DELTA
     aom_wb_write_bit(wb, seq_params->enable_six_param_warp_delta);
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
     aom_wb_write_bit(wb, seq_params->enable_masked_compound);
     aom_wb_write_bit(wb, seq_params->order_hint_info.enable_order_hint);

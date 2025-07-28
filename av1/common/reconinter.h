@@ -321,7 +321,6 @@ static INLINE void get_warp_model_steps(const MB_MODE_INFO *mbmi,
   *max_coded_index = mbmi->warp_precision_idx == 0 ? 7 : 14;
 }
 
-#if CONFIG_SIX_PARAM_WARP_DELTA
 // Get the default value of the six_param_flag
 static INLINE int get_default_six_param_flag(const AV1_COMMON *const cm,
                                              const MB_MODE_INFO *mbmi) {
@@ -331,7 +330,6 @@ static INLINE int get_default_six_param_flag(const AV1_COMMON *const cm,
              ? 1
              : 0;
 }
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
 #if CONFIG_WARP_INTER_INTRA
 static INLINE int allow_warp_inter_intra(const AV1_COMMON *const cm,
@@ -355,9 +353,7 @@ static INLINE int allow_warp_parameter_signaling(const AV1_COMMON *const cm,
   // signaled.
 
   int allow_delta_for_this_warp_ref_idx =
-#if CONFIG_SIX_PARAM_WARP_DELTA
       get_default_six_param_flag(cm, mbmi) ||  // 6-parameter
-#endif                                         // CONFIG_SIX_PARAM_WARP_DELTA
       (mbmi->warp_ref_idx == 0);               // 4-parameter
 
   return (mbmi->mode == WARP_NEWMV && cm->features.allow_warpmv_mode &&

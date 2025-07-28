@@ -1662,11 +1662,7 @@ int av1_cost_model_param(const MB_MODE_INFO *mbmi, const ModeCosts *mode_costs,
   const WarpedMotionParams *params = &mbmi->wm_params[0];
   assert(!params->invalid);
   int rate = 0;
-  for (uint8_t index = 2; index < (
-#if CONFIG_SIX_PARAM_WARP_DELTA
-                                      mbmi->six_param_warp_model_flag ? 6 :
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-                                                                      4);
+  for (uint8_t index = 2; index < (mbmi->six_param_warp_model_flag ? 6 : 4);
        index++) {
     int32_t value = params->wmmat[index] - base_params->wmmat[index];
     int coded_value = (value / step_size);
@@ -1709,11 +1705,7 @@ int av1_cost_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
           ->warp_precision_idx_cost[mbmi->sb_type[xd->tree_type == CHROMA_PART]]
                                    [mbmi->warp_precision_idx];
 
-  for (uint8_t index = 2; index < (
-#if CONFIG_SIX_PARAM_WARP_DELTA
-                                      mbmi->six_param_warp_model_flag ? 6 :
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-                                                                      4);
+  for (uint8_t index = 2; index < (mbmi->six_param_warp_model_flag ? 6 : 4);
        index++) {
     int32_t value = params->wmmat[index] - base_params.wmmat[index];
     int coded_value = (value / step_size);
@@ -2411,9 +2403,7 @@ static int64_t motion_mode_rd(
   mbmi->warp_ref_idx = 0;
   mbmi->max_num_warp_candidates = 0;
   mbmi->warpmv_with_mvd_flag = 0;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
   mbmi->warp_precision_idx = 0;
   // Buffer to store the previously searched warp models
@@ -2965,9 +2955,7 @@ static int64_t motion_mode_rd(
                                                 NULL);
               int valid = 0;
 
-#if CONFIG_SIX_PARAM_WARP_DELTA
               mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
               if (!allow_warp_parameter_signaling(cm, mbmi)) {
                 if (mbmi->warp_precision_idx) continue;
 
@@ -2997,10 +2985,8 @@ static int64_t motion_mode_rd(
                     cpi->sf.mv_sf.warp_search_method,
                     cpi->sf.mv_sf.warp_search_iters);
               } else {
-#if CONFIG_SIX_PARAM_WARP_DELTA
                 mbmi->six_param_warp_model_flag =
                     get_default_six_param_flag(cm, mbmi);
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
                 valid = av1_pick_warp_delta(
                     cm, xd, mbmi, &ms_params, &x->mode_costs, &prev_best_models,
                     mbmi_ext->warp_param_stack[av1_ref_frame_type(
@@ -6387,9 +6373,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   mbmi->max_num_warp_candidates = 0;
   mbmi->warpmv_with_mvd_flag = 0;
   mbmi->motion_mode = SIMPLE_TRANSLATION;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
   mbmi->warp_precision_idx = 0;
 #if CONFIG_WARP_INTER_INTRA
@@ -6740,9 +6724,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
     mbmi->max_num_warp_candidates = 0;
     mbmi->warpmv_with_mvd_flag = 0;
     mbmi->motion_mode = SIMPLE_TRANSLATION;
-#if CONFIG_SIX_PARAM_WARP_DELTA
     mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
     mbmi->warp_precision_idx = 0;
 #if CONFIG_WARP_INTER_INTRA
@@ -7194,9 +7176,7 @@ static AOM_INLINE void rd_pick_skip_mode(
   mbmi->warp_ref_idx = 0;
   mbmi->max_num_warp_candidates = 0;
   mbmi->warpmv_with_mvd_flag = 0;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
   mbmi->warp_precision_idx = 0;
 
@@ -7233,9 +7213,7 @@ static AOM_INLINE void rd_pick_skip_mode(
   mbmi->warp_ref_idx = 0;
   mbmi->max_num_warp_candidates = 0;
   mbmi->warpmv_with_mvd_flag = 0;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
   mbmi->warp_precision_idx = 0;
 #if CONFIG_WARP_INTER_INTRA
@@ -8372,9 +8350,7 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
   mbmi->warp_ref_idx = 0;
   mbmi->max_num_warp_candidates = 0;
   mbmi->warpmv_with_mvd_flag = 0;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
   mbmi->warp_precision_idx = 0;
 #if CONFIG_WARP_INTER_INTRA
   mbmi->warp_inter_intra = 0;
@@ -10140,9 +10116,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #if CONFIG_MORPH_PRED
       mbmi->morph_pred = 0;
 #endif  // CONFIG_MORPH_PRED
-#if CONFIG_SIX_PARAM_WARP_DELTA
       mbmi->six_param_warp_model_flag = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
       mbmi->warp_precision_idx = 0;
 
 #if CONFIG_WARP_INTER_INTRA

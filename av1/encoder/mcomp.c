@@ -5684,13 +5684,9 @@ static int get_valid_model_from_warp_stats_buffer(
   for (int idx_bank = 0; idx_bank < count; ++idx_bank) {
     const int idx = (start_idx + count - 1 - idx_bank) % WARP_STATS_BUFFER_SIZE;
     MB_MODE_INFO *ref_mbmi = &queue[idx].mbmi_stats;
-    int is_same_model_type =
-        (ref_mbmi->warp_ref_idx == mbmi->warp_ref_idx)
-#if CONFIG_SIX_PARAM_WARP_DELTA
-        &&
-        (ref_mbmi->six_param_warp_model_flag == mbmi->six_param_warp_model_flag)
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-        ;
+    int is_same_model_type = (ref_mbmi->warp_ref_idx == mbmi->warp_ref_idx) &&
+                             (ref_mbmi->six_param_warp_model_flag ==
+                              mbmi->six_param_warp_model_flag);
 
     if (mbmi->warp_precision_idx) {
       is_same_model_type &=
@@ -5784,11 +5780,7 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       prev_wm_params = prev_best_model->prev_wm_params;
 
       for (int param_index = 2;
-           param_index < (
-#if CONFIG_SIX_PARAM_WARP_DELTA
-                             mbmi->six_param_warp_model_flag ? 6 :
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-                                                             4);
+           param_index < (mbmi->six_param_warp_model_flag ? 6 : 4);
            param_index++) {
         int actual_delta =
             prev_wm_params.wmmat[param_index] - base_params.wmmat[param_index];
@@ -5801,14 +5793,10 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
         prev_wm_params.wmmat[param_index] =
             truncated_delta + base_params.wmmat[param_index];
       }
-#if CONFIG_SIX_PARAM_WARP_DELTA
       if (!mbmi->six_param_warp_model_flag) {
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
         prev_wm_params.wmmat[4] = -prev_wm_params.wmmat[3];
         prev_wm_params.wmmat[5] = prev_wm_params.wmmat[2];
-#if CONFIG_SIX_PARAM_WARP_DELTA
       }
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
       start_params = prev_wm_params;
 
       if (can_refine_mv && mbmi->warp_precision_idx) {
@@ -5839,24 +5827,16 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 
   // Set up initial model by copying global motion model
   // and adjusting for the chosen motion vector
-  params->wmtype =
-#if CONFIG_SIX_PARAM_WARP_DELTA
-      mbmi->six_param_warp_model_flag ? AFFINE :
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-                                      ROTZOOM;
+  params->wmtype = mbmi->six_param_warp_model_flag ? AFFINE : ROTZOOM;
   params->wmmat[2] = start_params.wmmat[2];
   params->wmmat[3] = start_params.wmmat[3];
-#if CONFIG_SIX_PARAM_WARP_DELTA
   if (mbmi->six_param_warp_model_flag) {
     params->wmmat[4] = start_params.wmmat[4];
     params->wmmat[5] = start_params.wmmat[5];
   } else {
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
     params->wmmat[4] = -params->wmmat[3];
     params->wmmat[5] = params->wmmat[2];
-#if CONFIG_SIX_PARAM_WARP_DELTA
   }
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
   av1_reduce_warp_model(params);
   av1_get_shear_params(params
 #if CONFIG_ACROSS_SCALE_WARP
@@ -5900,11 +5880,7 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
     }
 
     for (int param_index = 2;
-         param_index < (
-#if CONFIG_SIX_PARAM_WARP_DELTA
-                           mbmi->six_param_warp_model_flag ? 6 :
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-                                                           4);
+         param_index < (mbmi->six_param_warp_model_flag ? 6 : 4);
          param_index++) {
       // Try increasing the parameter
       *params = best_wm_params;
@@ -5913,14 +5889,10 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       if (abs(delta) > max_warp_delta_value) {
         inc_rd = UINT64_MAX;
       } else {
-#if CONFIG_SIX_PARAM_WARP_DELTA
         if (!mbmi->six_param_warp_model_flag) {
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
           params->wmmat[4] = -params->wmmat[3];
           params->wmmat[5] = params->wmmat[2];
-#if CONFIG_SIX_PARAM_WARP_DELTA
         }
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
         valid = av1_is_warp_model_reduced(params) && av1_get_shear_params(params
 #if CONFIG_ACROSS_SCALE_WARP
                                                                           ,
@@ -5952,14 +5924,10 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       if (abs(delta) > max_warp_delta_value) {
         dec_rd = UINT64_MAX;
       } else {
-#if CONFIG_SIX_PARAM_WARP_DELTA
         if (!mbmi->six_param_warp_model_flag) {
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
           params->wmmat[4] = -params->wmmat[3];
           params->wmmat[5] = params->wmmat[2];
-#if CONFIG_SIX_PARAM_WARP_DELTA
         }
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
         valid = av1_is_warp_model_reduced(params) && av1_get_shear_params(params
 #if CONFIG_ACROSS_SCALE_WARP
                                                                           ,

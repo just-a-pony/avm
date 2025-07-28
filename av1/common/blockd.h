@@ -660,10 +660,8 @@ typedef struct MB_MODE_INFO {
   uint8_t max_num_warp_candidates;
   /*! \brief warpmv_with_mvd_flag. */
   uint8_t warpmv_with_mvd_flag;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   /*! \brief warp model type used for this mbmi. */
   uint8_t six_param_warp_model_flag;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
 #if CONFIG_WARP_INTER_INTRA
   /*! \brief warp inter intra enable or not. */

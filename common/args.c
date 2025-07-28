@@ -130,9 +130,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_skip_mode);
     GET_PARAMS(enable_warp_causal);
     GET_PARAMS(enable_warp_delta);
-#if CONFIG_SIX_PARAM_WARP_DELTA
     GET_PARAMS(enable_six_param_warp_delta);
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
     GET_PARAMS(enable_warp_extend);
     GET_PARAMS(enable_diff_wtd_comp);
     GET_PARAMS(enable_interintra_comp);

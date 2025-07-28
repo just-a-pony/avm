@@ -930,10 +930,8 @@ static void update_warp_delta_stats(const AV1_COMMON *cm,
     av1_get_warp_base_params(
         cm, mbmi, &base_params, NULL,
         mbmi_ext->warp_param_stack[av1_ref_frame_type(mbmi->ref_frame)]);
-#if CONFIG_SIX_PARAM_WARP_DELTA
     assert(mbmi->six_param_warp_model_flag ==
            get_default_six_param_flag(cm, mbmi));
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
     update_cdf(fc->warp_precision_idx_cdf[mbmi->sb_type[PLANE_TYPE_Y]],
                mbmi->warp_precision_idx, NUM_WARP_PRECISION_MODES);
@@ -946,11 +944,7 @@ static void update_warp_delta_stats(const AV1_COMMON *cm,
     int max_coded_index = 0;
     get_warp_model_steps(mbmi, &step_size, &max_coded_index);
 
-    for (uint8_t index = 2; index < (
-#if CONFIG_SIX_PARAM_WARP_DELTA
-                                        mbmi->six_param_warp_model_flag ? 6 :
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
-                                                                        4);
+    for (uint8_t index = 2; index < (mbmi->six_param_warp_model_flag ? 6 : 4);
          index++) {
       int32_t value = params->wmmat[index] - base_params.wmmat[index];
       int coded_value = (value / step_size);

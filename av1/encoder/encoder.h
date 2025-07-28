@@ -628,9 +628,7 @@ typedef struct {
 typedef struct {
   // Bitmask of which motion modes are enabled at the sequence level
   int seq_enabled_motion_modes;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   int enable_six_param_warp_delta;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 } MotionModeCfg;
 
 typedef struct {

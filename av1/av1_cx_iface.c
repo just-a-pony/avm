@@ -183,10 +183,8 @@ struct av1_extracfg {
   int enable_warped_motion;       // enable local warped motion for sequence
   int enable_warp_causal;         // enable spatial warp prediction for sequence
   int enable_warp_delta;          // enable explicit warp models for sequence
-#if CONFIG_SIX_PARAM_WARP_DELTA
   int enable_six_param_warp_delta;  // enable explicit six-parameter warp models
                                     // for sequence
-#endif                              // CONFIG_SIX_PARAM_WARP_DELTA
   int enable_warp_extend;           // enable warp extension for sequence
   int enable_intra_dip;     // enable intra DIP (data-driven intra) sequence
   int enable_smooth_intra;  // enable smooth intra modes for sequence
@@ -520,9 +518,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,  // enable_warped_motion at sequence level
   1,  // enable_warp_causal at sequence level
   1,  // enable_warp_delta at sequence level
-#if CONFIG_SIX_PARAM_WARP_DELTA
   1,    // enable_six_param_warp_delta at sequence level
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
   1,    // enable_warp_extend at sequence level
   1,    // enable_intra_dip at sequence level
   1,    // enable smooth intra modes usage for sequence
@@ -1016,9 +1012,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_skip_mode = extra_cfg->enable_skip_mode;
   cfg->enable_warp_causal = extra_cfg->enable_warp_causal;
   cfg->enable_warp_delta = extra_cfg->enable_warp_delta;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   cfg->enable_six_param_warp_delta = extra_cfg->enable_six_param_warp_delta;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
   cfg->enable_warp_extend = extra_cfg->enable_warp_extend;
   cfg->enable_intra_dip = extra_cfg->enable_intra_dip;
   cfg->enable_smooth_intra = extra_cfg->enable_smooth_intra;
@@ -1149,9 +1143,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_skip_mode = cfg->enable_skip_mode;
   extra_cfg->enable_warp_causal = cfg->enable_warp_causal;
   extra_cfg->enable_warp_delta = cfg->enable_warp_delta;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   extra_cfg->enable_six_param_warp_delta = cfg->enable_six_param_warp_delta;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
   extra_cfg->enable_warp_extend = cfg->enable_warp_extend;
   extra_cfg->enable_intra_dip = cfg->enable_intra_dip;
   extra_cfg->enable_smooth_intra = cfg->enable_smooth_intra;
@@ -1720,9 +1712,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 
   // Set motion mode related configuration.
   int seq_enabled_motion_modes = (1 << SIMPLE_TRANSLATION);
-#if CONFIG_SIX_PARAM_WARP_DELTA
   int enable_six_param_warp_delta = 0;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
   if (extra_cfg->enable_interintra_comp) {
     seq_enabled_motion_modes |= (1 << INTERINTRA);
@@ -1733,11 +1723,9 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     }
     if (extra_cfg->enable_warp_delta) {
       seq_enabled_motion_modes |= (1 << WARP_DELTA);
-#if CONFIG_SIX_PARAM_WARP_DELTA
       if (extra_cfg->enable_six_param_warp_delta) {
         enable_six_param_warp_delta = 1;
       }
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
     }
     if (extra_cfg->enable_warp_extend) {
       seq_enabled_motion_modes |= (1 << WARP_EXTEND);
@@ -1745,10 +1733,8 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   }
 
   oxcf->motion_mode_cfg.seq_enabled_motion_modes = seq_enabled_motion_modes;
-#if CONFIG_SIX_PARAM_WARP_DELTA
   oxcf->motion_mode_cfg.enable_six_param_warp_delta =
       enable_six_param_warp_delta;
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
   // Set partition related configuration.
   part_cfg->disable_ml_partition_speed_features =
@@ -4157,13 +4143,11 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_warp_delta,
                               argv, err_string)) {
     extra_cfg.enable_warp_delta = arg_parse_int_helper(&arg, err_string);
-#if CONFIG_SIX_PARAM_WARP_DELTA
   } else if (arg_match_helper(&arg,
                               &g_av1_codec_arg_defs.enable_six_param_warp_delta,
                               argv, err_string)) {
     extra_cfg.enable_six_param_warp_delta =
         arg_parse_int_helper(&arg, err_string);
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_warp_extend,
                               argv, err_string)) {
     extra_cfg.enable_warp_extend = arg_parse_int_helper(&arg, err_string);
@@ -4601,10 +4585,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_LF_SUB_PU
         1,
 #endif  // CONFIG_LF_SUB_PU
-        1,   1, 1,
-#if CONFIG_SIX_PARAM_WARP_DELTA
-        1,
-#endif  // CONFIG_SIX_PARAM_WARP_DELTA
+        1,   1, 1, 1,
         1,   1, 1, 1,
         1,   1, 0, 0,
         1,
