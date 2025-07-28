@@ -165,8 +165,6 @@ set_aom_config_var(CONFIG_INTRA_SDP_SIMPLIFICATION 1 NUMBER
 set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
 set_aom_config_var(CONFIG_ERP_TFLITE 0 NUMBER "Build ERP with TFLite")
 set_aom_config_var(CONFIG_TCQ_FOR_ALL_FRAMES 1 "Adjust base QP for TCQ")
-set_aom_config_var(CONFIG_RELAX_AFFINE_CONSTRAINTS 1
-                   "AV2 relax affine constraints")
 set_aom_config_var(CONFIG_DISABLE_4X4_INTER 1 "Disable 4x4 inter blocks")
 
 set_aom_config_var(

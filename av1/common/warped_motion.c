@@ -23,27 +23,14 @@
 #include "av1/common/scale.h"
 #include "av1/common/mvref_common.h"
 
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
 // For warping, we use 8/6/4/2-tap filters, but we do blocks of 8 pixels
 // at a time. The zoom/rotation/shear in the model are applied to the
 // "fractional" position of each pixel, which therefore varies within
 // [-3, 4) * WARPEDPIXEL_PREC_SHIFTS.
 // We need an extra 2-6 taps to fit this in, for a total of 8 taps.
-#else
-// For warping, we really use a 6-tap filter, but we do blocks of 8 pixels
-// at a time. The zoom/rotation/shear in the model are applied to the
-// "fractional" position of each pixel, which therefore varies within
-// [-1, 2) * WARPEDPIXEL_PREC_SHIFTS.
-// We need an extra 2 taps to fit this in, for a total of 8 taps.
-#endif  // CONFIG_RELAX_AFFINE_CONSTRAINTS
 /* clang-format off */
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
 const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 7 + 1][8] = {
-#else
-const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
-#endif  // CONFIG_RELAX_AFFINE_CONSTRAINTS
 #if WARPEDPIXEL_PREC_BITS == 6
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
   // [-3, -2)
   { 127,   1, 0, 0, 0, 0, 0, 0 }, { 126,   2, 0, 0, 0, 0, 0, 0 },
   { 124,   4, 0, 0, 0, 0, 0, 0 }, { 122,   6, 0, 0, 0, 0, 0, 0 },
@@ -111,7 +98,6 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   { - 3,  13, 123, - 5, 0, 0, 0, 0 }, { - 3,  11, 124, - 4, 0, 0, 0, 0 },
   { - 2,   8, 125, - 3, 0, 0, 0, 0 }, { - 1,   6, 126, - 3, 0, 0, 0, 0 },
   { - 1,   4, 127, - 2, 0, 0, 0, 0 }, {   0,   2, 127, - 1, 0, 0, 0, 0 },
-#endif // CONFIG_RELAX_AFFINE_CONSTRAINTS
   // [-1, 0)
   { 0,   0, 127,   1,   0, 0, 0, 0 }, { 0, - 1, 127,   2,   0, 0, 0, 0 },
   { 1, - 3, 127,   4, - 1, 0, 0, 0 }, { 1, - 4, 126,   6, - 2, 1, 0, 0 },
@@ -214,7 +200,6 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   { 0, 0, 1, - 3,   8, 126, - 5, 1 }, { 0, 0, 1, - 2,   6, 126, - 4, 1 },
   { 0, 0, 0, - 1,   4, 127, - 3, 1 }, { 0, 0, 0,   0,   2, 127, - 1, 0 },
 
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
   // [2, 3)
   { 0, 0, 0, 0,   0, 127,   1,   0 }, { 0, 0, 0, 0, - 1, 127,   2,   0 },
   { 0, 0, 0, 0, - 2, 127,   4, - 1 }, { 0, 0, 0, 0, - 3, 126,   6, - 1 },
@@ -285,15 +270,9 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
 
   // dummy (replicate row index 447)
   { 0, 0, 0, 0, 0, 0,  2, 126 },
-#else
-  // dummy (replicate row index 191)
-  { 0, 0, 0,   0,   2, 127, - 1, 0 },
-#endif // CONFIG_RELAX_AFFINE_CONSTRAINTS
 #elif WARPEDPIXEL_PREC_BITS == 5
-  // The filters added below under CONFIG_RELAX_AFFINE_CONSTRAINTS are taken
-  // from WARPEDPIXEL_PREC_BITS=6 case by skipping alternate filters and the
-  // codec is not validated for this case.
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
+  // The filters added below are taken from WARPEDPIXEL_PREC_BITS=6 case by
+  // skipping alternate filters and the codec is not validated for this case.
   // [-3, -2)
   { 127,   1, 0, 0, 0, 0, 0, 0 }, { 124,   4, 0, 0, 0, 0, 0, 0 },
   { 120,   8, 0, 0, 0, 0, 0, 0 }, { 116,  12, 0, 0, 0, 0, 0, 0 },
@@ -328,7 +307,6 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   { - 6,  27, 115, - 8, 0, 0, 0, 0 }, { - 5,  22, 118, - 7, 0, 0, 0, 0 },
   { - 4,  18, 120, - 6, 0, 0, 0, 0 }, { - 3,  13, 123, - 5, 0, 0, 0, 0 },
   { - 2,   8, 125, - 3, 0, 0, 0, 0 }, { - 1,   4, 127, - 2, 0, 0, 0, 0 },
-#endif // CONFIG_RELAX_AFFINE_CONSTRAINTS
   // [-1, 0)
   {0,   0, 127,   1,   0, 0, 0, 0}, {1,  -3, 127,   4,  -1, 0, 0, 0},
   {1,  -5, 126,   8,  -3, 1, 0, 0}, {1,  -7, 124,  13,  -4, 1, 0, 0},
@@ -380,7 +358,6 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   {0, 0, 2,  -8,  27, 117, -13, 3}, {0, 0, 2,  -7,  22, 120, -11, 2},
   {0, 0, 1,  -6,  18, 122,  -9, 2}, {0, 0, 1,  -4,  13, 124,  -7, 1},
   {0, 0, 1,  -3,   8, 126,  -5, 1}, {0, 0, 0,  -1,   4, 127,  -3, 1},
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
   // [2, 3)
   { 0, 0, 0, 0,   0, 127,   1,   0 }, { 0, 0, 0, 0, - 2, 127,   4, - 1 },
   { 0, 0, 0, 0, - 3, 125,   8, - 2 }, { 0, 0, 0, 0, - 5, 123,  13, - 3 },
@@ -417,10 +394,6 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   {0, 0, 0, 0, 0, 0,   8, 120 }, {0, 0, 0, 0, 0, 0,   4, 124 },
   // dummy (replicate row index 223)
   {0, 0, 0, 0, 0, 0,   4, 124 },
-#else
-  // dummy (replicate row index 95)
-  {0, 0, 0,  -1,   4, 127,  -3, 1},
-#endif // CONFIG_RELAX_AFFINE_CONSTRAINTS
 
 #endif  // WARPEDPIXEL_PREC_BITS == 6
 };
@@ -562,13 +535,8 @@ static int is_affine_valid(const WarpedMotionParams *const wm) {
 
 static int is_affine_shear_allowed(int16_t alpha, int16_t beta, int16_t gamma,
                                    int16_t delta) {
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
   if ((4 * abs(alpha) + 7 * abs(beta) >= (3 << WARPEDMODEL_PREC_BITS)) ||
       (4 * abs(gamma) + 4 * abs(delta) >= (3 << WARPEDMODEL_PREC_BITS)))
-#else
-  if ((4 * abs(alpha) + 7 * abs(beta) >= (1 << WARPEDMODEL_PREC_BITS)) ||
-      (4 * abs(gamma) + 4 * abs(delta) >= (1 << WARPEDMODEL_PREC_BITS)))
-#endif  // CONFIG_RELAX_AFFINE_CONSTRAINTS
     return 0;
   else
     return 1;
@@ -582,11 +550,7 @@ int av1_get_shear_params(WarpedMotionParams *wm
 #endif  // CONFIG_ACROSS_SCALE_WARP
 ) {
   if (!is_affine_valid(wm)) return 0;
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
   const int16_t max_value = INT16_MAX - (1 << (WARP_PARAM_REDUCE_BITS - 1));
-#else
-  const int16_t max_value = INT16_MAX;
-#endif  // CONFIG_RELAX_AFFINE_CONSTRAINTS
 
 #if CONFIG_ACROSS_SCALE_WARP
   // Always use 4x4 warp in scale of across-scale
@@ -874,15 +838,9 @@ void av1_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
         int sx = sx4 + beta * (k + 4);
         for (int l = -4; l < 4; ++l) {
           int ix = ix4 + l - (taps_half - 1);
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
           const int offs = ROUND_POWER_OF_TWO(sx, WARPEDDIFF_PREC_BITS) +
                            3 * WARPEDPIXEL_PREC_SHIFTS;
           assert(offs >= 0 && offs <= WARPEDPIXEL_PREC_SHIFTS * 7);
-#else
-          const int offs = ROUND_POWER_OF_TWO(sx, WARPEDDIFF_PREC_BITS) +
-                           WARPEDPIXEL_PREC_SHIFTS;
-          assert(offs >= 0 && offs <= WARPEDPIXEL_PREC_SHIFTS * 3);
-#endif
           const int16_t *coeffs = av1_warped_filter[offs];
           int32_t sum = 1 << offset_bits_horiz;
           for (int m = 0; m < taps; ++m) {
@@ -900,15 +858,9 @@ void av1_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
       for (int k = -4; k < AOMMIN(4, p_row + p_height - i - 4); ++k) {
         int sy = sy4 + delta * (k + 4);
         for (int l = -4; l < AOMMIN(4, p_col + p_width - j - 4); ++l) {
-#if CONFIG_RELAX_AFFINE_CONSTRAINTS
           const int offs = ROUND_POWER_OF_TWO(sy, WARPEDDIFF_PREC_BITS) +
                            3 * WARPEDPIXEL_PREC_SHIFTS;
           assert(offs >= 0 && offs <= WARPEDPIXEL_PREC_SHIFTS * 7);
-#else
-          const int offs = ROUND_POWER_OF_TWO(sy, WARPEDDIFF_PREC_BITS) +
-                           WARPEDPIXEL_PREC_SHIFTS;
-          assert(offs >= 0 && offs <= WARPEDPIXEL_PREC_SHIFTS * 3);
-#endif  // CONFIG_RELAX_AFFINE_CONSTRAINTS
           const int16_t *coeffs = av1_warped_filter[offs];
 
           int32_t sum = 1 << offset_bits_vert;
