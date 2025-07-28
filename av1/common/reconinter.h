@@ -331,11 +331,7 @@ static INLINE int get_default_six_param_flag(const AV1_COMMON *const cm,
                                              const MB_MODE_INFO *mbmi) {
   return (cm->seq_params.enable_six_param_warp_delta &&
 
-#if CONFIG_REORDER_SIX_PARAM_DELTA
           mbmi->warp_ref_idx == 1)
-#else
-          mbmi->warp_ref_idx == 0)
-#endif  // CONFIG_REORDER_SIX_PARAM_DELTA
              ? 1
              : 0;
 }
@@ -366,11 +362,7 @@ static INLINE int allow_warp_parameter_signaling(const AV1_COMMON *const cm,
 #if CONFIG_SIX_PARAM_WARP_DELTA
       get_default_six_param_flag(cm, mbmi) ||  // 6-parameter
 #endif                                         // CONFIG_SIX_PARAM_WARP_DELTA
-#if CONFIG_REORDER_SIX_PARAM_DELTA
-      (mbmi->warp_ref_idx == 0);  // 4-parameter
-#else
-      (mbmi->warp_ref_idx == 1);  // 4-parameter
-#endif  // CONFIG_REORDER_SIX_PARAM_DELTA
+      (mbmi->warp_ref_idx == 0);               // 4-parameter
 
   return (mbmi->mode == WARP_NEWMV && cm->features.allow_warpmv_mode &&
           mbmi->motion_mode == WARP_DELTA && allow_delta_for_this_warp_ref_idx);

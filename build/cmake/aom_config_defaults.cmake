@@ -450,9 +450,6 @@ set_aom_config_var(CONFIG_MV_TRAJECTORY 1
 set_aom_config_var(CONFIG_WEDGE_SIMPL 1 "Wedge mode simplificaitons.")
 set_aom_config_var(CONFIG_SIX_PARAM_WARP_DELTA 1
                    "Enable six parameter warp models.")
-set_aom_config_var(
-  CONFIG_REORDER_SIX_PARAM_DELTA 1
-  "Enable to six parameter warp models signal when warp_ref_idx is 1.")
 
 set_aom_config_var(CONFIG_WARP_INTER_INTRA 1
                    "Enable inter-intra mode for warp block.")
