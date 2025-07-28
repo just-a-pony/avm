@@ -14,9 +14,7 @@
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
 #include "test/warp_filter_test_util.h"
 using libaom_test::ACMRandom;
-#if CONFIG_EXT_WARP_FILTER
 using libaom_test::AV1ExtHighbdWarpFilter::AV1ExtHighbdWarpFilterTest;
-#endif  // CONFIG_EXT_WARP_FILTER
 using libaom_test::AV1HighbdWarpFilter::AV1HighbdWarpFilterTest;
 using std::make_tuple;
 using std::tuple;
@@ -35,7 +33,6 @@ INSTANTIATE_TEST_SUITE_P(SSE4_1, AV1HighbdWarpFilterTest,
                          libaom_test::AV1HighbdWarpFilter::BuildParams(
                              av1_highbd_warp_affine_sse4_1));
 #endif  // HAVE_SSE4_1
-#if CONFIG_EXT_WARP_FILTER
 TEST_P(AV1ExtHighbdWarpFilterTest, CheckOutput) {
   RunCheckOutput(::testing::get<4>(GET_PARAM(0)));
 }
@@ -54,7 +51,6 @@ INSTANTIATE_TEST_SUITE_P(AVX2, AV1ExtHighbdWarpFilterTest,
                              av1_ext_highbd_warp_affine_avx2));
 #endif  // HAVE_AVX2
 #endif  // !COFNIG_WARP_BD
-#endif  // CONFIG_EXT_WARP_FILTER
 
 #if HAVE_AVX2
 INSTANTIATE_TEST_SUITE_P(

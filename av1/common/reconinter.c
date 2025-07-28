@@ -4249,7 +4249,6 @@ static void build_inter_predictors_8x8_and_bigger(
         ref, plane, xd->tmp_conv_dst, MAX_SB_SIZE, is_compound, xd->bd);
 
     av1_init_warp_params(&inter_pred_params, &warp_types, ref, xd, mi);
-#if CONFIG_EXT_WARP_FILTER
 #if CONFIG_ACROSS_SCALE_WARP
     assert(IMPLIES(inter_pred_params.mode == WARP_PRED &&
                        av1_is_scaled(inter_pred_params.scale_factors),
@@ -4312,8 +4311,6 @@ static void build_inter_predictors_8x8_and_bigger(
       }
 #endif  // CONFIG_WARP_BD_BOX
     }
-
-#endif  // CONFIG_EXT_WARP_FILTER
 
     if (is_compound) {
       inter_pred_params.sb_type =

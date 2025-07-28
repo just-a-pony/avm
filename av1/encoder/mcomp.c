@@ -5948,7 +5948,6 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   }
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
   av1_reduce_warp_model(params);
-#if CONFIG_EXT_WARP_FILTER
   av1_get_shear_params(params
 #if CONFIG_ACROSS_SCALE_WARP
                        ,
@@ -5956,20 +5955,6 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #endif  // CONFIG_ACROSS_SCALE_WARP
   );
   params->invalid = 0;
-#else
-  valid =
-      av1_get_shear_params(params
-#if CONFIG_ACROSS_SCALE_WARP
-                           ,
-                           get_ref_scale_factors_const(cm, mbmi->ref_frame[0])
-#endif  // CONFIG_ACROSS_SCALE_WARP
-      );
-  params->invalid = !valid;
-  if (!valid) {
-    // Don't try to refine from a broken starting point
-    return 0;
-  }
-#endif  // CONFIG_EXT_WARP_FILTER
 
 #if CONFIG_WARP_PRECISION
   const int warp_precision_idx_rate =
@@ -6038,24 +6023,12 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #if CONFIG_SIX_PARAM_WARP_DELTA
         }
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
-#if CONFIG_EXT_WARP_FILTER
         valid = av1_is_warp_model_reduced(params) && av1_get_shear_params(params
 #if CONFIG_ACROSS_SCALE_WARP
                                                                           ,
                                                                           sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
                                                      );
-#else
-        av1_reduce_warp_model(params);
-        valid = av1_get_shear_params(
-            params
-#if CONFIG_ACROSS_SCALE_WARP
-            ,
-            get_ref_scale_factors_const(cm, mbmi->ref_frame[0])
-#endif  // CONFIG_ACROSS_SCALE_WARP
-        );
-        params->invalid = !valid;
-#endif  // CONFIG_EXT_WARP_FILTER
         if (valid) {
           av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv,
                                    params);
@@ -6092,24 +6065,12 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #if CONFIG_SIX_PARAM_WARP_DELTA
         }
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
-#if CONFIG_EXT_WARP_FILTER
         valid = av1_is_warp_model_reduced(params) && av1_get_shear_params(params
 #if CONFIG_ACROSS_SCALE_WARP
                                                                           ,
                                                                           sf
 #endif  // CONFIG_ACROSS_SCALE_WARP
                                                      );
-#else
-        av1_reduce_warp_model(params);
-        valid = av1_get_shear_params(
-            params
-#if CONFIG_ACROSS_SCALE_WARP
-            ,
-            get_ref_scale_factors_const(cm, mbmi->ref_frame[0])
-#endif  // CONFIG_ACROSS_SCALE_WARP
-        );
-        params->invalid = !valid;
-#endif  // CONFIG_EXT_WARP_FILTER
         if (valid) {
           av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv,
                                    params);

@@ -16,7 +16,6 @@
 #include "aom_dsp/x86/convolve_sse4_1.h"
 #include "av1/common/warped_motion.h"
 
-#if CONFIG_EXT_WARP_FILTER
 DECLARE_ALIGNED(32, static const uint8_t,
                 shuffle_pattern_0[32]) = { 0, 1, 2, 3, 2, 3, 4, 5, 4, 5, 6,
                                            7, 6, 7, 8, 9, 0, 1, 2, 3, 2, 3,
@@ -31,7 +30,6 @@ DECLARE_ALIGNED(32, static const uint8_t, shuffle_pattern_2[32]) = {
   6, 7, 8, 9, 8, 9, 10, 11, 10, 11, 12, 13, 12, 13, 14, 15,
   6, 7, 8, 9, 8, 9, 10, 11, 10, 11, 12, 13, 12, 13, 14, 15
 };
-#endif  // CONFIG_EXT_WARP_FILTER
 
 DECLARE_ALIGNED(32, static const uint8_t, warp_highbd_shuffle_pattern[32]) = {
   0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15,
@@ -661,7 +659,6 @@ void av1_highbd_warp_affine_avx2(const int32_t *mat, const uint16_t *ref,
   }
 }
 
-#if CONFIG_EXT_WARP_FILTER
 static INLINE void av1_ext_highbd_filter_coeff_avx2(int offset_j0,
                                                     int offset_j4,
                                                     __m256i *coeff) {
@@ -1004,4 +1001,3 @@ void av1_ext_highbd_warp_affine_avx2(const int32_t *mat, const uint16_t *ref,
     }
   }
 }
-#endif  // CONFIG_EXT_WARP_FILTER

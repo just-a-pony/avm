@@ -398,7 +398,6 @@ const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 7 + 1][8] = {
 #endif  // WARPEDPIXEL_PREC_BITS == 6
 };
 
-#if CONFIG_EXT_WARP_FILTER
 DECLARE_ALIGNED(16, const int16_t,
                 av1_ext_warped_filter[EXT_WARP_PHASES + 1][EXT_WARP_STORAGE_TAPS]) = {
 // The extended warp filter is a 6-tap filter, but we store each kernel with
@@ -469,7 +468,6 @@ DECLARE_ALIGNED(16, const int16_t,
 { 0,   0,   2, 127,  -1, 0, 0, 0 },
 { 0,   0,   0, 128,  0, 0, 0, 0 },
 };
-#endif  // CONFIG_EXT_WARP_FILTER
 /* clang-format on */
 
 // Recompute the translational part of a warp model, so that the center
@@ -598,7 +596,6 @@ int av1_get_shear_params(WarpedMotionParams *wm
       (int16_t)(ROUND_POWER_OF_TWO_SIGNED(wm->delta, WARP_PARAM_REDUCE_BITS) *
                 (1 << WARP_PARAM_REDUCE_BITS));
 
-#if CONFIG_EXT_WARP_FILTER
   wm->use_affine_filter =
 #if CONFIG_ACROSS_SCALE_WARP
       is_scaled
@@ -606,10 +603,6 @@ int av1_get_shear_params(WarpedMotionParams *wm
           :
 #endif  // CONFIG_ACROSS_SCALE_WARP
           is_affine_shear_allowed(wm->alpha, wm->beta, wm->gamma, wm->delta);
-#else
-  if (!is_affine_shear_allowed(wm->alpha, wm->beta, wm->gamma, wm->delta))
-    return 0;
-#endif  // CONFIG_EXT_WARP_FILTER
 
   return 1;
 }
@@ -623,7 +616,6 @@ int av1_get_shear_params(WarpedMotionParams *wm
 // in a signed integer with (WARPEDMODEL_PREC_BITS - WARP_PARAM_REDUCE_BITS)
 // total bits
 void av1_reduce_warp_model(WarpedMotionParams *wm) {
-#if CONFIG_EXT_WARP_FILTER
   // Constrain parameters so that they lie within the range of +/- 1/2
   // relative to the identity model.
   //
@@ -635,14 +627,6 @@ void av1_reduce_warp_model(WarpedMotionParams *wm) {
   const int max_value =
       (1 << (WARPEDMODEL_PREC_BITS - 1)) - (1 << WARP_PARAM_REDUCE_BITS);
   const int min_value = -max_value;
-#else
-  // Think of this range as an int<N>, multiplied by (1 <<
-  // WARP_PARAM_REDUCE_BITS). In other words, the max is -2^(N-1) and max is
-  // (2^(N-1) - 1), but with an extra multiplier applied to both terms
-  const int min_value = -(1 << (WARPEDMODEL_PREC_BITS - 1));
-  const int max_value =
-      (1 << (WARPEDMODEL_PREC_BITS - 1)) - (1 << WARP_PARAM_REDUCE_BITS);
-#endif  // CONFIG_EXT_WARP_FILTER
 
   for (int i = 2; i < 6; i++) {
     int offset = (i == 2 || i == 5) ? (1 << WARPEDMODEL_PREC_BITS) : 0;
@@ -656,7 +640,6 @@ void av1_reduce_warp_model(WarpedMotionParams *wm) {
   }
 }
 
-#if CONFIG_EXT_WARP_FILTER
 // Check if a model is already properly reduced, according to the same logic
 // used in av1_reduce_warp_model()
 bool av1_is_warp_model_reduced(WarpedMotionParams *wm) {
@@ -685,7 +668,6 @@ bool av1_is_warp_model_reduced(WarpedMotionParams *wm) {
 
   return true;
 }
-#endif  // CONFIG_EXT_WARP_FILTER
 
 /* The warp filter for ROTZOOM and AFFINE models works as follows:
    * Split the input into 8x8 blocks
@@ -907,7 +889,6 @@ void av1_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
   }
 }
 
-#if CONFIG_EXT_WARP_FILTER
 /* Extended-range warp filter, used for strong warps where the regular
    affine filter (av1_highbd_warp_affine) is not usable.
 
@@ -1270,7 +1251,6 @@ void av1_ext_highbd_warp_affine_scaled_c(
   }
 }
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#endif  // CONFIG_EXT_WARP_FILTER
 
 void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
                        int width, int height, int stride, uint16_t *const pred,
@@ -1302,7 +1282,6 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
   const int16_t gamma = wm->gamma;
   const int16_t delta = wm->delta;
 
-#if CONFIG_EXT_WARP_FILTER
 #if CONFIG_ACROSS_SCALE_WARP
   assert(IMPLIES(!is_scaled,
                  wm->use_affine_filter ==
@@ -1349,7 +1328,6 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
 #endif  // CONFIG_ACROSS_SCALE_WARP
 
   } else {
-#endif  // CONFIG_EXT_WARP_FILTER
     av1_highbd_warp_affine(mat, ref, width, height, stride, pred, p_col, p_row,
                            p_width, p_height, p_stride, subsampling_x,
                            subsampling_y, bd, conv_params, alpha, beta, gamma,

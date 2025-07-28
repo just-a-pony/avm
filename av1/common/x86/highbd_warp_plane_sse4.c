@@ -642,7 +642,6 @@ void av1_highbd_warp_affine_sse4_1(const int32_t *mat, const uint16_t *ref,
   }
 }
 
-#if CONFIG_EXT_WARP_FILTER
 static INLINE void ext_highbd_filter_coeff(int offset_x, __m128i *coeff) {
   // Filter coeff
   const __m128i filt =
@@ -1096,4 +1095,3 @@ void av1_ext_highbd_warp_affine_sse4_1(const int32_t *mat, const uint16_t *ref,
     }
   }
 }
-#endif  // CONFIG_EXT_WARP_FILTER

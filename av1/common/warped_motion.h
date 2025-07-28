@@ -36,7 +36,6 @@
 #define WARP_ERROR_BLOCK_LOG 5
 #define WARP_ERROR_BLOCK (1 << WARP_ERROR_BLOCK_LOG)
 
-#if CONFIG_EXT_WARP_FILTER
 #define EXT_WARP_TAPS 6
 #define EXT_WARP_PHASES_LOG2 6
 #define EXT_WARP_PHASES (1 << EXT_WARP_PHASES_LOG2)
@@ -45,7 +44,6 @@
 // The extended warp filter is a 6-tap filter, but we store each kernel with
 // two extra zeros at the end so that each kernel is 16-byte aligned
 #define EXT_WARP_STORAGE_TAPS 8
-#endif  // CONFIG_EXT_WARP_FILTER
 
 #define DIV_LUT_PREC_BITS 14
 #define DIV_LUT_BITS 8
@@ -143,10 +141,8 @@ extern const int16_t av1_warped_filter[WARPEDPIXEL_PREC_SHIFTS * 7 + 1][8];
 DECLARE_ALIGNED(8, extern const int8_t,
                 av1_filter_8bit[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8]);
 
-#if CONFIG_EXT_WARP_FILTER
 extern const int16_t av1_ext_warped_filter[EXT_WARP_PHASES + 1]
                                           [EXT_WARP_STORAGE_TAPS];
-#endif  // CONFIG_EXT_WARP_FILTER
 
 static const uint8_t warp_pad_left[14][16] = {
   { 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
@@ -244,11 +240,9 @@ int av1_get_shear_params(WarpedMotionParams *wm
 // av1_get_shear_params() are called
 void av1_reduce_warp_model(WarpedMotionParams *wm);
 
-#if CONFIG_EXT_WARP_FILTER
 // Check if a model is already properly reduced, according to the same logic
 // used in av1_reduce_warp_model()
 bool av1_is_warp_model_reduced(WarpedMotionParams *wm);
-#endif  // CONFIG_EXT_WARP_FILTER
 
 int av1_extend_warp_model(const bool neighbor_is_above, const BLOCK_SIZE bsize,
                           const MV *center_mv, const int mi_row,
