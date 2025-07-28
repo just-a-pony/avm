@@ -6235,6 +6235,66 @@ int allow_extend_nb(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   }
 }
 
+#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
+uint8_t av1_is_warp_causal_allowed(const AV1_COMMON *cm,
+                                   const MACROBLOCKD *xd) {
+  const TileInfo *const tile = &xd->tile;
+  const MB_MODE_INFO *const mbmi = xd->mi[0];
+
+  POSITION mi_pos;
+  MVP_UNIT_STATUS row_smvp_state[4] = { 0 };
+  get_row_smvp_states(cm, xd, row_smvp_state);
+
+  // left
+  mi_pos.row = xd->height - 1;
+  mi_pos.col = -1;
+  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->left_available) {
+    const MB_MODE_INFO *neighbor_mi =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    if (neighbor_mi->skip_mode == 0 && is_same_ref_frame(neighbor_mi, mbmi)) {
+      return 1;
+    }
+  }
+
+  // up
+  mi_pos.row = row_smvp_state[0].row_offset;
+  mi_pos.col = row_smvp_state[0].col_offset;
+  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) &&
+      row_smvp_state[0].is_available) {
+    const MB_MODE_INFO *neighbor_mi =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    if (neighbor_mi->skip_mode == 0 && is_same_ref_frame(neighbor_mi, mbmi)) {
+      return 1;
+    }
+  }
+
+  // left
+  mi_pos.row = 0;
+  mi_pos.col = -1;
+  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) && xd->left_available) {
+    const MB_MODE_INFO *neighbor_mi =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    if (neighbor_mi->skip_mode == 0 && is_same_ref_frame(neighbor_mi, mbmi)) {
+      return 1;
+    }
+  }
+
+  // up
+  mi_pos.row = row_smvp_state[1].row_offset;
+  mi_pos.col = row_smvp_state[1].col_offset;
+  if (is_inside(tile, xd->mi_col, xd->mi_row, &mi_pos) &&
+      row_smvp_state[1].is_available) {
+    const MB_MODE_INFO *neighbor_mi =
+        xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
+    if (neighbor_mi->skip_mode == 0 && is_same_ref_frame(neighbor_mi, mbmi)) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
+
 static AOM_INLINE POSITION get_pos_from_pos_idx(const AV1_COMMON *cm,
                                                 const MACROBLOCKD *xd,
                                                 int pos_idx) {

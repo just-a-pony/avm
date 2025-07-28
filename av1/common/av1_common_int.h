@@ -4830,6 +4830,13 @@ static inline int is_this_mv_precision_compliant(
 static INLINE bool is_warp_mode(MOTION_MODE motion_mode) {
   return (motion_mode >= WARP_CAUSAL);
 }
+#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
+// Returns whether warp causal is allowed
+// by checking only four neighboring blocks.
+// It does not check all the neighboring blocks used
+// in the derivation of warp model in warp causal mode
+uint8_t av1_is_warp_causal_allowed(const AV1_COMMON *cm, const MACROBLOCKD *xd);
+#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
 
 /* Evaluate which motion modes are allowed for the current block
  * Returns a bit field, where motion mode `i` is allowed if and only if
@@ -4905,7 +4912,13 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
 #if CONFIG_COMPOUND_WARP_CAUSAL
     if (frame_warp_causal_allowed && mbmi->num_proj_ref[0] >= 1) {
 #else
-    if (frame_warp_causal_allowed && mbmi->num_proj_ref >= 1) {
+    if (frame_warp_causal_allowed &&
+#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
+        av1_is_warp_causal_allowed(cm, xd)
+#else
+        mbmi->num_proj_ref >= 1
+#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
+    ) {
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
       allowed_motion_mode_warpmv |= (1 << WARP_CAUSAL);
     }
@@ -4917,11 +4930,15 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     int allowed_motion_modes = 0;
 
     if (
+#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
+        av1_is_warp_causal_allowed(cm, xd)
+#else
 #if CONFIG_COMPOUND_WARP_CAUSAL
         mbmi->num_proj_ref[0] >= 1
 #else
         mbmi->num_proj_ref >= 1
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
+#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
     ) {
       allowed_motion_modes |= (1 << WARP_CAUSAL);
     }

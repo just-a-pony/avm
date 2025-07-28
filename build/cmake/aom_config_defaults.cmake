@@ -285,6 +285,8 @@ set_aom_config_var(CONFIG_D149_CTX_MODELING_OPT 1
 set_aom_config_var(
   CONFIG_COMPOUND_WARP_CAUSAL 1
   "AV2 experiment flag to enable compound new_newmv warp_causal mode")
+set_aom_config_var(CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION 1
+                   "reduce warp causal parsing dependency")
 set_aom_config_var(CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL 1
                    "Removes threshold based selection stratergy in warp causal")
 set_aom_config_var(CONFIG_BANK_IMPROVE 1
