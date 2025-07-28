@@ -604,8 +604,6 @@ int av1_refine_low_precision_intraBC_dv(
     BLOCK_SIZE bsize);
 #endif  // CONFIG_IBC_SUBPEL_PRECISION
 
-#if CONFIG_WARP_PRECISION
-
 // Struct to store coding info for fast warp search
 typedef struct {
   WarpedMotionParams prev_wm_params;
@@ -624,7 +622,6 @@ void reset_warp_stats_buffer(warp_mode_info_array *warp_stats);
 void update_warp_stats_buffer(const warp_mode_info *const this_warp_stats,
                               warp_mode_info_array *warp_stats);
 
-#endif  // CONFIG_WARP_PRECISION
 unsigned int av1_refine_warped_mv(MACROBLOCKD *xd, const AV1_COMMON *const cm,
                                   const SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
                                   BLOCK_SIZE bsize, const int *pts0,
@@ -648,9 +645,7 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                         MB_MODE_INFO *mbmi,
                         const SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
                         const ModeCosts *mode_costs,
-#if CONFIG_WARP_PRECISION
                         warp_mode_info_array *prev_best_models,
-#endif  // CONFIG_WARP_PRECISION
                         WARP_CANDIDATE *warp_param_stack);
 
 int av1_refine_mv_for_base_param_warp_model(

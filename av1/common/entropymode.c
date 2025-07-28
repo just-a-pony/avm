@@ -5536,7 +5536,6 @@ static const aom_cdf_prob default_warp_causal_cdf[WARP_CAUSAL_MODE_CTX]
                                                    { AOM_CDF2(17863) }
                                                  };
 
-#if CONFIG_WARP_PRECISION
 static const aom_cdf_prob
     default_warp_precision_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
         NUM_WARP_PRECISION_MODES)] = {
@@ -5552,7 +5551,6 @@ static const aom_cdf_prob
       { AOM_CDF2(16384), 0 }, { AOM_CDF2(16384), 0 }, { AOM_CDF2(16384), 0 },
       { AOM_CDF2(16384), 0 },
     };
-#endif  // CONFIG_WARP_PRECISION
 
 #if CONFIG_D149_CTX_MODELING_OPT
 static const aom_cdf_prob default_warp_causal_warpmv_cdf[CDF_SIZE(2)] = {
@@ -5609,7 +5607,6 @@ static const aom_cdf_prob
     };
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_WARP_PRECISION
 static const aom_cdf_prob
     default_warp_delta_param_cdf[2][CDF_SIZE(WARP_DELTA_NUMSYMBOLS_LOW)] = {
       { AOM_CDF8(9210, 20919, 23883, 28837, 29680, 31427, 31670) },
@@ -5623,17 +5620,6 @@ static const aom_cdf_prob default_warp_delta_param_high_cdf[2][CDF_SIZE(
 
 static const aom_cdf_prob default_warp_param_sign_cdf[CDF_SIZE(2)] = { AOM_CDF2(
     16384) };
-#else
-static const aom_cdf_prob
-    default_warp_delta_param_cdf[2][CDF_SIZE(WARP_DELTA_NUMSYMBOLS_LOW)] = {
-      { AOM_CDF15(1145, 1345, 2592, 3313, 5807, 7676, 11006, 22326, 26018,
-                  27897, 29625, 30747, 31669, 31902),
-        75 },
-      { AOM_CDF15(1211, 1656, 2876, 3713, 6446, 8632, 12954, 20000, 23904,
-                  26663, 28718, 29949, 31370, 31806),
-        75 },
-    };
-#endif  // CONFIG_WARP_PRECISION
 
 static const aom_cdf_prob default_warp_extend_cdf[WARP_EXTEND_CTX][CDF_SIZE(
     2)] = { { AOM_CDF2(20856) }, { AOM_CDF2(18023) }, { AOM_CDF2(16560) } };
@@ -7243,15 +7229,11 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->warp_ref_idx_cdf[1], default_warp_ref_idx1_cdf);
   av1_copy(fc->warp_ref_idx_cdf[2], default_warp_ref_idx2_cdf);
   av1_copy(fc->warpmv_with_mvd_flag_cdf, default_warpmv_with_mvd_flag_cdf);
-#if CONFIG_WARP_PRECISION
   av1_copy(fc->warp_precision_idx_cdf, default_warp_precision_idx_cdf);
-#endif  // CONFIG_WARP_PRECISION
 
   av1_copy(fc->warp_delta_param_cdf, default_warp_delta_param_cdf);
-#if CONFIG_WARP_PRECISION
   av1_copy(fc->warp_delta_param_high_cdf, default_warp_delta_param_high_cdf);
   av1_copy(fc->warp_param_sign_cdf, default_warp_param_sign_cdf);
-#endif  // CONFIG_WARP_PRECISION
   av1_copy(fc->warp_extend_cdf, default_warp_extend_cdf);
   av1_copy(fc->skip_drl_cdf, default_skip_drl_cdf);
   av1_copy(fc->tip_drl_cdf, default_tip_drl_cdf);
@@ -7682,7 +7664,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
   CUMULATIVE_AVERAGE_CDF(ctx_left->warp_delta_param_cdf,
                          ctx_tr->warp_delta_param_cdf,
                          WARP_DELTA_NUMSYMBOLS_LOW);
-#if CONFIG_WARP_PRECISION
   CUMULATIVE_AVERAGE_CDF(ctx_left->warp_precision_idx_cdf,
                          ctx_tr->warp_precision_idx_cdf,
                          NUM_WARP_PRECISION_MODES);
@@ -7691,7 +7672,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          WARP_DELTA_NUMSYMBOLS_HIGH);
   CUMULATIVE_AVERAGE_CDF(ctx_left->warp_param_sign_cdf,
                          ctx_tr->warp_param_sign_cdf, 2);
-#endif  // CONFIG_WARP_PRECISION
 
   CUMULATIVE_AVERAGE_CDF(ctx_left->warp_causal_warpmv_cdf,
                          ctx_tr->warp_causal_warpmv_cdf, 2);
@@ -8116,11 +8096,9 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   SHIFT_CDF(ctx_ptr->warp_causal_cdf, 2);
   SHIFT_CDF(ctx_ptr->warp_delta_param_cdf, WARP_DELTA_NUMSYMBOLS_LOW);
 
-#if CONFIG_WARP_PRECISION
   SHIFT_CDF(ctx_ptr->warp_precision_idx_cdf, NUM_WARP_PRECISION_MODES);
   SHIFT_CDF(ctx_ptr->warp_delta_param_high_cdf, WARP_DELTA_NUMSYMBOLS_HIGH);
   SHIFT_CDF(ctx_ptr->warp_param_sign_cdf, 2);
-#endif  // CONFIG_WARP_PRECISION
 
   SHIFT_CDF(ctx_ptr->warp_causal_warpmv_cdf, 2);
   SHIFT_CDF(ctx_ptr->warp_ref_idx_cdf, 2);
@@ -8527,11 +8505,9 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->warp_causal_cdf, ctx_tr->warp_causal_cdf, 2);
   AVERAGE_CDF(ctx_left->warp_delta_param_cdf, ctx_tr->warp_delta_param_cdf,
               WARP_DELTA_NUMSYMBOLS_LOW);
-#if CONFIG_WARP_PRECISION
   AVERAGE_CDF(ctx_left->warp_delta_param_high_cdf,
               ctx_tr->warp_delta_param_high_cdf, WARP_DELTA_NUMSYMBOLS_HIGH);
   AVERAGE_CDF(ctx_left->warp_param_sign_cdf, ctx_tr->warp_param_sign_cdf, 2);
-#endif  // CONFIG_WARP_PRECISION
 
   AVERAGE_CDF(ctx_left->warp_causal_warpmv_cdf, ctx_tr->warp_causal_warpmv_cdf,
               2);
@@ -8539,10 +8515,8 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->warpmv_with_mvd_flag_cdf,
               ctx_tr->warpmv_with_mvd_flag_cdf, 2);
 
-#if CONFIG_WARP_PRECISION
   AVERAGE_CDF(ctx_left->warp_precision_idx_cdf, ctx_tr->warp_precision_idx_cdf,
               NUM_WARP_PRECISION_MODES);
-#endif  // CONFIG_WARP_PRECISION
 
   AVERAGE_CDF(ctx_left->warp_extend_cdf, ctx_tr->warp_extend_cdf, 2);
 

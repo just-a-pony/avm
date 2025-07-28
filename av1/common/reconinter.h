@@ -320,15 +320,9 @@ void av1_init_inter_params(InterPredParams *inter_pred_params, int block_width,
 // Get the step size and maximum coded index of the warp block
 static INLINE void get_warp_model_steps(const MB_MODE_INFO *mbmi,
                                         int *step_size, int *max_coded_index) {
-#if CONFIG_WARP_PRECISION
   int step_size_log2 = mbmi->warp_precision_idx == 0 ? 11 : 10;
   *step_size = 1 << step_size_log2;
   *max_coded_index = mbmi->warp_precision_idx == 0 ? 7 : 14;
-#else
-  (void)mbmi;
-  *step_size = (1 << WARP_DELTA_STEP_BITS);
-  *max_coded_index = WARP_DELTA_CODED_MAX;
-#endif  // CONFIG_WARP_PRECISION
 }
 
 #if CONFIG_SIX_PARAM_WARP_DELTA

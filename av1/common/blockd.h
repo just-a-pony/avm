@@ -672,10 +672,8 @@ typedef struct MB_MODE_INFO {
   uint8_t warp_inter_intra;
 #endif  // CONFIG_WARP_INTER_INTRA
 
-#if CONFIG_WARP_PRECISION
   /*! \brief warp_precision_idx this mbmi. */
   uint8_t warp_precision_idx;
-#endif  // CONFIG_WARP_PRECISION
 
   /*! \brief Indicates if masked compound is used(1) or not (0). */
   uint8_t comp_group_idx : 1;

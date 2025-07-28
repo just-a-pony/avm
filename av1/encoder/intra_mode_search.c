@@ -937,9 +937,7 @@ int av1_search_palette_mode(IntraModeSearchState *intra_search_state,
   mbmi->six_param_warp_model_flag = 0;
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
-#if CONFIG_WARP_PRECISION
   mbmi->warp_precision_idx = 0;
-#endif  // CONFIG_WARP_PRECISION
 #if CONFIG_WARP_INTER_INTRA
   mbmi->warp_inter_intra = 0;
 #endif  // CONFIG_WARP_INTER_INTRA

@@ -5557,9 +5557,7 @@ uint8_t need_mv_adjustment(MACROBLOCKD *xd, const AV1_COMMON *const cm,
 }
 #endif  // CONFIG_DERIVED_MVD_SIGN
 
-#if CONFIG_WARP_PRECISION
 #define MAX_WARP_DELTA_ITERS_EXT 14
-#endif  // CONFIG_WARP_PRECISION
 #define MAX_WARP_DELTA_ITERS 8
 // This function is used to search the translational MV part of the warp model
 // and only invoked when delta parameters are signaled for warp-delta mode.
@@ -5568,11 +5566,9 @@ static void refine_translational_mv(
     const SUBPEL_MOTION_SEARCH_PARAMS *ms_params, MB_MODE_INFO *mbmi,
     WarpedMotionParams *params, WarpedMotionParams *base_params,
     WarpedMotionParams *best_wm_params, MV *best_mv,
-#if CONFIG_WARP_PRECISION
-    int warp_precision_idx_rate,
-#endif  // CONFIG_WARP_PRECISION
-    const ModeCosts *mode_costs, int step_size, int max_coded_index,
-    int num_neighbors, int num_mv_iterations, uint64_t *best_rd) {
+    int warp_precision_idx_rate, const ModeCosts *mode_costs, int step_size,
+    int max_coded_index, int num_neighbors, int num_mv_iterations,
+    uint64_t *best_rd) {
   static const MV neighbors[8] = { { 0, -1 }, { 1, 0 }, { 0, 1 },   { -1, 0 },
                                    { 1, -1 }, { 1, 1 }, { -1, -1 }, { -1, 1 } };
 
@@ -5588,12 +5584,9 @@ static void refine_translational_mv(
 
   // Cost up the non-translational part of the model. Again, this will
   // not change between iterations of the following loop
-  int rate =
-#if CONFIG_WARP_PRECISION
-      warp_precision_idx_rate +
-#endif  // CONFIG_WARP_PRECISION
-      av1_cost_model_param(mbmi, mode_costs, step_size, max_coded_index,
-                           base_params);
+  int rate = warp_precision_idx_rate +
+             av1_cost_model_param(mbmi, mode_costs, step_size, max_coded_index,
+                                  base_params);
 
   for (int iterations = 0; iterations < num_mv_iterations; iterations++) {
     int best_idx = -1;
@@ -5639,8 +5632,6 @@ static void refine_translational_mv(
     }
   }  // (int iterations = 0; iterations < 2; iterations++) {
 }
-
-#if CONFIG_WARP_PRECISION
 
 // During searching of the warp-model in the encoder, a circular buffer is
 // maintained to store previously searched warp models. Later on during the
@@ -5716,8 +5707,6 @@ static int get_valid_model_from_warp_stats_buffer(
   return 0;
 }
 
-#endif  // CONFIG_WARP_PRECISION
-
 // Returns 1 if able to select a good model, 0 if not
 // TODO(rachelbarker):
 // This function cannot use the same neighbor pruning used in the other warp
@@ -5728,9 +5717,7 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                         MB_MODE_INFO *mbmi,
                         const SUBPEL_MOTION_SEARCH_PARAMS *ms_params,
                         const ModeCosts *mode_costs,
-#if CONFIG_WARP_PRECISION
                         warp_mode_info_array *prev_best_models,
-#endif  // CONFIG_WARP_PRECISION
                         WARP_CANDIDATE *warp_param_stack) {
   WarpedMotionParams *params = &mbmi->wm_params[0];
   const BLOCK_SIZE bsize = mbmi->sb_type[PLANE_TYPE_Y];
@@ -5741,10 +5728,8 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       get_ref_scale_factors_const(cm, mbmi->ref_frame[0]);
 #endif  // CONFIG_ACROSS_SCALE_WARP
 
-#if CONFIG_WARP_PRECISION
   bool skip_mv_search = 0;
   int enable_fast_model_search = prev_best_models && mbmi->warp_precision_idx;
-#endif  // CONFIG_WARP_PRECISION
   // Note(rachelbarker): Technically we can refine MVs for the AMVDNEWMV mode
   // too, but it requires more complex logic for less payoff compared to
   // refinement for NEWMV. So we don't do that currently.
@@ -5785,7 +5770,6 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   const int max_warp_delta_value = step_size * max_coded_index;
   WarpedMotionParams start_params = base_params;
 
-#if CONFIG_WARP_PRECISION
   WarpedMotionParams prev_wm_params;
   if (enable_fast_model_search) {
     warp_mode_info *prev_best_model = NULL;
@@ -5844,20 +5828,14 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       enable_fast_model_search = 0;
     }
   }
-#endif  // CONFIG_WARP_PRECISION
 
-  int number_of_iterations =
-#if CONFIG_WARP_PRECISION
-      (max_coded_index >= WARP_DELTA_NUMSYMBOLS_LOW) ? MAX_WARP_DELTA_ITERS_EXT
-                                                     :
-#endif
-                                                     MAX_WARP_DELTA_ITERS;
+  int number_of_iterations = (max_coded_index >= WARP_DELTA_NUMSYMBOLS_LOW)
+                                 ? MAX_WARP_DELTA_ITERS_EXT
+                                 : MAX_WARP_DELTA_ITERS;
 
-#if CONFIG_WARP_PRECISION
   if (enable_fast_model_search) {
     number_of_iterations = 2;
   }
-#endif  // CONFIG_WARP_PRECISION
 
   // Set up initial model by copying global motion model
   // and adjusting for the chosen motion vector
@@ -5888,23 +5866,18 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   );
   params->invalid = 0;
 
-#if CONFIG_WARP_PRECISION
   const int warp_precision_idx_rate =
       mode_costs
           ->warp_precision_idx_cost[mbmi->sb_type[xd->tree_type == CHROMA_PART]]
                                    [mbmi->warp_precision_idx];
-#endif  // CONFIG_WARP_PRECISION
 
   av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv, params);
 
   // Calculate initial error
   best_wm_params = *params;
-  rate =
-#if CONFIG_WARP_PRECISION
-      warp_precision_idx_rate +
-#endif  // CONFIG_WARP_PRECISION
-      av1_cost_model_param(mbmi, mode_costs, step_size, max_coded_index,
-                           &base_params);
+  rate = warp_precision_idx_rate +
+         av1_cost_model_param(mbmi, mode_costs, step_size, max_coded_index,
+                              &base_params);
   sse = compute_motion_cost(xd, cm, ms_params, bsize, best_mv, can_refine_mv);
   best_rd = sse + (int)ROUND_POWER_OF_TWO_64((int64_t)rate * error_per_bit,
                                              RDDIV_BITS + AV1_PROB_COST_SHIFT -
@@ -5917,17 +5890,10 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
   for (int iter = 0; iter < number_of_iterations; iter++) {
     int center_best_so_far = 1;
 
-    if (can_refine_mv
-#if CONFIG_WARP_PRECISION
-        && !skip_mv_search
-#endif  // CONFIG_WARP_PRECISION
-    ) {
+    if (can_refine_mv && !skip_mv_search) {
       *params = best_wm_params;
       refine_translational_mv(cm, xd, ms_params, mbmi, params, &base_params,
-                              &best_wm_params, best_mv,
-#if CONFIG_WARP_PRECISION
-                              warp_precision_idx_rate,
-#endif  // CONFIG_WARP_PRECISION
+                              &best_wm_params, best_mv, warp_precision_idx_rate,
                               mode_costs, step_size, max_coded_index,
                               num_neighbors, num_mv_iterations, &best_rd);
       center_mv.as_mv = *best_mv;
@@ -5964,12 +5930,9 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
         if (valid) {
           av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv,
                                    params);
-          rate =
-#if CONFIG_WARP_PRECISION
-              warp_precision_idx_rate +
-#endif  // CONFIG_WARP_PRECISION
-              av1_cost_model_param(mbmi, mode_costs, step_size, max_coded_index,
-                                   &base_params);
+          rate = warp_precision_idx_rate +
+                 av1_cost_model_param(mbmi, mode_costs, step_size,
+                                      max_coded_index, &base_params);
           sse = compute_motion_cost(xd, cm, ms_params, bsize, best_mv,
                                     can_refine_mv);
           inc_rd = sse + (int)ROUND_POWER_OF_TWO_64(
@@ -6006,12 +5969,9 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
         if (valid) {
           av1_set_warp_translation(mi_row, mi_col, bsize, center_mv.as_mv,
                                    params);
-          rate =
-#if CONFIG_WARP_PRECISION
-              warp_precision_idx_rate +
-#endif  // CONFIG_WARP_PRECISION
-              av1_cost_model_param(mbmi, mode_costs, step_size, max_coded_index,
-                                   &base_params);
+          rate = warp_precision_idx_rate +
+                 av1_cost_model_param(mbmi, mode_costs, step_size,
+                                      max_coded_index, &base_params);
           sse = compute_motion_cost(xd, cm, ms_params, bsize, best_mv,
                                     can_refine_mv);
           dec_rd = sse + (int)ROUND_POWER_OF_TWO_64(
@@ -6053,7 +6013,6 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
     }
   }
 
-#if CONFIG_WARP_PRECISION
   if (prev_best_models) {
     warp_mode_info this_warp_stats;
     this_warp_stats.is_valid = 1;
@@ -6062,7 +6021,6 @@ int av1_pick_warp_delta(const AV1_COMMON *const cm, MACROBLOCKD *xd,
     this_warp_stats.mbmi_stats = *mbmi;
     update_warp_stats_buffer(&this_warp_stats, prev_best_models);
   }
-#endif  // CONFIG_WARP_PRECISION
 
   mbmi->wm_params[0] = best_wm_params;
 

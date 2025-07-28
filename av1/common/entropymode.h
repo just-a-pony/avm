@@ -132,14 +132,8 @@ extern "C" {
 //
 // TODO(rachelbarker): Revisit this in light of the fact that we now
 // have 256x256 blocks and allow warps up to +/- 1/2 pixel/pixel.
-#if CONFIG_WARP_PRECISION
 #define NUM_WARP_PRECISION_MODES 2
-#else
-#define WARP_DELTA_CODED_MAX 7
-#define WARP_DELTA_STEP_BITS 10
-#endif
 
-#if CONFIG_WARP_PRECISION
 // The warp-delta parameters are signaled using two CDFs, warp_delta_param_cdf,
 // warp_delta_param_high_cdf
 //   WARP_DELTA_NUMSYMBOLS_LOW is the number of symbols for the first CDF
@@ -150,9 +144,6 @@ extern "C" {
 // derived from the warp_precision_idx flag.
 #define WARP_DELTA_NUMSYMBOLS_LOW 8
 #define WARP_DELTA_NUMSYMBOLS_HIGH 8
-#else
-#define WARP_DELTA_NUMSYMBOLS_LOW (2 * WARP_DELTA_CODED_MAX + 1)
-#endif  // CONFIG_WARP_PRECISION
 
 // The use_warp_extend symbol has two components to its context:
 // First context is the extension type (copy, extend from warp model, etc.)
@@ -348,17 +339,13 @@ typedef struct frame_contexts {
   aom_cdf_prob warpmv_with_mvd_flag_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_WARP_PRECISION
   aom_cdf_prob warp_precision_idx_cdf[BLOCK_SIZES_ALL]
                                      [CDF_SIZE(NUM_WARP_PRECISION_MODES)];
-#endif  // CONFIG_WARP_PRECISION
 
   aom_cdf_prob warp_delta_param_cdf[2][CDF_SIZE(WARP_DELTA_NUMSYMBOLS_LOW)];
-#if CONFIG_WARP_PRECISION
   aom_cdf_prob warp_param_sign_cdf[CDF_SIZE(2)];
   aom_cdf_prob warp_delta_param_high_cdf[2]
                                         [CDF_SIZE(WARP_DELTA_NUMSYMBOLS_HIGH)];
-#endif  // CONFIG_WARP_PRECISION
 
   aom_cdf_prob warp_extend_cdf[WARP_EXTEND_CTX][CDF_SIZE(2)];
 

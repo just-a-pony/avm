@@ -644,19 +644,14 @@ static void read_warpmv_with_mvd_flag(FRAME_CONTEXT *ec_ctx, MB_MODE_INFO *mbmi,
 // - 1) is considered as escape code and if the first symbol is equal to
 // (WARP_DELTA_NUMSYMBOLS_LOW - 1), then the second symbol is decoded to covers
 // rest of the indices.
-static int read_warp_delta_param(const MACROBLOCKD *xd, int index, aom_reader *r
-#if CONFIG_WARP_PRECISION
-                                 ,
-                                 int max_coded_index
-#endif  // CONFIG_WARP_PRECISION
-) {
+static int read_warp_delta_param(const MACROBLOCKD *xd, int index,
+                                 aom_reader *r, int max_coded_index) {
   assert(2 <= index && index <= 5);
   int index_type = (index == 2 || index == 5) ? 0 : 1;
 
   int coded_value =
       aom_read_symbol(r, xd->tile_ctx->warp_delta_param_cdf[index_type],
                       WARP_DELTA_NUMSYMBOLS_LOW, ACCT_INFO());
-#if CONFIG_WARP_PRECISION
   if (max_coded_index >= WARP_DELTA_NUMSYMBOLS_LOW &&
       coded_value >= (WARP_DELTA_NUMSYMBOLS_LOW - 1)) {
     coded_value =
@@ -664,7 +659,6 @@ static int read_warp_delta_param(const MACROBLOCKD *xd, int index, aom_reader *r
                             xd->tile_ctx->warp_delta_param_high_cdf[index_type],
                             WARP_DELTA_NUMSYMBOLS_HIGH, ACCT_INFO());
   }
-#endif  // CONFIG_WARP_PRECISION
 
   return coded_value;
 }
@@ -692,11 +686,9 @@ static void read_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     mbmi->six_param_warp_model_flag = get_default_six_param_flag(cm, mbmi);
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
-#if CONFIG_WARP_PRECISION
     mbmi->warp_precision_idx =
         aom_read_symbol(r, xd->tile_ctx->warp_precision_idx_cdf[bsize],
                         NUM_WARP_PRECISION_MODES, ACCT_INFO());
-#endif  // CONFIG_WARP_PRECISION
 
     params->wmtype =
 #if CONFIG_SIX_PARAM_WARP_DELTA
@@ -715,14 +707,8 @@ static void read_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
                                                                         4);
          index++) {
-      int coded_value = read_warp_delta_param(xd, index, r
-#if CONFIG_WARP_PRECISION
-                                              ,
-                                              max_coded_index
-#endif  // CONFIG_WARP_PRECISION
-      );
+      int coded_value = read_warp_delta_param(xd, index, r, max_coded_index);
 
-#if CONFIG_WARP_PRECISION
       decoded_delta_param[index] = coded_value;
       // decode sign
       if (coded_value) {
@@ -730,9 +716,6 @@ static void read_warp_delta(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                                    ACCT_INFO());
         decoded_delta_param[index] = sign ? -coded_value : coded_value;
       }
-#else
-      decoded_delta_param[index] = (coded_value - max_coded_index);
-#endif  // CONFIG_WARP_PRECISION
     }
 
     params->wmmat[2] =
@@ -792,9 +775,7 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
   mbmi->six_param_warp_model_flag = 0;
 #endif
 
-#if CONFIG_WARP_PRECISION
   mbmi->warp_precision_idx = 0;
-#endif  // CONFIG_WARP_PRECISION
 
   const int allowed_motion_modes =
       motion_mode_allowed(cm, xd, xd->ref_mv_stack[mbmi->ref_frame[0]], mbmi);
@@ -3720,9 +3701,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   mbmi->six_param_warp_model_flag = 0;
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
-#if CONFIG_WARP_PRECISION
   mbmi->warp_precision_idx = 0;
-#endif  // CONFIG_WARP_PRECISION
 #if CONFIG_WARP_INTER_INTRA
   mbmi->warp_inter_intra = 0;
 #endif  // CONFIG_WARP_INTER_INTRA
@@ -4385,9 +4364,7 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   mbmi->six_param_warp_model_flag = 0;
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
-#if CONFIG_WARP_PRECISION
   mbmi->warp_precision_idx = 0;
-#endif  // CONFIG_WARP_PRECISION
 #if CONFIG_WARP_INTER_INTRA
   mbmi->warp_inter_intra = 0;
 #endif  // CONFIG_WARP_INTER_INTRA

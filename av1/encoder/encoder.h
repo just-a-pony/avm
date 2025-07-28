@@ -1532,9 +1532,7 @@ typedef struct FRAME_COUNTS {
   unsigned int warpmv_with_mvd_flag[BLOCK_SIZES_ALL][CDF_SIZE(2)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
   unsigned int warp_delta_param[2][WARP_DELTA_NUMSYMBOLS_LOW];
-#if CONFIG_WARP_PRECISION
   unsigned int warp_delta_param_high[2][WARP_DELTA_NUMSYMBOLS_HIGH];
-#endif  // CONFIG_WARP_PRECISION
   unsigned int warp_extend[WARP_EXTEND_CTX][2];
   unsigned int intra_inter[INTRA_INTER_CONTEXTS][2];
   int8_t cwp_idx[MAX_CWP_NUM - 1][2];

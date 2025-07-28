@@ -878,45 +878,32 @@ static void update_warp_delta_param_stats(int index, int coded_value,
 #if CONFIG_ENTROPY_STATS
                                           FRAME_COUNTS *counts,
 #endif  // CONFIG_ENTROPY_STATS
-                                          FRAME_CONTEXT *fc
-#if CONFIG_WARP_PRECISION
-                                          ,
-                                          int max_coded_index
-#endif  // CONFIG_WARP_PRECISION
+                                          FRAME_CONTEXT *fc, int max_coded_index
 
 ) {
   assert(2 <= index && index <= 5);
   int index_type = (index == 2 || index == 5) ? 0 : 1;
   int coded_value_low_max = (WARP_DELTA_NUMSYMBOLS_LOW - 1);
 
-  update_cdf(fc->warp_delta_param_cdf[index_type],
-#if CONFIG_WARP_PRECISION
-             coded_value >= coded_value_low_max ? coded_value_low_max :
-#endif  // CONFIG_WARP_PRECISION
-                                                coded_value,
-             WARP_DELTA_NUMSYMBOLS_LOW);
+  update_cdf(
+      fc->warp_delta_param_cdf[index_type],
+      coded_value >= coded_value_low_max ? coded_value_low_max : coded_value,
+      WARP_DELTA_NUMSYMBOLS_LOW);
 
-#if CONFIG_WARP_PRECISION
   if (max_coded_index >= WARP_DELTA_NUMSYMBOLS_LOW &&
       coded_value >= coded_value_low_max) {
     update_cdf(fc->warp_delta_param_high_cdf[index_type], coded_value - 7,
                WARP_DELTA_NUMSYMBOLS_HIGH);
   }
-#endif  // CONFIG_WARP_PRECISION
 
 #if CONFIG_ENTROPY_STATS
   const int low_coded_value =
-#if CONFIG_WARP_PRECISION
-      coded_value >= coded_value_low_max ? coded_value_low_max :
-#endif  // CONFIG_WARP_PRECISION
-                                         coded_value;
+      coded_value >= coded_value_low_max ? coded_value_low_max : coded_value;
   counts->warp_delta_param[index_type][low_coded_value]++;
-#if CONFIG_WARP_PRECISION
   if (max_coded_index >= WARP_DELTA_NUMSYMBOLS_LOW &&
       coded_value >= coded_value_low_max) {
     counts->warp_delta_param_high[index_type][coded_value - 7]++;
   }
-#endif  // CONFIG_WARP_PRECISION
 #endif  // CONFIG_ENTROPY_STATS
 }
 
@@ -948,10 +935,8 @@ static void update_warp_delta_stats(const AV1_COMMON *cm,
            get_default_six_param_flag(cm, mbmi));
 #endif  // CONFIG_SIX_PARAM_WARP_DELTA
 
-#if CONFIG_WARP_PRECISION
     update_cdf(fc->warp_precision_idx_cdf[mbmi->sb_type[PLANE_TYPE_Y]],
                mbmi->warp_precision_idx, NUM_WARP_PRECISION_MODES);
-#endif  // CONFIG_WARP_PRECISION
 
     // The RDO stage should not give us a model which is not warpable.
     // Such models can still be signalled, but are effectively useless
@@ -968,7 +953,6 @@ static void update_warp_delta_stats(const AV1_COMMON *cm,
                                                                         4);
          index++) {
       int32_t value = params->wmmat[index] - base_params.wmmat[index];
-#if CONFIG_WARP_PRECISION
       int coded_value = (value / step_size);
       assert(abs(coded_value) <= max_coded_index);
       update_warp_delta_param_stats(index, abs(coded_value),
@@ -980,14 +964,6 @@ static void update_warp_delta_stats(const AV1_COMMON *cm,
       if (coded_value) {
         update_cdf(fc->warp_param_sign_cdf, coded_value < 0, 2);
       }
-#else
-      int coded_value = (value / step_size) + max_coded_index;
-      update_warp_delta_param_stats(index, coded_value,
-#if CONFIG_ENTROPY_STATS
-                                    counts,
-#endif  // CONFIG_ENTROPY_STATS
-                                    fc);
-#endif  // CONFIG_WARP_PRECISION
     }
   }
 }
