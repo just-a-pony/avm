@@ -124,11 +124,6 @@ void av1_init_comp_mode(InterPredParams *inter_pred_params) {
 void av1_init_warp_params(InterPredParams *inter_pred_params,
                           const WarpTypesAllowed *warp_types, int ref,
                           const MACROBLOCKD *xd, const MB_MODE_INFO *mi) {
-#if !CONFIG_IMPROVE_EXT_WARP
-  if (inter_pred_params->block_height < 8 || inter_pred_params->block_width < 8)
-    return;
-#endif  // !CONFIG_IMPROVE_EXT_WARP
-
   if (is_tip_ref_frame(mi->ref_frame[0])) return;
 
 #if CONFIG_REFINEMV
@@ -4254,21 +4249,12 @@ static void build_inter_predictors_8x8_and_bigger(
                        av1_is_scaled(inter_pred_params.scale_factors),
                    !inter_pred_params.warp_params.use_affine_filter));
 #endif  // CONFIG_ACROSS_SCALE_WARP
-#if CONFIG_IMPROVE_EXT_WARP
     if (inter_pred_params.mode == WARP_PRED &&
         (!inter_pred_params.warp_params.use_affine_filter ||
 #if CONFIG_ACROSS_SCALE_WARP
          av1_is_scaled(inter_pred_params.scale_factors) ||
 #endif  // CONFIG_ACROSS_SCALE_WARP
          (comp_bw < 8 || comp_bh < 8))) {
-#else
-    if (inter_pred_params.mode == WARP_PRED &&
-        (
-#if CONFIG_ACROSS_SCALE_WARP
-            av1_is_scaled(inter_pred_params.scale_factors) ||
-#endif  // CONFIG_ACROSS_SCALE_WARP
-            !inter_pred_params.warp_params.use_affine_filter)) {
-#endif  // CONFIG_IMPROVE_EXT_WARP
       *ext_warp_used = true;
 #if CONFIG_WARP_BD_BOX
       inter_pred_params.use_warp_bd_box = 1;
@@ -4286,18 +4272,11 @@ static void build_inter_predictors_8x8_and_bigger(
         for (int sub_mi_x = pre_x; sub_mi_x < pre_x + pu_width; sub_mi_x += 4) {
           int x_loc = sub_mi_x - pre_x;
           int y_loc = sub_mi_y - pre_y;
-#if CONFIG_IMPROVE_EXT_WARP
           int block_width = AOMMIN(8, comp_bw);
           int block_height = AOMMIN(8, comp_bh);
-#endif  // CONFIG_IMPROVE_EXT_WARP
           if ((x_loc & 7) == 0 && (y_loc & 7) == 0) {
             av1_get_reference_area_with_padding_single_warp(
-                cm, xd, plane, mi, warp_mv.as_mv,
-#if CONFIG_IMPROVE_EXT_WARP
-                block_width, block_height,
-#else
-                8, 8,
-#endif  // CONFIG_IMPROVE_EXT_WARP
+                cm, xd, plane, mi, warp_mv.as_mv, block_width, block_height,
                 (sub_mi_x << pd->subsampling_x),
                 (sub_mi_y << pd->subsampling_y),
                 &inter_pred_params

@@ -1292,10 +1292,7 @@ void highbd_warp_plane(WarpedMotionParams *wm, const uint16_t *const ref,
          is_affine_shear_allowed(alpha, beta, gamma, delta));
 #endif  // CONFIG_ACROSS_SCALE_WARP
 
-  if (!wm->use_affine_filter
-#if CONFIG_IMPROVE_EXT_WARP
-      || p_width < 8 || p_height < 8
-#endif  // CONFIG_IMPROVE_EXT_WARP
+  if (!wm->use_affine_filter || p_width < 8 || p_height < 8
 #if CONFIG_ACROSS_SCALE_WARP
       || is_scaled
 #endif  // CONFIG_ACROSS_SCALE_WARP
