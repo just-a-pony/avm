@@ -2154,10 +2154,6 @@ static void write_pb_mv_precision(const AV1_COMMON *const cm,
   assert(av1_get_mbmi_max_mv_precision(cm, xd->sbi, mbmi) ==
          mbmi->max_mv_precision);
 
-#if !CONFIG_C071_SUBBLK_WARPMV
-  assert(check_mv_precision(cm, mbmi));
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
-
   const int down_ctx = av1_get_pb_mv_precision_down_context(cm, xd);
 
   assert(mbmi->most_probable_pb_mv_precision <= mbmi->max_mv_precision);
@@ -2789,9 +2785,7 @@ static AOM_INLINE void write_intrabc_info(
     if (!mbmi->intrabc_mode) {
 #if CONFIG_IBC_SUBPEL_PRECISION
       MV low_prec_ref_mv = dv_ref.as_mv;
-#if CONFIG_C071_SUBBLK_WARPMV
       if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
         lower_mv_precision(&low_prec_ref_mv, mbmi->pb_mv_precision);
       const MV diff = { mbmi->mv[0].as_mv.row - low_prec_ref_mv.row,
                         mbmi->mv[0].as_mv.col - low_prec_ref_mv.col };

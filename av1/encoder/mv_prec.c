@@ -281,9 +281,7 @@ static AOM_INLINE void keep_one_mv_stat(
 #if BUGFIX_AMVD_AMVR
   if (!is_adaptive_mvd)
 #endif
-#if CONFIG_C071_SUBBLK_WARPMV
     if (pb_mv_precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { cur_mv->row - low_prec_ref_mv.row,
                     cur_mv->col - low_prec_ref_mv.col };
@@ -608,9 +606,7 @@ static AOM_INLINE void keep_vq_one_mv_stat(
 #if BUGFIX_AMVD_AMVR
   if (!is_adaptive_mvd)
 #endif
-#if CONFIG_C071_SUBBLK_WARPMV
     if (pb_mv_precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { cur_mv->row - low_prec_ref_mv.row,
                     cur_mv->col - low_prec_ref_mv.col };

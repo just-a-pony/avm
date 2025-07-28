@@ -23,11 +23,9 @@ static const BLOCK_SIZE square[MAX_SB_SIZE_LOG2 - 1] = {
 void av1_copy_tree_context(PICK_MODE_CONTEXT *dst_ctx,
                            PICK_MODE_CONTEXT *src_ctx, int num_planes) {
   dst_ctx->mic = src_ctx->mic;
-#if CONFIG_C071_SUBBLK_WARPMV
   if (is_warp_mode(src_ctx->mic.motion_mode)) {
     av1_copy_array(dst_ctx->submic, src_ctx->submic, src_ctx->num_4x4_blk);
   }
-#endif  // CONFIG_C071_SUBBLK_WARPMV
   dst_ctx->mbmi_ext_best = src_ctx->mbmi_ext_best;
 
   assert(dst_ctx->num_4x4_blk == src_ctx->num_4x4_blk);
@@ -140,11 +138,9 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
 
   AOM_CHECK_MEM_ERROR(&error, ctx->tx_type_map,
                       aom_calloc(num_blk, sizeof(*ctx->tx_type_map)));
-#if CONFIG_C071_SUBBLK_WARPMV
   if (!frame_is_intra_only(cm)) {
     ctx->submic = malloc(num_blk * sizeof(*ctx->submic));
   }
-#endif  // CONFIG_C071_SUBBLK_WARPMV
   AOM_CHECK_MEM_ERROR(
       &error, ctx->cctx_type_map,
       aom_calloc(ctx->num_4x4_blk_chroma, sizeof(*ctx->cctx_type_map)));
@@ -183,11 +179,9 @@ PICK_MODE_CONTEXT *av1_alloc_pmc(const AV1_COMMON *cm, TREE_TYPE tree_type,
 void av1_free_pmc(PICK_MODE_CONTEXT *ctx, int num_planes) {
   if (ctx == NULL) return;
 
-#if CONFIG_C071_SUBBLK_WARPMV
   if (ctx->submic) {
     free(ctx->submic);
   }
-#endif  // CONFIG_C071_SUBBLK_WARPMV
   for (int i = 0; i < MAX_MB_PLANE; ++i) {
     aom_free(ctx->blk_skip[i]);
     ctx->blk_skip[i] = NULL;

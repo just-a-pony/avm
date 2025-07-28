@@ -1743,9 +1743,7 @@ int_mv get_warp_motion_vector_xy_pos(const MACROBLOCKD *xd,
     clamp_mv_ref(&res.as_mv, xd->width << MI_SIZE_LOG2,
                  xd->height << MI_SIZE_LOG2, xd);
 
-#if CONFIG_C071_SUBBLK_WARPMV
     if (precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&res.as_mv, precision);
     return res;
   }
@@ -1770,9 +1768,7 @@ int_mv get_warp_motion_vector_xy_pos(const MACROBLOCKD *xd,
   clamp_mv_ref(&res.as_mv, xd->width << MI_SIZE_LOG2,
                xd->height << MI_SIZE_LOG2, xd);
 
-#if CONFIG_C071_SUBBLK_WARPMV
   if (precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
     lower_mv_precision(&res.as_mv, precision);
   return res;
 }

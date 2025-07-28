@@ -168,7 +168,6 @@ static AOM_INLINE FULLPEL_MV get_fullmv_from_mv(const MV *subpel_mv) {
   return full_mv;
 }
 
-#if CONFIG_C071_SUBBLK_WARPMV
 static AOM_INLINE void get_phase_from_mv(MV ref_mv, MV *sub_mv_offset,
                                          MvSubpelPrecision precision) {
   sub_mv_offset->col = 0;
@@ -189,7 +188,6 @@ static AOM_INLINE void get_phase_from_mv(MV ref_mv, MV *sub_mv_offset,
            precision < MV_PRECISION_ONE_PEL);
   }
 }
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
 static AOM_INLINE MV get_mv_from_fullmv(const FULLPEL_MV *full_mv) {
   const MV subpel_mv = { (MV_COMP_DATA_TYPE)GET_MV_SUBPEL(full_mv->row),

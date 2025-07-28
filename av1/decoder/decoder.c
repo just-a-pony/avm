@@ -112,10 +112,8 @@ static void dec_setup_mi(CommonModeInfoParams *mi_params) {
       mi_params->mi_stride * calc_mi_size(mi_params->mi_rows);
   memset(mi_params->mi_grid_base, 0,
          mi_grid_size * sizeof(*mi_params->mi_grid_base));
-#if CONFIG_C071_SUBBLK_WARPMV
   memset(mi_params->submi_grid_base, 0,
          mi_grid_size * sizeof(*mi_params->submi_grid_base));
-#endif  // CONFIG_C071_SUBBLK_WARPMV
   memset(mi_params->cctx_type_map, 0,
          mi_grid_size * sizeof(*mi_params->cctx_type_map));
   av1_reset_txk_skip_array_using_mi_params(mi_params);
@@ -126,12 +124,10 @@ static void dec_free_mi(CommonModeInfoParams *mi_params) {
   mi_params->mi_alloc = NULL;
   aom_free(mi_params->mi_grid_base);
   mi_params->mi_grid_base = NULL;
-#if CONFIG_C071_SUBBLK_WARPMV
   aom_free(mi_params->mi_alloc_sub);
   mi_params->mi_alloc_sub = NULL;
   aom_free(mi_params->submi_grid_base);
   mi_params->submi_grid_base = NULL;
-#endif
   mi_params->mi_alloc_size = 0;
   aom_free(mi_params->tx_type_map);
   mi_params->tx_type_map = NULL;

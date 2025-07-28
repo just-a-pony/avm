@@ -878,9 +878,7 @@ static INLINE void get_mvd_from_ref_mv(MV mv, MV ref_mv, int is_adaptive_mvd,
 #if BUGFIX_AMVD_AMVR
   if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-#if CONFIG_C071_SUBBLK_WARPMV
     if (precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&ref_mv, precision);
   mvd->row = mv.row - ref_mv.row;
   mvd->col = mv.col - ref_mv.col;
@@ -896,9 +894,7 @@ static INLINE void update_mv_component_from_mvd(int16_t modified_mvd_comp,
 #if BUGFIX_AMVD_AMVR
   if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-#if CONFIG_C071_SUBBLK_WARPMV
     if (precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&ref_mv, precision);
 
   if (comp == 0)
@@ -2081,13 +2077,11 @@ typedef struct macroblockd {
    */
   MB_MODE_INFO **mi;
 
-#if CONFIG_C071_SUBBLK_WARPMV
   /*!
    * Appropriate offset inside cm->mi_params.submi_grid_base based on current
    * mi_row and mi_col.
    */
   SUBMB_INFO **submi;
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   /*!
    * True if 4x4 block above the current block is available.

@@ -357,7 +357,6 @@ static INLINE void av1_copy_mbmi_ext_to_mbmi_ext_frame(
   }
 }
 
-#if CONFIG_C071_SUBBLK_WARPMV
 // store submi info into dst_submi
 void store_submi(const MACROBLOCKD *const xd, const AV1_COMMON *cm,
                  SUBMB_INFO *dst_submi, BLOCK_SIZE bsize);
@@ -391,7 +390,6 @@ static INLINE bool prune_curr_mv_precision_eval(
   return false;
 }
 
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 #if CONFIG_BRU
 int get_drl_cost(int max_drl_bits, const MB_MODE_INFO *mbmi,
                  const MB_MODE_INFO_EXT *mbmi_ext, const MACROBLOCK *x);

@@ -269,9 +269,7 @@ static INLINE int_mv get_warp_motion_vector(const MACROBLOCKD *xd,
 
     // When subblock warp mv is enabled. The precision is kept as higherst
     // regardless the frame level mv during search
-#if CONFIG_C071_SUBBLK_WARPMV
     if (precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       lower_mv_precision(&res.as_mv, precision);
     return res;
   }
@@ -296,9 +294,7 @@ static INLINE int_mv get_warp_motion_vector(const MACROBLOCKD *xd,
   clamp_mv_ref(&res.as_mv, xd->width << MI_SIZE_LOG2,
                xd->height << MI_SIZE_LOG2, xd);
 
-#if CONFIG_C071_SUBBLK_WARPMV
   if (precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
     lower_mv_precision(&res.as_mv, precision);
   return res;
 }
@@ -347,16 +343,9 @@ static INLINE int_mv get_int_warp_mv_for_fb(const MACROBLOCKD *xd,
 #endif  // CONFIG_WARP_BD_BOX
 
 static INLINE int_mv get_block_mv(const MB_MODE_INFO *candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                  const SUBMB_INFO *submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                  int which_mv) {
-#if CONFIG_C071_SUBBLK_WARPMV
+                                  const SUBMB_INFO *submi, int which_mv) {
   return is_warp_mode(candidate->motion_mode) ? submi->mv[which_mv]
                                               : candidate->mv[which_mv];
-#else
-  return candidate->mv[which_mv];
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 }
 // return derive MV from the ref_warp_model
 // ref_warp_model is extracted from the WRL listb before calling this function
@@ -1429,7 +1418,6 @@ void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
                             const MB_MODE_INFO *const mbmi);
 #endif  // !CONFIG_BANK_IMPROVE
 
-#if CONFIG_C071_SUBBLK_WARPMV
 // assign subblock mv from warp into submi
 void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,
                    WarpedMotionParams *wm_params, int mi_row, int mi_col
@@ -1447,7 +1435,6 @@ void span_submv(const AV1_COMMON *cm, SUBMB_INFO **submi, int mi_row,
                 int ref
 #endif  // CONFIG_COMPOUND_WARP_CAUSAL
 );
-#endif
 
 #if !CONFIG_BANK_IMPROVE
 void av1_update_warp_param_bank(const AV1_COMMON *const cm,

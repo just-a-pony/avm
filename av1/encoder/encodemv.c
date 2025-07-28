@@ -623,14 +623,10 @@ void av1_update_mv_stats(
 #if BUGFIX_AMVD_AMVR
     if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-#if CONFIG_C071_SUBBLK_WARPMV
       if (precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
         lower_mv_precision(&ref, precision);
     const MV diff = { mv.row - ref.row, mv.col - ref.col };
-#if CONFIG_C071_SUBBLK_WARPMV
     assert(is_this_mv_precision_compliant(diff, precision));
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 #endif  // CONFIG_DERIVED_MVD_SIGN
 
   const MV_JOINT_TYPE j = av1_get_mv_joint(&diff);
@@ -956,15 +952,11 @@ void av1_encode_mv(AV1_COMP *cpi, aom_writer *w, MV mv,
 #if BUGFIX_AMVD_AMVR
     if (!is_adaptive_mvd)
 #endif  // BUGFIX_AMVD_AMVR
-#if CONFIG_C071_SUBBLK_WARPMV
       if (pb_mv_precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
         lower_mv_precision(&ref, pb_mv_precision);
     const MV diff = { mv.row - ref.row, mv.col - ref.col };
 #endif  // CONFIG_DERIVED_MVD_SIGN
-#if CONFIG_C071_SUBBLK_WARPMV
   assert(is_this_mv_precision_compliant(diff, pb_mv_precision));
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   const MV_JOINT_TYPE j = av1_get_mv_joint(&diff);
 
@@ -1004,9 +996,7 @@ void av1_encode_dv(aom_writer *w, const MV *mv, const MV *ref,
 
 #if CONFIG_IBC_SUBPEL_PRECISION
   MV low_prec_ref_mv = *ref;
-#if CONFIG_C071_SUBBLK_WARPMV
   if (pb_mv_precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
     lower_mv_precision(&low_prec_ref_mv, pb_mv_precision);
   const MV diff = { mv->row - low_prec_ref_mv.row,
                     mv->col - low_prec_ref_mv.col };

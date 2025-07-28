@@ -3607,22 +3607,12 @@ static INLINE int get_mi_ext_idx(const int mi_row, const int mi_col,
 static INLINE void set_mode_info_offsets(
     const CommonModeInfoParams *const mi_params,
     const MBMIExtFrameBufferInfo *const mbmi_ext_info, MACROBLOCK *const x,
-    MACROBLOCKD *const xd, int mi_row, int mi_col
-#if CONFIG_C071_SUBBLK_WARPMV
-    ,
-    const int mi_width, const int mi_height
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-) {
-#if CONFIG_C071_SUBBLK_WARPMV
+    MACROBLOCKD *const xd, int mi_row, int mi_col, const int mi_width,
+    const int mi_height) {
   const int x_inside_boundary = AOMMIN(mi_width, mi_params->mi_cols - mi_col);
   const int y_inside_boundary = AOMMIN(mi_height, mi_params->mi_rows - mi_row);
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  set_mi_offsets(mi_params, xd, mi_row, mi_col
-#if CONFIG_C071_SUBBLK_WARPMV
-                 ,
-                 x_inside_boundary, y_inside_boundary
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  );
+  set_mi_offsets(mi_params, xd, mi_row, mi_col, x_inside_boundary,
+                 y_inside_boundary);
   const int ext_idx = get_mi_ext_idx(mi_row, mi_col, mi_params->mi_alloc_bsize,
                                      mbmi_ext_info->stride);
   x->mbmi_ext_frame = mbmi_ext_info->frame_base + ext_idx;

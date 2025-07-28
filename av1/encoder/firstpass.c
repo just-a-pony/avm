@@ -360,22 +360,16 @@ static int firstpass_intra_prediction(
   const int use_dc_pred = (mb_col || mb_row) && (!mb_col || !mb_row);
   const int num_planes = av1_num_planes(cm);
   const BLOCK_SIZE bsize = get_bsize(mi_params, mb_row, mb_col);
-#if CONFIG_C071_SUBBLK_WARPMV
   const int mi_width = mi_size_wide[bsize];
   const int mi_height = mi_size_high[bsize];
   const int x_inside_boundary =
       AOMMIN(mi_width, mi_params->mi_cols - xd->mi_col);
   const int y_inside_boundary =
       AOMMIN(mi_height, mi_params->mi_rows - xd->mi_row);
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
   aom_clear_system_state();
-  set_mi_offsets(mi_params, xd, mb_row * mb_scale, mb_col * mb_scale
-#if CONFIG_C071_SUBBLK_WARPMV
-                 ,
-                 x_inside_boundary, y_inside_boundary
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  );
+  set_mi_offsets(mi_params, xd, mb_row * mb_scale, mb_col * mb_scale,
+                 x_inside_boundary, y_inside_boundary);
   xd->plane[0].dst.buf = this_frame->y_buffer + y_offset;
   xd->plane[1].dst.buf = this_frame->u_buffer + uv_offset;
   xd->plane[2].dst.buf = this_frame->v_buffer + uv_offset;
@@ -1135,12 +1129,7 @@ void av1_first_pass(AV1_COMP *cpi, const int64_t ts_duration) {
   av1_setup_frame_size(cpi);
   aom_clear_system_state();
 
-  set_mi_offsets(mi_params, xd, 0, 0
-#if CONFIG_C071_SUBBLK_WARPMV
-                 ,
-                 0, 0
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  );
+  set_mi_offsets(mi_params, xd, 0, 0, 0, 0);
   xd->mi[0]->sb_type[PLANE_TYPE_Y] = fp_block_size;
   xd->mi[0]->sb_type[PLANE_TYPE_UV] = fp_block_size;
 
@@ -1161,12 +1150,7 @@ void av1_first_pass(AV1_COMP *cpi, const int64_t ts_duration) {
     av1_setup_pre_planes(xd, 0, last_frame, 0, 0, NULL, num_planes, NULL);
   }
 
-  set_mi_offsets(mi_params, xd, 0, 0
-#if CONFIG_C071_SUBBLK_WARPMV
-                 ,
-                 0, 0
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  );
+  set_mi_offsets(mi_params, xd, 0, 0, 0, 0);
 
   // Don't store luma on the fist pass since chroma is not computed
   xd->cfl.store_y = 0;

@@ -250,14 +250,12 @@ static int alloc_mi(CommonModeInfoParams *mi_params, AV1_COMMON *cm,
     mi_params->mi_grid_size = mi_grid_size;
     av1_alloc_txk_skip_array(mi_params, cm);
     av1_alloc_class_id_array(mi_params, cm, height);
-#if CONFIG_C071_SUBBLK_WARPMV
     mi_params->mi_alloc_sub =
         aom_calloc(alloc_mi_size, sizeof(*mi_params->mi_alloc_sub));
     if (!mi_params->mi_alloc_sub) return 1;
     mi_params->submi_grid_base = (SUBMB_INFO **)aom_calloc(
         mi_grid_size, sizeof(*mi_params->submi_grid_base));
     if (!mi_params->submi_grid_base) return 1;
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
     mi_params->tx_type_map =
         aom_calloc(mi_grid_size, sizeof(*mi_params->tx_type_map));

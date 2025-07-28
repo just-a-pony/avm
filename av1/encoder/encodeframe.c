@@ -1589,12 +1589,7 @@ static AOM_INLINE void encode_frame_internal(AV1_COMP *cpi) {
 
   mi_params->setup_mi(mi_params);
 
-  set_mi_offsets(mi_params, xd, 0, 0
-#if CONFIG_C071_SUBBLK_WARPMV
-                 ,
-                 0, 0
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  );
+  set_mi_offsets(mi_params, xd, 0, 0, 0, 0);
 
   av1_zero(*td->counts);
   av1_zero(rdc->comp_pred_diff);

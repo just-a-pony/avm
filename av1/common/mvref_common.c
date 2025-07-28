@@ -737,11 +737,7 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
 
   const int cand_tpl_row = (mi_row_cand >> TMVP_SHIFT_BITS);
   const int cand_tpl_col = (mi_col_cand >> TMVP_SHIFT_BITS);
-#if CONFIG_C071_SUBBLK_WARPMV
   int_mv cand_mv = candidate->mv[0];
-#else
-  int_mv cand_mv = get_block_mv(candidate, 0);
-#endif  // CONFIG_C071_SUBBLK_WARPMV
   int_mv ref_mv[2];
   get_tip_mv(cm, &cand_mv.as_mv, cand_tpl_col, cand_tpl_row, ref_mv);
 
@@ -820,10 +816,7 @@ static AOM_INLINE void add_ref_mv_candidate_ctx(
 
 static AOM_INLINE void add_ref_mv_candidate(
     int mi_row, int mi_col, int mi_row_cand, int mi_col_cand,
-    const MB_MODE_INFO *const candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-    const SUBMB_INFO *const submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
+    const MB_MODE_INFO *const candidate, const SUBMB_INFO *const submi,
     const MV_REFERENCE_FRAME rf[2], uint8_t *refmv_count,
     uint8_t *ref_match_count, uint8_t *newmv_count, CANDIDATE_MV *ref_mv_stack,
     uint16_t *ref_mv_weight, int_mv *gm_mv_candidates,
@@ -842,11 +835,7 @@ static AOM_INLINE void add_ref_mv_candidate(
 #if CONFIG_ACROSS_SCALE_TPL_MVS
     const MACROBLOCKD *xd,
 #endif  // CONFIG_ACROSS_SCALE_TPL_MVS
-    int row_offset, int col_offset, uint16_t weight,
-    const MvSubpelPrecision precision) {
-#if CONFIG_C071_SUBBLK_WARPMV
-  (void)precision;
-#endif  // CONFIG_C071_SUBBLK_WARPMV
+    int row_offset, int col_offset, uint16_t weight) {
   if (!is_inter_block(candidate, SHARED_PART)) return;
 
 #if CONFIG_IBC_SR_EXT
@@ -867,11 +856,7 @@ static AOM_INLINE void add_ref_mv_candidate(
         if (is_global_mv_block(candidate, gm_params[rf[ref]].wmtype))
           this_refmv[ref] = gm_mv_candidates[ref];
         else
-          this_refmv[ref] = get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                         submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                         ref);
+          this_refmv[ref] = get_block_mv(candidate, submi, ref);
       }
 
       for (index = 0; index < *refmv_count; ++index) {
@@ -902,11 +887,7 @@ static AOM_INLINE void add_ref_mv_candidate(
                              gm_params[candidate->ref_frame[0]].wmtype)) {
         return;
       } else {
-        this_refmv = get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                  submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                  0);
+        this_refmv = get_block_mv(candidate, submi, 0);
       }
 
       for (index = 0; index < *refmv_count; ++index) {
@@ -943,11 +924,7 @@ static AOM_INLINE void add_ref_mv_candidate(
     if (is_tip_ref_frame(candidate->ref_frame[0])) {
       const int cand_tpl_row = (mi_row_cand >> TMVP_SHIFT_BITS);
       const int cand_tpl_col = (mi_col_cand >> TMVP_SHIFT_BITS);
-#if CONFIG_C071_SUBBLK_WARPMV
       int_mv cand_mv = candidate->mv[0];
-#else
-      int_mv cand_mv = get_block_mv(candidate, 0);
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       get_tip_mv(cm, &cand_mv.as_mv, cand_tpl_col, cand_tpl_row, cand_tip_mvs);
       cand_tip_ref_frames[0] = cm->tip_ref.ref_frame[0];
       cand_tip_ref_frames[1] = cm->tip_ref.ref_frame[1];
@@ -963,20 +940,12 @@ static AOM_INLINE void add_ref_mv_candidate(
       if (candidate->ref_frame[ref] == rf[0]) {
         int_mv this_refmv;
         if (is_tip_ref_frame(rf[0])) {
-          this_refmv = get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                    submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                    ref);
+          this_refmv = get_block_mv(candidate, submi, ref);
         } else {
           const int is_gm_block =
               is_global_mv_block(candidate, gm_params[rf[0]].wmtype);
           this_refmv = is_gm_block ? gm_mv_candidates[0]
-                                   : get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                                  submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                                  ref);
+                                   : get_block_mv(candidate, submi, ref);
         }
 
         for (index = 0; index < *refmv_count; ++index) {
@@ -1034,13 +1003,8 @@ static AOM_INLINE void add_ref_mv_candidate(
                  candidate->ref_frame[1] == tip_ref->ref_frame[1] &&
                  cm->features.tip_frame_mode) {
         int_mv cand_mvs[2];
-#if CONFIG_C071_SUBBLK_WARPMV
         cand_mvs[0] = candidate->mv[0];
         cand_mvs[1] = candidate->mv[1];
-#else
-        cand_mvs[0] = get_block_mv(candidate, 0);
-        cand_mvs[1] = get_block_mv(candidate, 1);
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
         int_mv cand_linear_mv;
         cand_linear_mv.as_mv.row =
@@ -1064,10 +1028,6 @@ static AOM_INLINE void add_ref_mv_candidate(
             clamp(derived_mv.as_mv.row, clamp_min, clamp_max);
         derived_mv.as_mv.col =
             clamp(derived_mv.as_mv.col, clamp_min, clamp_max);
-
-#if !CONFIG_C071_SUBBLK_WARPMV
-        lower_mv_precision(&derived_mv.as_mv, precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
         for (index = 0; index < *derived_mv_count; ++index) {
           if (derived_mv_stack[index].this_mv.as_int == derived_mv.as_int) {
@@ -1100,11 +1060,7 @@ static AOM_INLINE void add_ref_mv_candidate(
           const int is_gm_block = is_global_mv_block(
               candidate, gm_params[candidate->ref_frame[ref]].wmtype);
           cand_refmv = is_gm_block ? gm_mv_candidates[0]
-                                   : get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                                  submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                                  ref);
+                                   : get_block_mv(candidate, submi, ref);
           cand_ref_frame = candidate->ref_frame[ref];
         }
 
@@ -1131,10 +1087,6 @@ static AOM_INLINE void add_ref_mv_candidate(
               cand_refmv.as_mv.col +
                   (mv_traj_cur_ref.as_mv.col - mv_traj_cand_ref.as_mv.col),
               clamp_min, clamp_max);
-
-#if !CONFIG_C071_SUBBLK_WARPMV
-          lower_mv_precision(&derived_mv.as_mv, precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
           for (index = 0; index < *derived_mv_count; ++index) {
             if (derived_mv_stack[index].this_mv.as_int == derived_mv.as_int) {
@@ -1167,9 +1119,6 @@ static AOM_INLINE void add_ref_mv_candidate(
             int_mv this_refmv;
             get_mv_projection(&this_refmv.as_mv, cand_refmv.as_mv,
                               cur_to_ref_dist, cand_to_ref_dist);
-#if !CONFIG_C071_SUBBLK_WARPMV
-            lower_mv_precision(&this_refmv.as_mv, precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
             for (index = 0; index < *derived_mv_count; ++index) {
               if (derived_mv_stack[index].this_mv.as_int == this_refmv.as_int) {
@@ -1219,11 +1168,7 @@ static AOM_INLINE void add_ref_mv_candidate(
           if (is_global_mv_block(candidate, gm_params[rf[ref]].wmtype))
             this_refmv[ref] = gm_mv_candidates[ref];
           else
-            this_refmv[ref] = get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                           submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                           ref);
+            this_refmv[ref] = get_block_mv(candidate, submi, ref);
         }
 
         for (index = 0; index < *refmv_count; ++index) {
@@ -1261,12 +1206,9 @@ static AOM_INLINE void add_ref_mv_candidate(
               continue;
             const int is_gm_block = is_global_mv_block(
                 candidate, gm_params[candidate->ref_frame[ref]].wmtype);
-            const int_mv cand_refmv = is_gm_block ? gm_mv_candidates[ref]
-                                                  : get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                                                 submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                                                 ref);
+            const int_mv cand_refmv = is_gm_block
+                                          ? gm_mv_candidates[ref]
+                                          : get_block_mv(candidate, submi, ref);
 
             int this_tpl_row = mi_row >> 1;
             int this_tpl_col = mi_col >> 1;
@@ -1348,11 +1290,7 @@ static AOM_INLINE void add_ref_mv_candidate(
               candidate, gm_params[rf[candidate_ref_idx0]].wmtype);
           this_refmv[candidate_ref_idx0] =
               is_gm_block ? gm_mv_candidates[candidate_ref_idx0]
-                          : get_block_mv(candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                                         submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                                         which_cand_ref);
+                          : get_block_mv(candidate, submi, which_cand_ref);
 
           int cand_idx = 0;
           for (cand_idx = 0; cand_idx < *single_mv_count; ++cand_idx) {
@@ -1565,15 +1503,12 @@ static AOM_INLINE void scan_blk_mbmi(
 
   mi_pos.row = row_offset;
   mi_pos.col = col_offset;
-  MvSubpelPrecision precision = cm->features.fr_mv_precision;
 
   if (is_inside(tile, mi_col, mi_row, &mi_pos)) {
     const MB_MODE_INFO *const candidate =
         xd->mi[mi_pos.row * xd->mi_stride + mi_pos.col];
-#if CONFIG_C071_SUBBLK_WARPMV
     const SUBMB_INFO *const submi =
         xd->submi[mi_pos.row * xd->mi_stride + mi_pos.col];
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
     uint16_t weight = ADJACENT_SMVP_WEIGHT;
     // Don't add weight to (-1,-1) which is in the outer area
@@ -1598,10 +1533,7 @@ static AOM_INLINE void scan_blk_mbmi(
     if (*refmv_count >= MAX_REF_MV_STACK_SIZE) return;
 
     add_ref_mv_candidate(mi_row, mi_col, cand_mi_row, cand_mi_col, candidate,
-#if CONFIG_C071_SUBBLK_WARPMV
-                         submi,
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-                         rf, refmv_count, ref_match_count, newmv_count,
+                         submi, rf, refmv_count, ref_match_count, newmv_count,
                          ref_mv_stack, ref_mv_weight, gm_mv_candidates,
                          cm->global_motion,
 #if !CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL
@@ -1615,7 +1547,7 @@ static AOM_INLINE void scan_blk_mbmi(
 #if CONFIG_ACROSS_SCALE_TPL_MVS
                          xd,
 #endif  // CONFIG_ACROSS_SCALE_TPL_MVS
-                         row_offset, col_offset, weight, precision);
+                         row_offset, col_offset, weight);
   }  // Analyze a single 8x8 block motion information.
 }
 
@@ -1788,9 +1720,6 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   const int cur_offset_0 = get_relative_dist(&cm->seq_params.order_hint_info,
                                              cur_frame_index, frame0_index);
   int idx;
-#if !CONFIG_C071_SUBBLK_WARPMV
-  const MvSubpelPrecision fr_mv_precision = cm->features.fr_mv_precision;
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
   int_mv this_refmv;
 #if CONFIG_MV_TRAJECTORY
@@ -1805,9 +1734,6 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
   get_mv_projection(&this_refmv.as_mv, prev_frame_mvs->mfmv0.as_mv,
                     cur_offset_0, prev_frame_mvs->ref_frame_offset);
 #endif  // CONFIG_MV_TRAJECTORY
-#if !CONFIG_C071_SUBBLK_WARPMV
-  lower_mv_precision(&this_refmv.as_mv, fr_mv_precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
   uint16_t weight = TMVP_WEIGHT;
 
@@ -1873,9 +1799,6 @@ static int add_tpl_ref_mv(const AV1_COMMON *cm, const MACROBLOCKD *xd,
     get_mv_projection(&comp_refmv.as_mv, prev_frame_mvs->mfmv0.as_mv,
                       cur_offset_1, prev_frame_mvs->ref_frame_offset);
 #endif  // CONFIG_MV_TRAJECTORY
-#if !CONFIG_C071_SUBBLK_WARPMV
-    lower_mv_precision(&comp_refmv.as_mv, fr_mv_precision);
-#endif  // !CONFIG_C071_SUBBLK_WARPMV
 
 #if !CONFIG_C076_INTER_MOD_CTX
     if (blk_row == 0 && blk_col == 0) {
@@ -5322,7 +5245,6 @@ void av1_update_ref_mv_bank(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
   (void)cm;
 }
 
-#if CONFIG_C071_SUBBLK_WARPMV
 void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,
                    WarpedMotionParams *wm_params, int mi_row, int mi_col
 #if CONFIG_COMPOUND_WARP_CAUSAL
@@ -5402,7 +5324,6 @@ void span_submv(const AV1_COMMON *cm, SUBMB_INFO **submi, int mi_row,
     }
   }
 }
-#endif  // CONFIG_C071_SUBBLK_WARPMV
 
 #define MAX_WARP_SB_HITS 64
 // Update the warp parameter bank

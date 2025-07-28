@@ -457,12 +457,7 @@ void av1_set_offsets_without_segment_id(
   const int mi_height = mi_size_high[bsize];
 
   set_mode_info_offsets(&cpi->common.mi_params, &cpi->mbmi_ext_info, x, xd,
-                        mi_row, mi_col
-#if CONFIG_C071_SUBBLK_WARPMV
-                        ,
-                        mi_width, mi_height
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  );
+                        mi_row, mi_col, mi_width, mi_height);
 
   set_entropy_context(xd, mi_row, mi_col, num_planes, chroma_ref_info);
 
@@ -1136,9 +1131,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       MV mv_diff;
 #if CONFIG_IBC_SUBPEL_PRECISION
       MV low_prec_ref_mv = ref_mv.as_mv;
-#if CONFIG_C071_SUBBLK_WARPMV
       if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
-#endif  // CONFIG_C071_SUBBLK_WARPMV
         lower_mv_precision(&low_prec_ref_mv, mbmi->pb_mv_precision);
       mv_diff.row = mbmi->mv[0].as_mv.row - low_prec_ref_mv.row;
       mv_diff.col = mbmi->mv[0].as_mv.col - low_prec_ref_mv.col;

@@ -244,9 +244,7 @@ void av1_update_state(const AV1_COMP *const cpi, ThreadData *td,
 
   *mi_addr = *mi;
   mi_addr->chroma_ref_info = ctx->chroma_ref_info;
-#if CONFIG_C071_SUBBLK_WARPMV
   if (is_warp_mode(mi->motion_mode)) update_submi(xd, cm, ctx->submic, bsize);
-#endif  // CONFIG_C071_SUBBLK_WARPMV
   if (xd->tree_type != CHROMA_PART)
     copy_mbmi_ext_frame_to_mbmi_ext(x->mbmi_ext, &ctx->mbmi_ext_best,
                                     av1_ref_frame_type(ctx->mic.ref_frame),
@@ -1259,19 +1257,15 @@ void av1_reset_mbmi(const CommonModeInfoParams *const mi_params,
            sb_size_mi * sizeof(*mi_params->mi_grid_base));
     memset(&mi_params->tx_type_map[mi_grid_idx], 0,
            sb_size_mi * sizeof(*mi_params->tx_type_map));
-#if CONFIG_C071_SUBBLK_WARPMV
     memset(&mi_params->submi_grid_base[mi_grid_idx], 0,
            sb_size_mi * sizeof(*mi_params->submi_grid_base));
-#endif  // CONFIG_C071_SUBBLK_WARPMV
     memset(&mi_params->cctx_type_map[mi_grid_idx], 0,
            sb_size_mi * sizeof(*mi_params->cctx_type_map));
     if (cur_mi_row % mi_alloc_size_1d == 0) {
       memset(&mi_params->mi_alloc[alloc_mi_idx], 0,
              sb_size_alloc_mi * sizeof(*mi_params->mi_alloc));
-#if CONFIG_C071_SUBBLK_WARPMV
       memset(&mi_params->mi_alloc_sub[alloc_mi_idx], 0,
              sb_size_alloc_mi * sizeof(*mi_params->mi_alloc_sub));
-#endif  // CONFIG_C071_SUBBLK_WARPMV
     }
   }
 }

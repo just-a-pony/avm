@@ -164,12 +164,8 @@ static INLINE int av1_check_newmv_joint_nonzero(const AV1_COMMON *cm,
 }
 
 static inline int check_mv_precision(const AV1_COMMON *cm,
-                                     const MB_MODE_INFO *const mbmi
-#if CONFIG_C071_SUBBLK_WARPMV
-                                     ,
-                                     const MACROBLOCK *x
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-) {
+                                     const MB_MODE_INFO *const mbmi,
+                                     const MACROBLOCK *x) {
   const int is_comp_pred = mbmi->ref_frame[1] > INTRA_FRAME;
 
   assert(mbmi->pb_mv_precision <= mbmi->max_mv_precision);
@@ -179,7 +175,6 @@ static inline int check_mv_precision(const AV1_COMMON *cm,
     if (mode == NEWMV || mode == WARP_NEWMV || mode == NEW_NEWMV ||
         mode == NEW_NEWMV_OPTFLOW) {
       for (int i = 0; i < is_comp_pred + 1; ++i) {
-#if CONFIG_C071_SUBBLK_WARPMV
         MV diff = { mbmi->mv[i].as_mv.row, mbmi->mv[i].as_mv.col };
         MV refmv = av1_get_ref_mv(x, i).as_mv;
         if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
@@ -194,23 +189,12 @@ static inline int check_mv_precision(const AV1_COMMON *cm,
              ((1 << (MV_PRECISION_ONE_EIGHTH_PEL - mbmi->pb_mv_precision)) -
               1)))
           return 0;
-#else
-        if ((mbmi->mv[i].as_mv.row &
-             ((1 << (MV_PRECISION_ONE_EIGHTH_PEL - mbmi->pb_mv_precision)) -
-              1)))
-          return 0;
-        if ((mbmi->mv[i].as_mv.col &
-             ((1 << (MV_PRECISION_ONE_EIGHTH_PEL - mbmi->pb_mv_precision)) -
-              1)))
-          return 0;
-#endif  // CONFIG_C071_SUBBLK_WARPMV
       }
     } else {
       const int jmvd_base_ref_list = get_joint_mvd_base_ref_list(cm, mbmi);
       const int i = (mode == JOINT_NEWMV || mode == JOINT_NEWMV_OPTFLOW)
                         ? jmvd_base_ref_list
                         : (compound_ref1_mode(mode) == NEWMV);
-#if CONFIG_C071_SUBBLK_WARPMV
       MV diff = { mbmi->mv[i].as_mv.row, mbmi->mv[i].as_mv.col };
       MV refmv = av1_get_ref_mv(x, i).as_mv;
       if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
@@ -231,22 +215,6 @@ static inline int check_mv_precision(const AV1_COMMON *cm,
                diff.col);
         return 0;
       }
-#else
-      if ((mbmi->mv[i].as_mv.row &
-           ((1 << (MV_PRECISION_ONE_EIGHTH_PEL - mbmi->pb_mv_precision)) -
-            1))) {
-        printf(" precision = %d value = %d \n", mbmi->pb_mv_precision,
-               mbmi->mv[i].as_mv.row);
-        return 0;
-      }
-      if ((mbmi->mv[i].as_mv.col &
-           ((1 << (MV_PRECISION_ONE_EIGHTH_PEL - mbmi->pb_mv_precision)) -
-            1))) {
-        printf(" precision = %d value = %d \n", mbmi->pb_mv_precision,
-               mbmi->mv[i].as_mv.col);
-        return 0;
-      }
-#endif  // CONFIG_C071_SUBBLK_WARPMV
     }
   }
   return 1;

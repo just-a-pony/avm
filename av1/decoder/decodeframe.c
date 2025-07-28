@@ -542,12 +542,8 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const TileInfo *const tile = &xd->tile;
 
-  set_mi_offsets(mi_params, xd, mi_row, mi_col
-#if CONFIG_C071_SUBBLK_WARPMV
-                 ,
-                 x_inside_boundary, y_inside_boundary
-#endif  // CONFIG_C071_SUBBLK_WARPMV
-  );
+  set_mi_offsets(mi_params, xd, mi_row, mi_col, x_inside_boundary,
+                 y_inside_boundary);
   xd->mi[0]->sb_type[xd->tree_type == CHROMA_PART] = bsize;
   if (xd->tree_type != CHROMA_PART) {
     xd->mi[0]->mi_row_start = mi_row;
