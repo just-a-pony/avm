@@ -57,11 +57,7 @@ inline double compute_psnr(const aom_image_t *img1, const aom_image_t *img2) {
 // If `is_yuv444` is true: assumes YUV4:4:4 format, otherwise assumes YUV4:2:0.
 inline double get_lossless_psnr(unsigned int width, unsigned int height,
                                 unsigned int bit_depth, bool is_yuv444) {
-#if CONFIG_AV2CTC_PSNR_PEAK
   const double peak = (double)(255 << (bit_depth - 8));
-#else
-  const double peak = (double)((1 << in_bit_depth) - 1);
-#endif  // CONFIG_AV2CTC_PSNR_PEAK
   const double y_samples = width * height;
   const double uv_samples = is_yuv444 ? 2 * y_samples : 2 * y_samples / 4;
   return sse_to_psnr(y_samples + uv_samples, peak, 0);

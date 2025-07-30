@@ -2481,11 +2481,7 @@ int main(int argc, const char **argv_) {
                                          ? stream->config.cfg.g_input_bit_depth
                                          : stream->config.cfg.g_bit_depth;
           const int psnr_idx = (global.show_psnr == 1) ? 0 : 1;
-#if CONFIG_AV2CTC_PSNR_PEAK
           const double peak = (255 << (psnr_bit_depth - 8));
-#else
-          const double peak = (1 << psnr_bit_depth) - 1;
-#endif  // CONFIG_AV2CTC_PSNR_PEAK
           const double ovpsnr =
               sse_to_psnr((double)stream->psnr_samples_total[psnr_idx], peak,
                           (double)stream->psnr_sse_total[psnr_idx]);
