@@ -400,9 +400,6 @@ set_aom_config_var(CONFIG_WRL_NO_PRUNING 1 "No pruning when construct WRL")
 set_aom_config_var(CONFIG_FIX_RESIZE_PSNR 1
                    "Fix PSNR computation of resize mode in coded resolution")
 
-set_aom_config_var(CONFIG_MOTION_MODE_RD_PRUNE 1
-                   "Enable fast motion mode search")
-
 set_aom_config_var(CONFIG_MRSSE 0 "Enable MRSSE")
 
 set_aom_config_var(CONFIG_MAX_PB_RATIO 1

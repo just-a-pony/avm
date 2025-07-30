@@ -2256,7 +2256,6 @@ static int av1_adjust_mvs_for_derive_sign(const AV1_COMP *const cpi,
 }
 #endif
 
-#if CONFIG_MOTION_MODE_RD_PRUNE
 // Reject this motion mode if modelrd is larder that the stored model rd values
 //  Return 1 means reject this mode
 //  Return 0 means compute full RD
@@ -2279,7 +2278,6 @@ static int prune_motion_mode(int64_t this_model_rd,
 
   return 0;
 }
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
 /*!\brief AV1 motion mode search
  *
  * \ingroup inter_mode_search
@@ -2352,9 +2350,7 @@ static int64_t motion_mode_rd(
     RD_STATS *rd_stats_uv, HandleInterModeArgs *const args, int64_t ref_best_rd,
     int64_t *ref_skip_rd, int *rate_mv, const BUFFER_SET *orig_dst,
     int64_t *best_est_rd, int do_tx_search, InterModesInfo *inter_modes_info,
-#if CONFIG_MOTION_MODE_RD_PRUNE
     int64_t top_motion_mode_model_rd[],
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
 
     int eval_motion_mode) {
   const AV1_COMMON *const cm = &cpi->common;
@@ -2466,10 +2462,8 @@ static int64_t motion_mode_rd(
           : select_modes_to_search(cpi, allowed_motion_modes, eval_motion_mode,
                                    args->skip_motion_mode);
 
-#if CONFIG_MOTION_MODE_RD_PRUNE
   uint8_t enable_tx_prune =
       top_motion_mode_model_rd && do_tx_search && !eval_motion_mode;
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
 
   // Main function loop. This loops over all of the possible motion modes and
   // computes RD to determine the best one. This process includes computing
@@ -3420,7 +3414,6 @@ static int64_t motion_mode_rd(
                 if (!eval_txfm) continue;
               }
 
-#if CONFIG_MOTION_MODE_RD_PRUNE
               if (enable_tx_prune) {
                 int est_residue_cost = 0;
                 int64_t est_dist = 0;
@@ -3438,16 +3431,11 @@ static int64_t motion_mode_rd(
                 if (prune_motion_mode(est_rd, top_motion_mode_model_rd))
                   continue;
               }
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
 
               // Do transform search
               if (!av1_txfm_search(cpi, x, bsize, rd_stats, rd_stats_y,
                                    rd_stats_uv, rd_stats->rate,
-#if CONFIG_MOTION_MODE_RD_PRUNE
-                                   enable_tx_prune ? 0 : 1,
-
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
-                                   ref_best_rd)) {
+                                   enable_tx_prune ? 0 : 1, ref_best_rd)) {
                 if (rd_stats_y->rate == INT_MAX && mode_index == 0) {
                   return INT64_MAX;
                 }
@@ -5082,7 +5070,6 @@ static int64_t handle_inter_mode(
     }
   }
 
-#if CONFIG_MOTION_MODE_RD_PRUNE
   int64_t top_motion_mode_model_rd[MAXIMUM_NUM_OF_TX_MODES];
   uint8_t enable_tx_prune = do_tx_search;
   if (enable_tx_prune) {
@@ -5090,7 +5077,6 @@ static int64_t handle_inter_mode(
       top_motion_mode_model_rd[k] = INT64_MAX;
     }
   }
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
 
   // Main loop of this function. This will  iterate over all of the ref mvs
   // in the dynamic reference list and do the following:
@@ -5659,10 +5645,7 @@ static int64_t handle_inter_mode(
                     &rate_mv,
 #endif  // CONFIG_REFINEMV
                       &orig_dst, best_est_rd, do_tx_search, inter_modes_info,
-#if CONFIG_MOTION_MODE_RD_PRUNE
-                      enable_tx_prune ? top_motion_mode_model_rd : NULL,
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
-                      0);
+                      enable_tx_prune ? top_motion_mode_model_rd : NULL, 0);
 #if CONFIG_COLLECT_COMPONENT_TIMING
                   end_timing(cpi, motion_mode_rd_time);
 #endif
@@ -6898,14 +6881,9 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
           if (!valid) break;
         }
         RD_STATS rd_stats_yuv, rd_stats_y, rd_stats_uv;
-        if (!av1_txfm_search(cpi, x, bsize, &rd_stats_yuv, &rd_stats_y,
-                             &rd_stats_uv,
-                             rate_mode + rate_mv + morph_pred_cost,
-#if CONFIG_MOTION_MODE_RD_PRUNE
-                             1,
-
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
-                             INT64_MAX))
+        if (!av1_txfm_search(
+                cpi, x, bsize, &rd_stats_yuv, &rd_stats_y, &rd_stats_uv,
+                rate_mode + rate_mv + morph_pred_cost, 1, INT64_MAX))
           continue;
         rd_stats_yuv.rdcost =
             RDCOST(x->rdmult, rd_stats_yuv.rate, rd_stats_yuv.dist);
@@ -7354,12 +7332,7 @@ static AOM_INLINE void rd_pick_skip_mode(
     // Do transform search
     if (av1_txfm_search(cpi, x, bsize, &skip_mode_rd_stats,
                         &skip_mode_rd_stats_y, &skip_mode_rd_stats_uv,
-                        skip_mode_rd_stats.rate,
-#if CONFIG_MOTION_MODE_RD_PRUNE
-                        1,
-
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
-                        search_state->best_rd)) {
+                        skip_mode_rd_stats.rate, 1, search_state->best_rd)) {
       skip_mode_rd_stats.rdcost =
           RDCOST(x->rdmult, skip_mode_rd_stats.rate, skip_mode_rd_stats.dist);
     } else {
@@ -7557,11 +7530,7 @@ static AOM_INLINE void refine_winner_mode_tx(
         av1_subtract_plane(x, bsize, 0, cm->width, cm->height);
         if (txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
             !xd->lossless[mbmi->segment_id]) {
-          av1_pick_recursive_tx_size_type_yrd(cpi, x, &rd_stats_y, bsize,
-#if CONFIG_MOTION_MODE_RD_PRUNE
-                                              1,
-
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
+          av1_pick_recursive_tx_size_type_yrd(cpi, x, &rd_stats_y, bsize, 1,
                                               INT64_MAX);
           assert(rd_stats_y.rate != INT_MAX);
         } else {
@@ -8841,11 +8810,7 @@ static AOM_INLINE void evaluate_motion_mode_for_winner_candidates(
     int64_t ret_value = motion_mode_rd(
         cpi, tile_data, x, bsize, &rd_stats, &rd_stats_y, &rd_stats_uv, args,
         search_state->best_rd, skip_rd, &rate_mv, &orig_dst, best_est_rd,
-        do_tx_search, inter_modes_info,
-#if CONFIG_MOTION_MODE_RD_PRUNE
-        NULL,
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
-        1);
+        do_tx_search, inter_modes_info, NULL, 1);
 
     if (ret_value != INT64_MAX) {
       rd_stats.rdcost = RDCOST(x->rdmult, rd_stats.rate, rd_stats.dist);
@@ -9113,12 +9078,7 @@ static void tx_search_best_inter_candidates(
 
     // Do the transform search
     if (!av1_txfm_search(cpi, x, bsize, &rd_stats, &rd_stats_y, &rd_stats_uv,
-                         mode_rate,
-#if CONFIG_MOTION_MODE_RD_PRUNE
-                         1,
-
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
-                         search_state->best_rd)) {
+                         mode_rate, 1, search_state->best_rd)) {
       continue;
     } else if (cpi->sf.inter_sf.inter_mode_rd_model_estimation == 1) {
       inter_mode_data_push(

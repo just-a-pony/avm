@@ -302,11 +302,7 @@ static void set_good_speed_features_framesize_independent(
   sf->inter_sf.disable_wedge_search_var_thresh = 0;
   // TODO(debargha): Test, tweak and turn on either 1 or 2
 
-#if CONFIG_MOTION_MODE_RD_PRUNE
   sf->inter_sf.inter_mode_rd_model_estimation = 0;
-#else
-  sf->inter_sf.inter_mode_rd_model_estimation = 1;
-#endif  // CONFIG_MOTION_MODE_RD_PRUNE
 
   sf->inter_sf.model_based_post_interp_filter_breakout = 1;
   sf->inter_sf.prune_compound_using_single_ref = 1;
