@@ -137,8 +137,6 @@ set_aom_config_var(CONFIG_COLLECT_COMPONENT_TIMING 0
 set_aom_config_var(CONFIG_AV1_TEMPORAL_DENOISING 0
                    "Build with temporal denoising support.")
 set_aom_config_var(CONFIG_NN_V2 0 "Fully-connected neural nets ver.2.")
-set_aom_config_var(CONFIG_ZERO_OFFSET_BITUPSHIFT 1
-                   "Use zero offset for non-normative bit upshift")
 
 set_aom_config_var(CONFIG_PARAKIT_COLLECT_DATA 0
                    "enables data collection for ParaKit training.")

@@ -70,15 +70,11 @@ static int64_t highbd_get_sse_shift(const uint16_t *a, int a_stride,
   for (y = 0; y < height; ++y) {
     for (x = 0; x < width; ++x) {
       int64_t diff;
-#if CONFIG_ZERO_OFFSET_BITUPSHIFT
       uint16_t av = (uint16_t)ROUND_POWER_OF_TWO(a[x], down_shift);
       av = (uint16_t)clip_pixel_highbd(av, bit_depth);
       uint16_t bv = (uint16_t)ROUND_POWER_OF_TWO(b[x], down_shift);
       bv = (uint16_t)clip_pixel_highbd(bv, bit_depth);
       diff = (av - bv);
-#else
-      diff = (a[x] >> down_shift) - (b[x] >> down_shift);
-#endif  // CONFIG_ZERO_OFFSET_BITUPSHIFT
       total_sse += diff * diff;
     }
     a += a_stride;

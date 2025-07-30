@@ -347,13 +347,9 @@ static void highbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
       uint16_t *p_dst =
           (uint16_t *)(dst->planes[plane] + y * dst->stride[plane]);
       for (x = 0; x < w; x++) {
-#if CONFIG_ZERO_OFFSET_BITUPSHIFT
         const uint16_t v = (uint16_t)ROUND_POWER_OF_TWO(*p_src, down_shift);
         *p_dst++ = (uint16_t)clip_pixel_highbd(v, out_bit_depth);
         p_src++;
-#else
-        *p_dst++ = *p_src++ >> down_shift;
-#endif  // CONFIG_ZERO_OFFSET_BITUPSHIFT
       }
     }
   }
@@ -387,13 +383,9 @@ static void lowbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
           (const uint16_t *)(src->planes[plane] + y * src->stride[plane]);
       uint8_t *p_dst = dst->planes[plane] + y * dst->stride[plane];
       for (x = 0; x < w; x++) {
-#if CONFIG_ZERO_OFFSET_BITUPSHIFT
         const uint16_t v = (uint16_t)ROUND_POWER_OF_TWO(*p_src, down_shift);
         *p_dst++ = (uint8_t)clip_pixel(v);
         p_src++;
-#else
-        *p_dst++ = (uint8_t)(*p_src++ >> down_shift);
-#endif  // CONFIG_ZERO_OFFSET_BITUPSHIFT
       }
     }
   }
