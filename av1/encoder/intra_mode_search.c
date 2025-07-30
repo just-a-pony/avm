@@ -59,7 +59,8 @@ static void rd_pick_intra_dip_sby_modelrd(
       int dip_index = ml_mode + transpose * num_modes;
       mbmi->intra_dip_mode = mode;
       const int64_t this_model_rd = intra_model_yrd(cpi, x, bsize, mode_cost);
-      dip_mode_model_log_rd[dip_index] = log10f((float)this_model_rd);
+      dip_mode_model_log_rd[dip_index] =
+          log10f((float)AOMMAX(this_model_rd, 1));
 
       for (int i = 0; i < TOP_DIP_INTRA_MODEL_COUNT; i++) {
         if (this_model_rd < intra_model_rds[i].modelrd) {
@@ -162,10 +163,11 @@ static int rd_pick_intra_dip_sby(const AV1_COMP *const cpi, ThreadData *td,
                        xd->bd) >>
       (xd->bd - 8);
 
-  const float log_best_rd = log10f((float)*best_rd);
-  const float log_best_model_rd = log10f((float)*best_model_rd);
-  const float log_dc_mode_rd = log10f((float)extra->dc_mode_rd);
-  const float log_orig_best_rd = log10f((float)extra->orig_best_rd);
+  // Clamp all RD values to a minimum of 1 to avoid arithmetic exceptions.
+  const float log_best_rd = log10f((float)AOMMAX(*best_rd, 1));
+  const float log_best_model_rd = log10f((float)AOMMAX(*best_model_rd, 1));
+  const float log_dc_mode_rd = log10f((float)AOMMAX(extra->dc_mode_rd, 1));
+  const float log_orig_best_rd = log10f((float)AOMMAX(extra->orig_best_rd, 1));
   bool pred_keep = true;
   int adjusted_qindex = x->qindex - MAXQ_OFFSET * (xd->bd - 8);
   int dip_model_index = intra_dip_mode_prune_get_model_index(adjusted_qindex);
