@@ -339,9 +339,6 @@ set_aom_config_var(CONFIG_MV_RANGE_EXTENSION 1
 set_aom_config_var(CONFIG_WRL_CORNER_MVS 1
                    "Improve the WRL from the 3 corner MVs")
 
-# This is an encode-only change.
-set_aom_config_var(CONFIG_LARGE_TF_BLOCK 1
-                   "Enable large adaptively selected temporal filter blocks.")
 set_aom_config_var(CONFIG_IMPROVED_CFL 1
                    "Enable improved CfL mode from CWG-C044")
 set_aom_config_var(

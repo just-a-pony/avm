@@ -42,14 +42,11 @@
 
 // Forward Declaration.
 static void tf_determine_block_partition(const MV block_mv, const int block_mse,
-#if CONFIG_LARGE_TF_BLOCK
                                          const MV *midblock_mvs,
                                          const int *midblock_mses,
-#endif  // CONFIG_LARGE_TF_BLOCK
                                          MV *subblock_mvs, int *subblock_mses);
 
 /*!\endcond */
-#if CONFIG_LARGE_TF_BLOCK
 /*!\brief Do motion search for 1 subblock. The block size can be 32x32 or 16x16.
  * Given a frame to be filtered and another frame as reference, this function
  * searches the reference frame to find out the most similar block as that from
@@ -165,7 +162,6 @@ static void subblock_motion_search(
   subblock_mses[idx] = DIVIDE_AND_ROUND(error, subblock_pels);
   subblock_mvs[idx] = best_mv.as_mv;
 }
-#endif  // CONFIG_LARGE_TF_BLOCK
 
 /*!\brief Does motion search for blocks in temporal filtering. This is
  *  the first step for temporal filtering. More specifically, given a frame to
@@ -271,11 +267,9 @@ static void tf_motion_search(AV1_COMP *cpi,
   int_mv best_mv;  // Searched motion vector.
   int block_mse = INT_MAX;
   MV block_mv = kZeroMv;
-#if CONFIG_LARGE_TF_BLOCK
   // 32x32 block motion search results.
   int midblock_mses[4] = { INT_MAX, INT_MAX, INT_MAX, INT_MAX };
   MV midblock_mvs[4] = { kZeroMv, kZeroMv, kZeroMv, kZeroMv };
-#endif  // CONFIG_LARGE_TF_BLOCK
 
   av1_make_default_fullpel_ms_params(&full_ms_params, cpi, mb, block_size,
                                      &baseline_mv, pb_mv_precision,
@@ -329,7 +323,6 @@ static void tf_motion_search(AV1_COMP *cpi,
     block_mv = best_mv.as_mv;
     *ref_mv = best_mv.as_mv;
 
-#if CONFIG_LARGE_TF_BLOCK
     // On 4 mid-blocks in the 64x64 tf block.
     {
       // midblock_size is 32x32, which corresponds to each 32x32 block in the
@@ -377,63 +370,6 @@ static void tf_motion_search(AV1_COMP *cpi,
         }
       }
     }
-#else
-    // On 4 sub-blocks.
-    const BLOCK_SIZE subblock_size = ss_size_lookup[block_size][1][1];
-    const int subblock_height = block_size_high[subblock_size];
-    const int subblock_width = block_size_wide[subblock_size];
-    const int subblock_pels = subblock_height * subblock_width;
-    start_mv = get_fullmv_from_mv(ref_mv);
-
-    full_pel_lower_mv_precision(&start_mv, pb_mv_precision);
-
-    int subblock_idx = 0;
-    for (int i = 0; i < mb_height; i += subblock_height) {
-      for (int j = 0; j < mb_width; j += subblock_width) {
-        const int offset = i * y_stride + j;
-        mb->plane[0].src.buf = frame_to_filter->y_buffer + y_offset + offset;
-        mbd->plane[0].pre[0].buf = ref_frame->y_buffer + y_offset + offset;
-        av1_make_default_fullpel_ms_params(&full_ms_params, cpi, mb,
-                                           subblock_size, &baseline_mv,
-                                           pb_mv_precision,
-#if CONFIG_IBC_BV_IMPROVEMENT
-                                           is_ibc_cost,
-#endif
-
-                                           search_site_cfg,
-                                           /*fine_search_interval=*/0);
-        av1_set_mv_search_method(&full_ms_params, search_site_cfg,
-                                 search_method);
-        full_ms_params.run_mesh_search = 1;
-        full_ms_params.mv_cost_params.mv_cost_type = mv_cost_type;
-
-        av1_full_pixel_search(start_mv, &full_ms_params, step_param,
-                              cond_cost_list(cpi, cost_list),
-                              &best_mv.as_fullmv, NULL);
-
-        av1_make_default_subpel_ms_params(&ms_params, cpi, mb, subblock_size,
-                                          &baseline_mv, pb_mv_precision,
-#if CONFIG_IBC_SUBPEL_PRECISION
-                                          0,
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-                                          cost_list);
-        ms_params.forced_stop = EIGHTH_PEL;
-        ms_params.var_params.subpel_search_type = subpel_search_type;
-        // Since we are merely refining the result from full pixel search, we
-        // don't need regularization for subpel search
-        ms_params.mv_cost_params.mv_cost_type = MV_COST_NONE;
-
-        subpel_start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
-        error = cpi->mv_search_params.find_fractional_mv_step(
-            &mb->e_mbd, cm, &ms_params, subpel_start_mv, &best_mv.as_mv,
-            &distortion, &sse, NULL);
-
-        subblock_mses[subblock_idx] = DIVIDE_AND_ROUND(error, subblock_pels);
-        subblock_mvs[subblock_idx] = best_mv.as_mv;
-        ++subblock_idx;
-      }
-    }
-#endif  // CONFIG_LARGE_TF_BLOCK
   }
 
   // Restore input state.
@@ -441,10 +377,7 @@ static void tf_motion_search(AV1_COMP *cpi,
   mbd->plane[0].pre[0] = ori_pre_buf;
 
   // Make partition decision.
-  tf_determine_block_partition(block_mv, block_mse,
-#if CONFIG_LARGE_TF_BLOCK
-                               midblock_mvs, midblock_mses,
-#endif  // CONFIG_LARGE_TF_BLOCK
+  tf_determine_block_partition(block_mv, block_mse, midblock_mvs, midblock_mses,
                                subblock_mvs, subblock_mses);
 
   // Do not pass down the reference motion vector if error is too large.
@@ -462,10 +395,8 @@ static void tf_motion_search(AV1_COMP *cpi,
 //   block_mv: Motion vector for the entire block (ONLY as reference).
 //   block_mse: Motion search error (MSE) for the entire block (ONLY as
 //              reference).
-#if CONFIG_LARGE_TF_BLOCK
 //   midblock_mvs: Pointer to the motion vectors for 4 mid-blocks.
 //   midblock_mses: Pointer to the search errors (MSE) for 4 mid-blocks.
-#endif  // CONFIG_LARGE_TF_BLOCK
 //   subblock_mvs: Pointer to the motion vectors for 4 sub-blocks (will be
 //                 modified based on the partition decision).
 //   subblock_mses: Pointer to the search errors (MSE) for 4 sub-blocks (will
@@ -474,12 +405,9 @@ static void tf_motion_search(AV1_COMP *cpi,
 //   Nothing will be returned. Results are saved in `subblock_mvs` and
 //   `subblock_mses`.
 static void tf_determine_block_partition(const MV block_mv, const int block_mse,
-#if CONFIG_LARGE_TF_BLOCK
                                          const MV *midblock_mvs,
                                          const int *midblock_mses,
-#endif  // CONFIG_LARGE_TF_BLOCK
                                          MV *subblock_mvs, int *subblock_mses) {
-#if CONFIG_LARGE_TF_BLOCK
   int min_subblock_mse = INT_MAX;
   int max_subblock_mse = INT_MIN;
   int64_t sum_subblock_mse = 0;
@@ -530,28 +458,6 @@ static void tf_determine_block_partition(const MV block_mv, const int block_mse,
       subblock_mses[i] = block_mse;
     }
   }
-#else
-  int min_subblock_mse = INT_MAX;
-  int max_subblock_mse = INT_MIN;
-  int64_t sum_subblock_mse = 0;
-  for (int i = 0; i < 4; ++i) {
-    sum_subblock_mse += subblock_mses[i];
-    min_subblock_mse = AOMMIN(min_subblock_mse, subblock_mses[i]);
-    max_subblock_mse = AOMMAX(max_subblock_mse, subblock_mses[i]);
-  }
-
-  // TODO(any): The following magic numbers may be tuned to improve the
-  // performance OR find a way to get rid of these magic numbers.
-  if (((block_mse * 15 < sum_subblock_mse * 4) &&
-       max_subblock_mse - min_subblock_mse < 48) ||
-      ((block_mse * 14 < sum_subblock_mse * 4) &&
-       max_subblock_mse - min_subblock_mse < 24)) {  // No split.
-    for (int i = 0; i < 4; ++i) {
-      subblock_mvs[i] = block_mv;
-      subblock_mses[i] = block_mse;
-    }
-  }
-#endif  // CONFIG_LARGE_TF_BLOCK
 }
 
 /*!\endcond */
@@ -611,15 +517,10 @@ static void tf_build_predictor(const YV12_BUFFER_CONFIG *ref_frame,
     const int plane_w = mb_width >> subsampling_x;   // Plane width.
     const int plane_y = mb_y >> subsampling_y;       // Y-coord (Top-left).
     const int plane_x = mb_x >> subsampling_x;       // X-coord (Top-left).
-#if CONFIG_LARGE_TF_BLOCK
-    const int h32 = plane_h >> 1;  // 32x32 sub-block height.
-    const int w32 = plane_w >> 1;  // 32x32 sub-block width.
-    const int h16 = plane_h >> 2;  // 16x16 sub-block height.
-    const int w16 = plane_w >> 2;  // 16x16 sub-block width.
-#else
-    const int h = plane_h >> 1;  // Sub-block height.
-    const int w = plane_w >> 1;  // Sub-block width.
-#endif  // CONFIG_LARGE_TF_BLOCK
+    const int h32 = plane_h >> 1;                    // 32x32 sub-block height.
+    const int w32 = plane_w >> 1;                    // 32x32 sub-block width.
+    const int h16 = plane_h >> 2;                    // 16x16 sub-block height.
+    const int w16 = plane_w >> 2;                    // 16x16 sub-block width.
 
     const int is_y_plane = (plane == 0);  // Is Y-plane?
 
@@ -631,7 +532,6 @@ static void tf_build_predictor(const YV12_BUFFER_CONFIG *ref_frame,
                                     ref_frame->crop_heights[is_y_plane ? 0 : 1],
                                     ref_frame->strides[is_y_plane ? 0 : 1] };
 
-#if CONFIG_LARGE_TF_BLOCK
     const int sub_y[4] = { 0, 0, h32, h32 };
     const int sub_x[4] = { 0, w32, 0, w32 };
     // Handle each 16x16 subblock.
@@ -659,30 +559,6 @@ static void tf_build_predictor(const YV12_BUFFER_CONFIG *ref_frame,
         }
       }
     }
-#else
-    // Handle each subblock.
-    int subblock_idx = 0;
-    for (int i = 0; i < plane_h; i += h) {
-      for (int j = 0; j < plane_w; j += w) {
-        // Choose proper motion vector.
-        const MV mv = subblock_mvs[subblock_idx++];
-        assert(mv.row >= INT16_MIN && mv.row <= INT16_MAX &&
-               mv.col >= INT16_MIN && mv.col <= INT16_MAX);
-
-        const int y = plane_y + i;
-        const int x = plane_x + j;
-
-        // Build predictior for each sub-block on current plane.
-        InterPredParams inter_pred_params;
-        av1_init_inter_params(&inter_pred_params, w, h, y, x, subsampling_x,
-                              subsampling_y, bit_depth, is_intrabc, scale,
-                              &ref_buf, interp_filters);
-        inter_pred_params.conv_params = get_conv_params(0, plane, bit_depth);
-        av1_enc_build_one_inter_predictor(&pred[plane_offset + i * plane_w + j],
-                                          plane_w, &mv, &inter_pred_params);
-      }
-    }
-#endif  // CONFIG_LARGE_TF_BLOCK
     plane_offset += mb_pels;
   }
 }
@@ -888,16 +764,12 @@ void av1_highbd_apply_temporal_filter_c(
         // Combine window error and block error, and normalize it.
         const double window_error = (double)sum_square_diff / num_ref_pixels;
 
-#if CONFIG_LARGE_TF_BLOCK
         // 16x16 block index
         const int y32 = i / (h / 2);
         const int x32 = j / (w / 2);
         const int y16 = (i % (h / 2)) / (h / 4);
         const int x16 = (j % (w / 2)) / (w / 4);
         const int subblock_idx = (y32 * 2 + x32) * 4 + (y16 * 2 + x16);
-#else
-        const int subblock_idx = (i >= h / 2) * 2 + (j >= w / 2);
-#endif  // CONFIG_LARGE_TF_BLOCK
         const double block_error = (double)subblock_mses[subblock_idx];
         const double combined_error =
             (TF_WINDOW_BLOCK_BALANCE_WEIGHT * window_error + block_error) /
@@ -1109,8 +981,7 @@ static FRAME_DIFF tf_do_filtering(AV1_COMP *cpi, YV12_BUFFER_CONFIG **frames,
       // Perform temporal filtering frame by frame.
       for (int frame = 0; frame < num_frames; frame++) {
         if (frames[frame] == NULL) continue;
-          // Motion search.
-#if CONFIG_LARGE_TF_BLOCK
+        // Motion search.
         // block size is 64x64. 16 16x16 in 1 64x64.
         // Store motion search results in 16x16 units.
         MV subblock_mvs[16] = { kZeroMv, kZeroMv, kZeroMv, kZeroMv,
@@ -1121,10 +992,6 @@ static FRAME_DIFF tf_do_filtering(AV1_COMP *cpi, YV12_BUFFER_CONFIG **frames,
                                   INT_MAX, INT_MAX, INT_MAX, INT_MAX,
                                   INT_MAX, INT_MAX, INT_MAX, INT_MAX,
                                   INT_MAX, INT_MAX, INT_MAX, INT_MAX };
-#else
-        MV subblock_mvs[4] = { kZeroMv, kZeroMv, kZeroMv, kZeroMv };
-        int subblock_mses[4] = { INT_MAX, INT_MAX, INT_MAX, INT_MAX };
-#endif                                    // CONFIG_LARGE_TF_BLOCK
         if (frame == filter_frame_idx) {  // Frame to be filtered.
           // Change ref_mv sign for following frames.
           ref_mv.row *= -1;
