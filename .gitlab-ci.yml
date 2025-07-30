@@ -202,14 +202,8 @@ Test Data Check:
         internal-stats)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_INTERNAL_STATS=1"
           ;;
-        small)
-          CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_SMALL=1"
-          ;;
         shared)
           CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SHARED_LIBS=1"
-          ;;
-        shared-no-static)
-          CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SHARED_LIBS=1 -DCONFIG_STATIC=0"
           ;;
         no-rtcd)
           CMAKE_FLAGS="$CMAKE_FLAGS -DCONFIG_RUNTIME_CPU_DETECT=0"
@@ -976,7 +970,7 @@ Static Analyzer:
     when: on_failure
     paths:
       - output-*
-  dependencies: []
+  needs: []
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
