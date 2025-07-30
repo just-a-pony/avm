@@ -498,13 +498,12 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   // seq->y_dc_delta_q_enabled == 0
   // seq->uv_dc_delta_q_enabled == 0
   // seq->base_uv_dc_delta_q == seq->base_uv_ac_delta_q
-  seq->equal_ac_dc_q = !!CONFIG_ADJ_Q_OFFSET;
+  seq->equal_ac_dc_q = 1;
 
   seq->base_uv_ac_delta_q = 0;
   seq->y_dc_delta_q_enabled = 0;
-  seq->uv_dc_delta_q_enabled = !CONFIG_ADJ_Q_OFFSET;
+  seq->uv_dc_delta_q_enabled = 0;
   seq->uv_ac_delta_q_enabled = 0;
-#if CONFIG_ADJ_Q_OFFSET
   const int is_360p_or_larger =
       AOMMIN(seq->max_frame_width, seq->max_frame_height) >= 360;
   const int is_720p_or_larger =
@@ -522,22 +521,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
     seq->base_uv_dc_delta_q = 0;
     seq->base_uv_ac_delta_q = 0;
   }
-#else
-  const int is_360p_or_larger =
-      AOMMIN(seq->max_frame_width, seq->max_frame_height) >= 360;
-  const int is_720p_or_larger =
-      AOMMIN(seq->max_frame_width, seq->max_frame_height) >= 720;
-  if (!is_360p_or_larger) {
-    seq->base_y_dc_delta_q = -7;
-    seq->base_uv_dc_delta_q = -6;
-  } else if (!is_720p_or_larger) {
-    seq->base_y_dc_delta_q = -5;
-    seq->base_uv_dc_delta_q = -4;
-  } else {
-    seq->base_y_dc_delta_q = -4;
-    seq->base_uv_dc_delta_q = -3;
-  }
-#endif  // !CONFIG_ADJ_Q_OFFSET
   assert(IMPLIES(seq->equal_ac_dc_q, seq->y_dc_delta_q_enabled == 0 &&
                                          seq->base_y_dc_delta_q == 0));
   assert(IMPLIES(seq->equal_ac_dc_q,

@@ -581,11 +581,6 @@ void set_frame_dc_delta_q(const AV1_COMMON *const cm, int *y_dc_delta_q,
   *v_dc_delta_q = 0;
   *u_ac_delta_q = 0;
   *v_ac_delta_q = 0;
-#if !CONFIG_ADJ_Q_OFFSET
-  if (frame_is_intra_only(cm) && cm->seq_params.uv_dc_delta_q_enabled) {
-    *u_dc_delta_q = *v_dc_delta_q = -4;
-  }
-#endif  // !CONFIG_ADJ_Q_OFFSET
 }
 
 // A version of set_qm_params() used when the
