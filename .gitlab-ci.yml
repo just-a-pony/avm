@@ -591,9 +591,6 @@ Example Test (x86_64):
           SANITIZER_OPTIONS="${SANITIZER_OPTIONS}:max_uar_stack_size_log=17"
           export ASAN_OPTIONS="${SANITIZER_OPTIONS}"
           ;;
-        memory)
-          export MSAN_OPTIONS="${SANITIZER_OPTIONS}"
-          ;;
         thread)
           # The thread sanitizer uses a subset.
           TSAN_OPTIONS="handle_sigfpe=1"
