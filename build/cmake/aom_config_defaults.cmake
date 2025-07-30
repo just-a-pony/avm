@@ -340,9 +340,6 @@ set_aom_config_var(CONFIG_WRL_CORNER_MVS 1
                    "Improve the WRL from the 3 corner MVs")
 
 # This is an encode-only change.
-set_aom_config_var(CONFIG_MV_SEARCH_RANGE 1
-                   "Enable a sufficient MV search range.")
-# This is an encode-only change.
 set_aom_config_var(CONFIG_LARGE_TF_BLOCK 1
                    "Enable large adaptively selected temporal filter blocks.")
 set_aom_config_var(CONFIG_IMPROVED_CFL 1

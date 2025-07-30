@@ -38,13 +38,8 @@ extern "C" {
 #else
 #define MAX_MVSEARCH_STEPS 11
 // Max full pel mv specified in the unit of full pixel
-#if CONFIG_MV_SEARCH_RANGE
 // Enable the use of motion vector in range [-2047, 2047].
 #define MAX_FULL_PEL_VAL ((1 << MV_CLASSES) - 1)
-#else
-// Enable the use of motion vector in range [-1023, 1023].
-#define MAX_FULL_PEL_VAL ((1 << (MAX_MVSEARCH_STEPS - 1)) - 1)
-#endif  // CONFIG_MV_SEARCH_RANGE
 // Maximum size of the first step in full pel units
 #define MAX_FIRST_STEP (1 << (MAX_MVSEARCH_STEPS - 1))
 #endif  // CONFIG_MV_RANGE_EXTENSION

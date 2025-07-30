@@ -1029,11 +1029,7 @@ void av1_init_motion_compensation_nstep(search_site_config *cfg,
   // 20 corresponds to 17bits mv range for NSTEP
   const int max_stage_index = enable_high_motion ? 20 : 16;
 #else
-#if CONFIG_MV_SEARCH_RANGE
   const int max_stage_index = 16;
-#else
-  const int max_stage_index = 15;
-#endif  // CONFIG_MV_SEARCH_RANGE
 #endif  // CONFIG_MV_RANGE_EXTENSION
 
   for (stage_index = 0; stage_index < max_stage_index; ++stage_index) {
@@ -1067,10 +1063,7 @@ void av1_init_motion_compensation_nstep(search_site_config *cfg,
     cfg->searches_per_step[stage_index] = num_search_pts;
     cfg->radius[stage_index] = radius;
     ++num_search_steps;
-#if !CONFIG_MV_SEARCH_RANGE
-    if (stage_index < 12)
-#endif  // CONFIG_MV_SEARCH_RANGE
-      radius = (int)AOMMAX((radius * 1.5 + 0.5), radius + 1);
+    radius = (int)AOMMAX((radius * 1.5 + 0.5), radius + 1);
   }
   cfg->num_search_steps = num_search_steps;
 }
