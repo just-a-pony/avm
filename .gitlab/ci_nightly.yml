@@ -111,6 +111,7 @@ Coverage Report:
       --print-summary
       -r ../ .
   needs:
+    - 'Linux Nightly Build'
     - 'Linux All Unit Test'
   coverage: '/lines:\s(\d+.\d+\%)/'
   artifacts:
