@@ -278,21 +278,18 @@ static INLINE void highbd_paeth_predictor(uint16_t *dst, ptrdiff_t stride,
   }
 }
 
-#if CONFIG_BLEND_MODE
 #define BLEND_WEIGHT_MAX 32
 static const uint8_t blk_size_log2[65] = {
   0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
   4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
   5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6
 };
-#endif  // CONFIG_BLEND_MODE
 
 static INLINE void highbd_smooth_predictor(uint16_t *dst, ptrdiff_t stride,
                                            int bw, int bh,
                                            const uint16_t *above,
                                            const uint16_t *left, int bd) {
   (void)bd;
-#if CONFIG_BLEND_MODE
   const uint16_t bl = left[bh];   // estimated by bottom-left pixel
   const uint16_t tr = above[bw];  // estimated by top-right pixel
 
@@ -345,34 +342,6 @@ static INLINE void highbd_smooth_predictor(uint16_t *dst, ptrdiff_t stride,
     }
     pred += stride;
   }
-#else
-  const uint16_t below_pred = left[bh - 1];   // estimated by bottom-left pixel
-  const uint16_t right_pred = above[bw - 1];  // estimated by top-right pixel
-  const uint8_t *const sm_weights_w = sm_weight_arrays + bw;
-  const uint8_t *const sm_weights_h = sm_weight_arrays + bh;
-  // scale = 2 * 2^sm_weight_log2_scale
-  const int log2_scale = 1 + sm_weight_log2_scale;
-  const uint16_t scale = (1 << sm_weight_log2_scale);
-  sm_weights_sanity_checks(sm_weights_w, sm_weights_h, scale,
-                           log2_scale + sizeof(*dst));
-  int r;
-  for (r = 0; r < bh; ++r) {
-    int c;
-    for (c = 0; c < bw; ++c) {
-      const uint16_t pixels[] = { above[c], below_pred, left[r], right_pred };
-      const uint8_t weights[] = { sm_weights_h[r], scale - sm_weights_h[r],
-                                  sm_weights_w[c], scale - sm_weights_w[c] };
-      uint32_t this_pred = 0;
-      int i;
-      assert(scale >= sm_weights_h[r] && scale >= sm_weights_w[c]);
-      for (i = 0; i < 4; ++i) {
-        this_pred += weights[i] * pixels[i];
-      }
-      dst[c] = divide_round(this_pred, log2_scale);
-    }
-    dst += stride;
-  }
-#endif  // CONFIG_BLEND_MODE
 }
 
 static INLINE void highbd_smooth_v_predictor(uint16_t *dst, ptrdiff_t stride,
@@ -380,7 +349,6 @@ static INLINE void highbd_smooth_v_predictor(uint16_t *dst, ptrdiff_t stride,
                                              const uint16_t *above,
                                              const uint16_t *left, int bd) {
   (void)bd;
-#if CONFIG_BLEND_MODE
   const uint16_t bl = left[bh];  // estimated by bottom-left pixel
 
   uint16_t *pred = dst;
@@ -413,32 +381,6 @@ static INLINE void highbd_smooth_v_predictor(uint16_t *dst, ptrdiff_t stride,
     }
     pred += stride;
   }
-#else
-  const uint16_t below_pred = left[bh - 1];  // estimated by bottom-left pixel
-  const uint8_t *const sm_weights = sm_weight_arrays + bh;
-  // scale = 2^sm_weight_log2_scale
-  const int log2_scale = sm_weight_log2_scale;
-  const uint16_t scale = (1 << sm_weight_log2_scale);
-  sm_weights_sanity_checks(sm_weights, sm_weights, scale,
-                           log2_scale + sizeof(*dst));
-
-  int r;
-  for (r = 0; r < bh; r++) {
-    int c;
-    for (c = 0; c < bw; ++c) {
-      const uint16_t pixels[] = { above[c], below_pred };
-      const uint8_t weights[] = { sm_weights[r], scale - sm_weights[r] };
-      uint32_t this_pred = 0;
-      assert(scale >= sm_weights[r]);
-      int i;
-      for (i = 0; i < 2; ++i) {
-        this_pred += weights[i] * pixels[i];
-      }
-      dst[c] = divide_round(this_pred, log2_scale);
-    }
-    dst += stride;
-  }
-#endif  // CONFIG_BLEND_MODE
 }
 
 static INLINE void highbd_smooth_h_predictor(uint16_t *dst, ptrdiff_t stride,
@@ -446,7 +388,6 @@ static INLINE void highbd_smooth_h_predictor(uint16_t *dst, ptrdiff_t stride,
                                              const uint16_t *above,
                                              const uint16_t *left, int bd) {
   (void)bd;
-#if CONFIG_BLEND_MODE
   const uint16_t tr = above[bw];  // estimated by top-right pixel
 
   uint16_t *pred = dst;
@@ -482,32 +423,6 @@ static INLINE void highbd_smooth_h_predictor(uint16_t *dst, ptrdiff_t stride,
     }
     pred += stride;
   }
-#else
-  const uint16_t right_pred = above[bw - 1];  // estimated by top-right pixel
-  const uint8_t *const sm_weights = sm_weight_arrays + bw;
-  // scale = 2^sm_weight_log2_scale
-  const int log2_scale = sm_weight_log2_scale;
-  const uint16_t scale = (1 << sm_weight_log2_scale);
-  sm_weights_sanity_checks(sm_weights, sm_weights, scale,
-                           log2_scale + sizeof(*dst));
-
-  int r;
-  for (r = 0; r < bh; r++) {
-    int c;
-    for (c = 0; c < bw; ++c) {
-      const uint16_t pixels[] = { left[r], right_pred };
-      const uint8_t weights[] = { sm_weights[c], scale - sm_weights[c] };
-      uint32_t this_pred = 0;
-      assert(scale >= sm_weights[c]);
-      int i;
-      for (i = 0; i < 2; ++i) {
-        this_pred += weights[i] * pixels[i];
-      }
-      dst[c] = divide_round(this_pred, log2_scale);
-    }
-    dst += stride;
-  }
-#endif  // CONFIG_BLEND_MODE
 }
 
 static INLINE void highbd_dc_128_predictor(uint16_t *dst, ptrdiff_t stride,

@@ -50,22 +50,11 @@ static const uint8_t extend_modes[INTRA_MODES] = {
   NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT,  // D157
   NEED_LEFT | NEED_BOTTOMLEFT,              // D203
   NEED_ABOVE | NEED_ABOVERIGHT,             // D67
-  NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT
-#if CONFIG_BLEND_MODE
-      | NEED_ABOVERIGHT | NEED_BOTTOMLEFT
-#endif  // CONFIG_BLEND_MODE
-  ,     // SMOOTH
-  NEED_LEFT | NEED_ABOVE
-#if CONFIG_BLEND_MODE
-      | NEED_BOTTOMLEFT
-#endif  // CONFIG_BLEND_MODE
-  ,     // SMOOTH_V
-  NEED_LEFT | NEED_ABOVE
-#if CONFIG_BLEND_MODE
-      | NEED_ABOVERIGHT
-#endif                                      // CONFIG_BLEND_MODE
-  ,                                         // SMOOTH_H
-  NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT,  // PAETH
+  NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT | NEED_ABOVERIGHT |
+      NEED_BOTTOMLEFT,                       // SMOOTH
+  NEED_LEFT | NEED_ABOVE | NEED_BOTTOMLEFT,  // SMOOTH_V
+  NEED_LEFT | NEED_ABOVE | NEED_ABOVERIGHT,  // SMOOTH_H
+  NEED_LEFT | NEED_ABOVE | NEED_ABOVELEFT,   // PAETH
 };
 
 static int has_top_right(const AV1_COMMON *cm, const MACROBLOCKD *xd,
