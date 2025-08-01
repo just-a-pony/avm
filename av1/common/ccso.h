@@ -30,6 +30,13 @@
 #define CCSO_REFACTORING 0
 #endif
 
+#if CONFIG_CCSO_CLEANUP
+static const uint16_t quant_sz[4][4] = { { 16, 8, 32, 0 },
+                                         { 32, 16, 64, 128 },
+                                         { 48, 24, 96, 192 },
+                                         { 64, 32, 128, 256 } };
+#endif  // CONFIG_CCSO_CLEANUP
+
 static const int edge_clf_to_edge_interval[2] = { 3, 2 };
 
 #ifdef __cplusplus

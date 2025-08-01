@@ -445,6 +445,9 @@ set_aom_config_var(CONFIG_TMVP_MVS_WRITING_FLOW_OPT 1
 set_aom_config_var(CONFIG_IMPROVE_TIP_LF 1 "Enable improved LF for TIP frame.")
 set_aom_config_var(CONFIG_ADJ_PYR_Q_OFFSET 0
                    "Encoder-only config to adjust pyr qp offsets from nominal.")
+
+set_aom_config_var(CONFIG_CCSO_CLEANUP 1
+                   "Clean up CCSO quant_sz and signaling.")
 #
 # Variables in this section control optional features of the build system.
 #

@@ -374,7 +374,7 @@ TEST(EncodeAPI, AvmIssue749) {
   aom_codec_iter_t iter = nullptr;
   while ((pkt = aom_codec_get_cx_data(&enc, &iter)) != nullptr) {
     if (pkt->kind == AOM_CODEC_PSNR_PKT) {
-      EXPECT_GE(pkt->data.psnr.psnr[0], 41.7);
+      EXPECT_GE(pkt->data.psnr.psnr[0], 41.3);
     }
   }
   EXPECT_EQ(aom_codec_encode(&enc, nullptr, 0, 1, 0), AOM_CODEC_OK);
