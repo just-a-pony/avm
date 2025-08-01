@@ -206,9 +206,7 @@ void aom_highbd_comp_mask_pred_avx2(uint16_t *comp_pred, const uint16_t *pred,
       comp_pred += width;
       i += 1;
     } while (i < height);
-  }
-#if CONFIG_WEDGE_MOD_EXT
-  else if (width > 32) {
+  } else if (width > 32) {
     do {
       const int num_32_subs = (width >> 5);
       for (int j = 0; j < num_32_subs; j++) {
@@ -238,5 +236,4 @@ void aom_highbd_comp_mask_pred_avx2(uint16_t *comp_pred, const uint16_t *pred,
       i += 1;
     } while (i < height);
   }
-#endif  // CONFIG_WEDGE_MOD_EXT
 }

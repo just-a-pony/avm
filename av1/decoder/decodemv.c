@@ -516,7 +516,6 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
     assert(mbmi->ref_mv_idx[0] < mbmi->ref_mv_idx[1]);
 }
 
-#if CONFIG_WEDGE_MOD_EXT
 static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
                               const BLOCK_SIZE bsize) {
 #if CONFIG_D149_CTX_MODELING_OPT
@@ -589,7 +588,6 @@ static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
   }
   return wedge_angle_dist_2_index[wedge_angle][wedge_dist];
 }
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 // read the reference index warp_ref_idx of WRL
 static void read_warp_ref_idx(FRAME_CONTEXT *ec_ctx, MB_MODE_INFO *mbmi,
@@ -827,15 +825,9 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
                             ACCT_INFO("use_wedge_interintra"));
 #endif  // CONFIG_D149_CTX_MODELING_OPT
         if (mbmi->use_wedge_interintra) {
-#if CONFIG_WEDGE_MOD_EXT
           mbmi->interintra_wedge_index =
               read_wedge_mode(r, xd->tile_ctx, bsize);
           assert(mbmi->interintra_wedge_index != -1);
-#else
-          mbmi->interintra_wedge_index = (int8_t)aom_read_symbol(
-              r, xd->tile_ctx->wedge_idx_cdf[bsize], MAX_WEDGE_TYPES,
-              ACCT_INFO("interintra_wedge_index"));
-#endif
         }
       }
       return INTERINTRA;
@@ -3870,15 +3862,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
         if (mbmi->use_wedge_interintra) {
-#if CONFIG_WEDGE_MOD_EXT
           mbmi->interintra_wedge_index =
               read_wedge_mode(r, xd->tile_ctx, bsize);
           assert(mbmi->interintra_wedge_index != -1);
-#else
-          mbmi->interintra_wedge_index = (int8_t)aom_read_symbol(
-              r, xd->tile_ctx->wedge_idx_cdf[bsize], MAX_WEDGE_TYPES,
-              ACCT_INFO("interintra_wedge_index"));
-#endif
         }
       }
     }  // if (mbmi->warp_inter_intra)
@@ -3951,14 +3937,8 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 
       if (mbmi->interinter_comp.type == COMPOUND_WEDGE) {
         assert(is_interinter_compound_used(COMPOUND_WEDGE, bsize));
-#if CONFIG_WEDGE_MOD_EXT
         mbmi->interinter_comp.wedge_index = read_wedge_mode(r, ec_ctx, bsize);
         assert(mbmi->interinter_comp.wedge_index != -1);
-#else
-        mbmi->interinter_comp.wedge_index =
-            (int8_t)aom_read_symbol(r, ec_ctx->wedge_idx_cdf[bsize],
-                                    MAX_WEDGE_TYPES, ACCT_INFO("wedge_index"));
-#endif  // CONFIG_WEDGE_MOD_EXT
         mbmi->interinter_comp.wedge_sign =
             (int8_t)aom_read_bit(r, ACCT_INFO("wedge_sign"));
       } else {

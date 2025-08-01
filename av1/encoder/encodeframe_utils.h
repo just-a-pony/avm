@@ -166,7 +166,6 @@ typedef struct PartitionSearchState {
   bool found_best_partition;
 } PartitionSearchState;
 
-#if CONFIG_WEDGE_MOD_EXT
 static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
                                              const BLOCK_SIZE bsize,
                                              const int8_t wedge_index
@@ -260,7 +259,6 @@ static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
   }
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 }
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 static AOM_INLINE void update_filter_type_cdf(const MACROBLOCKD *xd,
                                               const MB_MODE_INFO *mbmi) {

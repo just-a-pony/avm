@@ -338,7 +338,6 @@ set_aom_config_var(CONFIG_C076_INTER_MOD_CTX 1
 
 set_aom_config_var(CONFIG_NEW_CONTEXT_MODELING 1
                    "Enable to improve the context modeling")
-set_aom_config_var(CONFIG_WEDGE_MOD_EXT 1 "AV2 wedge modes extensions.")
 
 set_aom_config_var(CONFIG_BRU 1 "enable BRU update")
 set_aom_config_var(CONFIG_SDP_CFL_LATENCY_FIX 1 "Reduce SDP-CFL latency")
@@ -400,8 +399,6 @@ set_aom_config_var(CONFIG_COEFF_HR_ADAPTIVE 1
                    "AV2 enable adaptive coding of HR coefficients.")
 set_aom_config_var(CONFIG_MV_TRAJECTORY 1
                    "Enables TMVP MV trajectory tracking.")
-
-set_aom_config_var(CONFIG_WEDGE_SIMPL 1 "Wedge mode simplificaitons.")
 
 set_aom_config_var(CONFIG_WARP_INTER_INTRA 1
                    "Enable inter-intra mode for warp block.")

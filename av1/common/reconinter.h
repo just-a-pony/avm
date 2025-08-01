@@ -18,10 +18,7 @@
 #include "av1/common/filter.h"
 #include "av1/common/warped_motion.h"
 #include "aom/aom_integer.h"
-
-#if CONFIG_WEDGE_MOD_EXT
 #include "av1/encoder/block.h"
-#endif
 
 // Work out how many pixels off the edge of a reference frame we're allowed
 // to go when forming an inter prediction.
@@ -40,15 +37,7 @@
 extern "C" {
 #endif
 
-#if !CONFIG_WEDGE_MOD_EXT
-#define MAX_WEDGE_TYPES 16
-#endif
-
-#if CONFIG_WEDGE_MOD_EXT
 #define MAX_WEDGE_SIZE_LOG2 6  // 64x64
-#else
-#define MAX_WEDGE_SIZE_LOG2 5  // 32x32
-#endif
 #define MAX_WEDGE_SIZE (1 << MAX_WEDGE_SIZE_LOG2)
 #define MAX_WEDGE_SQUARE (MAX_WEDGE_SIZE * MAX_WEDGE_SIZE)
 
@@ -59,7 +48,6 @@ extern "C" {
 #define MORPH_FIT_SHIFT 8
 #define TEMPLATE_SIZE 1
 
-#if CONFIG_WEDGE_MOD_EXT
 static const int wedge_angle_dist_2_index[WEDGE_ANGLES][NUM_WEDGE_DIST] = {
   { -1, 0, 1, 2 },     // WEDGE_0
   { 3, 4, 5, 6 },      // WEDGE_14
@@ -128,22 +116,8 @@ static const int wedge_index_2_dist[MAX_WEDGE_TYPES] = {
   1, 2, 3,     // WEDGE_333
   1, 2, 3,     // WEDGE_346
 };
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 #define BAWP_REF_LINES 1
-
-// Angles are with respect to horizontal anti-clockwise
-#if !CONFIG_WEDGE_MOD_EXT
-enum {
-  WEDGE_HORIZONTAL = 0,
-  WEDGE_VERTICAL = 1,
-  WEDGE_OBLIQUE27 = 2,
-  WEDGE_OBLIQUE63 = 3,
-  WEDGE_OBLIQUE117 = 4,
-  WEDGE_OBLIQUE153 = 5,
-  WEDGE_DIRECTIONS
-} UENUM1BYTE(WedgeDirectionType);
-#endif
 
 // 3-tuple: {direction, x_offset, y_offset}
 typedef struct {

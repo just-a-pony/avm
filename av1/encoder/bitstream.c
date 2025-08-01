@@ -459,7 +459,6 @@ static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
   aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[ctx], 2);
 }
 
-#if CONFIG_WEDGE_MOD_EXT
 static void write_wedge_mode(aom_writer *w, FRAME_CONTEXT *ec_ctx,
                              const BLOCK_SIZE bsize, const int8_t wedge_index) {
 #if CONFIG_D149_CTX_MODELING_OPT
@@ -522,7 +521,6 @@ static void write_wedge_mode(aom_writer *w, FRAME_CONTEXT *ec_ctx,
                      NUM_WEDGE_DIST);
   }
 }
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 static void write_warp_delta_param(const MACROBLOCKD *xd, int index,
                                    int coded_value, aom_writer *w,
@@ -666,13 +664,8 @@ static AOM_INLINE void write_motion_mode(
 #endif  // CONFIG_D149_CTX_MODELING_OPT
                          2);
         if (mbmi->use_wedge_interintra) {
-#if CONFIG_WEDGE_MOD_EXT
           write_wedge_mode(w, xd->tile_ctx, bsize,
                            mbmi->interintra_wedge_index);
-#else
-          aom_write_symbol(w, mbmi->interintra_wedge_index,
-                           xd->tile_ctx->wedge_idx_cdf[bsize], MAX_WEDGE_TYPES);
-#endif  // CONFIG_WEDGE_MOD_EXT
         }
       }
       return;
@@ -2537,14 +2530,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 #endif  // CONFIG_D149_CTX_MODELING_OPT
                            2);
           if (mbmi->use_wedge_interintra) {
-#if CONFIG_WEDGE_MOD_EXT
             write_wedge_mode(w, xd->tile_ctx, bsize,
                              mbmi->interintra_wedge_index);
-#else
-            aom_write_symbol(w, mbmi->interintra_wedge_index,
-                             xd->tile_ctx->wedge_idx_cdf[bsize],
-                             MAX_WEDGE_TYPES);
-#endif  // CONFIG_WEDGE_MOD_EXT
           }
         }
 
@@ -2615,12 +2602,7 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
 
         if (mbmi->interinter_comp.type == COMPOUND_WEDGE) {
           assert(is_interinter_compound_used(COMPOUND_WEDGE, bsize));
-#if CONFIG_WEDGE_MOD_EXT
           write_wedge_mode(w, ec_ctx, bsize, mbmi->interinter_comp.wedge_index);
-#else
-          aom_write_symbol(w, mbmi->interinter_comp.wedge_index,
-                           ec_ctx->wedge_idx_cdf[bsize], MAX_WEDGE_TYPES);
-#endif  // CONFIG_WEDGE_MOD_EXT
           aom_write_bit(w, mbmi->interinter_comp.wedge_sign);
         } else {
           assert(mbmi->interinter_comp.type == COMPOUND_DIFFWTD);

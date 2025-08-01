@@ -573,7 +573,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                                fc->compound_type_cdf[i], NULL);
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_D149_CTX_MODELING_OPT && CONFIG_WEDGE_MOD_EXT
+#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
     av1_cost_tokens_from_cdf(mode_costs->wedge_quad_cost, fc->wedge_quad_cdf,
                              NULL);
@@ -596,7 +596,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
 #else
     for (i = 0; i < BLOCK_SIZES_ALL; ++i) {
       if (av1_is_wedge_used(i)) {
-#if CONFIG_WEDGE_MOD_EXT
         av1_cost_tokens_from_cdf(mode_costs->wedge_angle_dir_cost[i],
                                  fc->wedge_angle_dir_cdf[i], NULL);
         av1_cost_tokens_from_cdf(mode_costs->wedge_angle_0_cost[i],
@@ -607,13 +606,9 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                                  fc->wedge_dist_cdf[i], NULL);
         av1_cost_tokens_from_cdf(mode_costs->wedge_dist_cost2[i],
                                  fc->wedge_dist_cdf2[i], NULL);
-#else
-        av1_cost_tokens_from_cdf(mode_costs->wedge_idx_cost[i],
-                                 fc->wedge_idx_cdf[i], NULL);
-#endif  // CONFIG_WEDGE_MOD_EXT
       }
     }
-#endif  // CONFIG_D149_CTX_MODELING_OPT && CONFIG_WEDGE_MOD_EXT
+#endif  // CONFIG_D149_CTX_MODELING_OPT
 
     for (i = 0; i < BLOCK_SIZE_GROUPS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->interintra_cost[i],

@@ -1478,7 +1478,6 @@ typedef struct FRAME_COUNTS {
                                   [INTER_COMPOUND_REF_TYPES];
 #endif  // CONFIG_OPT_INTER_MODE_CTX
   unsigned int amvd_mode[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][2];
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int wedge_quad_cnt[WEDGE_QUADS];
@@ -1497,9 +1496,6 @@ typedef struct FRAME_COUNTS {
   unsigned int wedge_dist_cnt[BLOCK_SIZES_ALL][NUM_WEDGE_DIST];
   unsigned int wedge_dist2_cnt[BLOCK_SIZES_ALL][NUM_WEDGE_DIST - 1];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#else
-  unsigned int wedge_idx[BLOCK_SIZES_ALL][16];
-#endif  // CONFIG_WEDGE_MOD_EXT
   unsigned int interintra[BLOCK_SIZE_GROUPS][2];
   unsigned int interintra_mode[BLOCK_SIZE_GROUPS][INTERINTRA_MODES];
 #if CONFIG_D149_CTX_MODELING_OPT

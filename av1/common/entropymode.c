@@ -5311,7 +5311,6 @@ static const aom_cdf_prob
       { { AOM_CDF2(9396) }, { AOM_CDF2(8093) }, { AOM_CDF2(10339) } },
       { { AOM_CDF2(13855) }, { AOM_CDF2(11902) }, { AOM_CDF2(11445) } },
     };
-#if CONFIG_WEDGE_MOD_EXT
 /*wedge_angle_dir is first decoded. Depending on the wedge angle_dir, the
  * wedge_angle is decoded. Depending on the wedge_angle, the wedge_dist is
  * decoded.*/
@@ -5468,60 +5467,6 @@ static const aom_cdf_prob
       { AOM_CDF3(10923, 21845) },
     };
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#else
-static const aom_cdf_prob default_wedge_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(
-    16)] = { { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2438, 4440, 6599, 8663, 11005, 12874, 15751, 18094,
-                         20359, 22362, 24127, 25702, 27752, 29450, 31171) },
-             { AOM_CDF16(806, 3266, 6005, 6738, 7218, 7367, 7771, 14588, 16323,
-                         17367, 18452, 19422, 22839, 26127, 29629) },
-             { AOM_CDF16(2779, 3738, 4683, 7213, 7775, 8017, 8655, 14357, 17939,
-                         21332, 24520, 27470, 29456, 30529, 31656) },
-             { AOM_CDF16(1684, 3625, 5675, 7108, 9302, 11274, 14429, 17144,
-                         19163, 20961, 22884, 24471, 26719, 28714, 30877) },
-             { AOM_CDF16(1142, 3491, 6277, 7314, 8089, 8355, 9023, 13624, 15369,
-                         16730, 18114, 19313, 22521, 26012, 29550) },
-             { AOM_CDF16(2742, 4195, 5727, 8035, 8980, 9336, 10146, 14124,
-                         17270, 20533, 23434, 25972, 27944, 29570, 31416) },
-             { AOM_CDF16(1727, 3948, 6101, 7796, 9841, 12344, 15766, 18944,
-                         20638, 22038, 23963, 25311, 26988, 28766, 31012) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(154, 987, 1925, 2051, 2088, 2111, 2151, 23033, 23703,
-                         24284, 24985, 25684, 27259, 28883, 30911) },
-             { AOM_CDF16(1135, 1322, 1493, 2635, 2696, 2737, 2770, 21016, 22935,
-                         25057, 27251, 29173, 30089, 30960, 31933) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) },
-             { AOM_CDF16(2048, 4096, 6144, 8192, 10240, 12288, 14336, 16384,
-                         18432, 20480, 22528, 24576, 26624, 28672, 30720) } };
-#endif  // CONFIG_WEDGE_MOD_EXT
-
 static const aom_cdf_prob default_warp_causal_cdf[WARP_CAUSAL_MODE_CTX]
                                                  [CDF_SIZE(2)] = {
                                                    { AOM_CDF2(17055) },
@@ -7225,7 +7170,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #endif  // CONFIG_OPT_INTER_MODE_CTX
   av1_copy(fc->compound_type_cdf, default_compound_type_cdf);
   av1_copy(fc->amvd_mode_cdf, default_amvd_mode_cdf);
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   av1_copy(fc->wedge_quad_cdf, default_wedge_quad_cdf);
   av1_copy(fc->wedge_angle_cdf, default_wedge_angle_cdf);
@@ -7236,9 +7180,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   av1_copy(fc->wedge_dist_cdf, default_wedge_dist_cdf);
   av1_copy(fc->wedge_dist_cdf2, default_wedge_dist_cdf2);
-#else
-  av1_copy(fc->wedge_idx_cdf, default_wedge_idx_cdf);
-#endif  // CONFIG_WEDGE_MOD_EXT
   av1_copy(fc->interintra_cdf, default_interintra_cdf);
 #if CONFIG_WARP_INTER_INTRA
   av1_copy(fc->warp_interintra_cdf, default_warp_interintra_cdf);
@@ -7590,7 +7531,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          JOINT_AMVD_SCALE_FACTOR_CNT);
   CUMULATIVE_AVERAGE_CDF(ctx_left->compound_type_cdf, ctx_tr->compound_type_cdf,
                          MASKED_COMPOUND_TYPES);
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   CUMULATIVE_AVERAGE_CDF(ctx_left->wedge_quad_cdf, ctx_tr->wedge_quad_cdf,
                          WEDGE_QUADS);
@@ -7608,9 +7548,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          NUM_WEDGE_DIST);
   CUMULATIVE_AVERAGE_CDF(ctx_left->wedge_dist_cdf2, ctx_tr->wedge_dist_cdf2,
                          NUM_WEDGE_DIST - 1);
-#else
-  CUMULATIVE_AVERAGE_CDF(ctx_left->wedge_idx_cdf, ctx_tr->wedge_idx_cdf, 16);
-#endif
 #if CONFIG_WARP_INTER_INTRA
   CUMULATIVE_AVERAGE_CDF(ctx_left->warp_interintra_cdf,
                          ctx_tr->warp_interintra_cdf, 2);
@@ -8028,7 +7965,6 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   SHIFT_CDF(ctx_ptr->jmvd_scale_mode_cdf, JOINT_NEWMV_SCALE_FACTOR_CNT);
   SHIFT_CDF(ctx_ptr->jmvd_amvd_scale_mode_cdf, JOINT_AMVD_SCALE_FACTOR_CNT);
   SHIFT_CDF(ctx_ptr->compound_type_cdf, MASKED_COMPOUND_TYPES);
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   SHIFT_CDF(ctx_ptr->wedge_quad_cdf, WEDGE_QUADS);
   SHIFT_CDF(ctx_ptr->wedge_angle_cdf, QUAD_WEDGE_ANGLES);
@@ -8039,9 +7975,6 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   SHIFT_CDF(ctx_ptr->wedge_dist_cdf, NUM_WEDGE_DIST);
   SHIFT_CDF(ctx_ptr->wedge_dist_cdf2, NUM_WEDGE_DIST - 1);
-#else
-  SHIFT_CDF(ctx_ptr->wedge_idx_cdf, 16);
-#endif
 #if CONFIG_WARP_INTER_INTRA
   SHIFT_CDF(ctx_ptr->warp_interintra_cdf, 2);
 #endif  // CONFIG_WARP_INTER_INTRA
@@ -8426,7 +8359,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
               ctx_tr->jmvd_amvd_scale_mode_cdf, JOINT_AMVD_SCALE_FACTOR_CNT);
   AVERAGE_CDF(ctx_left->compound_type_cdf, ctx_tr->compound_type_cdf,
               MASKED_COMPOUND_TYPES);
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   AVERAGE_CDF(ctx_left->wedge_quad_cdf, ctx_tr->wedge_quad_cdf, WEDGE_QUADS);
   AVERAGE_CDF(ctx_left->wedge_angle_cdf, ctx_tr->wedge_angle_cdf,
@@ -8441,9 +8373,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   AVERAGE_CDF(ctx_left->wedge_dist_cdf, ctx_tr->wedge_dist_cdf, NUM_WEDGE_DIST);
   AVERAGE_CDF(ctx_left->wedge_dist_cdf2, ctx_tr->wedge_dist_cdf2,
               NUM_WEDGE_DIST - 1);
-#else
-  AVERAGE_CDF(ctx_left->wedge_idx_cdf, ctx_tr->wedge_idx_cdf, 16);
-#endif
 #if CONFIG_WARP_INTER_INTRA
   AVERAGE_CDF(ctx_left->warp_interintra_cdf, ctx_tr->warp_interintra_cdf, 2);
 #endif  // CONFIG_WARP_INTER_INTRA

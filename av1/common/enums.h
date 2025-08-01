@@ -87,7 +87,6 @@ extern "C" {
 enum { EOB_FLAG_CDF16, EOB_FLAG_CDF32, MAX_NUM_CTX_GROUPS };
 #endif
 
-#if CONFIG_WEDGE_MOD_EXT
 /*WEDGE_0 is defined in the three o'clock direciton, the angles are defined in
  * the anticlockwise.*/
 enum {
@@ -119,7 +118,6 @@ enum {
 #define MAX_WEDGE_TYPES 68
 #define WEDGE_BLD_SIG 1  // 0 for linear blending, 1 for sigmoid blending
 #define WEDGE_BLD_LUT_SIZE 128
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 #define WARP_CU_BANK 1
 

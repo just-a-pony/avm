@@ -240,7 +240,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->jmvd_scale_mode_cdf, JOINT_NEWMV_SCALE_FACTOR_CNT);
   RESET_CDF_COUNTER(fc->jmvd_amvd_scale_mode_cdf, JOINT_AMVD_SCALE_FACTOR_CNT);
   RESET_CDF_COUNTER(fc->compound_type_cdf, MASKED_COMPOUND_TYPES);
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   RESET_CDF_COUNTER(fc->wedge_quad_cdf, WEDGE_QUADS);
   RESET_CDF_COUNTER(fc->wedge_angle_cdf, QUAD_WEDGE_ANGLES);
@@ -251,9 +250,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   RESET_CDF_COUNTER(fc->wedge_dist_cdf, NUM_WEDGE_DIST);
   RESET_CDF_COUNTER(fc->wedge_dist_cdf2, NUM_WEDGE_DIST - 1);
-#else
-  RESET_CDF_COUNTER(fc->wedge_idx_cdf, 16);
-#endif  // CONFIG_WEDGE_MOD_EXT
   RESET_CDF_COUNTER(fc->interintra_cdf, 2);
   RESET_CDF_COUNTER(fc->wedge_interintra_cdf, 2);
   RESET_CDF_COUNTER(fc->interintra_mode_cdf, INTERINTRA_MODES);

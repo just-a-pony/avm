@@ -287,7 +287,6 @@ typedef struct frame_contexts {
   aom_cdf_prob compound_type_cdf[BLOCK_SIZES_ALL]
                                 [CDF_SIZE(MASKED_COMPOUND_TYPES)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   /*The wedge_quad is first decoded. Depending on the wedge quadrant, the
@@ -309,9 +308,6 @@ typedef struct frame_contexts {
   aom_cdf_prob wedge_dist_cdf[BLOCK_SIZES_ALL][CDF_SIZE(NUM_WEDGE_DIST)];
   aom_cdf_prob wedge_dist_cdf2[BLOCK_SIZES_ALL][CDF_SIZE(NUM_WEDGE_DIST - 1)];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#else
-  aom_cdf_prob wedge_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(16)];
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 #if CONFIG_WARP_INTER_INTRA
   aom_cdf_prob warp_interintra_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(2)];

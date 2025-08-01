@@ -1247,7 +1247,6 @@ int main(int argc, const char **argv) {
                      0, &total_count, 0, mem_wanted, "Inter");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   cts_each_dim[0] = WEDGE_QUADS;
@@ -1334,14 +1333,6 @@ int main(int argc, const char **argv) {
       "default_wedge_dist_cdf2[BLOCK_SIZES_ALL][CDF_SIZE(NUM_WEDGE_DIST - 1)]",
       0, &total_count, 0, mem_wanted, "Inter");
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-
-#else
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = 16;
-  optimize_cdf_table(&fc.wedge_idx[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob "
-                     "default_wedge_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(16)]");
-#endif  // CONFIG_WEDGE_MOD_EXT
 
 #if CONFIG_REFINEMV
   cts_each_dim[0] = NUM_REFINEMV_CTX;

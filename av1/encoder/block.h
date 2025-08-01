@@ -1122,7 +1122,6 @@ typedef struct {
   int compound_type_cost[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
   //! wedge_idx_cost
-#if CONFIG_WEDGE_MOD_EXT
 #if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   //! wedge_quad_cost
@@ -1153,9 +1152,6 @@ typedef struct {
   //! wedge_dist_cost2
   int wedge_dist_cost2[BLOCK_SIZES_ALL][NUM_WEDGE_DIST - 1];
 #endif  // CONFIG_D149_CTX_MODELING_OPT
-#else
-  int wedge_idx_cost[BLOCK_SIZES_ALL][16];
-#endif  // CONFIG_WEDGE_MOD_EXT
   //! interintra_cost
   int interintra_cost[BLOCK_SIZE_GROUPS][2];
 #if CONFIG_WARP_INTER_INTRA
