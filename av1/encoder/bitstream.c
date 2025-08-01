@@ -151,12 +151,14 @@ static void write_drl_idx(int max_drl_bits, const int16_t mode_ctx,
   // 0 -> 0   10 -> 1   110 -> 2    111 -> 3
   // Also use the number of reference MVs for a frame type to reduce the
   // number of bits written if there are less than 4 valid DRL indices.
+#if !CONFIG_DRL_SIZE_LIMIT
   if (has_second_drl(mbmi)) {
     if (mbmi->mode == NEAR_NEWMV)
       max_drl_bits = AOMMIN(max_drl_bits, SEP_COMP_DRL_SIZE);
     else
       assert(mbmi->mode == NEAR_NEARMV);
   }
+#endif  // !CONFIG_DRL_SIZE_LIMIT
 
   if (!mbmi->skip_mode && mbmi->ref_frame[0] == mbmi->ref_frame[1] &&
       has_second_drl(mbmi) && mbmi->mode == NEAR_NEARMV)

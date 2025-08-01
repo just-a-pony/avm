@@ -434,6 +434,8 @@ set_aom_config_var(CONFIG_ADJ_PYR_Q_OFFSET 0
 
 set_aom_config_var(CONFIG_CCSO_CLEANUP 1
                    "Clean up CCSO quant_sz and signaling.")
+
+set_aom_config_var(CONFIG_DRL_SIZE_LIMIT 1 "F206 limit drl size to six.")
 #
 # Variables in this section control optional features of the build system.
 #

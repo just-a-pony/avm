@@ -4932,12 +4932,14 @@ static int64_t handle_inter_mode(
     ref_set[1] = get_drl_refmv_count(cm->features.max_drl_bits, x,
                                      mbmi->ref_frame, this_mode, 1);
 
+#if !CONFIG_DRL_SIZE_LIMIT
     if (mbmi->mode == NEAR_NEWMV) {
       ref_set[0] = AOMMIN(ref_set[0], SEP_COMP_DRL_SIZE);
       ref_set[1] = AOMMIN(ref_set[1], SEP_COMP_DRL_SIZE);
     } else {
       assert(mbmi->mode == NEAR_NEARMV);
     }
+#endif  // !CONFIG_DRL_SIZE_LIMIT
   }
 
   inter_mode_info mode_info[BAWP_OPTION_CNT][NUM_MV_PRECISIONS]
