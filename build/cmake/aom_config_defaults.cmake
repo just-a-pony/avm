@@ -168,6 +168,10 @@ set_aom_config_var(CONFIG_F253_REMOVE_OUTPUTFLAG 1
 set_aom_config_var(CONFIG_SEQ_MAX_DRL_BITS 1
                    "AV2 sequence level max_drl_bits information")
 set_aom_config_var(CONFIG_EXT_MVPRED 1 "AV2 ext-mvpred.")
+set_aom_config_var(CONFIG_LR_FRAMEFILTERS_IN_HEADER 0
+                   "AV2 expt to move frame filters to frame header.")
+set_aom_config_var(CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES 1
+                   "AV2 control to allow loopfilters across tiles or not")
 set_aom_config_var(CONFIG_INTRA_SDP_SIMPLIFICATION 1 NUMBER
                    "Simplify intra sdp logic")
 set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
