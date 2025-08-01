@@ -5467,12 +5467,12 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
         int16_t coeff = (symbol_idx == stop_symbol_idx) ? 0 : mat[pos];
         int16_t delta = coeff - prev;
         // The decoder reconstructs the matrix coefficient by calculating
-        // (prev + delta + 256) % 256. Therefore delta, delta + 256, and
-        // delta - 256 are all equivalent because they are equal modulo 256. If
-        // delta + 256 or delta - 256 has a smaller absolute value than delta,
-        // it is likely to have a shorter svlc() code, so we will write it
-        // instead. In other words, for each delta value, we aim to find an
-        // equivalent value (modulo 256) that has the shortest svlc() code.
+        // (prev + delta) & 255. Therefore delta, delta + 256, and delta - 256
+        // are all equivalent because they are equal modulo 256. If delta + 256
+        // or delta - 256 has a smaller absolute value than delta, it is likely
+        // to have a shorter svlc() code, so we will write it instead. In other
+        // words, for each delta value, we aim to find an equivalent value
+        // (modulo 256) that has the shortest svlc() code.
         if (delta < -128) {
           delta += 256;
         } else if (delta > 127) {

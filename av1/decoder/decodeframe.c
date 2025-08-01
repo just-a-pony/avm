@@ -6585,13 +6585,13 @@ static AOM_INLINE void decode_qm_data(
           const int32_t delta = aom_rb_read_svlc(rb);
           // The valid range of quantization matrix coefficients is 1..255.
           // Therefore the valid range of delta values is -254..254. Because of
-          // the % 256 operation, the valid range of delta values can be reduced
+          // the & 255 operation, the valid range of delta values can be reduced
           // to -128..127 to shorten the svlc() code.
           if (delta < -128 || delta > 127) {
             aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
                                "Invalid matrix_coef_delta: %d", delta);
           }
-          const qm_val_t coef = (prev + delta + 256) % 256;
+          const qm_val_t coef = (prev + delta) & 255;
           if (coef == 0) {
             coef_repeat_until_end = true;
           } else {
