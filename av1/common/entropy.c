@@ -43,7 +43,9 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   av1_copy(cm->fc->eob_extra_cdf, av1_default_eob_extra_cdfs[index]);
   av1_copy(cm->fc->dc_sign_cdf, av1_default_dc_sign_cdfs[index]);
 #if CONFIG_CONTEXT_DERIVATION
+#if !CONFIG_BY_PASS_V_SIGN
   av1_copy(cm->fc->v_dc_sign_cdf, av1_default_v_dc_sign_cdfs[index]);
+#endif  // !CONFIG_BY_PASS_V_SIGN
 #if !CONFIG_CTX_V_AC_SIGN
   av1_copy(cm->fc->v_ac_sign_cdf, av1_default_v_ac_sign_cdfs[index]);
 #endif  // !CONFIG_CTX_V_AC_SIGN
@@ -66,8 +68,10 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
            av1_default_coeff_base_lf_multi_uv_cdfs[index]);
   av1_copy(cm->fc->coeff_base_lf_eob_uv_cdf,
            av1_default_coeff_base_lf_eob_multi_uv_cdfs[index]);
+#if !CONFIG_COEFF_BR_LF_UV_BYPASS
   av1_copy(cm->fc->coeff_br_lf_uv_cdf,
            av1_default_coeff_lps_lf_multi_uv_cdfs[index]);
+#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
   av1_copy(cm->fc->coeff_br_uv_cdf, av1_default_coeff_lps_multi_uv_cdfs[index]);
   av1_copy(cm->fc->coeff_base_uv_cdf,
            av1_default_coeff_base_multi_uv_cdfs[index]);
@@ -81,7 +85,9 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   av1_copy(cm->fc->eob_flag_cdf512, av1_default_eob_multi512_cdfs[index]);
   av1_copy(cm->fc->eob_flag_cdf1024, av1_default_eob_multi1024_cdfs[index]);
   av1_copy(cm->fc->coeff_base_ph_cdf, av1_default_coeff_base_ph_cdfs[index]);
+#if !CONFIG_COEFF_BR_PH_BYPASS
   av1_copy(cm->fc->coeff_br_ph_cdf, av1_default_coeff_br_ph_cdfs[index]);
+#endif  // !CONFIG_COEFF_BR_PH_BYPASS
   av1_copy(cm->fc->coeff_base_bob_cdf,
            av1_default_coeff_base_bob_multi_cdfs[index]);
   av1_copy(cm->fc->intra_dip_cdf, default_intra_dip_cdf[index]);
@@ -190,7 +196,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->eob_extra_cdf, 2);
   RESET_CDF_COUNTER(fc->dc_sign_cdf, 2);
 #if CONFIG_CONTEXT_DERIVATION
+#if !CONFIG_BY_PASS_V_SIGN
   RESET_CDF_COUNTER(fc->v_dc_sign_cdf, 2);
+#endif  // !CONFIG_BY_PASS_V_SIGN
 #if !CONFIG_CTX_V_AC_SIGN
   RESET_CDF_COUNTER(fc->v_ac_sign_cdf, 2);
 #endif  // !CONFIG_CTX_V_AC_SIGN
@@ -209,7 +217,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->coeff_br_lf_cdf, BR_CDF_SIZE);
   RESET_CDF_COUNTER(fc->coeff_base_lf_uv_cdf, LF_BASE_SYMBOLS);
   RESET_CDF_COUNTER(fc->coeff_base_lf_eob_uv_cdf, LF_BASE_SYMBOLS - 1);
+#if !CONFIG_COEFF_BR_LF_UV_BYPASS
   RESET_CDF_COUNTER(fc->coeff_br_lf_uv_cdf, BR_CDF_SIZE);
+#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
   RESET_CDF_COUNTER(fc->coeff_base_uv_cdf, 4);
   RESET_CDF_COUNTER(fc->coeff_base_eob_uv_cdf, 3);
   RESET_CDF_COUNTER(fc->coeff_br_uv_cdf, BR_CDF_SIZE);
@@ -285,7 +295,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
 #if CONFIG_PALETTE_LINE_COPY
   RESET_CDF_COUNTER(fc->identity_row_cdf_y, 3);
   RESET_CDF_COUNTER(fc->identity_row_cdf_uv, 3);
+#if !CONFIG_PLT_DIR_CTX
   RESET_CDF_COUNTER(fc->palette_direction_cdf, 2);
+#endif  // !CONFIG_PLT_DIR_CTX
 #else
   RESET_CDF_COUNTER(fc->identity_row_cdf_y, 2);
   RESET_CDF_COUNTER(fc->identity_row_cdf_uv, 2);
@@ -327,7 +339,9 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->intrabc_cdf, 2);
 #if CONFIG_IBC_BV_IMPROVEMENT
   RESET_CDF_COUNTER(fc->intrabc_mode_cdf, 2);
+#if !CONFIG_BYPASS_INTRABC_DRL_IDX
   RESET_CDF_COUNTER(fc->intrabc_drl_idx_cdf, 2);
+#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
 #endif  // CONFIG_IBC_BV_IMPROVEMENT
 #if CONFIG_IBC_SUBPEL_PRECISION
   RESET_CDF_COUNTER(fc->intrabc_bv_precision_cdf, NUM_ALLOWED_BV_PRECISIONS);
@@ -371,10 +385,14 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->wienerns_uv_sym_cdf, 2);
   RESET_CDF_COUNTER(fc->wienerns_4part_cdf, 4);
   RESET_CDF_COUNTER(fc->pc_wiener_restore_cdf, 2);
+#if !CONFIG_MERGE_PARA_CTX
   RESET_CDF_COUNTER(fc->merged_param_cdf, 2);
+#endif  // !CONFIG_MERGE_PARA_CTX
   RESET_CDF_COUNTER(fc->y_mode_set_cdf, INTRA_MODE_SETS);
   RESET_CDF_COUNTER(fc->y_mode_idx_cdf_0, FIRST_MODE_COUNT);
+#if !CONFIG_CTX_Y_SECOND_MODE
   RESET_CDF_COUNTER(fc->y_mode_idx_cdf_1, SECOND_MODE_COUNT);
+#endif  // !CONFIG_CTX_Y_SECOND_MODE
   RESET_CDF_COUNTER(fc->uv_mode_cdf, UV_INTRA_MODES - 1);
   RESET_CDF_COUNTER(fc->cfl_cdf, 2);
 
@@ -455,6 +473,8 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   }
 
   RESET_CDF_COUNTER(fc->coeff_base_ph_cdf, NUM_BASE_LEVELS + 2);
+#if !CONFIG_COEFF_BR_PH_BYPASS
   RESET_CDF_COUNTER(fc->coeff_br_ph_cdf, BR_CDF_SIZE);
+#endif  // !CONFIG_COEFF_BR_PH_BYPASS
   RESET_CDF_COUNTER(fc->cctx_type_cdf, CCTX_TYPES);
 }
