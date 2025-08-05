@@ -28,7 +28,6 @@ static const int32_t kPrevId[TCQ_MAX_STATES / 4][8] = {
   { 0, 4 << 24, 0, 5 << 24, 0, 6 << 24, 0, 7 << 24 },
 };
 
-#if CONFIG_COEFF_HR_ADAPTIVE
 // clang-format off
 static const uint8_t kGolombExp0Bits[256] = {
   0,  0,  0,  0,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,
@@ -49,24 +48,6 @@ static const uint8_t kGolombExp0Bits[256] = {
   14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
 };
 // clang-format on
-#else
-static const uint8_t kGolombExp0Bits[256] = {
-  0,  0,  0,  0,  1,  1,  1,  1,  3,  3,  3,  3,  3,  3,  3,  3,  5,  5,  5,
-  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  7,  7,  7,  7,  7,  7,
-  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,
-  7,  7,  7,  7,  7,  7,  7,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,
-  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,
-  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,
-  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  11, 11, 11, 11, 11,
-  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-  11, 11, 11, 11, 11, 11, 11, 11, 11,
-};
-#endif
 
 #define Z -1
 static const int8_t kGolombShuf[4][16] = {
@@ -1113,11 +1094,7 @@ void av1_calc_block_eob_rate_avx2(struct macroblock *x, int plane,
   const LV_MAP_EOB_COST *txb_eob_costs =
       &coeff_costs->eob_costs[eob_multi_size][plane_type];
 
-#if CONFIG_EOB_POS_LUMA
   const int *tbl_eob_cost = txb_eob_costs->eob_cost[is_inter];
-#else
-  const int *tbl_eob_cost = txb_eob_costs->eob_cost;
-#endif
   const int(*tbl_eob_extra)[2] = txb_costs->eob_extra_cost;
 
   static const int8_t kShuf[4][32] = {

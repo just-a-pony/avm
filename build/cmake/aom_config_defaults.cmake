@@ -164,14 +164,11 @@ set_aom_config_var(CONFIG_CTX_Y_SECOND_MODE 1 "bypass coding FG8-Test27")
 set_aom_config_var(
   CONFIG_WIENERNS_9x9 1
   "AV2 non-separable 16-tap Wiener filter with enlarged 9x9 diamond shape")
-set_aom_config_var(CONFIG_COEFF_HR_LR1 1
-                   "AV2 enable coding 1 LR in coefficient coding.")
 set_aom_config_var(CONFIG_PARA_BD_REDUCE 1 "AV2 bitdepth reduction for PARA.")
 set_aom_config_var(CONFIG_BYPASS_IMPROVEMENT 1
                    "AV2 enable entropy bypass improvement.")
 set_aom_config_var(CONFIG_CDF_SCALE 1
                    "AV2 enable entropy cdf scaling improvement.")
-set_aom_config_var(CONFIG_EOB_POS_LUMA 1 "EOB position coding for luma.")
 set_aom_config_var(CONFIG_INTRA_SDP_SIMPLIFICATION 1 NUMBER
                    "Simplify intra sdp logic")
 set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
@@ -400,8 +397,6 @@ set_aom_config_var(CONFIG_SUBBLK_PAD 1
 
 set_aom_config_var(CONFIG_ML_PART_SPLIT 1
                    "Partition SPLIT pruning/forcing as predicted by ML.")
-set_aom_config_var(CONFIG_COEFF_HR_ADAPTIVE 1
-                   "AV2 enable adaptive coding of HR coefficients.")
 set_aom_config_var(CONFIG_MV_TRAJECTORY 1
                    "Enables TMVP MV trajectory tracking.")
 
