@@ -9,10 +9,10 @@
  * source code in the PATENTS file, you can obtain it at
  * aomedia.org/license/patent-license/.
  */
+#ifndef AOM_COMMON_GDF_H_
+#define AOM_COMMON_GDF_H_
 
 #include "av1/common/gdf.h"
-
-#include "pred_common.h"
 #include "av1/common/gdf_block.h"
 
 #if CONFIG_GDF
@@ -54,6 +54,9 @@ void alloc_gdf_buffers(GdfInfo *gi) {
   memset(gi->err_ptr, 0, gi->err_height * gi->err_stride * sizeof(int16_t));
   gi->gdf_block_flags = (int32_t *)aom_malloc(gi->gdf_block_num * sizeof(int));
   memset(gi->gdf_block_flags, 0, gi->gdf_block_num * sizeof(int));
+#if CONFIG_GDF_IMPROVEMENT
+  gi->glbs = (GDFLineBuffers *)aom_malloc(sizeof(GDFLineBuffers));
+#endif
 }
 
 void free_gdf_buffers(GdfInfo *gi) {
@@ -77,6 +80,12 @@ void free_gdf_buffers(GdfInfo *gi) {
     aom_free(gi->gdf_block_flags);
     gi->gdf_block_flags = NULL;
   }
+#if CONFIG_GDF_IMPROVEMENT
+  if (gi->glbs != NULL) {
+    aom_free(gi->glbs);
+    gi->glbs = NULL;
+  }
+#endif
 }
 
 #define GDF_PRINT_INT(x) printf(#x " : %d\n", x)
@@ -112,6 +121,152 @@ void gdf_print_info(AV1_COMMON *cm, char *info, int poc) {
 }
 #undef GDF_PRINT_INT
 
+#if CONFIG_GDF_IMPROVEMENT
+
+void gdf_extend_frame_highbd(uint16_t *data, int width, int height, int stride,
+                             int border_horz, int border_vert) {
+  uint16_t *data_p;
+  int i, j;
+  for (i = 0; i < height; ++i) {
+    data_p = data + i * stride;
+    for (j = -border_horz; j < 0; ++j) data_p[j] = data_p[0];
+    for (j = width; j < width + border_horz; ++j) data_p[j] = data_p[width - 1];
+  }
+  data_p = data - border_horz;
+  for (i = -border_vert; i < 0; ++i) {
+    memcpy(data_p + i * stride, data_p,
+           (width + 2 * border_horz) * sizeof(uint16_t));
+  }
+  for (i = height; i < height + border_vert; ++i) {
+    memcpy(data_p + i * stride, data_p + (height - 1) * stride,
+           (width + 2 * border_horz) * sizeof(uint16_t));
+  }
+}
+
+void gdf_copy_guided_frame(AV1_COMMON *cm) {
+  int top_buf = GDF_TEST_EXTRA_VER_BORDER;
+  int bot_buf = GDF_TEST_EXTRA_VER_BORDER;
+  const int rec_height = cm->cur_frame->buf.y_height;
+  const int rec_width = cm->cur_frame->buf.y_width;
+  const int rec_stride = cm->cur_frame->buf.y_stride;
+
+  const int input_stride = (((rec_width + GDF_TEST_STRIPE_SIZE) >> 4) << 4) +
+                           16;  // GDF_TEST_STRIPE_SIZE: max unit size
+                                // 16: AVX2 vector length
+  cm->gdf_info.inp_stride = input_stride;
+
+  cm->gdf_info.inp_pad_ptr =
+      (uint16_t *)aom_memalign(32, (top_buf + rec_height + bot_buf + 4) *
+                                       input_stride * sizeof(uint16_t));
+  for (int i = top_buf; i < top_buf + rec_height; i++) {
+    memcpy(
+        cm->gdf_info.inp_pad_ptr + i * input_stride + GDF_TEST_EXTRA_HOR_BORDER,
+        cm->cur_frame->buf.buffers[AOM_PLANE_Y] + (i - top_buf) * rec_stride,
+        sizeof(uint16_t) * rec_width);
+    if (cm->cur_frame->buf.bit_depth > GDF_TEST_INP_PREC) {
+      const unsigned int diff_bit_depth =
+          cm->cur_frame->buf.bit_depth - GDF_TEST_INP_PREC;
+      for (int j = 0; j < rec_width; j++) {
+        uint16_t *cur_line = cm->gdf_info.inp_pad_ptr + i * input_stride +
+                             GDF_TEST_EXTRA_HOR_BORDER;
+        cur_line[j] >>= diff_bit_depth;
+      }
+    }
+  }
+  cm->gdf_info.inp_ptr = cm->gdf_info.inp_pad_ptr + top_buf * input_stride +
+                         GDF_TEST_EXTRA_HOR_BORDER;
+  gdf_extend_frame_highbd(cm->gdf_info.inp_ptr, rec_width, rec_height,
+                          input_stride, GDF_TEST_EXTRA_HOR_BORDER,
+                          GDF_TEST_EXTRA_VER_BORDER);
+}
+
+void gdf_setup_reference_lines(AV1_COMMON *cm, int i_min, int i_max,
+                               int v_pos) {
+  const RestorationStripeBoundaries *rsb = &cm->rst_info[0].boundaries;
+  const int rsb_row =
+      ((v_pos + GDF_TEST_STRIPE_OFF) / cm->gdf_info.gdf_unit_size) *
+      RESTORATION_CTX_VERT;
+
+  const int rec_height = cm->cur_frame->buf.y_height;
+  const int rec_width = cm->cur_frame->buf.y_width;
+  const int buf_x0_off = RESTORATION_EXTRA_HORZ;
+  const int buf_stride = rsb->stripe_boundary_stride;
+  const int data_x0_off = 0;
+  const int data_stride = cm->gdf_info.inp_stride;
+  const int line_size = rec_width << 1;
+
+  int copy_above = v_pos == -GDF_TEST_STRIPE_OFF ? 0 : 1;
+  int copy_below = (v_pos + cm->gdf_info.gdf_unit_size) >= rec_height ? 0 : 1;
+  if (copy_above) {
+    uint16_t *data_tl =
+        cm->gdf_info.inp_ptr + i_min * data_stride + data_x0_off;
+    for (int i = -RESTORATION_BORDER; i < 0; ++i) {
+      const int buf_row = rsb_row + AOMMAX(i + RESTORATION_CTX_VERT, 0);
+      const int buf_off = buf_x0_off + buf_row * buf_stride;
+      const uint16_t *buf = rsb->stripe_boundary_above + buf_off;
+      uint16_t *dst = data_tl + i * data_stride;
+      // Save old pixels, then replace with data from stripe_boundary_above
+      memcpy(cm->gdf_info.glbs->gdf_save_above[i + RESTORATION_BORDER],
+             dst - GDF_TEST_EXTRA_HOR_BORDER,
+             line_size + 4 * GDF_TEST_EXTRA_HOR_BORDER);
+      memcpy(dst, buf, line_size);
+      gdf_extend_frame_highbd(dst, rec_width, 1, data_stride,
+                              GDF_TEST_EXTRA_HOR_BORDER, 0);
+    }
+  }
+  if (copy_below) {
+    uint16_t *data_bl =
+        cm->gdf_info.inp_ptr + i_max * data_stride + data_x0_off;
+    for (int i = 0; i < RESTORATION_BORDER; ++i) {
+      const int buf_row = rsb_row + AOMMIN(i, RESTORATION_CTX_VERT - 1);
+      const int buf_off = buf_x0_off + buf_row * buf_stride;
+      const uint16_t *src = rsb->stripe_boundary_below + buf_off;
+      uint16_t *dst = data_bl + i * data_stride;
+      // Save old pixels, then replace with data from stripe_boundary_below
+      memcpy(cm->gdf_info.glbs->gdf_save_below[i],
+             dst - GDF_TEST_EXTRA_HOR_BORDER,
+             line_size + 4 * GDF_TEST_EXTRA_HOR_BORDER);
+      memcpy(dst, src, line_size);
+      gdf_extend_frame_highbd(dst, rec_width, 1, data_stride,
+                              GDF_TEST_EXTRA_HOR_BORDER, 0);
+    }
+  }
+}
+
+void gdf_unset_reference_lines(AV1_COMMON *cm, int i_min, int i_max,
+                               int v_pos) {
+  const int rec_height = cm->cur_frame->buf.y_height;
+  const int rec_width = cm->cur_frame->buf.y_width;
+  const int data_x0_off = 0;
+  const int data_stride = cm->gdf_info.inp_stride;
+  const int line_size = rec_width << 1;
+
+  int copy_above = v_pos == -GDF_TEST_STRIPE_OFF ? 0 : 1;
+  int copy_below = (v_pos + cm->gdf_info.gdf_unit_size) >= rec_height ? 0 : 1;
+  if (copy_above) {
+    uint16_t *data_tl =
+        cm->gdf_info.inp_ptr + i_min * data_stride + data_x0_off;
+    for (int i = -RESTORATION_BORDER; i < 0; ++i) {
+      uint16_t *dst = data_tl + i * data_stride;
+      memcpy(dst - GDF_TEST_EXTRA_HOR_BORDER,
+             cm->gdf_info.glbs->gdf_save_above[i + RESTORATION_BORDER],
+             line_size + 4 * GDF_TEST_EXTRA_HOR_BORDER);
+    }
+  }
+
+  if (copy_below) {
+    uint16_t *data_bl =
+        cm->gdf_info.inp_ptr + i_max * data_stride + data_x0_off;
+    for (int i = 0; i < RESTORATION_BORDER; ++i) {
+      uint16_t *dst = data_bl + i * data_stride;
+      memcpy(dst - GDF_TEST_EXTRA_HOR_BORDER,
+             cm->gdf_info.glbs->gdf_save_below[i],
+             line_size + 4 * GDF_TEST_EXTRA_HOR_BORDER);
+    }
+  }
+}
+
+#else
 void gdf_copy_guided_frame(AV1_COMMON *cm) {
   int top_buf = 3, bot_buf = 3;
   const int rec_height = cm->cur_frame->buf.y_height;
@@ -128,6 +283,7 @@ void gdf_copy_guided_frame(AV1_COMMON *cm) {
   }
   cm->gdf_info.inp_ptr = cm->gdf_info.inp_pad_ptr + top_buf * rec_stride;
 }
+#endif
 
 void gdf_free_guided_frame(AV1_COMMON *cm) {
   aom_free(cm->gdf_info.inp_pad_ptr);
@@ -222,8 +378,9 @@ void gdf_filter_frame(AV1_COMMON *cm) {
 #endif
   const int bit_depth = cm->cur_frame->buf.bit_depth;
   const int pxl_max = (1 << cm->cur_frame->buf.bit_depth) - 1;
-  const int pxl_shift = GDF_TEST_INP_PREC - bit_depth;
-  const int err_shift = GDF_RDO_SCALE_NUM_LOG2 + pxl_shift;
+  const int pxl_shift =
+      GDF_TEST_INP_PREC - AOMMIN(bit_depth, GDF_TEST_INP_PREC);
+  const int err_shift = GDF_RDO_SCALE_NUM_LOG2 + GDF_TEST_INP_PREC - bit_depth;
 
   int ref_dst_idx = gdf_get_ref_dst_idx(cm);
   int qp_idx_min = gdf_get_qp_idx_base(cm) + cm->gdf_info.gdf_pic_qp_idx;
@@ -247,6 +404,11 @@ void gdf_filter_frame(AV1_COMMON *cm) {
           int j_min = AOMMAX(u_pos, GDF_TEST_FRAME_BOUNDARY_SIZE);
           int j_max = AOMMIN(u_pos + cm->gdf_info.gdf_unit_size,
                              rec_width - GDF_TEST_FRAME_BOUNDARY_SIZE);
+#if CONFIG_GDF_IMPROVEMENT && (GDF_TEST_VIRTUAL_BOUNDARY == 2)
+          if (u_pos == 0) {
+            gdf_setup_reference_lines(cm, i_min, i_max, v_pos);
+          }
+#endif
           int use_gdf_local = 1;
 #if CONFIG_BRU
           // FU level skip
@@ -272,6 +434,24 @@ void gdf_filter_frame(AV1_COMMON *cm) {
 #endif
             for (int qp_idx = qp_idx_min; qp_idx < qp_idx_max_plus_1;
                  qp_idx++) {
+#if CONFIG_GDF_IMPROVEMENT
+              gdf_set_lap_and_cls_unit(
+                  i_min, i_max, j_min, j_max, cm->gdf_info.gdf_stripe_size,
+                  cm->gdf_info.inp_ptr + cm->gdf_info.inp_stride * i_min +
+                      j_min,
+                  cm->gdf_info.inp_stride, bit_depth, cm->gdf_info.lap_ptr,
+                  cm->gdf_info.lap_stride, cm->gdf_info.cls_ptr,
+                  cm->gdf_info.cls_stride);
+              gdf_inference_unit(i_min, i_max, j_min, j_max,
+                                 cm->gdf_info.gdf_stripe_size, qp_idx,
+                                 cm->gdf_info.inp_ptr +
+                                     cm->gdf_info.inp_stride * i_min + j_min,
+                                 cm->gdf_info.inp_stride, cm->gdf_info.lap_ptr,
+                                 cm->gdf_info.lap_stride, cm->gdf_info.cls_ptr,
+                                 cm->gdf_info.cls_stride, cm->gdf_info.err_ptr,
+                                 cm->gdf_info.err_stride, pxl_shift,
+                                 ref_dst_idx);
+#else
               gdf_set_lap_and_cls_unit(
                   i_min, i_max, j_min, j_max, cm->gdf_info.gdf_stripe_size,
                   cm->gdf_info.inp_ptr + rec_stride * i_min + j_min, rec_stride,
@@ -284,12 +464,18 @@ void gdf_filter_frame(AV1_COMMON *cm) {
                   cm->gdf_info.cls_ptr, cm->gdf_info.cls_stride,
                   cm->gdf_info.err_ptr, cm->gdf_info.err_stride, pxl_shift,
                   ref_dst_idx);
+#endif
               gdf_compensation_unit(
                   rec_pnt + i_min * rec_stride + j_min, rec_stride,
                   cm->gdf_info.err_ptr, cm->gdf_info.err_stride, err_shift,
                   scale_val, pxl_max, i_max - i_min, j_max - j_min);
             }
           }
+#if CONFIG_GDF_IMPROVEMENT && (GDF_TEST_VIRTUAL_BOUNDARY == 2)
+          if (u_pos == 0) {
+            gdf_unset_reference_lines(cm, i_min, i_max, v_pos);
+          }
+#endif
         }
       }
       blk_idx++;
@@ -298,3 +484,5 @@ void gdf_filter_frame(AV1_COMMON *cm) {
 }
 
 #endif  // CONFIG_GDF
+
+#endif  // AOM_COMMON_GDF_H_

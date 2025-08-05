@@ -407,6 +407,23 @@ typedef struct BufferPool {
 /*!\endcond */
 
 #if CONFIG_GDF
+#if CONFIG_GDF_IMPROVEMENT
+
+/*!
+ * \brief Temporary buffers to save/restore lines above/below the GDF
+ */
+typedef struct {
+  uint16_t
+      gdf_save_above[4]
+                    [RESTORATION_LINEBUFFER_WIDTH]; /*!< GDF temporary buffer to
+                                                       save/restore above */
+  uint16_t
+      gdf_save_below[4]
+                    [RESTORATION_LINEBUFFER_WIDTH]; /*!< GDF temporary buffer to
+                                                       save/restore below */
+} GDFLineBuffers;
+#endif
+
 /*!
  * \brief Structure used for GDF (Guided Detail Filter).
  */
@@ -443,6 +460,10 @@ typedef struct {
                         i.e., before LF frame */
   uint16_t *inp_pad_ptr; /*!< Pointer to padded and actually allocated data
                             into which inp_ptr points */
+#if CONFIG_GDF_IMPROVEMENT
+  int inp_stride;       /*!< Stride of GDF memory storing guided frame */
+  GDFLineBuffers *glbs; /*!< Line buffers needed by Guided detail filter */
+#endif
 } GdfInfo;
 #endif  // CONFIG_GDF
 
@@ -587,7 +608,9 @@ typedef struct SequenceHeader {
   aom_opfl_refine_type enable_opfl_refine;  // optical flow refinement type for
                                             // this frame
   uint8_t enable_cdef;                      // To turn on/off CDEF
-
+#if CONFIG_GDF
+  uint8_t enable_gdf;          // To turn on/off GDF
+#endif                         // CONFIG_GDF
   uint8_t enable_restoration;  // To turn on/off loop restoration
   uint8_t enable_ccso;         // To turn on/off CCSO
 #if CONFIG_LF_SUB_PU

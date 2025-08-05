@@ -6295,6 +6295,9 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
   }
 
   seq_params->enable_cdef = aom_rb_read_bit(rb);
+#if CONFIG_GDF
+  seq_params->enable_gdf = aom_rb_read_bit(rb);
+#endif  // CONFIG_GDF
   seq_params->enable_restoration = aom_rb_read_bit(rb);
   seq_params->lr_tools_disable_mask[0] = 0;
   seq_params->lr_tools_disable_mask[1] = 0;
@@ -8386,7 +8389,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   setup_loopfilter(cm, rb);
 
 #if CONFIG_GDF
-  setup_gdf(cm, rb);
+  if (!features->coded_lossless && seq_params->enable_gdf) {
+    setup_gdf(cm, rb);
+  } else {
+    cm->gdf_info.gdf_mode = 0;
+  }
 #endif  // CONFIG_GDF
 
   if (!features->coded_lossless && seq_params->enable_cdef) {
@@ -8744,6 +8751,13 @@ static AOM_INLINE void setup_frame_info(AV1Decoder *pbi) {
       cm->rst_info[2].frame_restoration_type != RESTORE_NONE) {
     av1_alloc_restoration_buffers(cm);
   }
+#if CONFIG_GDF && CONFIG_GDF_IMPROVEMENT
+  else {
+    if (cm->gdf_info.gdf_mode) {
+      av1_alloc_restoration_boundary_buffers(cm, 1);
+    }
+  }
+#endif  // CONFIG_GDF
   const int buf_size = MC_TEMP_BUF_PELS << 1;
   if (pbi->td.mc_buf_size != buf_size) {
     av1_free_mc_tmp_buf(&pbi->td);
@@ -8935,6 +8949,12 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       if (do_loop_restoration)
         av1_loop_restoration_save_boundary_lines(&pbi->common.cur_frame->buf,
                                                  cm, 0);
+#if CONFIG_GDF && CONFIG_GDF_IMPROVEMENT
+      else {
+        if (do_gdf)
+          save_tile_row_boundary_lines(&pbi->common.cur_frame->buf, 0, cm, 0);
+      }
+#endif  // CONFIG_GDF
 
       if (do_cdef) {
         av1_cdef_frame(&pbi->common.cur_frame->buf, cm, &pbi->dcb.xd);
@@ -8953,6 +8973,14 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       if (do_loop_restoration) {
         av1_loop_restoration_save_boundary_lines(&pbi->common.cur_frame->buf,
                                                  cm, 1);
+      }
+#if CONFIG_GDF && CONFIG_GDF_IMPROVEMENT
+      else {
+        if (do_gdf)
+          save_tile_row_boundary_lines(&pbi->common.cur_frame->buf, 0, cm, 1);
+      }
+#endif  // CONFIG_GDF
+      if (do_loop_restoration) {
         // HERE
 #if CONFIG_COMBINE_PC_NS_WIENER
         copy_frame_filters_to_runits_if_needed(cm);
@@ -8970,6 +8998,9 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       }
 
 #if CONFIG_GDF
+#if GDF_VERBOSE
+      gdf_print_info(cm, "DEC", cm->current_frame.absolute_poc);
+#endif  //
       if (do_gdf) {
         av1_gdf_frame_dec(cm);
         gdf_free_guided_frame(cm);
