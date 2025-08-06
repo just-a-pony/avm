@@ -1943,6 +1943,7 @@ static void encode_b(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   TileInfo *const tile = &tile_data->tile_info;
   MACROBLOCK *const x = &td->mb;
   MACROBLOCKD *xd = &x->e_mbd;
+  assert(ctx != NULL);
 
   av1_set_offsets_without_segment_id(cpi, tile, x, mi_row, mi_col, bsize,
                                      &ctx->chroma_ref_info);
@@ -5524,7 +5525,10 @@ static AOM_INLINE void prune_ext_partitions_4way(
   }
 }
 
-static INLINE void search_partition_horz_4a(
+static const int cum_step_multipliers_4a[4] = { 0, 1, 3, 7 };
+static const int cum_step_multipliers_4b[4] = { 0, 1, 5, 7 };
+
+static void search_partition_horz_4a(
     PartitionSearchState *search_state, AV1_COMP *const cpi, ThreadData *td,
     TileDataEnc *tile_data, TokenExtra **tp, RD_STATS *best_rdc,
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
@@ -5586,7 +5590,6 @@ static INLINE void search_partition_horz_4a(
   const BLOCK_SIZE med_subsize = subsize_lookup[PARTITION_HORZ][big_subsize];
   assert(sml_subsize == subsize_lookup[PARTITION_HORZ][med_subsize]);
 
-  const int cum_step_multipliers[4] = { 0, 1, 3, 7 };
   const BLOCK_SIZE subblock_sizes[4] = { sml_subsize, med_subsize, big_subsize,
                                          sml_subsize };
 
@@ -5598,7 +5601,7 @@ static INLINE void search_partition_horz_4a(
                                  num_planes, 0, 0);
       pc_tree->horizontal4a[cur_region_type][idx] = NULL;
     }
-    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers[idx];
+    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers_4a[idx];
     pc_tree->horizontal4a[cur_region_type][idx] =
         av1_alloc_pc_tree_node(xd->tree_type, this_mi_row, mi_col,
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
@@ -5615,7 +5618,7 @@ static INLINE void search_partition_horz_4a(
 #endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
-    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers[i];
+    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers_4a[i];
 
     if (i > 0 && this_mi_row >= cm->mi_params.mi_rows) break;
 
@@ -5648,7 +5651,7 @@ static INLINE void search_partition_horz_4a(
   restore_level_banks(&x->e_mbd, level_banks);
 }
 
-static INLINE void search_partition_horz_4b(
+static void search_partition_horz_4b(
     PartitionSearchState *search_state, AV1_COMP *const cpi, ThreadData *td,
     TileDataEnc *tile_data, TokenExtra **tp, RD_STATS *best_rdc,
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
@@ -5712,7 +5715,6 @@ static INLINE void search_partition_horz_4b(
   const BLOCK_SIZE med_subsize = subsize_lookup[PARTITION_HORZ][big_subsize];
   assert(sml_subsize == subsize_lookup[PARTITION_HORZ][med_subsize]);
 
-  const int cum_step_multipliers[4] = { 0, 1, 5, 7 };
   const BLOCK_SIZE subblock_sizes[4] = { sml_subsize, big_subsize, med_subsize,
                                          sml_subsize };
 
@@ -5722,7 +5724,7 @@ static INLINE void search_partition_horz_4b(
                                  num_planes, 0, 0);
       pc_tree->horizontal4b[cur_region_type][idx] = NULL;
     }
-    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers[idx];
+    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers_4b[idx];
     pc_tree->horizontal4b[cur_region_type][idx] =
         av1_alloc_pc_tree_node(xd->tree_type, this_mi_row, mi_col,
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
@@ -5739,7 +5741,7 @@ static INLINE void search_partition_horz_4b(
 #endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
-    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers[i];
+    const int this_mi_row = mi_row + eighth_step * cum_step_multipliers_4b[i];
 
     if (i > 0 && this_mi_row >= cm->mi_params.mi_rows) break;
 
@@ -5772,7 +5774,7 @@ static INLINE void search_partition_horz_4b(
   restore_level_banks(&x->e_mbd, level_banks);
 }
 
-static INLINE void search_partition_vert_4a(
+static void search_partition_vert_4a(
     PartitionSearchState *search_state, AV1_COMP *const cpi, ThreadData *td,
     TileDataEnc *tile_data, TokenExtra **tp, RD_STATS *best_rdc,
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
@@ -5836,7 +5838,6 @@ static INLINE void search_partition_vert_4a(
   const BLOCK_SIZE med_subsize = subsize_lookup[PARTITION_VERT][big_subsize];
   assert(sml_subsize == subsize_lookup[PARTITION_VERT][med_subsize]);
 
-  const int cum_step_multipliers[4] = { 0, 1, 3, 7 };
   const BLOCK_SIZE subblock_sizes[4] = { sml_subsize, med_subsize, big_subsize,
                                          sml_subsize };
 
@@ -5846,7 +5847,7 @@ static INLINE void search_partition_vert_4a(
                                  num_planes, 0, 0);
       pc_tree->vertical4a[cur_region_type][idx] = NULL;
     }
-    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers[idx];
+    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers_4a[idx];
     pc_tree->vertical4a[cur_region_type][idx] =
         av1_alloc_pc_tree_node(xd->tree_type, mi_row, this_mi_col,
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
@@ -5863,7 +5864,7 @@ static INLINE void search_partition_vert_4a(
 #endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
-    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers[i];
+    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers_4a[i];
 
     if (i > 0 && this_mi_col >= cm->mi_params.mi_cols) break;
 
@@ -5896,7 +5897,7 @@ static INLINE void search_partition_vert_4a(
   restore_level_banks(&x->e_mbd, level_banks);
 }
 
-static INLINE void search_partition_vert_4b(
+static void search_partition_vert_4b(
     PartitionSearchState *search_state, AV1_COMP *const cpi, ThreadData *td,
     TileDataEnc *tile_data, TokenExtra **tp, RD_STATS *best_rdc,
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
@@ -5960,7 +5961,6 @@ static INLINE void search_partition_vert_4b(
   const BLOCK_SIZE med_subsize = subsize_lookup[PARTITION_VERT][big_subsize];
   assert(sml_subsize == subsize_lookup[PARTITION_VERT][med_subsize]);
 
-  const int cum_step_multipliers[4] = { 0, 1, 5, 7 };
   const BLOCK_SIZE subblock_sizes[4] = { sml_subsize, big_subsize, med_subsize,
                                          sml_subsize };
 
@@ -5970,7 +5970,7 @@ static INLINE void search_partition_vert_4b(
                                  num_planes, 0, 0);
       pc_tree->vertical4b[cur_region_type][idx] = NULL;
     }
-    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers[idx];
+    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers_4b[idx];
     pc_tree->vertical4b[cur_region_type][idx] =
         av1_alloc_pc_tree_node(xd->tree_type, mi_row, this_mi_col,
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
@@ -5987,7 +5987,7 @@ static INLINE void search_partition_vert_4b(
 #endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
-    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers[i];
+    const int this_mi_col = mi_col + eighth_step * cum_step_multipliers_4b[i];
 
     if (i > 0 && this_mi_col >= cm->mi_params.mi_cols) break;
 
