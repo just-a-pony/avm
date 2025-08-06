@@ -905,7 +905,7 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
   int numLeftSB = (1 << (8 - sb_size_log2)) - ((sb_size_log2 < 8) ? 1 : 0);
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   if (sb_size_log2 == 6) {
-    numLeftSB = 5;
+    numLeftSB = 4;
   }
 #endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
   const int valid_SB =
