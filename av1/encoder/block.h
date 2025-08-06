@@ -519,6 +519,7 @@ enum {
  */
 #define kSMSMaxStartMVs 1
 
+#if CONFIG_ML_PART_SPLIT
 /*! \brief Contains aggregate quantities of the residual of a coded block.
  *
  * This is used by the ML models to learn certain encoder decisions, for ex. in
@@ -541,6 +542,7 @@ typedef struct {
   //! Variance of the residual.
   unsigned int var;
 } ResidualStats;
+#endif  // CONFIG_ML_PART_SPLIT
 
 /*! \brief Contains data for simple motion
  */
@@ -569,11 +571,12 @@ typedef struct SimpleMotionData {
 
   int ref_frame; /*!< ref frame used */
   int rdmult;    /*!< rd_mult for the block */
-
+#if CONFIG_ML_PART_SPLIT
   //! Has residual stats been computed, this is controlled by the flag.
   bool residual_stats_valid;
   //! Residual stats used by ML models.
   ResidualStats residual_stats;
+#endif  // CONFIG_ML_PART_SPLIT
 } SimpleMotionData;
 
 /*!\cond */
