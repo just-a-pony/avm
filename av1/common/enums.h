@@ -987,7 +987,11 @@ enum {
 #define COMP_GROUP_IDX_CONTEXTS 12
 
 #define MIN_MAX_DRL_BITS 1
+#if CONFIG_DRL_SIZE_LIMIT
+#define MAX_MAX_DRL_BITS 5
+#else
 #define MAX_MAX_DRL_BITS 7
+#endif
 
 #if !CONFIG_OPT_INTER_MODE_CTX
 #define NMV_CONTEXTS 3
