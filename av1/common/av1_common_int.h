@@ -1923,6 +1923,10 @@ typedef struct AV1Common {
    */
   int tmvp_sample_step;
   /*!
+   * Log 2 step size for tmvp sampling.
+   */
+  int tmvp_sample_stepl2;
+  /*!
    * The processing unit size used
    */
   int tmvp_proc_size;
@@ -2079,6 +2083,11 @@ typedef struct AV1Common {
   YV12_BUFFER_CONFIG predicted_pixels;
   YV12_BUFFER_CONFIG prefiltered_pixels;
 #endif  // CONFIG_INSPECTION
+
+  /*!
+   * True if we are in a decoding process.
+   */
+  bool decoding;
 } AV1_COMMON;
 
 /*!\cond */
@@ -3177,9 +3186,9 @@ static INLINE int get_mi_grid_idx(const CommonModeInfoParams *const mi_params,
 
 static INLINE int get_alloc_mi_idx(const CommonModeInfoParams *const mi_params,
                                    int mi_row, int mi_col) {
-  const int mi_alloc_size_1d = mi_size_wide[mi_params->mi_alloc_bsize];
-  const int mi_alloc_row = mi_row / mi_alloc_size_1d;
-  const int mi_alloc_col = mi_col / mi_alloc_size_1d;
+  const int mi_alloc_size_1dl = mi_size_wide_log2[mi_params->mi_alloc_bsize];
+  const int mi_alloc_row = mi_row >> mi_alloc_size_1dl;
+  const int mi_alloc_col = mi_col >> mi_alloc_size_1dl;
 
   return mi_alloc_row * mi_params->mi_alloc_stride + mi_alloc_col;
 }
