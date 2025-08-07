@@ -207,7 +207,7 @@ AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   aom_once(initialize_dec);
 
   // Initialize the references to not point to any frame buffers.
-  for (int i = 0; i < cm->seq_params.ref_frames; i++) {
+  for (int i = 0; i < NELEMENTS(cm->ref_frame_map); i++) {
     cm->ref_frame_map[i] = NULL;
   }
 
@@ -216,6 +216,9 @@ AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   pbi->common.buffer_pool = pool;
 
   cm->seq_params.bit_depth = AOM_BITS_8;
+#if CONFIG_NEW_CSP
+  cm->seq_params.chroma_sample_position = AOM_CSP_UNSPECIFIED;
+#endif  // CONFIG_NEW_CSP
 
   cm->mi_params.free_mi = dec_free_mi;
   cm->mi_params.setup_mi = dec_setup_mi;
