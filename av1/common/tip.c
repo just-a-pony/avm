@@ -29,10 +29,6 @@
 
 static void tip_temporal_scale_motion_field(AV1_COMMON *cm,
                                             const int ref_frames_offset) {
-  if (abs(ref_frames_offset) > MAX_FRAME_DISTANCE) {
-    return;
-  }
-
   TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
   const int mvs_rows =
       ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
@@ -371,7 +367,7 @@ static void tip_config_tip_parameter(AV1_COMMON *cm) {
       tip_derive_scale_factor(cur_to_ref0_offset, ref_frames_offset);
   tip_ref->ref_frames_offset_sf[1] =
       tip_derive_scale_factor(cur_to_ref1_offset, ref_frames_offset);
-  tip_ref->ref_frames_offset = ref_frames_offset;
+  tip_ref->ref_frames_offset = AOMMIN(ref_frames_offset, MAX_FRAME_DISTANCE);
   tip_ref->ref_offset[0] = cur_to_ref0_offset;
   tip_ref->ref_offset[1] = cur_to_ref1_offset;
   tip_ref->ref_order_hint[0] = ref0_frame_order_hint;
