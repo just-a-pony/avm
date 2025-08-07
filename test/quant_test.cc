@@ -133,6 +133,18 @@ constexpr uint8_t jpeg_chroma_qm_8x8[8 * 8] = {
     99,  99,  99,  99,  99,  99,  99,  99,
     99,  99,  99,  99,  99,  99,  99,  99,
 };
+// This matrix is almost jpeg_chroma_qm_8x8 except that the (2, 2) coefficient
+// is changed from 56 to 66.
+constexpr uint8_t jpeg_chroma_qm_8x8_almost[8 * 8] = {
+    17,  18,  24,  47,  99,  99,  99,  99,
+    18,  21,  26,  66,  99,  99,  99,  99,
+    24,  26,  66,  99,  99,  99,  99,  99,
+    47,  66,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+    99,  99,  99,  99,  99,  99,  99,  99,
+};
 // clang-format off
 
 class QMTest
@@ -218,6 +230,22 @@ class QMTest
           qm.qm_4x8[2] = flat_qm_4x8;
         }
         encoder->Control(AV1E_SET_USER_DEFINED_QMATRIX, &qm);
+      } else if (user_defined_qmatrix_ == 4) {
+        ASSERT_EQ(qm_min_, qm_max_);
+        aom_user_defined_qm_t qm;
+        qm.level = qm_min_;
+        ASSERT_FALSE(monochrome_);
+        qm.num_planes = 3;
+        qm.qm_8x8[0] = jpeg_luma_qm_8x8;
+        qm.qm_8x8[1] = jpeg_chroma_qm_8x8_almost;
+        qm.qm_8x8[2] = jpeg_chroma_qm_8x8_almost;
+        qm.qm_8x4[0] = flat_qm_8x4;
+        qm.qm_8x4[1] = flat_qm_8x4;
+        qm.qm_8x4[2] = flat_qm_8x4;
+        qm.qm_4x8[0] = flat_qm_4x8;
+        qm.qm_4x8[1] = flat_qm_4x8;
+        qm.qm_4x8[2] = flat_qm_4x8;
+        encoder->Control(AV1E_SET_USER_DEFINED_QMATRIX, &qm);
       }
 
       encoder->Control(AOME_SET_MAX_INTRA_BITRATE_PCT, 100);
@@ -302,6 +330,12 @@ TEST_P(QMTest, TestNoMisMatchQM9) {
 TEST_P(QMTest, TestNoMisMatchQM10) {
   monochrome_ = true;
   user_defined_qmatrix_ = 3;
+  DoTest(0, 0);
+}
+
+// encodes and decodes without a mismatch.
+TEST_P(QMTest, TestNoMisMatchQM11) {
+  user_defined_qmatrix_ = 4;
   DoTest(0, 0);
 }
 

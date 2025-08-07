@@ -5396,35 +5396,34 @@ static bool qm_candidate_is_transpose_of_current_matrix(
   return true;
 }
 
-// Returns the number of repeating matrix coefficients at the end of the scan
-// order. The fictitious zeroth coefficient (of value 32) is considered. The
-// first coefficient in the run of identical coefficients is excluded from the
-// count.
-int qm_num_repeating_coefs(const qm_val_t *mat, int width, int height,
-                           const SCAN_ORDER *s, bool is_symmetric) {
-  // Starting from the end of the scan order, go backward and count how many
-  // coefficients are equal to the last coefficient.
-  const qm_val_t mat_end = mat[width * height - 1];
+// Finds consecutive zero matrix coefficient deltas at the end of the scan
+// order and returns the number of them that are coded.
+static int qm_num_zero_deltas(const qm_val_t *mat, int width, int height,
+                              const SCAN_ORDER *s, bool is_symmetric) {
+  // Starting from the end of the scan order, go backward as long as the
+  // coefficient delta is equal to 0. Count the number of coded zero
+  // coefficient deltas.
   int count = 0;
   int i;
-  for (i = width * height - 2; i >= 0; i--) {
+  for (i = width * height - 1; i > 0; i--) {
     const int pos = s->scan[i];
+    const int prev_pos = s->scan[i - 1];
+    if (mat[pos] != mat[prev_pos]) {
+      break;
+    }
     if (is_symmetric) {
       const int row = pos / width;
       const int col = pos % width;
       if (col > row) {
+        // Not coded.
         continue;
       }
     }
 
-    if (mat[pos] == mat_end) {
-      count++;
-    } else {
-      break;
-    }
+    count++;
   }
-  // Check the fictitious zeroth coefficient of value 32.
-  if (i < 0 && 32 == mat_end) {
+  // The fictitious coefficient before mat[0] has the value 32.
+  if (i == 0 && mat[0] == 32) {
     count++;
   }
   return count;
@@ -5475,11 +5474,10 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
         }
       }
 
-      // The number of repeating coefficients at the end of the scan order. This
-      // count excludes the first coefficient of the run. So this is the number
-      // of zero delta values. Zero is coded in one bit in svlc().
-      const int num_repeating_coefs =
-          qm_num_repeating_coefs(mat, width, height, s, qm_8x8_is_symmetric);
+      // The number of consecutive zero coefficient deltas at the end of the
+      // scan order that are coded. Zero is coded in one bit in svlc().
+      const int num_zero_deltas =
+          qm_num_zero_deltas(mat, width, height, s, qm_8x8_is_symmetric);
       // Next, calculate the length in bits of the stop symbol in svlc(). The
       // delta between mat_end and the stop symbol (0) is 0 - mat_end. An
       // equivalent delta, modulo 256, is 256 - mat_end. The length of svlc()
@@ -5487,15 +5485,15 @@ static AOM_INLINE void code_qm_data(const SequenceHeader *const seq_params,
       // absolute value.
       const int num_coefs = tx_size_2d[tsize];
       const int mat_end = mat[num_coefs - 1];
-      const int abs_zero_delta = (mat_end < 128) ? mat_end : 256 - mat_end;
-      const int abs_zero_delta_bits = 2 * get_msb(2 * abs_zero_delta) + 1;
+      const int abs_stop_symbol = (mat_end < 128) ? mat_end : 256 - mat_end;
+      const int stop_symbol_bits = 2 * get_msb(2 * abs_stop_symbol) + 1;
       // If the stop symbol is shorter, set stop_symbol_idx to the index of the
-      // stop symbol in the scan order. Otherwise, set stop_symbol_idx to -1 to
-      // not code a stop symbol.
+      // stop symbol in the coded order. Otherwise, set stop_symbol_idx to -1
+      // to not code a stop symbol.
       int stop_symbol_idx = -1;
-      if (abs_zero_delta_bits < num_repeating_coefs) {
+      if (stop_symbol_bits < num_zero_deltas) {
         const int num_coded_coefs = qm_8x8_is_symmetric ? 36 : num_coefs;
-        stop_symbol_idx = num_coded_coefs - num_repeating_coefs;
+        stop_symbol_idx = num_coded_coefs - num_zero_deltas;
       }
 
       int16_t prev = 32;
