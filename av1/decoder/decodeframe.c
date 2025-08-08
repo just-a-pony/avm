@@ -1526,12 +1526,6 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
   AV1_COMMON *cm = &pbi->common;
   const int num_planes = av1_num_planes(cm);
   MB_MODE_INFO *mbmi = xd->mi[0];
-#if CONFIG_BRU
-  // skip all the parsing and do recon directly if not active
-  if (!bru_is_sb_active(&pbi->common, mi_col, mi_row)) {
-    goto direct_recon;
-  }
-#endif  // CONFIG_BRU
   int inter_block_tx = is_inter_block(mbmi, xd->tree_type) ||
                        is_intrabc_block(mbmi, xd->tree_type);
   if (xd->tree_type != CHROMA_PART) {
@@ -1602,7 +1596,6 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
 #if CONFIG_BRU
   // For regular decoder, always do recon
   // For optimized decoder, only do reocn when support SB
-direct_recon:
   if (!pbi->bru_opt_mode ||
       (pbi->bru_opt_mode && bru_is_sb_active(cm, mi_col, mi_row)))
 #endif  // CONFIG_BRU
@@ -2480,9 +2473,12 @@ static AOM_INLINE void setup_bru_active_info(AV1_COMMON *const cm,
   cm->bru.ref_order = -1;
   cm->bru.explicit_ref_idx = -1;
   cm->bru.enabled = 0;
+  cm->bru.frame_inactive_flag = 0;
+  if (cm->current_frame.frame_type != INTER_FRAME) {
+    return;
+  }
   // need to reresh bru.active_mode_map every frame
   memset(cm->bru.active_mode_map, 2, sizeof(uint8_t) * cm->bru.total_units);
-  cm->bru.frame_inactive_flag = 0;
   if (cm->seq_params.enable_bru) {
     cm->bru.enabled = aom_rb_read_bit(rb);
     if (cm->bru.enabled) {
@@ -2490,6 +2486,9 @@ static AOM_INLINE void setup_bru_active_info(AV1_COMMON *const cm,
       cm->bru.update_ref_idx = aom_rb_read_literal(
           rb, aom_ceil_log2(cm->ref_frames_info.num_total_refs));
       cm->bru.frame_inactive_flag = aom_rb_read_bit(rb);
+      if (cm->bru.frame_inactive_flag) {
+        cm->features.disable_cdf_update = 1;
+      }
     }
   }
 }
@@ -4348,8 +4347,18 @@ static AOM_INLINE void get_tile_buffers(
     TileBufferDec (*const tile_buffers)[MAX_TILE_COLS], int start_tile,
     int end_tile) {
   AV1_COMMON *const cm = &pbi->common;
+#if CONFIG_BRU
+  int tile_cols = cm->tiles.cols;
+  int tile_rows = cm->tiles.rows;
+  if (cm->bru.frame_inactive_flag) {
+    tile_cols = 1;
+    tile_rows = 1;
+    end_tile = 0;
+  }
+#else
   const int tile_cols = cm->tiles.cols;
   const int tile_rows = cm->tiles.rows;
+#endif
   int tc = 0;
 
   for (int r = 0; r < tile_rows; ++r) {
@@ -7243,6 +7252,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   cm->bru.update_ref_idx = -1;
   cm->bru.explicit_ref_idx = -1;
   cm->bru.ref_order = -1;
+  cm->bru.frame_inactive_flag = 0;
 #endif  // CONFIG_BRU
 #if CONFIG_PARAKIT_COLLECT_DATA
   for (int i = 0; i < MAX_NUM_CTX_GROUPS; i++) {
@@ -7943,6 +7953,30 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                                  "Only one reference can be updated for BRU");
             }
           }
+        }
+      }
+      if (cm->bru.enabled) {
+        int n_future = 0;
+        int cur_frame_disp = (int)current_frame->display_order_hint;
+#if CONFIG_EXTRA_DPB
+        for (int i = 0; i < cm->seq_params.ref_frames; i++) {
+#else
+        for (int i = 0; i < REF_FRAMES; i++) {
+#endif
+          const RefCntBuffer *const buf = cm->ref_frame_map[i];
+          if (buf) {
+            int ref_disp = (int)buf->display_order_hint;
+            const int disp_diff = get_relative_dist(
+                &cm->seq_params.order_hint_info, cur_frame_disp, ref_disp);
+            if (disp_diff < 0) {
+              n_future++;
+              break;
+            }
+          }
+        }
+        if (n_future > 0) {
+          aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                             "BRU can only use in LD");
         }
       }
 #endif
@@ -9021,6 +9055,18 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
   if (cm->bru.enabled && pbi->bru_opt_mode &&
       cm->current_frame.frame_type != KEY_FRAME) {
     dec_bru_swap_stage(cm, xd);
+    if (cm->bru.frame_inactive_flag && !tiles->large_scale) {
+      cm->cur_frame->frame_context = *cm->fc;
+#if CONFIG_PARAKIT_COLLECT_DATA
+      for (int i = 0; i < MAX_NUM_CTX_GROUPS; i++)
+        for (int j = 0; j < MAX_DIMS_CONTEXT3; j++)
+          for (int k = 0; k < MAX_DIMS_CONTEXT2; k++)
+            for (int l = 0; l < MAX_DIMS_CONTEXT1; l++)
+              for (int h = 0; h < MAX_DIMS_CONTEXT0; h++)
+                beginningFrameFlag[i][j][k][l][h] = 1;
+#endif
+      return;
+    }
   }
 #endif  // CONFIG_BRU
 
