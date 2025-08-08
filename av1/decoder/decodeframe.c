@@ -6543,6 +6543,23 @@ void av1_read_sequence_header_beyond_av1(
   seq_params->explicit_ref_frame_map = aom_rb_read_bit(rb);
   // 0 : use show_existing_frame, 1: use implicit derivation
   seq_params->enable_frame_output_order = aom_rb_read_bit(rb);
+
+#if CONFIG_CWG_F168_DPB_HLS
+  if (aom_rb_read_bit(rb)) {
+    seq_params->ref_frames =
+        aom_rb_read_literal(rb, 4) + 1;  // explicitly signaled DPB size
+  } else {
+    seq_params->ref_frames = 8;  // default DPB size: 8
+  }
+  seq_params->ref_frames_log2 = aom_ceil_log2(seq_params->ref_frames);
+
+  // TODO: (@hegilmez) dpb_size and ref_frames can be merged to clean up the
+  // code
+  seq_params->dpb_size = seq_params->ref_frames;
+
+  seq_params->max_reference_frames =
+      AOMMIN(seq_params->ref_frames - 1, INTER_REFS_PER_FRAME);
+#else
   // A bit is sent here to indicate if the max number of references is 7. If
   // this bit is 0, then two more bits are sent to indicate the exact number
   // of references allowed (range: 3 to 6).
@@ -6570,6 +6587,7 @@ void av1_read_sequence_header_beyond_av1(
   seq_params->ref_frames = REF_FRAMES;
   seq_params->ref_frames_log2 = REF_FRAMES_LOG2;
 #endif  // CONFIG_EXTRA_DPB
+#endif  // CONFIG_CWG_F168_DPB_HLS
 
   seq_params->num_same_ref_compound = aom_rb_read_literal(rb, 2);
   seq_params->enable_sdp = seq_params->monochrome ? 0 : aom_rb_read_bit(rb);
