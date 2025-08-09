@@ -6567,7 +6567,7 @@ void av1_read_sequence_header_beyond_av1(
   seq_params->dpb_size = seq_params->ref_frames;
 
   seq_params->max_reference_frames =
-      AOMMIN(seq_params->ref_frames - 1, INTER_REFS_PER_FRAME);
+      AOMMIN(seq_params->ref_frames, INTER_REFS_PER_FRAME);
 #else
   // A bit is sent here to indicate if the max number of references is 7. If
   // this bit is 0, then two more bits are sent to indicate the exact number
@@ -7569,14 +7569,25 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   const int short_refresh_frame_flags =
       cm->seq_params.enable_short_refresh_frame_flags &&
       !cm->features.error_resilient_mode;
-  const int refresh_frame_flags_bits =
-      short_refresh_frame_flags ? 3 : seq_params->ref_frames;
+  const int refresh_frame_flags_bits = short_refresh_frame_flags
+                                           ? seq_params->ref_frames_log2
+                                           : seq_params->ref_frames;
 
 #endif  // CONFIG_REFRESH_FLAG
   if (current_frame->frame_type == KEY_FRAME) {
     if (!cm->show_frame) {  // unshown keyframe (forward keyframe)
 #if CONFIG_REFRESH_FLAG
       if (short_refresh_frame_flags) {
+#if CONFIG_CWG_F260_REFRESH_FLAG
+        const bool has_refresh_frame_flags = aom_rb_read_literal(rb, 1);
+        if (has_refresh_frame_flags) {
+          const int refresh_idx =
+              aom_rb_read_literal(rb, refresh_frame_flags_bits);
+          current_frame->refresh_frame_flags = 1 << refresh_idx;
+        } else {
+          current_frame->refresh_frame_flags = 0;
+        }
+#else
         const int refresh_idx =
             aom_rb_read_literal(rb, refresh_frame_flags_bits);
         if (refresh_idx == 0) {
@@ -7585,6 +7596,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         } else {
           current_frame->refresh_frame_flags = 1 << refresh_idx;
         }
+#endif  // CONFIG_CWG_F260_REFRESH_FLAG
       } else {
         current_frame->refresh_frame_flags =
             aom_rb_read_literal(rb, refresh_frame_flags_bits);
@@ -7612,6 +7624,16 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     if (current_frame->frame_type == INTRA_ONLY_FRAME) {
 #if CONFIG_REFRESH_FLAG
       if (short_refresh_frame_flags) {
+#if CONFIG_CWG_F260_REFRESH_FLAG
+        const bool has_refresh_frame_flags = aom_rb_read_literal(rb, 1);
+        if (has_refresh_frame_flags) {
+          const int refresh_idx =
+              aom_rb_read_literal(rb, refresh_frame_flags_bits);
+          current_frame->refresh_frame_flags = 1 << refresh_idx;
+        } else {
+          current_frame->refresh_frame_flags = 0;
+        }
+#else
         const int refresh_idx =
             aom_rb_read_literal(rb, refresh_frame_flags_bits);
         if (refresh_idx == 0) {
@@ -7620,6 +7642,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         } else {
           current_frame->refresh_frame_flags = 1 << refresh_idx;
         }
+#endif  // CONFIG_CWG_F260_REFRESH_FLAG
       } else {
         current_frame->refresh_frame_flags =
             aom_rb_read_literal(rb, refresh_frame_flags_bits);
@@ -7648,6 +7671,16 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         current_frame->refresh_frame_flags = REFRESH_FRAME_ALL;
       } else {
         if (short_refresh_frame_flags) {
+#if CONFIG_CWG_F260_REFRESH_FLAG
+          const bool has_refresh_frame_flags = aom_rb_read_literal(rb, 1);
+          if (has_refresh_frame_flags) {
+            const int refresh_idx =
+                aom_rb_read_literal(rb, refresh_frame_flags_bits);
+            current_frame->refresh_frame_flags = 1 << refresh_idx;
+          } else {
+            current_frame->refresh_frame_flags = 0;
+          }
+#else
           const int refresh_idx =
               aom_rb_read_literal(rb, refresh_frame_flags_bits);
           if (refresh_idx == 0) {
@@ -7657,6 +7690,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           } else {
             current_frame->refresh_frame_flags = 1 << refresh_idx;
           }
+#endif  // CONFIG_CWG_F260_REFRESH_FLAG
         } else {
           current_frame->refresh_frame_flags =
               aom_rb_read_literal(rb, refresh_frame_flags_bits);
