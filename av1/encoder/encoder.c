@@ -2563,7 +2563,6 @@ void gdf_optimizer(AV1_COMP *cpi, AV1_COMMON *cm) {
   int gdf_enable_max_plus_1 = (cm->gdf_info.gdf_block_num <= 1) ? 2 : 3;
   int gdf_block_enable_bit = 1;
   aom_cdf_prob gdf_cdf[CDF_SIZE(2)];
-  static const aom_cdf_prob default_gdf_cdf[CDF_SIZE(2)] = { AOM_CDF2(11570) };
 #if CONFIG_BRU
   // BRU frame does not allow mode 1
   for (int gdf_mode = cm->bru.enabled ? 2 : 1; gdf_mode < gdf_enable_max_plus_1;
@@ -2577,7 +2576,7 @@ void gdf_optimizer(AV1_COMP *cpi, AV1_COMMON *cm) {
                       GDF_RDO_SCALE_NUM_LOG2)
                      << AV1_PROB_COST_SHIFT;
         slice_error = 0;
-        av1_copy(gdf_cdf, default_gdf_cdf);
+        av1_copy(gdf_cdf, cm->fc->gdf_cdf);
 
         for (int ci = 0; ci < cm->gdf_info.gdf_block_num; ci++) {
           blk_idx = block_ids[ci];
