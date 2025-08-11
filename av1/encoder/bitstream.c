@@ -6659,12 +6659,28 @@ static AOM_INLINE void write_uncompressed_header_obu(
         }
       }
     }
+
 #if CONFIG_LF_SUB_PU
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+    // this condidtion needs to be checked @Yeqing, @yixin
+    if (cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu &&
+        cm->lf.tip_filter_level && cm->seq_params.disable_loopfilters_across_tiles) {
+      write_tile_info(cm, saved_wb, wb);
+    }
+#else
     if (cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu &&
         cm->lf.tip_filter_level) {
       write_tile_info(cm, saved_wb, wb);
     }
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+#else
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+    if (cm->seq_params.disable_loopfilters_across_tiles) {
+      write_tile_info(cm, saved_wb, wb);
+    }
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
 #endif  // CONFIG_LF_SUB_PU
+
     if (seq_params->film_grain_params_present
 #if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
 #if !CONFIG_F253_REMOVE_OUTPUTFLAG
