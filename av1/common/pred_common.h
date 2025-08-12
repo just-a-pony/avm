@@ -34,6 +34,10 @@ static INLINE void init_ref_map_pair(AV1_COMMON *cm,
     // Get reference frame buffer
     const RefCntBuffer *const buf = cm->ref_frame_map[map_idx];
     if (buf) {
+#if CONFIG_ACROSS_SCALE_REF_OPT
+      ref_frame_map_pairs[map_idx].width = buf->buf.y_crop_width;
+      ref_frame_map_pairs[map_idx].height = buf->buf.y_crop_height;
+#endif  // CONFIG_ACROSS_SCALE_REF_OPT
       ref_frame_map_pairs[map_idx].disp_order = (int)buf->display_order_hint;
       ref_frame_map_pairs[map_idx].pyr_level = buf->pyramid_level;
 #if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
@@ -93,6 +97,10 @@ typedef struct {
 #if CONFIG_MULTILAYER_CORE
   int layer_id;
 #endif  // CONFIG_MULTILAYER_CORE
+#if CONFIG_ACROSS_SCALE_REF_OPT
+  // log2 of resolution ratio
+  int res_ratio_log2;
+#endif  // CONFIG_ACROSS_SCALE_REF_OPT
 } RefScoreData;
 /*!\endcond */
 
