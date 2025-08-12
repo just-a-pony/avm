@@ -139,11 +139,14 @@ if(NOT BUILD_SHARED_LIBS)
       "${AOM_ROOT}/test/segment_binarization_sync.cc"
       "${AOM_ROOT}/test/still_picture_test.cc"
       "${AOM_ROOT}/test/subgop_test.cc"
-      "${AOM_ROOT}/test/sef_test.cc"
       "${AOM_ROOT}/test/superframe_test.cc"
       "${AOM_ROOT}/test/tile_config_test.cc"
       "${AOM_ROOT}/test/tile_independence_test.cc"
       "${AOM_ROOT}/test/temporal_filter_test.cc")
+  endif()
+
+  if(NOT CONFIG_F253_REMOVE_OUTPUTFLAG)
+    list(APPEND AOM_UNIT_TEST_COMMON_SOURCES "${AOM_ROOT}/test/sef_test.cc")
   endif()
 
   list(APPEND AOM_UNIT_TEST_COMMON_INTRIN_NEON
