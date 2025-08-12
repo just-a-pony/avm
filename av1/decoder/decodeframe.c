@@ -8854,6 +8854,10 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
                                             const uint8_t *data,
                                             const uint8_t **p_data_end,
                                             int trailing_bits_present) {
+#if CONFIG_COLLECT_COMPONENT_TIMING
+  start_timing(pbi, av1_decode_frame_headers_and_setup_time);
+#endif
+
   AV1_COMMON *const cm = &pbi->common;
   const int num_planes = av1_num_planes(cm);
   MACROBLOCKD *const xd = &pbi->dcb.xd;
@@ -8914,6 +8918,11 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
         aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                            "Uninitialized entropy context.");
     }
+
+#if CONFIG_COLLECT_COMPONENT_TIMING
+    end_timing(pbi, av1_decode_frame_headers_and_setup_time);
+#endif
+
     return uncomp_hdr_size;
   }
 
@@ -8975,6 +8984,11 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
   process_tip_mode(pbi);
   if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
     *p_data_end = data + uncomp_hdr_size;
+
+#if CONFIG_COLLECT_COMPONENT_TIMING
+    end_timing(pbi, av1_decode_frame_headers_and_setup_time);
+#endif
+
     return uncomp_hdr_size;
   }
 
@@ -8996,6 +9010,11 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
                        "Uninitialized entropy context.");
 
   pbi->dcb.corrupted = 0;
+
+#if CONFIG_COLLECT_COMPONENT_TIMING
+  end_timing(pbi, av1_decode_frame_headers_and_setup_time);
+#endif
+
   return uncomp_hdr_size;
 }
 
@@ -9054,6 +9073,10 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
                                     const uint8_t *data_end,
                                     const uint8_t **p_data_end, int start_tile,
                                     int end_tile, int initialize_flag) {
+#if CONFIG_COLLECT_COMPONENT_TIMING
+  start_timing(pbi, av1_decode_tg_tiles_and_wrapup_time);
+#endif
+
   AV1_COMMON *const cm = &pbi->common;
   CommonTileParams *const tiles = &cm->tiles;
   MACROBLOCKD *const xd = &pbi->dcb.xd;
@@ -9332,4 +9355,8 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
               beginningFrameFlag[i][j][k][l][h] = 1;
 #endif
   }
+
+#if CONFIG_COLLECT_COMPONENT_TIMING
+  end_timing(pbi, av1_decode_tg_tiles_and_wrapup_time);
+#endif
 }
