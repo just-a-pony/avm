@@ -345,10 +345,13 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->morph_pred_cdf, 2);
   RESET_CDF_COUNTER(fc->seg.tree_cdf, MAX_SEGMENTS);
   RESET_CDF_COUNTER(fc->seg.pred_cdf, 2);
-  RESET_CDF_COUNTER(fc->seg.spatial_pred_seg_cdf, MAX_SEGMENTS);
 #if CONFIG_EXT_SEG
+  RESET_CDF_COUNTER(fc->seg.spatial_pred_seg_cdf, MAX_SEGMENTS_8);
+  RESET_CDF_COUNTER(fc->seg.spatial_pred_seg_cdf1, MAX_SEGMENTS_8);
   RESET_CDF_COUNTER(fc->seg.seg_id_ext_flag_cdf, 2);
-#endif  // CONFIG_EXT_SEG
+#else
+  RESET_CDF_COUNTER(fc->seg.spatial_pred_seg_cdf, MAX_SEGMENTS);
+#endif
   RESET_CDF_COUNTER(fc->mrl_index_cdf, MRL_LINE_NUMBER);
   RESET_CDF_COUNTER(fc->multi_line_mrl_cdf, 2);
   RESET_CDF_COUNTER(fc->fsc_mode_cdf, FSC_MODES);
