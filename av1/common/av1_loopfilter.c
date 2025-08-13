@@ -1558,8 +1558,8 @@ AOM_INLINE void loop_filter_tip_plane(AV1_COMMON *cm, const int plane,
 
 // start filtering
 #if CONFIG_IMPROVE_TIP_LF
-  const int h = plane_h - sub_bh;
-  const int w = plane_w - sub_bw;
+  const int h = plane_h;
+  const int w = plane_w;
 #else
   const int h = bh - sub_bh;
   const int w = bw - sub_bw;
@@ -1567,12 +1567,13 @@ AOM_INLINE void loop_filter_tip_plane(AV1_COMMON *cm, const int plane,
 #endif  // CONFIG_IMPROVE_TIP_LF
 
 #if CONFIG_IMPROVE_TIP_LF
-  for (int j = 0; j <= h; j += 4) {
+  for (int j = 0; j < h; j += 4) {
     uint16_t *p = dst + j * dst_stride;
+    for (int i = 0; i < w; i += sub_bw) {
 #else
   for (int j = 0; j <= h; j += sub_bh) {
-#endif  // CONFIG_IMPROVE_TIP_LF
     for (int i = 0; i <= w; i += sub_bw) {
+#endif  // CONFIG_IMPROVE_TIP_LF
       // filter vertical boundary
       if (i > 0) {
         int filter_length_neg = 0;
@@ -1600,9 +1601,9 @@ AOM_INLINE void loop_filter_tip_plane(AV1_COMMON *cm, const int plane,
     }
   }
 
-  for (int i = 0; i <= w; i += 4) {
+  for (int i = 0; i < w; i += 4) {
     uint16_t *p = dst + i;
-    for (int j = 0; j <= h; j += sub_bh) {
+    for (int j = 0; j < h; j += sub_bh) {
 #endif  // CONFIG_IMPROVE_TIP_LF
       // filter horizontal boundary
       if (j > 0) {
