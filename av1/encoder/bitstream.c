@@ -5853,10 +5853,10 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 
 #if CONFIG_CWG_F168_DPB_HLS
   const int signal_dpb_explicit =
-      seq_params->dpb_size != 8;  // DPB size 8 is the default value
+      seq_params->ref_frames != 8;  // DPB size 8 is the default value
   aom_wb_write_bit(wb, signal_dpb_explicit);
   if (signal_dpb_explicit) {
-    aom_wb_write_literal(wb, seq_params->dpb_size - 1, 4);
+    aom_wb_write_literal(wb, seq_params->ref_frames - 1, 4);
   }
 #else
   // A bit is sent here to indicate if the max number of references is 7. If

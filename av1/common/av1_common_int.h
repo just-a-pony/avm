@@ -583,12 +583,8 @@ typedef struct SequenceHeader {
   int num_same_ref_compound;  // Number of the allowed same reference frames for
                               // the compound mode
 #if CONFIG_EXTRA_DPB
-  // TODO: (@hegilmez) dpb_size and ref_frames can be merged to clean up the
-  // code
-#if CONFIG_CWG_F168_DPB_HLS
-  int dpb_size;  // number of decoded picture buffer (DPB) slots
-#else
-  int num_extra_dpb;  // number of extra decoded picture buffers
+#if !CONFIG_CWG_F168_DPB_HLS
+  int num_extra_dpb;    // number of extra decoded picture buffers
 #endif                  // CONFIG_CWG_F168_DPB_HLS
 #endif                  // CONFIG_EXTRA_DPB
   int ref_frames;       // number of all decoded picture buffers
