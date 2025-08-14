@@ -59,12 +59,12 @@ void gdf_extend_frame_highbd(uint16_t *data, int width, int height, int stride,
 
 /*!\brief Function to setup reference lines for filtering stripe
  */
-void gdf_setup_reference_lines(AV1_COMMON *cm, int i_min, int i_max, int v_pos,
+void gdf_setup_reference_lines(AV1_COMMON *cm, int i_min, int i_max,
                                int frame_stripe);
 
 /*!\brief Function to unset reference lines for filtering stripe
  */
-void gdf_unset_reference_lines(AV1_COMMON *cm, int i_min, int i_max, int v_pos);
+void gdf_unset_reference_lines(AV1_COMMON *cm, int i_min, int i_max);
 #endif
 /*!\brief Function to allocate memory and copy guided frame of GDF
  */
