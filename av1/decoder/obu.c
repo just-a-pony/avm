@@ -420,6 +420,20 @@ static int32_t read_tile_group_header(AV1Decoder *pbi,
   }
   pbi->next_start_tile = (*end_tile == num_tiles - 1) ? 0 : *end_tile + 1;
 
+#if CONFIG_BRU_TILE_FLAG
+  if (cm->bru.enabled) {
+    if (num_tiles > 1) {
+      for (int tile_idx = *start_tile; tile_idx <= *end_tile; tile_idx++) {
+        const int active_bitmap_byte = tile_idx >> 3;
+        const int active_bitmap_bit = tile_idx & 7;
+        tiles->tile_active_bitmap[active_bitmap_byte] +=
+            (aom_rb_read_bit(rb) << active_bitmap_bit);
+      }
+    } else {
+      tiles->tile_active_bitmap[0] = 1;
+    }
+  }
+#endif  // CONFIG_BRU_TILE_FLAG
   return ((rb->bit_offset - saved_bit_offset + 7) >> 3);
 }
 
