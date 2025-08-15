@@ -1002,11 +1002,8 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
   if (!seg_ref_active) {
     if (!mbmi->skip_mode && !frame_is_intra_only(cm) &&
-        mbmi->region_type != INTRA_REGION
-#if CONFIG_DISABLE_4X4_INTER
-        && mbmi->sb_type[PLANE_TYPE_Y] != BLOCK_4X4
-#endif
-    ) {
+        mbmi->region_type != INTRA_REGION &&
+        mbmi->sb_type[PLANE_TYPE_Y] != BLOCK_4X4) {
       const int intra_inter_ctx = av1_get_intra_inter_context(xd);
 #if CONFIG_ENTROPY_STATS
       td->counts->intra_inter[intra_inter_ctx][inter_block]++;
@@ -1534,17 +1531,10 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           (!mbmi->refinemv_flag || !is_refinemv_signaled) &&
           !is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd)) {
 #if CONFIG_COMPOUND_WARP_CAUSAL
-#if CONFIG_COMPOUND_4XN
         assert(current_frame->reference_mode != SINGLE_REFERENCE &&
                is_inter_compound_mode(mbmi->mode) &&
                (mbmi->motion_mode == SIMPLE_TRANSLATION ||
                 is_compound_warp_causal_allowed(cm, xd, mbmi)));
-#else
-        assert(current_frame->reference_mode != SINGLE_REFERENCE &&
-               is_inter_compound_mode(mbmi->mode) &&
-               (mbmi->motion_mode == SIMPLE_TRANSLATION ||
-                is_compound_warp_causal_allowed(cm, mbmi)));
-#endif  // CONFIG_COMPOUND_4XN
 #else
         assert(current_frame->reference_mode != SINGLE_REFERENCE &&
                is_inter_compound_mode(mbmi->mode) &&
@@ -1615,11 +1605,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         av1_mode_context_analyzer(mbmi_ext->mode_context, mbmi->ref_frame);
     if (has_second_ref(mbmi)) {
       if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-          opfl_allowed_cur_refs_bsize(cm,
-#if CONFIG_COMPOUND_4XN
-                                      xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                      mbmi)) {
+          opfl_allowed_cur_refs_bsize(cm, xd, mbmi)) {
         const int use_optical_flow = mode >= NEAR_NEARMV_OPTFLOW;
 #if CONFIG_ENTROPY_STATS
         ++counts->use_optflow[mode_ctx][use_optical_flow];

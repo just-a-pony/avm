@@ -5196,11 +5196,7 @@ static INLINE unsigned int compute_motion_cost(
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
 
-  set_default_interp_filters(xd->mi[0], cm,
-#if CONFIG_COMPOUND_4XN
-                             xd,
-#endif  // CONFIG_COMPOUND_4XN
-                             cm->features.interp_filter);
+  set_default_interp_filters(xd->mi[0], cm, xd, cm->features.interp_filter);
   av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize,
                                 AOM_PLANE_Y, AOM_PLANE_Y);
 

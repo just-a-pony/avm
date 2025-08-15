@@ -495,11 +495,7 @@ static int cost_prediction_mode(const ModeCosts *const mode_costs,
     int use_optical_flow_cost = 0;
     const int comp_mode_idx = opfl_get_comp_idx(mode);
     if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-        opfl_allowed_cur_refs_bsize(cm,
-#if CONFIG_COMPOUND_4XN
-                                    xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                    mbmi)) {
+        opfl_allowed_cur_refs_bsize(cm, xd, mbmi)) {
       const int use_optical_flow = mode >= NEAR_NEARMV_OPTFLOW;
 #if CONFIG_OPFL_CTX_OPT
       {
@@ -651,11 +647,9 @@ static AOM_INLINE void estimate_ref_frame_costs(
 #if CONFIG_CHROMA_MERGE_LATENCY_FIX
     }
 #endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
-#if CONFIG_DISABLE_4X4_INTER
     if (xd->mi[0]->sb_type[PLANE_TYPE_Y] == BLOCK_4X4) {
       ref_costs_single[INTRA_FRAME_INDEX] = 0;
     }
-#endif
 
     if (is_tip_allowed(cm, xd)) {
       const int tip_ctx = get_tip_ctx(xd);
@@ -3920,11 +3914,7 @@ static int64_t simple_translation_pred_rd(AV1_COMP *const cpi, MACROBLOCK *x,
     mbmi->interinter_comp.type = COMPOUND_AVERAGE;
     mbmi->comp_group_idx = 0;
   }
-  set_default_interp_filters(mbmi, cm,
-#if CONFIG_COMPOUND_4XN
-                             xd,
-#endif  // CONFIG_COMPOUND_4XN
-                             cm->features.interp_filter);
+  set_default_interp_filters(mbmi, cm, xd, cm->features.interp_filter);
 
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
@@ -4595,10 +4585,7 @@ static int process_compound_inter_mode(
   const InterpFilter assign_filter = cm->features.interp_filter;
   int is_luma_interp_done = 0;
   av1_find_interp_filter_match(mbmi, cpi, assign_filter, need_search,
-                               args->interp_filter_stats,
-#if CONFIG_COMPOUND_4XN
-                               xd,
-#endif  // CONFIG_COMPOUND_4XN
+                               args->interp_filter_stats, xd,
                                args->interp_filter_stats_idx);
 
   int64_t best_rd_compound;
@@ -7081,11 +7068,7 @@ static AOM_INLINE void rd_pick_skip_mode(
   mbmi->warp_precision_idx = 0;
   mbmi->warp_inter_intra = 0;
 
-  set_default_interp_filters(mbmi, cm,
-#if CONFIG_COMPOUND_4XN
-                             xd,
-#endif  // CONFIG_COMPOUND_4XN
-                             cm->features.interp_filter);
+  set_default_interp_filters(mbmi, cm, xd, cm->features.interp_filter);
 
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
@@ -7300,10 +7283,7 @@ static AOM_INLINE void rd_pick_skip_mode(
           (INTERINTRA_MODE)(II_DC_PRED - 1);
       search_state->best_mbmode.use_intra_dip = 0;
 
-      set_default_interp_filters(&search_state->best_mbmode, cm,
-#if CONFIG_COMPOUND_4XN
-                                 xd,
-#endif  // CONFIG_COMPOUND_4XN
+      set_default_interp_filters(&search_state->best_mbmode, cm, xd,
                                  cm->features.interp_filter);
       search_state->best_mbmode.refinemv_flag = mbmi->refinemv_flag;
 
@@ -8168,11 +8148,7 @@ static INLINE void init_mbmi(MB_MODE_INFO *mbmi, PREDICTION_MODE curr_mode,
     mbmi->mapped_intra_mode[0][i] = DC_PRED;
     mbmi->mapped_intra_mode[1][i] = DC_PRED;
   }
-  set_default_interp_filters(mbmi, cm,
-#if CONFIG_COMPOUND_4XN
-                             xd,
-#endif  // CONFIG_COMPOUND_4XN
-                             cm->features.interp_filter);
+  set_default_interp_filters(mbmi, cm, xd, cm->features.interp_filter);
 #if CONFIG_IBC_SR_EXT
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
   mbmi->morph_pred = 0;
@@ -9375,11 +9351,9 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 
       if (this_mode < INTRA_MODE_END && ref_frame != INTRA_FRAME) continue;
       if (this_mode >= INTRA_MODE_END && ref_frame == INTRA_FRAME) continue;
-#if CONFIG_DISABLE_4X4_INTER
       if (ref_frame != INTRA_FRAME && bsize == BLOCK_4X4) {
         continue;  // disable 4x4 inter blocks
       }
-#endif
       for (MV_REFERENCE_FRAME second_rf = NONE_FRAME;
            second_rf < cm->ref_frames_info.num_total_refs; ++second_rf) {
         MV_REFERENCE_FRAME second_ref_frame = second_rf;
@@ -9458,18 +9432,12 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 #endif  // !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
         // when prediction is bi-directional
         if (this_mode >= NEAR_NEARMV_OPTFLOW &&
-            (!opfl_allowed_cur_refs_bsize(cm,
-#if CONFIG_COMPOUND_4XN
-                                          xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                          mbmi) ||
+            (!opfl_allowed_cur_refs_bsize(cm, xd, mbmi) ||
              cm->features.opfl_refine_type == REFINE_ALL))
           continue;
-#if CONFIG_COMPOUND_4XN
         // Optical flow is disabled for 4xn/nx4 blocks
         if (is_thin_4xn_nx4_block(bsize) && (this_mode >= NEAR_NEARMV_OPTFLOW))
           continue;
-#endif  // CONFIG_COMPOUND_4XN
 
         int num_amvd_modes = 1 + allow_amvd_mode(mbmi->mode);
         for (int use_amvd_mode = 0; use_amvd_mode < num_amvd_modes;
@@ -10136,11 +10104,8 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
 
 #if CONFIG_COMPOUND_WARP_CAUSAL
   if (is_motion_variation_allowed_bsize(bsize, xd->mi_row, xd->mi_col) &&
-      (!has_second_ref(mbmi) || is_compound_warp_causal_allowed(cm,
-#if CONFIG_COMPOUND_4XN
-                                                                xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                                                mbmi))) {
+      (!has_second_ref(mbmi) ||
+       is_compound_warp_causal_allowed(cm, xd, mbmi))) {
     int pts0[SAMPLES_ARRAY_SIZE], pts0_inref[SAMPLES_ARRAY_SIZE];
     mbmi->num_proj_ref[0] = av1_findSamples(cm, xd, pts0, pts0_inref, 0);
 #if !CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL
@@ -10177,13 +10142,7 @@ void av1_rd_pick_inter_mode_sb_seg_skip(const AV1_COMP *cpi,
   assert(check_mv_precision(cm, mbmi, x));
 
   const InterpFilter interp_filter = features->interp_filter;
-  set_default_interp_filters(mbmi,
-
-                             cm,
-#if CONFIG_COMPOUND_4XN
-                             xd,
-#endif  // CONFIG_COMPOUND_4XN
-                             interp_filter);
+  set_default_interp_filters(mbmi, cm, xd, interp_filter);
 
   if (interp_filter != SWITCHABLE) {
     best_filter = interp_filter;

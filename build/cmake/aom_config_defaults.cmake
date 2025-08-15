@@ -187,7 +187,6 @@ set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
 set_aom_config_var(CONFIG_DISABLE_PALC 1 "Disable palette mode for chroma.")
 set_aom_config_var(CONFIG_ERP_TFLITE 0 NUMBER "Build ERP with TFLite")
 set_aom_config_var(CONFIG_TCQ_FOR_ALL_FRAMES 1 "Adjust base QP for TCQ")
-set_aom_config_var(CONFIG_DISABLE_4X4_INTER 1 "Disable 4x4 inter blocks")
 
 set_aom_config_var(CONFIG_DMVR_OFF_IN_TIP_DIRECT 1
                    "Disable DMVR in TIP-direct mode")
@@ -376,9 +375,6 @@ set_aom_config_var(CONFIG_BRU 1 "enable BRU update")
 set_aom_config_var(CONFIG_SDP_CFL_LATENCY_FIX 1 "Reduce SDP-CFL latency")
 set_aom_config_var(CONFIG_CHROMA_MERGE_LATENCY_FIX 1
                    "Fix the latency issue in chroma merge region")
-
-set_aom_config_var(CONFIG_COMPOUND_4XN 1
-                   "Enable compound modes for 4XN/Nx4 blocks")
 
 set_aom_config_var(
   CONFIG_FRAME_HEADER_SIGNAL_OPT 1

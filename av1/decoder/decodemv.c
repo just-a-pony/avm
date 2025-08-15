@@ -917,17 +917,10 @@ static PREDICTION_MODE read_inter_compound_mode(MACROBLOCKD *xd, aom_reader *r,
 #endif  // CONFIG_OPT_INTER_MODE_CTX
 
   if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
-      opfl_allowed_cur_refs_bsize(cm,
-#if CONFIG_COMPOUND_4XN
-                                  xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                  mbmi)) {
+      opfl_allowed_cur_refs_bsize(cm, xd, mbmi)) {
     const int allow_translational_refinement =
         is_translational_refinement_allowed(
-            cm,
-#if CONFIG_COMPOUND_4XN
-            mbmi->sb_type[xd->tree_type == CHROMA_PART],
-#endif  // CONFIG_COMPOUND_4XN
+            cm, mbmi->sb_type[xd->tree_type == CHROMA_PART],
 #if CONFIG_ACROSS_SCALE_WARP
             xd,
 #endif  // CONFIG_ACROSS_SCALE_WARP
@@ -2884,11 +2877,7 @@ static INLINE void read_mb_interp_filter(const MACROBLOCKD *const xd,
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
   if (!av1_is_interp_needed(cm, xd)) {
-    set_default_interp_filters(mbmi, cm,
-#if CONFIG_COMPOUND_4XN
-                               xd,
-#endif  // CONFIG_COMPOUND_4XN
-                               interp_filter);
+    set_default_interp_filters(mbmi, cm, xd, interp_filter);
     return;
   }
 
@@ -3438,11 +3427,9 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
 
 static int read_is_inter_block(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                                int segment_id, aom_reader *r) {
-#if CONFIG_DISABLE_4X4_INTER
   if (xd->mi[0]->sb_type[PLANE_TYPE_Y] == BLOCK_4X4) {
     return 0;
   }
-#endif
   if (xd->mi[0]->region_type == INTRA_REGION) return 0;
   if (segfeature_active(&cm->seg, segment_id, SEG_LVL_GLOBALMV)) {
     return 1;
@@ -3725,11 +3712,8 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
           !is_tip_ref_frame(mbmi->ref_frame[0]) &&
 #if CONFIG_COMPOUND_WARP_CAUSAL
           !mbmi->skip_mode &&
-          (!has_second_ref(mbmi) || is_compound_warp_causal_allowed(cm,
-#if CONFIG_COMPOUND_4XN
-                                                                    xd,
-#endif  // CONFIG_COMPOUND_4XN
-                                                                    mbmi))) {
+          (!has_second_ref(mbmi) ||
+           is_compound_warp_causal_allowed(cm, xd, mbmi))) {
         mbmi->num_proj_ref[0] = av1_findSamples(cm, xd, pts0, pts0_inref, 0);
         if (has_second_ref(mbmi))
           mbmi->num_proj_ref[1] = av1_findSamples(cm, xd, pts1, pts1_inref, 1);
@@ -3915,17 +3899,10 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       mbmi->interinter_comp.type = COMPOUND_AVERAGE;
     } else {
 #if CONFIG_COMPOUND_WARP_CAUSAL
-#if CONFIG_COMPOUND_4XN
       assert(cm->current_frame.reference_mode != SINGLE_REFERENCE &&
              is_inter_compound_mode(mbmi->mode) &&
              (mbmi->motion_mode == SIMPLE_TRANSLATION ||
               is_compound_warp_causal_allowed(cm, xd, mbmi)));
-#else
-      assert(cm->current_frame.reference_mode != SINGLE_REFERENCE &&
-             is_inter_compound_mode(mbmi->mode) &&
-             (mbmi->motion_mode == SIMPLE_TRANSLATION ||
-              is_compound_warp_causal_allowed(cm, mbmi)));
-#endif  // CONFIG_COMPOUND_4XN
 #else
       assert(cm->current_frame.reference_mode != SINGLE_REFERENCE &&
              is_inter_compound_mode(mbmi->mode) &&
