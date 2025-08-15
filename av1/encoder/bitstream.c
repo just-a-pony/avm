@@ -7352,6 +7352,7 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
   uint32_t total_size = 0;
   const int tile_cols = tiles->cols;
   const int tile_rows = tiles->rows;
+  const int num_tiles = tile_cols * tile_rows;
   unsigned int tile_size = 0;
   unsigned int max_tile_size = 0;
   unsigned int max_tile_col_size = 0;
@@ -7359,14 +7360,12 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
   // Fixed size tile groups for the moment
   const int num_tg_hdrs = cpi->num_tg;
   const int tg_size =
-      (tiles->large_scale)
-          ? 1
-          : (tile_rows * tile_cols + num_tg_hdrs - 1) / num_tg_hdrs;
+      tiles->large_scale ? 1 : (num_tiles + num_tg_hdrs - 1) / num_tg_hdrs;
   int tile_count = 0;
   int curr_tg_data_size = 0;
   uint8_t *data = dst;
   int new_tg = 1;
-  const int have_tiles = tile_cols * tile_rows > 1;
+  const int have_tiles = num_tiles > 1;
   int first_tg = 1;
 
   *largest_tile_id = 0;
@@ -7516,8 +7515,7 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
   uint32_t obu_header_size = 0;
   uint8_t *tile_data_start = dst + total_size;
 #if CONFIG_BRU_TILE_FLAG
-  const int num_tiles = tile_cols * tile_rows;
-  const int use_tile_active_mode = (cm->bru.enabled && (num_tiles > 1));
+  const int use_tile_active_mode = (cm->bru.enabled && have_tiles);
 #endif  // CONFIG_BRU_TILE_FLAG
   for (tile_row = 0; tile_row < tile_rows; tile_row++) {
     TileInfo tile_info;
@@ -7557,8 +7555,8 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
               cm,
 #endif  // CONFIG_BRU_TILE_FLAG
               data + curr_tg_data_size, tile_idx,
-              AOMMIN(tile_idx + tg_size - 1, tile_cols * tile_rows - 1),
-              n_log2_tiles, cpi->num_tg > 1);
+              AOMMIN(tile_idx + tg_size - 1, num_tiles - 1), n_log2_tiles,
+              cpi->num_tg > 1);
         total_size += curr_tg_data_size;
         tile_data_start += curr_tg_data_size;
         new_tg = 0;
@@ -7567,7 +7565,7 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
       tile_count++;
       av1_tile_set_col(&tile_info, cm, tile_col);
 
-      if (tile_count == tg_size || tile_idx == (tile_cols * tile_rows - 1)) {
+      if (tile_count == tg_size || tile_idx == (num_tiles - 1)) {
         is_last_tile_in_tg = 1;
         new_tg = 1;
       } else {
