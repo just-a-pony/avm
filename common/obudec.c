@@ -188,44 +188,42 @@ int obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,
 
   size_t tu_size = 0;
   unsigned long fpos = ftell(f);
-  {
-    uint8_t detect_buf[OBU_DETECTION_SIZE] = { 0 };
-    int first_td = 1;
-    while (1) {
-      ObuHeader obu_header;
-      memset(&obu_header, 0, sizeof(obu_header));
-      uint64_t obu_size = 0;  //[jkei] obu_size includes header size
-      size_t obu_size_bytelength = 0;
-      if (obu_ctx->is_annexb) {
-        if (obudec_read_leb128(f, &detect_buf[0], &obu_size_bytelength,
-                               &obu_size) != 0) {
-          fprintf(stderr, "obudec: Failure reading frame unit header\n");
-        } else if (feof(f)) {
-          if (tu_size == 0)
-            return 1;
-          else
-            break;
-        }
+  uint8_t detect_buf[OBU_DETECTION_SIZE] = { 0 };
+  int first_td = 1;
+  while (1) {
+    ObuHeader obu_header;
+    memset(&obu_header, 0, sizeof(obu_header));
+    uint64_t obu_size = 0;  //[jkei] obu_size includes header size
+    size_t obu_size_bytelength = 0;
+    if (obu_ctx->is_annexb) {
+      if (obudec_read_leb128(f, &detect_buf[0], &obu_size_bytelength,
+                             &obu_size) != 0) {
+        fprintf(stderr, "obudec: Failure reading frame unit header\n");
+      } else if (feof(f)) {
+        if (tu_size == 0)
+          return 1;
+        else
+          break;
       }
+    }
 
-      const int read_status =
-          peek_obu_from_file(f, OBU_HEADER_SIZE, &detect_buf[0], &obu_header);
-      if (read_status == -2) {
-        return -1;
-      } else if (read_status == -1) {
-        // end of file
-        return 1;
-      }
+    const int read_status =
+        peek_obu_from_file(f, OBU_HEADER_SIZE, &detect_buf[0], &obu_header);
+    if (read_status == -2) {
+      return -1;
+    } else if (read_status == -1) {
+      // end of file
+      return 1;
+    }
 
-      if ((obu_header.type == OBU_TEMPORAL_DELIMITER && first_td != 1)) {
-        break;
-      } else {
-        if (obu_header.type == OBU_TEMPORAL_DELIMITER) first_td = 0;
-        fseek(f, obu_size, SEEK_CUR);
-        tu_size += (obu_size + obu_size_bytelength);
-      }
-    }  // while
-  }  // annexb
+    if ((obu_header.type == OBU_TEMPORAL_DELIMITER && first_td != 1)) {
+      break;
+    } else {
+      if (obu_header.type == OBU_TEMPORAL_DELIMITER) first_td = 0;
+      fseek(f, obu_size, SEEK_CUR);
+      tu_size += (obu_size + obu_size_bytelength);
+    }
+  }  // while
   fseek(f, fpos, SEEK_SET);
 
 #if defined AOM_MAX_ALLOCABLE_MEMORY
