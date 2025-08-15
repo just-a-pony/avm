@@ -233,7 +233,7 @@ void av1_choose_segmap_coding_method(AV1_COMMON *cm, MACROBLOCKD *xd) {
     }
   }
 
-  int seg_id_cost[MAX_SEGMENTS];
+  int seg_id_cost[MAX_SEGMENTS] = { 0 };
 
 #if CONFIG_EXT_SEG
   if (seg->enable_ext_seg == 1) {
