@@ -7165,14 +7165,25 @@ static INLINE int get_disp_order_hint(AV1_COMMON *const cm) {
 
   // Find the reference frame with the largest order_hint
   int max_disp_order_hint = 0;
-#if CONFIG_MULTILAYER_CORE
+#if CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
   int max_layer_id = 0;
   int ref_order_hint = 0;
-#endif  // CONFIG_MULTILAYER_CORE
+#endif  // CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
   for (int map_idx = 0; map_idx < cm->seq_params.ref_frames; map_idx++) {
     // Get reference frame buffer
     const RefCntBuffer *const buf = cm->ref_frame_map[map_idx];
     if (buf == NULL
+#if CONFIG_MULTILAYER_CORE && CONFIG_MULTILAYER_CORE_HLS
+        || !is_tlayer_scalable_and_dependent(&cm->seq_params,
+#if CONFIG_NEW_OBU_HEADER
+                                             cm->tlayer_id,
+#else
+                                             cm->temporal_layer_id,
+#endif  // CONFIG_NEW_OBU_HEADER
+                                             buf->temporal_layer_id) ||
+        !is_mlayer_scalable_and_dependent(
+            &cm->seq_params, current_frame->layer_id, buf->layer_id)
+#else
 #if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
 #if CONFIG_NEW_OBU_HEADER
         || buf->temporal_layer_id > (unsigned int)cm->tlayer_id
@@ -7183,9 +7194,10 @@ static INLINE int get_disp_order_hint(AV1_COMMON *const cm) {
 #if CONFIG_MULTILAYER_CORE
         || buf->layer_id > current_frame->layer_id
 #endif  // CONFIG_MULTILAYER_CORE
+#endif  // CONFIG_MULTILAYER_CORE && CONFIG_MULTILAYER_CORE_HLS
     )
       continue;
-#if CONFIG_MULTILAYER_CORE
+#if CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
     // the equality in the following comparisons is needed to properly update
     // max_layer_id and ref_order_hint
     if ((int)buf->display_order_hint >= max_disp_order_hint) {
@@ -7198,16 +7210,16 @@ static INLINE int get_disp_order_hint(AV1_COMMON *const cm) {
 #else
     if ((int)buf->display_order_hint > max_disp_order_hint)
       max_disp_order_hint = buf->display_order_hint;
-#endif  // CONFIG_MULTILAYER_CORE
+#endif  // CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
   }
 
   int cur_disp_order_hint = current_frame->order_hint;
-#if CONFIG_MULTILAYER_CORE
+#if CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
   if (max_layer_id < current_frame->layer_id &&
       cur_disp_order_hint == ref_order_hint) {
     return max_disp_order_hint;
   }
-#endif  // CONFIG_MULTILAYER_CORE
+#endif  // CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
 
   int display_order_hint_factor =
       1 << (cm->seq_params.order_hint_info.order_hint_bits_minus_1 + 1);
@@ -7231,11 +7243,23 @@ static INLINE int get_ref_frame_disp_order_hint(AV1_COMMON *const cm,
                                                 const RefCntBuffer *const buf) {
   // Find the reference frame with the largest order_hint
   int max_disp_order_hint = 0;
-#if CONFIG_MULTILAYER_CORE
+#if CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
   int max_layer_id = 0;
   int ref_order_hint = 0;
-#endif  // CONFIG_MULTILAYER_CORE
+#endif  // CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
   for (int map_idx = 0; map_idx < INTER_REFS_PER_FRAME; map_idx++) {
+#if CONFIG_MULTILAYER_CORE && CONFIG_MULTILAYER_CORE_HLS
+    if (!is_tlayer_scalable_and_dependent(&cm->seq_params,
+#if CONFIG_NEW_OBU_HEADER
+                                          cm->tlayer_id,
+#else
+                                          cm->temporal_layer_id,
+#endif
+                                          buf->temporal_layer_id) ||
+        !is_mlayer_scalable_and_dependent(
+            &cm->seq_params, cm->current_frame.layer_id, buf->layer_id))
+      continue;
+#else
 #if CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY
 #if CONFIG_NEW_OBU_HEADER
     if (buf->temporal_layer_id > (unsigned int)cm->tlayer_id) continue;
@@ -7254,20 +7278,20 @@ static INLINE int get_ref_frame_disp_order_hint(AV1_COMMON *const cm,
         ref_order_hint = (int)buf->ref_order_hints[map_idx];
       }
     }
-#else
+#endif  // CONFIG_MULTILAYER_CORE
+#endif  // CONFIG_MULTILAYER_CORE && CONFIG_MULTILAYER_CORE_HLS
     if ((int)buf->ref_display_order_hint[map_idx] > max_disp_order_hint)
       max_disp_order_hint = buf->ref_display_order_hint[map_idx];
-#endif  // CONFIG_MULTILAYER_CORE
   }
 
   const int display_order_hint_factor =
       1 << (cm->seq_params.order_hint_info.order_hint_bits_minus_1 + 1);
   int disp_order_hint = buf->order_hint;
-#if CONFIG_MULTILAYER_CORE
+#if CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
   if (max_layer_id < buf->layer_id && disp_order_hint == ref_order_hint) {
     return max_disp_order_hint;
   }
-#endif  // CONFIG_MULTILAYER_CORE
+#endif  // CONFIG_MULTILAYER_CORE && !CONFIG_MULTILAYER_CORE_HLS
 
   while (abs(max_disp_order_hint - disp_order_hint) >=
          (display_order_hint_factor >> 1)) {
@@ -8225,6 +8249,28 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           if (cm->ref_frame_map[ref] == NULL)
             aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                                "Inter frame requests nonexistent reference");
+#if CONFIG_MULTILAYER_CORE_HLS
+          // mlayer and tlayer scalability related bitstream constraints for the
+          // explicit reference frame signaling
+          const int cur_mlayer_id = current_frame->layer_id;
+          const int ref_mlayer_id = cm->ref_frame_map[ref]->layer_id;
+          if (!is_mlayer_scalable_and_dependent(seq_params, cur_mlayer_id,
+                                                ref_mlayer_id)) {
+            aom_internal_error(
+                &cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                "Unsupported bitstream: embedded layer scalability shall be "
+                "maintained in explicit reference map signaling.");
+          }
+          const int cur_tlayer_id = current_frame->temporal_layer_id;
+          const int ref_tlayer_id = cm->ref_frame_map[ref]->temporal_layer_id;
+          if (!is_tlayer_scalable_and_dependent(seq_params, cur_tlayer_id,
+                                                ref_tlayer_id)) {
+            aom_internal_error(
+                &cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                "Unsupported bitstream: temporal layer scalability shall be "
+                "maintained in explicit reference map signaling.");
+          }
+#endif  // CONFIG_MULTILAYER_CORE_HLS
           cm->remapped_ref_idx[i] = ref;
         }
 #if CONFIG_BRU
