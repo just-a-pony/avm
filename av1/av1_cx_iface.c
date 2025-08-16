@@ -3543,20 +3543,19 @@ static aom_codec_err_t encoder_encode(aom_codec_alg_priv_t *ctx,
           const size_t length_field_size =
               aom_uleb_size_in_bytes(obu_payload_size);
 
-          if (ctx->pending_cx_data) {
-            const size_t move_offset = length_field_size + 1;
-            memmove(ctx->pending_cx_data + move_offset, ctx->pending_cx_data,
-                    frame_size);
-          }
-          const uint32_t obu_header_offset = 0;
-          const uint32_t obu_header_size = av1_write_obu_header(
-              &cpi->level_params, OBU_TEMPORAL_DELIMITER,
+          uint8_t obu_header[2];
+          const uint32_t obu_header_size =
+              av1_write_obu_header(&cpi->level_params, OBU_TEMPORAL_DELIMITER,
 #if CONFIG_NEW_OBU_HEADER
-              0, 0,
+                                   0, 0,
 #else
-              0,
+                                   0,
 #endif  // CONFIG_NEW_OBU_HEADER
-              (uint8_t *)(ctx->pending_cx_data + obu_header_offset));
+                                   obu_header);
+          const size_t move_offset = obu_header_size + length_field_size;
+          memmove(ctx->pending_cx_data + move_offset, ctx->pending_cx_data,
+                  frame_size);
+          memcpy(ctx->pending_cx_data, obu_header, obu_header_size);
 
           // OBUs are preceded/succeeded by an unsigned leb128 coded integer.
           if (av1_write_uleb_obu_size(obu_header_size, obu_payload_size,

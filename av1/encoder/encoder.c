@@ -5119,6 +5119,24 @@ aom_fixed_buf_t *av1_get_global_headers(AV1_COMP *cpi) {
   assert(sequence_header_size <= sizeof(header_buf));
   if (sequence_header_size == 0) return NULL;
 
+#if CONFIG_NEW_OBU_HEADER
+  uint8_t obu_header[2];
+  const uint32_t obu_header_size = av1_write_obu_header(
+      &cpi->level_params, OBU_SEQUENCE_HEADER, 0, 0, &obu_header[0]);
+  const uint32_t obu_size = obu_header_size + sequence_header_size;
+  const size_t size_field_size = aom_uleb_size_in_bytes(obu_size);
+  const size_t payload_offset = size_field_size + obu_header_size;
+
+  if (payload_offset + sequence_header_size > sizeof(header_buf)) return NULL;
+  memmove(&header_buf[payload_offset], &header_buf[0], sequence_header_size);
+  memcpy(&header_buf[size_field_size], &obu_header[0], obu_header_size);
+
+  size_t coded_size_field_size = 0;
+  if (aom_uleb_encode(obu_size, size_field_size, &header_buf[0],
+                      &coded_size_field_size) != 0) {
+    return NULL;
+  }
+#else
   const size_t obu_header_size = 1;
   const size_t size_field_size = aom_uleb_size_in_bytes(sequence_header_size);
   const size_t payload_offset = obu_header_size + size_field_size;
@@ -5126,12 +5144,7 @@ aom_fixed_buf_t *av1_get_global_headers(AV1_COMP *cpi) {
   if (payload_offset + sequence_header_size > sizeof(header_buf)) return NULL;
   memmove(&header_buf[payload_offset], &header_buf[0], sequence_header_size);
 
-  if (av1_write_obu_header(&cpi->level_params, OBU_SEQUENCE_HEADER,
-#if CONFIG_NEW_OBU_HEADER
-                           0, 0,
-#else
-                           0,
-#endif  // CONFIG_NEW_OBU_HEADER
+  if (av1_write_obu_header(&cpi->level_params, OBU_SEQUENCE_HEADER, 0,
                            &header_buf[0]) != obu_header_size) {
     return NULL;
   }
@@ -5142,6 +5155,7 @@ aom_fixed_buf_t *av1_get_global_headers(AV1_COMP *cpi) {
                       &coded_size_field_size) != 0) {
     return NULL;
   }
+#endif  // CONFIG_NEW_OBU_HEADER
   assert(coded_size_field_size == size_field_size);
 
   aom_fixed_buf_t *global_headers =
