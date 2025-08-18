@@ -222,9 +222,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t enable_overlay;
   arg_def_t enable_palette;
   arg_def_t enable_intrabc;
-#if CONFIG_IBC_SR_EXT
   arg_def_t enable_intrabc_ext;
-#endif  // CONFIG_IBC_SR_EXT
   arg_def_t enable_angle_delta;
   arg_def_t enable_opfl_refine;
   arg_def_t enable_trellis_quant;
@@ -292,9 +290,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t subgop_config_str;
   arg_def_t subgop_config_path;
   arg_def_t max_drl_refmvs;
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   arg_def_t max_drl_refbvs;
-#endif  //  CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   arg_def_t enable_refmvbank;
   arg_def_t enable_drl_reorder;
   arg_def_t enable_cdef_on_skip_txfm;

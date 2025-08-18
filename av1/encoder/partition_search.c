@@ -333,12 +333,7 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
   }
 
   if (!dry_run) {
-    if (av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                          ,
-                          bsize
-#endif  // CONFIG_ENABLE_IBC_NAT
-                          ) &&
+    if (av1_allow_intrabc(cm, xd, bsize) &&
         is_intrabc_block(mbmi, xd->tree_type))
       td->intrabc_used = 1;
     if (txfm_params->tx_mode_search_type == TX_MODE_SELECT &&
@@ -636,12 +631,7 @@ static void pick_sb_modes(AV1_COMP *const cpi, ThreadData *td,
     rd_cost->dist = ctx->rd_stats.dist;
     rd_cost->rdcost = ctx->rd_stats.rdcost;
     const int is_inter = is_inter_block(&ctx->mic, xd->tree_type);
-#if CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
-    if (cm->seq_params.enable_refmvbank && is_inter &&
-        !is_intrabc_block(&ctx->mic, xd->tree_type)) {
-#else
     if (cm->seq_params.enable_refmvbank && is_inter) {
-#endif  // CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
       av1_update_ref_mv_bank(cm, xd, 1, &ctx->mic);
     } else {
       decide_rmb_unit_update_count(cm, xd, &ctx->mic);
@@ -746,12 +736,7 @@ static void pick_sb_modes(AV1_COMP *const cpi, ThreadData *td,
   }
 
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
-#if CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
-  if (cm->seq_params.enable_refmvbank && is_inter &&
-      !is_intrabc_block(mbmi, xd->tree_type)) {
-#else
   if (cm->seq_params.enable_refmvbank && is_inter) {
-#endif  // CONFIG_IBC_SR_EXT && !CONFIG_IBC_BV_IMPROVEMENT
     av1_update_ref_mv_bank(cm, xd, 1, mbmi);
   } else {
     decide_rmb_unit_update_count(cm, xd, mbmi);
@@ -858,7 +843,6 @@ static void update_drl_index_stats(int max_drl_bits, const int16_t mode_ctx,
   }
 }
 
-#if CONFIG_IBC_BV_IMPROVEMENT
 static void update_intrabc_drl_idx_stats(int max_ref_bv_num,
 #if !CONFIG_BYPASS_INTRABC_DRL_IDX
                                          FRAME_CONTEXT *fc,
@@ -886,7 +870,6 @@ static void update_intrabc_drl_idx_stats(int max_ref_bv_num,
 #endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
   }
 }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
 
 // Update the stats for compound weighted prediction
 static void update_cwp_idx_stats(FRAME_CONTEXT *fc, FRAME_COUNTS *counts,
@@ -1041,13 +1024,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
         update_cdf(fc->intra_inter_cdf[intra_inter_ctx], inter_block, 2);
     }
-    if (!inter_block &&
-        av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                          ,
-                          bsize
-#endif  // CONFIG_ENABLE_IBC_NAT
-                          ) &&
+    if (!inter_block && av1_allow_intrabc(cm, xd, bsize) &&
         xd->tree_type != CHROMA_PART) {
 #if CONFIG_NEW_CONTEXT_MODELING
       const int intrabc_ctx = get_intrabc_ctx(xd);
@@ -1121,38 +1098,21 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
   if (!is_inter_block(mbmi, xd->tree_type)) {
     av1_sum_intra_stats(cm, td->counts, xd, mbmi);
   }
-  if (av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                        ,
-                        bsize
-#endif  // CONFIG_ENABLE_IBC_NAT
-                        ) &&
-      xd->tree_type != CHROMA_PART) {
-#if CONFIG_IBC_BV_IMPROVEMENT
+  if (av1_allow_intrabc(cm, xd, bsize) && xd->tree_type != CHROMA_PART) {
     if (use_intrabc) {
       const int_mv ref_mv = mbmi_ext->ref_mv_stack[INTRA_FRAME][0].this_mv;
 #if CONFIG_DERIVED_MVD_SIGN || CONFIG_VQ_MVD_CODING
       MV mv_diff;
-#if CONFIG_IBC_SUBPEL_PRECISION
       MV low_prec_ref_mv = ref_mv.as_mv;
       if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
         lower_mv_precision(&low_prec_ref_mv, mbmi->pb_mv_precision);
       mv_diff.row = mbmi->mv[0].as_mv.row - low_prec_ref_mv.row;
       mv_diff.col = mbmi->mv[0].as_mv.col - low_prec_ref_mv.col;
-#else
-
-      mv_diff.row = mbmi->mv[0].as_mv.row - ref_mv.as_mv.row;
-      mv_diff.col = mbmi->mv[0].as_mv.col - ref_mv.as_mv.col;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 #endif  // CONFIG_DERIVED_MVD_SIGN
 
-#if CONFIG_IBC_SUBPEL_PRECISION
       assert(is_this_mv_precision_compliant(mbmi->mv[0].as_mv,
                                             mbmi->pb_mv_precision));
       assert(is_this_mv_precision_compliant(mv_diff, mbmi->pb_mv_precision));
-#else
-      assert(mbmi->pb_mv_precision == MV_PRECISION_ONE_PEL);
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
 #if CONFIG_VQ_MVD_CODING
       av1_update_mv_stats(&fc->ndvc, mv_diff, mbmi->pb_mv_precision, 0);
@@ -1178,24 +1138,17 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           &fc->ndvc, 0, MV_PRECISION_ONE_PEL);
 #endif  // CONFIG_VQ_MVD_CODING
     }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
-#if CONFIG_IBC_BV_IMPROVEMENT
     if (use_intrabc) {
       update_cdf(fc->intrabc_mode_cdf, mbmi->intrabc_mode, 2);
 #if CONFIG_ENTROPY_STATS
       ++td->counts->intrabc_mode[mbmi->intrabc_mode];
 #endif  // CONFIG_ENTROPY_STATS
-#if CONFIG_IBC_MAX_DRL
       update_intrabc_drl_idx_stats(cm->features.max_bvp_drl_bits + 1,
 #if !CONFIG_BYPASS_INTRABC_DRL_IDX
                                    fc,
 #endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
                                    td->counts, mbmi);
-#else
-      update_intrabc_drl_idx_stats(MAX_REF_BV_STACK_SIZE, fc, td->counts, mbmi);
-#endif  // CONFIG_IBC_MAX_DRL
 
-#if CONFIG_IBC_SUBPEL_PRECISION
       if (is_intraBC_bv_precision_active(cm, mbmi->intrabc_mode)) {
         int index = av1_intraBc_precision_to_index[mbmi->pb_mv_precision];
         assert(index < av1_intraBc_precision_sets.num_precisions);
@@ -1203,7 +1156,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         update_cdf(fc->intrabc_bv_precision_cdf[0], index,
                    av1_intraBc_precision_sets.num_precisions);
       }
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
       if (av1_allow_intrabc_morph_pred(cm)) {
         const int morph_pred_ctx = get_morph_pred_ctx(xd);
@@ -1216,7 +1168,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         assert(mbmi->morph_pred == 0);
       }
     }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
   }
 
   if (mbmi->skip_mode && have_drl_index(mbmi->mode)) {

@@ -85,12 +85,6 @@ set_aom_config_var(CONFIG_RUNTIME_CPU_DETECT 1 "Runtime CPU detection support.")
 set_aom_config_var(CONFIG_SHARED 0 "Build shared libs.")
 set_aom_config_var(CONFIG_WEBM_IO 1 "Enables WebM support.")
 
-set_aom_config_var(CONFIG_ENABLE_IBC_NAT 1 "Enables IBC for natural content")
-set_aom_config_var(CONFIG_ENABLE_INLOOP_FILTER_GIBC 1
-                   "Enables In-loop filters for key-frames with GIBC enabled")
-set_aom_config_var(CONFIG_IBC_SUBPEL_PRECISION 1
-                   "Allow sub-pel precision for intraBC block vector.")
-
 # Debugging flags.
 set_aom_config_var(CONFIG_DEBUG 0 "Enable debug-only code.")
 set_aom_config_var(CONFIG_MISMATCH_DEBUG 0 "Mismatch debugging flag.")
@@ -223,14 +217,9 @@ set_aom_config_var(CONFIG_RECT_CTX 1
 # Source of throughput analysis : CWG-B065
 set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
                    "AV2 experiment flag to measure throughput.")
-set_aom_config_var(CONFIG_IBC_SR_EXT 2 "Enables IntraBC search range extension")
 set_aom_config_var(
   CONFIG_WARP_EXTEND_SIMPLIFICATION 1
   "Reduce the number of neighbors used in warp extend mode to four")
-set_aom_config_var(CONFIG_IBC_BV_IMPROVEMENT 1
-                   "Enables BV improvements for IBC")
-set_aom_config_var(CONFIG_IBC_MAX_DRL 1
-                   "Enables Max DRL index signaling for IntraBC")
 set_aom_config_var(CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT 1
                    "Enable enhanced frame output order derivation")
 set_aom_config_var(CONFIG_REF_LIST_DERIVATION_FOR_TEMPORAL_SCALABILITY 1

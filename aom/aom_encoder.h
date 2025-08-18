@@ -500,12 +500,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_intrabc;
-#if CONFIG_IBC_SR_EXT
   /*!\brief enable search range extension for Intra Block Copy
    *
    */
   unsigned int enable_intrabc_ext;
-#endif  // CONFIG_IBC_SR_EXT
   /*!\brief enable chroma from luma
    *
    */
@@ -597,12 +595,10 @@ typedef struct cfg_options {
    *
    */
   unsigned int max_drl_refmvs;
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   /*!\brief Max number of reference bvs in IntraBC ref bv list
    *
    */
   unsigned int max_drl_refbvs;
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   /*!\brief enable reference MV Bank
    *
    */

@@ -146,9 +146,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_onesided_comp);
     GET_PARAMS(enable_palette);
     GET_PARAMS(enable_intrabc);
-#if CONFIG_IBC_SR_EXT
     GET_PARAMS(enable_intrabc_ext);
-#endif  // CONFIG_IBC_SR_EXT
     GET_PARAMS(enable_cfl_intra);
     GET_PARAMS(enable_mhccp);
     GET_PARAMS(enable_smooth_intra);
@@ -172,9 +170,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(enable_reduced_reference_set);
     GET_PARAMS(reduced_tx_type_set);
     GET_PARAMS(max_drl_refmvs);
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
     GET_PARAMS(max_drl_refbvs);
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
     GET_PARAMS(enable_refmvbank);
     GET_PARAMS(enable_drl_reorder);
     GET_PARAMS(enable_cdef_on_skip_txfm);

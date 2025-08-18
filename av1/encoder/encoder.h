@@ -474,14 +474,12 @@ typedef struct {
    */
   bool enable_intrabc;
 
-#if CONFIG_IBC_SR_EXT
   /*!
    * Indicates if search range extension for intra block copy prediction mode
    * should be enabled or not. 0: disable. 1: extend the search range to the
    * local area (default). 2: only use the local search range.
    */
   int enable_intrabc_ext;
-#endif  // CONFIG_IBC_SR_EXT
 
 } KeyFrameCfg;
 
@@ -932,9 +930,7 @@ typedef struct {
   // Indicates if palette should be enabled.
   bool enable_palette;
   unsigned int max_drl_refmvs;
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   unsigned int max_drl_refbvs;
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   // Indicates if ref MV Bank should be enabled.
   bool enable_refmvbank;
   // Indicates if the reorder of DRL should be enabled.
@@ -1595,10 +1591,8 @@ typedef struct FRAME_COUNTS {
 #else
   unsigned int intrabc[2];
 #endif  // CONFIG_NEW_CONTEXT_MODELING
-#if CONFIG_IBC_BV_IMPROVEMENT
   unsigned int intrabc_mode[2];
   unsigned int intrabc_drl_idx[MAX_REF_BV_STACK_SIZE - 1][2];
-#endif
   unsigned int morph_pred_count[3][2];
   unsigned int txfm_do_partition[FSC_MODES][2][TXFM_SPLIT_GROUP][2];
 #if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
@@ -3472,24 +3466,10 @@ static INLINE int frame_is_kf_gf_arf(const AV1_COMP *cpi) {
 
 // TODO(huisu@google.com, youzhou@microsoft.com): enable hash-me for HBD.
 static INLINE int av1_use_hash_me(const AV1_COMP *const cpi) {
-#if CONFIG_ENABLE_IBC_NAT
   if (!cpi->common.features.is_scc_content_by_detector) return 0;
-#endif  // CONFIG_ENABLE_IBC_NAT
-#if CONFIG_IBC_SR_EXT
-  return (
-#if !CONFIG_ENABLE_IBC_NAT
-             cpi->common.features.allow_screen_content_tools &&
-#endif  //! CONFIG_ENABLE_IBC_NAT
-             cpi->common.features.allow_intrabc) &&
+  return (cpi->common.features.allow_intrabc) &&
          (frame_is_intra_only(&cpi->common) ||
           cpi->common.features.allow_local_intrabc);
-#else
-  return (
-#if !CONFIG_ENABLE_IBC_NAT
-      cpi->common.features.allow_screen_content_tools &&
-#endif  // !CONFIG_ENABLE_IBC_NAT
-      cpi->common.features.allow_intrabc && frame_is_intra_only(&cpi->common));
-#endif  // CONFIG_IBC_SR_EXT
 }
 
 static INLINE const YV12_BUFFER_CONFIG *get_ref_frame_yv12_buf(

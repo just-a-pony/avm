@@ -241,19 +241,14 @@ static uint32_t motion_estimation(AV1_COMP *cpi, MACROBLOCK *x,
 
   const MvSubpelPrecision pb_mv_precision = cm->features.fr_mv_precision;
   full_pel_lower_mv_precision(&start_mv, pb_mv_precision);
-#if CONFIG_IBC_BV_IMPROVEMENT
   const int is_ibc_cost = 0;
-#endif
 
   // motion search parameter depends on the prediction mode
   // Set the mode to NEWMV to make sure AMVD mvcost is not used.
   xd->mi[0]->mode = NEWMV;
   FULLPEL_MOTION_SEARCH_PARAMS full_ms_params;
   av1_make_default_fullpel_ms_params(&full_ms_params, cpi, x, bsize, &center_mv,
-                                     pb_mv_precision,
-#if CONFIG_IBC_BV_IMPROVEMENT
-                                     is_ibc_cost,
-#endif
+                                     pb_mv_precision, is_ibc_cost,
 
                                      search_site_cfg,
                                      /*fine_search_interval=*/0);
@@ -272,11 +267,7 @@ static uint32_t motion_estimation(AV1_COMP *cpi, MACROBLOCK *x,
 
   SUBPEL_MOTION_SEARCH_PARAMS ms_params;
   av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize, &center_mv,
-                                    pb_mv_precision,
-#if CONFIG_IBC_SUBPEL_PRECISION
-                                    0,
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-                                    cost_list);
+                                    pb_mv_precision, 0, cost_list);
   ms_params.forced_stop = tpl_sf->subpel_force_stop;
   ms_params.var_params.subpel_search_type = USE_2_TAPS;
   ms_params.mv_cost_params.mv_cost_type = MV_COST_NONE;

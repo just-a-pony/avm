@@ -740,32 +740,20 @@ static INLINE void av1_find_ref_dv(int_mv *ref_dv, const TileInfo *const tile,
   convert_fullmv_to_mv(ref_dv);
 }
 
-#if CONFIG_IBC_SR_EXT == 1 || CONFIG_ENABLE_IBC_NAT
 static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
                                                  const MACROBLOCKD *xd,
                                                  int mi_row, int mi_col, int bh,
                                                  int bw, int mib_size_log2) {
   const int SCALE_PX_TO_MV = 8;
-#if CONFIG_IBC_SUBPEL_PRECISION
   int has_col_offset = dv.col & 7;  // sub-pel col
   int has_row_offset = dv.row & 7;  // sub-pel col
   int left_interp_border = has_col_offset ? IBC_LEFT_INTERP_BORDER : 0;
   int right_interp_border = has_col_offset ? IBC_RIGHT_INTERP_BORDER : 0;
   int top_interp_border = has_row_offset ? IBC_TOP_INTERP_BORDER : 0;
   int bottom_interp_border = has_row_offset ? IBC_BOTTOM_INTERP_BORDER : 0;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
-  if (((dv.col >> 3) + bw
-#if CONFIG_IBC_SUBPEL_PRECISION
-       + right_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-       ) > 0 &&
-      ((dv.row >> 3) + bh
-#if CONFIG_IBC_SUBPEL_PRECISION
-       + bottom_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-
-       ) > 0)
+  if (((dv.col >> 3) + bw + right_interp_border) > 0 &&
+      ((dv.row >> 3) + bh + bottom_interp_border) > 0)
     return 0;
 
   const int src_top_edge = (mi_row * MI_SIZE) * SCALE_PX_TO_MV + dv.row;
@@ -773,26 +761,10 @@ static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
   const int src_bottom_edge = (mi_row * MI_SIZE + bh) * SCALE_PX_TO_MV + dv.row;
   const int src_right_edge = (mi_col * MI_SIZE + bw) * SCALE_PX_TO_MV + dv.col;
 
-  const int src_top_y = (src_top_edge >> 3)
-#if CONFIG_IBC_SUBPEL_PRECISION
-                        - top_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_left_x = (src_left_edge >> 3)
-#if CONFIG_IBC_SUBPEL_PRECISION
-                         - left_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_bottom_y = (src_bottom_edge >> 3) - 1
-#if CONFIG_IBC_SUBPEL_PRECISION
-                           + bottom_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_right_x = (src_right_edge >> 3) - 1
-#if CONFIG_IBC_SUBPEL_PRECISION
-                          + right_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
+  const int src_top_y = (src_top_edge >> 3) - top_interp_border;
+  const int src_left_x = (src_left_edge >> 3) - left_interp_border;
+  const int src_bottom_y = (src_bottom_edge >> 3) - 1 + bottom_interp_border;
+  const int src_right_x = (src_right_edge >> 3) - 1 + right_interp_border;
   if (src_top_y < 0 || src_left_x < 0) return 0;
   const int active_left_x = mi_col * MI_SIZE;
   const int active_top_y = mi_row * MI_SIZE;
@@ -801,11 +773,7 @@ static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
 
   const int sb_size = 1 << sb_size_log2;
   const int sb_mi_size = sb_size >> MI_SIZE_LOG2;
-#if CONFIG_ENABLE_IBC_NAT && (CONFIG_IBC_SR_EXT == 2)
   int valid_size_log2 = sb_size_log2 > 7 ? 7 : sb_size_log2;
-#else
-  int valid_size_log2 = sb_size_log2 > 6 ? 6 : sb_size_log2;
-#endif  // CONFIG_ENABLE_IBC_NAT && (CONFIG_IBC_SR_EXT == 2)
   int valid =
       src_top_y >> valid_size_log2 == active_top_y >> valid_size_log2 &&
       src_left_x >> valid_size_log2 == active_left_x >> valid_size_log2 &&
@@ -836,9 +804,7 @@ static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
 
   return 0;
 }
-#endif  // CONFIG_IBC_SR_EXT == 1 || CONFIG_ENABLE_IBC_NAT
 
-#if CONFIG_IBC_SR_EXT == 2
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
 static INLINE int is_two_blk_overlap(int blk1_x_left, int blk1_x_right,
                                      int blk1_y_top, int blk1_y_bottom,
@@ -859,55 +825,29 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
           mib_size_log2 > 4) ||
          mib_size_log2 == 4);
   int ref_log2 = 7;
-#if CONFIG_IBC_SUBPEL_PRECISION
   int has_col_offset = dv.col & 7;  // sub-pel col
   int has_row_offset = dv.row & 7;  // sub-pel col
   int left_interp_border = has_col_offset ? IBC_LEFT_INTERP_BORDER : 0;
   int right_interp_border = has_col_offset ? IBC_RIGHT_INTERP_BORDER : 0;
   int top_interp_border = has_row_offset ? IBC_TOP_INTERP_BORDER : 0;
   int bottom_interp_border = has_row_offset ? IBC_BOTTOM_INTERP_BORDER : 0;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
   const int SCALE_PX_TO_MV = 8;
   const int src_top_edge = (mi_row * MI_SIZE) * SCALE_PX_TO_MV + dv.row;
   const int src_left_edge = (mi_col * MI_SIZE) * SCALE_PX_TO_MV + dv.col;
   const int src_bottom_edge = (mi_row * MI_SIZE + bh) * SCALE_PX_TO_MV + dv.row;
   const int src_right_edge = (mi_col * MI_SIZE + bw) * SCALE_PX_TO_MV + dv.col;
 
-  const int src_top_y = (src_top_edge >> 3)
-#if CONFIG_IBC_SUBPEL_PRECISION
-                        - top_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_left_x = (src_left_edge >> 3)
-#if CONFIG_IBC_SUBPEL_PRECISION
-                         - left_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_bottom_y = (src_bottom_edge >> 3) - 1
-#if CONFIG_IBC_SUBPEL_PRECISION
-                           + bottom_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_right_x = (src_right_edge >> 3) - 1
-#if CONFIG_IBC_SUBPEL_PRECISION
-                          + right_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
+  const int src_top_y = (src_top_edge >> 3) - top_interp_border;
+  const int src_left_x = (src_left_edge >> 3) - left_interp_border;
+  const int src_bottom_y = (src_bottom_edge >> 3) - 1 + bottom_interp_border;
+  const int src_right_x = (src_right_edge >> 3) - 1 + right_interp_border;
   const int act_left_x = mi_col * MI_SIZE;  // active(current) coding blk
   const int act_top_y = mi_row * MI_SIZE;   // active(current) coding blk
   const int act_right_x = act_left_x + bw - 1;
   const int act_bottom_y = act_top_y + bh - 1;
   const int sb_size_log2 = mib_size_log2 + MI_SIZE_LOG2;
-  if (((dv.col >> 3) + bw
-#if CONFIG_IBC_SUBPEL_PRECISION
-       + right_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-       ) > 0 &&
-      ((dv.row >> 3) + bh
-#if CONFIG_IBC_SUBPEL_PRECISION
-       + bottom_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-       ) > 0)
+  if (((dv.col >> 3) + bw + right_interp_border) > 0 &&
+      ((dv.row >> 3) + bh + bottom_interp_border) > 0)
     return 0;
   // reference blk cannot be in bottom-right region (uncoded region)
   if ((src_top_y >> sb_size_log2) < (act_top_y >> sb_size_log2)) return 0;
@@ -1126,14 +1066,12 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
 static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
                                            int mi_row, int mi_col, int bh,
                                            int bw, int mib_size_log2) {
-#if CONFIG_IBC_SUBPEL_PRECISION
   int has_col_offset = dv.col & 7;  // sub-pel col
   int has_row_offset = dv.row & 7;  // sub-pel col
   int left_interp_border = has_col_offset ? IBC_LEFT_INTERP_BORDER : 0;
   int right_interp_border = has_col_offset ? IBC_RIGHT_INTERP_BORDER : 0;
   int top_interp_border = has_row_offset ? IBC_TOP_INTERP_BORDER : 0;
   int bottom_interp_border = has_row_offset ? IBC_BOTTOM_INTERP_BORDER : 0;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
   const int SCALE_PX_TO_MV = 8;
   const int src_top_edge = (mi_row * MI_SIZE) * SCALE_PX_TO_MV + dv.row;
@@ -1141,26 +1079,10 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
   const int src_bottom_edge = (mi_row * MI_SIZE + bh) * SCALE_PX_TO_MV + dv.row;
   const int src_right_edge = (mi_col * MI_SIZE + bw) * SCALE_PX_TO_MV + dv.col;
 
-  const int src_top_y = (src_top_edge >> 3)
-#if CONFIG_IBC_SUBPEL_PRECISION
-                        - top_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_left_x = (src_left_edge >> 3)
-#if CONFIG_IBC_SUBPEL_PRECISION
-                         - left_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_bottom_y = (src_bottom_edge >> 3) - 1
-#if CONFIG_IBC_SUBPEL_PRECISION
-                           + bottom_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
-  const int src_right_x = (src_right_edge >> 3) - 1
-#if CONFIG_IBC_SUBPEL_PRECISION
-                          + right_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
+  const int src_top_y = (src_top_edge >> 3) - top_interp_border;
+  const int src_left_x = (src_left_edge >> 3) - left_interp_border;
+  const int src_bottom_y = (src_bottom_edge >> 3) - 1 + bottom_interp_border;
+  const int src_right_x = (src_right_edge >> 3) - 1 + right_interp_border;
   const int active_left_x = mi_col * MI_SIZE;
   const int active_top_y = mi_row * MI_SIZE;
 
@@ -1168,16 +1090,8 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
   if ((src_top_y >> sb_size_log2) < (active_top_y >> sb_size_log2)) return 0;
 
   if ((src_bottom_y >> sb_size_log2) > (active_top_y >> sb_size_log2)) return 0;
-  if (((dv.col >> 3) + bw
-#if CONFIG_IBC_SUBPEL_PRECISION
-       + right_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-       ) > 0 &&
-      ((dv.row >> 3) + bh
-#if CONFIG_IBC_SUBPEL_PRECISION
-       + bottom_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-       ) > 0)
+  if (((dv.col >> 3) + bw + right_interp_border) > 0 &&
+      ((dv.row >> 3) + bh + bottom_interp_border) > 0)
     return 0;
 
   if (src_top_y < 0 || src_left_x < 0) return 0;
@@ -1242,7 +1156,6 @@ static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
   return 1;
 }
 #endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-#endif  // CONFIG_IBC_SR_EXT == 2
 
 static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
                                   const MACROBLOCKD *xd, int mi_row, int mi_col,
@@ -1251,61 +1164,32 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
   const int bh = block_size_high[bsize];
   const int SCALE_PX_TO_MV = 8;
 
-#if CONFIG_IBC_SUBPEL_PRECISION
   int has_col_offset = dv.col & 7;  // sub-pel col
   int has_row_offset = dv.row & 7;  // sub-pel row
   int left_interp_border = has_col_offset ? IBC_LEFT_INTERP_BORDER : 0;
   int right_interp_border = has_col_offset ? IBC_RIGHT_INTERP_BORDER : 0;
   int top_interp_border = has_row_offset ? IBC_TOP_INTERP_BORDER : 0;
   int bottom_interp_border = has_row_offset ? IBC_BOTTOM_INTERP_BORDER : 0;
-#else
-  // Disallow subpixel for now
-  // SUBPEL_MASK is not the correct scale
-  if (((dv.row & (SCALE_PX_TO_MV - 1)) || (dv.col & (SCALE_PX_TO_MV - 1))))
-    return 0;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
   const TileInfo *const tile = &xd->tile;
   // Is the source top-left inside the current tile?
-  const int src_top_edge = (mi_row * MI_SIZE
-#if CONFIG_IBC_SUBPEL_PRECISION
-                            - top_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-                            ) * SCALE_PX_TO_MV +
-                           dv.row;
+  const int src_top_edge =
+      (mi_row * MI_SIZE - top_interp_border) * SCALE_PX_TO_MV + dv.row;
   const int tile_top_edge = tile->mi_row_start * MI_SIZE * SCALE_PX_TO_MV;
   if (src_top_edge < tile_top_edge) return 0;
-  const int src_left_edge = (mi_col * MI_SIZE
-#if CONFIG_IBC_SUBPEL_PRECISION
-                             - left_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-                             ) * SCALE_PX_TO_MV +
-                            dv.col;
+  const int src_left_edge =
+      (mi_col * MI_SIZE - left_interp_border) * SCALE_PX_TO_MV + dv.col;
   const int tile_left_edge = tile->mi_col_start * MI_SIZE * SCALE_PX_TO_MV;
   if (src_left_edge < tile_left_edge) return 0;
   // Is the bottom right inside the current tile?
-  const int src_bottom_edge = (mi_row * MI_SIZE + bh
-#if CONFIG_IBC_SUBPEL_PRECISION
-                               + bottom_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-                               ) * SCALE_PX_TO_MV +
-                              dv.row
-#if CONFIG_IBC_SUBPEL_PRECISION
-                              - has_row_offset
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
+  const int src_bottom_edge =
+      (mi_row * MI_SIZE + bh + bottom_interp_border) * SCALE_PX_TO_MV + dv.row -
+      has_row_offset;
   const int tile_bottom_edge = tile->mi_row_end * MI_SIZE * SCALE_PX_TO_MV;
   if (src_bottom_edge > tile_bottom_edge) return 0;
-  const int src_right_edge = (mi_col * MI_SIZE + bw
-#if CONFIG_IBC_SUBPEL_PRECISION
-                              + right_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-                              ) * SCALE_PX_TO_MV +
-                             dv.col
-#if CONFIG_IBC_SUBPEL_PRECISION
-                             - has_col_offset
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-      ;
+  const int src_right_edge =
+      (mi_col * MI_SIZE + bw + right_interp_border) * SCALE_PX_TO_MV + dv.col -
+      has_col_offset;
   const int tile_right_edge = tile->mi_col_end * MI_SIZE * SCALE_PX_TO_MV;
   if (src_right_edge > tile_right_edge) return 0;
 
@@ -1317,18 +1201,14 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
       if (xd->mi && xd->mi[0]) {
         const CHROMA_REF_INFO *chroma_ref_info = &xd->mi[0]->chroma_ref_info;
         const int src_left_edge_chroma =
-            (chroma_ref_info->mi_col_chroma_base * MI_SIZE
-#if CONFIG_IBC_SUBPEL_PRECISION
-             - left_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-             ) * SCALE_PX_TO_MV +
+            (chroma_ref_info->mi_col_chroma_base * MI_SIZE -
+             left_interp_border) *
+                SCALE_PX_TO_MV +
             dv.col;
         const int src_top_edge_chroma =
-            (chroma_ref_info->mi_row_chroma_base * MI_SIZE
-#if CONFIG_IBC_SUBPEL_PRECISION
-             - top_interp_border
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
-             ) * SCALE_PX_TO_MV +
+            (chroma_ref_info->mi_row_chroma_base * MI_SIZE -
+             top_interp_border) *
+                SCALE_PX_TO_MV +
             dv.row;
         if (src_left_edge_chroma < tile_left_edge) return 0;
         if (src_top_edge_chroma < tile_top_edge) return 0;
@@ -1341,7 +1221,6 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
     }
   }
 
-#if CONFIG_IBC_SR_EXT
   if (cm->features.allow_local_intrabc) {
     if (bw <= 64 || bh <= 64) {
       int valid = 0;
@@ -1362,36 +1241,25 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
           }
         }
       }
-      // The size of local search range is determined by the value of
-      // CONFIG_IBC_SR_EXT. 0: disabled, 1: 64x64 (default), 2: 128x128.
-#if CONFIG_IBC_SR_EXT == 1
-      valid = av1_is_dv_in_local_range_64x64(dv, xd, tmp_row, tmp_col, tmp_bh,
-                                             tmp_bw, mib_size_log2);
-#endif  // CONFIG_IBC_SR_EXT == 1
-#if CONFIG_IBC_SR_EXT == 2
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
       valid = av1_is_dv_in_local_range(dv, xd, tmp_row, tmp_col, tmp_bh, tmp_bw,
                                        mib_size_log2);
 #else
-#if CONFIG_ENABLE_IBC_NAT
       if (!frame_is_intra_only(
               cm))  // Inter frame: Using 128x128 but the modificantion made in
                     // av1_is_dv_in_local_range_64x64 function
         valid = av1_is_dv_in_local_range_64x64(dv, xd, tmp_row, tmp_col, tmp_bh,
                                                tmp_bw, mib_size_log2);
       else
-#endif  // CONFIG_ENABLE_IBC_NAT
         valid = av1_is_dv_in_local_range(dv, xd, tmp_row, tmp_col, tmp_bh,
                                          tmp_bw, mib_size_log2);
 #endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-#endif  // CONFIG_IBC_SR_EXT == 2
       if (valid) return 1;
     }
   }
   if (!frame_is_intra_only(cm)) return 0;
 
   if (!cm->features.allow_global_intrabc) return 0;
-#endif  // CONFIG_IBC_SR_EXT
 
   // Is the bottom right within an already coded SB? Also consider additional
   // constraints to facilitate HW decoder.

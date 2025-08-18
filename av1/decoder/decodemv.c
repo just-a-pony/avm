@@ -52,9 +52,6 @@ void read_gdf(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
 static void read_gdf(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
 #endif  // CONFIG_BRU
   if (!is_allow_gdf(cm)) return;
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-  if (is_global_intrabc_allowed(cm)) return;
-#endif  //! CONFIG_ENABLE_INLOOP_FILTER_GIBC
   if ((cm->gdf_info.gdf_mode < 2) || (cm->gdf_info.gdf_block_num <= 1)) return;
   if ((xd->mi_row % cm->mib_size != 0) || (xd->mi_col % cm->mib_size != 0))
     return;
@@ -88,12 +85,6 @@ static void read_cdef(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
   assert(xd->tree_type != CHROMA_PART);
   const int skip_txfm = xd->mi[0]->skip_txfm[0];
   if (cm->features.coded_lossless) return;
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-  if (is_global_intrabc_allowed(cm)) {
-    assert(cm->cdef_info.cdef_frame_enable == 0);
-    return;
-  }
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
   if (!cm->cdef_info.cdef_frame_enable) return;
 
   const int mi_row = xd->mi_row;
@@ -181,9 +172,6 @@ void read_ccso(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
 static void read_ccso(AV1_COMMON *cm, aom_reader *r, MACROBLOCKD *const xd) {
 #endif  // CONFIG_BRU
   if (cm->features.coded_lossless) return;
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-  if (is_global_intrabc_allowed(cm)) return;
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
@@ -1681,18 +1669,13 @@ static INLINE int assign_dv(AV1_COMMON *cm, MACROBLOCKD *xd, int_mv *mv,
                             const int_mv *ref_mv, int mi_row, int mi_col,
                             BLOCK_SIZE bsize, aom_reader *r) {
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
-#if CONFIG_IBC_BV_IMPROVEMENT
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   if (mbmi->intrabc_mode == 1) {
     mv->as_int = ref_mv->as_int;
   } else {
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
 #if CONFIG_DERIVED_MVD_SIGN || CONFIG_VQ_MVD_CODING
     MV mv_diff = kZeroMv;
 #endif
-#if !CONFIG_IBC_SUBPEL_PRECISION
-    assert(mbmi->pb_mv_precision == MV_PRECISION_ONE_PEL);
-#endif  //! CONFIG_IBC_SUBPEL_PRECISION
 #if CONFIG_VQ_MVD_CODING
     read_mv(r, &mv_diff, 1, &ec_ctx->ndvc, mbmi->pb_mv_precision, 0
 #if !CONFIG_DERIVED_MVD_SIGN
@@ -1702,13 +1685,13 @@ static INLINE int assign_dv(AV1_COMMON *cm, MACROBLOCKD *xd, int_mv *mv,
     );
 #else
 
-  read_mv(r,
+    read_mv(r,
 #if CONFIG_DERIVED_MVD_SIGN
-          &mv_diff,
+            &mv_diff,
 #else
-          &mv->as_mv, ref_mv->as_mv,
+            &mv->as_mv, ref_mv->as_mv,
 #endif  // CONFIG_DERIVED_MVD_SIGN
-          0, &ec_ctx->ndvc, mbmi->pb_mv_precision);
+            0, &ec_ctx->ndvc, mbmi->pb_mv_precision);
 
 #endif  //   CONFIG_VQ_MVD_CODING
 
@@ -1734,32 +1717,17 @@ static INLINE int assign_dv(AV1_COMMON *cm, MACROBLOCKD *xd, int_mv *mv,
 
       if (sign) mv_diff.col = -mv_diff.col;
     }
-#if CONFIG_IBC_SUBPEL_PRECISION
     MV low_prec_refmv = ref_mv->as_mv;
     if (mbmi->pb_mv_precision < MV_PRECISION_HALF_PEL)
       lower_mv_precision(&low_prec_refmv, mbmi->pb_mv_precision);
 
     mv->as_mv.row = low_prec_refmv.row + mv_diff.row;
     mv->as_mv.col = low_prec_refmv.col + mv_diff.col;
-#else
-    mv->as_mv.row = ref_mv->as_mv.row + mv_diff.row;
-    mv->as_mv.col = ref_mv->as_mv.col + mv_diff.col;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 #endif  // CONFIG_DERIVED_MVD_SIGN
-#if CONFIG_IBC_BV_IMPROVEMENT
   }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
 
-#if CONFIG_IBC_SUBPEL_PRECISION
   assert(
       is_this_mv_precision_compliant(mbmi->mv[0].as_mv, mbmi->pb_mv_precision));
-#else
-  // DV should not have sub-pel.
-  assert((mv->as_mv.col & 7) == 0);
-  assert((mv->as_mv.row & 7) == 0);
-  mv->as_mv.col = (mv->as_mv.col >> 3) * 8;
-  mv->as_mv.row = (mv->as_mv.row >> 3) * 8;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
   int valid = is_mv_valid(&mv->as_mv) &&
               av1_is_dv_valid(mv->as_mv, cm, xd, mi_row, mi_col, bsize,
@@ -1767,7 +1735,6 @@ static INLINE int assign_dv(AV1_COMMON *cm, MACROBLOCKD *xd, int_mv *mv,
   return valid;
 }
 
-#if CONFIG_IBC_BV_IMPROVEMENT
 static void read_intrabc_drl_idx(int max_ref_bv_cnt,
 #if !CONFIG_BYPASS_INTRABC_DRL_IDX
                                  FRAME_CONTEXT *ec_ctx,
@@ -1792,7 +1759,6 @@ static void read_intrabc_drl_idx(int max_ref_bv_cnt,
   }
   assert(mbmi->intrabc_drl_idx < max_ref_bv_cnt);
 }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
 
 static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                               aom_reader *r) {
@@ -1814,11 +1780,7 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     // fr_mv_precision is not same as MV_PRECISION_ONE_PEL for intra-bc
     // blocks");
     set_default_max_mv_precision(mbmi, xd->sbi->sb_mv_precision);
-#if CONFIG_IBC_SUBPEL_PRECISION
     set_default_intraBC_bv_precision(cm, mbmi);
-#else
-    set_mv_precision(mbmi, MV_PRECISION_ONE_PEL);
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
     set_default_precision_set(cm, mbmi, bsize);
     set_most_probable_mv_precision(cm, mbmi, bsize);
 
@@ -1842,33 +1804,18 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                      ,
                      NULL, 0, NULL);
 
-#if CONFIG_IBC_BV_IMPROVEMENT
     mbmi->intrabc_mode =
         aom_read_symbol(r, ec_ctx->intrabc_mode_cdf, 2, ACCT_INFO());
-#if CONFIG_IBC_MAX_DRL
     read_intrabc_drl_idx(cm->features.max_bvp_drl_bits + 1,
 #if !CONFIG_BYPASS_INTRABC_DRL_IDX
                          ec_ctx,
 #endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
                          mbmi, r);
-#else
-    read_intrabc_drl_idx(MAX_REF_BV_STACK_SIZE, ec_ctx, mbmi, r);
-#endif  // CONFIG_IBC_MAX_DRL
     int_mv dv_ref =
         xd->ref_mv_stack[INTRA_FRAME][mbmi->intrabc_drl_idx].this_mv;
-#else
-    int_mv nearestmv, nearmv;
-    av1_find_best_ref_mvs(ref_mvs[INTRA_FRAME], &nearestmv, &nearmv,
-                          mbmi->pb_mv_precision);
-
-    assert(cm->features.fr_mv_precision == MV_PRECISION_ONE_PEL &&
-           mbmi->max_mv_precision == MV_PRECISION_ONE_PEL);
-    int_mv dv_ref = nearestmv.as_int == 0 ? nearmv : nearestmv;
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
     if (dv_ref.as_int == 0)
       av1_find_ref_dv(&dv_ref, &xd->tile, cm->mib_size, xd->mi_row);
 
-#if CONFIG_IBC_SUBPEL_PRECISION
     int valid_dv = 1;
     assert(is_this_mv_precision_compliant(dv_ref.as_mv, mbmi->pb_mv_precision));
     if (is_intraBC_bv_precision_active(cm, mbmi->intrabc_mode)) {
@@ -1877,12 +1824,6 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                                   ACCT_INFO());
       mbmi->pb_mv_precision = av1_intraBc_precision_sets.precision[index];
     }
-#else
-    // Ref DV should not have sub-pel.
-    int valid_dv = (dv_ref.as_mv.col & 7) == 0 && (dv_ref.as_mv.row & 7) == 0;
-    dv_ref.as_mv.col = (dv_ref.as_mv.col >> 3) * 8;
-    dv_ref.as_mv.row = (dv_ref.as_mv.row >> 3) * 8;
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
     valid_dv = valid_dv && assign_dv(cm, xd, &mbmi->mv[0], &dv_ref, xd->mi_row,
                                      xd->mi_col, bsize, r);
@@ -1892,10 +1833,8 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                          "Invalid intrabc dv");
     }
 
-#if CONFIG_IBC_SUBPEL_PRECISION
     assert(is_this_mv_precision_compliant(mbmi->mv[0].as_mv,
                                           mbmi->pb_mv_precision));
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
 
     if (av1_allow_intrabc_morph_pred(cm)) {
       const int morph_pred_ctx = get_morph_pred_ctx(xd);
@@ -2052,13 +1991,7 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   mbmi->refinemv_flag = 0;
 
-  if (av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                        ,
-                        bsize
-#endif  // CONFIG_ENABLE_IBC_NAT
-                        ) &&
-      xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd, bsize) && xd->tree_type != CHROMA_PART) {
 #if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
     mbmi->use_intrabc[1] = 0;
@@ -2108,13 +2041,7 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
     mbmi->use_intra_dip = 0;
   }
 
-  if (av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                        ,
-                        bsize
-#endif  // CONFIG_ENABLE_IBC_NAT
-                        ) &&
-      xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd, bsize) && xd->tree_type != CHROMA_PART) {
     read_intrabc_info(cm, dcb, r);
     if (is_intrabc_block(mbmi, xd->tree_type)) {
       mbmi->use_dpcm_y = 0;
@@ -4104,19 +4031,6 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 
   if (xd->tree_type != LUMA_PART) xd->cfl.store_y = store_cfl_required(cm, xd);
 
-#if !CONFIG_IBC_BV_IMPROVEMENT
-#if CONFIG_IBC_SR_EXT
-  if (cm->seq_params.enable_refmvbank &&
-      !is_intrabc_block(mbmi, xd->tree_type)) {
-#else
-  if (cm->seq_params.enable_refmvbank) {
-#endif  // CONFIG_IBC_SR_EXT
-    av1_update_ref_mv_bank(cm, xd, 1, mbmi);
-  } else {
-    decide_rmb_unit_update_count(cm, xd, mbmi);
-  }
-#endif  // !CONFIG_IBC_BV_IMPROVEMENT
-
 #if DEC_MISMATCH_DEBUG
   dec_dump_logs(cm, mi, mi_row, mi_col, mode_ctx);
 #endif  // DEC_MISMATCH_DEBUG
@@ -4175,15 +4089,8 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
     inter_block = read_is_inter_block(cm, xd, mbmi->segment_id, r);
   }
 
-#if CONFIG_IBC_SR_EXT
   if (!inter_block &&
-      av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                        ,
-                        mbmi->sb_type[xd->tree_type == CHROMA_PART]
-#endif  // CONFIG_ENABLE_IBC_NAT
-
-                        ) &&
+      av1_allow_intrabc(cm, xd, mbmi->sb_type[xd->tree_type == CHROMA_PART]) &&
       xd->tree_type != CHROMA_PART) {
 #if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
@@ -4198,13 +4105,8 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
         r, ec_ctx->intrabc_cdf, 2, ACCT_INFO("use_intrabc", "chroma"));
 #endif  // CONFIG_NEW_CONTEXT_MODELING
   }
-#endif  // CONFIG_IBC_SR_EXT
 
-  if (inter_block
-#if CONFIG_IBC_SR_EXT
-      || (!inter_block && is_intrabc_block(mbmi, xd->tree_type))
-#endif  // CONFIG_IBC_SR_EXT
-  ) {
+  if (inter_block || (!inter_block && is_intrabc_block(mbmi, xd->tree_type))) {
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
         read_skip_txfm(cm, xd, mbmi->segment_id, r);
   } else {
@@ -4235,14 +4137,8 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
 
   mbmi->current_qindex = xd->current_base_qindex;
 
-#if CONFIG_IBC_SR_EXT
   if (!inter_block &&
-      av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                        ,
-                        mbmi->sb_type[xd->tree_type == CHROMA_PART]
-#endif  // CONFIG_ENABLE_IBC_NAT
-                        ) &&
+      av1_allow_intrabc(cm, xd, mbmi->sb_type[xd->tree_type == CHROMA_PART]) &&
       xd->tree_type != CHROMA_PART) {
     mbmi->ref_frame[0] = INTRA_FRAME;
     mbmi->ref_frame[1] = NONE_FRAME;
@@ -4256,7 +4152,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
       return;
     }
   }
-#endif  // CONFIG_IBC_SR_EXT
   if (inter_block)
     read_inter_block_mode_info(pbi, dcb, mbmi, r);
   else
@@ -4299,7 +4194,6 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
 
   if (frame_is_intra_only(cm)) {
     read_intra_frame_mode_info(cm, dcb, r);
-#if CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank) {
       MB_MODE_INFO *const mbmi = xd->mi[0];
       if (is_intrabc_block(mbmi, xd->tree_type)) {
@@ -4308,13 +4202,11 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
         decide_rmb_unit_update_count(cm, xd, mbmi);
       }
     }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.order_hint_info.enable_ref_frame_mvs)
       intra_copy_frame_mvs(cm, xd->mi_row, xd->mi_col, x_inside_boundary,
                            y_inside_boundary);
   } else {
     read_inter_frame_mode_info(pbi, dcb, r);
-#if CONFIG_IBC_BV_IMPROVEMENT
     if (cm->seq_params.enable_refmvbank) {
       MB_MODE_INFO *const mbmi = xd->mi[0];
       if (is_inter_block(mbmi, xd->tree_type)) {
@@ -4323,7 +4215,6 @@ void av1_read_mode_info(AV1Decoder *const pbi, DecoderCodingBlock *dcb,
         decide_rmb_unit_update_count(cm, xd, mbmi);
       }
     }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
 
     MB_MODE_INFO *const mbmi_tmp = xd->mi[0];
     if (is_inter_block(mbmi_tmp, xd->tree_type))

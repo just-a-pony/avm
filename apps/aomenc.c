@@ -479,9 +479,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_frame_output_order,
 #endif  // !CONFIG_F253_REMOVE_OUTPUTFLAG
   &g_av1_codec_arg_defs.max_drl_refmvs,
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   &g_av1_codec_arg_defs.max_drl_refbvs,
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   &g_av1_codec_arg_defs.enable_refmvbank,
   &g_av1_codec_arg_defs.enable_drl_reorder,
   &g_av1_codec_arg_defs.enable_cdef_on_skip_txfm,
@@ -495,9 +493,7 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_REDUCED_REF_FRAME_MVS_MODE
   &g_av1_codec_arg_defs.reduced_ref_frame_mvs_mode,
 #endif  // CONFIG_REDUCED_REF_FRAME_MVS_MODE
-#if CONFIG_IBC_SR_EXT
   &g_av1_codec_arg_defs.enable_intrabc_ext,
-#endif  // CONFIG_IBC_SR_EXT
   &g_av1_codec_arg_defs.enable_adaptive_mvd,
   &g_av1_codec_arg_defs.enable_flex_mvres,
   &g_av1_codec_arg_defs.select_cfl_ds_filter,
@@ -731,9 +727,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_onesided_comp = 1;
   config->enable_palette = 1;
   config->enable_intrabc = 1;
-#if CONFIG_IBC_SR_EXT
   config->enable_intrabc_ext = 1;
-#endif  // CONFIG_IBC_SR_EXT
   config->enable_cfl_intra = 1;
   config->enable_mhccp = 1;
   config->enable_smooth_intra = 1;
@@ -1545,9 +1539,7 @@ static void show_stream_config(struct stream_state *stream,
 
   fprintf(stdout, "Tool setting (Ref MVs)         :");
   fprintf(stdout, " max-drl-refmvs (%d)", encoder_cfg->max_drl_refmvs);
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   fprintf(stdout, " max-drl-refbvs (%d)", encoder_cfg->max_drl_refbvs);
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   fprintf(stdout, " , Refmv Bank (%d)", encoder_cfg->enable_refmvbank);
   fprintf(stdout, " , DRL Reorder (%d)", encoder_cfg->enable_drl_reorder);
   fprintf(stdout, "\n");
@@ -1712,9 +1704,7 @@ static void show_stream_config(struct stream_state *stream,
   fprintf(stdout,
           "Tool setting (Others)          : Palette (%d), "
           "ParityHiding (%d), "
-#if CONFIG_IBC_SR_EXT
           "IntraBCExt (%d), "
-#endif  // CONFIG_IBC_SR_EXT
 #if CONFIG_MRSSE
           "MRSSE (%d), "
 #endif  // CONFIG_MRSSE
@@ -1722,9 +1712,7 @@ static void show_stream_config(struct stream_state *stream,
           "CDF_Avg_Type (%d), "
           "IntraBC (%d)\n",
           encoder_cfg->enable_palette, encoder_cfg->enable_parity_hiding,
-#if CONFIG_IBC_SR_EXT
           encoder_cfg->enable_intrabc_ext,
-#endif  // CONFIG_IBC_SR_EXT
 #if CONFIG_MRSSE
           encoder_cfg->enable_mrsse,
 #endif  // CONFIG_MRSSE

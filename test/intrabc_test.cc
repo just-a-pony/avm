@@ -79,11 +79,7 @@ TEST(IntrabcTest, DvValidation) {
       MAX_SB_SIZE / MI_SIZE,
       MAX_SB_SIZE / MI_SIZE,
       BLOCK_32X32,
-#if CONFIG_IBC_SUBPEL_PRECISION
       true },
-#else
-      false },
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
     { { -33 * kSubPelScale, -32 * kSubPelScale },
       MAX_SB_SIZE / MI_SIZE,
       MAX_SB_SIZE / MI_SIZE,
@@ -93,11 +89,7 @@ TEST(IntrabcTest, DvValidation) {
       MAX_SB_SIZE / MI_SIZE,
       MAX_SB_SIZE / MI_SIZE,
       BLOCK_32X32,
-#if CONFIG_IBC_SUBPEL_PRECISION
       true },
-#else
-      false },
-#endif  // CONFIG_IBC_SUBPEL_PRECISION
     { { -32 * kSubPelScale, -33 * kSubPelScale },
       MAX_SB_SIZE / MI_SIZE,
       MAX_SB_SIZE / MI_SIZE,
@@ -170,9 +162,7 @@ TEST(IntrabcTest, DvValidation) {
       aom_memalign(alignof(AV1_COMMON), sizeof(AV1_COMMON)));
   ASSERT_NE(cm, nullptr);
   memset(cm, 0, sizeof(*cm));
-#if CONFIG_IBC_SR_EXT
   cm->features.allow_global_intrabc = 1;
-#endif  // CONFIG_IBC_SR_EXT
 
   for (const DvTestCase &dv_case : kDvCases) {
     const int mi_row = xd->tile.mi_row_start + dv_case.mi_row_offset;

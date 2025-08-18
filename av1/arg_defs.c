@@ -613,13 +613,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_intrabc = ARG_DEF(NULL, "enable-intrabc", 1,
                             "Enable intra block copy prediction mode "
                             "(0: false, 1: true (default))"),
-#if CONFIG_IBC_SR_EXT
   .enable_intrabc_ext = ARG_DEF(
       NULL, "enable-intrabc-ext", 1,
       "Enable search range extension for intra block copy prediction mode "
       "(0: disable, 1: extend the search range to the local area (default), "
       "2: only use the local search range.)"),
-#endif  // CONFIG_IBC_SR_EXT
   .enable_angle_delta =
       ARG_DEF(NULL, "enable-angle-delta", 1,
               "Enable intra angle delta (0: false, 1: true (default))"),
@@ -863,12 +861,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "max-drl-refmvs", 1,
               "maximum number of drl reference MVs per reference. "
               "(0 (auto), 2-8 (fixed)) default is 0 (auto)."),
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   .max_drl_refbvs = ARG_DEF(NULL, "max-drl-refbvs", 1,
                             "maximum number of drl reference BVs for IntraBC. "
                             "(0 (auto), 2-4 (fixed)) default is 0 (auto)."),
 
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   .enable_refmvbank = ARG_DEF(NULL, "enable-refmvbank", 1,
                               "Enable reference MV bank (0: false "
                               "1: true)"),

@@ -97,9 +97,7 @@
 #define DEFAULT_EXPLICIT_ORDER_HINT_BITS 7
 
 #define DEF_MAX_DRL_REFMVS 4
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 #define DEF_MAX_DRL_REFBVS 4
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 #if CONFIG_ENTROPY_STATS
 FRAME_COUNTS aggregate_fc;
 #endif  // CONFIG_ENTROPY_STATS
@@ -437,7 +435,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   }
   // Disable frame by frame update for now. Can be changed later.
   seq->allow_frame_max_drl_bits = 0;
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   if (oxcf->tool_cfg.max_drl_refbvs == 0) {
     seq->def_max_bvp_drl_bits = DEF_MAX_DRL_REFBVS - 1;
   } else {
@@ -445,7 +442,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   }
   // Disable frame by frame update for now. Can be changed later.
   seq->allow_frame_max_bvp_drl_bits = 0;
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 #endif  // CONFIG_SEQ_MAX_DRL_BITS
   seq->num_same_ref_compound = SAME_REF_COMPOUND_PRUNE;
 
@@ -828,7 +824,6 @@ static void set_max_drl_bits(struct AV1_COMP *cpi) {
          cm->features.max_drl_bits <= MAX_MAX_DRL_BITS);
 }
 
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 static void set_max_bvp_drl_bits(struct AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
   // Add logic to choose this in the range [MIN_MAX_IBC_DRL_BITS,
@@ -849,7 +844,6 @@ static void set_max_bvp_drl_bits(struct AV1_COMP *cpi) {
   assert(cm->features.max_bvp_drl_bits >= MIN_MAX_IBC_DRL_BITS &&
          cm->features.max_bvp_drl_bits <= MAX_MAX_IBC_DRL_BITS);
 }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 
 static void set_seq_lr_tools_mask(SequenceHeader *const seq_params,
                                   const AV1EncoderConfig *oxcf) {
@@ -2089,18 +2083,6 @@ void av1_set_downsample_filter_options(AV1_COMP *cpi) {
 
 void av1_set_screen_content_options(AV1_COMP *cpi, FeatureFlags *features) {
   const AV1_COMMON *const cm = &cpi->common;
-#if !CONFIG_ENABLE_IBC_NAT
-  if (cm->seq_params.force_screen_content_tools != 2) {
-    features->allow_screen_content_tools = features->allow_intrabc =
-        cm->seq_params.force_screen_content_tools;
-    return;
-  }
-
-  if (cpi->oxcf.tune_cfg.content == AOM_CONTENT_SCREEN) {
-    features->allow_screen_content_tools = features->allow_intrabc = 1;
-    return;
-  }
-#endif  // !CONFIG_ENABLE_IBC_NAT
   // Estimate if the source frame is screen content, based on the portion of
   // blocks that have few luma colors.
   const uint16_t *src = cpi->unfiltered_source->y_buffer;
@@ -2151,7 +2133,6 @@ void av1_set_screen_content_options(AV1_COMP *cpi, FeatureFlags *features) {
       features->allow_screen_content_tools &&
       counts_2 * blk_h * blk_w * var_factor > width * height;
 
-#if CONFIG_ENABLE_IBC_NAT
   features->is_scc_content_by_detector =
       features->allow_screen_content_tools &&
       counts_2 * blk_h * blk_w * var_factor > width * height;
@@ -2171,7 +2152,6 @@ void av1_set_screen_content_options(AV1_COMP *cpi, FeatureFlags *features) {
         cm->seq_params.force_screen_content_tools;
     return;
   }
-#endif  // CONFIG_ENABLE_IBC_NAT
 
   if (frame_is_intra_only(cm) && cm->seq_params.enable_tip) {
     set_hole_fill_decision(cpi, width, height, blk_w, blk_h, counts_1,
@@ -3352,13 +3332,10 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
   // Determine whether to use screen content tools using two fast encoding.
   av1_determine_sc_tools_with_encoding(cpi, q);
 
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   if (cm->features.allow_intrabc) {
     set_max_bvp_drl_bits(cpi);
   }
-#endif
 
-#if CONFIG_IBC_SR_EXT
   if (cm->features.allow_intrabc) {
     cm->features.allow_global_intrabc =
         (oxcf->kf_cfg.enable_intrabc_ext != 2) && frame_is_intra_only(cm);
@@ -3367,7 +3344,6 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
     cm->features.allow_global_intrabc = 0;
     cm->features.allow_local_intrabc = 0;
   }
-#endif  // CONFIG_IBC_SR_EXT
 
 #if CONFIG_USE_VMAF_RC
   if (oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
@@ -4043,35 +4019,10 @@ static int encode_with_recode_loop_and_filter(AV1_COMP *cpi, size_t *size,
   av1_set_lr_tools(master_lr_tools_disable_mask[1], 2, &cm->features);
 
   // Pick the loop filter level for the frame.
-#if CONFIG_ENABLE_INLOOP_FILTER_GIBC
 #if CONFIG_BRU
   if (!cm->bru.frame_inactive_flag)
 #endif  // CONFIG_BRU
     loopfilter_frame(cpi, cm);
-#else
-  if (!is_global_intrabc_allowed(cm)
-#if CONFIG_BRU
-      && !cm->bru.frame_inactive_flag
-#endif  // CONFIG_BRU
-  ) {
-    loopfilter_frame(cpi, cm);
-  } else {
-    cm->lf.filter_level[0] = 0;
-    cm->lf.filter_level[1] = 0;
-    cm->cdef_info.cdef_frame_enable = 0;
-    cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
-    cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
-    cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
-    cm->ccso_info.ccso_frame_flag = false;
-    cm->ccso_info.ccso_enable[0] = cm->ccso_info.ccso_enable[1] =
-        cm->ccso_info.ccso_enable[2] = 0;
-    for (int plane = 0; plane < av1_num_planes(cm); plane++) {
-      cm->cur_frame->ccso_info.ccso_enable[plane] = 0;
-      cm->ccso_info.sb_reuse_ccso[plane] = false;
-      cm->ccso_info.reuse_ccso[plane] = false;
-    }
-  }
-#endif  // CONFIG_ENABLE_INLOOP_FILTER_GIBC
   int64_t tip_as_output_sse = INT64_MAX;
   int64_t tip_as_output_rate = INT64_MAX;
 
@@ -4295,7 +4246,6 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
   start_timing(cpi, encode_frame_to_data_rate_time);
 #endif
 
-#if CONFIG_IBC_SR_EXT
   av1_set_screen_content_options(cpi, features);
 #if CONFIG_SCC_DETERMINATION
   if (cm->current_frame.frame_type != KEY_FRAME) {
@@ -4315,19 +4265,11 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
         (oxcf->kf_cfg.enable_intrabc_ext != 2) && frame_is_intra_only(cm);
 
     cm->features.allow_local_intrabc = !!oxcf->kf_cfg.enable_intrabc_ext;
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
     set_max_bvp_drl_bits(cpi);
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   } else {
     cm->features.allow_global_intrabc = 0;
     cm->features.allow_local_intrabc = 0;
   }
-#else
-  if (frame_is_intra_only(cm)) {
-    av1_set_screen_content_options(cpi, features);
-    cpi->is_screen_content_type = features->allow_screen_content_tools;
-  }
-#endif  // CONFIG_IBC_SR_EXT
   const bool compute_ds_filter =
       cpi->common.current_frame.frame_type == KEY_FRAME && !cpi->no_show_fwd_kf;
   if (compute_ds_filter) {

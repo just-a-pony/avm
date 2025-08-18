@@ -856,11 +856,7 @@ static AOM_INLINE void dec_build_inter_predictor(const AV1_COMMON *cm,
   }
 
   if (mbmi->morph_pred) {
-#if CONFIG_ENABLE_IBC_NAT
     assert(av1_allow_intrabc(cm, xd, bsize));
-#else
-    assert(av1_allow_intrabc(cm, xd));
-#endif  // CONFIG_ENABLE_IBC_NAT
     assert(av1_allow_intrabc_morph_pred(cm));
     assert(is_intrabc_block(mbmi, xd->tree_type));
     av1_build_morph_pred(cm, xd, bsize, mi_row, mi_col);
@@ -2679,9 +2675,6 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
                                                struct aom_read_bit_buffer *rb) {
   assert(!cm->features.all_lossless);
   const int num_planes = av1_num_planes(cm);
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-  if (is_global_intrabc_allowed(cm)) return;
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
   int luma_none = 1, chroma_none = 1;
   for (int p = 0; p < num_planes; ++p) {
     RestorationInfo *rsi = &cm->rst_info[p];
@@ -3166,11 +3159,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
                                         struct aom_read_bit_buffer *rb) {
   const int num_planes = av1_num_planes(cm);
   struct loopfilter *lf = &cm->lf;
-  if (
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-      is_global_intrabc_allowed(cm) ||
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-      cm->features.coded_lossless) {
+  if (cm->features.coded_lossless) {
     // write default deltas to frame buffer
     av1_set_default_ref_deltas(cm->cur_frame->ref_deltas);
     av1_set_default_mode_deltas(cm->cur_frame->mode_deltas);
@@ -3357,9 +3346,6 @@ static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {
   const int num_planes = av1_num_planes(cm);
   CdefInfo *const cdef_info = &cm->cdef_info;
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-  if (is_global_intrabc_allowed(cm)) return;
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
 #if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) return;
 #endif  // CONFIG_BRU
@@ -3413,14 +3399,6 @@ static AOM_INLINE int read_ccso_offset_idx(struct aom_read_bit_buffer *rb) {
 }
 static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-  if (is_global_intrabc_allowed(cm)) {
-    cm->cur_frame->ccso_info.ccso_enable[0] = 0;
-    cm->cur_frame->ccso_info.ccso_enable[1] = 0;
-    cm->cur_frame->ccso_info.ccso_enable[2] = 0;
-    return;
-  }
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
 #if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
     cm->cur_frame->ccso_info.ccso_enable[0] = 0;
@@ -6645,13 +6623,11 @@ void av1_read_sequence_header_beyond_av1(
                                      MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1) +
       MIN_MAX_DRL_BITS;
   seq_params->allow_frame_max_drl_bits = aom_rb_read_bit(rb);
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
   seq_params->def_max_bvp_drl_bits =
       aom_rb_read_primitive_quniform(
           rb, MAX_MAX_IBC_DRL_BITS - MIN_MAX_IBC_DRL_BITS + 1) +
       MIN_MAX_IBC_DRL_BITS;
   seq_params->allow_frame_max_bvp_drl_bits = aom_rb_read_bit(rb);
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 #endif  // CONFIG_SEQ_MAX_DRL_BITS
 
   seq_params->num_same_ref_compound = aom_rb_read_literal(rb, 2);
@@ -7363,7 +7339,6 @@ static void read_frame_max_drl_bits(AV1_COMMON *const cm,
 #endif  // CONFIG_SEQ_MAX_DRL_BITS
 }
 
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 static void read_frame_max_bvp_drl_bits(AV1_COMMON *const cm,
                                         struct aom_read_bit_buffer *rb) {
   FeatureFlags *const features = &cm->features;
@@ -7384,7 +7359,6 @@ static void read_frame_max_bvp_drl_bits(AV1_COMMON *const cm,
       MIN_MAX_IBC_DRL_BITS;
 #endif  // CONFIG_SEQ_MAX_DRL_BITS
 }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 
 // On success, returns 0. On failure, calls aom_internal_error and does not
 // return.
@@ -7649,10 +7623,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
   int frame_size_override_flag = 0;
   features->allow_intrabc = 0;
-#if CONFIG_IBC_SR_EXT
   features->allow_global_intrabc = 0;
   features->allow_local_intrabc = 0;
-#endif  // CONFIG_IBC_SR_EXT
   features->primary_ref_frame = PRIMARY_REF_NONE;
 
   int signal_primary_ref_frame = -1;
@@ -8049,26 +8021,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
     read_screen_content_params(cm, rb);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
-    if (
-#if !CONFIG_ENABLE_IBC_NAT
-        features->allow_screen_content_tools &&
-#endif  //! CONFIG_ENABLE_IBC_NAT
-        1)
-      features->allow_intrabc = aom_rb_read_bit(rb);
-#if CONFIG_IBC_SR_EXT
+    if (1) features->allow_intrabc = aom_rb_read_bit(rb);
     if (features->allow_intrabc) {
       features->allow_global_intrabc = aom_rb_read_bit(rb);
       features->allow_local_intrabc =
           features->allow_global_intrabc ? aom_rb_read_bit(rb) : 1;
-#if CONFIG_IBC_BV_IMPROVEMENT
-#if CONFIG_IBC_MAX_DRL
       read_frame_max_bvp_drl_bits(cm, rb);
-#else
-      read_frame_max_drl_bits(cm, rb);
-#endif  // CONFIG_IBC_MAX_DRL
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
     }
-#endif  // CONFIG_IBC_SR_EXT
 
     features->allow_ref_frame_mvs = 0;
     cm->prev_frame = NULL;
@@ -8093,26 +8052,13 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
       read_screen_content_params(cm, rb);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
-      if (
-#if !CONFIG_ENABLE_IBC_NAT
-          features->allow_screen_content_tools &&
-#endif  //! CONFIG_ENABLE_IBC_NAT
-          1)
-        features->allow_intrabc = aom_rb_read_bit(rb);
-#if CONFIG_IBC_SR_EXT
+      if (1) features->allow_intrabc = aom_rb_read_bit(rb);
       if (features->allow_intrabc) {
         features->allow_global_intrabc = aom_rb_read_bit(rb);
         features->allow_local_intrabc =
             features->allow_global_intrabc ? aom_rb_read_bit(rb) : 1;
-#if CONFIG_IBC_BV_IMPROVEMENT
-#if CONFIG_IBC_MAX_DRL
         read_frame_max_bvp_drl_bits(cm, rb);
-#else
-        read_frame_max_drl_bits(cm, rb);
-#endif  // CONFIG_IBC_MAX_DRL
-#endif  // CONFIG_IBC_BV_IMPROVEMENT
       }
-#endif  // CONFIG_IBC_SR_EXT
 
 #if CONFIG_IMPROVED_GLOBAL_MOTION
       cm->cur_frame->num_ref_frames = 0;
@@ -8456,24 +8402,16 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
         read_screen_content_params(cm, rb);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
-#if CONFIG_IBC_SR_EXT
-        if (
-#if !CONFIG_ENABLE_IBC_NAT
-            features->allow_screen_content_tools &&
-#endif  //! CONFIG_ENABLE_IBC_NAT
-            1) {
+        if (1) {
           features->allow_intrabc = aom_rb_read_bit(rb);
           features->allow_global_intrabc = 0;
           features->allow_local_intrabc = features->allow_intrabc;
         }
-#endif  // CONFIG_IBC_SR_EXT
 
         read_frame_max_drl_bits(cm, rb);
-#if CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
         if (features->allow_intrabc) {
           read_frame_max_bvp_drl_bits(cm, rb);
         }
-#endif  // CONFIG_IBC_BV_IMPROVEMENT && CONFIG_IBC_MAX_DRL
 
         if (features->cur_frame_force_integer_mv) {
           features->fr_mv_precision = MV_PRECISION_ONE_PEL;
@@ -8680,11 +8618,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   }
 #endif  // CONFIG_BRU
 
-  if (
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-      is_global_intrabc_allowed(cm) ||
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-      features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
+  if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
     // Set parameters corresponding to no filtering.
     struct loopfilter *lf = &cm->lf;
     lf->filter_level[0] = 0;
@@ -8795,10 +8729,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   if (cm->delta_q_info.delta_q_present_flag) {
     xd->current_base_qindex = quant_params->base_qindex;
     cm->delta_q_info.delta_q_res = 1 << aom_rb_read_literal(rb, 2);
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-    if (!is_global_intrabc_allowed(cm))
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-      cm->delta_q_info.delta_lf_present_flag = aom_rb_read_bit(rb);
+    cm->delta_q_info.delta_lf_present_flag = aom_rb_read_bit(rb);
     if (cm->delta_q_info.delta_lf_present_flag) {
       cm->delta_q_info.delta_lf_res = 1 << aom_rb_read_literal(rb, 2);
       cm->delta_q_info.delta_lf_multi = aom_rb_read_bit(rb);
@@ -9141,13 +9072,7 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
       (uint32_t)aom_rb_bytes_read(rb);  // Size of the uncompressed header
   YV12_BUFFER_CONFIG *new_fb = &cm->cur_frame->buf;
   xd->cur_buf = new_fb;
-  if (av1_allow_intrabc(cm, xd
-#if CONFIG_ENABLE_IBC_NAT
-                        ,
-                        BLOCK_4X4
-#endif  // CONFIG_ENABLE_IBC_NAT
-                        ) &&
-      xd->tree_type != CHROMA_PART) {
+  if (av1_allow_intrabc(cm, xd, BLOCK_4X4) && xd->tree_type != CHROMA_PART) {
     av1_setup_scale_factors_for_frame(
         &cm->sf_identity, xd->cur_buf->y_crop_width, xd->cur_buf->y_crop_height,
         xd->cur_buf->y_crop_width, xd->cur_buf->y_crop_height);
@@ -9395,9 +9320,6 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #endif  // CONFIG_BRU
 
   if (
-#if !CONFIG_ENABLE_INLOOP_FILTER_GIBC
-      !is_global_intrabc_allowed(cm) &&
-#endif  // !CONFIG_ENABLE_INLOOP_FILTER_GIBC
 #if CONFIG_BRU
       !cm->bru.frame_inactive_flag &&
 #endif  // CONFIG_BRU
