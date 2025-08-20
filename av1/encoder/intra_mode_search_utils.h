@@ -274,12 +274,8 @@ static AOM_INLINE int intra_mode_info_cost_y(const AV1_COMP *cpi,
   if (av1_allow_intrabc(&cpi->common, xd,
                         mbmi->sb_type[xd->tree_type == CHROMA_PART]) &&
       xd->tree_type != CHROMA_PART) {
-#if CONFIG_NEW_CONTEXT_MODELING
     const int intrabc_ctx = get_intrabc_ctx(xd);
     total_rate += mode_costs->intrabc_cost[intrabc_ctx][use_intrabc];
-#else
-    total_rate += mode_costs->intrabc_cost[use_intrabc];
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   }
   return total_rate;
 }

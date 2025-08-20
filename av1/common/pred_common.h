@@ -449,7 +449,6 @@ static INLINE int av1_get_skip_txfm_context(const MACROBLOCKD *xd) {
   return ctx;
 }
 
-#if CONFIG_NEW_CONTEXT_MODELING
 static INLINE int get_intrabc_ctx(const MACROBLOCKD *xd) {
   int ctx = 0;
   for (int i = 0; i < MAX_NUM_NEIGHBORS; ++i) {
@@ -461,7 +460,6 @@ static INLINE int get_intrabc_ctx(const MACROBLOCKD *xd) {
 
   return ctx;
 }
-#endif  // CONFIG_NEW_CONTEXT_MODELING
 
 static INLINE int get_morph_pred_ctx(const MACROBLOCKD *xd) {
   int ctx = 0;

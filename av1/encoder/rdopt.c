@@ -6501,12 +6501,8 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
           rate_mv += x->mode_costs.intrabc_bv_precision_cost[0][index];
         }
 
-#if CONFIG_NEW_CONTEXT_MODELING
         const int intrabc_ctx = get_intrabc_ctx(xd);
         int rate_mode = x->mode_costs.intrabc_cost[intrabc_ctx][1];
-#else
-        int rate_mode = x->mode_costs.intrabc_cost[1];
-#endif  // CONFIG_NEW_CONTEXT_MODELING
         rate_mode += x->mode_costs.intrabc_mode_cost[mbmi->intrabc_mode];
         rate_mode += av1_get_intrabc_drl_idx_cost(
             cm->features.max_bvp_drl_bits + 1, mbmi->intrabc_drl_idx
@@ -9160,10 +9156,8 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 
           mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
           mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
-#if CONFIG_NEW_CONTEXT_MODELING
           mbmi->use_intrabc[0] = 0;
           mbmi->use_intrabc[1] = 0;
-#endif  // CONFIG_NEW_CONTEXT_MODELING
           mbmi->angle_delta[PLANE_TYPE_Y] = 0;
           mbmi->angle_delta[PLANE_TYPE_UV] = 0;
           mbmi->use_intra_dip = 0;

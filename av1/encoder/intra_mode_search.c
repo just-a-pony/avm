@@ -129,10 +129,8 @@ static int rd_pick_intra_dip_sby(const AV1_COMP *const cpi, ThreadData *td,
   }
   mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
   mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
-#if CONFIG_NEW_CONTEXT_MODELING
   mbmi->use_intrabc[0] = 0;
   mbmi->use_intrabc[1] = 0;
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   mbmi->joint_y_mode_delta_angle = DC_PRED;
   mbmi->y_mode_idx = DC_PRED;
 
@@ -274,10 +272,8 @@ static int rd_pick_intra_dip_sby(const AV1_COMP *const cpi, ThreadData *td,
     }
     mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
     mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
-#if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
     mbmi->use_intrabc[1] = 0;
-#endif  // CONFIG_NEW_CONTEXT_MODELING
     return 1;
   } else {
     mbmi->use_intra_dip = 0;

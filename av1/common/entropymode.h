@@ -390,11 +390,7 @@ typedef struct frame_contexts {
   aom_cdf_prob intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)];
   nmv_context nmvc;
   nmv_context ndvc;
-#if CONFIG_NEW_CONTEXT_MODELING
   aom_cdf_prob intrabc_cdf[INTRABC_CONTEXTS][CDF_SIZE(2)];
-#else
-  aom_cdf_prob intrabc_cdf[CDF_SIZE(2)];
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   aom_cdf_prob intrabc_mode_cdf[CDF_SIZE(2)];
 #if !CONFIG_BYPASS_INTRABC_DRL_IDX
   aom_cdf_prob intrabc_drl_idx_cdf[MAX_REF_BV_STACK_SIZE - 1][CDF_SIZE(2)];

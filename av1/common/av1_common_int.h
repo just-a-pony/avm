@@ -2796,7 +2796,6 @@ static INLINE void fetch_spatial_neighbors(MACROBLOCKD *xd
 #endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
 
   int index = 0;
-#if CONFIG_NEW_CONTEXT_MODELING
   if (xd->bottom_left_mbmi) {
     xd->neighbors[index++] = xd->bottom_left_mbmi;
     if (index >= MAX_NUM_NEIGHBORS) return;
@@ -2810,7 +2809,6 @@ static INLINE void fetch_spatial_neighbors(MACROBLOCKD *xd
     xd->neighbors[index++] = xd->above_right_mbmi;
     if (index >= MAX_NUM_NEIGHBORS) return;
   }
-#endif  // CONFIG_NEW_CONTEXT_MODELING
 
   if (xd->left_mbmi) {
     xd->neighbors[index++] = xd->left_mbmi;
@@ -2835,7 +2833,6 @@ static INLINE void fetch_spatial_neighbors_with_line_buffer(MACROBLOCKD *xd) {
   }
 
   int index = 0;
-#if CONFIG_NEW_CONTEXT_MODELING
   if (xd->bottom_left_mbmi) {
     xd->neighbors_line_buffer[index++] = xd->bottom_left_mbmi;
     if (index >= MAX_NUM_NEIGHBORS) return;
@@ -2845,7 +2842,6 @@ static INLINE void fetch_spatial_neighbors_with_line_buffer(MACROBLOCKD *xd) {
     xd->neighbors_line_buffer[index++] = xd->above_right_mbmi;
     if (index >= MAX_NUM_NEIGHBORS) return;
   }
-#endif  // CONFIG_NEW_CONTEXT_MODELING
 
   if (xd->left_mbmi) {
     xd->neighbors_line_buffer[index++] = xd->left_mbmi;

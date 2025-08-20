@@ -1025,18 +1025,11 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
     }
     if (!inter_block && av1_allow_intrabc(cm, xd, bsize) &&
         xd->tree_type != CHROMA_PART) {
-#if CONFIG_NEW_CONTEXT_MODELING
       const int intrabc_ctx = get_intrabc_ctx(xd);
       update_cdf(fc->intrabc_cdf[intrabc_ctx], use_intrabc, 2);
 #if CONFIG_ENTROPY_STATS
       ++td->counts->intrabc[intrabc_ctx][use_intrabc];
 #endif  // CONFIG_ENTROPY_STATS
-#else
-      update_cdf(fc->intrabc_cdf, use_intrabc, 2);
-#if CONFIG_ENTROPY_STATS
-      ++td->counts->intrabc[use_intrabc];
-#endif  // CONFIG_ENTROPY_STATS
-#endif  // CONFIG_NEW_CONTEXT_MODELING
     }
 
     if (inter_block || (!inter_block && use_intrabc)) {

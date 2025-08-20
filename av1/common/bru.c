@@ -218,10 +218,8 @@ void bru_set_default_inter_mb_mode_info(const AV1_COMMON *const cm,
   mbmi->palette_mode_info.palette_size[1] = 0;
   mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
   mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
-#if CONFIG_NEW_CONTEXT_MODELING
   mbmi->use_intrabc[0] = 0;
   mbmi->use_intrabc[1] = 0;
-#endif
   mbmi->bawp_flag[0] = 0;
   mbmi->bawp_flag[1] = 0;
   mbmi->cwp_idx = CWP_EQUAL;

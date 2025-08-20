@@ -2188,12 +2188,8 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
         xd->tree_type != CHROMA_PART) {
       const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
       if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
-#if CONFIG_NEW_CONTEXT_MODELING
       const int intrabc_ctx = get_intrabc_ctx(xd);
       aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
-#else
-      aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
-#endif  // CONFIG_NEW_CONTEXT_MODELING
     }
   }
 
@@ -2728,12 +2724,8 @@ static AOM_INLINE void write_mb_modes_kf(
       xd->tree_type != CHROMA_PART) {
     const int use_intrabc = is_intrabc_block(mbmi, xd->tree_type);
     if (xd->tree_type == CHROMA_PART) assert(use_intrabc == 0);
-#if CONFIG_NEW_CONTEXT_MODELING
     const int intrabc_ctx = get_intrabc_ctx(xd);
     aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf[intrabc_ctx], 2);
-#else
-    aom_write_symbol(w, use_intrabc, ec_ctx->intrabc_cdf, 2);
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   }
 
   int skip = 0;

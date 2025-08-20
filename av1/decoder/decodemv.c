@@ -1977,17 +1977,12 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
   mbmi->refinemv_flag = 0;
 
   if (av1_allow_intrabc(cm, xd, bsize) && xd->tree_type != CHROMA_PART) {
-#if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
     mbmi->use_intrabc[1] = 0;
     const int intrabc_ctx = get_intrabc_ctx(xd);
     mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
         aom_read_symbol(r, ec_ctx->intrabc_cdf[intrabc_ctx], 2,
                         ACCT_INFO("use_intrabc", "chroma"));
-#else
-    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = aom_read_symbol(
-        r, ec_ctx->intrabc_cdf, 2, ACCT_INFO("use_intrabc", "chroma"));
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   }
   if (is_intrabc_block(mbmi, xd->tree_type)) {
     mbmi->skip_txfm[xd->tree_type == CHROMA_PART] =
@@ -3477,10 +3472,8 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   mbmi->palette_mode_info.palette_size[1] = 0;
   mbmi->fsc_mode[PLANE_TYPE_Y] = 0;
   mbmi->fsc_mode[PLANE_TYPE_UV] = 0;
-#if CONFIG_NEW_CONTEXT_MODELING
   mbmi->use_intrabc[0] = 0;
   mbmi->use_intrabc[1] = 0;
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   mbmi->morph_pred = 0;
 
   set_default_max_mv_precision(mbmi, sbi->sb_mv_precision);
@@ -4075,10 +4068,8 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   mbmi->max_num_warp_candidates = 0;
   mbmi->warpmv_with_mvd_flag = 0;
   if (xd->tree_type != CHROMA_PART) {
-#if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
     mbmi->use_intrabc[1] = 0;
-#endif  // CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intra_dip = 0;
     mbmi->morph_pred = 0;
   }
@@ -4090,7 +4081,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
   if (!inter_block &&
       av1_allow_intrabc(cm, xd, mbmi->sb_type[xd->tree_type == CHROMA_PART]) &&
       xd->tree_type != CHROMA_PART) {
-#if CONFIG_NEW_CONTEXT_MODELING
     mbmi->use_intrabc[0] = 0;
     mbmi->use_intrabc[1] = 0;
     mbmi->morph_pred = 0;
@@ -4098,10 +4088,6 @@ static void read_inter_frame_mode_info(AV1Decoder *const pbi,
     mbmi->use_intrabc[xd->tree_type == CHROMA_PART] =
         aom_read_symbol(r, xd->tile_ctx->intrabc_cdf[intrabc_ctx], 2,
                         ACCT_INFO("use_intrabc", "chroma"));
-#else
-    mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = aom_read_symbol(
-        r, ec_ctx->intrabc_cdf, 2, ACCT_INFO("use_intrabc", "chroma"));
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   }
 
   if (inter_block || (!inter_block && is_intrabc_block(mbmi, xd->tree_type))) {

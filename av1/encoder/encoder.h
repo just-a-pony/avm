@@ -1588,11 +1588,7 @@ typedef struct FRAME_COUNTS {
   unsigned int comp_ref0[REF_CONTEXTS][INTER_REFS_PER_FRAME - 1][2];
   unsigned int comp_ref1[REF_CONTEXTS][COMPREF_BIT_TYPES]
                         [INTER_REFS_PER_FRAME - 1][2];
-#if CONFIG_NEW_CONTEXT_MODELING
   unsigned int intrabc[INTRABC_CONTEXTS][2];
-#else
-  unsigned int intrabc[2];
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   unsigned int intrabc_mode[2];
   unsigned int intrabc_drl_idx[MAX_REF_BV_STACK_SIZE - 1][2];
   unsigned int morph_pred_count[3][2];

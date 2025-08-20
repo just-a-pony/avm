@@ -981,11 +981,7 @@ typedef struct {
    ****************************************************************************/
   /**@{*/
   //! intrabc_cost
-#if CONFIG_NEW_CONTEXT_MODELING
   int intrabc_cost[INTRABC_CONTEXTS][2];
-#else
-  int intrabc_cost[2];
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   //! intrabc_mode_cost
   int intrabc_mode_cost[2];
   //! intrabc_drl_idx_cost

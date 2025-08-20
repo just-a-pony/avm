@@ -410,14 +410,10 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       }
     }
   }
-#if CONFIG_NEW_CONTEXT_MODELING
   for (i = 0; i < INTRABC_CONTEXTS; ++i) {
     av1_cost_tokens_from_cdf(mode_costs->intrabc_cost[i], fc->intrabc_cdf[i],
                              NULL);
   }
-#else
-  av1_cost_tokens_from_cdf(mode_costs->intrabc_cost, fc->intrabc_cdf, NULL);
-#endif  // CONFIG_NEW_CONTEXT_MODELING
   av1_cost_tokens_from_cdf(mode_costs->intrabc_mode_cost, fc->intrabc_mode_cdf,
                            NULL);
 #if !CONFIG_BYPASS_INTRABC_DRL_IDX
