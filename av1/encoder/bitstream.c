@@ -3162,14 +3162,9 @@ static AOM_INLINE void write_partition(
 #endif  // CONFIG_BRU
   }
 #if !CONFIG_NEW_PART_CTX
-#if CONFIG_PARTITION_CONTEXT_REDUCE
   const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize, 1);
   const int rect_type_ctx =
       partition_plane_context(xd, mi_row, mi_col, bsize, 0);
-#else
-  const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize);
-  const int rect_type_ctx = ctx;
-#endif
 #endif  // !CONFIG_NEW_PART_CTX
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 

@@ -3134,14 +3134,9 @@ static INLINE int square_split_context(const MACROBLOCKD *xd, int mi_row,
 }
 
 static INLINE int partition_plane_context_helper(int raw_context,
-                                                 BLOCK_SIZE bsize
-#if CONFIG_PARTITION_CONTEXT_REDUCE
-                                                 ,
-                                                 int ctx_mode
-#endif  // CONFIG_PARTITION_CONTEXT_REDUCE
-) {
+                                                 BLOCK_SIZE bsize,
+                                                 int ctx_mode) {
   int ctx = raw_context + bsize * PARTITION_PLOFFSET;
-#if CONFIG_PARTITION_CONTEXT_REDUCE
 #if CONFIG_NEW_PART_CTX
   const int bsize_rect_map[BLOCK_SIZES] = {
     0,   // BLOCK_4X4,
@@ -3261,7 +3256,6 @@ static INLINE int partition_plane_context_helper(int raw_context,
   if (ctx_mode == 0)  // part ctx only for rect mode
     ctx = raw_context + bsize_rect_map[bsize] * PARTITION_PLOFFSET;
 #endif  // CONFIG_RECT_CTX
-#endif  // CONFIG_PARTITION_CONTEXT_REDUCE
   assert(ctx >= 0);
   assert(ctx < PARTITION_CONTEXTS);
   return ctx;
@@ -3273,11 +3267,8 @@ static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
                                           ,
                                           RECT_PART_TYPE rect_type
 #endif  // CONFIG_NEW_PART_CTX
-#if CONFIG_PARTITION_CONTEXT_REDUCE
                                           ,
-                                          int ctx_mode
-#endif  // CONFIG_PARTITION_CONTEXT_REDUCE
-) {
+                                          int ctx_mode) {
   const int plane = xd->tree_type == CHROMA_PART;
   const PARTITION_CONTEXT *above_ctx =
       xd->above_partition_context[plane] + mi_col;
@@ -3307,23 +3298,14 @@ static INLINE int partition_plane_context(const MACROBLOCKD *xd, int mi_row,
     const int left = (*left_ctx >> AOMMAX(bsl_h - 1, 0)) & 1;
     ctx = left * 2 + above;
   }
-  return partition_plane_context_helper(ctx, bsize
-#if CONFIG_PARTITION_CONTEXT_REDUCE
-                                        ,
-                                        ctx_mode != RECT_TYPE_CTX_MODE
-#endif  // CONFIG_PARTITION_CONTEXT_REDUCE
-  );
-#else  // CONFIG_NEW_PART_CTX
+  return partition_plane_context_helper(ctx, bsize,
+                                        ctx_mode != RECT_TYPE_CTX_MODE);
+#else   // CONFIG_NEW_PART_CTX
   const int bsl_w = mi_size_wide_log2[bsize];
   const int bsl_h = mi_size_high_log2[bsize];
   const int above = (*above_ctx >> AOMMAX(bsl_w - 1, 0)) & 1;
   const int left = (*left_ctx >> AOMMAX(bsl_h - 1, 0)) & 1;
-  return partition_plane_context_helper(left * 2 + above, bsize
-#if CONFIG_PARTITION_CONTEXT_REDUCE
-                                        ,
-                                        ctx_mode
-#endif  // CONFIG_PARTITION_CONTEXT_REDUCE
-  );
+  return partition_plane_context_helper(left * 2 + above, bsize, ctx_mode);
 #endif  // CONFIG_NEW_PART_CTX
 }
 

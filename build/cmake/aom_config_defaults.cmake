@@ -245,8 +245,6 @@ set_aom_config_var(CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION 1
                    "reduce warp causal parsing dependency")
 set_aom_config_var(CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL 1
                    "Removes threshold based selection stratergy in warp causal")
-set_aom_config_var(CONFIG_PARTITION_CONTEXT_REDUCE 1
-                   "Enable to reduce partition contexts")
 set_aom_config_var(CONFIG_REDUCE_CCTX_CTX 1 "Reduce CCTX contexts")
 
 set_aom_config_var(CONFIG_WRL_PRUNE_FOUR_PARAMETERS 1

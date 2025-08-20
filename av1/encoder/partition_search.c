@@ -2175,11 +2175,7 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
   const int ctx = 0;
 #else
   const int ctx = is_partition_root
-#if CONFIG_PARTITION_CONTEXT_REDUCE
                       ? partition_plane_context(xd, mi_row, mi_col, bsize, 1)
-#else
-                      ? partition_plane_context(xd, mi_row, mi_col, bsize)
-#endif
                       : -1;
 #endif  // CONFIG_NEW_PART_CTX
   const PARTITION_TYPE partition = pc_tree->partitioning;
@@ -2794,12 +2790,7 @@ static void init_partition_costs(const AV1_COMMON *const cm,
   const MACROBLOCKD *const xd = &x->e_mbd;
   const int plane_index = (tree_type == CHROMA_PART);
 #if !CONFIG_NEW_PART_CTX
-  const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize
-#if CONFIG_PARTITION_CONTEXT_REDUCE
-                                          ,
-                                          1
-#endif  // CONFIG_PARTITION_CONTEXT_REDUCE
-  );
+  const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize, 1);
 #endif  // !CONFIG_NEW_PART_CTX
 
   for (PARTITION_TYPE part = 0; part < ALL_PARTITION_TYPES; part++) {
@@ -2843,12 +2834,7 @@ static void init_partition_costs(const AV1_COMMON *const cm,
           xd, mi_row, mi_col, bsize, 0, RECT_TYPE_CTX_MODE);
 #else
       const int rect_type_ctx =
-          partition_plane_context(xd, mi_row, mi_col, bsize
-#if CONFIG_PARTITION_CONTEXT_REDUCE
-                                  ,
-                                  0
-#endif  // CONFIG_PARTITION_CONTEXT_REDUCE
-          );
+          partition_plane_context(xd, mi_row, mi_col, bsize, 0);
 #endif  // CONFIG_NEW_PART_CTX
       partition_cost[part] +=
           mode_costs->rect_type_cost[plane_index][rect_type_ctx][rect_type];

@@ -593,9 +593,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[2] = 2;
   // Account for unused partition contexts.
   int do_split_reduce = 40;
-#if CONFIG_PARTITION_CONTEXT_REDUCE
   do_split_reduce += 60;
-#endif
   optimize_cdf_table(
       &fc.do_split[0][0][0], probsfile, 3, cts_each_dim,
       "static aom_cdf_prob default_do_split_cdf"
@@ -626,9 +624,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[2] = PARTITION_CONTEXTS;
   cts_each_dim[3] = 2;
   int do_ext_partition_reduce = 264;
-#if CONFIG_PARTITION_CONTEXT_REDUCE
   do_ext_partition_reduce += 64;
-#endif
   optimize_cdf_table(&fc.do_ext_partition[0][0][0][0], probsfile, 4,
                      cts_each_dim,
                      "static aom_cdf_prob default_do_ext_partition_cdf"
@@ -641,9 +637,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[2] = PARTITION_CONTEXTS;
   cts_each_dim[3] = 2;
   int do_uneven_4way_partition_reduce = 320;
-#if CONFIG_PARTITION_CONTEXT_REDUCE
   do_uneven_4way_partition_reduce += 24;
-#endif
   optimize_cdf_table(
       &fc.do_uneven_4way_partition[0][0][0][0], probsfile, 4, cts_each_dim,
       "static aom_cdf_prob default_do_uneven_4way_partition_cdf"
@@ -656,11 +650,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[1] = NUM_RECT_CONTEXTS;
   cts_each_dim[2] = PARTITION_CONTEXTS;
   cts_each_dim[3] = NUM_UNEVEN_4WAY_PARTS;
-#if CONFIG_PARTITION_CONTEXT_REDUCE
   int do_uneven_4way_partition_type_reduce = 320;
-#else
-  do_uneven_4way_partition_reduce += 24;
-#endif
   optimize_cdf_table(
       &fc.uneven_4way_partition_type[0][0][0][0], probsfile, 4, cts_each_dim,
       "static aom_cdf_prob default_uneven_4way_partition_type_cdf"
