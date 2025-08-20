@@ -7265,10 +7265,8 @@ static void cumulative_avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr,
                          nmv_tr->shell_offset_low_class_cdf, 2);
   CUMULATIVE_AVERAGE_CDF(nmv_left->shell_offset_class2_cdf,
                          nmv_tr->shell_offset_class2_cdf, 2);
-#if !CONFIG_CTX_MV_SHELL_OFFSET_OTHER
   CUMULATIVE_AVERAGE_CDF(nmv_left->shell_offset_other_class_cdf,
                          nmv_tr->shell_offset_other_class_cdf, 2);
-#endif  // !CONFIG_CTX_MV_SHELL_OFFSET_OTHER
   CUMULATIVE_AVERAGE_CDF(nmv_left->col_mv_greater_flags_cdf,
                          nmv_tr->col_mv_greater_flags_cdf, 2);
   CUMULATIVE_AVERAGE_CDF(nmv_left->col_mv_index_cdf, nmv_tr->col_mv_index_cdf,
@@ -7791,9 +7789,7 @@ static void shift_nmv(nmv_context *nmv_ptr, int total_tiles_log2) {
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   SHIFT_CDF(nmv_ptr->shell_offset_low_class_cdf, 2);
   SHIFT_CDF(nmv_ptr->shell_offset_class2_cdf, 2);
-#if !CONFIG_CTX_MV_SHELL_OFFSET_OTHER
   SHIFT_CDF(nmv_ptr->shell_offset_other_class_cdf, 2);
-#endif  // !CONFIG_CTX_MV_SHELL_OFFSET_OTHER
   SHIFT_CDF(nmv_ptr->col_mv_greater_flags_cdf, 2);
   SHIFT_CDF(nmv_ptr->col_mv_index_cdf, 2);
 
@@ -8173,12 +8169,10 @@ static void avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr, int wt_left,
               nmv_tr->shell_offset_low_class_cdf, 2);
   AVERAGE_CDF(nmv_left->shell_offset_class2_cdf,
               nmv_tr->shell_offset_class2_cdf, 2);
-#if !CONFIG_CTX_MV_SHELL_OFFSET_OTHER
   for (int i = 0; i < NUM_CTX_CLASS_OFFSETS; i++) {
     AVERAGE_CDF(nmv_left->shell_offset_other_class_cdf[i],
                 nmv_tr->shell_offset_other_class_cdf[i], 2);
   }
-#endif  // !CONFIG_CTX_MV_SHELL_OFFSET_OTHER
   AVERAGE_CDF(nmv_left->col_mv_greater_flags_cdf,
               nmv_tr->col_mv_greater_flags_cdf, 2);
   AVERAGE_CDF(nmv_left->col_mv_index_cdf, nmv_tr->col_mv_index_cdf, 2);
