@@ -2809,13 +2809,11 @@ void av1_get_second_pass_params(AV1_COMP *cpi,
         frame_params->frame_type = KEY_FRAME;
       } else {
         frame_params->frame_type = INTER_FRAME;
-      }
-
-      if (frame_params->frame_type != KEY_FRAME)
         update_subgop_stats(&cpi->gf_group, &cpi->subgop_stats,
                             &cpi->common.seq_params.order_hint_info,
                             cpi->oxcf.kf_cfg.key_freq_max,
                             oxcf->unit_test_cfg.enable_subgop_stats);
+      }
 
       // Do the firstpass stats indicate that this frame is skippable for the
       // partition search?
@@ -2939,12 +2937,10 @@ void av1_get_second_pass_params(AV1_COMP *cpi,
     const int update_type = gf_group->update_type[gf_group->index];
 
     frame_params->show_frame =
-        !(gf_group->update_type[gf_group->index] == ARF_UPDATE ||
-          gf_group->update_type[gf_group->index] == INTNL_ARF_UPDATE);
+        !(update_type == ARF_UPDATE || update_type == INTNL_ARF_UPDATE);
 
     if (update_type == ARF_UPDATE) {
       if (cpi->no_show_fwd_kf) {
-        assert(update_type == ARF_UPDATE || update_type == KFFLT_UPDATE);
         frame_params->frame_type = KEY_FRAME;
       } else {
         frame_params->frame_type =
@@ -2952,8 +2948,7 @@ void av1_get_second_pass_params(AV1_COMP *cpi,
       }
     }
 
-    if (gf_group->update_type[gf_group->index] != ARF_UPDATE &&
-        rc->frames_since_key > 0)
+    if (update_type != ARF_UPDATE && rc->frames_since_key > 0)
       process_first_pass_stats(cpi, &this_frame);
 
     rc->frames_till_gf_update_due = rc->baseline_gf_interval;

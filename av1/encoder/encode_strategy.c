@@ -686,7 +686,7 @@ int av1_get_refresh_frame_flags(
     return 0;
   }
 
-  int refresh_mask = 0;
+  const int refresh_mask = 0;
   const ExtRefreshFrameFlagsInfo *const ext_refresh_frame_flags =
       &cpi->ext_flags.refresh_frame;
 
