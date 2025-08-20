@@ -1057,21 +1057,8 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
                                2, ACCT_INFO("sign", "dc_sign_cdf"));
 #endif  // CONFIG_CONTEXT_DERIVATION
       } else {
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_CTX_V_AC_SIGN
-        if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U)
-          sign = aom_read_bit(r, ACCT_INFO("sign", "plane_y_or_u"));
-        else {
-          int32_t tmp_sign = 0;
-          if (c < xd->eob_u) tmp_sign = xd->tmp_sign[pos];
-          sign = aom_read_symbol(r, ec_ctx->v_ac_sign_cdf[tmp_sign], 2,
-                                 ACCT_INFO("sign", "v_ac_sign_cdf", "plane_v"));
-        }
-        if (plane == AOM_PLANE_U) xd->tmp_sign[pos] = (sign ? 2 : 1);
-#else
         sign = aom_read_bit(r, ACCT_INFO("sign"));
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_CTX_V_AC_SIGN
       }
-
       if (is_hidden && c == 0) {
 #if CONFIG_COEFF_BR_PH_BYPASS
         if (level >= ((NUM_BASE_LEVELS + 1) << 1)) {

@@ -7325,9 +7325,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
 #if !CONFIG_BY_PASS_V_SIGN
   CUMULATIVE_AVERAGE_CDF(ctx_left->v_dc_sign_cdf, ctx_tr->v_dc_sign_cdf, 2);
 #endif  // !CONFIG_BY_PASS_V_SIGN
-#if !CONFIG_CTX_V_AC_SIGN
-  CUMULATIVE_AVERAGE_CDF(ctx_left->v_ac_sign_cdf, ctx_tr->v_ac_sign_cdf, 2);
-#endif  // !CONFIG_CTX_V_AC_SIGN
 #endif  // CONFIG_CONTEXT_DERIVATION
   CUMULATIVE_AVERAGE_CDF(ctx_left->eob_flag_cdf16, ctx_tr->eob_flag_cdf16,
                          EOB_MAX_SYMS - 6);
@@ -7834,9 +7831,6 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
 #if !CONFIG_BY_PASS_V_SIGN
   SHIFT_CDF(ctx_ptr->v_dc_sign_cdf, 2);
 #endif  // !CONFIG_BY_PASS_V_SIGN
-#if !CONFIG_CTX_V_AC_SIGN
-  SHIFT_CDF(ctx_ptr->v_ac_sign_cdf, 2);
-#endif  // !CONFIG_CTX_V_AC_SIGN
 #endif  // CONFIG_CONTEXT_DERIVATION
   SHIFT_CDF(ctx_ptr->eob_flag_cdf16, EOB_MAX_SYMS - 6);
   SHIFT_CDF(ctx_ptr->eob_flag_cdf32, EOB_MAX_SYMS - 5);
@@ -8230,9 +8224,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #if !CONFIG_BY_PASS_V_SIGN
   AVERAGE_CDF(ctx_left->v_dc_sign_cdf, ctx_tr->v_dc_sign_cdf, 2);
 #endif  // !CONFIG_BY_PASS_V_SIGN
-#if !CONFIG_CTX_V_AC_SIGN
-  AVERAGE_CDF(ctx_left->v_ac_sign_cdf, ctx_tr->v_ac_sign_cdf, 2);
-#endif  // !CONFIG_CTX_V_AC_SIGN
 #endif  // CONFIG_CONTEXT_DERIVATION
   AVERAGE_CDF(ctx_left->eob_flag_cdf16, ctx_tr->eob_flag_cdf16,
               EOB_MAX_SYMS - 6);

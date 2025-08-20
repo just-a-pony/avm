@@ -1400,16 +1400,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
                          2);
 #endif  // CONFIG_CONTEXT_DERIVATION
       } else {
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_CTX_V_AC_SIGN
-        if (plane == AOM_PLANE_U) xd->tmp_sign[scan[c]] = (sign ? 2 : 1);
-        if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U)
-          aom_write_bit(w, sign);
-        else
-          aom_write_symbol(w, sign,
-                           ec_ctx->v_ac_sign_cdf[xd->tmp_sign[scan[c]]], 2);
-#else
         aom_write_bit(w, sign);
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_CTX_V_AC_SIGN
       }
       if (is_hidden && c == 0) {
         int q_index = level >> 1;
@@ -2099,16 +2090,7 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
         }
         if (c == 0) return cost;
       } else {
-#if CONFIG_CTX_V_AC_SIGN
         cost += av1_cost_literal(1);
-#else
-        if (plane == AOM_PLANE_V) {
-          const int sign01 = (sign ^ sign) - sign;
-          cost += coeff_costs->v_ac_sign_cost[xd->tmp_sign[pos]][sign01];
-        } else {
-          cost += av1_cost_literal(1);
-        }
-#endif  // CONFIG_CTX_V_AC_SIGN
       }
     }
   }
@@ -2158,17 +2140,7 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
           cost += coeff_costs->dc_sign_cost[dc_ph_group][dc_sign_ctx][sign01];
         }
       } else {
-#if CONFIG_CTX_V_AC_SIGN
         cost += av1_cost_literal(1);
-#else
-        if (plane == AOM_PLANE_V) {
-          const int sign = AOMSIGN(v);
-          const int sign01 = (sign ^ sign) - sign;
-          cost += coeff_costs->v_ac_sign_cost[xd->tmp_sign[pos]][sign01];
-        } else {
-          cost += av1_cost_literal(1);
-        }
-#endif  // CONFIG_CTX_V_AC_SIGN
       }
       if (plane > 0) {
         if (limits) {
@@ -2748,14 +2720,7 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
       else
         cost += txb_costs->dc_sign_cost[dc_ph_group][dc_sign_ctx][sign];
     } else {
-#if CONFIG_CTX_V_AC_SIGN
       cost += av1_cost_literal(1);
-#else
-      if (plane == AOM_PLANE_V)
-        cost += txb_costs->v_ac_sign_cost[tmp_sign[ci]][sign];
-      else
-        cost += av1_cost_literal(1);
-#endif  // CONFIG_CTX_V_AC_SIGN
     }
     if (plane > 0) {
       if (limits) {
@@ -2853,14 +2818,7 @@ static INLINE int get_coeff_cost_general(
       else
         cost += txb_costs->dc_sign_cost[dc_ph_group][dc_sign_ctx][sign];
     } else {
-#if CONFIG_CTX_V_AC_SIGN
       cost += av1_cost_literal(1);
-#else
-      if (plane == AOM_PLANE_V)
-        cost += txb_costs->v_ac_sign_cost[tmp_sign[ci]][sign];
-      else
-        cost += av1_cost_literal(1);
-#endif  // CONFIG_CTX_V_AC_SIGN
     }
     if (plane > 0) {
       if (limits) {
@@ -5426,20 +5384,6 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
         }
       }
     }
-#if CONFIG_CONTEXT_DERIVATION && !CONFIG_CTX_V_AC_SIGN
-    if (allow_update_cdf && plane == AOM_PLANE_V) {
-      for (int c = eob - 1; c >= 1; --c) {
-        int pos = scan[c];
-        if (tcoeff[pos] != 0) {
-          int ac_sign = (tcoeff[pos] < 0) ? 1 : 0;
-#if CONFIG_ENTROPY_STATS
-          ++td->counts->v_ac_sign[cdf_idx][xd->tmp_sign[pos]][ac_sign];
-#endif  // CONFIG_ENTROPY_STATS
-          update_cdf(ec_ctx->v_ac_sign_cdf[xd->tmp_sign[pos]], ac_sign, 2);
-        }
-      }
-    }
-#endif  // CONFIG_CONTEXT_DERIVATION && !CONFIG_CTX_V_AC_SIGN
   } else {
     tcoeff = qcoeff;
   }

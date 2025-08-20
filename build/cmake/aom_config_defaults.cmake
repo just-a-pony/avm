@@ -147,8 +147,6 @@ set_aom_config_var(CONFIG_PARAKIT_COLLECT_DATA 0
                    "enables data collection for ParaKit training.")
 
 # FG8 context simplification tests
-set_aom_config_var(CONFIG_CTX_V_AC_SIGN 1 "FG8-Test1.")
-
 set_aom_config_var(CONFIG_EOB_PT_CTX_REDUCTION 1 "FG8-Test4.")
 set_aom_config_var(CONFIG_COEFF_BR_LF_UV_BYPASS 1
                    "AV2 experiment flag to bypass UV LF syntax. FG8-Test9.")

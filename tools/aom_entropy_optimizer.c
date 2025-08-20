@@ -2198,17 +2198,6 @@ int main(int argc, const char **argv) {
       "[CDF_SIZE(2)]",
       1, &total_count, 0, mem_wanted, "Coefficients");
 #endif  // !CONFIG_BY_PASS_V_SIGN
-
-#if !CONFIG_CTX_V_AC_SIGN
-  cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
-  cts_each_dim[1] = CROSS_COMPONENT_CONTEXTS;
-  cts_each_dim[2] = 2;
-  optimize_cdf_table(&fc.v_ac_sign[0][0][0], probsfile, 3, cts_each_dim,
-                     "static const aom_cdf_prob av1_default_v_ac_sign_cdfs"
-                     "[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS]"
-                     "[CDF_SIZE(2)]",
-                     1, &total_count, 0, mem_wanted, "Coefficients");
-#endif  // !CONFIG_CTX_V_AC_SIGN
 #endif  // CONFIG_CONTEXT_DERIVATION
   if (mem_wanted) {
     printf("Total RAM in bits %d \n", total_count);

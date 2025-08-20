@@ -92,32 +92,6 @@ static const aom_cdf_prob
                                 },
                               };
 #endif  // !CONFIG_BY_PASS_V_SIGN
-#if !CONFIG_CTX_V_AC_SIGN
-static const aom_cdf_prob
-    av1_default_v_ac_sign_cdfs[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS]
-                              [CDF_SIZE(2)] = {
-                                {
-                                    { AOM_CDF2(16396), 124 },
-                                    { AOM_CDF2(12826), 7 },
-                                    { AOM_CDF2(19847), 37 },
-                                },
-                                {
-                                    { AOM_CDF2(16264), 124 },
-                                    { AOM_CDF2(16264), 75 },
-                                    { AOM_CDF2(16743), 75 },
-                                },
-                                {
-                                    { AOM_CDF2(16106), 124 },
-                                    { AOM_CDF2(9850), 6 },
-                                    { AOM_CDF2(22827), 1 },
-                                },
-                                {
-                                    { AOM_CDF2(16944), 123 },
-                                    { AOM_CDF2(3045), 32 },
-                                    { AOM_CDF2(28761), 37 },
-                                },
-                              };
-#endif  // !CONFIG_CTX_V_AC_SIGN
 #endif  // CONFIG_CONTEXT_DERIVATION
 
 static const aom_cdf_prob
