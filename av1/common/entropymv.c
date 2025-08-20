@@ -112,17 +112,8 @@ static const nmv_context default_nmv_context = {
   {
       { AOM_CDF2(3268), 1 },
       { AOM_CDF2(17309), 75 },
-  },  // shell_offset_low_class_cdf
-
-#if CONFIG_MVD_CDF_REDUCTION
+  },                        // shell_offset_low_class_cdf
   { AOM_CDF2(16384), 75 },  //// shell_offset_class2_cdf
-#else
-  {
-      { AOM_CDF2(16384), 75 },
-      { AOM_CDF2(16384), 75 },
-      { AOM_CDF2(16384), 0 },
-  },  // shell_offset_class2_cdf
-#endif  // CONFIG_MVD_CDF_REDUCTION
   { {
       { AOM_CDF2(16786), 75 },
       { AOM_CDF2(19319), 78 },
@@ -237,9 +228,6 @@ static const nmv_context default_nmv_context = {
               { AOM_CDF2(17117), 75 },
           },  // fp_cdf
 #endif        // !CONFIG_VQ_MVD_CODING
-#if !CONFIG_MVD_CDF_REDUCTION
-          { AOM_CDF2(16024), 0 },  // sign_cdf
-#endif                             //! CONFIG_MVD_CDF_REDUCTION
 #if !CONFIG_VQ_MVD_CODING
           { AOM_CDF2(25929), 90 },  // class0_hp_cdf
           { AOM_CDF2(11557), 84 },  // hp_cdf
@@ -341,9 +329,6 @@ static const nmv_context default_nmv_context = {
               { AOM_CDF2(6857), 0 },
           },  // fp_cdf
 #endif        // !CONFIG_VQ_MVD_CODING
-#if !CONFIG_MVD_CDF_REDUCTION
-          { AOM_CDF2(16302), 75 },  // sign_cdf
-#endif                              //! CONFIG_MVD_CDF_REDUCTION
 #if !CONFIG_VQ_MVD_CODING
           { AOM_CDF2(24896), 75 },   // class0_hp_cdf
           { AOM_CDF2(16355), 119 },  // hp_cdf

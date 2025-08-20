@@ -158,24 +158,12 @@ static void update_truncated_unary(nmv_context *mvctx,
                                    int num_of_ctx, int is_low_class) {
   (void)is_low_class;
 
-#if CONFIG_MVD_CDF_REDUCTION
   (void)max_coded_value;
   (void)num_of_ctx;
   int bit_idx = 0;
   aom_cdf_prob *cdf = mvctx->shell_offset_class2_cdf;
-#else
-  int max_idx_bits = max_coded_value;
-  for (int bit_idx = 0; bit_idx < max_idx_bits; ++bit_idx) {
-    int context_index = bit_idx < num_of_ctx ? bit_idx : num_of_ctx - 1;
-    assert(context_index < num_of_ctx);
-    aom_cdf_prob *cdf = mvctx->shell_offset_class2_cdf[context_index];
-#endif  // CONFIG_MVD_CDF_REDUCTION
 
   update_cdf(cdf, coded_value != bit_idx, 2);
-#if !CONFIG_MVD_CDF_REDUCTION
-  if (coded_value == bit_idx) break;
-}
-#endif  //! CONFIG_MVD_CDF_REDUCTION
 }
 static void update_tu_quasi_uniform(nmv_context *mvctx,
                                     const int max_coded_value, int col,
@@ -198,25 +186,14 @@ static void write_truncated_unary(aom_writer *w, nmv_context *mvctx,
                                   const int max_coded_value, int coded_value,
                                   int num_of_ctx, int is_low_class) {
   (void)is_low_class;
-#if CONFIG_MVD_CDF_REDUCTION
   (void)num_of_ctx;
-#endif
 
   int max_idx_bits = max_coded_value;
   for (int bit_idx = 0; bit_idx < max_idx_bits; ++bit_idx) {
-#if CONFIG_MVD_CDF_REDUCTION
     aom_cdf_prob *cdf = mvctx->shell_offset_class2_cdf;
-#else
-      int context_index = bit_idx < num_of_ctx ? bit_idx : num_of_ctx - 1;
-      assert(context_index < num_of_ctx);
-      aom_cdf_prob *cdf = mvctx->shell_offset_class2_cdf[context_index];
-#endif  // CONFIG_MVD_CDF_REDUCTION
-
-#if CONFIG_MVD_CDF_REDUCTION
     if (bit_idx)
       aom_write_literal(w, coded_value != bit_idx, 1);
     else
-#endif  // CONFIG_MVD_CDF_REDUCTION
       aom_write_symbol(w, coded_value != bit_idx, cdf, 2);
     if (coded_value == bit_idx) break;
   }
@@ -386,22 +363,22 @@ void av1_encode_mv(AV1_COMP *cpi, MV mv, aom_writer *w, nmv_context *mvctx,
   }
 #else
 #if CONFIG_MV_RANGE_EXTENSION
-    if (pb_mv_precision == MV_PRECISION_ONE_EIGHTH_PEL) {
-      const int map_shell_class = get_map_shell_class(shell_class);
-      aom_write_symbol(w, map_shell_class,
-                       mvctx->joint_shell_class_cdf[pb_mv_precision],
-                       num_mv_class - 1);
-      if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
-        aom_write_symbol(w, shell_class == MAX_NUM_SHELL_CLASS - 1,
-                         mvctx->joint_shell_last_two_classes_cdf, 2);
-      }
-    } else {
-#endif  // CONFIG_MV_RANGE_EXTENSION
-      aom_write_symbol(w, shell_class,
-                       mvctx->joint_shell_class_cdf[pb_mv_precision],
-                       num_mv_class);
-#if CONFIG_MV_RANGE_EXTENSION
+  if (pb_mv_precision == MV_PRECISION_ONE_EIGHTH_PEL) {
+    const int map_shell_class = get_map_shell_class(shell_class);
+    aom_write_symbol(w, map_shell_class,
+                     mvctx->joint_shell_class_cdf[pb_mv_precision],
+                     num_mv_class - 1);
+    if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
+      aom_write_symbol(w, shell_class == MAX_NUM_SHELL_CLASS - 1,
+                       mvctx->joint_shell_last_two_classes_cdf, 2);
     }
+  } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+    aom_write_symbol(w, shell_class,
+                     mvctx->joint_shell_class_cdf[pb_mv_precision],
+                     num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+  }
 #endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
@@ -519,21 +496,21 @@ void av1_update_mv_stats(nmv_context *mvctx, const MV mv_diff,
   }
 #else
 #if CONFIG_MV_RANGE_EXTENSION
-    if (pb_mv_precision == MV_PRECISION_ONE_EIGHTH_PEL) {
-      const int map_shell_class = get_map_shell_class(shell_class);
-      update_cdf(mvctx->joint_shell_class_cdf[pb_mv_precision], map_shell_class,
-                 num_mv_class - 1);
+  if (pb_mv_precision == MV_PRECISION_ONE_EIGHTH_PEL) {
+    const int map_shell_class = get_map_shell_class(shell_class);
+    update_cdf(mvctx->joint_shell_class_cdf[pb_mv_precision], map_shell_class,
+               num_mv_class - 1);
 
-      if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
-        update_cdf(mvctx->joint_shell_last_two_classes_cdf,
-                   shell_class == MAX_NUM_SHELL_CLASS - 1, 2);
-      }
-    } else {
-#endif  // CONFIG_MV_RANGE_EXTENSION
-      update_cdf(mvctx->joint_shell_class_cdf[pb_mv_precision], shell_class,
-                 num_mv_class);
-#if CONFIG_MV_RANGE_EXTENSION
+    if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
+      update_cdf(mvctx->joint_shell_last_two_classes_cdf,
+                 shell_class == MAX_NUM_SHELL_CLASS - 1, 2);
     }
+  } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+    update_cdf(mvctx->joint_shell_class_cdf[pb_mv_precision], shell_class,
+               num_mv_class);
+#if CONFIG_MV_RANGE_EXTENSION
+  }
 #endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   assert(shell_class >= 0 && shell_class < num_mv_class);
@@ -604,7 +581,7 @@ void av1_update_mv_stats(
 #if CONFIG_DERIVED_MVD_SIGN
     MV mv_diff, int skip_sign_coding,
 #else
-      MV mv, MV ref,
+    MV mv, MV ref,
 #endif
     nmv_context *mvctx, int is_adaptive_mvd, MvSubpelPrecision precision) {
 
@@ -614,10 +591,10 @@ void av1_update_mv_stats(
 #if CONFIG_DERIVED_MVD_SIGN
   const MV diff = { mv_diff.row, mv_diff.col };
 #else
-    if (!is_adaptive_mvd && precision < MV_PRECISION_HALF_PEL)
-      lower_mv_precision(&ref, precision);
-    const MV diff = { mv.row - ref.row, mv.col - ref.col };
-    assert(is_this_mv_precision_compliant(diff, precision));
+  if (!is_adaptive_mvd && precision < MV_PRECISION_HALF_PEL)
+    lower_mv_precision(&ref, precision);
+  const MV diff = { mv.row - ref.row, mv.col - ref.col };
+  assert(is_this_mv_precision_compliant(diff, precision));
 #endif  // CONFIG_DERIVED_MVD_SIGN
 
   const MV_JOINT_TYPE j = av1_get_mv_joint(&diff);
@@ -928,7 +905,7 @@ void av1_encode_mv(AV1_COMP *cpi, aom_writer *w, MV mv,
 #if CONFIG_DERIVED_MVD_SIGN
                    const MV mv_diff,
 #else
-                     MV ref,
+                   MV ref,
 #endif  // CONFIG_DERIVED_MVD_SIGN
                    nmv_context *mvctx, MvSubpelPrecision pb_mv_precision) {
   const AV1_COMMON *cm = &cpi->common;
@@ -940,9 +917,9 @@ void av1_encode_mv(AV1_COMP *cpi, aom_writer *w, MV mv,
 #if CONFIG_DERIVED_MVD_SIGN
   const MV diff = mv_diff;
 #else
-    if (!is_adaptive_mvd && pb_mv_precision < MV_PRECISION_HALF_PEL)
-      lower_mv_precision(&ref, pb_mv_precision);
-    const MV diff = { mv.row - ref.row, mv.col - ref.col };
+  if (!is_adaptive_mvd && pb_mv_precision < MV_PRECISION_HALF_PEL)
+    lower_mv_precision(&ref, pb_mv_precision);
+  const MV diff = { mv.row - ref.row, mv.col - ref.col };
 #endif  // CONFIG_DERIVED_MVD_SIGN
   assert(is_this_mv_precision_compliant(diff, pb_mv_precision));
 
@@ -1004,13 +981,8 @@ void av1_build_vq_amvd_nmv_cost_table(MvCosts *mv_costs,
   for (int i = 0; i < 2; i++) {
     av1_cost_tokens_from_cdf(amvd_indices_costs[i],
                              ctx->comps[i].amvd_indices_cdf, NULL);
-#if CONFIG_MVD_CDF_REDUCTION
     mv_costs->amvd_index_sign_cost[i][0] = av1_cost_literal(1);
     mv_costs->amvd_index_sign_cost[i][1] = av1_cost_literal(1);
-#else
-      av1_cost_tokens_from_cdf(mv_costs->amvd_index_sign_cost[i],
-                               ctx->comps[i].sign_cdf, NULL);
-#endif  // CONFIG_MVD_CDF_REDUCTION
   }
 
   for (int row_index = 0; row_index <= MAX_AMVD_INDEX; row_index++) {
@@ -1058,9 +1030,9 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
   int joint_shell_class_cost_1[SECOND_SHELL_CLASS];
 #else
 #if CONFIG_MV_RANGE_EXTENSION
-    int joint_shell_class_cost[MAX_NUM_SHELL_CLASS - 1];
+  int joint_shell_class_cost[MAX_NUM_SHELL_CLASS - 1];
 #else
-    int joint_shell_class_cost[MAX_NUM_SHELL_CLASS];
+  int joint_shell_class_cost[MAX_NUM_SHELL_CLASS];
 #endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
@@ -1070,11 +1042,7 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
 
   int shell_offset_low_class_cost[2][2];
 
-#if CONFIG_MVD_CDF_REDUCTION
   int shell_offset_class2_cost[2];
-#else
-    int shell_offset_class2_cost[3][2];
-#endif  // CONFIG_MVD_CDF_REDUCTION
 
   int shell_offset_other_class_cost[NUM_CTX_CLASS_OFFSETS][SHELL_INT_OFFSET_BIT]
                                    [2];
@@ -1095,8 +1063,8 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
   av1_cost_tokens_from_cdf(joint_shell_class_cost_1,
                            ctx->joint_shell_class_cdf_1[precision], NULL);
 #else
-    av1_cost_tokens_from_cdf(joint_shell_class_cost,
-                             ctx->joint_shell_class_cdf[precision], NULL);
+  av1_cost_tokens_from_cdf(joint_shell_class_cost,
+                           ctx->joint_shell_class_cdf[precision], NULL);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
 #if CONFIG_MV_RANGE_EXTENSION
@@ -1110,15 +1078,8 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
     av1_cost_tokens_from_cdf(shell_offset_low_class_cost[i],
                              ctx->shell_offset_low_class_cdf[i], NULL);
   }
-#if CONFIG_MVD_CDF_REDUCTION
   av1_cost_tokens_from_cdf(shell_offset_class2_cost,
                            ctx->shell_offset_class2_cdf, NULL);
-#else
-    for (int i = 0; i < 3; i++) {
-      av1_cost_tokens_from_cdf(shell_offset_class2_cost[i],
-                               ctx->shell_offset_class2_cdf[i], NULL);
-    }
-#endif  // CONFIG_MVD_CDF_REDUCTION
   for (int j = 0; j < NUM_CTX_CLASS_OFFSETS; j++) {
     for (int i = 0; i < SHELL_INT_OFFSET_BIT; i++) {
       av1_cost_tokens_from_cdf(shell_offset_other_class_cost[j][i],
@@ -1140,27 +1101,16 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
 
   if (is_ibc) {
     for (int i = 0; i < 2; i++) {
-#if CONFIG_MVD_CDF_REDUCTION
       dv_costs->dv_sign_cost[precision][i][0] = av1_cost_literal(1);
       dv_costs->dv_sign_cost[precision][i][1] = av1_cost_literal(1);
-#else
-
-        av1_cost_tokens_from_cdf(dv_costs->dv_sign_cost[precision][i],
-                                 ctx->comps[i].sign_cdf, NULL);
-#endif  // CONFIG_MVD_CDF_REDUCTION
     }
   }
 
 #if !CONFIG_DERIVED_MVD_SIGN || CONFIG_VQ_MVD_CODING
   if (!is_ibc) {
     for (int i = 0; i < 2; i++) {
-#if CONFIG_MVD_CDF_REDUCTION
       mv_costs->nmv_sign_cost[i][0] = av1_cost_literal(1);
       mv_costs->nmv_sign_cost[i][1] = av1_cost_literal(1);
-#else
-      av1_cost_tokens_from_cdf(mv_costs->nmv_sign_cost[i],
-                               ctx->comps[i].sign_cdf, NULL);
-#endif  // CONFIG_MVD_CDF_REDUCTION
     }
   }
 #endif  //! CONFIG_DERIVED_MVD_SIGN || CONFIG_VQ_MVD_CODING
@@ -1229,19 +1179,19 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
     }
 #else
 #if CONFIG_MV_RANGE_EXTENSION
-      if (precision == MV_PRECISION_ONE_EIGHTH_PEL) {
-        const int map_shell_class = get_map_shell_class(shell_class);
-        shell_cost[shell_index] += joint_shell_class_cost[map_shell_class];
-        if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
-          const int is_last_class = (shell_class == MAX_NUM_SHELL_CLASS - 1);
-          shell_cost[shell_index] +=
-              joint_shell_last_two_classes_cost[is_last_class];
-        }
-      } else {
-#endif  // CONFIG_MV_RANGE_EXTENSION
-        shell_cost[shell_index] += joint_shell_class_cost[shell_class];
-#if CONFIG_MV_RANGE_EXTENSION
+    if (precision == MV_PRECISION_ONE_EIGHTH_PEL) {
+      const int map_shell_class = get_map_shell_class(shell_class);
+      shell_cost[shell_index] += joint_shell_class_cost[map_shell_class];
+      if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
+        const int is_last_class = (shell_class == MAX_NUM_SHELL_CLASS - 1);
+        shell_cost[shell_index] +=
+            joint_shell_last_two_classes_cost[is_last_class];
       }
+    } else {
+#endif  // CONFIG_MV_RANGE_EXTENSION
+      shell_cost[shell_index] += joint_shell_class_cost[shell_class];
+#if CONFIG_MV_RANGE_EXTENSION
+    }
 #endif  // CONFIG_MV_RANGE_EXTENSION
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
     assert(shell_class >= 0 && shell_class < num_mv_class);
@@ -1256,16 +1206,9 @@ void av1_build_vq_nmv_cost_table(MvCosts *mv_costs, const nmv_context *ctx,
       int max_idx_bits = 3;
       int coded_value = shell_cls_offset;
       for (int bit_idx = 0; bit_idx < max_idx_bits; ++bit_idx) {
-#if !CONFIG_MVD_CDF_REDUCTION
-        int context_index = bit_idx;
-#endif  //! CONFIG_MVD_CDF_REDUCTION
         shell_cost[shell_index] +=
-#if CONFIG_MVD_CDF_REDUCTION
             bit_idx ? av1_cost_literal(1)
                     : shell_offset_class2_cost[coded_value != bit_idx];
-#else
-              shell_offset_class2_cost[context_index][coded_value != bit_idx];
-#endif  // CONFIG_MVD_CDF_REDUCTION
 
         if (coded_value == bit_idx) break;
       }

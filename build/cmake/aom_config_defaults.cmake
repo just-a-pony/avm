@@ -254,8 +254,6 @@ set_aom_config_var(CONFIG_REDUCE_CCTX_CTX 1 "Reduce CCTX contexts")
 set_aom_config_var(CONFIG_WRL_PRUNE_FOUR_PARAMETERS 1
                    "Enable WRL only prune four non-translational parameters")
 
-set_aom_config_var(CONFIG_MVD_CDF_REDUCTION 1
-                   "Enable reduction of the CDFs for MVD related sybmols")
 set_aom_config_var(CONFIG_LOCAL_INTRABC_ALIGN_RNG 1
                    "CWG F177 align inter/intra local intraBC search range")
 set_aom_config_var(CONFIG_GLOBAL_INTRABC_DELAY_OPT 1

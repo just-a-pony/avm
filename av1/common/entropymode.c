@@ -7285,11 +7285,6 @@ static void cumulative_avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr,
                            2);
 #endif  //! CONFIG_VQ_MVD_CODING
 
-#if !CONFIG_MVD_CDF_REDUCTION
-    CUMULATIVE_AVERAGE_CDF(nmv_left->comps[i].sign_cdf,
-                           nmv_tr->comps[i].sign_cdf, 2);
-#endif  //! CONFIG_MVD_CDF_REDUCTION
-
 #if !CONFIG_VQ_MVD_CODING
     CUMULATIVE_AVERAGE_CDF(nmv_left->comps[i].class0_hp_cdf,
                            nmv_tr->comps[i].class0_hp_cdf, 2);
@@ -7797,10 +7792,6 @@ static void shift_nmv(nmv_context *nmv_ptr, int total_tiles_log2) {
     SHIFT_CDF(nmv_ptr->comps[i].fp_cdf, 2);
 #endif  //! CONFIG_VQ_MVD_CODING
 
-#if !CONFIG_MVD_CDF_REDUCTION
-    SHIFT_CDF(nmv_ptr->comps[i].sign_cdf, 2);
-#endif  //! CONFIG_MVD_CDF_REDUCTION
-
 #if !CONFIG_VQ_MVD_CODING
     SHIFT_CDF(nmv_ptr->comps[i].class0_hp_cdf, 2);
     SHIFT_CDF(nmv_ptr->comps[i].hp_cdf, 2);
@@ -8182,9 +8173,6 @@ static void avg_nmv(nmv_context *nmv_left, nmv_context *nmv_tr, int wt_left,
     AVERAGE_CDF(nmv_left->comps[i].fp_cdf, nmv_tr->comps[i].fp_cdf, 2);
 #endif  //! CONFIG_VQ_MVD_CODING
 
-#if !CONFIG_MVD_CDF_REDUCTION
-    AVERAGE_CDF(nmv_left->comps[i].sign_cdf, nmv_tr->comps[i].sign_cdf, 2);
-#endif  //! CONFIG_MVD_CDF_REDUCTION
 #if !CONFIG_VQ_MVD_CODING
     AVERAGE_CDF(nmv_left->comps[i].class0_hp_cdf,
                 nmv_tr->comps[i].class0_hp_cdf, 2);
