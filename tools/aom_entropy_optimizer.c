@@ -1734,7 +1734,6 @@ int main(int argc, const char **argv) {
       "[CDF_SIZE(NUM_BASE_LEVELS + 1)]",
       1, &total_count, 24, mem_wanted, "Coefficients");
 
-#if CONFIG_CONTEXT_DERIVATION
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
   cts_each_dim[1] = V_TXB_SKIP_CONTEXTS;
   cts_each_dim[2] = 2;
@@ -1743,8 +1742,6 @@ int main(int argc, const char **argv) {
                      "av1_default_v_txb_skip_cdfs[TOKEN_CDF_Q_CTXS]"
                      "[V_TXB_SKIP_CONTEXTS][CDF_SIZE(2)]",
                      1, &total_count, 0, mem_wanted, "Coefficients");
-
-#endif  // CONFIG_CONTEXT_DERIVATION
 
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
 #if CONFIG_EOB_PT_CTX_REDUCTION
@@ -2011,7 +2008,6 @@ int main(int argc, const char **argv) {
       "[CDF_SIZE(NUM_BASE_LEVELS + 1)]",
       1, &total_count, 0, mem_wanted, "Coefficients");
 
-#if CONFIG_CONTEXT_DERIVATION
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
   cts_each_dim[1] = PLANE_TYPES;
   cts_each_dim[2] = DC_SIGN_GROUPS;
@@ -2035,7 +2031,6 @@ int main(int argc, const char **argv) {
       "[CDF_SIZE(2)]",
       1, &total_count, 0, mem_wanted, "Coefficients");
 #endif  // !CONFIG_BY_PASS_V_SIGN
-#endif  // CONFIG_CONTEXT_DERIVATION
   if (mem_wanted) {
     printf("Total RAM in bits %d \n", total_count);
   } else {

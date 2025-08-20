@@ -174,11 +174,8 @@ typedef struct macroblock_plane {
 typedef struct LV_MAP_COEFF_COST {
   //! Cost to skip txfm for the current txfm block.
   int txb_skip_cost[2][TXB_SKIP_CONTEXTS][2];
-#if CONFIG_CONTEXT_DERIVATION
   //! Cost to skip txfm for the current AOM_PLANE_V txfm block.
   int v_txb_skip_cost[V_TXB_SKIP_CONTEXTS][2];
-#endif  // CONFIG_CONTEXT_DERIVATION
-
   //! Cost for encoding the base_eob level of a low-frequency chroma coefficient
   int base_lf_eob_cost_uv[SIG_COEF_CONTEXTS_EOB][LF_BASE_SYMBOLS - 1];
   //! Cost for encoding the base level of a low-frequency chroma coefficient
@@ -265,10 +262,8 @@ typedef struct LV_MAP_COEFF_COST {
   int eob_extra_cost[EOB_COEF_CONTEXTS][2];
   //! Cost for encoding the dc_sign
   int dc_sign_cost[DC_SIGN_GROUPS][DC_SIGN_CONTEXTS][2];
-#if CONFIG_CONTEXT_DERIVATION
   //! Cost for encoding the AOM_PLANE_V txfm coefficient dc_sign
   int v_dc_sign_cost[CROSS_COMPONENT_CONTEXTS][DC_SIGN_CONTEXTS][2];
-#endif  // CONFIG_CONTEXT_DERIVATION
   //! Cost for encoding an increment to the coefficient
   int lps_cost[LEVEL_CONTEXTS][COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1];
   //! Cost for encoding the base level of a coefficient for IDTX blocks

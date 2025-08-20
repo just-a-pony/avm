@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2021, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 3-Clause Clear License
@@ -2327,7 +2327,6 @@ static INLINE void predict_dc_only_block(
                     && cm->seq_params.enable_fsc_residual
 #endif  // CONFIG_FSC_RES_HLS
     );
-#if CONFIG_CONTEXT_DERIVATION
     int zero_blk_rate = 0;
     if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U) {
       const int is_inter = is_inter_block(mbmi, xd->tree_type);
@@ -2340,10 +2339,6 @@ static INLINE void predict_dc_only_block(
       zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][plane_type]
                           .v_txb_skip_cost[txb_ctx_tmp.txb_skip_ctx][1];
     }
-#else
-    const int zero_blk_rate = x->coeff_costs.coeff_costs[txs_ctx][plane_type]
-                                  .txb_skip_cost[txb_ctx_tmp.txb_skip_ctx][1];
-#endif  // CONFIG_CONTEXT_DERIVATION
     best_rd_stats->rate = zero_blk_rate;
 
     best_rd_stats->rdcost =

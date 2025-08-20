@@ -31,11 +31,9 @@ extern "C" {
 // Number of contexts for intra_dip_cdf.
 #define DIP_CTXS 3
 
-#if CONFIG_CONTEXT_DERIVATION
 #define CROSS_COMPONENT_CONTEXTS 3
 #define V_TXB_SKIP_CONTEXTS 12
 #define V_TXB_SKIP_CONTEXT_OFFSET 6
-#endif  // CONFIG_CONTEXT_DERIVATION
 
 #define TXB_SKIP_CONTEXTS 20
 

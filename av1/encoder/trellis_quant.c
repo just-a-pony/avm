@@ -114,12 +114,7 @@ static AOM_FORCE_INLINE int64_t get_coeff_dist(tran_low_t tcoeff,
 static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
                                      int coeff_ctx, int dc_sign_ctx,
                                      const LV_MAP_COEFF_COST *txb_costs,
-                                     int bwl, TX_CLASS tx_class
-#if CONFIG_CONTEXT_DERIVATION
-                                     ,
-                                     int32_t t_sign
-#endif  // CONFIG_CONTEXT_DERIVATION
-                                     ,
+                                     int bwl, TX_CLASS tx_class, int32_t t_sign,
                                      int plane) {
   int cost = 0;
   const int row = ci >> bwl;
@@ -493,10 +488,7 @@ static int get_coeff_cost(int ci, tran_low_t abs_qc, int sign, int coeff_ctx,
                           TX_CLASS tx_class, const int32_t *tmp_sign, int plane,
                           int limits, int q_i) {
   return get_coeff_cost_general(ci, abs_qc, sign, coeff_ctx, mid_ctx,
-                                dc_sign_ctx, txb_costs, bwl, tx_class,
-#if CONFIG_CONTEXT_DERIVATION
-                                tmp_sign,
-#endif  // CONFIG_CONTEXT_DERIVATION
+                                dc_sign_ctx, txb_costs, bwl, tx_class, tmp_sign,
                                 plane, limits, q_i);
 }
 
@@ -617,23 +609,13 @@ void trellis_first_pos(const tcq_param_t *p, int scan_pos,
   int t_sign = tmp_sign[blk_pos];
   int rate_Q0_a =
       get_coeff_cost_eob(blk_pos, pqData.absLevel[0], (qcoeff[blk_pos] < 0),
-                         coeff_ctx, dc_sign_ctx, txb_costs, bwl, tx_class
-#if CONFIG_CONTEXT_DERIVATION
-                         ,
-                         t_sign
-#endif  // CONFIG_CONTEXT_DERIVATION
-                         ,
-                         plane) +
+                         coeff_ctx, dc_sign_ctx, txb_costs, bwl, tx_class,
+                         t_sign, plane) +
       eob_rate;
   int rate_Q0_b =
       get_coeff_cost_eob(blk_pos, pqData.absLevel[2], (qcoeff[blk_pos] < 0),
-                         coeff_ctx, dc_sign_ctx, txb_costs, bwl, tx_class
-#if CONFIG_CONTEXT_DERIVATION
-                         ,
-                         t_sign
-#endif  // CONFIG_CONTEXT_DERIVATION
-                         ,
-                         plane) +
+                         coeff_ctx, dc_sign_ctx, txb_costs, bwl, tx_class,
+                         t_sign, plane) +
       eob_rate;
   const int state0 = 0;
   const int state1 = 4;
@@ -1426,7 +1408,6 @@ int av1_trellis_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                            first_scan_pos, log_scale, qcoeff, dqcoeff,
                            &min_rate, &min_path_cost);
 
-#if CONFIG_CONTEXT_DERIVATION
   int txb_skip_ctx = txb_ctx->txb_skip_ctx;
   int non_skip_cost = 0;
   int skip_cost = 0;
@@ -1441,10 +1422,6 @@ int av1_trellis_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
     non_skip_cost = txb_costs->txb_skip_cost[pred_mode_ctx][txb_skip_ctx][0];
     skip_cost = txb_costs->txb_skip_cost[pred_mode_ctx][txb_skip_ctx][1];
   }
-#else
-  const int non_skip_cost = txb_costs->txb_skip_cost[txb_ctx->txb_skip_ctx][0];
-  const int skip_cost = txb_costs->txb_skip_cost[txb_ctx->txb_skip_ctx][1];
-#endif  // CONFIG_CONTEXT_DERIVATION
 
   int accu_rate = 0;
   set_bob(x, plane, block, tx_size, tx_type);

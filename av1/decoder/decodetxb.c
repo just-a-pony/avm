@@ -479,11 +479,9 @@ static INLINE void decode_eob(DecoderCodingBlock *dcb, aom_reader *const r,
   }
   *eob = rec_eob_pos(eob_pt, eob_extra);
   *bob = *eob;  // escape character
-#if CONFIG_CONTEXT_DERIVATION
   if (plane == AOM_PLANE_U) {
     xd->eob_u = *eob;
   }
-#endif  // CONFIG_CONTEXT_DERIVATION
 }
 
 uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
@@ -510,7 +508,6 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   }
 #endif  // CCTX_C2_DROPPED
 
-#if CONFIG_CONTEXT_DERIVATION
   if (plane == AOM_PLANE_U) {
     xd->eob_u = 0;
   }
@@ -528,11 +525,6 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     all_zero = aom_read_symbol(r, ec_ctx->v_txb_skip_cdf[txb_skip_ctx], 2,
                                ACCT_INFO("all_zero", "plane_v"));
   }
-#else
-  const int all_zero =
-      aom_read_symbol(r, ec_ctx->txb_skip_cdf[txs_ctx][txb_ctx->txb_skip_ctx],
-                      2, ACCT_INFO("all_zero"));
-#endif  // CONFIG_CONTEXT_DERIVATION
 
 #if CONFIG_INSPECTION
   MB_MODE_INFO *const mbmi = xd->mi[0];
@@ -543,11 +535,9 @@ uint8_t av1_read_sig_txtype(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
   }
 #endif  // CONFIG_INSPECTION
 
-#if CONFIG_CONTEXT_DERIVATION
   if (plane == AOM_PLANE_U) {
     xd->eob_u_flag = all_zero ? 0 : 1;
   }
-#endif  // CONFIG_CONTEXT_DERIVATION
 
 #if !CONFIG_INSPECTION
   MB_MODE_INFO *mbmi = xd->mi[0];
@@ -1007,11 +997,9 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     uint8_t sign;
     tran_low_t level = levels[get_padded_idx(pos, bwl)];
     const int tmp_sign_idx = pos;
-#if CONFIG_CONTEXT_DERIVATION
     if (plane == AOM_PLANE_U) {
       xd->tmp_sign[pos] = 0;
     }
-#endif  // CONFIG_CONTEXT_DERIVATION
     if (level) {
       *max_scan_line = AOMMAX(*max_scan_line, pos);
       const int row = pos >> bwl;
@@ -1021,7 +1009,6 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       const bool dc_ver = (row == 0) && tx_class == TX_CLASS_VERT;
       if (dc_2dtx || dc_hor || dc_ver) {
         const int dc_sign_ctx = dc_2dtx ? txb_ctx->dc_sign_ctx : 0;
-#if CONFIG_CONTEXT_DERIVATION
         if (plane == AOM_PLANE_Y || plane == AOM_PLANE_U) {
 #if CONFIG_CTX_BYPASS_CB_DC_SIGN
           if (plane == AOM_PLANE_Y) {
@@ -1052,10 +1039,6 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
 #endif  // CONFIG_BY_PASS_V_SIGN
         }
         if (plane == AOM_PLANE_U) xd->tmp_sign[tmp_sign_idx] = (sign ? 2 : 1);
-#else
-        sign = aom_read_symbol(r, ec_ctx->dc_sign_cdf[plane_type][dc_sign_ctx],
-                               2, ACCT_INFO("sign", "dc_sign_cdf"));
-#endif  // CONFIG_CONTEXT_DERIVATION
       } else {
         sign = aom_read_bit(r, ACCT_INFO("sign"));
       }

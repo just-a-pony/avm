@@ -945,7 +945,6 @@ static INLINE void get_txb_ctx(const BLOCK_SIZE plane_bsize,
     }
   } else {
     const int ctx_base = get_entropy_context(tx_size, a, l);
-#if CONFIG_CONTEXT_DERIVATION
     int ctx_offset = 0;
     if (plane == AOM_PLANE_U) {
       ctx_offset = 7;
@@ -956,9 +955,6 @@ static INLINE void get_txb_ctx(const BLOCK_SIZE plane_bsize,
                        : 0;
     }
     txb_ctx->txb_skip_ctx = ctx_base + ctx_offset;
-#else
-    const int ctx_offset = 7;
-#endif  // CONFIG_CONTEXT_DERIVATION
   }
 #undef MAX_TX_SIZE_UNIT
 }

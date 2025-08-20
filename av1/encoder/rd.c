@@ -968,11 +968,9 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
                                  fc->txb_skip_cdf[1][tx_size][ctx], NULL);
       }
 
-#if CONFIG_CONTEXT_DERIVATION
       for (int ctx = 0; ctx < V_TXB_SKIP_CONTEXTS; ++ctx)
         av1_cost_tokens_from_cdf(pcost->v_txb_skip_cost[ctx],
                                  fc->v_txb_skip_cdf[ctx], NULL);
-#endif  // CONFIG_CONTEXT_DERIVATION
       for (int ctx = 0; ctx < SIG_COEF_CONTEXTS_EOB; ++ctx)
         av1_cost_tokens_from_cdf(pcost->base_lf_eob_cost_uv[ctx],
                                  fc->coeff_base_lf_eob_uv_cdf[ctx], NULL);
@@ -1148,7 +1146,6 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
 #endif  // CONFIG_CTX_BYPASS_CB_DC_SIGN
         }
       }
-#if CONFIG_CONTEXT_DERIVATION
       if (plane == PLANE_TYPE_UV) {
         for (int i = 0; i < CROSS_COMPONENT_CONTEXTS; ++i)
           for (int ctx = 0; ctx < DC_SIGN_CONTEXTS; ++ctx)
@@ -1162,7 +1159,6 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
                                      fc->v_dc_sign_cdf[i][ctx], NULL);
 #endif  // CONFIG_BY_PASS_V_SIGN
       }
-#endif  // CONFIG_CONTEXT_DERIVATION
 
 #if !CONFIG_COEFF_BR_LF_UV_BYPASS
       for (int ctx = 0; ctx < LF_LEVEL_CONTEXTS_UV; ++ctx) {

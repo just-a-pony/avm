@@ -336,12 +336,8 @@ int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
 
   if (eob == 0 || !cpi->optimize_seg_arr[segment_id] ||
       xd->lossless[segment_id]) {
-    *rate_cost = av1_cost_skip_txb(&x->coeff_costs, txb_ctx, plane, tx_size
-#if CONFIG_CONTEXT_DERIVATION
-                                   ,
-                                   x, block
-#endif  // CONFIG_CONTEXT_DERIVATION
-    );
+    *rate_cost =
+        av1_cost_skip_txb(&x->coeff_costs, txb_ctx, plane, tx_size, x, block);
     *rate_cost += get_cctx_type_cost(&cpi->common, x, xd, plane, tx_size, block,
                                      cctx_type);
     return eob;
@@ -749,7 +745,6 @@ void av1_quant(MACROBLOCK *x, int plane, int block, TxfmParam *txfm_param,
 
   set_bob(x, plane, block, txfm_param->tx_size, txfm_param->tx_type);
 
-#if CONFIG_CONTEXT_DERIVATION
   MACROBLOCKD *const xd = &x->e_mbd;
   const int16_t *const scan = scan_order->scan;
   if (plane == AOM_PLANE_V) {
@@ -764,7 +759,6 @@ void av1_quant(MACROBLOCK *x, int plane, int block, TxfmParam *txfm_param,
       if (abs(qcoeff_u[pos])) xd->tmp_sign[pos] = (sign ? 2 : 1);
     }
   }
-#endif  // CONFIG_CONTEXT_DERIVATION
 
   // use_optimize_b is true means av1_optimze_b will be called,
   // thus cannot update entropy ctx now (performed in optimize_b)
