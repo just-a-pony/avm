@@ -597,13 +597,13 @@ void gdf_filter_frame(AV1_COMMON *cm) {
   const int num_tile_rows = 1;
   const int num_tile_cols = 1;
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-  TileInfo tile_info;
   AV1PixelRect tile_rect = av1_whole_frame_rect(cm, 0);
   int blk_idx = 0;
   int tile_blk_stripe0 = 0;
   for (int tile_row = 0; tile_row < num_tile_rows; ++tile_row) {
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     if (cm->seq_params.disable_loopfilters_across_tiles) {
+      TileInfo tile_info;
       av1_tile_init(&tile_info, cm, tile_row, 0);
       tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
     }
@@ -618,6 +618,7 @@ void gdf_filter_frame(AV1_COMMON *cm) {
       for (int tile_col = 0; tile_col < num_tile_cols; ++tile_col) {
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
         if (cm->seq_params.disable_loopfilters_across_tiles) {
+          TileInfo tile_info;
           av1_tile_init(&tile_info, cm, tile_row, tile_col);
           tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
         }
