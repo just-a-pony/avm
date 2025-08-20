@@ -8603,6 +8603,12 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->cur_frame->v_ac_delta_q = cm->quant_params.v_ac_delta_q;
     }
     features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
+#if CONFIG_LF_SUB_PU
+    if (cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu &&
+        cm->lf.tip_filter_level) {
+      read_tile_info(pbi, rb);
+    }
+#endif  // CONFIG_LF_SUB_PU
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
     features->disable_cdf_update = 1;
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
