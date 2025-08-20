@@ -1772,21 +1772,13 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     mbmi->refinemv_flag = 0;
     mbmi->bawp_flag[0] = 0;
     mbmi->bawp_flag[1] = 0;
-#if !CONFIG_C076_INTER_MOD_CTX
-    int16_t inter_mode_ctx[MODE_CTX_REF_FRAMES];
-#endif  // !CONFIG_C076_INTER_MOD_CTX
 
     // TODO(kslu): Rework av1_find_mv_refs to avoid having this big array
     // ref_mvs
     int_mv ref_mvs[INTRA_FRAME + 1][MAX_MV_REF_CANDIDATES];
 
     av1_find_mv_refs(cm, xd, mbmi, INTRA_FRAME, dcb->ref_mv_count,
-                     xd->ref_mv_stack, xd->weight, ref_mvs, /*global_mvs=*/NULL
-#if !CONFIG_C076_INTER_MOD_CTX
-                     ,
-                     inter_mode_ctx
-#endif  // !CONFIG_C076_INTER_MOD_CTX
-                     ,
+                     xd->ref_mv_stack, xd->weight, ref_mvs, /*global_mvs=*/NULL,
                      NULL, 0, NULL);
 
     mbmi->intrabc_mode =
@@ -3502,9 +3494,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   av1_initialize_warp_wrl_list(xd->warp_param_stack,
                                xd->valid_num_warp_candidates);
 
-#if CONFIG_C076_INTER_MOD_CTX
   av1_find_mode_ctx(cm, xd, inter_mode_ctx, ref_frame);
-#endif  // CONFIG_C076_INTER_MOD_CTX
 
   mbmi->ref_mv_idx[0] = 0;
   mbmi->ref_mv_idx[1] = 0;
@@ -3535,12 +3525,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
                  ec_ctx, mbmi, r);
 
     av1_find_mv_refs(cm, xd, mbmi, ref_frame, dcb->ref_mv_count,
-                     xd->ref_mv_stack, xd->weight, ref_mvs, /*global_mvs=*/NULL
-#if !CONFIG_C076_INTER_MOD_CTX
-                     ,
-                     inter_mode_ctx
-#endif  // !CONFIG_C076_INTER_MOD_CTX
-                     ,
+                     xd->ref_mv_stack, xd->weight, ref_mvs, /*global_mvs=*/NULL,
                      NULL, 0, NULL);
 
 #if !CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL
@@ -3582,13 +3567,7 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       }
       av1_find_mv_refs(
           cm, xd, mbmi, ref_frame, dcb->ref_mv_count, xd->ref_mv_stack,
-          xd->weight, ref_mvs, /*global_mvs=*/NULL
-#if !CONFIG_C076_INTER_MOD_CTX
-          ,
-          inter_mode_ctx
-#endif  // !CONFIG_C076_INTER_MOD_CTX
-          ,
-          xd->warp_param_stack,
+          xd->weight, ref_mvs, /*global_mvs=*/NULL, xd->warp_param_stack,
           ref_frame < SINGLE_REF_FRAMES ? MAX_WARP_REF_CANDIDATES : 0,
           xd->valid_num_warp_candidates);
 

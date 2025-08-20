@@ -301,8 +301,6 @@ set_aom_config_var(CONFIG_MHCCP_BUFFER_1LINES 1
 
 set_aom_config_var(MHCCP_RUNTIME_FLAG 1 "Using runtime flag to control MHCCP")
 set_aom_config_var(CONFIG_CWG_F307_CFL_SEQ_FLAG 1 "Sequence level flag for CfL")
-set_aom_config_var(CONFIG_C076_INTER_MOD_CTX 1
-                   "AV2 experiment flag to simplify inter mode contexts")
 
 set_aom_config_var(CONFIG_BRU 1 "enable BRU update")
 set_aom_config_var(CONFIG_BRU_TILE_FLAG 1

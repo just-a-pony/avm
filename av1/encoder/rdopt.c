@@ -854,19 +854,11 @@ static AOM_INLINE void setup_buffer_ref_mvs_inter(
   // Gets an initial list of candidate vectors from neighbours and orders them
   av1_find_mv_refs(
       cm, xd, mbmi, ref_frame, mbmi_ext->ref_mv_count, xd->ref_mv_stack,
-      xd->weight, NULL, mbmi_ext->global_mvs
-#if !CONFIG_C076_INTER_MOD_CTX
-      ,
-      mbmi_ext->mode_context
-#endif  // !CONFIG_C076_INTER_MOD_CTX
-      ,
-      xd->warp_param_stack,
+      xd->weight, NULL, mbmi_ext->global_mvs, xd->warp_param_stack,
       ref_frame < INTER_REFS_PER_FRAME ? MAX_WARP_REF_CANDIDATES : 0,
       xd->valid_num_warp_candidates);
 
-#if CONFIG_C076_INTER_MOD_CTX
   av1_find_mode_ctx(cm, xd, mbmi_ext->mode_context, ref_frame);
-#endif  // CONFIG_C076_INTER_MOD_CTX
 
   // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
   // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
@@ -6063,12 +6055,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
   MV_REFERENCE_FRAME ref_frame = INTRA_FRAME;
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 1;
   av1_find_mv_refs(cm, xd, mbmi, ref_frame, mbmi_ext->ref_mv_count,
-                   xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs
-#if !CONFIG_C076_INTER_MOD_CTX
-                   ,
-                   mbmi_ext->mode_context
-#endif  // CONFIG_C076_INTER_MOD_CTX
-                   ,
+                   xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs,
                    NULL, 0, NULL);
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
   // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
@@ -6838,15 +6825,9 @@ static AOM_INLINE void rd_pick_skip_mode(
   const uint8_t ref_frame_type = av1_ref_frame_type(mbmi->ref_frame);
 
   av1_find_mv_refs(cm, xd, mbmi, ref_frame_type, mbmi_ext->ref_mv_count,
-                   xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs
-#if !CONFIG_C076_INTER_MOD_CTX
-                   ,
-                   mbmi_ext->mode_context
-#endif  // !CONFIG_C076_INTER_MOD_CTX
-                   ,
-                   NULL, 0, NULL
+                   xd->ref_mv_stack, xd->weight, NULL, mbmi_ext->global_mvs,
+                   NULL, 0, NULL);
 
-  );
   // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
 
   // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.
@@ -7482,19 +7463,11 @@ static AOM_INLINE void set_params_rd_pick_inter_mode(
       if (prune_ref_frame(cpi, x, ref_frame)) continue;
       av1_find_mv_refs(
           cm, xd, mbmi, ref_frame, mbmi_ext->ref_mv_count, xd->ref_mv_stack,
-          xd->weight, NULL, mbmi_ext->global_mvs
-#if !CONFIG_C076_INTER_MOD_CTX
-          ,
-          mbmi_ext->mode_context
-#endif  // !CONFIG_C076_INTER_MOD_CTX
-          ,
-          xd->warp_param_stack,
+          xd->weight, NULL, mbmi_ext->global_mvs, xd->warp_param_stack,
           ref_frame < INTER_REFS_PER_FRAME ? MAX_WARP_REF_CANDIDATES : 0,
           xd->valid_num_warp_candidates);
 
-#if CONFIG_C076_INTER_MOD_CTX
       av1_find_mode_ctx(cm, xd, mbmi_ext->mode_context, ref_frame);
-#endif  // CONFIG_C076_INTER_MOD_CTX
 
       // TODO(Ravi): Populate mbmi_ext->ref_mv_stack[ref_frame][4] and
       // mbmi_ext->weight[ref_frame][4] inside av1_find_mv_refs.

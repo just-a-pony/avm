@@ -224,9 +224,7 @@ void bru_set_default_inter_mb_mode_info(const AV1_COMMON *const cm,
   mbmi->bawp_flag[1] = 0;
   mbmi->cwp_idx = CWP_EQUAL;
   mbmi->use_intrabc[xd->tree_type == CHROMA_PART] = 0;
-#if CONFIG_C076_INTER_MOD_CTX
   mbmi->refinemv_flag = 0;
-#endif  // CONFIG_C076_INTER_MOD_CTX
   mbmi->ref_mv_idx[0] = 0;
   mbmi->ref_mv_idx[1] = 0;
   mbmi->warp_ref_idx = 0;

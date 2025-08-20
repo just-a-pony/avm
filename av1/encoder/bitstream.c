@@ -2039,17 +2039,7 @@ static INLINE int16_t mode_context_analyzer(
   return mode_context;
 #else
   if (!is_inter_ref_frame(rf[1])) return mode_context;
-
-#if CONFIG_C076_INTER_MOD_CTX
   return mode_context & NEWMV_CTX_MASK;
-#else
-  const int16_t newmv_ctx = mode_context & NEWMV_CTX_MASK;
-  const int16_t refmv_ctx = (mode_context >> REFMV_OFFSET) & REFMV_CTX_MASK;
-
-  const int16_t comp_ctx = compound_mode_ctx_map[refmv_ctx >> 1][AOMMIN(
-      newmv_ctx, COMP_NEWMV_CTXS - 1)];
-  return comp_ctx;
-#endif  // CONFIG_C076_INTER_MOD_CTX
 #endif  // CONFIG_OPT_INTER_MODE_CTX
 }
 
