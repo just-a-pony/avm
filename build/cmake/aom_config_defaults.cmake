@@ -203,10 +203,6 @@ set_aom_config_var(CONFIG_ACROSS_SCALE_REF_OPT 1 NUMBER
 set_aom_config_var(CONFIG_ACROSS_SCALE_WARP 1 NUMBER
                    "AV2 experiment flag to enable across scale warp modes.")
 
-# CWG-E210
-set_aom_config_var(CONFIG_RECT_CTX 1
-                   "AV2 enable Context Reduction for Rectangle Partition Type")
-
 # Source of throughput analysis : CWG-B065
 set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
                    "AV2 experiment flag to measure throughput.")

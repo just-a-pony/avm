@@ -3192,8 +3192,7 @@ static INLINE int partition_plane_context_helper(int raw_context,
     14,  // BLOCK_16X64,
     15,  // BLOCK_64X16,
   };
-#else  // CONFIG_NEW_PART_CTX
-#if CONFIG_RECT_CTX
+#else                 // CONFIG_NEW_PART_CTX
   const int bsize_rect_map[BLOCK_SIZES] = {
     0,   // BLOCK_4X4,
     0,   // BLOCK_4X8,
@@ -3221,7 +3220,6 @@ static INLINE int partition_plane_context_helper(int raw_context,
     15,  // BLOCK_16X64,
     16,  // BLOCK_64X16,
   };
-#endif                // CONFIG_RECT_CTX
   const int bsize_map[BLOCK_SIZES] = {
     0,   // BLOCK_4X4,
     0,   // BLOCK_4X8,
@@ -3252,10 +3250,8 @@ static INLINE int partition_plane_context_helper(int raw_context,
 #endif                // CONFIG_NEW_PART_CTX
   if (ctx_mode == 1)  // all part ctx except rect mode
     ctx = raw_context + bsize_map[bsize] * PARTITION_PLOFFSET;
-#if CONFIG_RECT_CTX
   if (ctx_mode == 0)  // part ctx only for rect mode
     ctx = raw_context + bsize_rect_map[bsize] * PARTITION_PLOFFSET;
-#endif  // CONFIG_RECT_CTX
   assert(ctx >= 0);
   assert(ctx < PARTITION_CONTEXTS);
   return ctx;
