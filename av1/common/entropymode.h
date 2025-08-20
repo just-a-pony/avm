@@ -223,13 +223,8 @@ typedef struct frame_contexts {
 #if !CONFIG_COEFF_BR_PH_BYPASS
   aom_cdf_prob coeff_br_ph_cdf[COEFF_BR_PH_CONTEXTS][CDF_SIZE(BR_CDF_SIZE)];
 #endif  // !CONFIG_COEFF_BR_PH_BYPASS
-#if CONFIG_OPT_INTER_MODE_CTX
   aom_cdf_prob inter_single_mode_cdf[INTER_MODE_CONTEXTS]
                                     [CDF_SIZE(INTER_SINGLE_MODES)];
-#else
-  aom_cdf_prob inter_single_mode_cdf[INTER_SINGLE_MODE_CONTEXTS]
-                                    [CDF_SIZE(INTER_SINGLE_MODES)];
-#endif  // CONFIG_OPT_INTER_MODE_CTX
   aom_cdf_prob inter_warp_mode_cdf[WARPMV_MODE_CONTEXT][CDF_SIZE(2)];
   aom_cdf_prob is_warpmv_or_warp_newmv_cdf[CDF_SIZE(2)];
   aom_cdf_prob drl_cdf[3][DRL_MODE_CONTEXTS][CDF_SIZE(2)];
@@ -238,7 +233,6 @@ typedef struct frame_contexts {
   aom_cdf_prob refinemv_flag_cdf[NUM_REFINEMV_CTX]
                                 [CDF_SIZE(REFINEMV_NUM_MODES)];
 
-#if CONFIG_OPT_INTER_MODE_CTX
   aom_cdf_prob use_optflow_cdf[OPFL_MODE_CONTEXTS][CDF_SIZE(2)];
 
   // The inter_compound_mode_is_joint_cdf is for coding whether the mode is
@@ -253,11 +247,7 @@ typedef struct frame_contexts {
 
   aom_cdf_prob inter_compound_mode_same_refs_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
       INTER_COMPOUND_SAME_REFS_TYPES)];
-#else
-  aom_cdf_prob use_optflow_cdf[INTER_COMPOUND_MODE_CONTEXTS][CDF_SIZE(2)];
-  aom_cdf_prob inter_compound_mode_cdf[INTER_COMPOUND_MODE_CONTEXTS]
-                                      [CDF_SIZE(INTER_COMPOUND_REF_TYPES)];
-#endif  // CONFIG_OPT_INTER_MODE_CTX
+
   aom_cdf_prob amvd_mode_cdf[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob cwp_idx_cdf[MAX_CWP_CONTEXTS][MAX_CWP_NUM - 1][CDF_SIZE(2)];
   aom_cdf_prob jmvd_scale_mode_cdf[CDF_SIZE(JOINT_NEWMV_SCALE_FACTOR_CNT)];
@@ -746,35 +736,11 @@ void av1_setup_frame_contexts(struct AV1Common *cm);
 void av1_setup_past_independence(struct AV1Common *cm);
 
 static INLINE int16_t inter_single_mode_ctx(int16_t mode_ctx) {
-#if CONFIG_OPT_INTER_MODE_CTX
   return mode_ctx;
-#else
-  // refmv_ctx values 2 and 4 are mapped to binary 1 while the rest map to 0.
-  // This is intended to capture the case of ref_match_count >= 2 in
-  // setup_ref_mv_list() function in mvref_common.c as a limited binary
-  // context in addition to newmv_ctx and zeromv_ctx.
-  // TODO(debargha, elliottk): Measure how much the limited refmv_ctx
-  // actually helps
-  static const int refmv_ctx_to_isrefmv_ctx[REFMV_MODE_CONTEXTS] = { 0, 0, 1,
-                                                                     0, 1, 0 };
-  const int16_t newmv_ctx = mode_ctx & NEWMV_CTX_MASK;
-  assert(newmv_ctx < NEWMV_MODE_CONTEXTS);
-  const int16_t refmv_ctx = (mode_ctx >> REFMV_OFFSET) & REFMV_CTX_MASK;
-  const int16_t isrefmv_ctx = refmv_ctx_to_isrefmv_ctx[refmv_ctx];
-  const int16_t ctx = ISREFMV_MODE_CONTEXTS * newmv_ctx + isrefmv_ctx;
-  assert(ctx < INTER_SINGLE_MODE_CONTEXTS);
-  return ctx;
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 }
 
 // Note mode_ctx is the same context used to decode mode information
-static INLINE int16_t av1_drl_ctx(int16_t mode_ctx) {
-#if CONFIG_OPT_INTER_MODE_CTX
-  return mode_ctx;
-#else
-  return mode_ctx & NEWMV_CTX_MASK;
-#endif  // CONFIG_OPT_INTER_MODE_CTX
-}
+static INLINE int16_t av1_drl_ctx(int16_t mode_ctx) { return mode_ctx; }
 
 // For the tiles whose CDFs will be used in calculating the average CDFs:
 // For each tile's CDF, divide (or shift) by the total number of allowed tiles.
@@ -812,7 +778,6 @@ static INLINE int opfl_get_comp_idx(int mode) {
   }
 }
 
-#if CONFIG_OPT_INTER_MODE_CTX
 static const int
     comp_mode_idx_to_mode_signal_idx[INTER_COMPOUND_SAME_REFS_TYPES + 1] = {
       0, 1, 1, 2, 3,
@@ -824,7 +789,6 @@ static const int
       3,
       4,
     };
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 
 // Returns the context for palette color index at row 'r' and column 'c',
 // along with the 'color_order' of neighbors and the 'color_idx'.

@@ -245,7 +245,6 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
   assert(is_inter_compound_mode(mode));
 
   const int comp_mode_idx = opfl_get_comp_idx(mode);
-#if CONFIG_OPT_INTER_MODE_CTX
   if (is_new_nearmv_pred_mode_disallowed(mbmi)) {
     assert(comp_mode_idx <= INTER_COMPOUND_SAME_REFS_TYPES);
     const int signal_mode_idx = comp_mode_idx_to_mode_signal_idx[comp_mode_idx];
@@ -253,8 +252,6 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
                      xd->tile_ctx->inter_compound_mode_same_refs_cdf[mode_ctx],
                      INTER_COMPOUND_SAME_REFS_TYPES);
   } else {
-#endif  // CONFIG_OPT_INTER_MODE_CTX
-
     const bool is_joint = (comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV));
     aom_write_symbol(w, is_joint,
                      xd->tile_ctx->inter_compound_mode_is_joint_cdf
@@ -267,9 +264,7 @@ static AOM_INLINE void write_inter_compound_mode(MACROBLOCKD *xd, aom_writer *w,
           xd->tile_ctx->inter_compound_mode_non_joint_type_cdf[mode_ctx],
           NUM_OPTIONS_NON_JOINT_TYPE);
     }
-#if CONFIG_OPT_INTER_MODE_CTX
   }
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 
   if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
       opfl_allowed_cur_refs_bsize(cm, xd, mbmi)) {
@@ -2034,13 +2029,8 @@ static AOM_INLINE void write_intra_prediction_modes(AV1_COMP *cpi,
 
 static INLINE int16_t mode_context_analyzer(
     const int16_t mode_context, const MV_REFERENCE_FRAME *const rf) {
-#if CONFIG_OPT_INTER_MODE_CTX
   (void)rf;
   return mode_context;
-#else
-  if (!is_inter_ref_frame(rf[1])) return mode_context;
-  return mode_context & NEWMV_CTX_MASK;
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 }
 
 static INLINE int_mv get_ref_mv_from_stack(

@@ -1038,11 +1038,7 @@ typedef struct {
   //! skip_mode_cost
   int skip_mode_cost[SKIP_MODE_CONTEXTS][2];
   //! inter single mode cost
-#if CONFIG_OPT_INTER_MODE_CTX
   int inter_single_mode_cost[INTER_MODE_CONTEXTS][INTER_SINGLE_MODES];
-#else
-  int inter_single_mode_cost[INTER_SINGLE_MODE_CONTEXTS][INTER_SINGLE_MODES];
-#endif  // CONFIG_OPT_INTER_MODE_CTX
   //! signal use_amvd flag cost
   int amvd_mode_cost[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][2];
   //! inter warpmv mode cost
@@ -1089,7 +1085,6 @@ typedef struct {
   //! intra_inter_cost
   int intra_inter_cost[INTRA_INTER_CONTEXTS][2];
 
-#if CONFIG_OPT_INTER_MODE_CTX
   /*! use_optflow_cost */
   int use_optflow_cost[OPFL_MODE_CONTEXTS][2];
   /*! Cost to signal if inter compound mode is joint or not. */
@@ -1100,13 +1095,6 @@ typedef struct {
   /*! inter_compound_mode_same_refs_cost */
   int inter_compound_mode_same_refs_cost[INTER_MODE_CONTEXTS]
                                         [INTER_COMPOUND_SAME_REFS_TYPES];
-#else
-  /*! use_optflow_cost */
-  int use_optflow_cost[INTER_COMPOUND_MODE_CONTEXTS][2];
-  /*! inter_compound_mode_cost */
-  int inter_compound_mode_cost[INTER_COMPOUND_MODE_CONTEXTS]
-                              [INTER_COMPOUND_REF_TYPES];
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 
   //! cwp_idx_cost for compound weighted prediction
   int cwp_idx_cost[MAX_CWP_CONTEXTS][MAX_CWP_NUM - 1][2];

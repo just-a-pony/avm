@@ -1567,7 +1567,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         update_cdf(fc->use_optflow_cdf[opfl_ctx], use_optical_flow, 2);
       }
       const int comp_mode_idx = opfl_get_comp_idx(mode);
-#if CONFIG_OPT_INTER_MODE_CTX
       if (is_new_nearmv_pred_mode_disallowed(mbmi)) {
         const int signal_mode_idx =
             comp_mode_idx_to_mode_signal_idx[comp_mode_idx];
@@ -1577,7 +1576,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         update_cdf(fc->inter_compound_mode_same_refs_cdf[mode_ctx],
                    signal_mode_idx, INTER_COMPOUND_SAME_REFS_TYPES);
       } else {
-#endif  // CONFIG_OPT_INTER_MODE_CTX
         const bool is_joint =
             (comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV));
         update_cdf(fc->inter_compound_mode_is_joint_cdf
@@ -1599,11 +1597,7 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           ++counts->inter_compound_mode_non_joint_type[mode_ctx][comp_mode_idx];
         }
 #endif  // CONFIG_ENTROPY_STATS
-
-#if CONFIG_OPT_INTER_MODE_CTX
       }
-#endif  // CONFIG_OPT_INTER_MODE_CTX
-
       if (is_joint_mvd_coding_mode(mbmi->mode)) {
         const int is_joint_amvd_mode =
             is_joint_amvd_coding_mode(mbmi->mode, mbmi->use_amvd);

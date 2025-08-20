@@ -503,7 +503,6 @@ static int cost_prediction_mode(const ModeCosts *const mode_costs,
           mode_costs->use_optflow_cost[opfl_ctx][use_optical_flow];
     }
 
-#if CONFIG_OPT_INTER_MODE_CTX
     if (is_new_nearmv_pred_mode_disallowed(mbmi)) {
       const int signal_mode_idx =
           comp_mode_idx_to_mode_signal_idx[comp_mode_idx];
@@ -511,8 +510,6 @@ static int cost_prediction_mode(const ModeCosts *const mode_costs,
              mode_costs->inter_compound_mode_same_refs_cost[mode_context]
                                                            [signal_mode_idx];
     } else {
-#endif  // CONFIG_OPT_INTER_MODE_CTX
-
       const bool is_joint =
           (comp_mode_idx == INTER_COMPOUND_OFFSET(JOINT_NEWMV));
       int cost_by_inter_by_joint =
@@ -524,12 +521,8 @@ static int cost_prediction_mode(const ModeCosts *const mode_costs,
             mode_costs->inter_compound_mode_non_joint_type_cost[mode_context]
                                                                [comp_mode_idx];
       }
-
       return use_optical_flow_cost + amvd_mode_cost + cost_by_inter_by_joint;
-
-#if CONFIG_OPT_INTER_MODE_CTX
     }
-#endif  // CONFIG_OPT_INTER_MODE_CTX
   }
 
   assert(is_inter_mode(mode));
@@ -8675,7 +8668,6 @@ static INLINE int is_tip_mode(PREDICTION_MODE mode) {
   return (mode == NEARMV || mode == NEWMV);
 }
 
-#if CONFIG_OPT_INTER_MODE_CTX
 static INLINE int is_compound_mode_disallowed(PREDICTION_MODE mode,
                                               int ref_frame0, int ref_frame1) {
   if (ref_frame0 == ref_frame1 &&
@@ -8685,7 +8677,6 @@ static INLINE int is_compound_mode_disallowed(PREDICTION_MODE mode,
 
   return 0;
 }
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 
 // Initialize the table that stores best RD Costs of NONE transform partition
 static INLINE void init_top_tx_part_rd_for_inter_modes(
@@ -9036,10 +9027,8 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           continue;
         if (is_inter_ref_frame(second_ref_frame) &&
             ((second_ref_frame < ref_frame) ||
-#if CONFIG_OPT_INTER_MODE_CTX
              is_compound_mode_disallowed(this_mode, ref_frame,
                                          second_ref_frame) ||
-#endif  // CONFIG_OPT_INTER_MODE_CTX
              ((second_ref_frame == ref_frame) &&
               (ref_frame >= cm->ref_frames_info.num_same_ref_compound))))
           continue;

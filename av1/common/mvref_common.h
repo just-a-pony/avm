@@ -460,16 +460,7 @@ static INLINE int16_t av1_mode_context_analyzer(
     const int16_t *const mode_context, const MV_REFERENCE_FRAME *const rf) {
   int8_t ref_frame = av1_ref_frame_type(rf);
   if (ref_frame == NONE_FRAME) ref_frame = 0;
-
-#if CONFIG_OPT_INTER_MODE_CTX
   return mode_context[ref_frame];
-#else
-  if (!is_inter_ref_frame(rf[1])) return mode_context[ref_frame];
-
-  const int16_t newmv_ctx = mode_context[ref_frame] & NEWMV_CTX_MASK;
-  const int16_t comp_ctx = newmv_ctx;
-  return comp_ctx;
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 }
 
 static INLINE int get_optflow_context(const int mode) {

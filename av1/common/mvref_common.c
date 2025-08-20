@@ -3565,15 +3565,7 @@ void av1_find_mode_ctx(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 
   const uint8_t nearest_match = (row_match_count > 0) + (col_match_count > 0);
 
-#if CONFIG_OPT_INTER_MODE_CTX
   mode_context[ref_frame] = nearest_match + (newmv_count > 0) * 2;
-#else
-  // These contexts are independent of the outer area search
-  int new_ctx = 2 * nearest_match + (newmv_count > 0);
-  int ref_ctx = 2 * nearest_match + (newmv_count < 3);
-  mode_context[ref_frame] |= new_ctx;
-  mode_context[ref_frame] |= (ref_ctx << REFMV_OFFSET);
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 }
 
 // Initialize ref_mv_stack with zero MVs.

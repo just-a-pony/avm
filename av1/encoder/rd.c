@@ -494,11 +494,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                                fc->intra_inter_cdf[i], NULL);
     }
 
-#if CONFIG_OPT_INTER_MODE_CTX
     for (i = 0; i < INTER_MODE_CONTEXTS; ++i) {
-#else
-    for (i = 0; i < INTER_SINGLE_MODE_CONTEXTS; ++i) {
-#endif  // CONFIG_OPT_INTER_MODE_CTX
       av1_cost_tokens_from_cdf(mode_costs->inter_single_mode_cost[i],
                                fc->inter_single_mode_cdf[i], NULL);
     }
@@ -555,7 +551,7 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                              fc->jmvd_scale_mode_cdf, NULL);
     av1_cost_tokens_from_cdf(mode_costs->jmvd_amvd_scale_mode_cost,
                              fc->jmvd_amvd_scale_mode_cdf, NULL);
-#if CONFIG_OPT_INTER_MODE_CTX
+
     for (i = 0; i < NUM_CTX_IS_JOINT; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->inter_compound_mode_is_joint_cost[i],
                                fc->inter_compound_mode_is_joint_cdf[i], NULL);
@@ -566,22 +562,11 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
           fc->inter_compound_mode_non_joint_type_cdf[i], NULL);
     }
 
-#else
-
-    for (i = 0; i < INTER_COMPOUND_MODE_CONTEXTS; ++i) {
-      av1_cost_tokens_from_cdf(mode_costs->inter_compound_mode_cost[i],
-                               fc->inter_compound_mode_cdf[i], NULL);
-    }
-
-#endif  // CONFIG_OPT_INTER_MODE_CTX
-
-#if CONFIG_OPT_INTER_MODE_CTX
     for (i = 0; i < INTER_MODE_CONTEXTS; ++i) {
       av1_cost_tokens_from_cdf(
           mode_costs->inter_compound_mode_same_refs_cost[i],
           fc->inter_compound_mode_same_refs_cdf[i], NULL);
     }
-#endif  // CONFIG_OPT_INTER_MODE_CTX
 
 #if CONFIG_D149_CTX_MODELING_OPT
     av1_cost_tokens_from_cdf(mode_costs->compound_type_cost,
