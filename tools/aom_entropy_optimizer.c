@@ -1204,39 +1204,19 @@ int main(int argc, const char **argv) {
                      "INTERINTRA_MODES)]",
                      0, &total_count, 0, mem_wanted, "Inter");
 
-#if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.wedge_interintra[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob "
                      "default_wedge_interintra_cdf[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
-#else
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(
-      &fc.wedge_interintra[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_wedge_interintra_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
   /* Compound type */
-#if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = COMPOUND_TYPES - 1;
   optimize_cdf_table(&fc.compound_type[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob default_compound_type_cdf"
                      "[CDF_SIZE(COMPOUND_TYPES - 1)]",
                      0, &total_count, 0, mem_wanted, "Inter");
-#else
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = COMPOUND_TYPES - 1;
-  optimize_cdf_table(&fc.compound_type[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob default_compound_type_cdf"
-                     "[BLOCK_SIZES_ALL][CDF_SIZE(COMPOUND_TYPES - 1)]",
-                     0, &total_count, 0, mem_wanted, "Inter");
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   cts_each_dim[0] = WEDGE_QUADS;
   optimize_cdf_table(&fc.wedge_quad_cnt[0], probsfile, 1, cts_each_dim,
@@ -1281,47 +1261,6 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob "
                      "default_wedge_dist_cdf2[CDF_SIZE(NUM_WEDGE_DIST - 1)]",
                      0, &total_count, 0, mem_wanted, "Inter");
-#else
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(
-      &fc.wedge_angle_dir_cnt[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_wedge_angle_dir_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = H_WEDGE_ANGLES;
-  optimize_cdf_table(
-      &fc.wedge_angle_0_cnt[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_wedge_angle_0_cdf[BLOCK_SIZES_ALL][CDF_SIZE(H_WEDGE_ANGLES)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = H_WEDGE_ANGLES;
-  optimize_cdf_table(
-      &fc.wedge_angle_1_cnt[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_wedge_angle_1_cdf[BLOCK_SIZES_ALL][CDF_SIZE(H_WEDGE_ANGLES)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = NUM_WEDGE_DIST;
-  optimize_cdf_table(
-      &fc.wedge_dist_cnt[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_wedge_dist_cdf[BLOCK_SIZES_ALL][CDF_SIZE(NUM_WEDGE_DIST)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = NUM_WEDGE_DIST - 1;
-  optimize_cdf_table(
-      &fc.wedge_dist2_cnt[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_wedge_dist_cdf2[BLOCK_SIZES_ALL][CDF_SIZE(NUM_WEDGE_DIST - 1)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
   cts_each_dim[0] = NUM_REFINEMV_CTX;
   cts_each_dim[1] = REFINEMV_NUM_MODES;
@@ -1394,38 +1333,18 @@ int main(int argc, const char **argv) {
                      0, &total_count, 0, mem_wanted, "Inter");
 
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
-#if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.warp_causal_warpmv[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob "
                      "default_warp_causal_warpmv_cdf[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
-#else
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(
-      &fc.warp_causal_warpmv[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_warp_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
 
-#if CONFIG_D149_CTX_MODELING_OPT
   cts_each_dim[0] = 2;
   optimize_cdf_table(&fc.warpmv_with_mvd_flag[0], probsfile, 1, cts_each_dim,
                      "static const aom_cdf_prob "
                      "default_warpmv_with_mvd_flag_cdf[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
-#else
-  cts_each_dim[0] = BLOCK_SIZES_ALL;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(
-      &fc.warpmv_with_mvd_flag[0][0], probsfile, 2, cts_each_dim,
-      "static const aom_cdf_prob "
-      "default_warpmv_with_mvd_flag_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)]",
-      0, &total_count, 0, mem_wanted, "Inter");
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
   /* Bawp flag */
   cts_each_dim[0] = 2;

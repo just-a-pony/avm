@@ -568,16 +568,9 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
           fc->inter_compound_mode_same_refs_cdf[i], NULL);
     }
 
-#if CONFIG_D149_CTX_MODELING_OPT
     av1_cost_tokens_from_cdf(mode_costs->compound_type_cost,
                              fc->compound_type_cdf, NULL);
-#else
-    for (i = 0; i < BLOCK_SIZES_ALL; ++i)
-      av1_cost_tokens_from_cdf(mode_costs->compound_type_cost[i],
-                               fc->compound_type_cdf[i], NULL);
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
     av1_cost_tokens_from_cdf(mode_costs->wedge_quad_cost, fc->wedge_quad_cdf,
                              NULL);
@@ -597,22 +590,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                              NULL);
     av1_cost_tokens_from_cdf(mode_costs->wedge_dist_cost2, fc->wedge_dist_cdf2,
                              NULL);
-#else
-    for (i = 0; i < BLOCK_SIZES_ALL; ++i) {
-      if (av1_is_wedge_used(i)) {
-        av1_cost_tokens_from_cdf(mode_costs->wedge_angle_dir_cost[i],
-                                 fc->wedge_angle_dir_cdf[i], NULL);
-        av1_cost_tokens_from_cdf(mode_costs->wedge_angle_0_cost[i],
-                                 fc->wedge_angle_0_cdf[i], NULL);
-        av1_cost_tokens_from_cdf(mode_costs->wedge_angle_1_cost[i],
-                                 fc->wedge_angle_1_cdf[i], NULL);
-        av1_cost_tokens_from_cdf(mode_costs->wedge_dist_cost[i],
-                                 fc->wedge_dist_cdf[i], NULL);
-        av1_cost_tokens_from_cdf(mode_costs->wedge_dist_cost2[i],
-                                 fc->wedge_dist_cdf2[i], NULL);
-      }
-    }
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
     for (i = 0; i < BLOCK_SIZE_GROUPS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->interintra_cost[i],
@@ -622,15 +599,9 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       av1_cost_tokens_from_cdf(mode_costs->warp_interintra_cost[i],
                                fc->warp_interintra_cdf[i], NULL);
     }
-#if CONFIG_D149_CTX_MODELING_OPT
+
     av1_cost_tokens_from_cdf(mode_costs->wedge_interintra_cost,
                              fc->wedge_interintra_cdf, NULL);
-#else
-    for (i = 0; i < BLOCK_SIZES_ALL; ++i) {
-      av1_cost_tokens_from_cdf(mode_costs->wedge_interintra_cost[i],
-                               fc->wedge_interintra_cdf[i], NULL);
-    }
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
     for (i = 0; i < NUM_REFINEMV_CTX; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->refinemv_flag_cost[i],
@@ -643,25 +614,11 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
     }
 
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
-#if CONFIG_D149_CTX_MODELING_OPT
     av1_cost_tokens_from_cdf(mode_costs->warp_causal_warpmv_cost,
                              fc->warp_causal_warpmv_cdf, NULL);
-#else
-    for (i = BLOCK_8X8; i < BLOCK_SIZES_ALL; i++) {
-      av1_cost_tokens_from_cdf(mode_costs->warp_causal_warpmv_cost[i],
-                               fc->warp_causal_warpmv_cdf[i], NULL);
-    }
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
-#if CONFIG_D149_CTX_MODELING_OPT
     av1_cost_tokens_from_cdf(mode_costs->warpmv_with_mvd_flag_cost,
                              fc->warpmv_with_mvd_flag_cdf, NULL);
-#else
-    for (i = BLOCK_8X8; i < BLOCK_SIZES_ALL; i++) {
-      av1_cost_tokens_from_cdf(mode_costs->warpmv_with_mvd_flag_cost[i],
-                               fc->warpmv_with_mvd_flag_cdf[i], NULL);
-    }
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
     for (i = BLOCK_8X8; i < BLOCK_SIZES_ALL; i++) {
       av1_cost_tokens_from_cdf(mode_costs->warp_precision_idx_cost[i],

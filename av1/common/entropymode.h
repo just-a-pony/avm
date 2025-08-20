@@ -252,13 +252,7 @@ typedef struct frame_contexts {
   aom_cdf_prob cwp_idx_cdf[MAX_CWP_CONTEXTS][MAX_CWP_NUM - 1][CDF_SIZE(2)];
   aom_cdf_prob jmvd_scale_mode_cdf[CDF_SIZE(JOINT_NEWMV_SCALE_FACTOR_CNT)];
   aom_cdf_prob jmvd_amvd_scale_mode_cdf[CDF_SIZE(JOINT_AMVD_SCALE_FACTOR_CNT)];
-#if CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob compound_type_cdf[CDF_SIZE(MASKED_COMPOUND_TYPES)];
-#else
-  aom_cdf_prob compound_type_cdf[BLOCK_SIZES_ALL]
-                                [CDF_SIZE(MASKED_COMPOUND_TYPES)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   /*The wedge_quad is first decoded. Depending on the wedge quadrant, the
    * wedge_angle is decoded. Depending on the wedge_angle, the wedge_dist is
@@ -272,37 +266,18 @@ typedef struct frame_contexts {
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   aom_cdf_prob wedge_dist_cdf[CDF_SIZE(NUM_WEDGE_DIST)];
   aom_cdf_prob wedge_dist_cdf2[CDF_SIZE(NUM_WEDGE_DIST - 1)];
-#else
-  aom_cdf_prob wedge_angle_dir_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
-  aom_cdf_prob wedge_angle_0_cdf[BLOCK_SIZES_ALL][CDF_SIZE(H_WEDGE_ANGLES)];
-  aom_cdf_prob wedge_angle_1_cdf[BLOCK_SIZES_ALL][CDF_SIZE(H_WEDGE_ANGLES)];
-  aom_cdf_prob wedge_dist_cdf[BLOCK_SIZES_ALL][CDF_SIZE(NUM_WEDGE_DIST)];
-  aom_cdf_prob wedge_dist_cdf2[BLOCK_SIZES_ALL][CDF_SIZE(NUM_WEDGE_DIST - 1)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
   aom_cdf_prob warp_interintra_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(2)];
   aom_cdf_prob interintra_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(2)];
-#if CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob wedge_interintra_cdf[CDF_SIZE(2)];
-#else
-  aom_cdf_prob wedge_interintra_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob interintra_mode_cdf[BLOCK_SIZE_GROUPS]
                                   [CDF_SIZE(INTERINTRA_MODES)];
   aom_cdf_prob warp_causal_cdf[WARP_CAUSAL_MODE_CTX][CDF_SIZE(2)];
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
-#if CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob warp_causal_warpmv_cdf[CDF_SIZE(2)];
-#else
-  aom_cdf_prob warp_causal_warpmv_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
   aom_cdf_prob warp_ref_idx_cdf[3][WARP_REF_CONTEXTS][CDF_SIZE(2)];
-#if CONFIG_D149_CTX_MODELING_OPT
   aom_cdf_prob warpmv_with_mvd_flag_cdf[CDF_SIZE(2)];
-#else
-  aom_cdf_prob warpmv_with_mvd_flag_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 
   aom_cdf_prob warp_precision_idx_cdf[BLOCK_SIZES_ALL]
                                      [CDF_SIZE(NUM_WARP_PRECISION_MODES)];

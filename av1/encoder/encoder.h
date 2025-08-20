@@ -1521,7 +1521,6 @@ typedef struct FRAME_COUNTS {
       inter_compound_mode_same_refs_cnt[INTER_MODE_CONTEXTS]
                                        [INTER_COMPOUND_SAME_REFS_TYPES];
   unsigned int amvd_mode[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][2];
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int wedge_quad_cnt[WEDGE_QUADS];
   unsigned int wedge_angle_cnt[WEDGE_QUADS][QUAD_WEDGE_ANGLES];
@@ -1532,38 +1531,15 @@ typedef struct FRAME_COUNTS {
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int wedge_dist_cnt[NUM_WEDGE_DIST];
   unsigned int wedge_dist2_cnt[NUM_WEDGE_DIST - 1];
-#else
-  unsigned int wedge_angle_dir_cnt[BLOCK_SIZES_ALL][2];
-  unsigned int wedge_angle_0_cnt[BLOCK_SIZES_ALL][H_WEDGE_ANGLES];
-  unsigned int wedge_angle_1_cnt[BLOCK_SIZES_ALL][H_WEDGE_ANGLES];
-  unsigned int wedge_dist_cnt[BLOCK_SIZES_ALL][NUM_WEDGE_DIST];
-  unsigned int wedge_dist2_cnt[BLOCK_SIZES_ALL][NUM_WEDGE_DIST - 1];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   unsigned int interintra[BLOCK_SIZE_GROUPS][2];
   unsigned int interintra_mode[BLOCK_SIZE_GROUPS][INTERINTRA_MODES];
-#if CONFIG_D149_CTX_MODELING_OPT
   unsigned int wedge_interintra[2];
-#else
-  unsigned int wedge_interintra[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_D149_CTX_MODELING_OPT
   unsigned int compound_type[MASKED_COMPOUND_TYPES];
-#else
-  unsigned int compound_type[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   unsigned int warp_causal_cnt[WARP_CAUSAL_MODE_CTX][2];
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
-#if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warp_causal_warpmv[CDF_SIZE(2)];
-#else
-  unsigned int warp_causal_warpmv[BLOCK_SIZES_ALL][CDF_SIZE(2)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
-#if CONFIG_D149_CTX_MODELING_OPT
   unsigned int warpmv_with_mvd_flag[CDF_SIZE(2)];
-#else
-  unsigned int warpmv_with_mvd_flag[BLOCK_SIZES_ALL][CDF_SIZE(2)];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   unsigned int warp_delta_param[2][WARP_DELTA_NUMSYMBOLS_LOW];
   unsigned int warp_delta_param_high[2][WARP_DELTA_NUMSYMBOLS_HIGH];
   unsigned int warp_extend[WARP_EXTEND_CTX][2];
@@ -1622,11 +1598,7 @@ typedef struct FRAME_COUNTS {
 #else
   unsigned int cctx_type[EXT_TX_SIZES][CCTX_CONTEXTS][CCTX_TYPES];
 #endif  // CONFIG_REDUCE_CCTX_CTX
-#if CONFIG_D149_CTX_MODELING_OPT
   unsigned int filter_intra[2];
-#else
-  unsigned int filter_intra[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   unsigned int intra_dip[TOKEN_CDF_Q_CTXS][DIP_CTXS][2];
   unsigned int intra_dip_mode_n6[6];
   unsigned int switchable_restore[RESTORE_SWITCHABLE_TYPES];

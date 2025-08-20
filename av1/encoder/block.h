@@ -1103,13 +1103,8 @@ typedef struct {
   //! jmvd_scale_mode_cost for JOINT_AMVDNEWMV
   int jmvd_amvd_scale_mode_cost[JOINT_AMVD_SCALE_FACTOR_CNT];
   //! compound_type_cost
-#if CONFIG_D149_CTX_MODELING_OPT
   int compound_type_cost[MASKED_COMPOUND_TYPES];
-#else
-  int compound_type_cost[BLOCK_SIZES_ALL][MASKED_COMPOUND_TYPES];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   //! wedge_idx_cost
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   //! wedge_quad_cost
   int wedge_quad_cost[WEDGE_QUADS];
@@ -1127,18 +1122,6 @@ typedef struct {
   int wedge_dist_cost[NUM_WEDGE_DIST];
   //! wedge_dist_cost2
   int wedge_dist_cost2[NUM_WEDGE_DIST - 1];
-#else
-  //! wedge_angle_dir_cost
-  int wedge_angle_dir_cost[BLOCK_SIZES_ALL][2];
-  //! wedge_angle_0_cost
-  int wedge_angle_0_cost[BLOCK_SIZES_ALL][H_WEDGE_ANGLES];
-  //! wedge_angle_1_cost
-  int wedge_angle_1_cost[BLOCK_SIZES_ALL][H_WEDGE_ANGLES];
-  //! wedge_dist_cost
-  int wedge_dist_cost[BLOCK_SIZES_ALL][NUM_WEDGE_DIST];
-  //! wedge_dist_cost2
-  int wedge_dist_cost2[BLOCK_SIZES_ALL][NUM_WEDGE_DIST - 1];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   //! interintra_cost
   int interintra_cost[BLOCK_SIZE_GROUPS][2];
 
@@ -1146,11 +1129,7 @@ typedef struct {
   int warp_interintra_cost[BLOCK_SIZE_GROUPS][2];
 
   //! wedge_interintra_cost
-#if CONFIG_D149_CTX_MODELING_OPT
   int wedge_interintra_cost[2];
-#else
-  int wedge_interintra_cost[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   //! interintra_mode_cost
   int interintra_mode_cost[BLOCK_SIZE_GROUPS][INTERINTRA_MODES];
   /**@}*/
@@ -1171,11 +1150,7 @@ typedef struct {
   int warp_causal_cost[WARP_CAUSAL_MODE_CTX][2];
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
   //! warp_causal_warpmv_cost
-#if CONFIG_D149_CTX_MODELING_OPT
   int warp_causal_warpmv_cost[2];
-#else
-  int warp_causal_warpmv_cost[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
   //! warp_delta_param_cost
   int warp_delta_param_cost[2][WARP_DELTA_NUMSYMBOLS_LOW];
@@ -1190,11 +1165,7 @@ typedef struct {
   int warp_precision_idx_cost[BLOCK_SIZES_ALL][NUM_WARP_PRECISION_MODES];
 
   //! warpmv_with_mvd_flag_cost
-#if CONFIG_D149_CTX_MODELING_OPT
   int warpmv_with_mvd_flag_cost[2];
-#else
-  int warpmv_with_mvd_flag_cost[BLOCK_SIZES_ALL][2];
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   //! warp_extend_cost
   int warp_extend_cost[WARP_EXTEND_CTX][2];
 

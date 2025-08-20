@@ -236,8 +236,6 @@ set_aom_config_var(CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING 1
 set_aom_config_var(CONFIG_REFRESH_FLAG 0
                    "Experiment flag to signal refresh frame flag using index")
 
-set_aom_config_var(CONFIG_D149_CTX_MODELING_OPT 1
-                   "Enable to optimize block size dependent context modeling")
 set_aom_config_var(
   CONFIG_COMPOUND_WARP_CAUSAL 1
   "AV2 experiment flag to enable compound new_newmv warp_causal mode")

@@ -174,15 +174,12 @@ static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
                                              FRAME_COUNTS *const counts
 #endif
 ) {
-#if CONFIG_D149_CTX_MODELING_OPT
   (void)bsize;
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   const int wedge_angle = wedge_index_2_angle[wedge_index];
   const int wedge_dist = wedge_index_2_dist[wedge_index];
 #if !CONFIG_REDUCE_SYMBOL_SIZE
   const int wedge_angle_dir = (wedge_angle >= H_WEDGE_ANGLES);
 #endif  // !CONFIG_REDUCE_SYMBOL_SIZE
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   const int wedge_quad = (wedge_angle / QUAD_WEDGE_ANGLES);
   const int wedge_angle_in_quad = (wedge_angle % QUAD_WEDGE_ANGLES);
@@ -226,38 +223,6 @@ static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
 #endif
     update_cdf(fc->wedge_dist_cdf, wedge_dist, NUM_WEDGE_DIST);
   }
-#else
-#if CONFIG_ENTROPY_STATS
-  counts->wedge_angle_dir_cnt[bsize][wedge_angle_dir]++;
-#endif
-  update_cdf(fc->wedge_angle_dir_cdf[bsize], wedge_angle_dir, 2);
-  if (wedge_angle_dir == 0) {
-#if CONFIG_ENTROPY_STATS
-    counts->wedge_angle_0_cnt[bsize][wedge_angle]++;
-#endif
-    update_cdf(fc->wedge_angle_0_cdf[bsize], wedge_angle, H_WEDGE_ANGLES);
-  } else {
-#if CONFIG_ENTROPY_STATS
-    counts->wedge_angle_1_cnt[bsize][wedge_angle - H_WEDGE_ANGLES]++;
-#endif
-    update_cdf(fc->wedge_angle_1_cdf[bsize], wedge_angle - H_WEDGE_ANGLES,
-               H_WEDGE_ANGLES);
-  }
-
-  if ((wedge_angle >= H_WEDGE_ANGLES) ||
-      (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
-    assert(wedge_dist != 0);
-#if CONFIG_ENTROPY_STATS
-    counts->wedge_dist2_cnt[bsize][wedge_dist - 1]++;
-#endif
-    update_cdf(fc->wedge_dist_cdf2[bsize], wedge_dist - 1, NUM_WEDGE_DIST - 1);
-  } else {
-#if CONFIG_ENTROPY_STATS
-    counts->wedge_dist_cnt[bsize][wedge_dist]++;
-#endif
-    update_cdf(fc->wedge_dist_cdf[bsize], wedge_dist, NUM_WEDGE_DIST);
-  }
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 }
 
 static AOM_INLINE void update_filter_type_cdf(const MACROBLOCKD *xd,

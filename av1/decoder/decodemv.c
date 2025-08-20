@@ -509,10 +509,7 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
 
 static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
                               const BLOCK_SIZE bsize) {
-#if CONFIG_D149_CTX_MODELING_OPT
   (void)bsize;
-#endif  // CONFIG_D149_CTX_MODELING_OPT
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_REDUCE_SYMBOL_SIZE
   int wedge_quad_dir = aom_read_symbol(r, ec_ctx->wedge_quad_cdf, WEDGE_QUADS,
                                        ACCT_INFO("wedge_quad"));
@@ -520,10 +517,6 @@ static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
   int wedge_angle_dir = aom_read_symbol(r, ec_ctx->wedge_angle_dir_cdf, 2,
                                         ACCT_INFO("wedge_angle_dir"));
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
-#else
-  int wedge_angle_dir = aom_read_symbol(r, ec_ctx->wedge_angle_dir_cdf[bsize],
-                                        2, ACCT_INFO("wedge_angle_dir"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   int wedge_angle = WEDGE_ANGLES;
 #if CONFIG_REDUCE_SYMBOL_SIZE
   wedge_angle = QUAD_WEDGE_ANGLES * wedge_quad_dir +
@@ -532,50 +525,26 @@ static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
                                 ACCT_INFO("wedge_angle", "wedge_angle_cdf"));
 #else
   if (wedge_angle_dir == 0) {
-#if CONFIG_D149_CTX_MODELING_OPT
     wedge_angle =
         aom_read_symbol(r, ec_ctx->wedge_angle_0_cdf, H_WEDGE_ANGLES,
                         ACCT_INFO("wedge_angle", "wedge_angle_0_cdf"));
-#else
-    wedge_angle =
-        aom_read_symbol(r, ec_ctx->wedge_angle_0_cdf[bsize], H_WEDGE_ANGLES,
-                        ACCT_INFO("wedge_angle", "wedge_angle_0_cdf"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   } else {
     wedge_angle =
         H_WEDGE_ANGLES +
-#if CONFIG_D149_CTX_MODELING_OPT
         aom_read_symbol(r, ec_ctx->wedge_angle_1_cdf, H_WEDGE_ANGLES,
                         ACCT_INFO("wedge_angle", "wedge_angle_1_cdf"));
-#else
-        aom_read_symbol(r, ec_ctx->wedge_angle_1_cdf[bsize], H_WEDGE_ANGLES,
-                        ACCT_INFO("wedge_angle", "wedge_angle_1_cdf"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   }
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   int wedge_dist = 0;
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
       (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
-#if CONFIG_D149_CTX_MODELING_OPT
     wedge_dist = aom_read_symbol(r, ec_ctx->wedge_dist_cdf2, NUM_WEDGE_DIST - 1,
                                  ACCT_INFO("wedge_dist", "wedge_dist_cdf2")) +
                  1;
-#else
-    wedge_dist =
-        aom_read_symbol(r, ec_ctx->wedge_dist_cdf2[bsize], NUM_WEDGE_DIST - 1,
-                        ACCT_INFO("wedge_dist", "wedge_dist_cdf2")) +
-        1;
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   } else {
     assert(wedge_angle < H_WEDGE_ANGLES);
-#if CONFIG_D149_CTX_MODELING_OPT
     wedge_dist = aom_read_symbol(r, ec_ctx->wedge_dist_cdf, NUM_WEDGE_DIST,
                                  ACCT_INFO("wedge_dist", "wedge_dist_cdf"));
-#else
-    wedge_dist =
-        aom_read_symbol(r, ec_ctx->wedge_dist_cdf[bsize], NUM_WEDGE_DIST,
-                        ACCT_INFO("wedge_dist", "wedge_dist_cdf"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
   }
   return wedge_angle_dist_2_index[wedge_angle][wedge_dist];
 }
@@ -600,14 +569,8 @@ static void read_warp_ref_idx(FRAME_CONTEXT *ec_ctx, MB_MODE_INFO *mbmi,
 static void read_warpmv_with_mvd_flag(FRAME_CONTEXT *ec_ctx, MB_MODE_INFO *mbmi,
                                       aom_reader *r) {
   mbmi->warpmv_with_mvd_flag =
-#if CONFIG_D149_CTX_MODELING_OPT
       aom_read_symbol(r, ec_ctx->warpmv_with_mvd_flag_cdf, 2,
                       ACCT_INFO("warpmv_with_mvd_flag"));
-#else
-      aom_read_symbol(
-          r, ec_ctx->warpmv_with_mvd_flag_cdf[mbmi->sb_type[PLANE_TYPE_Y]], 2,
-          ACCT_INFO("warpmv_with_mvd_flag"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
 }
 
 // Read the delta for a single warp parameter
@@ -740,13 +703,8 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
     if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
       int use_warp_causal =
-#if CONFIG_D149_CTX_MODELING_OPT
           aom_read_symbol(r, xd->tile_ctx->warp_causal_warpmv_cdf, 2,
                           ACCT_INFO("use_warp_causal"));
-#else
-          aom_read_symbol(r, xd->tile_ctx->warp_causal_warpmv_cdf[bsize], 2,
-                          ACCT_INFO("use_warp_causal"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
       return use_warp_causal ? WARP_CAUSAL : WARP_DELTA;
     }
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
@@ -804,13 +762,8 @@ static MOTION_MODE read_motion_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
       mbmi->use_intra_dip = 0;
       if (av1_is_wedge_used(bsize)) {
         mbmi->use_wedge_interintra =
-#if CONFIG_D149_CTX_MODELING_OPT
             aom_read_symbol(r, xd->tile_ctx->wedge_interintra_cdf, 2,
                             ACCT_INFO("use_wedge_interintra"));
-#else
-            aom_read_symbol(r, xd->tile_ctx->wedge_interintra_cdf[bsize], 2,
-                            ACCT_INFO("use_wedge_interintra"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
         if (mbmi->use_wedge_interintra) {
           mbmi->interintra_wedge_index =
               read_wedge_mode(r, xd->tile_ctx, bsize);
@@ -3744,14 +3697,8 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       mbmi->use_intra_dip = 0;
       if (av1_is_wedge_used(bsize)) {
         mbmi->use_wedge_interintra =
-#if CONFIG_D149_CTX_MODELING_OPT
             aom_read_symbol(r, xd->tile_ctx->wedge_interintra_cdf, 2,
                             ACCT_INFO("use_wedge_interintra"));
-#else
-            aom_read_symbol(r, xd->tile_ctx->wedge_interintra_cdf[bsize], 2,
-                            ACCT_INFO("use_wedge_interintra"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
-
         if (mbmi->use_wedge_interintra) {
           mbmi->interintra_wedge_index =
               read_wedge_mode(r, xd->tile_ctx, bsize);
@@ -3805,14 +3752,9 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       // compound_diffwtd, wedge
       if (is_interinter_compound_used(COMPOUND_WEDGE, bsize)) {
         mbmi->interinter_comp.type =
-            COMPOUND_WEDGE +
-#if CONFIG_D149_CTX_MODELING_OPT
-            aom_read_symbol(r, ec_ctx->compound_type_cdf, MASKED_COMPOUND_TYPES,
-                            ACCT_INFO("comp_type"));
-#else
-            aom_read_symbol(r, ec_ctx->compound_type_cdf[bsize],
-                            MASKED_COMPOUND_TYPES, ACCT_INFO("comp_type"));
-#endif  // CONFIG_D149_CTX_MODELING_OPT
+            COMPOUND_WEDGE + aom_read_symbol(r, ec_ctx->compound_type_cdf,
+                                             MASKED_COMPOUND_TYPES,
+                                             ACCT_INFO("comp_type"));
       } else {
         mbmi->interinter_comp.type = COMPOUND_DIFFWTD;
       }

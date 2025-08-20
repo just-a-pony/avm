@@ -1298,18 +1298,10 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
       if (mbmi->mode == WARPMV) {
         if (allowed_motion_modes & (1 << WARP_CAUSAL)) {
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_ENTROPY_STATS
           counts->warp_causal_warpmv[motion_mode == WARP_CAUSAL]++;
 #endif
           update_cdf(fc->warp_causal_warpmv_cdf, motion_mode == WARP_CAUSAL, 2);
-#else
-#if CONFIG_ENTROPY_STATS
-          counts->warp_causal_warpmv[bsize][motion_mode == WARP_CAUSAL]++;
-#endif
-          update_cdf(fc->warp_causal_warpmv_cdf[bsize],
-                     motion_mode == WARP_CAUSAL, 2);
-#endif  // CONFIG_D149_CTX_MODELING_OPT
         }
       }
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
@@ -1371,18 +1363,10 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           update_cdf(fc->interintra_mode_cdf[bsize_group],
                      mbmi->interintra_mode, INTERINTRA_MODES);
           if (av1_is_wedge_used(bsize)) {
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_ENTROPY_STATS
             counts->wedge_interintra[mbmi->use_wedge_interintra]++;
 #endif
             update_cdf(fc->wedge_interintra_cdf, mbmi->use_wedge_interintra, 2);
-#else
-#if CONFIG_ENTROPY_STATS
-            counts->wedge_interintra[bsize][mbmi->use_wedge_interintra]++;
-#endif
-            update_cdf(fc->wedge_interintra_cdf[bsize],
-                       mbmi->use_wedge_interintra, 2);
-#endif  // CONFIG_D149_CTX_MODELING_OPT
             if (mbmi->use_wedge_interintra) {
               update_wedge_mode_cdf(fc, bsize, mbmi->interintra_wedge_index
 #if CONFIG_ENTROPY_STATS
@@ -1430,18 +1414,10 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
           update_cdf(fc->interintra_mode_cdf[bsize_group],
                      mbmi->interintra_mode, INTERINTRA_MODES);
           if (av1_is_wedge_used(bsize)) {
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_ENTROPY_STATS
             counts->wedge_interintra[mbmi->use_wedge_interintra]++;
 #endif
             update_cdf(fc->wedge_interintra_cdf, mbmi->use_wedge_interintra, 2);
-#else
-#if CONFIG_ENTROPY_STATS
-            counts->wedge_interintra[bsize][mbmi->use_wedge_interintra]++;
-#endif
-            update_cdf(fc->wedge_interintra_cdf[bsize],
-                       mbmi->use_wedge_interintra, 2);
-#endif  // CONFIG_D149_CTX_MODELING_OPT
             if (mbmi->use_wedge_interintra) {
               update_wedge_mode_cdf(fc, bsize, mbmi->interintra_wedge_index
 #if CONFIG_ENTROPY_STATS
@@ -1455,18 +1431,10 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
       }
 
       if (allow_warpmv_with_mvd_coding(cm, mbmi)) {
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_ENTROPY_STATS
         counts->warpmv_with_mvd_flag[mbmi->warpmv_with_mvd_flag]++;
 #endif
         update_cdf(fc->warpmv_with_mvd_flag_cdf, mbmi->warpmv_with_mvd_flag, 2);
-#else
-#if CONFIG_ENTROPY_STATS
-        counts->warpmv_with_mvd_flag[bsize][mbmi->warpmv_with_mvd_flag]++;
-#endif
-        update_cdf(fc->warpmv_with_mvd_flag_cdf[bsize],
-                   mbmi->warpmv_with_mvd_flag, 2);
-#endif  // CONFIG_D149_CTX_MODELING_OPT
       } else {
         assert(mbmi->warpmv_with_mvd_flag == 0);
       }
@@ -1508,7 +1476,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
         if (mbmi->comp_group_idx == 1) {
           assert(masked_compound_used);
           if (is_interinter_compound_used(COMPOUND_WEDGE, bsize)) {
-#if CONFIG_D149_CTX_MODELING_OPT
 #if CONFIG_ENTROPY_STATS
             ++counts
                   ->compound_type[mbmi->interinter_comp.type - COMPOUND_WEDGE];
@@ -1516,15 +1483,6 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
             update_cdf(fc->compound_type_cdf,
                        mbmi->interinter_comp.type - COMPOUND_WEDGE,
                        MASKED_COMPOUND_TYPES);
-#else
-#if CONFIG_ENTROPY_STATS
-            ++counts->compound_type[bsize][mbmi->interinter_comp.type -
-                                           COMPOUND_WEDGE];
-#endif
-            update_cdf(fc->compound_type_cdf[bsize],
-                       mbmi->interinter_comp.type - COMPOUND_WEDGE,
-                       MASKED_COMPOUND_TYPES);
-#endif  // CONFIG_D149_CTX_MODELING_OPT
           }
         }
       }
