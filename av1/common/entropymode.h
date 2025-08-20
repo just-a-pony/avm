@@ -326,19 +326,11 @@ typedef struct frame_contexts {
                             [INTER_REFS_PER_FRAME - 1][CDF_SIZE(2)];
   aom_cdf_prob txfm_do_partition_cdf[FSC_MODES][2][TXFM_SPLIT_GROUP]
                                     [CDF_SIZE(2)];
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   aom_cdf_prob txfm_2or3_way_partition_type_cdf
       [FSC_MODES][2][TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1][CDF_SIZE(2)];
   aom_cdf_prob txfm_4way_partition_type_cdf[FSC_MODES][2]
                                            [TX_PARTITION_TYPE_NUM_VERT_AND_HORZ]
                                            [CDF_SIZE(TX_PARTITION_TYPE_NUM)];
-
-#else
-
-  aom_cdf_prob txfm_4way_partition_type_cdf[FSC_MODES][2]
-                                           [TXFM_PARTITION_GROUP - 1]
-                                           [CDF_SIZE(TX_PARTITION_TYPE_NUM)];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 
   aom_cdf_prob lossless_tx_size_cdf[BLOCK_SIZE_GROUPS][2][CDF_SIZE(2)];
   aom_cdf_prob lossless_inter_tx_type_cdf[CDF_SIZE(2)];

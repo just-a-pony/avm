@@ -83,7 +83,6 @@ static const uint8_t size_to_tx_part_group_lookup[BLOCK_SIZES_ALL] = {
   7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 };
 
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 /*
 Maps a block size to a transform partition context.
 size_to_tx_type_group_vert_and_horz_lookup - 1-2
@@ -164,7 +163,6 @@ static const uint8_t
       1,
       2
     };
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 
 static const uint8_t size_to_tx_type_group_lookup[BLOCK_SIZES_ALL] = {
   0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 10, 10, 10,

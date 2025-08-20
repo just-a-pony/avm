@@ -308,24 +308,15 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
         av1_cost_tokens_from_cdf(mode_costs->txfm_do_partition_cost[k][i][j],
                                  fc->txfm_do_partition_cdf[k][i][j], NULL);
       }
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       for (j = 0; j < TX_PARTITION_TYPE_NUM_VERT_AND_HORZ; ++j) {
         av1_cost_tokens_from_cdf(
             mode_costs->txfm_4way_partition_type_cost[k][i][j],
             fc->txfm_4way_partition_type_cdf[k][i][j], NULL);
       }
-#else
-      for (j = 0; j < TXFM_PARTITION_GROUP - 1; ++j) {
-        av1_cost_tokens_from_cdf(
-            mode_costs->txfm_4way_partition_type_cost[k][i][j],
-            fc->txfm_4way_partition_type_cdf[k][i][j], NULL);
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       for (j = 0; j < TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1; ++j) {
         av1_cost_tokens_from_cdf(
             mode_costs->txfm_2or3_way_partition_type_cost[k][i][j],
             fc->txfm_2or3_way_partition_type_cdf[k][i][j], NULL);
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       }
     }
   }

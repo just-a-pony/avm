@@ -66,14 +66,10 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
   const int is_fsc = (xd->mi[0]->fsc_mode[xd->tree_type == CHROMA_PART] &&
                       plane_type == PLANE_TYPE_Y);
   const int bsize_group = size_to_tx_part_group_lookup[bsize];
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   const int txsize_group_h_and_v = get_vert_and_horz_group(bsize);
   const int txsize_group_h_or_v = get_vert_or_horz_group(bsize);
   assert(!(txsize_group_h_and_v == BLOCK_INVALID &&
            txsize_group_h_or_v == BLOCK_INVALID));
-#else
-  const int txsize_group = size_to_tx_type_group_lookup[bsize];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   int do_partition = 0;
   if (allow_horz || allow_vert) {
     do_partition = (partition != TX_PARTITION_NONE);
@@ -89,75 +85,37 @@ static void update_partition_cdfs_and_counts(MACROBLOCKD *xd, int blk_col,
 
   if (do_partition) {
     if (allow_horz && allow_vert) {
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       assert(txsize_group_h_or_v > 0);
-#else
-      assert(txsize_group > 0);
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       const TX_PARTITION_TYPE split4_partition =
           get_split4_partition(partition);
       if (allow_update_cdf) {
         aom_cdf_prob *partition_type_cdf =
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
             xd->tile_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
                                                       [txsize_group_h_and_v];
-#else
-            xd->tile_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
-                                                      [txsize_group - 1];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
         update_cdf(partition_type_cdf, split4_partition - 1,
                    TX_PARTITION_TYPE_NUM);
       }
 #if CONFIG_ENTROPY_STATS
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       ++counts->txfm_4way_partition_type[is_fsc][is_inter][txsize_group_h_and_v]
                                         [split4_partition - 1];
-#else
-      ++counts->txfm_4way_partition_type[is_fsc][is_inter][txsize_group - 1]
-                                        [split4_partition - 1];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 #endif  // CONFIG_ENTROPY_STATS
     } else if (allow_horz || allow_vert) {
       int has_first_split = 0;
       if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
         has_first_split = 1;
 
-      if (allow_update_cdf &&
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-          txsize_group_h_or_v
-#else
-          txsize_group
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-      ) {
+      if (allow_update_cdf && txsize_group_h_or_v) {
         aom_cdf_prob *partition_type_cdf =
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
             xd->tile_ctx
                 ->txfm_2or3_way_partition_type_cdf[is_fsc][is_inter]
                                                   [txsize_group_h_or_v - 1];
-#else
-            xd->tile_ctx->txfm_4way_partition_type_cdf[is_fsc][is_inter]
-                                                      [txsize_group - 1];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
         update_cdf(partition_type_cdf, has_first_split, 2);
-#else
-        update_cdf(partition_type_cdf, has_first_split, TX_PARTITION_TYPE_NUM);
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       }
 #if CONFIG_ENTROPY_STATS
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       if (txsize_group_h_or_v) {
-#else
-      if (txsize_group) {
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
         ++counts->txfm_2or3_way_partition_type[is_fsc][is_inter]
                                               [txsize_group_h_or_v - 1]
                                               [has_first_split];
-#else
-        ++counts->txfm_4way_partition_type[is_fsc][is_inter][txsize_group - 1]
-                                          [has_first_split];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       }
 #endif  // CONFIG_ENTROPY_STATS
     }

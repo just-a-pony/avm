@@ -45,14 +45,10 @@ static AOM_INLINE int inter_tx_partition_cost(const MACROBLOCK *const x,
   const MB_MODE_INFO *const mbmi = xd->mi[0];
   const int is_fsc = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART]);
   const int bsize_group = size_to_tx_part_group_lookup[bsize];
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   const int txsize_group_h_and_v = get_vert_and_horz_group(bsize);
   const int txsize_group_h_or_v = get_vert_or_horz_group(bsize);
   assert(!(txsize_group_h_and_v == BLOCK_INVALID &&
            txsize_group_h_or_v == BLOCK_INVALID));
-#else
-  const int txsize_group = size_to_tx_type_group_lookup[bsize];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   int do_partition = 0;
   if (allow_horz || allow_vert) {
     do_partition = (partition != TX_PARTITION_NONE);
@@ -62,33 +58,18 @@ static AOM_INLINE int inter_tx_partition_cost(const MACROBLOCK *const x,
 
   if (do_partition) {
     if (allow_horz && allow_vert) {
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       assert(txsize_group_h_or_v > 0);
-#else
-      assert(txsize_group > 0);
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       const TX_PARTITION_TYPE split4_partition =
           get_split4_partition(partition);
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       cost +=
           x->mode_costs
               .txfm_4way_partition_type_cost[is_fsc][1][txsize_group_h_and_v]
                                             [split4_partition - 1];
-#else
-      cost += x->mode_costs
-                  .txfm_4way_partition_type_cost[is_fsc][1][txsize_group - 1]
-                                                [split4_partition - 1];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
     } else if (allow_horz || allow_vert) {
       int has_first_split = 0;
       if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
         has_first_split = 1;
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       if (txsize_group_h_or_v) {
-#else
-      if (txsize_group) {
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
         cost +=
 #if CONFIG_REDUCED_TX_PART
             xd->reduced_tx_part_set
@@ -97,11 +78,6 @@ static AOM_INLINE int inter_tx_partition_cost(const MACROBLOCK *const x,
 #endif  // CONFIG_REDUCED_TX_PART
                 x->mode_costs.txfm_2or3_way_partition_type_cost
                     [is_fsc][1][txsize_group_h_or_v - 1][has_first_split];
-#else
-        cost += x->mode_costs
-                    .txfm_4way_partition_type_cost[is_fsc][1][txsize_group - 1]
-                                                  [has_first_split];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       }
     }
   }
@@ -119,14 +95,10 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
   const int allow_horz = allow_tx_horz_split(bsize, max_tx_size);
   const int allow_vert = allow_tx_vert_split(bsize, max_tx_size);
   const int bsize_group = size_to_tx_part_group_lookup[bsize];
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   const int txsize_group_h_and_v = get_vert_and_horz_group(bsize);
   const int txsize_group_h_or_v = get_vert_or_horz_group(bsize);
   assert(!(txsize_group_h_and_v == BLOCK_INVALID &&
            txsize_group_h_or_v == BLOCK_INVALID));
-#else
-  const int txsize_group = size_to_tx_type_group_lookup[bsize];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   const int is_fsc = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART]);
   int do_partition = 0;
   if (allow_horz || allow_vert) {
@@ -137,33 +109,18 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
 
   if (do_partition) {
     if (allow_horz && allow_vert) {
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       assert(txsize_group_h_or_v > 0);
-#else
-      assert(txsize_group > 0);
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       const TX_PARTITION_TYPE split4_partition =
           get_split4_partition(partition);
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       cost +=
           x->mode_costs
               .txfm_4way_partition_type_cost[is_fsc][0][txsize_group_h_and_v]
                                             [split4_partition - 1];
-#else
-      cost += x->mode_costs
-                  .txfm_4way_partition_type_cost[is_fsc][0][txsize_group - 1]
-                                                [split4_partition - 1];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
     } else if (allow_horz || allow_vert) {
       int has_first_split = 0;
       if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
         has_first_split = 1;
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       if (txsize_group_h_or_v) {
-#else
-      if (txsize_group) {
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
         cost +=
 #if CONFIG_REDUCED_TX_PART
             xd->reduced_tx_part_set
@@ -172,11 +129,6 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
 #endif  // CONFIG_REDUCED_TX_PART
                 x->mode_costs.txfm_2or3_way_partition_type_cost
                     [is_fsc][0][txsize_group_h_or_v - 1][has_first_split];
-#else
-        cost += x->mode_costs
-                    .txfm_4way_partition_type_cost[is_fsc][0][txsize_group - 1]
-                                                  [has_first_split];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
       }
     }
   }

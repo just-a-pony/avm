@@ -1505,7 +1505,7 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob default_txfm_do_partition_cdf"
                      "[FSC_MODES][2][TXFM_SPLIT_GROUP][CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Partitions");
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+
   cts_each_dim[0] = FSC_MODES;
   cts_each_dim[1] = 2;
   cts_each_dim[2] = TX_PARTITION_TYPE_NUM_VERT_AND_HORZ;
@@ -1527,18 +1527,6 @@ int main(int argc, const char **argv) {
       "[FSC_MODES][2][TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - "
       "1][CDF_SIZE(2)]",
       0, &total_count, 0, mem_wanted, "Partitions");
-#else
-  cts_each_dim[0] = FSC_MODES;
-  cts_each_dim[1] = 2;
-  cts_each_dim[2] = TXFM_PARTITION_GROUP - 1;
-  cts_each_dim[3] = TX_PARTITION_TYPE_NUM;
-  optimize_cdf_table(
-      &fc.txfm_4way_partition_type[0][0][0][0], probsfile, 4, cts_each_dim,
-      "static const aom_cdf_prob default_txfm_4way_partition_type_cdf"
-      "[FSC_MODES][2][TXFM_PARTITION_GROUP - "
-      "1][CDF_SIZE(TX_PARTITION_TYPE_NUM)]",
-      0, &total_count, 0, mem_wanted, "Partitions");
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 
   /* Skip flag */
   cts_each_dim[0] = SKIP_CONTEXTS;

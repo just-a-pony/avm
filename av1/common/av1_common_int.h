@@ -4430,7 +4430,7 @@ static INLINE int get_split4_partition(TX_PARTITION_TYPE partition) {
   assert(0);
   return 0;
 }
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
+
 /*
 Gets tx type group table if TX partition supports both vertical and horizontal
 partitions.
@@ -4444,13 +4444,10 @@ static INLINE int get_vert_and_horz_group(BLOCK_SIZE bsize) {
 Gets tx type group table if TX partition supports exactly one of vertical or
 horizontal partitions.
 */
-
 static INLINE int get_vert_or_horz_group(BLOCK_SIZE bsize) {
   const int ctx_tx = size_to_tx_type_group_vert_or_horz_lookup[bsize];
   return ctx_tx;
 }
-
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
 
 static INLINE bool coding_block_disallows_tx_partitioning(BLOCK_SIZE bsize) {
   if (bsize >= BLOCK_64X128 && bsize <= BLOCK_256X256) return true;

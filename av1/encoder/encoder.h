@@ -1555,17 +1555,12 @@ typedef struct FRAME_COUNTS {
   unsigned int intrabc_drl_idx[MAX_REF_BV_STACK_SIZE - 1][2];
   unsigned int morph_pred_count[3][2];
   unsigned int txfm_do_partition[FSC_MODES][2][TXFM_SPLIT_GROUP][2];
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   unsigned int txfm_4way_partition_type[FSC_MODES][2]
                                        [TX_PARTITION_TYPE_NUM_VERT_AND_HORZ]
                                        [TX_PARTITION_TYPE_NUM];
   unsigned int
       txfm_2or3_way_partition_type[FSC_MODES][2]
                                   [TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1][2];
-#else
-  unsigned int txfm_4way_partition_type[FSC_MODES][2][TXFM_PARTITION_GROUP - 1]
-                                       [TX_PARTITION_TYPE_NUM];
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   unsigned int skip_mode_cnts[SKIP_MODE_CONTEXTS][2];
   unsigned int skip_txfm[SKIP_CONTEXTS][2];
   unsigned int comp_group_idx[COMP_GROUP_IDX_CONTEXTS][2];

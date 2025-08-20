@@ -5209,10 +5209,14 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
 #if CONFIG_ENTROPY_STATS
           if (allow_update_cdf) {
             const int dc_ph_group = is_hidden ? 1 : 0;
+#if !CONFIG_BY_PASS_V_SIGN
             if (plane == AOM_PLANE_V) {
               ++td->counts->v_dc_sign[cdf_idx][xd->tmp_sign[pos]][dc_sign_ctx]
                                      [dc_sign];
             } else {
+#else
+            if (plane != AOM_PLANE_V) {
+#endif
               ++td->counts->dc_sign[cdf_idx][plane_type][dc_ph_group]
                                    [dc_sign_ctx][dc_sign];
             }

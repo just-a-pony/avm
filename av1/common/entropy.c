@@ -295,9 +295,7 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->comp_ref0_cdf, 2);
   RESET_CDF_COUNTER(fc->comp_ref1_cdf, 2);
   RESET_CDF_COUNTER(fc->txfm_do_partition_cdf, 2);
-#if CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   RESET_CDF_COUNTER(fc->txfm_2or3_way_partition_type_cdf, 2);
-#endif  // CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING
   RESET_CDF_COUNTER(fc->txfm_4way_partition_type_cdf, TX_PARTITION_TYPE_NUM);
   RESET_CDF_COUNTER(fc->lossless_tx_size_cdf, 2);
   RESET_CDF_COUNTER(fc->lossless_inter_tx_type_cdf, 2);

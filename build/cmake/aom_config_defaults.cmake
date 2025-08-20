@@ -223,8 +223,6 @@ set_aom_config_var(
   CONFIG_TX64_SEQ_FLAG 1
   "Sequence level flag to switch between Tx64 and Tx32 with resampling")
 
-set_aom_config_var(CONFIG_BUGFIX_TX_PARTITION_TYPE_SIGNALING 1
-                   "TX partition type signalling bugfix")
 set_aom_config_var(CONFIG_REFRESH_FLAG 0
                    "Experiment flag to signal refresh frame flag using index")
 
