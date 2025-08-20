@@ -497,17 +497,10 @@ static int cost_prediction_mode(const ModeCosts *const mode_costs,
     if (cm->features.opfl_refine_type == REFINE_SWITCHABLE &&
         opfl_allowed_cur_refs_bsize(cm, xd, mbmi)) {
       const int use_optical_flow = mode >= NEAR_NEARMV_OPTFLOW;
-#if CONFIG_OPFL_CTX_OPT
-      {
-        const int opfl_ctx =
-            get_optflow_context(comp_idx_to_opfl_mode[comp_mode_idx]);
-        use_optical_flow_cost +=
-            mode_costs->use_optflow_cost[opfl_ctx][use_optical_flow];
-      }
-#else
+      const int opfl_ctx =
+          get_optflow_context(comp_idx_to_opfl_mode[comp_mode_idx]);
       use_optical_flow_cost +=
-          mode_costs->use_optflow_cost[mode_context][use_optical_flow];
-#endif  // CONFIG_OPFL_CTX_OPT
+          mode_costs->use_optflow_cost[opfl_ctx][use_optical_flow];
     }
 
 #if CONFIG_OPT_INTER_MODE_CTX

@@ -5288,19 +5288,11 @@ static const aom_cdf_prob default_tip_drl_cdf[3][CDF_SIZE(2)] = {
   { AOM_CDF2(31561) }, { AOM_CDF2(27203) }, { AOM_CDF2(21916) }
 };
 #if CONFIG_OPT_INTER_MODE_CTX
-#if CONFIG_OPFL_CTX_OPT
 static const aom_cdf_prob default_use_optflow_cdf[OPFL_MODE_CONTEXTS]
                                                  [CDF_SIZE(2)] = {
                                                    { AOM_CDF2(16384) },
                                                    { AOM_CDF2(16384) },
                                                  };
-#else
-static const aom_cdf_prob
-    default_use_optflow_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(2)] = {
-      { AOM_CDF2(24210), 75 }, { AOM_CDF2(19707), 1 }, { AOM_CDF2(15604), 1 },
-      { AOM_CDF2(21549), 1 },  { AOM_CDF2(19455), 1 },
-    };
-#endif  // CONFIG_OPFL_CTX_OPT
 
 static const aom_cdf_prob
     default_inter_compound_mode_is_joint_cdf[NUM_CTX_IS_JOINT]

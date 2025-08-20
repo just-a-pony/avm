@@ -239,11 +239,7 @@ typedef struct frame_contexts {
                                 [CDF_SIZE(REFINEMV_NUM_MODES)];
 
 #if CONFIG_OPT_INTER_MODE_CTX
-#if CONFIG_OPFL_CTX_OPT
   aom_cdf_prob use_optflow_cdf[OPFL_MODE_CONTEXTS][CDF_SIZE(2)];
-#else
-  aom_cdf_prob use_optflow_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(2)];
-#endif  // CONFIG_OPFL_CTX_OPT
 
   // The inter_compound_mode_is_joint_cdf is for coding whether the mode is
   // JOINT_NEWMV or JOINT_AMVDNEWMV

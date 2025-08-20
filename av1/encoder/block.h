@@ -1095,11 +1095,7 @@ typedef struct {
 
 #if CONFIG_OPT_INTER_MODE_CTX
   /*! use_optflow_cost */
-#if CONFIG_OPFL_CTX_OPT
   int use_optflow_cost[OPFL_MODE_CONTEXTS][2];
-#else
-  int use_optflow_cost[INTER_MODE_CONTEXTS][2];
-#endif  // CONFIG_OPFL_CTX_OPT
   /*! Cost to signal if inter compound mode is joint or not. */
   int inter_compound_mode_is_joint_cost[NUM_CTX_IS_JOINT][NUM_OPTIONS_IS_JOINT];
   /*! Cost to signal non-joint inter compound mode type. */

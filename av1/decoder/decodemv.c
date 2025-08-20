@@ -914,15 +914,10 @@ static PREDICTION_MODE read_inter_compound_mode(MACROBLOCKD *xd, aom_reader *r,
 #endif  // CONFIG_ACROSS_SCALE_WARP
             comp_idx_to_opfl_mode[mode]);
     if (allow_translational_refinement) {
-#if CONFIG_OPFL_CTX_OPT
       const int opfl_ctx = get_optflow_context(comp_idx_to_opfl_mode[mode]);
       use_optical_flow =
           aom_read_symbol(r, xd->tile_ctx->use_optflow_cdf[opfl_ctx], 2,
                           ACCT_INFO("use_optical_flow"));
-#else
-      use_optical_flow = aom_read_symbol(r, xd->tile_ctx->use_optflow_cdf[ctx],
-                                         2, ACCT_INFO("use_optical_flow"));
-#endif  // CONFIG_OPFL_CTX_OPT
     }
     if (use_optical_flow) {
       assert(is_inter_compound_mode(comp_idx_to_opfl_mode[mode]));

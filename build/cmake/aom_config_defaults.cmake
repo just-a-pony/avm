@@ -254,9 +254,6 @@ set_aom_config_var(CONFIG_REDUCE_CCTX_CTX 1 "Reduce CCTX contexts")
 set_aom_config_var(CONFIG_WRL_PRUNE_FOUR_PARAMETERS 1
                    "Enable WRL only prune four non-translational parameters")
 
-set_aom_config_var(CONFIG_OPFL_CTX_OPT 1
-                   "Enable optimization of the CDFs for use optflow flag")
-
 set_aom_config_var(CONFIG_MVD_CDF_REDUCTION 1
                    "Enable reduction of the CDFs for MVD related sybmols")
 set_aom_config_var(CONFIG_LOCAL_INTRABC_ALIGN_RNG 1

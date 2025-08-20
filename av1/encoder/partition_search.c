@@ -1582,12 +1582,8 @@ static void update_stats(const AV1_COMMON *const cm, ThreadData *td) {
 #if CONFIG_ENTROPY_STATS
         ++counts->use_optflow[mode_ctx][use_optical_flow];
 #endif
-#if CONFIG_OPFL_CTX_OPT
         const int opfl_ctx = get_optflow_context(opfl_get_comp_idx(mode));
         update_cdf(fc->use_optflow_cdf[opfl_ctx], use_optical_flow, 2);
-#else
-        update_cdf(fc->use_optflow_cdf[mode_ctx], use_optical_flow, 2);
-#endif  // CONFIG_OPFL_CTX_OPT
       }
       const int comp_mode_idx = opfl_get_comp_idx(mode);
 #if CONFIG_OPT_INTER_MODE_CTX
