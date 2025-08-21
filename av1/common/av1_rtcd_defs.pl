@@ -330,6 +330,8 @@ add_proto qw/void av1_cnn_batchnorm/, "float **image, int channels, int width, i
 # Deringing Functions
 
 add_proto qw/int cdef_find_dir/, "const uint16_t *img, int stride, int32_t *var, int coeff_shift";
+add_proto qw/void cdef_find_dir_dual/, "const uint16_t *img1, const uint16_t *img2, int stride, int32_t *var1, int32_t *var2, int coeff_shift, int *out1, int *out2";
+
 # 16 bit dst
 add_proto qw/void cdef_filter_16_0/, "uint16_t *const dst16, int dstride, const uint16_t *in, int pri_strength, int sec_strength, int dir, int pri_damping, int sec_damping, int coeff_shift, int block_width, int block_height";
 add_proto qw/void cdef_filter_16_1/, "uint16_t *const dst16, int dstride, const uint16_t *in, int pri_strength, int sec_strength, int dir, int pri_damping, int sec_damping, int coeff_shift, int block_width, int block_height";
@@ -343,6 +345,7 @@ add_proto qw/void cdef_copy_rect8_16bit_to_16bit/, "uint16_t *const dst, int dst
 # hard to support, so optimizations for this target are disabled.
 if ($opts{config} !~ /libs-x86-win32-vs.*/) {
   specialize qw/cdef_find_dir sse2 ssse3 sse4_1 avx2 neon/;
+  specialize qw/cdef_find_dir_dual sse2 ssse3 sse4_1 avx2 neon/;
 
   specialize qw/cdef_filter_16_0 sse2 ssse3 sse4_1 avx2 neon/;
   specialize qw/cdef_filter_16_1 sse2 ssse3 sse4_1 avx2 neon/;
