@@ -75,35 +75,6 @@ extern "C" {
 #define PRIMARY_REF_BITS MAX_REFS_PER_FRAME_LOG2
 #define PRIMARY_REF_NONE INTER_REFS_PER_FRAME
 
-#if CONFIG_NEW_OBU_HEADER
-#define MAX_NUM_TLAYERS 8
-#define MAX_NUM_MLAYERS 8
-#define MAX_NUM_XLAYERS 32
-#define MAX_NUM_OPERATING_POINTS (MAX_NUM_TLAYERS * MAX_NUM_MLAYERS)
-#if CONFIG_MULTILAYER_CORE_HLS
-// bits for temporal and embedded layers
-#define TLAYER_BITS 3  // 3 bits for MAX_NUM_TLAYERS
-#define MLAYER_BITS 3  // 3 bits for MAX_NUM_MLAYERS
-#endif                 // CONFIG_MULTILAYER_CORE_HLS
-#else
-#define MAX_NUM_TEMPORAL_LAYERS 8
-#define MAX_NUM_SPATIAL_LAYERS 4
-#if CONFIG_MULTILAYER_CORE_HLS
-// maximum number of layers
-#define MAX_NUM_TLAYERS MAX_NUM_TEMPORAL_LAYERS
-#define MAX_NUM_MLAYERS MAX_NUM_SPATIAL_LAYERS
-// bits for temporal and embedded layers
-#define TLAYER_BITS 3  // 3 bits for MAX_NUM_TEMPORAL_LAYERS
-#define MLAYER_BITS 2  // 2 bits for MAX_NUM_SPATIAL_LAYERS
-#endif                 // CONFIG_MULTILAYER_CORE_HLS
-/* clang-format off */
-// clang-format seems to think this is a pointer dereference and not a
-// multiplication.
-#define MAX_NUM_OPERATING_POINTS \
-  (MAX_NUM_TEMPORAL_LAYERS * MAX_NUM_SPATIAL_LAYERS)
-/* clang-format on */
-#endif                 // CONFIG_NEW_OBU_HEADER
-
 // TODO(jingning): Turning this on to set up transform coefficient
 // processing timer.
 #define TXCOEFF_TIMER 0

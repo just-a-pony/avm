@@ -6751,10 +6751,10 @@ uint32_t av1_write_obu_header(AV1LevelParams *const level_params,
 #if CONFIG_NEW_OBU_HEADER
   int obu_extension_flag = obu_layer != 0;
   aom_wb_write_bit(&wb, obu_extension_flag);
-  aom_wb_write_literal(&wb, (int)obu_type, 4);  // obu_type
-  aom_wb_write_literal(&wb, obu_temporal, 3);   // obu_temporal
+  aom_wb_write_literal(&wb, (int)obu_type, 4);
+  aom_wb_write_literal(&wb, obu_temporal, TLAYER_BITS);
   if (obu_extension_flag) {
-    aom_wb_write_literal(&wb, obu_layer, 8);  // obu_layer
+    aom_wb_write_literal(&wb, obu_layer, 8);
   }
 #else
   aom_wb_write_literal(&wb, 0, 1);  // forbidden bit.

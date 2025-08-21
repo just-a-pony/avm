@@ -12,9 +12,11 @@
 #include <assert.h>
 
 #include "av1/common/obu_util.h"
+
 #include "config/aom_config.h"
 
 #include "aom_dsp/bitreader_buffer.h"
+#include "av1/common/enums.h"
 
 // Returns 1 when OBU type is valid, and 0 otherwise.
 static int valid_obu_type(int obu_type) {
@@ -61,21 +63,21 @@ static aom_codec_err_t read_obu_header(struct aom_read_bit_buffer *rb,
   if (bit_buffer_byte_length < 1) return AOM_CODEC_CORRUPT_FRAME;
   header->size = 1;
 
-  header->obu_extension_flag = aom_rb_read_bit(rb);     // obu_extension_flag
+  header->obu_extension_flag = aom_rb_read_bit(rb);
   header->type = (OBU_TYPE)aom_rb_read_literal(rb, 4);  // obu_type
   if (!valid_obu_type(header->type)) return AOM_CODEC_CORRUPT_FRAME;
 
-  header->obu_tlayer_id = aom_rb_read_literal(rb, 3);  // obu_temporal
+  header->obu_tlayer_id = aom_rb_read_literal(rb, TLAYER_BITS);
 
   if (header->obu_extension_flag) {
     if (bit_buffer_byte_length == 1) return AOM_CODEC_CORRUPT_FRAME;
     header->size += 1;
 
-    header->obu_mlayer_id = aom_rb_read_literal(rb, 3);  // obu_layer (mlayer)
-    header->obu_xlayer_id = aom_rb_read_literal(rb, 5);  // obu_layer (xlayer)
+    header->obu_mlayer_id = aom_rb_read_literal(rb, MLAYER_BITS);
+    header->obu_xlayer_id = aom_rb_read_literal(rb, XLAYER_BITS);
   } else {
-    header->obu_mlayer_id = 0;  // obu_layer (mlayer)
-    header->obu_xlayer_id = 0;  // obu_layer (xlayer)
+    header->obu_mlayer_id = 0;
+    header->obu_xlayer_id = 0;
   }
 #else   // !CONFIG_NEW_OBU_HEADER
   if (bit_buffer_byte_length < 1) return AOM_CODEC_CORRUPT_FRAME;
