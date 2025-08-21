@@ -1723,7 +1723,7 @@ AOM_INLINE void loop_filter_tip_plane(AV1_COMMON *cm, const int plane,
   for (int j = 0; j <= h; j += sub_bh) {
     for (int i = 0; i <= w; i += sub_bw) {
 #endif  // CONFIG_IMPROVE_TIP_LF
-      // filter vertical boundary
+        // filter vertical boundary
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
       if (cm->seq_params.disable_loopfilters_across_tiles) {
         if (is_vert_tile_boundary(&cm->tiles, i << subsampling_x)) continue;

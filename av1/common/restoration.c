@@ -825,6 +825,7 @@ static void restore_processing_stripe_boundary(
   }
 }
 
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
 static void setup_processing_stripe_leftright_boundary(
     uint16_t *data_tl, int w, int h, int data_stride, int border,
     int tile_boundary_left, int tile_boundary_right,
@@ -900,6 +901,7 @@ static void restore_processing_stripe_leftright_boundary(
     }
   }
 }
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
 
 // This routine should remain in sync with av1_convert_qindex_to_q.
 // The actual qstep used to quantize coefficients should be:
@@ -2200,6 +2202,7 @@ void av1_loop_restoration_filter_unit(
         enable_cross_buffers ? luma_in_ru + i * rui->luma_stride : NULL;
 #endif  // ISSUE_253
 
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     int tile_boundary_left = (remaining_stripes.h_start == tile_rect->left);
     int tile_boundary_right = (remaining_stripes.h_end == tile_rect->right);
     const int border = RESTORATION_BORDER >> ss_x;
@@ -2210,6 +2213,7 @@ void av1_loop_restoration_filter_unit(
       setup_processing_stripe_leftright_boundary(
           (uint16_t *)tmp_rui->luma, unit_w, h, rui->luma_stride,
           WIENERNS_UV_BRD, tile_boundary_left, tile_boundary_right, rlbs, 0);
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     // pc wiener filter
     tmp_rui->tskip = enable_pcwiener_buffers
                          ? tskip_in_ru + (i >> MI_SIZE_LOG2) * rui->tskip_stride
@@ -2223,6 +2227,7 @@ void av1_loop_restoration_filter_unit(
     stripe_filter(tmp_rui, unit_w, h, procunit_width, data_tl + i * stride,
                   stride, dst_tl + i * dst_stride, dst_stride, bit_depth);
 
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     restore_processing_stripe_leftright_boundary(
         data_tl, unit_w, h, stride, border, tile_boundary_left,
         tile_boundary_right, rlbs, rui->plane != PLANE_TYPE_Y);
@@ -2230,6 +2235,7 @@ void av1_loop_restoration_filter_unit(
       restore_processing_stripe_leftright_boundary(
           (uint16_t *)tmp_rui->luma, unit_w, h, rui->luma_stride,
           WIENERNS_UV_BRD, tile_boundary_left, tile_boundary_right, rlbs, 0);
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     restore_processing_stripe_boundary(&remaining_stripes, rlbs, h, data,
                                        stride, 1, 1, optimized_lr
 #if ISSUE_253
