@@ -3989,6 +3989,7 @@ static inline void write_match_indices(int plane,
 #endif  // CONFIG_LR_FRAMEFILTERS_IN_HEADER
 
 #if CONFIG_LR_FRAMEFILTERS_IN_HEADER
+// Write frame level wiener filters into the uncompressed frame header
 static AOM_INLINE void write_wienerns_framefilters_hdr(
     AV1_COMMON *cm, int plane, struct aom_write_bit_buffer *wb) {
   const int base_qindex = cm->quant_params.base_qindex;

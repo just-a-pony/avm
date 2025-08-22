@@ -89,18 +89,7 @@ void av1_alloc_restoration_boundary_buffers(struct AV1Common *cm,
   // RESTORATION_CTX_VERT lines of data for each stripe, and also need to be
   // able to quickly answer the question "Where is the <n>'th stripe for tile
   // row <m>?" To make that efficient, we generate the rst_last_stripe array.
-  /*
-  int num_stripes = 0;
-  for (int i = 0; i < cm->tiles.rows; ++i) {
-    TileInfo tile_info;
-    av1_tile_set_row(&tile_info, cm, i);
-    const int mi_h = tile_info.mi_row_end - tile_info.mi_row_start;
-    const int ext_h = RESTORATION_UNIT_OFFSET + (mi_h << MI_SIZE_LOG2);
-    const int tile_stripes =
-        (ext_h + RESTORATION_PROC_UNIT_SIZE - 1) / RESTORATION_PROC_UNIT_SIZE;
-    num_stripes += tile_stripes;
-  }
-  */
+
   AV1PixelRect tile_rect;
   int num_stripes = 0;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
@@ -146,8 +135,6 @@ void av1_alloc_restoration_boundary_buffers(struct AV1Common *cm,
         boundaries->stripe_boundary_below == NULL) {
       aom_free(boundaries->stripe_boundary_above);
       aom_free(boundaries->stripe_boundary_below);
-      // printf("num_stripes %d buf_size %d, stride %d\n", num_stripes,
-      // buf_size, stride);
       CHECK_MEM_ERROR(cm, boundaries->stripe_boundary_above,
                       aom_memalign(32, buf_size));
       CHECK_MEM_ERROR(cm, boundaries->stripe_boundary_below,

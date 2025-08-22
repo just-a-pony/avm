@@ -824,6 +824,7 @@ static INLINE int skip_sym_bit(const WienernsFilterParameters *nsfilter_params,
   return (num_taps > WIENERNS_SIGNALED_TAPS_MAX ? 2 : (asym_taps == 0));
 }
 
+// This function derive index of the first stripe of a tile
 static INLINE int get_top_stripe_idx_in_tile(int tile_row, int tile_col,
                                              const struct AV1Common *cm,
                                              int procunit_size,
@@ -841,6 +842,7 @@ static INLINE int get_top_stripe_idx_in_tile(int tile_row, int tile_col,
   return top_stripe;
 }
 
+// This function derive index of the first RU of a tile
 static INLINE int get_ru_index_for_tile_start(const RestorationInfo *rsi,
                                               int tile_row, int tile_col) {
   int x = 0, y = 0;

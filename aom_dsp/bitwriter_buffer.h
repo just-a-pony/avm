@@ -60,8 +60,10 @@ void aom_wb_write_primitive_quniform(struct aom_write_bit_buffer *wb,
 void aom_wb_write_primitive_ref_quniform(struct aom_write_bit_buffer *wb,
                                          uint16_t n, uint16_t r, uint16_t v);
 
+#if CONFIG_LR_FRAMEFILTERS_IN_HEADER
 int aom_wb_count_primitive_refsubexpfin(uint16_t n, uint16_t k, int16_t ref,
                                         int16_t v);
+#endif  // CONFIG_LR_FRAMEFILTERS_IN_HEADER
 #ifdef __cplusplus
 }  // extern "C"
 #endif

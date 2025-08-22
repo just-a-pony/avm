@@ -2960,6 +2960,7 @@ static void read_match_indices(int plane, WienerNonsepInfo *wienerns_info,
 #endif  // CONFIG_LR_FRAMEFILTERS_IN_HEADER
 
 #if CONFIG_LR_FRAMEFILTERS_IN_HEADER
+// Read frame level wiener filters from the uncompressed frame header
 static void read_wienerns_framefilters_hdr(AV1_COMMON *cm, int plane,
                                            struct aom_read_bit_buffer *rb) {
   const int base_qindex = cm->quant_params.base_qindex;

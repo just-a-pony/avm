@@ -54,6 +54,7 @@ void extend_ccso_border(uint16_t *buf, const int d, MACROBLOCKD *xd) {
   }
 }
 
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
 void extend_ccso_tile_border(const int tile_height, const int tile_width,
                              const int tile_stride, uint16_t *buf,
                              const int d) {
@@ -76,6 +77,7 @@ void extend_ccso_tile_border(const int tile_height, const int tile_width,
            sizeof(uint16_t) * (tile_width + (d << 1)));
   }
 }
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
 
 /* Derive the quantized index, later it can be used for retriving offset values
  * from the look-up table */
@@ -136,6 +138,7 @@ void derive_ccso_sample_pos(int *rec_idx, const int ccso_stride,
 }
 
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+/* Derive rect area of a tile for CCSO process */
 INLINE static AV1PixelRect av1_get_tile_rect_ccso(const TileInfo *tile_info,
                                                   const AV1_COMMON *cm,
                                                   MACROBLOCKD *xd, int is_uv) {
