@@ -145,7 +145,9 @@ aom_codec_err_t aom_read_obu_header_and_size(const uint8_t *data,
                                              size_t *const payload_size,
                                              size_t *const bytes_read) {
   size_t length_field_size_obu = 0;
+#if !CONFIG_NEW_OBU_HEADER
   size_t length_field_size_payload = 0;
+#endif  // !CONFIG_NEW_OBU_HEADER
   size_t obu_size = 0;
   aom_codec_err_t status;
 
@@ -167,6 +169,7 @@ aom_codec_err_t aom_read_obu_header_and_size(const uint8_t *data,
   // Derive the payload size from the data we've already read
   if (obu_size < obu_header->size) return AOM_CODEC_CORRUPT_FRAME;
   *payload_size = obu_size - obu_header->size;
+  *bytes_read = length_field_size_obu + obu_header->size;
 #else   // !CONFIG_NEW_OBU_HEADER
   if (!obu_header->has_size_field) {
     assert(is_annexb);
@@ -182,10 +185,10 @@ aom_codec_err_t aom_read_obu_header_and_size(const uint8_t *data,
         payload_size, &length_field_size_payload);
     if (status != AOM_CODEC_OK) return status;
   }
-#endif  // CONFIG_NEW_OBU_HEADER
 
   *bytes_read =
       length_field_size_obu + obu_header->size + length_field_size_payload;
+#endif  // CONFIG_NEW_OBU_HEADER
 
   return AOM_CODEC_OK;
 }
