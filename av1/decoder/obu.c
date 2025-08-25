@@ -1042,7 +1042,6 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
     const size_t bytes_available = data_end - data;
 
     if (bytes_available == 0 && !pbi->seen_frame_header) {
-      *p_data_end = data;
       cm->error.error_code = AOM_CODEC_OK;
       break;
     }
@@ -1267,6 +1266,8 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
   }
 
   if (cm->error.error_code != AOM_CODEC_OK) return -1;
+
+  *p_data_end = data;
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
   end_timing(pbi, aom_decode_frame_from_obus_time);

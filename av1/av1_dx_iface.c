@@ -733,10 +733,6 @@ static aom_codec_err_t decoder_inspect(aom_codec_alg_priv_t *ctx,
                                        void *user_priv) {
   aom_codec_err_t res = AOM_CODEC_OK;
 
-#if !CONFIG_NEW_OBU_HEADER
-  const uint8_t *const data_end = data + data_sz;
-#endif  // !CONFIG_NEW_OBU_HEADER
-
   Av1DecodeReturn *data2 = (Av1DecodeReturn *)user_priv;
 
   if (ctx->frame_worker == NULL) {
@@ -756,15 +752,6 @@ static aom_codec_err_t decoder_inspect(aom_codec_alg_priv_t *ctx,
 
   if (ctx->frame_worker->had_error)
     return update_error_state(ctx, &frame_worker_data->pbi->common.error);
-
-#if !CONFIG_NEW_OBU_HEADER
-  // Allow extra zero bytes after the frame end
-  while (data < data_end) {
-    const uint8_t marker = data[0];
-    if (marker) break;
-    ++data;
-  }
-#endif  // !CONFIG_NEW_OBU_HEADER
 
   data2->idx = -1;
 
@@ -903,15 +890,6 @@ static aom_codec_err_t decoder_decode(aom_codec_alg_priv_t *ctx,
 
     res = decode_one(ctx, &data_start, (size_t)frame_size, user_priv);
     if (res != AOM_CODEC_OK) return res;
-
-#if !CONFIG_NEW_OBU_HEADER
-    // Allow extra zero bytes after the frame end
-    while (data_start < data_end) {
-      const uint8_t marker = data_start[0];
-      if (marker) break;
-      ++data_start;
-    }
-#endif  // !CONFIG_NEW_OBU_HEADER
   }
 
   return res;
