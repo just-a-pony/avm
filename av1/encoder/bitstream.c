@@ -6665,7 +6665,8 @@ static AOM_INLINE void write_uncompressed_header_obu(
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     // this condidtion needs to be checked @Yeqing, @yixin
     if (cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu &&
-        cm->lf.tip_filter_level && cm->seq_params.disable_loopfilters_across_tiles) {
+        cm->lf.tip_filter_level &&
+        cm->seq_params.disable_loopfilters_across_tiles) {
       write_tile_info(cm, saved_wb, wb);
     }
 #else

@@ -8797,7 +8797,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_LF_SUB_PU
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     // this condition needs to be further checked @Yeqing, @Yixin
-    if (cm->seq_params.disable_loopfilters_across_tiles && cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu &&
+    if (cm->seq_params.disable_loopfilters_across_tiles &&
+        cm->seq_params.enable_lf_sub_pu && cm->features.allow_lf_sub_pu &&
         cm->lf.tip_filter_level) {
       read_tile_info(pbi, rb);
     }
