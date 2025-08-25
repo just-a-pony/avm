@@ -121,8 +121,6 @@ static const int wedge_index_2_dist[MAX_WEDGE_TYPES] = {
   1, 2, 3,     // WEDGE_346
 };
 
-#define BAWP_REF_LINES 1
-
 // 3-tuple: {direction, x_offset, y_offset}
 typedef struct {
   WedgeDirectionType direction;

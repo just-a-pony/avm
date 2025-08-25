@@ -1081,6 +1081,7 @@ enum {
 // Explicit BAWP scaling factor context counts
 #define BAWP_SCALES_CTX_COUNT 3
 // The allowed value range for bawp_flag
+#define BAWP_REF_LINES 1
 #define BAWP_OPTION_CNT 4
 
 #define AMVD_MODE_CONTEXTS 3

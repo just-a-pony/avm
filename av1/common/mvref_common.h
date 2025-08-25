@@ -1229,6 +1229,24 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
   return 1;
 }
 
+#if CONFIG_LOCAL_INTRABC_BAWP
+static INLINE int is_bv_valid_for_morph(const MV sub_pel_dv,
+                                        const AV1_COMMON *cm,
+                                        const MACROBLOCKD *xd, int mi_row,
+                                        int mi_col, BLOCK_SIZE bsize) {
+  // Assumes the input sub_pel_dv is a valid bv for global (or local) intraBC
+  const MV bv_to_tl_template = { sub_pel_dv.row - GET_MV_SUBPEL(BAWP_REF_LINES),
+                                 sub_pel_dv.col -
+                                     GET_MV_SUBPEL(BAWP_REF_LINES) };
+  assert(BAWP_REF_LINES < 4);
+  if (!av1_is_dv_valid(bv_to_tl_template, cm, xd, mi_row, mi_col, bsize,
+                       cm->mib_size_log2)) {
+    return false;
+  }
+  return true;
+}
+#endif  // CONFIG_LOCAL_INTRABC_BAWP
+
 // assign subblock mv from warp into submi
 void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,
                    WarpedMotionParams *wm_params, int mi_row, int mi_col
