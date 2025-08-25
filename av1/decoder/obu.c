@@ -1005,9 +1005,9 @@ static size_t read_padding(AV1_COMMON *const cm, const uint8_t *data,
   return sz;
 }
 
-// On success, returns a boolean that indicates whether the decoding of the
-// current frame is finished. On failure, sets cm->error.error_code and
-// returns -1.
+// On success, sets *p_data_end and returns a boolean that indicates whether
+// the decoding of the current frame is finished. On failure, sets
+// cm->error.error_code and returns -1.
 int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
                                const uint8_t *data_end,
                                const uint8_t **p_data_end) {
