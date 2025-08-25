@@ -182,7 +182,6 @@ int obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,
   *bytes_read = 0;
 
   if (feof(f)) {
-    printf("end of file\n");
     return 1;
   }
 
