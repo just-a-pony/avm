@@ -618,28 +618,24 @@ static void get_stripe_boundary_info(const RestorationTileLimits *limits,
 static void setup_processing_stripe_boundary(
     const RestorationTileLimits *limits, const RestorationStripeBoundaries *rsb,
     int rsb_row, int h, uint16_t *data, int data_stride,
-    RestorationLineBuffers *rlbs, int copy_above, int copy_below, int opt
-#if ISSUE_253
-    ,
-    int is_chroma
-#endif  // ISSUE_253
-) {
+    RestorationLineBuffers *rlbs, int copy_above, int copy_below, int opt,
+    int is_chroma) {
   // Offsets within the line buffers. The buffer logically starts at column
-  // -RESTORATION_EXTRA_HORZ so the 1st column (at x0 - RESTORATION_EXTRA_HORZ)
-  // has column x0 in the buffer.
+  // -RESTORATION_BORDER_HORZ so the 1st column (at x0 -
+  // RESTORATION_BORDER_HORZ) has column x0 in the buffer.
   const int buf_stride = rsb->stripe_boundary_stride;
   const int buf_x0_off = limits->h_start;
   const int line_width =
-      (limits->h_end - limits->h_start) + 2 * RESTORATION_EXTRA_HORZ;
+      (limits->h_end - limits->h_start) + 2 * RESTORATION_BORDER_HORZ;
   const int line_size = line_width << 1;
 
-  const int data_x0 = limits->h_start - RESTORATION_EXTRA_HORZ;
+  const int data_x0 = limits->h_start - RESTORATION_BORDER_HORZ;
 
   assert(rsb_row < rsb->num_stripes * RESTORATION_CTX_VERT);
 
-  // Replace RESTORATION_BORDER pixels above the top of the stripe
+  // Replace RESTORATION_BORDER_VERT pixels above the top of the stripe
   // We expand RESTORATION_CTX_VERT=2 lines from rsb->stripe_boundary_above
-  // to fill RESTORATION_BORDER=3 lines of above pixels. This is done by
+  // to fill RESTORATION_BORDER_VERT=4 lines of above pixels. This is done by
   // duplicating the topmost of the 2 lines (see the AOMMAX call when
   // calculating src_row, which gets the values 0, 0, 1 for i = -3, -2, -1).
   // (the values 0, 0, 0, 1 for i = -4, -3, -2, -1 in the case of
@@ -654,24 +650,20 @@ static void setup_processing_stripe_boundary(
     if (copy_above) {
       uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
 
-      for (int i = -RESTORATION_BORDER; i < 0; ++i) {
+      for (int i = -RESTORATION_BORDER_VERT; i < 0; ++i) {
         const int buf_row = rsb_row + AOMMAX(i + RESTORATION_CTX_VERT, 0);
         const int buf_off = buf_x0_off + buf_row * buf_stride;
         const uint16_t *buf = rsb->stripe_boundary_above + buf_off;
         uint16_t *dst = data_tl + i * data_stride;
         // Save old pixels, then replace with data from stripe_boundary_above
-#if ISSUE_253
-        memcpy(rlbs->tmp_save_above[is_chroma][i + RESTORATION_BORDER], dst,
-               line_size);
-#else
-        memcpy(rlbs->tmp_save_above[i + RESTORATION_BORDER], dst, line_size);
-#endif  // ISSUE_253
+        memcpy(rlbs->tmp_save_above[is_chroma][i + RESTORATION_BORDER_VERT],
+               dst, line_size);
         // printf("buf_row = %d, rsb_row = %d\n", buf_row, rsb_row);
         memcpy(dst, buf, line_size);
       }
     }
 
-    // Replace RESTORATION_BORDER pixels below the bottom of the stripe.
+    // Replace RESTORATION_BORDER_VERT pixels below the bottom of the stripe.
     // The second buffer row is repeated, so src_row gets the values 0, 1, 1
     // for i = 0, 1, 2.
     // (the values 0, 1, 1, 1 for i = 0,1,2,3 in the case of
@@ -680,18 +672,14 @@ static void setup_processing_stripe_boundary(
       const int stripe_end = limits->v_start + h;
       uint16_t *data_bl = data + data_x0 + stripe_end * data_stride;
 
-      for (int i = 0; i < RESTORATION_BORDER; ++i) {
+      for (int i = 0; i < RESTORATION_BORDER_VERT; ++i) {
         const int buf_row = rsb_row + AOMMIN(i, RESTORATION_CTX_VERT - 1);
         const int buf_off = buf_x0_off + buf_row * buf_stride;
         const uint16_t *src = rsb->stripe_boundary_below + buf_off;
 
         uint16_t *dst = data_bl + i * data_stride;
         // Save old pixels, then replace with data from stripe_boundary_below
-#if ISSUE_253
         memcpy(rlbs->tmp_save_below[is_chroma][i], dst, line_size);
-#else
-        memcpy(rlbs->tmp_save_below[i], dst, line_size);
-#endif  // ISSUE_253
         memcpy(dst, src, line_size);
       }
     }
@@ -699,19 +687,19 @@ static void setup_processing_stripe_boundary(
     if (copy_above) {
       uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
 
-      // Only save and overwrite i=-RESTORATION_BORDER line.
-      uint16_t *dst = data_tl + (-RESTORATION_BORDER) * data_stride;
+      // Only save and overwrite i=-RESTORATION_BORDER_VERT line.
+      uint16_t *dst = data_tl + (-RESTORATION_BORDER_VERT) * data_stride;
       // Save old pixels, then replace with data from stripe_boundary_above
-#if ISSUE_253
       memcpy(rlbs->tmp_save_above[is_chroma][0], dst, line_size);
-      memcpy(dst, data_tl + (-RESTORATION_BORDER + 2) * data_stride, line_size);
+      memcpy(dst,
+             data_tl + (-RESTORATION_BORDER_VERT + RESTORATION_CTX_VERT) *
+                           data_stride,
+             line_size);
       memcpy(rlbs->tmp_save_above[is_chroma][1], dst + data_stride, line_size);
       memcpy(dst + data_stride,
-             data_tl + (-RESTORATION_BORDER + 2) * data_stride, line_size);
-#else
-      memcpy(rlbs->tmp_save_above[0], dst, line_size);
-      memcpy(dst, data_tl + (-RESTORATION_BORDER + 1) * data_stride, line_size);
-#endif  // ISSUE_253
+             data_tl + (-RESTORATION_BORDER_VERT + RESTORATION_CTX_VERT) *
+                           data_stride,
+             line_size);
     }
 
     if (copy_below) {
@@ -721,16 +709,13 @@ static void setup_processing_stripe_boundary(
       // Only save and overwrite i=2 line.
       uint16_t *dst = data_bl + 2 * data_stride;
       // Save old pixels, then replace with data from stripe_boundary_below
-#if ISSUE_253
       memcpy(rlbs->tmp_save_below[is_chroma][2], dst, line_size);
-      memcpy(dst, data_bl + (2 - 1) * data_stride, line_size);
+      memcpy(dst, data_bl + (RESTORATION_CTX_VERT - 1) * data_stride,
+             line_size);
 
       memcpy(rlbs->tmp_save_below[is_chroma][3], dst + data_stride, line_size);
-      memcpy(dst + data_stride, data_bl + (3 - 1) * data_stride, line_size);
-#else
-      memcpy(rlbs->tmp_save_below[2], dst, line_size);
-      memcpy(dst, data_bl + (2 - 1) * data_stride, line_size);
-#endif  // ISSUE_253
+      memcpy(dst + data_stride,
+             data_bl + (RESTORATION_CTX_VERT - 1) * data_stride, line_size);
     }
   }
 }
@@ -751,29 +736,21 @@ static void setup_processing_stripe_boundary(
 static void restore_processing_stripe_boundary(
     const RestorationTileLimits *limits, const RestorationLineBuffers *rlbs,
     int h, uint16_t *data, int data_stride, int copy_above, int copy_below,
-    int opt
-#if ISSUE_253
-    ,
-    int is_chroma
-#endif  // ISSUE_253
-) {
+    int opt, int is_chroma) {
   const int line_width =
-      (limits->h_end - limits->h_start) + 2 * RESTORATION_EXTRA_HORZ;
+      (limits->h_end - limits->h_start) + 2 * RESTORATION_BORDER_HORZ;
   const int line_size = line_width << 1;
 
-  const int data_x0 = limits->h_start - RESTORATION_EXTRA_HORZ;
+  const int data_x0 = limits->h_start - RESTORATION_BORDER_HORZ;
 
   if (!opt) {
     if (copy_above) {
       uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
-      for (int i = -RESTORATION_BORDER; i < 0; ++i) {
+      for (int i = -RESTORATION_BORDER_VERT; i < 0; ++i) {
         uint16_t *dst = data_tl + i * data_stride;
-#if ISSUE_253
-        memcpy(dst, rlbs->tmp_save_above[is_chroma][i + RESTORATION_BORDER],
+        memcpy(dst,
+               rlbs->tmp_save_above[is_chroma][i + RESTORATION_BORDER_VERT],
                line_size);
-#else
-        memcpy(dst, rlbs->tmp_save_above[i + RESTORATION_BORDER], line_size);
-#endif  // ISSUE_253
       }
     }
 
@@ -781,29 +758,21 @@ static void restore_processing_stripe_boundary(
       const int stripe_bottom = limits->v_start + h;
       uint16_t *data_bl = data + data_x0 + stripe_bottom * data_stride;
 
-      for (int i = 0; i < RESTORATION_BORDER; ++i) {
-        if (stripe_bottom + i >= limits->v_end + RESTORATION_BORDER) break;
+      for (int i = 0; i < RESTORATION_BORDER_VERT; ++i) {
+        if (stripe_bottom + i >= limits->v_end + RESTORATION_BORDER_VERT) break;
 
         uint16_t *dst = data_bl + i * data_stride;
-#if ISSUE_253
         memcpy(dst, rlbs->tmp_save_below[is_chroma][i], line_size);
-#else
-        memcpy(dst, rlbs->tmp_save_below[i], line_size);
-#endif  // ISSUE_253
       }
     }
   } else {
     if (copy_above) {
       uint16_t *data_tl = data + data_x0 + limits->v_start * data_stride;
 
-      // Only restore i=-RESTORATION_BORDER line.
-      uint16_t *dst = data_tl + (-RESTORATION_BORDER) * data_stride;
-#if ISSUE_253
+      // Only restore i=-RESTORATION_BORDER_VERT line.
+      uint16_t *dst = data_tl + (-RESTORATION_BORDER_VERT) * data_stride;
       memcpy(dst, rlbs->tmp_save_above[is_chroma][0], line_size);
       memcpy(dst + data_stride, rlbs->tmp_save_above[is_chroma][1], line_size);
-#else
-      memcpy(dst, rlbs->tmp_save_above[0], line_size);
-#endif  // ISSUE_253
     }
 
     if (copy_below) {
@@ -811,15 +780,11 @@ static void restore_processing_stripe_boundary(
       uint16_t *data_bl = data + data_x0 + stripe_bottom * data_stride;
 
       // Only restore i=2 line.
-      if (stripe_bottom + 2 < limits->v_end + RESTORATION_BORDER) {
+      if (stripe_bottom + 2 < limits->v_end + RESTORATION_BORDER_VERT) {
         uint16_t *dst = data_bl + 2 * data_stride;
-#if ISSUE_253
         memcpy(dst, rlbs->tmp_save_below[is_chroma][2], line_size);
         memcpy(dst + data_stride, rlbs->tmp_save_below[is_chroma][3],
                line_size);
-#else
-        memcpy(dst, rlbs->tmp_save_below[2], line_size);
-#endif  // ISSUE_253
       }
     }
   }
@@ -832,7 +797,7 @@ static void setup_processing_stripe_leftright_boundary(
     RestorationLineBuffers *rlbs, int is_chroma) {
   assert(rlbs != NULL);
   assert(h <= RESTORATION_PROC_UNIT_SIZE);
-  assert(border <= RESTORATION_BORDER);
+  assert(border <= RESTORATION_BORDER_HORZ);
   if (tile_boundary_left) {
     uint16_t *d = data_tl - border * data_stride - border;
     for (int i = 0; i < border; ++i) {
@@ -885,7 +850,7 @@ static void restore_processing_stripe_leftright_boundary(
     int tile_boundary_left, int tile_boundary_right,
     RestorationLineBuffers *rlbs, int is_chroma) {
   assert(h <= RESTORATION_PROC_UNIT_SIZE);
-  assert(border <= RESTORATION_BORDER);
+  assert(border <= RESTORATION_BORDER_HORZ);
   if (tile_boundary_left) {
     uint16_t *d = data_tl - border * data_stride - border;
     for (int i = 0; i < h + 2 * border; ++i) {
@@ -1714,7 +1679,6 @@ static void wiener_nsfilter_stripe_highbd(const RestorationUnitInfo *rui,
   }
 }
 
-#if ISSUE_253
 uint16_t *wienerns_copy_luma_with_virtual_lines(struct AV1Common *cm,
                                                 uint16_t **luma_hbd) {
   const RestorationInfo *rsi = &cm->rst_info[0];
@@ -1851,46 +1815,50 @@ uint16_t *wienerns_copy_luma_with_virtual_lines(struct AV1Common *cm,
         assert(0 && "Invalid dimensions");
       }
 #elif WIENERNS_CROSS_FILT_LUMA_TYPE == 2
-      if (ss_x && ss_y) {
-        if (ds_type == 1) {
-          for (int r = 0; r < h_uv; ++r) {
-            for (int c = 0; c < width_uv; ++c) {
-              curr_luma[r * out_stride + c] =
-                  (curr_dgd[2 * r * in_stride + 2 * c] +
-                   curr_dgd[(2 * r + 1) * in_stride + 2 * c]) >>
-                  1;
-            }
-          }
-        } else if (ds_type == 2) {
-          for (int r = 0; r < h_uv; ++r) {
-            for (int c = 0; c < width_uv; ++c) {
-              curr_luma[r * out_stride + c] =
-                  curr_dgd[(1 + ss_y) * r * in_stride + (1 + ss_x) * c];
-            }
-          }
-        } else {
-          for (int r = 0; r < h_uv; ++r) {
-            for (int c = 0; c < width_uv; ++c) {
-              curr_luma[r * out_stride + c] =
-                  (curr_dgd[2 * r * in_stride + 2 * c] +
-                   curr_dgd[2 * r * in_stride + 2 * c + 1] +
-                   curr_dgd[(2 * r + 1) * in_stride + 2 * c] +
-                   curr_dgd[(2 * r + 1) * in_stride + 2 * c + 1]) >>
-                  2;
-            }
-          }
-        }
-      } else {
-        for (int r = 0; r < h_uv; ++r) {
-          for (int c = 0; c < width_uv; ++c) {
-            curr_luma[r * out_stride + c] =
-                curr_dgd[(1 + ss_y) * r * in_stride + (1 + ss_x) * c];
-          }
-        }
-      }
+                     if (ss_x && ss_y) {
+                       if (ds_type == 1) {
+                         for (int r = 0; r < h_uv; ++r) {
+                           for (int c = 0; c < width_uv; ++c) {
+                             curr_luma[r * out_stride + c] =
+                                 (curr_dgd[2 * r * in_stride + 2 * c] +
+                                  curr_dgd[(2 * r + 1) * in_stride + 2 * c]) >>
+                                 1;
+                           }
+                         }
+                       } else if (ds_type == 2) {
+                         for (int r = 0; r < h_uv; ++r) {
+                           for (int c = 0; c < width_uv; ++c) {
+                             curr_luma[r * out_stride + c] =
+                                 curr_dgd[(1 + ss_y) * r * in_stride +
+                                          (1 + ss_x) * c];
+                           }
+                         }
+                       } else {
+                         for (int r = 0; r < h_uv; ++r) {
+                           for (int c = 0; c < width_uv; ++c) {
+                             curr_luma[r * out_stride + c] =
+                                 (curr_dgd[2 * r * in_stride + 2 * c] +
+                                  curr_dgd[2 * r * in_stride + 2 * c + 1] +
+                                  curr_dgd[(2 * r + 1) * in_stride + 2 * c] +
+                                  curr_dgd[(2 * r + 1) * in_stride + 2 * c +
+                                           1]) >>
+                                 2;
+                           }
+                         }
+                       }
+                     } else {
+                       for (int r = 0; r < h_uv; ++r) {
+                         for (int c = 0; c < width_uv; ++c) {
+                           curr_luma[r * out_stride + c] =
+                               curr_dgd[(1 + ss_y) * r * in_stride +
+                                        (1 + ss_x) * c];
+                         }
+                       }
+                     }
 #else
-      av1_highbd_resize_plane(dgd, height_y, width_y, in_stride, *luma,
-                              height_uv, width_uv, out_stride, bd);
+                     av1_highbd_resize_plane(dgd, height_y, width_y, in_stride,
+                                             *luma, height_uv, width_uv,
+                                             out_stride, bd);
 #endif  // WIENERNS_CROSS_FILT_LUMA_TYPE
 
       restore_processing_stripe_boundary(&remaining_stripes, cm->rlbs, h, dgd,
@@ -1924,7 +1892,6 @@ uint16_t *wienerns_copy_luma_with_virtual_lines(struct AV1Common *cm,
            (width_uv + 2 * border) * sizeof((*luma)[0]));
   return aug_luma;
 }
-#endif  // ISSUE_253
 
 uint16_t *wienerns_copy_luma_highbd(const uint16_t *dgd, int height_y,
                                     int width_y, int in_stride,
@@ -2184,28 +2151,20 @@ void av1_loop_restoration_filter_unit(
     tmp_rui->error = rui->error;
 #endif  // CONFIG_BRU
     setup_processing_stripe_boundary(&remaining_stripes, rsb, rsb_row, h, data,
-                                     stride, rlbs, 1, 1, optimized_lr
-#if ISSUE_253
-                                     ,
-                                     rui->plane != PLANE_TYPE_Y
-#endif  // ISSUE_253
-    );
+                                     stride, rlbs, 1, 1, optimized_lr,
+                                     rui->plane != PLANE_TYPE_Y);
 
     // cross-filter
     tmp_rui->luma =
-#if ISSUE_253
         enable_cross_buffers
             ? luma_in_ru +
                   (i + 2 * frame_stripe * WIENERNS_UV_BRD) * rui->luma_stride
             : NULL;
-#else
-        enable_cross_buffers ? luma_in_ru + i * rui->luma_stride : NULL;
-#endif  // ISSUE_253
 
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     int tile_boundary_left = (remaining_stripes.h_start == tile_rect->left);
     int tile_boundary_right = (remaining_stripes.h_end == tile_rect->right);
-    const int border = RESTORATION_BORDER >> ss_x;
+    const int border = RESTORATION_BORDER_HORZ >> ss_x;
     setup_processing_stripe_leftright_boundary(
         data_tl, unit_w, h, stride, border, tile_boundary_left,
         tile_boundary_right, rlbs, rui->plane != PLANE_TYPE_Y);
@@ -2237,12 +2196,8 @@ void av1_loop_restoration_filter_unit(
           WIENERNS_UV_BRD, tile_boundary_left, tile_boundary_right, rlbs, 0);
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     restore_processing_stripe_boundary(&remaining_stripes, rlbs, h, data,
-                                       stride, 1, 1, optimized_lr
-#if ISSUE_253
-                                       ,
-                                       rui->plane != PLANE_TYPE_Y
-#endif  // ISSUE_253
-    );
+                                       stride, 1, 1, optimized_lr,
+                                       rui->plane != PLANE_TYPE_Y);
 
     i += h;
   }
@@ -2322,11 +2277,7 @@ void av1_loop_restoration_filter_frame_init(AV1LrStruct *lr_ctxt,
     RestorationType rtype = rsi->frame_restoration_type;
     rsi->optimized_lr = optimized_lr;
 
-#if ISSUE_253
     if (rtype == RESTORE_NONE && plane > 0) {
-#else
-    if (rtype == RESTORE_NONE) {
-#endif
       continue;
     }
 
@@ -2341,8 +2292,8 @@ void av1_loop_restoration_filter_frame_init(AV1LrStruct *lr_ctxt,
     FilterFrameCtxt *lr_plane_ctxt = &lr_ctxt->ctxt[plane];
 
     av1_extend_frame(frame->buffers[plane], plane_width, plane_height,
-                     frame->strides[is_uv], RESTORATION_BORDER,
-                     RESTORATION_BORDER);
+                     frame->strides[is_uv], RESTORATION_BORDER_HORZ,
+                     RESTORATION_BORDER_VERT);
 
     lr_plane_ctxt->rsi = rsi;
     lr_plane_ctxt->ss_x = is_uv && seq_params->subsampling_x;
@@ -2395,27 +2346,7 @@ static void foreach_rest_unit_in_planes(AV1LrStruct *lr_ctxt, AV1_COMMON *cm,
 #else
   int luma_stride = dgd->crop_widths[1] + 2 * WIENERNS_UV_BRD;
 #endif  // CONFIG_F054_PIC_BOUNDARY
-#if ISSUE_253
   luma_buf = wienerns_copy_luma_with_virtual_lines(cm, &luma);
-#else
-#if CONFIG_F054_PIC_BOUNDARY
-  luma_buf = wienerns_copy_luma_highbd(
-      dgd->buffers[AOM_PLANE_Y], dgd->heights[AOM_PLANE_Y],
-      dgd->widths[AOM_PLANE_Y], dgd->strides[AOM_PLANE_Y], &luma,
-      dgd->heights[1], dgd->widths[1], WIENERNS_UV_BRD, luma_stride,
-#else
-  luma_buf = wienerns_copy_luma_highbd(
-      dgd->buffers[AOM_PLANE_Y], dgd->crop_heights[AOM_PLANE_Y],
-      dgd->crop_widths[AOM_PLANE_Y], dgd->strides[AOM_PLANE_Y], &luma,
-      dgd->crop_heights[1], dgd->crop_widths[1], WIENERNS_UV_BRD, luma_stride,
-#endif  // CONFIG_F054_PIC_BOUNDARY
-      cm->seq_params.bit_depth
-#if WIENERNS_CROSS_FILT_LUMA_TYPE == 2
-      ,
-      cm->seq_params.cfl_ds_filter_index
-#endif
-  );
-#endif  // ISSUE_253
   assert(luma_buf != NULL);
 
   for (int plane = 0; plane < num_planes; ++plane) {
@@ -2777,7 +2708,7 @@ static void save_deblock_boundary_lines(
 
   uint16_t *bdry_buf = is_above ? boundaries->stripe_boundary_above
                                 : boundaries->stripe_boundary_below;
-  uint16_t *bdry_start = bdry_buf + (RESTORATION_EXTRA_HORZ);
+  uint16_t *bdry_start = bdry_buf + (RESTORATION_BORDER_HORZ);
   const int bdry_stride = boundaries->stripe_boundary_stride;
   uint16_t *bdry_rows =
       bdry_start + RESTORATION_CTX_VERT * stripe * bdry_stride;
@@ -2812,7 +2743,7 @@ static void save_deblock_boundary_lines(
     memcpy(bdry_rows + bdry_stride, bdry_rows, line_bytes);
 
   extend_lines(bdry_rows, upscaled_width, RESTORATION_CTX_VERT, bdry_stride,
-               RESTORATION_EXTRA_HORZ);
+               RESTORATION_BORDER_HORZ);
 }
 
 static void save_cdef_boundary_lines(const YV12_BUFFER_CONFIG *frame,
@@ -2828,7 +2759,7 @@ static void save_cdef_boundary_lines(const YV12_BUFFER_CONFIG *frame,
 
   uint16_t *bdry_buf = is_above ? boundaries->stripe_boundary_above
                                 : boundaries->stripe_boundary_below;
-  uint16_t *bdry_start = bdry_buf + RESTORATION_EXTRA_HORZ;
+  uint16_t *bdry_start = bdry_buf + RESTORATION_BORDER_HORZ;
   const int bdry_stride = boundaries->stripe_boundary_stride;
   uint16_t *bdry_rows =
       bdry_start + RESTORATION_CTX_VERT * stripe * bdry_stride;
@@ -2851,7 +2782,7 @@ static void save_cdef_boundary_lines(const YV12_BUFFER_CONFIG *frame,
     memcpy(bdry_rows + i * bdry_stride, src_rows, line_bytes);
   }
   extend_lines(bdry_rows, upscaled_width, RESTORATION_CTX_VERT, bdry_stride,
-               RESTORATION_EXTRA_HORZ);
+               RESTORATION_BORDER_HORZ);
 }
 
 void save_tile_row_boundary_lines(const YV12_BUFFER_CONFIG *frame, int plane,

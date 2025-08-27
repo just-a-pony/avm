@@ -638,9 +638,9 @@ static void enqueue_lr_jobs(AV1LrSync *lr_sync, AV1LrStruct *lr_ctxt,
 
           if ((i & 1) == 0) {
             lr_job_queue[lr_job_counter[i & 1]].v_copy_start =
-                limits.v_start + RESTORATION_BORDER;
+                limits.v_start + RESTORATION_BORDER_VERT;
             lr_job_queue[lr_job_counter[i & 1]].v_copy_end =
-                limits.v_end - RESTORATION_BORDER;
+                limits.v_end - RESTORATION_BORDER_VERT;
             if (i == 0) {
               assert(limits.v_start == tile_rect.top);
               lr_job_queue[lr_job_counter[i & 1]].v_copy_start = tile_rect.top;
@@ -651,9 +651,9 @@ static void enqueue_lr_jobs(AV1LrSync *lr_sync, AV1LrStruct *lr_ctxt,
             }
           } else {
             lr_job_queue[lr_job_counter[i & 1]].v_copy_start =
-                AOMMAX(limits.v_start - RESTORATION_BORDER, tile_rect.top);
-            lr_job_queue[lr_job_counter[i & 1]].v_copy_end =
-                AOMMIN(limits.v_end + RESTORATION_BORDER, tile_rect.bottom);
+                AOMMAX(limits.v_start - RESTORATION_BORDER_VERT, tile_rect.top);
+            lr_job_queue[lr_job_counter[i & 1]].v_copy_end = AOMMIN(
+                limits.v_end + RESTORATION_BORDER_VERT, tile_rect.bottom);
           }
           lr_job_counter[i & 1]++;
           lr_sync->jobs_enqueued++;
@@ -758,28 +758,7 @@ static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
 #else
   int luma_stride = dgd->crop_widths[1] + 2 * WIENERNS_UV_BRD;
 #endif  // CONFIG_F054_PIC_BOUNDARY
-#if ISSUE_253
   luma_buf = wienerns_copy_luma_with_virtual_lines(cm, &luma);
-#else
-#if CONFIG_F054_PIC_BOUNDARY
-  int luma_stride = dgd->widths[1] + 2 * WIENERNS_UV_BRD;
-  luma_buf = wienerns_copy_luma_highbd(
-      dgd->buffers[AOM_PLANE_Y], dgd->heights[AOM_PLANE_Y],
-      dgd->widths[AOM_PLANE_Y], dgd->strides[AOM_PLANE_Y], &luma,
-      dgd->heights[1], dgd->widths[1], WIENERNS_UV_BRD, luma_stride,
-#else
-  luma_buf = wienerns_copy_luma_highbd(
-      dgd->buffers[AOM_PLANE_Y], dgd->crop_heights[AOM_PLANE_Y],
-      dgd->crop_widths[AOM_PLANE_Y], dgd->strides[AOM_PLANE_Y], &luma,
-      dgd->crop_heights[1], dgd->crop_widths[1], WIENERNS_UV_BRD, luma_stride,
-#endif  // CONFIG_F054_PIC_BOUNDARY
-      cm->seq_params.bit_depth
-#if WIENERNS_CROSS_FILT_LUMA_TYPE == 2
-      ,
-      cm->seq_params.cfl_ds_filter_index
-#endif
-  );
-#endif  // ISSUE_253
   assert(luma_buf != NULL);
 
   const int num_planes = av1_num_planes(cm);

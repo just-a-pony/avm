@@ -154,9 +154,7 @@ typedef struct {
   int num_wiener_nonsep;  // debug: number of RESTORE_WIENER_NONSEP RUs.
 
   const uint16_t *luma;
-#if ISSUE_253
   const uint16_t *luma_stat;
-#endif  // ISSUE_253
 
   int luma_stride;
 
@@ -203,9 +201,6 @@ typedef struct RstUnitSnapshot {
   int64_t merge_bits;
   int64_t merge_sse_cand;
   int64_t merge_bits_cand;
-  // Wiener filter info
-  int64_t M[WIENER_WIN2];
-  int64_t H[WIENER_WIN2 * WIENER_WIN2];
   // Pointers to respective stats in RstUnitStats.
   const double *A;
   const double *b;
@@ -366,13 +361,9 @@ static int64_t try_restoration_unit(const RestSearchCtxt *rsc,
   const int plane = rsc->plane;
   const int is_uv = plane > 0;
   const RestorationInfo *rsi = &cm->rst_info[plane];
-#if ISSUE_253
   RestorationLineBuffers *rlbs = aom_malloc(sizeof(RestorationLineBuffers));
   if (rlbs == NULL)
     fprintf(stderr, "rlbs buffer does not allocate successfully\n");
-#else
-  RestorationLineBuffers rlbs;
-#endif
   const int bit_depth = cm->seq_params.bit_depth;
 
   const YV12_BUFFER_CONFIG *fts = &cm->cur_frame->buf;
@@ -380,20 +371,13 @@ static int64_t try_restoration_unit(const RestSearchCtxt *rsc,
   // also used in encoder.
   const int optimized_lr = 0;
   av1_loop_restoration_filter_unit(
-      limits, rui, &rsi->boundaries,
-#if ISSUE_253
-      rlbs,
-#else
-      &rlbs,
-#endif
-      tile_rect, rsc->tile_stripe0, is_uv && cm->seq_params.subsampling_x,
+      limits, rui, &rsi->boundaries, rlbs, tile_rect, rsc->tile_stripe0,
+      is_uv && cm->seq_params.subsampling_x,
       is_uv && cm->seq_params.subsampling_y, bit_depth, fts->buffers[plane],
       fts->strides[is_uv], rsc->dst->buffers[plane], rsc->dst->strides[is_uv],
       optimized_lr);
 
-#if ISSUE_253
   if (rlbs != NULL) aom_free(rlbs);
-#endif
   return sse_restoration_unit(limits, rsc->src, rsc->dst, plane);
 }
 
@@ -514,58 +498,6 @@ static AOM_INLINE void search_pc_wiener_visitor(
   rsc->sse += rusi->sse[rtype];
   rsc->bits += (cost_pc_wiener < cost_none) ? bits_pc_wiener : bits_none;
   // No side-information for now to copy to info.
-}
-
-void av1_compute_stats_highbd_c(int wiener_win, const uint16_t *dgd,
-                                const uint16_t *src, int h_start, int h_end,
-                                int v_start, int v_end, int dgd_stride,
-                                int src_stride, int64_t *M, int64_t *H,
-                                aom_bit_depth_t bit_depth) {
-  int i, j, k, l;
-  int32_t Y[WIENER_WIN2];
-  const int wiener_win2 = wiener_win * wiener_win;
-  const int wiener_halfwin = (wiener_win >> 1);
-  uint16_t avg =
-      find_average_highbd(dgd, h_start, h_end, v_start, v_end, dgd_stride);
-
-  uint8_t bit_depth_divider = 1;
-  if (bit_depth == AOM_BITS_12)
-    bit_depth_divider = 16;
-  else if (bit_depth == AOM_BITS_10)
-    bit_depth_divider = 4;
-
-  memset(M, 0, sizeof(*M) * wiener_win2);
-  memset(H, 0, sizeof(*H) * wiener_win2 * wiener_win2);
-  for (i = v_start; i < v_end; i++) {
-    for (j = h_start; j < h_end; j++) {
-      const int32_t X = (int32_t)src[i * src_stride + j] - (int32_t)avg;
-      int idx = 0;
-      for (k = -wiener_halfwin; k <= wiener_halfwin; k++) {
-        for (l = -wiener_halfwin; l <= wiener_halfwin; l++) {
-          Y[idx] = (int32_t)dgd[(i + l) * dgd_stride + (j + k)] - (int32_t)avg;
-          idx++;
-        }
-      }
-      assert(idx == wiener_win2);
-      for (k = 0; k < wiener_win2; ++k) {
-        M[k] += (int64_t)Y[k] * X;
-        for (l = k; l < wiener_win2; ++l) {
-          // H is a symmetric matrix, so we only need to fill out the upper
-          // triangle here. We can copy it down to the lower triangle outside
-          // the (i, j) loops.
-          H[k * wiener_win2 + l] += (int64_t)Y[k] * Y[l];
-        }
-      }
-    }
-  }
-  for (k = 0; k < wiener_win2; ++k) {
-    M[k] /= bit_depth_divider;
-    H[k * wiener_win2 + k] /= bit_depth_divider;
-    for (l = k + 1; l < wiener_win2; ++l) {
-      H[k * wiener_win2 + l] /= bit_depth_divider;
-      H[l * wiener_win2 + k] = H[k * wiener_win2 + l];
-    }
-  }
 }
 
 // If limits != NULL, calculates error for current restoration unit.
@@ -2384,9 +2316,7 @@ static void gather_stats_wienerns(const RestorationTileLimits *limits,
 
   RestorationUnitInfo rui;
   initialize_rui_for_nonsep_search(rsc, &rui);
-#if ISSUE_253
   rui.luma = rsc->luma_stat;
-#endif  // ISSUE_253
   rui.restoration_type = RESTORE_WIENER_NONSEP;
   const WienernsFilterParameters *nsfilter_params = get_wienerns_parameters(
       rsc->cm->quant_params.base_qindex, rsc->plane != AOM_PLANE_Y);
@@ -4287,7 +4217,6 @@ void av1_pick_filter_restoration(const YV12_BUFFER_CONFIG *src, AV1_COMP *cpi) {
   );
   assert(luma_buf != NULL);
 
-#if ISSUE_253
   rsc.luma_stat = luma;
 
   uint16_t *luma_virtual = NULL;
@@ -4295,9 +4224,6 @@ void av1_pick_filter_restoration(const YV12_BUFFER_CONFIG *src, AV1_COMP *cpi) {
 
   luma_virtual_buf = wienerns_copy_luma_with_virtual_lines(cm, &luma_virtual);
   rsc.luma = luma_virtual;
-#else
-  rsc.luma = luma;
-#endif  // ISSUE_253
 
   rsc.wienerns_tmpbuf =
       (double *)aom_malloc(WIENERNS_TMPBUF_SIZE * sizeof(*rsc.wienerns_tmpbuf));
@@ -4339,8 +4265,8 @@ void av1_pick_filter_restoration(const YV12_BUFFER_CONFIG *src, AV1_COMP *cpi) {
       av1_reset_restoration_struct(cm, rsi, plane > 0);
       if (!cpi->sf.lpf_sf.disable_loop_restoration_chroma || !plane) {
         av1_extend_frame(rsc.dgd_buffer, rsc.plane_width, rsc.plane_height,
-                         rsc.dgd_stride, RESTORATION_BORDER,
-                         RESTORATION_BORDER);
+                         rsc.dgd_stride, RESTORATION_BORDER_HORZ,
+                         RESTORATION_BORDER_VERT);
 
         assert(rsc.adjust_switchable_for_frame_filters == 0);
         for (RestorationType r = 0; r < num_rtypes; ++r) {
@@ -4462,9 +4388,7 @@ void av1_pick_filter_restoration(const YV12_BUFFER_CONFIG *src, AV1_COMP *cpi) {
 
   aom_free(rusi);
   free(luma_buf);
-#if ISSUE_253
   free(luma_virtual_buf);
-#endif  // ISSUE_253
   aom_free(rsc.wienerns_tmpbuf);
   aom_vector_destroy(&wienerns_stats);
   aom_vector_destroy(&unit_stack);
