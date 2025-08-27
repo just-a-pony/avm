@@ -2158,19 +2158,24 @@ void av1_loop_restoration_filter_unit(
                   (i + 2 * frame_stripe * WIENERNS_UV_BRD) * rui->luma_stride
             : NULL;
 
+    uint16_t *data_stripe_tl = data_tl + i * stride;
+    uint16_t *dst_stripe_tl = dst_tl + i * dst_stride;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     int tile_boundary_left = (remaining_stripes.h_start == tile_rect->left);
     int tile_boundary_right = (remaining_stripes.h_end == tile_rect->right);
     const int border = RESTORATION_BORDER_HORZ >> ss_x;
-    setup_processing_stripe_leftright_boundary(
-        data_tl, unit_w, h, stride, border, tile_boundary_left,
-        tile_boundary_right, rlbs, rui->plane != PLANE_TYPE_Y);
-    if (enable_cross_buffers)
+    if (tile_boundary_left || tile_boundary_right) {
       setup_processing_stripe_leftright_boundary(
-          (uint16_t *)tmp_rui->luma, unit_w, h, rui->luma_stride,
-          WIENERNS_UV_BRD, tile_boundary_left, tile_boundary_right, rlbs, 0);
+          data_stripe_tl, unit_w, h, stride, border, tile_boundary_left,
+          tile_boundary_right, rlbs, rui->plane != PLANE_TYPE_Y);
+      if (enable_cross_buffers) {
+        setup_processing_stripe_leftright_boundary(
+            (uint16_t *)tmp_rui->luma, unit_w, h, rui->luma_stride,
+            WIENERNS_UV_BRD, tile_boundary_left, tile_boundary_right, rlbs, 0);
+      }
+    }
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-    // pc wiener filter
+        // pc wiener filter
     tmp_rui->tskip = enable_pcwiener_buffers
                          ? tskip_in_ru + (i >> MI_SIZE_LOG2) * rui->tskip_stride
                          : NULL;
@@ -2180,17 +2185,20 @@ void av1_loop_restoration_filter_unit(
                   (i >> MI_SIZE_LOG2) * rui->wiener_class_id_stride
             : NULL;
 
-    stripe_filter(tmp_rui, unit_w, h, procunit_width, data_tl + i * stride,
-                  stride, dst_tl + i * dst_stride, dst_stride, bit_depth);
+    stripe_filter(tmp_rui, unit_w, h, procunit_width, data_stripe_tl, stride,
+                  dst_stripe_tl, dst_stride, bit_depth);
 
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-    restore_processing_stripe_leftright_boundary(
-        data_tl, unit_w, h, stride, border, tile_boundary_left,
-        tile_boundary_right, rlbs, rui->plane != PLANE_TYPE_Y);
-    if (enable_cross_buffers)
+    if (tile_boundary_left || tile_boundary_right) {
       restore_processing_stripe_leftright_boundary(
-          (uint16_t *)tmp_rui->luma, unit_w, h, rui->luma_stride,
-          WIENERNS_UV_BRD, tile_boundary_left, tile_boundary_right, rlbs, 0);
+          data_stripe_tl, unit_w, h, stride, border, tile_boundary_left,
+          tile_boundary_right, rlbs, rui->plane != PLANE_TYPE_Y);
+      if (enable_cross_buffers) {
+        restore_processing_stripe_leftright_boundary(
+            (uint16_t *)tmp_rui->luma, unit_w, h, rui->luma_stride,
+            WIENERNS_UV_BRD, tile_boundary_left, tile_boundary_right, rlbs, 0);
+      }
+    }
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     restore_processing_stripe_boundary(&remaining_stripes, rlbs, h, data,
                                        stride, 1, 1, optimized_lr,
