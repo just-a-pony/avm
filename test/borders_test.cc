@@ -59,8 +59,7 @@ TEST_P(BordersTestLarge, TestEncodeHighBitrate) {
   cfg_.rc_target_bitrate = 2000;
   cfg_.rc_max_quantizer = 40;
 
-  ::libaom_test::I420VideoSource video("hantro_odd.yuv", 208, 144, 30, 1, 0,
-                                       10);
+  ::libaom_test::I420VideoSource video("hantro_odd.yuv", 208, 144, 30, 1, 0, 5);
 
   ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
 }
