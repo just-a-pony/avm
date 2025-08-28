@@ -31,7 +31,7 @@ static const AltRefTestParams TestParams[] = {
   { 30, 30, 12, 16, 25, ::libaom_test::kOnePassGood },
   { 0, 60, 12, 20, 25, ::libaom_test::kOnePassGood },
   { 60, 60, 16, 28, 30, ::libaom_test::kOnePassGood },
-  { 0, 100, 16, 32, 35, ::libaom_test::kOnePassGood },
+  { 0, 65, 16, 32, 35, ::libaom_test::kOnePassGood },
 };
 
 std::ostream &operator<<(std::ostream &os, const AltRefTestParams &test_arg) {
@@ -106,7 +106,7 @@ class AltRefFramePresenceTestLarge
 TEST_P(AltRefFramePresenceTestLarge, AltRefFrameEncodePresenceTest) {
   libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                      cfg_.g_timebase.den, cfg_.g_timebase.num,
-                                     0, 100);
+                                     0, 65);
   ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
   ASSERT_EQ(is_arf_frame_present_, 1);
 }
