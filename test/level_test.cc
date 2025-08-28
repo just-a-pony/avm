@@ -138,7 +138,7 @@ TEST_P(LevelTestLarge, TestTargetLevel0) {
   // To save run time, we only test speed 4.
   if (cpu_used_ == 5) {
     libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
-                                       30, 1, 0, 50);
+                                       30, 1, 0, 17);
     const int target_level = 0;
     target_level_ = target_level;
     cfg_.rc_target_bitrate = 4000;
