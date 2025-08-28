@@ -1949,6 +1949,13 @@ void av1_encode_frame(AV1_COMP *cpi) {
   // rather than the potential full set of 16 transforms
   features->reduced_tx_set_used = cpi->oxcf.txfm_cfg.reduced_tx_type_set;
 
+#if CONFIG_BRU
+  if (cm->bru.enabled && features->all_lossless) {
+    cm->bru.enabled = 0;
+    cm->bru.frame_inactive_flag = 0;
+    memset(cm->bru.active_mode_map, 2, sizeof(uint8_t) * cm->bru.total_units);
+  }
+#endif
   // Make sure segment_id is no larger than last_active_segid.
   if (cm->seg.enabled && cm->seg.update_map) {
     const int mi_rows = cm->mi_params.mi_rows;
