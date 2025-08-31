@@ -7944,13 +7944,13 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
   const bool non_signaled_show_existing_frame =
       (cm->show_existing_frame && !cm->features.error_resilient_mode) ||
       encode_show_existing_frame(cm);
-#elif !CONFIG_F253_REMOVE_OUTPUTFLAG
+#elif CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT && !CONFIG_F253_REMOVE_OUTPUTFLAG
   const bool non_signaled_show_existing_frame =
       (cm->seq_params.enable_frame_output_order && cm->show_existing_frame &&
        !cm->features.error_resilient_mode) ||
       (!cm->seq_params.enable_frame_output_order &&
        encode_show_existing_frame(cm));
-#elif !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
+#elif !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT && CONFIG_F253_REMOVE_OUTPUTFLAG
                   const bool non_signaled_show_existing_frame =
                       (cm->seq_params.order_hint_info.enable_order_hint &&
                        cm->show_existing_frame &&
