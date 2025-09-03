@@ -1321,6 +1321,22 @@ INSTANTIATE_TEST_SUITE_P(
     BuildHighbdParams(av1_convolve_symmetric_subtract_center_highbd_avx2));
 #endif
 
+class AV1ConvolveNonSepBlk8x82DHighbdTest
+    : public AV1ConvolveNonSep2DHighbdTest {};
+
+TEST_P(AV1ConvolveNonSepBlk8x82DHighbdTest, RunTest) {
+  RunTest(RESTORE_PC_WIENER);
+}
+TEST_P(AV1ConvolveNonSepBlk8x82DHighbdTest, DISABLED_Speed) {
+  RunSpeedTest(RESTORE_PC_WIENER);
+}
+
+#if HAVE_AVX2
+INSTANTIATE_TEST_SUITE_P(
+    AVX2, AV1ConvolveNonSepBlk8x82DHighbdTest,
+    BuildHighbdParams(av1_convolve_symmetric_blk8x8_highbd_avx2));
+#endif
+
 //////////////////////////////////////////////////////////
 // Nonseparable convolve-2d Dual functions (high bit-depth)
 //////////////////////////////////////////////////////////

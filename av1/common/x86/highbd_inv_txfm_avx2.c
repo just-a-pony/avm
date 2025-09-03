@@ -4969,6 +4969,10 @@ void inv_txfm_avx2(const tran_low_t *input, uint16_t *dest, int stride,
   const uint32_t tx_high_index = tx_size_high_log2[tx_size] - 2;
 #endif  // CONFIG_CHROMA_LARGE_TX || CONFIG_TX64
 
+  // This condition is required to silence the compiler warning about potential
+  // use of uninitialized array block[].
+  if (width <= 0 || height <= 0) return;
+
   const int intermediate_bitdepth = txfm_param->bd + 8;
   const int rng_min = -(1 << (intermediate_bitdepth - 1));
   const int rng_max = (1 << (intermediate_bitdepth - 1)) - 1;
@@ -5006,12 +5010,15 @@ void inv_txfm_avx2(const tran_low_t *input, uint16_t *dest, int stride,
   int skipWidth = width > 32 ? width - 32 : 0;
   int skipHeight = height > 32 ? height - 32 : 0;
 
-  int block[MAX_TX_SQUARE] = { 0 };
-  int temp[MAX_TX_SQUARE] = { 0 };
+  int block[MAX_TX_SQUARE];
+  int temp[MAX_TX_SQUARE];
 
   const int log2width = tx_size_wide_log2[tx_size];
   const int log2height = tx_size_high_log2[tx_size];
   const int sqrt2 = ((log2width + log2height) & 1) ? 1 : 0;
+
+  // This assert is required to silence the static analyzer warnings.
+  assert(width * height > 0);
 
   // Load clamp boundaries into SIMD registers
   __m256i vcoefmin = _mm256_set1_epi32(-(1 << (txfm_param->bd + 7)));

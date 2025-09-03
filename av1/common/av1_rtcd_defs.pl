@@ -114,6 +114,8 @@ add_proto qw/void av1_convolve_symmetric_dual_subtract_center_highbd/, "const ui
 specialize qw/av1_convolve_symmetric_dual_subtract_center_highbd avx2/;
 add_proto qw/void av1_convolve_mixedsymmetric_highbd/, "const uint16_t *dgd, int stride, const NonsepFilterConfig *filter_config, const int16_t *filter, uint16_t *dst, int dst_stride, int bit_depth, int block_row_begin, int block_row_end, int block_col_begin, int block_col_end";
 specialize qw/av1_convolve_mixedsymmetric_highbd avx2/;
+add_proto qw/void av1_convolve_symmetric_blk8x8_highbd/, "const uint16_t *dgd, int stride, const NonsepFilterConfig *filter_config, const int16_t *filter, uint16_t *dst, int dst_stride, int bit_depth, int block_row_begin, int block_row_end, int block_col_begin, int block_col_end";
+specialize qw/av1_convolve_symmetric_blk8x8_highbd avx2/;
 
 # optical flow interpolation function
 add_proto qw/void av1_bicubic_grad_interpolation_highbd/, "const int16_t *pred_src, int16_t *x_grad, int16_t *y_grad, const int stride, const int blk_width, const int blk_height";
@@ -325,16 +327,25 @@ add_proto qw/void av1_cnn_batchnorm/, "float **image, int channels, int width, i
 # Deringing Functions
 
 add_proto qw/int cdef_find_dir/, "const uint16_t *img, int stride, int32_t *var, int coeff_shift";
-add_proto qw/void cdef_filter_block/, "uint8_t *dst8, uint16_t *dst16, int dstride, const uint16_t *in, int pri_strength, int sec_strength, int dir, int pri_damping, int sec_damping, BLOCK_SIZE bsize, int coeff_shift";
+# 16 bit dst
+add_proto qw/void cdef_filter_16_0/, "uint16_t *const dst16, int dstride, const uint16_t *in, int pri_strength, int sec_strength, int dir, int pri_damping, int sec_damping, int coeff_shift, int block_width, int block_height";
+add_proto qw/void cdef_filter_16_1/, "uint16_t *const dst16, int dstride, const uint16_t *in, int pri_strength, int sec_strength, int dir, int pri_damping, int sec_damping, int coeff_shift, int block_width, int block_height";
+add_proto qw/void cdef_filter_16_2/, "uint16_t *const dst16, int dstride, const uint16_t *in, int pri_strength, int sec_strength, int dir, int pri_damping, int sec_damping, int coeff_shift, int block_width, int block_height";
+add_proto qw/void cdef_filter_16_3/, "uint16_t *const dst16, int dstride, const uint16_t *in, int pri_strength, int sec_strength, int dir, int pri_damping, int sec_damping, int coeff_shift, int block_width, int block_height";
 
-add_proto qw/void cdef_copy_rect8_16bit_to_16bit/, "uint16_t *dst, int dstride, const uint16_t *src, int sstride, int v, int h";
+add_proto qw/void cdef_copy_rect8_16bit_to_16bit/, "uint16_t *const dst, int dstride, const uint16_t *src, int sstride, int v, int h";
 
 # VS compiling for 32 bit targets does not support vector types in
 # structs as arguments, which makes the v256 type of the intrinsics
 # hard to support, so optimizations for this target are disabled.
 if ($opts{config} !~ /libs-x86-win32-vs.*/) {
   specialize qw/cdef_find_dir sse2 ssse3 sse4_1 avx2 neon/;
-  specialize qw/cdef_filter_block sse2 ssse3 sse4_1 avx2 neon/;
+
+  specialize qw/cdef_filter_16_0 sse2 ssse3 sse4_1 avx2 neon/;
+  specialize qw/cdef_filter_16_1 sse2 ssse3 sse4_1 avx2 neon/;
+  specialize qw/cdef_filter_16_2 sse2 ssse3 sse4_1 avx2 neon/;
+  specialize qw/cdef_filter_16_3 sse2 ssse3 sse4_1 avx2 neon/;
+
   specialize qw/cdef_copy_rect8_16bit_to_16bit sse2 ssse3 sse4_1 avx2 neon/;
 }
   add_proto qw/void gdf_set_lap_and_cls_unit/, "const int i_min, const int i_max, const int j_min, const int j_max, const int stripe_size, const uint16_t *rec_pnt, const int rec_stride, const int bit_depth, uint16_t *const *gdf_lap_y, const int gdf_lap_y_stride, uint32_t *gdf_cls_y, const int gdf_cls_y_stride";
@@ -347,6 +358,8 @@ if ($opts{config} !~ /libs-x86-win32-vs.*/) {
 # Cross-component Sample Offset
 add_proto qw/void ccso_filter_block_hbd_wo_buf/, "const uint16_t *src_y, uint16_t *dst_yuv, const int x, const int y, const int pic_width, const int pic_height, int *src_cls, const int8_t *offset_buf, const int scaled_ext_stride, const int dst_stride, const int y_uv_hscale, const int y_uv_vscale, const int thr, const int neg_thr, const int *src_loc, const int max_val, const int blk_size_x, const int blk_size_y, const bool isSingleBand, const uint8_t shift_bits, const int edge_clf, const uint8_t ccso_bo_only";
 specialize qw/ccso_filter_block_hbd_wo_buf avx2/;
+add_proto qw/void ccso_filter_block_hbd_wo_buf_bo_only/, "const uint16_t *src_y, uint16_t *dts_yuv, const int x, const int y, const int pic_width, const int pic_height, const int8_t *offset_buf, const int src_y_stride, const int dst_stride, const int y_uv_hscale, const int y_uv_vscale, const int max_val, const int blk_size_x, const int blk_size_y, const bool isSingleBand, const uint8_t shift_bits";
+specialize qw/ccso_filter_block_hbd_wo_buf_bo_only avx2/;
 
 if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
   add_proto qw/void ccso_filter_block_hbd_with_buf/, "const uint16_t *src_y, uint16_t *dst_yuv, const uint8_t *src_cls0, const uint8_t *src_cls1,
