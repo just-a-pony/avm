@@ -6465,7 +6465,7 @@ void av1_read_color_config(struct aom_read_bit_buffer *rb,
           const int chroma_sample_position = aom_rb_read_literal(rb, 3);
           if (chroma_sample_position > AOM_CSP_BOTTOM) {
             aom_internal_error(error_info, AOM_CODEC_UNSUP_BITSTREAM,
-                               "Invaid chroma_sample_position");
+                               "Invalid chroma_sample_position");
           }
           seq_params->chroma_sample_position = chroma_sample_position;
         }

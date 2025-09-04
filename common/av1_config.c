@@ -239,7 +239,7 @@ static int parse_color_config(struct aom_read_bit_buffer *reader,
       if (csp_present_flag) {
         AV1C_READ_BITS_OR_RETURN_ERROR(chroma_sample_position, 3);
         if (chroma_sample_position > AOM_CSP_BOTTOM) {
-          fprintf(stderr, "av1c: Invaid chroma_sample_position, value=%d.\n",
+          fprintf(stderr, "av1c: Invalid chroma_sample_position, value=%d.\n",
                   chroma_sample_position);
           return -1;
         }
