@@ -1409,8 +1409,8 @@ struct CommonQuantParams {
 
   /*!
    * Flag indicating whether quantization matrices are initialized.
-   * To avoid unnecessary computation, for the decoder we want to initialize
-   * quantization matrices only when they are used.
+   * To avoid unnecessary computation, we want to initialize quantization
+   * matrices only when they are used.
    * Note that when sequence header OBUs change, we should reset the parameter.
    */
   bool qmatrix_initialized;
