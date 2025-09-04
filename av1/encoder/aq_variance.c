@@ -64,7 +64,8 @@ void av1_vaq_frame_setup(AV1_COMP *cpi) {
     av1_disable_segmentation(seg);
     return;
   }
-  if (frame_is_intra_only(cm) || cm->features.error_resilient_mode) {
+  if (frame_is_intra_only(cm) || cm->current_frame.pyramid_level <= 1 ||
+      cm->features.error_resilient_mode) {
     cpi->vaq_refresh = 1;
 
     av1_enable_segmentation(seg);

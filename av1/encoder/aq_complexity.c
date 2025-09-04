@@ -49,10 +49,8 @@ static int get_aq_c_strength(int q_index, aom_bit_depth_t bit_depth) {
 
 static bool is_frame_aq_enabled(const AV1_COMP *const cpi) {
   const AV1_COMMON *const cm = &cpi->common;
-
-  (void)cm;
-  // TODO(kslu) enable this for nrs
-  return 0;
+  return frame_is_intra_only(cm) || cm->current_frame.pyramid_level <= 1 ||
+         cm->features.error_resilient_mode;
 }
 
 // Segmentation only makes sense if the target bits per SB is above a threshold.
