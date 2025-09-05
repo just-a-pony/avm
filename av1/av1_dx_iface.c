@@ -471,8 +471,12 @@ static aom_codec_err_t decoder_peek_si_internal(const uint8_t *data,
       if (status != AOM_CODEC_OK) return status;
 
       got_sequence_header = 1;
+#if CONFIG_F106_OBU_TILEGROUP
+    } else if (obu_header.type == OBU_TILE_GROUP) {
+#else
     } else if (obu_header.type == OBU_FRAME_HEADER ||
                obu_header.type == OBU_FRAME) {
+#endif  // CONFIG_F106_OBU_TILEGROUP
       if (got_sequence_header && reduced_still_picture_hdr) {
         found_keyframe = 1;
         break;
@@ -480,8 +484,17 @@ static aom_codec_err_t decoder_peek_si_internal(const uint8_t *data,
         // make sure we have enough bits to get the frame type out
         if (data_sz < 1) return AOM_CODEC_CORRUPT_FRAME;
         struct aom_read_bit_buffer rb = { data, data + data_sz, 0, NULL, NULL };
+
+#if CONFIG_F106_OBU_TILEGROUP
+        int first_tile_group_in_frame = aom_rb_read_bit(&rb);
+        if (!first_tile_group_in_frame) {
+          aom_rb_read_bit(&rb);  // send_uncompressed_header_flag
+        }
+#endif  // CONFIG_F106_OBU_TILEGROUP
+#if !CONFIG_F106_OBU_TILEGROUP || !CONFIG_F106_OBU_SEF
         const int show_existing_frame = aom_rb_read_bit(&rb);
         if (!show_existing_frame) {
+#endif  // !CONFIG_F106_OBU_TILEGROUP || !CONFIG_F106_OBU_SEF
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
           FRAME_TYPE frame_type = KEY_FRAME;
           if (aom_rb_read_bit(&rb)) {
@@ -490,11 +503,15 @@ static aom_codec_err_t decoder_peek_si_internal(const uint8_t *data,
             if (aom_rb_read_bit(&rb)) {
               frame_type = KEY_FRAME;
             } else {
+#if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_SWITCH
+              frame_type = INTRA_ONLY_FRAME;
+#else
               frame_type = aom_rb_read_bit(&rb) ? INTRA_ONLY_FRAME : S_FRAME;
+#endif  // CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_SWITCH
             }
           }
 #else
-          const FRAME_TYPE frame_type = (FRAME_TYPE)aom_rb_read_literal(&rb, 2);
+        const FRAME_TYPE frame_type = (FRAME_TYPE)aom_rb_read_literal(&rb, 2);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
           if (frame_type == KEY_FRAME) {
             found_keyframe = 1;
@@ -502,7 +519,9 @@ static aom_codec_err_t decoder_peek_si_internal(const uint8_t *data,
           } else if (frame_type == INTRA_ONLY_FRAME) {
             intra_only_flag = 1;
           }
+#if !CONFIG_F106_OBU_TILEGROUP || !CONFIG_F106_OBU_SEF
         }
+#endif  // !CONFIG_F106_OBU_TILEGROUP || !CONFIG_F106_OBU_SEF
       }
     }
     // skip past any unread OBU header data
@@ -1532,50 +1551,6 @@ static aom_codec_err_t ctrl_get_frame_size(aom_codec_alg_priv_t *ctx,
   return AOM_CODEC_INVALID_PARAM;
 }
 
-static aom_codec_err_t ctrl_get_frame_header_info(aom_codec_alg_priv_t *ctx,
-                                                  va_list args) {
-  aom_tile_data *const frame_header_info = va_arg(args, aom_tile_data *);
-
-  if (frame_header_info) {
-    if (ctx->frame_worker) {
-      AVxWorker *const worker = ctx->frame_worker;
-      FrameWorkerData *const frame_worker_data =
-          (FrameWorkerData *)worker->data1;
-      const AV1Decoder *pbi = frame_worker_data->pbi;
-      frame_header_info->coded_tile_data_size = pbi->obu_size_hdr.size;
-      frame_header_info->coded_tile_data = pbi->obu_size_hdr.data;
-      frame_header_info->extra_size = pbi->frame_header_size;
-    } else {
-      return AOM_CODEC_ERROR;
-    }
-  }
-
-  return AOM_CODEC_INVALID_PARAM;
-}
-
-static aom_codec_err_t ctrl_get_tile_data(aom_codec_alg_priv_t *ctx,
-                                          va_list args) {
-  aom_tile_data *const tile_data = va_arg(args, aom_tile_data *);
-
-  if (tile_data) {
-    if (ctx->frame_worker) {
-      AVxWorker *const worker = ctx->frame_worker;
-      FrameWorkerData *const frame_worker_data =
-          (FrameWorkerData *)worker->data1;
-      const AV1Decoder *pbi = frame_worker_data->pbi;
-      tile_data->coded_tile_data_size =
-          pbi->tile_buffers[pbi->dec_tile_row][pbi->dec_tile_col].size;
-      tile_data->coded_tile_data =
-          pbi->tile_buffers[pbi->dec_tile_row][pbi->dec_tile_col].data;
-      return AOM_CODEC_OK;
-    } else {
-      return AOM_CODEC_ERROR;
-    }
-  }
-
-  return AOM_CODEC_INVALID_PARAM;
-}
-
 static aom_codec_err_t ctrl_set_ext_ref_ptr(aom_codec_alg_priv_t *ctx,
                                             va_list args) {
   av1_ext_ref_frame_t *const data = va_arg(args, av1_ext_ref_frame_t *);
@@ -1898,8 +1873,6 @@ static aom_codec_ctrl_fn_map_t decoder_ctrl_maps[] = {
   { AV1_COPY_NEW_FRAME_IMAGE, ctrl_copy_new_frame_image },
   { AOMD_INCR_OUTPUT_FRAMES_OFFSET, ctrl_incr_output_frames_offset },
   { AV1_GET_REFERENCE, ctrl_get_reference },
-  { AV1D_GET_FRAME_HEADER_INFO, ctrl_get_frame_header_info },
-  { AV1D_GET_TILE_DATA, ctrl_get_tile_data },
   { AOMD_GET_FWD_KF_PRESENT, ctrl_get_fwd_kf_value },
   { AOMD_GET_ALTREF_PRESENT, ctrl_get_altref_present },
   { AOMD_GET_FRAME_FLAGS, ctrl_get_frame_flags },

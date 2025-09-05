@@ -98,6 +98,8 @@
 extern "C" {
 #endif
 
+#include "config/aom_config.h"
+
 #include "aom/aom_image.h"
 #include "aom/aom_integer.h"
 
@@ -544,12 +546,25 @@ aom_codec_err_t aom_codec_set_option(aom_codec_ctx_t *ctx, const char *name,
 typedef enum ATTRIBUTE_PACKED {
   OBU_SEQUENCE_HEADER = 1,
   OBU_TEMPORAL_DELIMITER = 2,
+#if !CONFIG_F106_OBU_TILEGROUP
   OBU_FRAME_HEADER = 3,
+#endif  // !CONFIG_F106_OBU_TILEGROUP
   OBU_TILE_GROUP = 4,
   OBU_METADATA = 5,
+#if CONFIG_F106_OBU_TILEGROUP
+#if CONFIG_F106_OBU_SWITCH
+  OBU_SWITCH = 6,
+#endif  // CONFIG_F106_OBU_SWITCH
+#if CONFIG_F106_OBU_SEF
+  OBU_SEF = 7,
+#endif  // CONFIG_F106_OBU_SEF
+#if CONFIG_F106_OBU_TIP
+  OBU_TIP = 8,
+#endif  // CONFIG_F106_OBU_TIP
+#else
   OBU_FRAME = 6,
   OBU_REDUNDANT_FRAME_HEADER = 7,
-  OBU_TILE_LIST = 8,
+#endif  // !CONFIG_F106_OBU_TILEGROUP
   OBU_PADDING = 15,
 } OBU_TYPE;
 

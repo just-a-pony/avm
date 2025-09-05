@@ -24,12 +24,26 @@ static int valid_obu_type(int obu_type) {
   switch (obu_type) {
     case OBU_SEQUENCE_HEADER:
     case OBU_TEMPORAL_DELIMITER:
+#if CONFIG_F106_OBU_TILEGROUP
+#if CONFIG_F106_OBU_SWITCH
+    case OBU_SWITCH:
+#endif  // CONFIG_F106_OBU_SWITCH
+#if CONFIG_F106_OBU_SEF
+    case OBU_SEF:
+#endif  // CONFIG_F106_OBU_SEF
+#if CONFIG_F106_OBU_TIP
+    case OBU_TIP:
+#endif  // CONFIG_F106_OBU_TIP
+    case OBU_TILE_GROUP:
+#else
     case OBU_FRAME_HEADER:
     case OBU_TILE_GROUP:
+#endif  // CONFIG_F106_OBU_TILEGROUP
     case OBU_METADATA:
+#if !CONFIG_F106_OBU_TILEGROUP
     case OBU_FRAME:
     case OBU_REDUNDANT_FRAME_HEADER:
-    case OBU_TILE_LIST:
+#endif  // !CONFIG_F106_OBU_TILEGROUP
     case OBU_PADDING: valid_type = 1; break;
     default: break;
   }

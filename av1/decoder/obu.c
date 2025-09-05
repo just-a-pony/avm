@@ -86,13 +86,14 @@ static int is_obu_in_current_operating_point(AV1Decoder *pbi,
   if ((pbi->current_operating_point >> obu_header.obu_tlayer_id) & 0x1 &&
       (pbi->current_operating_point >>
        (obu_header.obu_mlayer_id + MAX_NUM_TLAYERS)) &
-          0x1) {
+          0x1)
 #else
   if ((pbi->current_operating_point >> obu_header.temporal_layer_id) & 0x1 &&
       (pbi->current_operating_point >>
        (obu_header.spatial_layer_id + MAX_NUM_TEMPORAL_LAYERS)) &
-          0x1) {
+          0x1)
 #endif  // CONFIG_NEW_OBU_HEADER
+  {
     return 1;
   }
   return 0;
@@ -311,12 +312,13 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
 #if CONFIG_NEW_OBU_HEADER
   if (aom_get_num_layers_from_operating_point_idc(
           pbi->current_operating_point, &cm->number_mlayers,
-          &cm->number_tlayers) != AOM_CODEC_OK) {
+          &cm->number_tlayers) != AOM_CODEC_OK)
 #else
   if (aom_get_num_layers_from_operating_point_idc(
           pbi->current_operating_point, &cm->number_spatial_layers,
-          &cm->number_temporal_layers) != AOM_CODEC_OK) {
+          &cm->number_temporal_layers) != AOM_CODEC_OK)
 #endif  // CONFIG_NEW_OBU_HEADER
+  {
     cm->error.error_code = AOM_CODEC_ERROR;
     return 0;
   }
@@ -405,6 +407,60 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
   return ((rb->bit_offset - saved_bit_offset + 7) >> 3);
 }
 
+#if CONFIG_F106_OBU_TILEGROUP
+static uint32_t read_tilegroup_obu(AV1Decoder *pbi,
+                                   struct aom_read_bit_buffer *rb,
+                                   const uint8_t *data, const uint8_t *data_end,
+                                   const uint8_t **p_data_end,
+                                   OBU_TYPE obu_type, int *is_last_tg) {
+  AV1_COMMON *const cm = &pbi->common;
+  int start_tile, end_tile;
+  int32_t header_size, tg_payload_size;
+
+  assert(rb->bit_offset == 0);
+  assert(rb->bit_buffer == data);
+
+  int is_first_tg = 1;  // return from av1_read_tilegroup_header
+  header_size =
+      av1_read_tilegroup_header(pbi, rb, data, p_data_end, &is_first_tg,
+                                &start_tile, &end_tile, obu_type);
+
+  bool skip_payload = false;
+#if CONFIG_F106_OBU_SEF
+  skip_payload |= (obu_type == OBU_SEF);
+#else
+  skip_payload |= cm->show_existing_frame;
+#endif  // CONFIG_F106_OBU_SEF
+#if CONFIG_F106_OBU_TIP
+  skip_payload |= (obu_type == OBU_TIP);
+#else
+  skip_payload |= (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT);
+#endif  // CONFIG_F106_OBU_TIP
+#if CONFIG_BRU
+  skip_payload |= cm->bru.frame_inactive_flag;
+#endif
+
+  if (skip_payload) {
+    *is_last_tg = 1;
+    tg_payload_size = 0;
+    if (av1_check_trailing_bits(pbi, rb) != 0) {
+      // cm->error.error_code is already set.
+      return 0;
+    }
+    header_size = (int32_t)aom_rb_bytes_read(rb);
+  } else {
+    if (byte_alignment(cm, rb)) return 0;
+    data += header_size;
+
+    av1_decode_tg_tiles_and_wrapup(pbi, data, data_end, p_data_end, start_tile,
+                                   end_tile, is_first_tg);
+
+    tg_payload_size = (uint32_t)(*p_data_end - data);
+    *is_last_tg = end_tile == cm->tiles.rows * cm->tiles.cols - 1;
+  }
+  return header_size + tg_payload_size;
+}
+#else
 // On success, returns the frame header size. On failure, calls
 // aom_internal_error and does not return.
 static uint32_t read_frame_header_obu(AV1Decoder *pbi,
@@ -516,170 +572,7 @@ static uint32_t read_one_tile_group_obu(
   *is_last_tg = end_tile == cm->tiles.rows * cm->tiles.cols - 1;
   return header_size + tg_payload_size;
 }
-
-static void alloc_tile_list_buffer(AV1Decoder *pbi) {
-  // The resolution of the output frame is read out from the bitstream. The data
-  // are stored in the order of Y plane, U plane and V plane. As an example, for
-  // image format 4:2:0, the output frame of U plane and V plane is 1/4 of the
-  // output frame.
-  AV1_COMMON *const cm = &pbi->common;
-  int tile_width, tile_height;
-  av1_get_uniform_tile_size(cm, &tile_width, &tile_height);
-  const int tile_width_in_pixels = tile_width * MI_SIZE;
-  const int tile_height_in_pixels = tile_height * MI_SIZE;
-  const int output_frame_width =
-      (pbi->output_frame_width_in_tiles_minus_1 + 1) * tile_width_in_pixels;
-  const int output_frame_height =
-      (pbi->output_frame_height_in_tiles_minus_1 + 1) * tile_height_in_pixels;
-  // The output frame is used to store the decoded tile list. The decoded tile
-  // list has to fit into 1 output frame.
-  assert((pbi->tile_count_minus_1 + 1) <=
-         (pbi->output_frame_width_in_tiles_minus_1 + 1) *
-             (pbi->output_frame_height_in_tiles_minus_1 + 1));
-
-  if (aom_alloc_frame_buffer(&pbi->tile_list_outbuf, output_frame_width,
-                             output_frame_height, cm->seq_params.subsampling_x,
-                             cm->seq_params.subsampling_y, 0,
-                             cm->features.byte_alignment, false))
-    aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
-                       "Failed to allocate the tile list output buffer");
-}
-
-static void copy_decoded_tile_to_tile_list_buffer(AV1Decoder *pbi,
-                                                  int tile_idx) {
-  AV1_COMMON *const cm = &pbi->common;
-  int tile_width, tile_height;
-  av1_get_uniform_tile_size(cm, &tile_width, &tile_height);
-  const int tile_width_in_pixels = tile_width * MI_SIZE;
-  const int tile_height_in_pixels = tile_height * MI_SIZE;
-  const int ssy = cm->seq_params.subsampling_y;
-  const int ssx = cm->seq_params.subsampling_x;
-  const int num_planes = av1_num_planes(cm);
-
-  YV12_BUFFER_CONFIG *cur_frame = &cm->cur_frame->buf;
-  const int tr = tile_idx / (pbi->output_frame_width_in_tiles_minus_1 + 1);
-  const int tc = tile_idx % (pbi->output_frame_width_in_tiles_minus_1 + 1);
-  int plane;
-
-  // Copy decoded tile to the tile list output buffer.
-  for (plane = 0; plane < num_planes; ++plane) {
-    const int shift_x = plane > 0 ? ssx : 0;
-    const int shift_y = plane > 0 ? ssy : 0;
-    const int h = tile_height_in_pixels >> shift_y;
-    const int w = tile_width_in_pixels >> shift_x;
-
-    // src offset
-    int vstart1 = pbi->dec_tile_row * h;
-    int vend1 = vstart1 + h;
-    int hstart1 = pbi->dec_tile_col * w;
-    int hend1 = hstart1 + w;
-    // dst offset
-    int vstart2 = tr * h;
-    int hstart2 = tc * w;
-
-    switch (plane) {
-      case 0:
-        aom_yv12_partial_copy_y(cur_frame, hstart1, hend1, vstart1, vend1,
-                                &pbi->tile_list_outbuf, hstart2, vstart2);
-        break;
-      case 1:
-        aom_yv12_partial_copy_u(cur_frame, hstart1, hend1, vstart1, vend1,
-                                &pbi->tile_list_outbuf, hstart2, vstart2);
-        break;
-      case 2:
-        aom_yv12_partial_copy_v(cur_frame, hstart1, hend1, vstart1, vend1,
-                                &pbi->tile_list_outbuf, hstart2, vstart2);
-        break;
-      default: assert(0);
-    }
-  }
-}
-
-// Only called while large_scale_tile = 1.
-//
-// On success, returns the tile list OBU size. On failure, sets
-// pbi->common.error.error_code and returns 0.
-static uint32_t read_and_decode_one_tile_list(AV1Decoder *pbi,
-                                              struct aom_read_bit_buffer *rb,
-                                              const uint8_t *data,
-                                              const uint8_t *data_end,
-                                              const uint8_t **p_data_end,
-                                              int *frame_decoding_finished) {
-  AV1_COMMON *const cm = &pbi->common;
-  uint32_t tile_list_payload_size = 0;
-  const int num_tiles = cm->tiles.cols * cm->tiles.rows;
-  const int start_tile = 0;
-  const int end_tile = num_tiles - 1;
-  int i = 0;
-
-  // Process the tile list info.
-  pbi->output_frame_width_in_tiles_minus_1 = aom_rb_read_literal(rb, 8);
-  pbi->output_frame_height_in_tiles_minus_1 = aom_rb_read_literal(rb, 8);
-  pbi->tile_count_minus_1 = aom_rb_read_literal(rb, 16);
-  if (pbi->tile_count_minus_1 > MAX_TILES - 1) {
-    cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-    return 0;
-  }
-
-  // Allocate output frame buffer for the tile list.
-  alloc_tile_list_buffer(pbi);
-
-  uint32_t tile_list_info_bytes = 4;
-  tile_list_payload_size += tile_list_info_bytes;
-  data += tile_list_info_bytes;
-
-  int tile_idx = 0;
-  for (i = 0; i <= pbi->tile_count_minus_1; i++) {
-    // Process 1 tile.
-    // Reset the bit reader.
-    rb->bit_offset = 0;
-    rb->bit_buffer = data;
-
-    // Read out the tile info.
-    uint32_t tile_info_bytes = 5;
-    // Set reference for each tile.
-    int ref_idx = aom_rb_read_literal(rb, 8);
-    if (ref_idx >= MAX_EXTERNAL_REFERENCES) {
-      cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-      return 0;
-    }
-    av1_set_reference_dec(cm, cm->remapped_ref_idx[0], 1,
-                          &pbi->ext_refs.refs[ref_idx]);
-
-    pbi->dec_tile_row = aom_rb_read_literal(rb, 8);
-    pbi->dec_tile_col = aom_rb_read_literal(rb, 8);
-    if (pbi->dec_tile_row < 0 || pbi->dec_tile_col < 0 ||
-        pbi->dec_tile_row >= cm->tiles.rows ||
-        pbi->dec_tile_col >= cm->tiles.cols) {
-      cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-      return 0;
-    }
-
-    pbi->coded_tile_data_size = aom_rb_read_literal(rb, 16) + 1;
-    data += tile_info_bytes;
-    if ((size_t)(data_end - data) < pbi->coded_tile_data_size) {
-      cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-      return 0;
-    }
-
-    av1_decode_tg_tiles_and_wrapup(pbi, data, data + pbi->coded_tile_data_size,
-                                   p_data_end, start_tile, end_tile, 0);
-    uint32_t tile_payload_size = (uint32_t)(*p_data_end - data);
-
-    tile_list_payload_size += tile_info_bytes + tile_payload_size;
-
-    // Update data ptr for next tile decoding.
-    data = *p_data_end;
-    assert(data <= data_end);
-
-    // Copy the decoded tile to the tile list output buffer.
-    copy_decoded_tile_to_tile_list_buffer(pbi, tile_idx);
-    tile_idx++;
-  }
-
-  *frame_decoding_finished = 1;
-  return tile_list_payload_size;
-}
+#endif  // CONFIG_F106_OBU_TILEGROUP
 
 // Returns the last nonzero byte index in 'data'. If there is no nonzero byte in
 // 'data', returns -1.
@@ -1014,8 +907,10 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
 #endif
   AV1_COMMON *const cm = &pbi->common;
   int frame_decoding_finished = 0;
+#if !CONFIG_F106_OBU_TILEGROUP
   int is_first_tg_obu_received = 1;
   uint32_t frame_header_size = 0;
+#endif  // !CONFIG_F106_OBU_TILEGROUP
   ObuHeader obu_header;
   memset(&obu_header, 0, sizeof(obu_header));
   pbi->seen_frame_header = 0;
@@ -1134,9 +1029,49 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
           return -1;
         }
         break;
+#if CONFIG_F106_OBU_TILEGROUP
+      case OBU_TILE_GROUP:
+#if CONFIG_F106_OBU_SWITCH
+      case OBU_SWITCH:
+#endif  // CONFIG_F106_OBU_SWITCH
+#if CONFIG_F106_OBU_SEF
+      case OBU_SEF:
+#endif  // CONFIG_F106_OBU_SEF
+#if CONFIG_F106_OBU_TIP
+      case OBU_TIP:
+#endif  // CONFIG_F106_OBU_TIP
+#else
       case OBU_FRAME_HEADER:
       case OBU_REDUNDANT_FRAME_HEADER:
       case OBU_FRAME:
+#endif  // CONFIG_F106_OBU_TILEGROUP
+#if CONFIG_F106_OBU_TILEGROUP
+        decoded_payload_size =
+            read_tilegroup_obu(pbi, &rb, data, data + payload_size, p_data_end,
+                               obu_header.type, &frame_decoding_finished);
+
+        if (cm->error.error_code != AOM_CODEC_OK) return -1;
+#if CONFIG_BRU
+        if (cm->bru.frame_inactive_flag) {
+          pbi->seen_frame_header = 0;
+          frame_decoding_finished = 1;
+          const int num_tiles = cm->tiles.cols * cm->tiles.rows;
+          const int end_tile = num_tiles - 1;
+          // skip parsing and go directly to decode
+          av1_decode_tg_tiles_and_wrapup(pbi, data, data_end, p_data_end, 0,
+                                         end_tile, 0);
+          break;
+        }
+#endif  // CONFIG_BRU
+        if (obu_payload_offset > payload_size) {
+          cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+          return -1;
+        }
+        if (cm->error.error_code != AOM_CODEC_OK) return -1;
+        if (frame_decoding_finished) pbi->seen_frame_header = 0;
+        pbi->num_tile_groups++;
+        break;
+#else  // CONFIG_F106_OBU_TILEGROUP
         if (obu_header.type == OBU_REDUNDANT_FRAME_HEADER) {
           if (!pbi->seen_frame_header) {
             cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
@@ -1205,16 +1140,6 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
           break;
         }
 #endif  // CONFIG_BRU
-        // In large scale tile coding, decode the common camera frame header
-        // before any tile list OBU.
-        if (!pbi->ext_tile_debug && pbi->camera_frame_header_ready) {
-          frame_decoding_finished = 1;
-          // Skip the rest of the frame data.
-          decoded_payload_size = payload_size;
-          // Update data_end.
-          *p_data_end = data_end;
-          break;
-        }
 
         if (obu_header.type != OBU_FRAME) break;
         obu_payload_offset = frame_header_size;
@@ -1240,28 +1165,9 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
         if (frame_decoding_finished) pbi->seen_frame_header = 0;
         pbi->num_tile_groups++;
         break;
+#endif  // CONFIG_F106_OBU_TILEGROUP
       case OBU_METADATA:
         decoded_payload_size = read_metadata(pbi, data, payload_size);
-        if (cm->error.error_code != AOM_CODEC_OK) return -1;
-        break;
-      case OBU_TILE_LIST:
-        if (CONFIG_NORMAL_TILE_MODE) {
-          cm->error.error_code = AOM_CODEC_UNSUP_BITSTREAM;
-          return -1;
-        }
-
-        // This OBU type is purely for the large scale tile coding mode.
-        // The common camera frame header has to be already decoded.
-        if (!pbi->camera_frame_header_ready) {
-          cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-          return -1;
-        }
-
-        cm->tiles.large_scale = 1;
-        av1_set_single_tile_decoding_mode(cm);
-        decoded_payload_size =
-            read_and_decode_one_tile_list(pbi, &rb, data, data + payload_size,
-                                          p_data_end, &frame_decoding_finished);
         if (cm->error.error_code != AOM_CODEC_OK) return -1;
         break;
       case OBU_PADDING:

@@ -352,7 +352,11 @@ typedef struct AV1Decoder {
   // State if the camera frame header is already decoded while
   // large_scale_tile = 1.
   int camera_frame_header_ready;
+#if CONFIG_F106_OBU_TILEGROUP
+  uint32_t uncomp_hdr_size_in_bits;
+#else
   size_t frame_header_size;
+#endif  // CONFIG_F106_OBU_TILEGROUP
   DataBuffer obu_size_hdr;
   int output_frame_width_in_tiles_minus_1;
   int output_frame_height_in_tiles_minus_1;
