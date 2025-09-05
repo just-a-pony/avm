@@ -7332,10 +7332,9 @@ static uint32_t write_tilegroup_payload_large_scale(
 
 static uint32_t write_tilegroup_payload(AV1_COMP *const cpi, uint8_t *const dst,
                                         struct aom_write_bit_buffer *saved_wb,
-                                        int num_tiles_in_tg, int num_tgs,
-                                        int start_tile_idx, int end_tile_idx,
+                                        int num_tgs, int start_tile_idx,
+                                        int end_tile_idx,
                                         int *const largest_tile_id) {
-  (void)num_tiles_in_tg;
   AV1_COMMON *const cm = &cpi->common;
   const CommonTileParams *const tiles = &cm->tiles;
   aom_writer mode_bc;
@@ -7540,23 +7539,14 @@ static uint32_t write_tilegroup_obu(
     OBU_TYPE obu_type,
 #endif  // CONFIG_F106_OBU_SWITCH || CONFIG_F106_OBU_SEF || CONFIG_F106_OBU_TIP
     uint8_t *const dst, struct aom_write_bit_buffer *saved_wb_first_tg,
-    int tg_idx, int num_tgs, int *first_tg_bitoffset, int *largest_tile_id) {
+    int num_tgs, int start_tile_idx, int end_tile_idx, int *first_tg_bitoffset,
+    int *largest_tile_id) {
   // int *const largest_tile_id,
   // int tile_idx){
   struct aom_write_bit_buffer saved_wb = { NULL, 0 };
   int curr_tg_data_size = 0;
   int curr_tg_header_size = 0;
   AV1_COMMON *const cm = &cpi->common;
-  const CommonTileParams *const tiles = &cm->tiles;
-  const int tile_cols = tiles->cols;
-  const int tile_rows = tiles->rows;
-  const int num_tiles = tile_cols * tile_rows;
-  const int num_tiles_in_tg = num_tiles / num_tgs;
-  int start_tile_idx = num_tiles_in_tg * tg_idx;
-  int end_tile_idx = (tg_idx < num_tgs - 1)
-                         ? (start_tile_idx + num_tiles_in_tg - 1)
-                         : (num_tiles - 1);
-  assert(tiles->large_scale == 0);
 #if CONFIG_F106_OBU_SWITCH || CONFIG_F106_OBU_SEF || CONFIG_F106_OBU_TIP
   curr_tg_header_size = write_tilegroup_header(
       cpi, obu_type, &saved_wb, dst, num_tgs, start_tile_idx, end_tile_idx);
@@ -7565,7 +7555,7 @@ static uint32_t write_tilegroup_obu(
                                                start_tile_idx, end_tile_idx);
 #endif  // CONFIG_F106_OBU_SWITCH || CONFIG_F106_OBU_SEF || CONFIG_F106_OBU_TIP
 
-  if (tg_idx == 0) {
+  if (start_tile_idx == 0) {
     *saved_wb_first_tg = saved_wb;  // saved_wb_first_tg = saved_wb;
     *first_tg_bitoffset = saved_wb.bit_offset;
   } else {
@@ -7589,8 +7579,8 @@ static uint32_t write_tilegroup_obu(
 
   if (!skip_tilegroup_payload)
     curr_tg_data_size = write_tilegroup_payload(
-        cpi, dst + curr_tg_header_size, saved_wb_first_tg, num_tiles_in_tg,
-        num_tgs, start_tile_idx, end_tile_idx, largest_tile_id);
+        cpi, dst + curr_tg_header_size, saved_wb_first_tg, num_tgs,
+        start_tile_idx, end_tile_idx, largest_tile_id);
   return curr_tg_header_size + curr_tg_data_size;
 }
 #else
@@ -8273,9 +8263,15 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
     obu_type = OBU_TIP;
 #endif  // CONFIG_F106_OBU_TIP
 
-  int max_tg_num = AOMMIN(cpi->num_tg, cm->tiles.cols * cm->tiles.rows);
+  const int num_tiles = cm->tiles.cols * cm->tiles.rows;
+  const int max_tg_num = AOMMIN(cpi->num_tg, num_tiles);
+  assert(!cm->tiles.large_scale);
+  const int num_tiles_per_tg = num_tiles / max_tg_num;
+  const int extra_tiles = num_tiles % max_tg_num;
   struct aom_write_bit_buffer saved_wb_first_tg = { NULL, 0 };
   int first_saved_wb_bit_offset = 0;
+  int start_tile_idx;
+  int end_tile_idx = -1;
   for (int tg_idx = 0; tg_idx < max_tg_num; tg_idx++) {
     obu_header_size = av1_write_obu_header(level_params, obu_type,
 #if CONFIG_NEW_OBU_HEADER
@@ -8284,9 +8280,13 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
                                            obu_extension_header,
 #endif  // CONFIG_NEW_OBU_HEADER
                                            data);
+    start_tile_idx = end_tile_idx + 1;
+    end_tile_idx = start_tile_idx + num_tiles_per_tg - 1;
+    if (tg_idx < extra_tiles) end_tile_idx++;
     obu_payload_size = write_tilegroup_obu(
-        cpi, obu_type, data + obu_header_size, &saved_wb_first_tg, tg_idx,
-        max_tg_num, &first_saved_wb_bit_offset, largest_tile_id);
+        cpi, obu_type, data + obu_header_size, &saved_wb_first_tg, max_tg_num,
+        start_tile_idx, end_tile_idx, &first_saved_wb_bit_offset,
+        largest_tile_id);
 
     const size_t length_field_size =
         obu_memmove(obu_header_size, obu_payload_size, data);
