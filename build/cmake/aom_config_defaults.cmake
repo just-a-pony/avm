@@ -312,6 +312,9 @@ set_aom_config_var(CONFIG_VQ_MVD_CODING 1 "Enable VQ based MVD coding")
 set_aom_config_var(CONFIG_ML_PART_SPLIT 1
                    "Partition SPLIT pruning/forcing as predicted by ML.")
 
+set_aom_config_var(CONFIG_UNIFORM_TILE 1
+                   "Enable better uniform tile distribution")
+
 set_aom_config_var(CONFIG_NEW_PART_CTX 1 "New partition context models")
 
 set_aom_config_var(CONFIG_EXT_SEG 1

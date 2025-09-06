@@ -71,6 +71,30 @@ void av1_calculate_tile_cols(CommonTileParams *const tiles) {
   tiles->min_inner_width = -1;
 
   if (tiles->uniform_spacing) {
+#if CONFIG_UNIFORM_TILE
+    const int sb_size_scale = tiles->scale_sb;
+    const int seq_mib_size_log2 = mib_size_log2 + sb_size_scale;
+
+    // Use sequence level sb_size to calculate the tile size.
+    const int seq_sb_cols =
+        ALIGN_POWER_OF_TWO(tiles->mi_cols, seq_mib_size_log2) >>
+        seq_mib_size_log2;
+    const int full_sb_cols = tiles->mi_cols >> seq_mib_size_log2;
+    const int base_size_sb = full_sb_cols >> tiles->log2_cols;
+    int extra_sbs = full_sb_cols - (base_size_sb << tiles->log2_cols);
+    if (base_size_sb == 0) extra_sbs += seq_sb_cols - full_sb_cols;
+    int start_sb;
+    const int size_sb =
+        full_sb_cols > 0 ? ((base_size_sb + (extra_sbs > 0)) << sb_size_scale)
+                         : 1;
+    assert(size_sb > 0);
+    for (i = 0, start_sb = 0;
+         start_sb < seq_sb_cols && i < (1 << tiles->log2_cols); i++) {
+      tiles->col_start_sb[i] = (start_sb << sb_size_scale);
+      start_sb += base_size_sb + (extra_sbs > 0);
+      if (extra_sbs > 0) extra_sbs--;
+    }
+#else
     int start_sb;
     int size_sb =
         ALIGN_POWER_OF_TWO(sb_cols, tiles->log2_cols + tiles->scale_sb);
@@ -80,6 +104,7 @@ void av1_calculate_tile_cols(CommonTileParams *const tiles) {
       tiles->col_start_sb[i] = start_sb;
       start_sb += size_sb;
     }
+#endif  // CONFIG_UNIFORM_TILE
     tiles->cols = i;
     tiles->col_start_sb[i] = sb_cols;
     tiles->min_log2_rows = AOMMAX(tiles->min_log2 - tiles->log2_cols, 0);
@@ -119,6 +144,29 @@ void av1_calculate_tile_rows(CommonTileParams *const tiles) {
   int start_sb, size_sb, i;
 
   if (tiles->uniform_spacing) {
+#if CONFIG_UNIFORM_TILE
+    const int sb_size_scale = tiles->scale_sb;
+    const int seq_mib_size_log2 = mib_size_log2 + sb_size_scale;
+
+    // Use sequence level sb_size to calculate the tile size.
+    const int seq_sb_rows =
+        ALIGN_POWER_OF_TWO(tiles->mi_rows, seq_mib_size_log2) >>
+        seq_mib_size_log2;
+    const int full_sb_rows = tiles->mi_rows >> seq_mib_size_log2;
+    const int base_size_sb = full_sb_rows >> tiles->log2_rows;
+    int extra_sbs = full_sb_rows - (base_size_sb << tiles->log2_rows);
+    if (base_size_sb == 0) extra_sbs += seq_sb_rows - full_sb_rows;
+    size_sb = full_sb_rows > 0
+                  ? ((base_size_sb + (extra_sbs > 0)) << sb_size_scale)
+                  : 1;
+    assert(size_sb > 0);
+    for (i = 0, start_sb = 0;
+         start_sb < seq_sb_rows && i < (1 << tiles->log2_rows); i++) {
+      tiles->row_start_sb[i] = (start_sb << sb_size_scale);
+      start_sb += base_size_sb + (extra_sbs > 0);
+      if (extra_sbs > 0) extra_sbs--;
+    }
+#else
     size_sb = ALIGN_POWER_OF_TWO(sb_rows, tiles->log2_rows + tiles->scale_sb);
     size_sb >>= tiles->log2_rows;
     assert(size_sb > 0);
@@ -126,6 +174,7 @@ void av1_calculate_tile_rows(CommonTileParams *const tiles) {
       tiles->row_start_sb[i] = start_sb;
       start_sb += size_sb;
     }
+#endif  // CONFIG_UNIFORM_TILE
     tiles->rows = i;
     tiles->row_start_sb[i] = sb_rows;
 
