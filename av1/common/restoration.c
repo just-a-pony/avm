@@ -1502,7 +1502,13 @@ static AOM_INLINE void apply_wienerns_multi_class_highbd(
     const WienerNonsepInfo *wienerns_info,
     const NonsepFilterConfig *nsfilter_config, uint16_t *dst, int dst_stride,
     int bit_depth, const uint8_t *class_id, int class_id_stride,
-    int class_id_restrict, int num_classes, int set_index) {
+    int class_id_restrict, int num_classes, int set_index
+#if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+    ,
+    MB_MODE_INFO **mbmi_ptr_procunit, int mi_stride, int ss_x, int ss_y,
+    const bool *lossless_segment
+#endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+) {
   const int block_size = 4;
   const uint8_t *pc_wiener_sub_classify =
       get_pc_wiener_sub_classifier(num_classes, set_index);
@@ -1514,6 +1520,16 @@ static AOM_INLINE void apply_wienerns_multi_class_highbd(
     for (int c = 0; c < width; c += block_size) {
       const int w = AOMMIN(block_size, width - c);
 
+#if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+      const int start_mi_x = c >> (MI_SIZE_LOG2 - ss_x);
+      const int start_mi_y = r >> (MI_SIZE_LOG2 - ss_y);
+      MB_MODE_INFO **this_mbmi_ptr =
+          mbmi_ptr_procunit + start_mi_y * mi_stride + start_mi_x;
+      if (lossless_segment[this_mbmi_ptr[0]->segment_id]) {
+        copy_tile(w, h, dgd_row + c, stride, dst_row + c, dst_stride);
+        continue;
+      }
+#endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
       int sub_class_id = 0;
       if (num_classes > 1) {
         const int full_class_id =
@@ -1533,6 +1549,27 @@ static AOM_INLINE void apply_wienerns_multi_class_highbd(
     }
   }
 }
+
+#if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+static AOM_INLINE int check_lossless(MB_MODE_INFO **mbmi_ptr_procunit,
+                                     const bool *lossless_segment, int width,
+                                     int height, int mi_stride, int ss_x,
+                                     int ss_y) {
+  const int block_size = 4;
+  for (int r = 0; r < height; r += block_size) {
+    const int start_mi_y = r >> (MI_SIZE_LOG2 - ss_y);
+    for (int c = 0; c < width; c += block_size) {
+      const int start_mi_x = c >> (MI_SIZE_LOG2 - ss_x);
+      MB_MODE_INFO **this_mbmi_ptr =
+          mbmi_ptr_procunit + start_mi_y * mi_stride + start_mi_x;
+      if (lossless_segment[this_mbmi_ptr[0]->segment_id]) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+#endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
 
 void apply_wienerns_class_id_highbd(
     const uint16_t *dgd, int width, int height, int stride,
@@ -1597,9 +1634,18 @@ void apply_wienerns_class_id_highbd(
     return;
   }
   if (num_classes == 1) {
+#if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+    const int is_lossless_block =
+        check_lossless(mbmi_ptr_procunit, lossless_segment, width, height,
+                       mi_stride, ss_x, ss_y);
+#endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
     const int is_sym = (nsfilter_config->asymmetric == 0);
     if (!nsfilter_config->strict_bounds && is_sym &&
-        !nsfilter_config->subtract_center) {
+        !nsfilter_config->subtract_center
+#if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+        && !is_lossless_block
+#endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+    ) {
       // TODO(any): Add 8x8 SIMD support for convolve symmetric for subtract
       // center and mixed symmetric functions
       if (nsfilter_config->config == wienerns_simd_large_config_y ||
@@ -1621,10 +1667,15 @@ void apply_wienerns_class_id_highbd(
       }
     }
   }
-  apply_wienerns_multi_class_highbd(dgd, width, height, stride, wienerns_info,
-                                    nsfilter_config, dst, dst_stride, bit_depth,
-                                    class_id, class_id_stride,
-                                    class_id_restrict, num_classes, set_index);
+  apply_wienerns_multi_class_highbd(
+      dgd, width, height, stride, wienerns_info, nsfilter_config, dst,
+      dst_stride, bit_depth, class_id, class_id_stride, class_id_restrict,
+      num_classes, set_index
+#if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+      ,
+      mbmi_ptr_procunit, mi_stride, ss_x, ss_y, lossless_segment
+#endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+  );
 
   return;
 }
