@@ -777,6 +777,8 @@ static
 
 CFL_GET_SUBSAMPLE_FUNCTION(c)
 
+CFL_GET_SUBSAMPLE_121_FUNCTION(c)
+
 static INLINE cfl_subsample_hbd_fn cfl_subsampling_hbd(TX_SIZE tx_size,
                                                        int sub_x, int sub_y) {
   if (sub_x == 1) {
@@ -847,14 +849,20 @@ void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint16_t *input,
     if (AOMMAX(width, height) > 64) {
       cfl_luma_subsampling_444_hbd_c(input, input_stride, recon_buf_q3, width,
                                      height);
-    } else
+    } else {
       cfl_subsampling_hbd(tx_size, sub_x, sub_y)(input, input_stride,
                                                  recon_buf_q3);
+    }
 #endif  // CONFIG_CHROMA_LARGE_TX
   } else if (filter_type == 1) {
     if (sub_x && sub_y) {
-      cfl_luma_subsampling_420_hbd_121_c(input, input_stride, recon_buf_q3,
-                                         width, height);
+      if (AOMMAX(width, height) > 64) {
+        cfl_luma_subsampling_420_hbd_121_c(input, input_stride, recon_buf_q3,
+                                           width, height);
+      } else {
+        cfl_get_luma_subsampling_420_hbd_121(tx_size)(input, input_stride,
+                                                      recon_buf_q3);
+      }
     } else {
       if (AOMMAX(width, height) > 64) {
         cfl_luma_subsampling_420_hbd_c(input, input_stride, recon_buf_q3, width,
