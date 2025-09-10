@@ -844,7 +844,7 @@ void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint16_t *input,
                                             width, height, filter_type);
 #if CONFIG_CHROMA_LARGE_TX
   } else if (sub_x == 0 && sub_y == 0) {
-    if (AOMMAX(width, height) > 32) {
+    if (AOMMAX(width, height) > 64) {
       cfl_luma_subsampling_444_hbd_c(input, input_stride, recon_buf_q3, width,
                                      height);
     } else
@@ -852,37 +852,38 @@ void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint16_t *input,
                                                  recon_buf_q3);
 #endif  // CONFIG_CHROMA_LARGE_TX
   } else if (filter_type == 1) {
-    if (sub_x && sub_y)
+    if (sub_x && sub_y) {
       cfl_luma_subsampling_420_hbd_121_c(input, input_stride, recon_buf_q3,
                                          width, height);
-    else {
-      if (AOMMAX(width, height) > 32)
+    } else {
+      if (AOMMAX(width, height) > 64) {
         cfl_luma_subsampling_420_hbd_c(input, input_stride, recon_buf_q3, width,
                                        height);
-      else
+      } else {
         cfl_subsampling_hbd(tx_size, sub_x, sub_y)(input, input_stride,
                                                    recon_buf_q3);
+      }
     }
   } else if (filter_type == 2) {
-    if (sub_x && sub_y)
+    if (sub_x && sub_y) {
       cfl_luma_subsampling_420_hbd_colocated(input, input_stride, recon_buf_q3,
                                              width, height);
-    else {
-      if (AOMMAX(width, height) > 32)
+    } else {
+      if (AOMMAX(width, height) > 64) {
         cfl_luma_subsampling_420_hbd_c(input, input_stride, recon_buf_q3, width,
                                        height);
-      else
+      } else {
         cfl_subsampling_hbd(tx_size, sub_x, sub_y)(input, input_stride,
                                                    recon_buf_q3);
+      }
     }
   } else {
-    {
-      if (AOMMAX(width, height) > 32)
-        cfl_luma_subsampling_420_hbd_c(input, input_stride, recon_buf_q3, width,
-                                       height);
-      else
-        cfl_subsampling_hbd(tx_size, sub_x, sub_y)(input, input_stride,
-                                                   recon_buf_q3);
+    if (AOMMAX(width, height) > 64) {
+      cfl_luma_subsampling_420_hbd_c(input, input_stride, recon_buf_q3, width,
+                                     height);
+    } else {
+      cfl_subsampling_hbd(tx_size, sub_x, sub_y)(input, input_stride,
+                                                 recon_buf_q3);
     }
   }
 }
