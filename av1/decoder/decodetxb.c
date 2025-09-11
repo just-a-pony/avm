@@ -160,8 +160,8 @@ static INLINE int get_dqv(const int32_t *dequant, int coeff_idx,
 static int read_low_range(aom_reader *r, aom_cdf_prob *cdf) {
   int br_level = 0;
   for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
-    const int k =
-        aom_read_symbol(r, cdf, BR_CDF_SIZE, ACCT_INFO("k", "br_lf_uv_cdf"));
+    const int k = aom_read_symbol(r, cdf, BR_CDF_SIZE,
+                                  ACCT_INFO("k", "read_low_range cdf"));
     br_level += k;
     if (k < BR_CDF_SIZE - 1) break;
   }
