@@ -437,6 +437,246 @@ static void cfl_luma_subsampling_420_hbd_121_avx2(const uint16_t *input,
 
 CFL_GET_SUBSAMPLE_FUNCTION_AVX2(420, hbd)
 
+// AVX2 implementation for cfl_luma_subsampling_420_hbd_colocated_c with width=4
+static void cfl_luma_subsampling_420_hbd_colocated_avx2_w4(
+    const uint16_t *input, int input_stride, uint16_t *output_q3, int height) {
+  // Masks to construct {p2, p0} and {p1, p0} etc. from a 4-pixel vector
+  const __m128i center_mask =
+      _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 5, 4, 1, 0);
+  const __m128i left_mask =
+      _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 2, 1, 0);
+  const __m128i right_mask =
+      _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 7, 6, 3, 2);
+
+  for (int j = 0; j < height; j += 2) {
+    const uint16_t *top_ptr = ((j & 63) == 0) ? input : (input - input_stride);
+    const uint16_t *bot_ptr = input + input_stride;
+
+    const __m128i v_in = _mm_loadl_epi64((const __m128i *)input);
+    const __m128i v_top = _mm_loadl_epi64((const __m128i *)top_ptr);
+    const __m128i v_bot = _mm_loadl_epi64((const __m128i *)bot_ptr);
+
+    // left + right
+    __m128i sum = _mm_add_epi16(_mm_shuffle_epi8(v_in, left_mask),
+                                _mm_shuffle_epi8(v_in, right_mask));
+    // + top + bottom
+    sum = _mm_add_epi16(sum, _mm_shuffle_epi8(v_top, center_mask));
+    sum = _mm_add_epi16(sum, _mm_shuffle_epi8(v_bot, center_mask));
+    // + 4 * center
+    const __m128i center4x =
+        _mm_slli_epi16(_mm_shuffle_epi8(v_in, center_mask), 2);
+    sum = _mm_add_epi16(sum, center4x);
+
+    _mm_storeu_si32((void *)output_q3, sum);
+
+    input += input_stride << 1;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
+// AVX2 implementation for cfl_luma_subsampling_420_hbd_colocated_c with width=8
+static void cfl_luma_subsampling_420_hbd_colocated_avx2_w8(
+    const uint16_t *input, int input_stride, uint16_t *output_q3, int height) {
+  const __m128i subsample_mask =
+      _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, 13, 12, 9, 8, 5, 4, 1, 0);
+  for (int j = 0; j < height; j += 2) {
+    const uint16_t *top_ptr = ((j & 63) == 0) ? input : (input - input_stride);
+    const uint16_t *bot_ptr = input + input_stride;
+
+    const __m128i left = _mm_loadu_si128((const __m128i *)(input - 1));
+    const __m128i center = _mm_loadu_si128((const __m128i *)input);
+    const __m128i right = _mm_loadu_si128((const __m128i *)(input + 1));
+    const __m128i top = _mm_loadu_si128((const __m128i *)top_ptr);
+    const __m128i bottom = _mm_loadu_si128((const __m128i *)bot_ptr);
+
+    __m128i sum = _mm_add_epi16(left, right);
+    sum = _mm_add_epi16(sum, top);
+    sum = _mm_add_epi16(sum, bottom);
+    const __m128i center4x = _mm_slli_epi16(center, 2);
+    sum = _mm_add_epi16(sum, center4x);
+
+    const __m128i subsampled = _mm_shuffle_epi8(sum, subsample_mask);
+    _mm_storel_epi64((__m128i *)output_q3, subsampled);
+
+    // Correct first pixel for boundary conditions at i=0 and j.
+    output_q3[0] = input[0] * 5 + input[1] + top_ptr[0] + bot_ptr[0];
+
+    input += input_stride << 1;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
+// AVX2 implementation for cfl_luma_subsampling_420_hbd_colocated_c with
+// width=16
+static void cfl_luma_subsampling_420_hbd_colocated_avx2_w16(
+    const uint16_t *input, int input_stride, uint16_t *output_q3, int height) {
+  const __m128i subsample_mask =
+      _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, 13, 12, 9, 8, 5, 4, 1, 0);
+
+  for (int j = 0; j < height; j += 2) {
+    const uint16_t *top_ptr = ((j & 63) == 0) ? input : (input - input_stride);
+    const uint16_t *bot_ptr = input + input_stride;
+
+    const __m256i left = _mm256_loadu_si256((const __m256i *)(input - 1));
+    const __m256i center = _mm256_loadu_si256((const __m256i *)input);
+    const __m256i right = _mm256_loadu_si256((const __m256i *)(input + 1));
+    const __m256i top = _mm256_loadu_si256((const __m256i *)top_ptr);
+    const __m256i bottom = _mm256_loadu_si256((const __m256i *)bot_ptr);
+
+    __m256i sum = _mm256_add_epi16(left, right);
+    sum = _mm256_add_epi16(sum, top);
+    sum = _mm256_add_epi16(sum, bottom);
+    const __m256i center4x = _mm256_slli_epi16(center, 2);
+    sum = _mm256_add_epi16(sum, center4x);
+
+    const __m128i sum_lo = _mm256_extracti128_si256(sum, 0);
+    const __m128i sum_hi = _mm256_extracti128_si256(sum, 1);
+    const __m128i subsampled_lo = _mm_shuffle_epi8(sum_lo, subsample_mask);
+    const __m128i subsampled_hi = _mm_shuffle_epi8(sum_hi, subsample_mask);
+    const __m128i final_sum = _mm_unpacklo_epi64(subsampled_lo, subsampled_hi);
+
+    _mm_storeu_si128((__m128i *)output_q3, final_sum);
+
+    output_q3[0] = input[0] * 5 + input[1] + top_ptr[0] + bot_ptr[0];
+
+    input += input_stride << 1;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
+// AVX2 implementation for cfl_luma_subsampling_420_hbd_colocated_c with
+// width=32
+static void cfl_luma_subsampling_420_hbd_colocated_avx2_w32(
+    const uint16_t *input, int input_stride, uint16_t *output_q3, int height) {
+  const __m128i subsample_mask =
+      _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, 13, 12, 9, 8, 5, 4, 1, 0);
+
+  for (int j = 0; j < height; j += 2) {
+    const uint16_t *top_ptr = ((j & 63) == 0) ? input : (input - input_stride);
+    const uint16_t *bot_ptr = input + input_stride;
+
+    // Process first 16 pixels
+    {
+      const __m256i left = _mm256_loadu_si256((const __m256i *)(input - 1));
+      const __m256i center = _mm256_loadu_si256((const __m256i *)input);
+      const __m256i right = _mm256_loadu_si256((const __m256i *)(input + 1));
+      const __m256i top = _mm256_loadu_si256((const __m256i *)top_ptr);
+      const __m256i bot = _mm256_loadu_si256((const __m256i *)bot_ptr);
+
+      __m256i sum = _mm256_add_epi16(left, right);
+      sum = _mm256_add_epi16(sum, top);
+      sum = _mm256_add_epi16(sum, bot);
+      sum = _mm256_add_epi16(sum, _mm256_slli_epi16(center, 2));
+
+      const __m128i sum_lo = _mm256_extracti128_si256(sum, 0);
+      const __m128i sum_hi = _mm256_extracti128_si256(sum, 1);
+      const __m128i subsampled =
+          _mm_unpacklo_epi64(_mm_shuffle_epi8(sum_lo, subsample_mask),
+                             _mm_shuffle_epi8(sum_hi, subsample_mask));
+      _mm_storeu_si128((__m128i *)output_q3, subsampled);
+    }
+
+    // Process second 16 pixels
+    {
+      const __m256i left = _mm256_loadu_si256((const __m256i *)(input + 15));
+      const __m256i center = _mm256_loadu_si256((const __m256i *)(input + 16));
+      const __m256i right = _mm256_loadu_si256((const __m256i *)(input + 17));
+      const __m256i top = _mm256_loadu_si256((const __m256i *)(top_ptr + 16));
+      const __m256i bot = _mm256_loadu_si256((const __m256i *)(bot_ptr + 16));
+
+      __m256i sum = _mm256_add_epi16(left, right);
+      sum = _mm256_add_epi16(sum, top);
+      sum = _mm256_add_epi16(sum, bot);
+      sum = _mm256_add_epi16(sum, _mm256_slli_epi16(center, 2));
+
+      const __m128i sum_lo = _mm256_extracti128_si256(sum, 0);
+      const __m128i sum_hi = _mm256_extracti128_si256(sum, 1);
+      const __m128i subsampled =
+          _mm_unpacklo_epi64(_mm_shuffle_epi8(sum_lo, subsample_mask),
+                             _mm_shuffle_epi8(sum_hi, subsample_mask));
+      _mm_storeu_si128((__m128i *)(output_q3 + 8), subsampled);
+    }
+
+    output_q3[0] = input[0] * 5 + input[1] + top_ptr[0] + bot_ptr[0];
+
+    input += input_stride << 1;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
+// AVX2 implementation for cfl_luma_subsampling_420_hbd_colocated_c with
+// width=64
+static void cfl_luma_subsampling_420_hbd_colocated_avx2_w64(
+    const uint16_t *input, int input_stride, uint16_t *output_q3, int height) {
+  const __m128i subsample_mask =
+      _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, 13, 12, 9, 8, 5, 4, 1, 0);
+
+  for (int j = 0; j < height; j += 2) {
+    const uint16_t *top_ptr = ((j & 63) == 0) ? input : (input - input_stride);
+    const uint16_t *bot_ptr = input + input_stride;
+
+    for (int i = 0; i < 4; ++i) {
+      const int offset = i * 16;
+      const __m256i left =
+          _mm256_loadu_si256((const __m256i *)(input + offset - 1));
+      const __m256i center =
+          _mm256_loadu_si256((const __m256i *)(input + offset));
+      const __m256i right =
+          _mm256_loadu_si256((const __m256i *)(input + offset + 1));
+      const __m256i top =
+          _mm256_loadu_si256((const __m256i *)(top_ptr + offset));
+      const __m256i bot =
+          _mm256_loadu_si256((const __m256i *)(bot_ptr + offset));
+
+      __m256i sum = _mm256_add_epi16(left, right);
+      sum = _mm256_add_epi16(sum, top);
+      sum = _mm256_add_epi16(sum, bot);
+      sum = _mm256_add_epi16(sum, _mm256_slli_epi16(center, 2));
+
+      const __m128i sum_lo = _mm256_extracti128_si256(sum, 0);
+      const __m128i sum_hi = _mm256_extracti128_si256(sum, 1);
+      const __m128i subsampled =
+          _mm_unpacklo_epi64(_mm_shuffle_epi8(sum_lo, subsample_mask),
+                             _mm_shuffle_epi8(sum_hi, subsample_mask));
+      _mm_storeu_si128((__m128i *)(output_q3 + i * 8), subsampled);
+    }
+
+    output_q3[0] = input[0] * 5 + input[1] + top_ptr[0] + bot_ptr[0];
+
+    input += input_stride << 1;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
+static void cfl_luma_subsampling_420_hbd_colocated_avx2(const uint16_t *input,
+                                                        int input_stride,
+                                                        uint16_t *output_q3,
+                                                        int width, int height) {
+  switch (width) {
+    case 4:
+      cfl_luma_subsampling_420_hbd_colocated_avx2_w4(input, input_stride,
+                                                     output_q3, height);
+      break;
+    case 8:
+      cfl_luma_subsampling_420_hbd_colocated_avx2_w8(input, input_stride,
+                                                     output_q3, height);
+      break;
+    case 16:
+      cfl_luma_subsampling_420_hbd_colocated_avx2_w16(input, input_stride,
+                                                      output_q3, height);
+      break;
+    case 32:
+      cfl_luma_subsampling_420_hbd_colocated_avx2_w32(input, input_stride,
+                                                      output_q3, height);
+      break;
+    case 64:
+      cfl_luma_subsampling_420_hbd_colocated_avx2_w64(input, input_stride,
+                                                      output_q3, height);
+      break;
+    default: assert(0 && "Invalid width."); break;
+  }
+}
+
 /**
  * Adds 2 pixels (in a 2x1 grid) and multiplies them by 4. Resulting in a more
  * precise version of a box filter 4:2:2 pixel subsampling in Q3.
@@ -512,6 +752,8 @@ static void cfl_luma_subsampling_444_hbd_avx2(const uint16_t *input,
 CFL_GET_SUBSAMPLE_FUNCTION_AVX2(444, hbd)
 
 CFL_GET_SUBSAMPLE_121_FUNCTION(avx2)
+
+CFL_GET_SUBSAMPLE_COLOCATED_FUNCTION(avx2)
 
 static INLINE __m256i predict_unclipped(const __m256i *input, __m256i alpha_q12,
                                         __m256i alpha_sign, __m256i dc_q0) {

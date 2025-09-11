@@ -667,10 +667,10 @@ static void cfl_luma_subsampling_420_hbd_c(const uint16_t *input,
   }
 }
 
-void cfl_luma_subsampling_420_hbd_colocated(const uint16_t *input,
-                                            int input_stride,
-                                            uint16_t *output_q3, int width,
-                                            int height) {
+void cfl_luma_subsampling_420_hbd_colocated_c(const uint16_t *input,
+                                              int input_stride,
+                                              uint16_t *output_q3, int width,
+                                              int height) {
   for (int j = 0; j < height; j += 2) {
     for (int i = 0; i < width; i += 2) {
 #if CONFIG_CHROMA_LARGE_TX
@@ -779,6 +779,8 @@ CFL_GET_SUBSAMPLE_FUNCTION(c)
 
 CFL_GET_SUBSAMPLE_121_FUNCTION(c)
 
+CFL_GET_SUBSAMPLE_COLOCATED_FUNCTION(c)
+
 static INLINE cfl_subsample_hbd_fn cfl_subsampling_hbd(TX_SIZE tx_size,
                                                        int sub_x, int sub_y) {
   if (sub_x == 1) {
@@ -874,8 +876,13 @@ void cfl_store(MACROBLOCKD *const xd, CFL_CTX *cfl, const uint16_t *input,
     }
   } else if (filter_type == 2) {
     if (sub_x && sub_y) {
-      cfl_luma_subsampling_420_hbd_colocated(input, input_stride, recon_buf_q3,
-                                             width, height);
+      if (AOMMAX(width, height) > 64) {
+        cfl_luma_subsampling_420_hbd_colocated_c(input, input_stride,
+                                                 recon_buf_q3, width, height);
+      } else {
+        cfl_get_luma_subsampling_420_hbd_colocated(tx_size)(input, input_stride,
+                                                            recon_buf_q3);
+      }
     } else {
       if (AOMMAX(width, height) > 64) {
         cfl_luma_subsampling_420_hbd_c(input, input_stride, recon_buf_q3, width,

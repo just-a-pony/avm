@@ -2025,8 +2025,8 @@ void av1_set_downsample_filter_options(AV1_COMP *cpi) {
             cfl_luma_subsampling_420_hbd_121_c(this_src, stride, recon_buf_q3,
                                                blk_w, blk_h);
           } else if (filter_type == 2) {
-            cfl_luma_subsampling_420_hbd_colocated(this_src, stride,
-                                                   recon_buf_q3, blk_w, blk_h);
+            cfl_luma_subsampling_420_hbd_colocated_c(
+                this_src, stride, recon_buf_q3, blk_w, blk_h);
           } else {
             cfl_luma_subsampling_420_hbd_c(this_src, stride, recon_buf_q3,
                                            blk_w, blk_h);
