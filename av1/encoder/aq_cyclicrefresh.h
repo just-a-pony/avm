@@ -226,10 +226,12 @@ void av1_cyclic_refresh_set_golden_update(struct AV1_COMP *const cpi);
  * \callergraph
  *
  * \param[in]       cpi          Top level encoder structure
+ * \param[in]       frame_type   Frame type encoder parameter
  *
  * Updates the \c cpi->cyclic_refresh with the settings.
  */
-void av1_cyclic_refresh_update_parameters(struct AV1_COMP *const cpi);
+void av1_cyclic_refresh_update_parameters(struct AV1_COMP *const cpi,
+                                          FRAME_TYPE frame_type);
 
 /*!\brief Setup the cyclic background refresh.
  *
