@@ -17,9 +17,7 @@
 
 #include "av1/common/av1_common_int.h"
 #include "av1/common/blockd.h"
-#if CONFIG_BRU
 #include "av1/common/bru.h"
-#endif  // CONFIG_BRU
 #include "av1/common/enums.h"
 #include "av1/common/filter.h"
 #include "av1/common/scan.h"
@@ -585,45 +583,6 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                        num_planes, chroma_ref_info);
 }
 
-#if !CONFIG_BRU
-static AOM_INLINE void highbd_build_mc_border(const uint16_t *src,
-                                              int src_stride, uint16_t *dst,
-                                              int dst_stride, int x, int y,
-                                              int b_w, int b_h, int w, int h) {
-  // Get a pointer to the start of the real data for this row.
-  const uint16_t *ref_row = src - x - y * src_stride;
-
-  if (y >= h)
-    ref_row += (h - 1) * src_stride;
-  else if (y > 0)
-    ref_row += y * src_stride;
-
-  do {
-    int right = 0, copy;
-    int left = x < 0 ? -x : 0;
-
-    if (left > b_w) left = b_w;
-
-    if (x + b_w > w) right = x + b_w - w;
-
-    if (right > b_w) right = b_w;
-
-    copy = b_w - left - right;
-
-    if (left) aom_memset16(dst, ref_row[0], left);
-
-    if (copy) memcpy(dst + left, ref_row + x + left, copy * sizeof(uint16_t));
-
-    if (right) aom_memset16(dst + left + copy, ref_row[w - 1], right);
-
-    dst += dst_stride;
-    ++y;
-
-    if (y > 0 && y < h) ref_row += src_stride;
-  } while (--b_h);
-}
-#endif
-
 static INLINE void extend_mc_border(const struct scale_factors *const sf,
                                     struct buf_2d *const pre_buf,
                                     MV32 scaled_mv, PadBlock block,
@@ -737,7 +696,6 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   xd->mi[0]->sb_root_partition_info = parent->sb_root_partition_info;
 #endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-#if CONFIG_BRU
   xd->mi[0]->local_rest_type =
       1;  // set non zero default type, it is only matter 1 or 0 in SW
   xd->mi[0]->local_ccso_blk_flag =
@@ -760,7 +718,6 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
       read_gdf(cm, r, xd);
     }
   } else
-#endif  // CONFIG_BRU
     av1_read_mode_info(pbi, dcb, r, x_mis, y_mis);
 
   if (xd->tree_type != LUMA_PART) {
@@ -981,7 +938,6 @@ static AOM_INLINE void set_color_index_map_offset(MACROBLOCKD *const xd,
   xd->color_index_map_offset[plane] += params.plane_width * params.plane_height;
 }
 
-#if CONFIG_BRU
 void dec_bru_swap_stage(AV1_COMMON *cm, MACROBLOCKD *const xd) {
   if (cm->bru.enabled) {
     RefCntBuffer *tmp_buf = cm->cur_frame;
@@ -1057,7 +1013,6 @@ void dec_bru_swap_stage(AV1_COMMON *cm, MACROBLOCKD *const xd) {
     }
   }
 }
-#endif  // CONFIG_BRU
 
 static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
                                                 ThreadData *const td,
@@ -1082,14 +1037,12 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
     // td->read_coeffs_tx_intra_block_visit == decode_block_void.
     // In that case do not reset since it will erase previously set
     // values.
-#if CONFIG_BRU
     // intra cannot be used in non-active SBs
     if (!bru_is_sb_active(cm, xd->mi_col, xd->mi_row)) {
       aom_internal_error(
           &cm->error, AOM_CODEC_ERROR,
           "Invalid BRU activte: only active SB can be predicted by intra");
     }
-#endif  // CONFIG_BRU
     if (td->read_coeffs_tx_intra_block_visit != decode_block_void)
       av1_init_txk_skip_array(cm, xd->mi_row, xd->mi_col, bsize, 0,
                               xd->tree_type, &mbmi->chroma_ref_info,
@@ -1273,13 +1226,11 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
     // td->read_coeffs_tx_inter_block_visit == decode_block_void.
     // In that case do not reset since it will erase previously set
     // values.
-#if CONFIG_BRU
     // check BRU inter prediction motion vector
     if (!bru_is_valid_inter(cm, xd)) {
       aom_internal_error(&cm->error, AOM_CODEC_ERROR,
                          "Invalid BRU inter prediction");
     }
-#endif  // CONFIG_BRU
     if (td->read_coeffs_tx_inter_block_visit != decode_block_void)
       av1_init_txk_skip_array(cm, xd->mi_row, xd->mi_col, bsize, 0,
                               xd->tree_type, &mbmi->chroma_ref_info,
@@ -1288,13 +1239,11 @@ static AOM_INLINE void decode_token_recon_block(AV1Decoder *const pbi,
     // Reconstruction
     if (!mbmi->skip_txfm[xd->tree_type == CHROMA_PART]) {
       int eobtotal = 0;
-#if CONFIG_BRU
       if (!bru_is_sb_active(cm, xd->mi_col, xd->mi_row)) {
         aom_internal_error(
             &cm->error, AOM_CODEC_ERROR,
             "Invalid BRU skip_txfm: only active SB has transform");
       }
-#endif  // CONFIG_BRU
       const int max_blocks_wide = max_block_wide(xd, bsize, 0);
       const int max_blocks_high = max_block_high(xd, bsize, 0);
       int row, col;
@@ -1545,7 +1494,6 @@ static TX_SIZE read_tx_size(MACROBLOCKD *xd, TX_MODE tx_mode, int is_inter,
     return max_txsize_rect_lookup[bsize];
   }
 }
-#if CONFIG_BRU
 static BruActiveMode read_bru_mode(AV1_COMMON *cm, const MACROBLOCKD *xd,
                                    aom_reader *r) {
   if (!cm->bru.enabled) return 0;
@@ -1566,7 +1514,6 @@ static BruActiveMode read_bru_mode(AV1_COMMON *cm, const MACROBLOCKD *xd,
   }
   return sb_active_mode;
 }
-#endif  // CONFIG_BRU
 static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
                                           ThreadData *const td, int mi_row,
                                           int mi_col, aom_reader *r,
@@ -1663,12 +1610,10 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
   assert(bsize == mbmi->sb_type[av1_get_sdp_idx(xd->tree_type)]);
   if (mbmi->skip_txfm[xd->tree_type == CHROMA_PART])
     av1_reset_entropy_context(xd, bsize, num_planes);
-#if CONFIG_BRU
   // For regular decoder, always do recon
   // For optimized decoder, only do reocn when support SB
   if (!pbi->bru_opt_mode ||
       (pbi->bru_opt_mode && bru_is_sb_active(cm, mi_col, mi_row)))
-#endif  // CONFIG_BRU
     decode_token_recon_block(pbi, td, r, partition, bsize);
 
   // Note: the copying here must match corresponding encoder-side copying in
@@ -1869,32 +1814,26 @@ static PARTITION_TYPE read_partition(const AV1_COMMON *const cm,
   // allow do whatever implied first, then if not possible
   // use BRU to set do split to false
   if (is_do_split_implied(partition_allowed, &implied_do_split)) {
-#if CONFIG_BRU
     // BRU inactive won't go futher implied partition
     if (!bru_is_sb_active(cm, mi_col, mi_row)) {
       do_split = false;
     } else
-#endif  // CONFIG_BRU
       do_split = implied_do_split;
   } else {
-#if CONFIG_BRU
     // if not derived partition, based on inactive/support set do_split to false
     if (!bru_is_sb_active(cm, mi_col, mi_row)) {
       do_split = false;
     } else {
-#endif  // CONFIG_BRU
 #if CONFIG_NEW_PART_CTX
       const int ctx =
           partition_plane_context(xd, mi_row, mi_col, bsize, 0, SPLIT_CTX_MODE);
       do_split = aom_read_symbol(r, ec_ctx->do_split_cdf[plane][ctx], 2,
                                  ACCT_INFO("do_split"));
 #else
-    do_split = aom_read_symbol(r, ec_ctx->do_split_cdf[plane][ctx], 2,
-                               ACCT_INFO("do_split"));
+      do_split = aom_read_symbol(r, ec_ctx->do_split_cdf[plane][ctx], 2,
+                                 ACCT_INFO("do_split"));
 #endif  // CONFIG_NEW_PART_CTX
-#if CONFIG_BRU
     }
-#endif  // CONFIG_BRU
   }
   if (!do_split) {
     return PARTITION_NONE;
@@ -2066,7 +2005,6 @@ static AOM_INLINE void decode_partition(
 
   if (parse_decode_flag & 1) {
     if (is_sb_root) {
-#if CONFIG_BRU
       if (cm->bru.enabled) {
         const int mi_grid_idx = get_mi_grid_idx(&cm->mi_params, mi_row, mi_col);
         const int mi_alloc_idx =
@@ -2081,7 +2019,6 @@ static AOM_INLINE void decode_partition(
         xd->sbi->sb_active_mode = read_bru_mode(cm, xd, reader);
         set_active_map(cm, mi_col, mi_row, xd->sbi->sb_active_mode);
       }
-#endif  // CONFIG_BRU
       set_sb_mv_precision(sbi, pbi);
     }
     const int plane_start = get_partition_plane_start(xd->tree_type);
@@ -2153,9 +2090,7 @@ static AOM_INLINE void decode_partition(
       if (!frame_is_intra_only(cm) && ptree->partition &&
           parent->region_type != INTRA_REGION &&
           ptree->extended_sdp_allowed_flag &&
-#if CONFIG_BRU
           bru_is_sb_active(cm, mi_col, mi_row) &&
-#endif  // CONFIG_BRU
           is_bsize_allowed_for_extended_sdp(bsize, ptree->partition)) {
         const int ctx = get_intra_region_context(bsize);
         ptree->region_type =
@@ -2492,7 +2427,6 @@ static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
       (is_intra_sdp_enabled ? td->dcb.xd.sbi->ptree_root[1] : NULL),
       parse_decode_flag);
 
-#if CONFIG_BRU
   if (cm->bru.enabled && cm->current_frame.frame_type != KEY_FRAME) {
     if (pbi->bru_opt_mode) {
       if (bru_is_sb_available(cm, mi_col, mi_row)) {
@@ -2525,14 +2459,12 @@ static AOM_INLINE void decode_partition_sb(AV1Decoder *const pbi,
       }
     }
   }
-#endif  // CONFIG_BRU
 #if CONFIG_INSPECTION
   if (pbi->inspect_sb_cb != NULL) {
     (*pbi->inspect_sb_cb)(pbi, pbi->inspect_ctx);
   }
 #endif  // CONFIG_INSPECTION
 }
-#if CONFIG_BRU
 static AOM_INLINE void setup_bru_active_info(AV1_COMMON *const cm,
                                              struct aom_read_bit_buffer *rb) {
   cm->bru.update_ref_idx = -1;
@@ -2562,7 +2494,6 @@ static AOM_INLINE void setup_bru_active_info(AV1_COMMON *const cm,
     }
   }
 }
-#endif  // CONFIG_BRU
 static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
                                           struct aom_read_bit_buffer *rb) {
   struct segmentation *const seg = &cm->seg;
@@ -2694,12 +2625,10 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
     cm->cur_frame->rst_info[p].frame_filters_on = 0;
     rsi->temporal_pred_flag = 0;
     cm->cur_frame->rst_info[p].temporal_pred_flag = 0;
-#if CONFIG_BRU
     if (cm->bru.frame_inactive_flag) {
       rsi->frame_restoration_type = RESTORE_NONE;
       continue;
     }
-#endif  // CONFIG_BRU
     uint8_t plane_lr_tools_disable_mask =
         cm->seq_params.lr_tools_disable_mask[p > 0];
     av1_set_lr_tools(plane_lr_tools_disable_mask, p, &cm->features);
@@ -2799,7 +2728,6 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
 
   cm->rst_info[0].restoration_unit_size =
       cm->rst_info[0].max_restoration_unit_size;
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
     if (num_planes > 1) {
       cm->rst_info[1].restoration_unit_size =
@@ -2809,7 +2737,6 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
     }
     return;
   }
-#endif  // CONFIG_BRU
   if (!luma_none) {
     if (aom_rb_read_bit(rb))
       cm->rst_info[0].restoration_unit_size = size >> 1;
@@ -3350,9 +3277,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
     return;
   }
   assert(!cm->features.coded_lossless);
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) return;
-#endif  // CONFIG_BRU
   if (cm->prev_frame) {
     // write deltas to frame buffer
     memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, SINGLE_REF_FRAMES);
@@ -3507,11 +3432,9 @@ static AOM_INLINE void setup_gdf(AV1_COMMON *cm,
                                  struct aom_read_bit_buffer *rb) {
   cm->gdf_info.gdf_mode = 0;
   if (!is_allow_gdf(cm)) return;
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
     return;
   }
-#endif
   init_gdf(cm);
   cm->gdf_info.gdf_mode = aom_rb_read_bit(rb);
   if (cm->gdf_info.gdf_mode > 0) {
@@ -3529,9 +3452,7 @@ static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {
   const int num_planes = av1_num_planes(cm);
   CdefInfo *const cdef_info = &cm->cdef_info;
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) return;
-#endif  // CONFIG_BRU
   cdef_info->cdef_frame_enable = aom_rb_read_bit(rb);
   if (!cdef_info->cdef_frame_enable) {
     cdef_info->cdef_on_skip_txfm_frame_enable = 0;
@@ -3582,14 +3503,12 @@ static AOM_INLINE int read_ccso_offset_idx(struct aom_read_bit_buffer *rb) {
 }
 static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
                                   struct aom_read_bit_buffer *rb) {
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
     cm->cur_frame->ccso_info.ccso_enable[0] = 0;
     cm->cur_frame->ccso_info.ccso_enable[1] = 0;
     cm->cur_frame->ccso_info.ccso_enable[2] = 0;
     return;
   }
-#endif  // CONFIG_BRU
   const int ccso_offset[8] = { 0, 1, -1, 3, -3, 7, -7, -10 };
   const int ccso_scale[4] = { 1, 2, 3, 4 };
   const int num_ref_frames =
@@ -4112,9 +4031,7 @@ static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
   resize_context_buffers(cm, width, height);
   setup_render_size(cm, rb);
   setup_buffer_pool(cm);
-#if CONFIG_BRU
   realloc_bru_info(cm);
-#endif  // CONFIG_BRU
 }
 
 static AOM_INLINE void setup_seq_sb_size(SequenceHeader *seq_params,
@@ -4236,9 +4153,7 @@ static AOM_INLINE void setup_frame_size_with_refs(
                          "Referenced frame has incompatible color format");
   }
   setup_buffer_pool(cm);
-#if CONFIG_BRU
   realloc_bru_info(cm);
-#endif  // CONFIG_BRU
 }
 
 static AOM_INLINE void read_tile_info_max_tile(
@@ -4300,7 +4215,6 @@ static AOM_INLINE void read_tile_info_max_tile(
     tiles->row_start_sb[i] = start_sb + height_sb;
   }
   av1_calculate_tile_rows(cm, cm->mi_params.mi_rows, tiles);
-#if CONFIG_BRU_TILE_FLAG
   if (cm->bru.enabled) {
     const int num_tiles = tiles->rows * tiles->cols;
     memset(cm->tiles.tile_active_bitmap, 0, (num_tiles + 7) / 8);
@@ -4308,7 +4222,6 @@ static AOM_INLINE void read_tile_info_max_tile(
       cm->tiles.tile_active_bitmap[0] = 1;
     }
   }
-#endif  // CONFIG_BRU_TILE_FLAG
 }
 
 void av1_set_single_tile_decoding_mode(AV1_COMMON *const cm) {
@@ -4571,7 +4484,6 @@ static AOM_INLINE void get_tile_buffers(
     TileBufferDec (*const tile_buffers)[MAX_TILE_COLS], int start_tile,
     int end_tile) {
   AV1_COMMON *const cm = &pbi->common;
-#if CONFIG_BRU
   int tile_cols = cm->tiles.cols;
   int tile_rows = cm->tiles.rows;
   if (cm->bru.frame_inactive_flag) {
@@ -4579,10 +4491,6 @@ static AOM_INLINE void get_tile_buffers(
     tile_rows = 1;
     end_tile = 0;
   }
-#else
-  const int tile_cols = cm->tiles.cols;
-  const int tile_rows = cm->tiles.rows;
-#endif
   int tc = 0;
 
   for (int r = 0; r < tile_rows; ++r) {
@@ -4600,7 +4508,6 @@ static AOM_INLINE void get_tile_buffers(
       data += hdr_offset;
       get_tile_buffer(data_end, pbi->tile_size_bytes, is_last,
                       &pbi->common.error, &data, buf);
-#if CONFIG_BRU_TILE_FLAG
       if (cm->bru.enabled) {
         const int tile_idx = r * tile_cols + c;
         TileDataDec *const this_tile = pbi->tile_data + tile_idx;
@@ -4611,7 +4518,6 @@ static AOM_INLINE void get_tile_buffers(
              tile_active_map_bit) &
             1;
       }
-#endif  // CONFIG_BRU_TILE_FLAG
     }
   }
 }
@@ -4893,16 +4799,9 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
   for (int p = 0; p < num_planes; ++p)
     num_filter_classes[p] = cm->rst_info[p].num_filter_classes;
   av1_reset_loop_restoration(xd, 0, num_planes, num_filter_classes);
-#if CONFIG_BRU
   if (cm->bru.enabled) {
     if (cm->bru.frame_inactive_flag) xd->tile.tile_active_mode = 0;
-#if !CONFIG_BRU_TILE_FLAG
-    else
-      xd->tile.tile_active_mode =
-          aom_read_bit(td->bit_reader, ACCT_INFO("tile_active_mode"));
-#endif  // !CONFIG_BRU_TILE_FLAG
   }
-#endif  // CONFIG_BRU
 
   for (int mi_row = tile_info.mi_row_start; mi_row < tile_info.mi_row_end;
        mi_row += cm->mib_size) {
@@ -4917,12 +4816,8 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
     for (int mi_col = tile_info.mi_col_start; mi_col < tile_info.mi_col_end;
          mi_col += cm->mib_size) {
       av1_reset_is_mi_coded_map(xd, cm->mib_size);
-#if CONFIG_BRU
       BruActiveMode sb_active_mode = BRU_ACTIVE_SB;
       av1_set_sb_info(cm, xd, mi_row, mi_col, sb_active_mode);
-#else
-      av1_set_sb_info(cm, xd, mi_row, mi_col);
-#endif  // CONFIG_BRU
       set_cb_buffer(pbi, dcb, &td->cb_buffer_base, num_planes, 0, 0);
       // td->ref_mv_bank is initialized as xd->ref_mv_bank, and used
       // for MV referencing during decoding the tile.
@@ -4939,12 +4834,10 @@ static AOM_INLINE void decode_tile(AV1Decoder *pbi, ThreadData *const td,
     }
   }
 
-  int corrupted =
-#if CONFIG_BRU
-      cm->bru.frame_inactive_flag ? 0 :
-#endif  // CONFIG_BRU
-      (check_trailing_bits_after_symbol_coder(td->bit_reader)) ? 1
-                                                               : 0;
+  int corrupted = cm->bru.frame_inactive_flag ? 0
+                  : (check_trailing_bits_after_symbol_coder(td->bit_reader))
+                      ? 1
+                      : 0;
   aom_merge_corrupted_flag(&dcb->corrupted, corrupted);
 }
 
@@ -5051,11 +4944,9 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
 
   assert(tile_rows <= MAX_TILE_ROWS);
   assert(tile_cols <= MAX_TILE_COLS);
-#if CONFIG_MOVE_TILE_DATA_ALLOC
   if (pbi->tile_data == NULL || n_tiles != pbi->allocated_tiles) {
     decoder_alloc_tile_data(pbi, n_tiles);
   }
-#endif
 #if EXT_TILE_DEBUG
   if (tiles->large_scale && !pbi->ext_tile_debug)
     raw_data_end = get_ls_single_tile_buffer(pbi, data, tile_buffers);
@@ -5064,11 +4955,6 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
   else
 #endif  // EXT_TILE_DEBUG
     get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
-#if !CONFIG_MOVE_TILE_DATA_ALLOC
-  if (pbi->tile_data == NULL || n_tiles != pbi->allocated_tiles) {
-    decoder_alloc_tile_data(pbi, n_tiles);
-  }
-#endif
 #if CONFIG_ACCOUNTING
   if (pbi->acct_enabled) {
     aom_accounting_reset(&pbi->accounting);
@@ -5121,13 +5007,11 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
       av1_init_above_context(&cm->above_contexts, av1_num_planes(cm), row,
                              &td->dcb.xd);
 
-#if CONFIG_BRU
       td->dcb.xd.tile.tile_active_mode = 1;
       if (cm->bru.enabled && (cm->tiles.cols * cm->tiles.rows > 1)) {
         td->dcb.xd.tile.tile_active_mode =
             tile_data->tile_info.tile_active_mode;
       }
-#endif  // CONFIG_BRU
       // Initialise the tile context from the frame context
       tile_data->tctx = *cm->fc;
       td->dcb.xd.tile_ctx = &tile_data->tctx;
@@ -5444,12 +5328,8 @@ static AOM_INLINE void parse_tile_row_mt(AV1Decoder *pbi, ThreadData *const td,
     for (int mi_col = tile_info.mi_col_start; mi_col < tile_info.mi_col_end;
          mi_col += cm->mib_size) {
       av1_reset_is_mi_coded_map(xd, cm->mib_size);
-#if CONFIG_BRU
       BruActiveMode sb_active_mode = BRU_ACTIVE_SB;
       av1_set_sb_info(cm, xd, mi_row, mi_col, sb_active_mode);
-#else
-      av1_set_sb_info(cm, xd, mi_row, mi_col);
-#endif  // CONFIG_BRU
       set_cb_buffer(pbi, dcb, pbi->cb_buffer_base, num_planes, mi_row, mi_col);
       av1_reset_refmv_bank(cm, xd, &tile_info, mi_row, mi_col);
 
@@ -5890,11 +5770,9 @@ static const uint8_t *decode_tiles_mt(AV1Decoder *pbi, const uint8_t *data,
   assert(start_tile >= 0 && end_tile < n_tiles);
 
   decode_mt_init(pbi);
-#if CONFIG_MOVE_TILE_DATA_ALLOC
   if (pbi->tile_data == NULL || n_tiles != pbi->allocated_tiles) {
     decoder_alloc_tile_data(pbi, n_tiles);
   }
-#endif
   // get tile size in tile group
 #if EXT_TILE_DEBUG
   if (tiles->large_scale) assert(pbi->ext_tile_debug == 1);
@@ -5903,12 +5781,6 @@ static const uint8_t *decode_tiles_mt(AV1Decoder *pbi, const uint8_t *data,
   else
 #endif  // EXT_TILE_DEBUG
     get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
-
-#if !CONFIG_MOVE_TILE_DATA_ALLOC
-  if (pbi->tile_data == NULL || n_tiles != pbi->allocated_tiles) {
-    decoder_alloc_tile_data(pbi, n_tiles);
-  }
-#endif
 
   for (int row = 0; row < tile_rows; row++) {
     for (int col = 0; col < tile_cols; col++) {
@@ -6075,7 +5947,6 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
 
   decode_mt_init(pbi);
 
-#if CONFIG_MOVE_TILE_DATA_ALLOC
   if (pbi->tile_data == NULL || n_tiles != pbi->allocated_tiles) {
     if (pbi->tile_data != NULL) {
       for (int i = 0; i < pbi->allocated_tiles; i++) {
@@ -6085,7 +5956,6 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
     }
     decoder_alloc_tile_data(pbi, n_tiles);
   }
-#endif
 
   // get tile size in tile group
 #if EXT_TILE_DEBUG
@@ -6095,18 +5965,6 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
   else
 #endif  // EXT_TILE_DEBUG
     get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
-
-#if !CONFIG_MOVE_TILE_DATA_ALLOC
-  if (pbi->tile_data == NULL || n_tiles != pbi->allocated_tiles) {
-    if (pbi->tile_data != NULL) {
-      for (int i = 0; i < pbi->allocated_tiles; i++) {
-        TileDataDec *const tile_data = pbi->tile_data + i;
-        av1_dec_row_mt_dealloc(&tile_data->dec_row_mt_sync);
-      }
-    }
-    decoder_alloc_tile_data(pbi, n_tiles);
-  }
-#endif
 
   for (int row = 0; row < tile_rows; row++) {
     for (int col = 0; col < tile_cols; col++) {
@@ -6947,9 +6805,7 @@ void av1_read_sequence_header_beyond_av1(
           ? aom_rb_read_bit(rb)
           : 0;
 #endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
-#if CONFIG_BRU
   seq_params->enable_bru = aom_rb_read_bit(rb);
-#endif  // CONFIG_BRU
 #if CONFIG_DERIVED_MVD_SIGN
   seq_params->enable_mvd_sign_derive = aom_rb_read_bit(rb);
 #endif  // CONFIG_DERIVED_MVD_SIGN
@@ -7721,13 +7577,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   aom_s_frame_info *sframe_info = &pbi->sframe_info;
   sframe_info->is_s_frame = 0;
   sframe_info->is_s_frame_at_altref = 0;
-#if CONFIG_BRU
   cm->bru.enabled = 0;
   cm->bru.update_ref_idx = -1;
   cm->bru.explicit_ref_idx = -1;
   cm->bru.ref_disp_order = -1;
   cm->bru.frame_inactive_flag = 0;
-#endif  // CONFIG_BRU
 #if CONFIG_PARAKIT_COLLECT_DATA
   for (int i = 0; i < MAX_NUM_CTX_GROUPS; i++) {
     cm->prob_models[i].frameNumber = current_frame->frame_number;
@@ -8056,7 +7910,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif  // !CWG_F215_CONFIG_REMOVE_FRAME_ID
 
     frame_size_override_flag = frame_is_sframe(cm) ? 1 : aom_rb_read_bit(rb);
-
     current_frame->order_hint = aom_rb_read_literal(
         rb, seq_params->order_hint_info.order_hint_bits_minus_1 + 1);
 
@@ -8498,11 +8351,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                              "Referenced frame has invalid size");
       }
 #endif  // CONFIG_ACROSS_SCALE_REF_OPT
-#if CONFIG_BRU
 #if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_TIP
       if (obu_type != OBU_TIP && current_frame->frame_type == INTER_FRAME)
 #else
-      if (current_frame->frame_type == INTER_FRAME)
+        if (current_frame->frame_type == INTER_FRAME)
 #endif
       {
         setup_bru_active_info(cm, rb);
@@ -8524,7 +8376,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       if (cm->bru.frame_inactive_flag) {
         cm->features.disable_cdf_update = 1;
       }
-#endif  // CONFIG_BRU
       cm->ref_frames_info.num_same_ref_compound =
           AOMMIN(cm->seq_params.num_same_ref_compound,
                  cm->ref_frames_info.num_total_refs);
@@ -8586,13 +8437,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
             cm->remapped_ref_idx[i] = ref;
 #endif  // CONFIG_ACROSS_SCALE_REF_OPT
         }
-#if CONFIG_BRU
         // find corresponding bru ref idx given explicit_bru_idx
         if (cm->bru.enabled && cm->bru.update_ref_idx == i) {
           cm->bru.ref_disp_order = cm->ref_frame_map[ref]->display_order_hint;
           cm->bru.explicit_ref_idx = ref;
         }
-#endif  // CONFIG_BRU
         // Check valid for referencing
         if (pbi->valid_for_referencing[ref] == 0)
           aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
@@ -8615,7 +8464,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         }
 #endif  // !CWG_F215_CONFIG_REMOVE_FRAME_ID
       }
-#if CONFIG_BRU
       if (cm->bru.update_ref_idx != -1) {
         for (int i = 0; i < cm->ref_frames_info.num_total_refs; ++i) {
           if (cm->bru.update_ref_idx != i) {
@@ -8647,7 +8495,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                              "BRU can only use in LD");
         }
       }
-#endif
       // With explicit_ref_frame_map, cm->remapped_ref_idx has been
       // overwritten. The reference lists also needs to be reset.
       if (explicit_ref_frame_map) {
@@ -8721,10 +8568,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           && features->allow_ref_frame_mvs &&
           cm->ref_frames_info.num_total_refs >= 2
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
-#if CONFIG_BRU
-          && !cm->bru.frame_inactive_flag
-#endif  // CONFIG_BRU
-      ) {
+          && !cm->bru.frame_inactive_flag) {
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_TIP
         if (obu_type == OBU_TIP) {
@@ -8815,11 +8659,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         features->tip_frame_mode = TIP_FRAME_DISABLED;
       }
 
-      if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT
-#if CONFIG_BRU
-          && !cm->bru.frame_inactive_flag
-#endif  // CONFIG_BRU
-      ) {
+      if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT &&
+          !cm->bru.frame_inactive_flag) {
 #if CONFIG_FRAME_HEADER_SIGNAL_OPT
         read_screen_content_params(cm, rb);
 #endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
@@ -8966,7 +8807,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                        "Keyframe / intra-only frame required to reset decoder"
                        " state");
   }
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
     // Set parameters corresponding to no filtering.
     struct loopfilter *lf = &cm->lf;
@@ -9036,7 +8876,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
     return 0;
   }
-#endif  // CONFIG_BRU
 
   if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
     // Set parameters corresponding to no filtering.
@@ -9514,7 +9353,6 @@ static int32_t read_tile_indices_in_tilegroup(AV1Decoder *pbi,
   }
   pbi->next_start_tile = (*end_tile == num_tiles - 1) ? 0 : *end_tile + 1;
 
-#if CONFIG_BRU_TILE_FLAG
   if (cm->bru.enabled) {
     if (num_tiles > 1) {
       for (int tile_idx = *start_tile; tile_idx <= *end_tile; tile_idx++) {
@@ -9527,7 +9365,6 @@ static int32_t read_tile_indices_in_tilegroup(AV1Decoder *pbi,
       tiles->tile_active_bitmap[0] = 1;
     }
   }
-#endif  // CONFIG_BRU_TILE_FLAG
   return ((rb->bit_offset - saved_bit_offset + 7) >> 3);
 }
 
@@ -9638,7 +9475,6 @@ int32_t av1_read_tilegroup_header(
     else
       av1_setup_ref_frame_sides(cm);
 
-#if CONFIG_BRU
     if (cm->bru.frame_inactive_flag) {
       for (int plane = 0; plane < av1_num_planes(cm); plane++) {
         cm->cur_frame->ccso_info.ccso_enable[plane] = 0;
@@ -9698,7 +9534,6 @@ int32_t av1_read_tilegroup_header(
 #endif
       return uncomp_hdr_size;
     }
-#endif  // CONFIG_BRU
 
     process_tip_mode(pbi);
 #if CONFIG_F106_OBU_TIP
@@ -9746,9 +9581,7 @@ int32_t av1_read_tilegroup_header(
   tile_indices_present_flag &=
       (cm->features.tip_frame_mode != TIP_FRAME_AS_OUTPUT);
 #endif  // CONFIG_F106_OBU_TIP
-#if CONFIG_BRU
   tile_indices_present_flag &= !cm->bru.frame_inactive_flag;
-#endif  // CONFIG_BRU
   if (tile_indices_present_flag)
     read_tile_indices_in_tilegroup(pbi, rb, start_tile, end_tile);
 #if CONFIG_COLLECT_COMPONENT_TIMING
@@ -9836,7 +9669,6 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
   else
     av1_setup_ref_frame_sides(cm);
 
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
     for (int plane = 0; plane < av1_num_planes(cm); plane++) {
       cm->cur_frame->ccso_info.ccso_enable[plane] = 0;
@@ -9893,7 +9725,6 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
     *p_data_end = data + uncomp_hdr_size;
     return uncomp_hdr_size;
   }
-#endif  // CONFIG_BRU
 
   process_tip_mode(pbi);
   if (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
@@ -10036,7 +9867,6 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
   if (end_tile != tiles->rows * tiles->cols - 1) {
     return;
   }
-#if CONFIG_BRU
   // verify active region
   if (!bru_active_map_validation(cm)) {
     aom_internal_error(&cm->error, AOM_CODEC_ERROR, "Invalid active region");
@@ -10066,13 +9896,8 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       return;
     }
   }
-#endif  // CONFIG_BRU
 
-  if (
-#if CONFIG_BRU
-      !cm->bru.frame_inactive_flag &&
-#endif  // CONFIG_BRU
-      !tiles->single_tile_decoding) {
+  if (!cm->bru.frame_inactive_flag && !tiles->single_tile_decoding) {
     if (cm->lf.filter_level[0] || cm->lf.filter_level[1]) {
       if (pbi->num_workers > 1) {
         av1_loop_filter_frame_mt(&cm->cur_frame->buf, cm, &pbi->dcb.xd, 0,

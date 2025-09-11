@@ -436,9 +436,7 @@ static uint32_t read_tilegroup_obu(AV1Decoder *pbi,
 #else
   skip_payload |= (cm->features.tip_frame_mode == TIP_FRAME_AS_OUTPUT);
 #endif  // CONFIG_F106_OBU_TIP
-#if CONFIG_BRU
   skip_payload |= cm->bru.frame_inactive_flag;
-#endif
 
   if (skip_payload) {
     *is_last_tg = 1;
@@ -483,13 +481,11 @@ static int32_t read_tile_group_header(AV1Decoder *pbi,
   uint32_t saved_bit_offset = rb->bit_offset;
   int tile_start_and_end_present_flag = 0;
   const int num_tiles = tiles->rows * tiles->cols;
-#if CONFIG_BRU
   if (cm->bru.frame_inactive_flag) {
     *start_tile = 0;
     *end_tile = num_tiles - 1;
     return 0;
   }
-#endif  // CONFIG_BRU
 
   if (!tiles->large_scale && num_tiles > 1) {
     tile_start_and_end_present_flag = aom_rb_read_bit(rb);
@@ -530,7 +526,6 @@ static int32_t read_tile_group_header(AV1Decoder *pbi,
   }
   pbi->next_start_tile = (*end_tile == num_tiles - 1) ? 0 : *end_tile + 1;
 
-#if CONFIG_BRU_TILE_FLAG
   if (cm->bru.enabled) {
     if (num_tiles > 1) {
       for (int tile_idx = *start_tile; tile_idx <= *end_tile; tile_idx++) {
@@ -543,7 +538,6 @@ static int32_t read_tile_group_header(AV1Decoder *pbi,
       tiles->tile_active_bitmap[0] = 1;
     }
   }
-#endif  // CONFIG_BRU_TILE_FLAG
   return ((rb->bit_offset - saved_bit_offset + 7) >> 3);
 }
 
@@ -1051,7 +1045,6 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
                                obu_header.type, &frame_decoding_finished);
 
         if (cm->error.error_code != AOM_CODEC_OK) return -1;
-#if CONFIG_BRU
         if (cm->bru.frame_inactive_flag) {
           pbi->seen_frame_header = 0;
           frame_decoding_finished = 1;
@@ -1062,7 +1055,6 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
                                          end_tile, 0);
           break;
         }
-#endif  // CONFIG_BRU
         if (obu_payload_offset > payload_size) {
           cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
           return -1;
@@ -1071,7 +1063,7 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
         if (frame_decoding_finished) pbi->seen_frame_header = 0;
         pbi->num_tile_groups++;
         break;
-#else  // CONFIG_F106_OBU_TILEGROUP
+#else   // CONFIG_F106_OBU_TILEGROUP
         if (obu_header.type == OBU_REDUNDANT_FRAME_HEADER) {
           if (!pbi->seen_frame_header) {
             cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
@@ -1118,7 +1110,6 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
           break;
         }
 
-#if CONFIG_BRU
         if (cm->bru.frame_inactive_flag) {
           pbi->seen_frame_header = 0;
           frame_decoding_finished = 1;
@@ -1139,8 +1130,6 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
                                          end_tile, 0);
           break;
         }
-#endif  // CONFIG_BRU
-
         if (obu_header.type != OBU_FRAME) break;
         obu_payload_offset = frame_header_size;
         // Byte align the reader before reading the tile group.

@@ -24,12 +24,6 @@
 #include "aom_ports/mem.h"
 #include "av1/common/av1_common_int.h"
 
-#if CONFIG_BRU
-#define CCSO_REFACTORING 1
-#else
-#define CCSO_REFACTORING 0
-#endif
-
 #if CONFIG_CCSO_CLEANUP
 static const uint16_t quant_sz[4][4] = { { 16, 8, 32, 0 },
                                          { 56, 40, 64, 128 },
@@ -65,10 +59,8 @@ void derive_ccso_sample_pos(int *rec_idx, const int ccso_stride,
 typedef void (*CCSO_FILTER_FUNC)(AV1_COMMON *cm, MACROBLOCKD *xd,
                                  const int plane, const uint16_t *src_y,
                                  uint16_t *dst_yuv, const int dst_stride,
-#if CCSO_REFACTORING
-                                 const int proc_unit_log2,
-#endif  // CCSO_REFACTORING
-                                 const uint16_t thr, const uint8_t filter_sup,
+                                 const int proc_unit_log2, const uint16_t thr,
+                                 const uint8_t filter_sup,
                                  const uint8_t max_band_log2,
                                  const int edge_clf);
 
