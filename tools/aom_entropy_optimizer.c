@@ -1069,7 +1069,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[0] = INTER_MODE_CONTEXTS;
   cts_each_dim[1] = INTER_SINGLE_MODES;
   optimize_cdf_table(&fc.inter_single_mode[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob\n"
+                     "static const aom_cdf_prob "
                      "default_inter_single_mode_cdf"
                      "[INTER_MODE_CONTEXTS][CDF_SIZE("
                      "INTER_SINGLE_MODES)]",
@@ -1134,7 +1134,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[0] = OPFL_MODE_CONTEXTS;
   cts_each_dim[1] = 2;
   optimize_cdf_table(&fc.use_optflow[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob\ndefault_use_optflow_cdf"
+                     "static const aom_cdf_prob default_use_optflow_cdf"
                      "[OPFL_MODE_CONTEXTS][CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Inter");
   /* ext_inter experiment */
@@ -1143,7 +1143,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[1] = NUM_OPTIONS_IS_JOINT;
   optimize_cdf_table(&fc.inter_compound_mode_is_joint[0][0], probsfile, 2,
                      cts_each_dim,
-                     "static const aom_cdf_prob\n"
+                     "static const aom_cdf_prob "
                      "default_inter_compound_mode_cdf_is_joint"
                      "[NUM_CTX_IS_JOINT][CDF_SIZE("
                      "NUM_OPTIONS_IS_JOINT)]",
@@ -1152,7 +1152,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[1] = NUM_OPTIONS_NON_JOINT_TYPE;
   optimize_cdf_table(&fc.inter_compound_mode_non_joint_type[0][0], probsfile, 2,
                      cts_each_dim,
-                     "static const aom_cdf_prob\n"
+                     "static const aom_cdf_prob "
                      "default_inter_compound_mode_cdf_non_joint_type"
                      "[NUM_CTX_NON_JOINT_TYPE][CDF_SIZE("
                      "NUM_OPTIONS_NON_JOINT_TYPE)]",
@@ -1161,7 +1161,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[1] = NUM_OPTIONS_JOINT_TYPE;
   optimize_cdf_table(&fc.inter_compound_mode_joint_type[0][0], probsfile, 2,
                      cts_each_dim,
-                     "static const aom_cdf_prob\n"
+                     "static const aom_cdf_prob "
                      "default_inter_compound_mode_cdf_joint_type"
                      "[NUM_CTX_JOINT_TYPE][CDF_SIZE("
                      "NUM_OPTIONS_JOINT_TYPE)]",
@@ -1173,7 +1173,7 @@ int main(int argc, const char **argv) {
   cts_each_dim[1] = INTER_COMPOUND_SAME_REFS_TYPES;
   optimize_cdf_table(&fc.inter_compound_mode_same_refs_cnt[0][0], probsfile, 2,
                      cts_each_dim,
-                     "static const aom_cdf_prob\n"
+                     "static const aom_cdf_prob "
                      "default_inter_compound_mode_same_refs_cdf"
                      "[INTER_MODE_CONTEXTS][CDF_SIZE("
                      "INTER_COMPOUND_SAME_REFS_TYPES)]",
