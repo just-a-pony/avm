@@ -191,7 +191,7 @@ enum aom_kf_mode {
   AOM_KF_DISABLED = 0 /**< Encoder does not place keyframes. */
 };
 
-/*!\brief Frame super-resolution mode. */
+/*!\brief Sequence level OPFL refine types. */
 typedef enum {
   /**< MV refinement is disabled for all frames. */
   AOM_OPFL_REFINE_NONE,

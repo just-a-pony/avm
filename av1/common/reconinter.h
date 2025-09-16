@@ -801,7 +801,7 @@ static INLINE int is_any_mv_refinement_allowed(const AV1_COMMON *const cm) {
   return 1;
 }
 
-// check if any mv refinement mode is allowed at frame level
+// check if unequal weight is allowed for TIP at frame level
 static INLINE int is_unequal_weighted_tip_allowed(const AV1_COMMON *const cm) {
   if (!cm->has_both_sides_refs) return 1;
 
