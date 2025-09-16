@@ -356,8 +356,6 @@ set_aom_config_var(CONFIG_REDUCED_TX_PART 1 "Reduced TX Partition")
 set_aom_config_var(CONFIG_ADAPT_OPFL_IN_TIP_DIRECT 1
                    "Enable adaptive OPFL MV refinement in TIP-direct mode")
 
-set_aom_config_var(CONFIG_NEW_CSP 1 "Enable new chroma sample positions.")
-
 set_aom_config_var(CONFIG_FLEX_TIP_BLK_SIZE 1 "Enable flexible TIP block size")
 
 set_aom_config_var(CONFIG_NEW_PART_CTX 1 "New partition context models")

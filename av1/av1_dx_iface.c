@@ -270,7 +270,6 @@ static aom_codec_err_t parse_color_config(struct aom_read_bit_buffer *rb,
         // Identity CICP Matrix incompatible with non 4:4:4 color sampling
         return AOM_CODEC_UNSUP_BITSTREAM;
       }
-#if CONFIG_NEW_CSP
       if (subsampling_x && !subsampling_y) {
         // YUV 4:2:2
         const int csp_present_flag = aom_rb_read_bit(rb);
@@ -284,11 +283,6 @@ static aom_codec_err_t parse_color_config(struct aom_read_bit_buffer *rb,
           aom_rb_read_literal(rb, 3);  // chroma_sample_position
         }
       }
-#else   // !CONFIG_NEW_CSP
-      if (subsampling_x && subsampling_y) {
-        aom_rb_read_literal(rb, 2);  // chroma_sample_position
-      }
-#endif  // CONFIG_NEW_CSP
     }
   }
   return AOM_CODEC_OK;

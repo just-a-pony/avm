@@ -15,8 +15,6 @@
 #include <memory>
 #include <string>
 
-#include "config/aom_config.h"
-
 #include "common/y4minput.h"
 #include "test/video_source.h"
 
@@ -45,13 +43,8 @@ class Y4mVideoSource : public VideoSource {
 
   virtual void ReadSourceToStart() {
     ASSERT_TRUE(input_file_ != NULL);
-#if CONFIG_NEW_CSP
     ASSERT_FALSE(
         y4m_input_open(&y4m_, input_file_, NULL, 0, AOM_CSP_UNSPECIFIED, 0));
-#else
-    ASSERT_FALSE(
-        y4m_input_open(&y4m_, input_file_, NULL, 0, AOM_CSP_UNKNOWN, 0));
-#endif  // CONFIG_NEW_CSP
     framerate_numerator_ = y4m_.fps_n;
     framerate_denominator_ = y4m_.fps_d;
     frame_ = 0;

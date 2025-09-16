@@ -6250,11 +6250,7 @@ void av1_read_color_config(struct aom_read_bit_buffer *rb,
     // [16,235] (including xvycc) vs [0,255] range
     seq_params->color_range = aom_rb_read_bit(rb);
     seq_params->subsampling_y = seq_params->subsampling_x = 1;
-#if CONFIG_NEW_CSP
     seq_params->chroma_sample_position = AOM_CSP_UNSPECIFIED;
-#else
-    seq_params->chroma_sample_position = AOM_CSP_UNKNOWN;
-#endif  // CONFIG_NEW_CSP
   } else {
     if (seq_params->color_primaries == AOM_CICP_CP_BT_709 &&
         seq_params->transfer_characteristics == AOM_CICP_TC_SRGB &&
@@ -6297,7 +6293,6 @@ void av1_read_color_config(struct aom_read_bit_buffer *rb,
             error_info, AOM_CODEC_UNSUP_BITSTREAM,
             "Identity CICP Matrix incompatible with non 4:4:4 color sampling");
       }
-#if CONFIG_NEW_CSP
       if (seq_params->subsampling_x && !seq_params->subsampling_y) {
         // YUV 4:2:2
         seq_params->chroma_sample_position = AOM_CSP_UNSPECIFIED;
@@ -6318,11 +6313,6 @@ void av1_read_color_config(struct aom_read_bit_buffer *rb,
           seq_params->chroma_sample_position = chroma_sample_position;
         }
       }
-#else   // !CONFIG_NEW_CSP
-      if (seq_params->subsampling_x && seq_params->subsampling_y) {
-        seq_params->chroma_sample_position = aom_rb_read_literal(rb, 2);
-      }
-#endif  // CONFIG_NEW_CSP
     }
   }
 }

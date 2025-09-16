@@ -213,9 +213,7 @@ AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   pbi->common.buffer_pool = pool;
 
   cm->seq_params.bit_depth = AOM_BITS_8;
-#if CONFIG_NEW_CSP
   cm->seq_params.chroma_sample_position = AOM_CSP_UNSPECIFIED;
-#endif  // CONFIG_NEW_CSP
 
   cm->mi_params.free_mi = dec_free_mi;
   cm->mi_params.setup_mi = dec_setup_mi;

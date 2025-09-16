@@ -12,8 +12,6 @@
 
 #include <string>
 
-#include "config/aom_config.h"
-
 #include "common/y4menc.h"
 #include "test/md5_helper.h"
 #include "test/util.h"
@@ -191,15 +189,9 @@ TEST(Y4MHeaderTest, RegularHeader) {
   EXPECT_EQ(0, fseek(f.file(), 0, 0));
 
   y4m_input y4m;
-#if CONFIG_NEW_CSP
   EXPECT_EQ(y4m_input_open(&y4m, f.file(), NULL, 0, AOM_CSP_UNSPECIFIED,
                            /*only_420=*/0),
             0);
-#else
-  EXPECT_EQ(y4m_input_open(&y4m, f.file(), NULL, 0, AOM_CSP_UNKNOWN,
-                           /*only_420=*/0),
-            0);
-#endif  // CONFIG_NEW_CSP
   EXPECT_EQ(y4m.pic_w, 4);
   EXPECT_EQ(y4m.pic_h, 4);
   EXPECT_EQ(y4m.fps_n, 30);
@@ -225,13 +217,8 @@ TEST(Y4MHeaderTest, LongHeader) {
   EXPECT_EQ(fseek(f, 0, 0), 0);
 
   y4m_input y4m;
-#if CONFIG_NEW_CSP
   EXPECT_EQ(
       y4m_input_open(&y4m, f, NULL, 0, AOM_CSP_UNSPECIFIED, /*only_420=*/0), 0);
-#else
-  EXPECT_EQ(y4m_input_open(&y4m, f, NULL, 0, AOM_CSP_UNKNOWN, /*only_420=*/0),
-            0);
-#endif  // CONFIG_NEW_CSP
   EXPECT_EQ(y4m.pic_w, 4);
   EXPECT_EQ(y4m.pic_h, 4);
   EXPECT_EQ(y4m.fps_n, 30);
@@ -255,13 +242,8 @@ TEST(Y4MHeaderTest, FullRangeHeader) {
   EXPECT_EQ(fseek(f, 0, 0), 0);
 
   y4m_input y4m;
-#if CONFIG_NEW_CSP
   EXPECT_EQ(
       y4m_input_open(&y4m, f, NULL, 0, AOM_CSP_UNSPECIFIED, /*only_420=*/0), 0);
-#else
-  EXPECT_EQ(y4m_input_open(&y4m, f, NULL, 0, AOM_CSP_UNKNOWN, /*only_420=*/0),
-            0);
-#endif  // CONFIG_NEW_CSP
   EXPECT_EQ(y4m.pic_w, 4);
   EXPECT_EQ(y4m.pic_h, 4);
   EXPECT_EQ(y4m.fps_n, 30);
@@ -275,38 +257,22 @@ TEST(Y4MHeaderTest, FullRangeHeader) {
 TEST(Y4MHeaderTest, WriteStudioColorRange) {
   char buf[128];
   struct AvxRational framerate = { /*numerator=*/30, /*denominator=*/1 };
-#if CONFIG_NEW_CSP
   EXPECT_GE(y4m_write_file_header(
                 buf, /*len=*/128, /*width=*/4, /*height=*/5, &framerate,
                 /*monochrome=*/0, AOM_CSP_UNSPECIFIED, AOM_IMG_FMT_I420,
                 /*bit_depth=*/8, AOM_CR_STUDIO_RANGE),
             0);
-#else
-  EXPECT_GE(y4m_write_file_header(
-                buf, /*len=*/128, /*width=*/4, /*height=*/5, &framerate,
-                /*monochrome=*/0, AOM_CSP_UNKNOWN, AOM_IMG_FMT_I420,
-                /*bit_depth=*/8, AOM_CR_STUDIO_RANGE),
-            0);
-#endif  // CONFIG_NEW_CSP
   EXPECT_EQ(strcmp("YUV4MPEG2 W4 H5 F30:1 Ip C420jpeg\n", buf), 0);
 }
 
 TEST(Y4MHeaderTest, WriteFullColorRange) {
   char buf[128];
   struct AvxRational framerate = { /*numerator=*/30, /*denominator=*/1 };
-#if CONFIG_NEW_CSP
   EXPECT_GE(y4m_write_file_header(
                 buf, /*len=*/128, /*width=*/4, /*height=*/5, &framerate,
                 /*monochrome=*/0, AOM_CSP_UNSPECIFIED, AOM_IMG_FMT_I420,
                 /*bit_depth=*/8, AOM_CR_FULL_RANGE),
             0);
-#else
-  EXPECT_GE(y4m_write_file_header(
-                buf, /*len=*/128, /*width=*/4, /*height=*/5, &framerate,
-                /*monochrome=*/0, AOM_CSP_UNKNOWN, AOM_IMG_FMT_I420,
-                /*bit_depth=*/8, AOM_CR_FULL_RANGE),
-            0);
-#endif  // CONFIG_NEW_CSP
   EXPECT_EQ(strcmp("YUV4MPEG2 W4 H5 F30:1 Ip C420jpeg XCOLORRANGE=FULL\n", buf),
             0);
 }
