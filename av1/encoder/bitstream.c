@@ -4431,7 +4431,15 @@ static AOM_INLINE void encode_gdf(const AV1_COMMON *cm,
 #endif  // CONFIG_CWG_F317
     return;
   }
+#if CONFIG_CWG_F362
+  if (cm->seq_params.single_picture_hdr_flag) {
+    assert(cm->gdf_info.gdf_mode > 0);
+  } else {
+    aom_wb_write_bit(wb, cm->gdf_info.gdf_mode == 0 ? 0 : 1);
+  }
+#else
   aom_wb_write_bit(wb, cm->gdf_info.gdf_mode == 0 ? 0 : 1);
+#endif  // CONFIG_CWG_F362
   if (cm->gdf_info.gdf_mode) {
     if (cm->gdf_info.gdf_block_num > 1) {
       aom_wb_write_bit(wb, cm->gdf_info.gdf_mode == 1 ? 0 : 1);
@@ -4451,7 +4459,15 @@ static AOM_INLINE void encode_cdef(const AV1_COMMON *cm,
   if (cm->bridge_frame_info.is_bridge_frame) return;
 #endif  // CONFIG_CWG_F317
   if (cm->bru.frame_inactive_flag) return;
+#if CONFIG_CWG_F362
+  if (cm->seq_params.single_picture_hdr_flag) {
+    assert(cdef_info->cdef_frame_enable);
+  } else {
+    aom_wb_write_bit(wb, cdef_info->cdef_frame_enable);
+  }
+#else
   aom_wb_write_bit(wb, cdef_info->cdef_frame_enable);
+#endif  // CONFIG_CWG_F362
   if (!cdef_info->cdef_frame_enable) return;
   const int num_planes = av1_num_planes(cm);
   int i;
@@ -4503,7 +4519,15 @@ static AOM_INLINE void encode_ccso(const AV1_COMMON *cm,
 #if CONFIG_CWG_F317
   if (!cm->bridge_frame_info.is_bridge_frame) {
 #endif  // CONFIG_CWG_F317
-    aom_wb_write_literal(wb, cm->ccso_info.ccso_frame_flag, 1);
+#if CONFIG_CWG_F362
+    if (cm->seq_params.single_picture_hdr_flag) {
+      assert(cm->ccso_info.ccso_frame_flag);
+    } else {
+      aom_wb_write_literal(wb, cm->ccso_info.ccso_frame_flag, 1);
+    }
+#else
+  aom_wb_write_literal(wb, cm->ccso_info.ccso_frame_flag, 1);
+#endif  // CONFIG_CWG_F362
 #if CONFIG_CWG_F317
   }
 #endif  // CONFIG_CWG_F317
@@ -5312,7 +5336,15 @@ static AOM_INLINE void write_film_grain_params(
   const AV1_COMMON *const cm = &cpi->common;
   const aom_film_grain_t *const pars = &cm->cur_frame->film_grain_params;
 
+#if CONFIG_CWG_F362
+  if (cm->seq_params.single_picture_hdr_flag) {
+    assert(pars->apply_grain);
+  } else {
+    aom_wb_write_bit(wb, pars->apply_grain);
+  }
+#else
   aom_wb_write_bit(wb, pars->apply_grain);
+#endif  // CONFIG_CWG_F362
   if (!pars->apply_grain) return;
 
   aom_wb_write_literal(wb, pars->random_seed, 16);

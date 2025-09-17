@@ -3635,7 +3635,15 @@ static AOM_INLINE void setup_gdf(AV1_COMMON *cm,
     return;
   }
   init_gdf(cm);
+#if CONFIG_CWG_F362
+  if (cm->seq_params.single_picture_hdr_flag) {
+    cm->gdf_info.gdf_mode = 1;
+  } else {
+    cm->gdf_info.gdf_mode = aom_rb_read_bit(rb);
+  }
+#else
   cm->gdf_info.gdf_mode = aom_rb_read_bit(rb);
+#endif  // CONFIG_CWG_F362
   if (cm->gdf_info.gdf_mode > 0) {
     alloc_gdf_buffers(&cm->gdf_info);
     if (cm->gdf_info.gdf_block_num > 1) {
@@ -3658,7 +3666,15 @@ static AOM_INLINE void setup_cdef(AV1_COMMON *cm,
   }
 #endif  // CONFIG_CWG_F317
   if (cm->bru.frame_inactive_flag) return;
+#if CONFIG_CWG_F362
+  if (cm->seq_params.single_picture_hdr_flag) {
+    cdef_info->cdef_frame_enable = 1;
+  } else {
+    cdef_info->cdef_frame_enable = aom_rb_read_bit(rb);
+  }
+#else
   cdef_info->cdef_frame_enable = aom_rb_read_bit(rb);
+#endif  // CONFIG_CWG_F362
   if (!cdef_info->cdef_frame_enable) {
     cdef_info->cdef_on_skip_txfm_frame_enable = 0;
     return;
@@ -3729,7 +3745,15 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
     cm->ccso_info.ccso_frame_flag = 0;
   } else {
 #endif  // CONFIG_CWG_F317
-    cm->ccso_info.ccso_frame_flag = aom_rb_read_bit(rb);
+#if CONFIG_CWG_F362
+    if (cm->seq_params.single_picture_hdr_flag) {
+      cm->ccso_info.ccso_frame_flag = 1;
+    } else {
+      cm->ccso_info.ccso_frame_flag = aom_rb_read_bit(rb);
+    }
+#else
+  cm->ccso_info.ccso_frame_flag = aom_rb_read_bit(rb);
+#endif  // CONFIG_CWG_F362
 #if CONFIG_CWG_F317
   }
 #endif  // CONFIG_CWG_F317
@@ -6425,7 +6449,15 @@ void av1_read_film_grain_params(AV1_COMMON *cm,
   aom_film_grain_t *pars = &cm->film_grain_params;
   const SequenceHeader *const seq_params = &cm->seq_params;
 
+#if CONFIG_CWG_F362
+  if (cm->seq_params.single_picture_hdr_flag) {
+    pars->apply_grain = 1;
+  } else {
+    pars->apply_grain = aom_rb_read_bit(rb);
+  }
+#else
   pars->apply_grain = aom_rb_read_bit(rb);
+#endif  // CONFIG_CWG_F362
   if (!pars->apply_grain) {
     memset(pars, 0, sizeof(*pars));
     return;

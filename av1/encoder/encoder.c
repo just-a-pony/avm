@@ -2764,6 +2764,11 @@ void gdf_optimize_frame(AV1_COMP *cpi, AV1_COMMON *cm) {
   init_gdf(cm);
   alloc_gdf_buffers(&cm->gdf_info);
   gdf_optimizer(cpi, cm);
+#if CONFIG_CWG_F362
+  if (cm->seq_params.single_picture_hdr_flag && cm->gdf_info.gdf_mode == 0) {
+    cm->seq_params.enable_gdf = 0;
+  }
+#endif  // CONFIG_CWG_F362
 #if GDF_VERBOSE
   gdf_print_info(cm, "ENC", cm->current_frame.absolute_poc);
 #endif  //
@@ -2841,6 +2846,12 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
                     &cpi->td,
 #endif  // CONFIG_ENTROPY_STATS
                     cpi->sf.lpf_sf.cdef_pick_method, cpi->td.mb.rdmult);
+#if CONFIG_CWG_F362
+    if (cm->seq_params.single_picture_hdr_flag &&
+        !cm->cdef_info.cdef_frame_enable) {
+      cm->seq_params.enable_cdef = 0;
+    }
+#endif  // CONFIG_CWG_F362
 
     // Apply the filter
     if (cm->cdef_info.cdef_frame_enable)
@@ -2899,6 +2910,12 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
                 &cpi->td
 #endif
     );
+#if CONFIG_CWG_F362
+    if (cm->seq_params.single_picture_hdr_flag &&
+        !cm->ccso_info.ccso_frame_flag) {
+      cm->seq_params.enable_ccso = 0;
+    }
+#endif  // CONFIG_CWG_F362
     ccso_frame(&cm->cur_frame->buf, cm, xd, ext_rec_y);
     aom_free(ext_rec_y);
   }
@@ -4833,6 +4850,12 @@ int av1_receive_raw_frame(AV1_COMP *cpi, aom_enc_frame_flags_t frame_flags,
                          cpi->oxcf.noise_level, time_stamp, end_time) < 0)
       res = -1;
 #endif  //  CONFIG_DENOISE
+#if CONFIG_CWG_F362
+  if (seq_params->single_picture_hdr_flag &&
+      !cm->film_grain_params.apply_grain) {
+    cm->seq_params.film_grain_params_present = 0;
+  }
+#endif  // CONFIG_CWG_F362
 
   const int order_offset = cpi->gf_group.arf_src_offset[cpi->gf_group.index];
   const int disp_order_hint = (cm->current_frame.frame_number + order_offset);

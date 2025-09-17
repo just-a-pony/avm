@@ -341,6 +341,9 @@ set_aom_config_var(CONFIG_FGS_BLOCK_SIZE 1 "Choice of FGS blocks size.")
 set_aom_config_var(CONFIG_MOTION_MODE_FRAME_HEADERS_OPT 1
                    "Frame header optimzation of motion modes.")
 
+set_aom_config_var(CONFIG_CWG_F362 1
+                   "Implicit frame tool flags for single picture headers.")
+
 # CWG-F243
 set_aom_config_var(CONFIG_CWG_F243_ORDER_HINT_BITDEPTH 1
                    "Encoder-only reduce order hint bitdepth.")
