@@ -7714,24 +7714,20 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     } else
 #endif  // CONFIG_F106_OBU_TIP
 #endif  // CONFIG_F106_OBU_TILEGROUP
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
-        if (aom_rb_read_bit(rb)) {
-      current_frame->frame_type = INTER_FRAME;
-    } else {
       if (aom_rb_read_bit(rb)) {
-        current_frame->frame_type = KEY_FRAME;
+        current_frame->frame_type = INTER_FRAME;
       } else {
+        if (aom_rb_read_bit(rb)) {
+          current_frame->frame_type = KEY_FRAME;
+        } else {
 #if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_SWITCH
-        current_frame->frame_type = INTRA_ONLY_FRAME;
+          current_frame->frame_type = INTRA_ONLY_FRAME;
 #else
-        current_frame->frame_type =
-            aom_rb_read_bit(rb) ? INTRA_ONLY_FRAME : S_FRAME;
+          current_frame->frame_type =
+              aom_rb_read_bit(rb) ? INTRA_ONLY_FRAME : S_FRAME;
 #endif  // CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_SWITCH
+        }
       }
-    }
-#else
-      current_frame->frame_type = (FRAME_TYPE)aom_rb_read_literal(rb, 2);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     if (pbi->sequence_header_changed) {
       if (current_frame->frame_type == KEY_FRAME) {
         // This is the start of a new coded video sequence.
@@ -7808,11 +7804,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       pbi->valid_for_referencing[i] = 0;
     }
   }
-#if !CONFIG_FRAME_HEADER_SIGNAL_OPT
-  features->disable_cdf_update = aom_rb_read_bit(rb);
-
-  read_screen_content_params(cm, rb);
-#endif  // !CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   int frame_size_override_flag = 0;
   features->allow_intrabc = 0;
@@ -8133,9 +8124,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
     features->tip_frame_mode = TIP_FRAME_DISABLED;
     setup_frame_size(cm, frame_size_override_flag, rb);
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
     read_screen_content_params(cm, rb);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     features->allow_intrabc = aom_rb_read_bit(rb);
     if (features->allow_intrabc) {
       features->allow_global_intrabc = aom_rb_read_bit(rb);
@@ -8159,9 +8148,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->cur_frame->film_grain_params_present =
           seq_params->film_grain_params_present;
       setup_frame_size(cm, frame_size_override_flag, rb);
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
       read_screen_content_params(cm, rb);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
       features->allow_intrabc = aom_rb_read_bit(rb);
       if (features->allow_intrabc) {
         features->allow_global_intrabc = aom_rb_read_bit(rb);
@@ -8499,37 +8486,22 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->has_both_sides_refs = (cm->ref_frames_info.num_future_refs > 0) &&
                                 (cm->ref_frames_info.num_past_refs > 0);
 #endif  // CONFIG_TIP_ENHANCEMENT
-      if (cm->seq_params.enable_tip
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
-          && features->allow_ref_frame_mvs &&
-          cm->ref_frames_info.num_total_refs >= 2
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
-          && !cm->bru.frame_inactive_flag) {
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+      if (cm->seq_params.enable_tip && features->allow_ref_frame_mvs &&
+          cm->ref_frames_info.num_total_refs >= 2 &&
+          !cm->bru.frame_inactive_flag) {
 #if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_TIP
         if (obu_type == OBU_TIP) {
           features->tip_frame_mode = TIP_FRAME_AS_OUTPUT;
         }
 #else
-        if (cm->seq_params.enable_tip == 1 && aom_rb_read_bit(rb)) {
-          features->tip_frame_mode = TIP_FRAME_AS_OUTPUT;
-        }
+          if (cm->seq_params.enable_tip == 1 && aom_rb_read_bit(rb)) {
+            features->tip_frame_mode = TIP_FRAME_AS_OUTPUT;
+          }
 #endif  // CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_TIP
         else {
           features->tip_frame_mode =
               aom_rb_read_bit(rb) ? TIP_FRAME_AS_REF : TIP_FRAME_DISABLED;
         }
-#else
-#if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_TIP
-          if (obu_type == OBU_TIP) {
-            features->tip_frame_mode = TIP_FRAME_AS_OUTPUT;
-          } else {
-            features->tip_frame_mode = aom_rb_read_literal(rb, 1);
-          }
-#else
-        features->tip_frame_mode = aom_rb_read_literal(rb, 2);
-#endif  // CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_TIP
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if !CONFIG_TIP_LD
         features->use_optflow_tip = 1;
 #endif  // !CONFIG_TIP_LD
@@ -8597,9 +8569,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
       if (features->tip_frame_mode != TIP_FRAME_AS_OUTPUT &&
           !cm->bru.frame_inactive_flag) {
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
         read_screen_content_params(cm, rb);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         features->allow_intrabc = aom_rb_read_bit(rb);
         features->allow_global_intrabc = 0;
         features->allow_local_intrabc = features->allow_intrabc;
@@ -8649,20 +8619,12 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         }
         features->enabled_motion_modes = frame_enabled_motion_modes;
         if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
           if (aom_rb_read_bit(rb)) {
             features->opfl_refine_type = REFINE_SWITCHABLE;
           } else {
             features->opfl_refine_type =
                 aom_rb_read_bit(rb) ? REFINE_ALL : REFINE_NONE;
           }
-#else
-            features->opfl_refine_type = aom_rb_read_literal(rb, 2);
-            if (features->opfl_refine_type == AOM_OPFL_REFINE_AUTO)
-              aom_internal_error(
-                  &cm->error, AOM_CODEC_CORRUPT_FRAME,
-                  "Invalid frame level optical flow refine type");
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         } else {
           features->opfl_refine_type = cm->seq_params.enable_opfl_refine;
         }
@@ -8761,9 +8723,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       cm->cur_frame->rst_info[plane].temporal_pred_flag = 0;
     }
     features->refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
     features->disable_cdf_update = 1;
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     const RefCntBuffer *bru_ref_buf =
         get_ref_frame_buf(cm, cm->bru.update_ref_idx);
     // set cm->ccso_info and copy to cur_frame->ccso_info
@@ -8863,9 +8823,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       }
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
 #endif  // CONFIG_LF_SUB_PU
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
     features->disable_cdf_update = 1;
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     cm->cur_frame->film_grain_params_present =
         seq_params->film_grain_params_present;
     read_film_grain(cm, rb);
@@ -8874,9 +8832,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     return 0;
   }
 
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
   features->disable_cdf_update = aom_rb_read_bit(rb);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   const int might_bwd_adapt =
       !(seq_params->single_picture_hdr_flag) && !(features->disable_cdf_update);

@@ -1573,7 +1573,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   tool_cfg->enable_high_motion = extra_cfg->enable_high_motion;
 #endif  // CONFIG_MV_RANGE_EXTENSION
 
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
   if (extra_cfg->enable_order_hint) {
 #endif  // !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
@@ -1592,15 +1591,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
     tool_cfg->enable_opfl_refine = AOM_OPFL_REFINE_NONE;
   }
 #endif  // !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
-#else
-  tool_cfg->enable_opfl_refine =
-#if CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
-      extra_cfg->enable_opfl_refine;
-#else
-      extra_cfg->enable_order_hint ? extra_cfg->enable_opfl_refine
-                                   : AOM_OPFL_REFINE_NONE;
-#endif  // CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   tool_cfg->enable_tip_refinemv =
       (tool_cfg->enable_tip &&

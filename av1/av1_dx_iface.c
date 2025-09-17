@@ -480,7 +480,6 @@ static aom_codec_err_t decoder_peek_si_internal(const uint8_t *data,
         const int show_existing_frame = aom_rb_read_bit(&rb);
         if (!show_existing_frame) {
 #endif  // !CONFIG_F106_OBU_TILEGROUP || !CONFIG_F106_OBU_SEF
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
           FRAME_TYPE frame_type = KEY_FRAME;
           if (aom_rb_read_bit(&rb)) {
             frame_type = INTER_FRAME;
@@ -491,13 +490,10 @@ static aom_codec_err_t decoder_peek_si_internal(const uint8_t *data,
 #if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_SWITCH
               frame_type = INTRA_ONLY_FRAME;
 #else
-              frame_type = aom_rb_read_bit(&rb) ? INTRA_ONLY_FRAME : S_FRAME;
+            frame_type = aom_rb_read_bit(&rb) ? INTRA_ONLY_FRAME : S_FRAME;
 #endif  // CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_SWITCH
             }
           }
-#else
-        const FRAME_TYPE frame_type = (FRAME_TYPE)aom_rb_read_literal(&rb, 2);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
           if (frame_type == KEY_FRAME) {
             found_keyframe = 1;
             break;  // Stop here as no further OBUs will change the outcome.

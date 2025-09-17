@@ -6109,7 +6109,6 @@ static AOM_INLINE void write_uncompressed_header_obu
     if (frame_type_signaled) {
 #endif  // CONFIG_F106_OBU_TILEGROUP && (CONFIG_F106_OBU_SWITCH ||
         // CONFIG_F106_OBU_TIP)
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
       const int is_inter_frame = (current_frame->frame_type == INTER_FRAME);
       aom_wb_write_bit(wb, is_inter_frame);
       if (!is_inter_frame) {
@@ -6121,9 +6120,6 @@ static AOM_INLINE void write_uncompressed_header_obu
         }
 #endif  // !CONFIG_F106_OBU_TILEGROUP || !CONFIG_F106_OBU_SWITCH
       }
-#else
-    aom_wb_write_literal(wb, current_frame->frame_type, 2);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 #if CONFIG_F106_OBU_TILEGROUP && (CONFIG_F106_OBU_SWITCH || CONFIG_F106_OBU_TIP)
     }
 #endif  // CONFIG_F106_OBU_TILEGROUP && (CONFIG_F106_OBU_SWITCH ||
@@ -6142,12 +6138,6 @@ static AOM_INLINE void write_uncompressed_header_obu
       aom_wb_write_bit(wb, features->error_resilient_mode);
     }
   }
-
-#if !CONFIG_FRAME_HEADER_SIGNAL_OPT
-  aom_wb_write_bit(wb, features->disable_cdf_update);
-
-  write_screen_content_params(cm, wb);
-#endif  // !CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   int frame_size_override_flag = 0;
 
@@ -6291,9 +6281,7 @@ static AOM_INLINE void write_uncompressed_header_obu
 
   if (current_frame->frame_type == KEY_FRAME) {
     write_frame_size(cm, frame_size_override_flag, wb);
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
     write_screen_content_params(cm, wb);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
     aom_wb_write_bit(wb, features->allow_intrabc);
     if (features->allow_intrabc) {
       aom_wb_write_bit(wb, features->allow_global_intrabc);
@@ -6307,9 +6295,7 @@ static AOM_INLINE void write_uncompressed_header_obu
   } else {
     if (current_frame->frame_type == INTRA_ONLY_FRAME) {
       write_frame_size(cm, frame_size_override_flag, wb);
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
       write_screen_content_params(cm, wb);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
       aom_wb_write_bit(wb, features->allow_intrabc);
       if (features->allow_intrabc) {
         aom_wb_write_bit(wb, features->allow_global_intrabc);
@@ -6445,13 +6431,9 @@ static AOM_INLINE void write_uncompressed_header_obu
         aom_wb_write_bit(wb, features->allow_lf_sub_pu);
       }
 #endif  // CONFIG_LF_SUB_PU
-      if (cm->seq_params.enable_tip
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
-          && features->allow_ref_frame_mvs &&
-          cm->ref_frames_info.num_total_refs >= 2
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
-          && !cm->bru.frame_inactive_flag) {
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
+      if (cm->seq_params.enable_tip && features->allow_ref_frame_mvs &&
+          cm->ref_frames_info.num_total_refs >= 2 &&
+          !cm->bru.frame_inactive_flag) {
         if (cm->seq_params.enable_tip == 1) {
 #if CONFIG_F106_OBU_TILEGROUP && CONFIG_F106_OBU_TIP
           if (obu_type != OBU_TIP)
@@ -6467,9 +6449,6 @@ static AOM_INLINE void write_uncompressed_header_obu
         } else {
           aom_wb_write_bit(wb, features->tip_frame_mode == TIP_FRAME_AS_REF);
         }
-#else
-        aom_wb_write_literal(wb, features->tip_frame_mode, 2);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {
           aom_wb_write_bit(wb, features->allow_tip_hole_fill);
         }
@@ -6511,9 +6490,7 @@ static AOM_INLINE void write_uncompressed_header_obu
       if (!cm->bru.frame_inactive_flag &&
           (!cm->seq_params.enable_tip ||
            features->tip_frame_mode != TIP_FRAME_AS_OUTPUT)) {
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
         write_screen_content_params(cm, wb);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         aom_wb_write_bit(wb, features->allow_intrabc);
         write_frame_max_drl_bits(cm, wb);
         if (features->allow_intrabc) {
@@ -6563,16 +6540,12 @@ static AOM_INLINE void write_uncompressed_header_obu
           }
         }
         if (cm->seq_params.enable_opfl_refine == AOM_OPFL_REFINE_AUTO) {
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
           const int is_opfl_switchable =
               (features->opfl_refine_type == REFINE_SWITCHABLE);
           aom_wb_write_bit(wb, is_opfl_switchable);
           if (!is_opfl_switchable) {
             aom_wb_write_bit(wb, features->opfl_refine_type == REFINE_ALL);
           }
-#else
-          aom_wb_write_literal(wb, features->opfl_refine_type, 2);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
         }
       }
     }
@@ -6634,9 +6607,7 @@ static AOM_INLINE void write_uncompressed_header_obu
     return;
   }
 
-#if CONFIG_FRAME_HEADER_SIGNAL_OPT
   aom_wb_write_bit(wb, features->disable_cdf_update);
-#endif  // CONFIG_FRAME_HEADER_SIGNAL_OPT
 
   const int might_bwd_adapt =
       !(seq_params->single_picture_hdr_flag) && !(features->disable_cdf_update);

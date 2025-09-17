@@ -301,10 +301,6 @@ set_aom_config_var(CONFIG_SDP_CFL_LATENCY_FIX 1 "Reduce SDP-CFL latency")
 set_aom_config_var(CONFIG_CHROMA_MERGE_LATENCY_FIX 1
                    "Fix the latency issue in chroma merge region")
 
-set_aom_config_var(
-  CONFIG_FRAME_HEADER_SIGNAL_OPT 1
-  "Enable the signaling optimization for certain frame header syntax elements")
-
 set_aom_config_var(CONFIG_TIP_LD 1 "Enable TIP for low delay")
 set_aom_config_var(CONFIG_TIP_ENHANCEMENT 1
                    "Enable different weighted prediction for TIP")
