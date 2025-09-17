@@ -555,7 +555,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
     // operarting points (i > 0) are lower quality corresponding to
     // skip decoding enhancement  layers (temporal first).
     int i = 0;
-#if CONFIG_NEW_OBU_HEADER
     assert(seq->operating_points_cnt_minus_1 ==
            (int)(cm->number_mlayers * cm->number_tlayers - 1));
     for (unsigned int sl = 0; sl < cm->number_mlayers; sl++) {
@@ -563,16 +562,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
         seq->operating_point_idc[i] =
             (~(~0u << (cm->number_mlayers - sl)) << MAX_NUM_TLAYERS) |
             ~(~0u << (cm->number_tlayers - tl));
-#else
-    assert(seq->operating_points_cnt_minus_1 ==
-           (int)(cm->number_spatial_layers * cm->number_temporal_layers - 1));
-    for (unsigned int sl = 0; sl < cm->number_spatial_layers; sl++) {
-      for (unsigned int tl = 0; tl < cm->number_temporal_layers; tl++) {
-        seq->operating_point_idc[i] =
-            (~(~0u << (cm->number_spatial_layers - sl))
-             << MAX_NUM_TEMPORAL_LAYERS) |
-            ~(~0u << (cm->number_temporal_layers - tl));
-#endif  // CONFIG_NEW_OBU_HEADER
         i++;
       }
     }
@@ -759,7 +748,6 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
   cpi->td.counts = &cpi->counts;
 
   // Set init SVC parameters.
-#if CONFIG_NEW_OBU_HEADER
   cm->number_tlayers = 1;
   cm->number_mlayers = 1;
   cm->number_xlayers = 1;
@@ -771,15 +759,6 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
   // layer_id variable)
   cm->layer_id = cm->mlayer_id;
 #endif  // CONFIG_MULTILAYER_CORE
-#else
-  cm->number_spatial_layers = 1;
-  cm->number_temporal_layers = 1;
-  cm->spatial_layer_id = 0;
-  cm->temporal_layer_id = 0;
-#if CONFIG_MULTILAYER_CORE
-  cm->layer_id = cm->spatial_layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
-#endif  // CONFIG_NEW_OBU_HEADER
 
   // change includes all joint functionality
   av1_change_config(cpi, oxcf);
@@ -1104,13 +1083,8 @@ void av1_change_config(struct AV1_COMP *cpi, const AV1EncoderConfig *oxcf) {
   // This should not be called after the first key frame.
   if (!cpi->seq_params_locked) {
     seq_params->operating_points_cnt_minus_1 =
-#if CONFIG_NEW_OBU_HEADER
         (cm->number_mlayers > 1 || cm->number_tlayers > 1)
             ? cm->number_mlayers * cm->number_tlayers - 1
-#else
-        (cm->number_spatial_layers > 1 || cm->number_temporal_layers > 1)
-            ? cm->number_spatial_layers * cm->number_temporal_layers - 1
-#endif  // CONFIG_NEW_OBU_HEADER
             : 0;
     av1_init_seq_coding_tools(&cm->seq_params, cm, oxcf);
     if (seq_params->enable_restoration) set_seq_lr_tools_mask(seq_params, oxcf);
@@ -4598,13 +4572,8 @@ int av1_encode(AV1_COMP *const cpi, uint8_t *const dest,
       current_frame->display_order_hint, cpi->gf_group.max_layer_depth,
       cpi->gf_group.update_type[cpi->gf_group.index] == KFFLT_OVERLAY_UPDATE);
 
-#if CONFIG_NEW_OBU_HEADER
   cm->tlayer_id = 0;
   current_frame->temporal_layer_id = cm->tlayer_id;
-#else
-  cm->temporal_layer_id = 0;
-  current_frame->temporal_layer_id = cm->temporal_layer_id;
-#endif
 
   const int order_offset = cpi->gf_group.arf_src_offset[cpi->gf_group.index];
   const int cur_frame_disp =
@@ -4992,20 +4961,11 @@ int av1_convert_sect5obus_to_annexb(uint8_t *buffer, size_t *frame_size) {
     uint64_t obu_payload_size;
     size_t length_of_payload_size;
     size_t length_of_obu_size;
-#if CONFIG_NEW_OBU_HEADER
     uint32_t obu_header_size = (buff_ptr[0] >> 7) & 0x1 ? 2 : 1;
-#else
-    uint32_t obu_header_size = (buff_ptr[0] >> 2) & 0x1 ? 2 : 1;
-#endif  // CONFIG_NEW_OBU_HEADER
-
     size_t obu_bytes_read = obu_header_size;  // bytes read for current obu
 
     // save the obu header (1 or 2 bytes)
     memmove(saved_obu_header, buff_ptr, obu_header_size);
-#if !CONFIG_NEW_OBU_HEADER
-    // clear the obu_has_size_field
-    saved_obu_header[0] = saved_obu_header[0] & (~0x2);
-#endif  // !CONFIG_NEW_OBU_HEADER
 
     // get the payload_size and length of payload_size
     if (aom_uleb_decode(buff_ptr + obu_header_size, remaining_size,
@@ -5088,7 +5048,6 @@ aom_fixed_buf_t *av1_get_global_headers(AV1_COMP *cpi) {
   assert(sequence_header_size <= sizeof(header_buf));
   if (sequence_header_size == 0) return NULL;
 
-#if CONFIG_NEW_OBU_HEADER
   uint8_t obu_header[2];
   const uint32_t obu_header_size = av1_write_obu_header(
       &cpi->level_params, OBU_SEQUENCE_HEADER, 0, 0, &obu_header[0]);
@@ -5105,26 +5064,6 @@ aom_fixed_buf_t *av1_get_global_headers(AV1_COMP *cpi) {
                       &coded_size_field_size) != 0) {
     return NULL;
   }
-#else
-  const size_t obu_header_size = 1;
-  const size_t size_field_size = aom_uleb_size_in_bytes(sequence_header_size);
-  const size_t payload_offset = obu_header_size + size_field_size;
-
-  if (payload_offset + sequence_header_size > sizeof(header_buf)) return NULL;
-  memmove(&header_buf[payload_offset], &header_buf[0], sequence_header_size);
-
-  if (av1_write_obu_header(&cpi->level_params, OBU_SEQUENCE_HEADER, 0,
-                           &header_buf[0]) != obu_header_size) {
-    return NULL;
-  }
-
-  size_t coded_size_field_size = 0;
-  if (aom_uleb_encode(sequence_header_size, size_field_size,
-                      &header_buf[obu_header_size],
-                      &coded_size_field_size) != 0) {
-    return NULL;
-  }
-#endif  // CONFIG_NEW_OBU_HEADER
   assert(coded_size_field_size == size_field_size);
 
   aom_fixed_buf_t *global_headers =

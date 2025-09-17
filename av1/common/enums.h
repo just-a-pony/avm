@@ -286,7 +286,6 @@ enum {
   MAX_PROFILES,
 } SENUM1BYTE(BITSTREAM_PROFILE);
 
-#if CONFIG_NEW_OBU_HEADER
 #define MAX_NUM_TLAYERS 4
 #define MAX_NUM_MLAYERS 8
 #define MAX_NUM_XLAYERS 32
@@ -297,22 +296,6 @@ enum {
 #define MAX_NUM_OPERATING_POINTS (MAX_NUM_TLAYERS * MAX_NUM_MLAYERS)
 #define OP_POINTS_CNT_MINUS_1_BITS (TLAYER_BITS + MLAYER_BITS)
 #define OP_POINTS_IDC_BITS (MAX_NUM_TLAYERS + MAX_NUM_MLAYERS)
-#else
-#define MAX_NUM_TEMPORAL_LAYERS 8
-#define MAX_NUM_SPATIAL_LAYERS 4
-#if CONFIG_MULTILAYER_CORE_HLS
-// maximum number of layers
-#define MAX_NUM_TLAYERS MAX_NUM_TEMPORAL_LAYERS
-#define MAX_NUM_MLAYERS MAX_NUM_SPATIAL_LAYERS
-// bits for temporal and embedded layers
-#define TLAYER_BITS 3  // 3 bits for MAX_NUM_TEMPORAL_LAYERS
-#define MLAYER_BITS 2  // 2 bits for MAX_NUM_SPATIAL_LAYERS
-#endif                 // CONFIG_MULTILAYER_CORE_HLS
-#define MAX_NUM_OPERATING_POINTS \
-  (MAX_NUM_TEMPORAL_LAYERS * MAX_NUM_SPATIAL_LAYERS)
-#define OP_POINTS_CNT_MINUS_1_BITS 5
-#define OP_POINTS_IDC_BITS 12
-#endif  // CONFIG_NEW_OBU_HEADER
 
 // Note: Some enums use the attribute 'packed' to use smallest possible integer
 // type, so that we can save memory when they are used in structs/arrays.

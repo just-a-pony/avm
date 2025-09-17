@@ -33,7 +33,6 @@ extern "C" {
 
 #include "aom/aom_codec.h"
 #include "aom/aom_frame_buffer.h"
-#include "config/aom_config.h"
 
 /*!\brief Current ABI version number
  *
@@ -71,18 +70,13 @@ extern "C" {
  * stream.
  */
 typedef struct aom_codec_stream_info {
-  unsigned int w;     /**< Width (or 0 for unknown/default) */
-  unsigned int h;     /**< Height (or 0 for unknown/default) */
-  unsigned int is_kf; /**< Current frame is a keyframe */
-#if CONFIG_NEW_OBU_HEADER
+  unsigned int w;              /**< Width (or 0 for unknown/default) */
+  unsigned int h;              /**< Height (or 0 for unknown/default) */
+  unsigned int is_kf;          /**< Current frame is a keyframe */
   unsigned int number_tlayers; /**< Number of temporal layers */
   unsigned int number_mlayers; /**< Number of embedded layers */
   unsigned int number_xlayers; /**< Number of extended layers */
-#else
-  unsigned int number_spatial_layers;  /**< Number of spatial layers */
-  unsigned int number_temporal_layers; /**< Number of temporal layers */
-#endif                    // CONFIG_NEW_OBU_HEADER
-  unsigned int is_annexb; /**< Is Bitstream in Annex-B format */
+  unsigned int is_annexb;      /**< Is Bitstream in Annex-B format */
 } aom_codec_stream_info_t;
 
 /* REQUIRED FUNCTIONS

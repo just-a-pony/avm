@@ -10,13 +10,14 @@
  * aomedia.org/license/patent-license/.
  */
 
+#include "aom_dsp/bitwriter_buffer.h"
+
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 
 #include "config/aom_config.h"
 
-#include "aom_dsp/bitwriter_buffer.h"
 #include "aom_dsp/recenter.h"
 #include "aom_ports/bitops.h"
 

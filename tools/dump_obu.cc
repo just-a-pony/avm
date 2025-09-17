@@ -36,9 +36,7 @@ struct InputContext {
     memset(avx_ctx, 0, sizeof(*avx_ctx));
     memset(obu_ctx, 0, sizeof(*obu_ctx));
     obu_ctx->avx_ctx = avx_ctx;
-#if CONFIG_NEW_OBU_HEADER
     obu_ctx->is_annexb = 1;
-#endif  // CONFIG_NEW_OBU_HEADER
 #if CONFIG_WEBM_IO
     memset(webm_ctx, 0, sizeof(*webm_ctx));
 #endif
@@ -160,11 +158,7 @@ int main(int argc, const char *argv[]) {
               unit_number);
       return EXIT_FAILURE;
     }
-#if CONFIG_NEW_OBU_HEADER
     printf("  OBU overhead:  %d\n", obu_overhead_current_unit);
-#else
-    printf("  OBU overhead:    %d\n", obu_overhead_current_unit);
-#endif  // CONFIG_NEW_OBU_HEADER
     ++unit_number;
     obu_overhead_bytes_total += obu_overhead_current_unit;
   }

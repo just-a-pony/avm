@@ -2090,7 +2090,6 @@ typedef struct AV1Common {
    */
   int ref_frame_relative_dist[INTER_REFS_PER_FRAME];
 
-#if CONFIG_NEW_OBU_HEADER
   /*!
    * Number of temporal layers: may be > 1 for SVC (scalable video coding).
    */
@@ -2118,27 +2117,6 @@ typedef struct AV1Common {
    * (in the range 0 ... (number_xlayers - 1)).
    */
   int xlayer_id;
-#else
-  /*!
-   * Number of temporal layers: may be > 1 for SVC (scalable video coding).
-   */
-  unsigned int number_temporal_layers;
-  /*!
-   * Temporal layer ID of this frame
-   * (in the range 0 ... (number_temporal_layers - 1)).
-   */
-  int temporal_layer_id;
-
-  /*!
-   * Number of spatial layers: may be > 1 for SVC (scalable video coding).
-   */
-  unsigned int number_spatial_layers;
-  /*!
-   * Spatial layer ID of this frame
-   * (in the range 0 ... (number_spatial_layers - 1)).
-   */
-  int spatial_layer_id;
-#endif  // CONFIG_NEW_OBU_HEADER
 
 #if CONFIG_MULTILAYER_CORE
   /*!
