@@ -368,11 +368,6 @@ set_aom_config_var(
   1
   "Alignment of ref picture to be integer multiples of 8 for loop filter and inter prediction"
 )
-set_aom_config_var(
-  CONFIG_F311_QM_PARAMS
-  1
-  "Call qm_params() after segmentation_params() in uncompressed_header(), CWG-F311."
-)
 set_aom_config_var(CONFIG_GDF_IMPROVEMENT 1
                    "Enable guided detail filter improvement.")
 
@@ -388,9 +383,6 @@ set_aom_config_var(CONFIG_TMVP_MVS_WRITING_FLOW_OPT 1
 set_aom_config_var(CONFIG_IMPROVE_TIP_LF 1 "Enable improved LF for TIP frame.")
 set_aom_config_var(CONFIG_SIMPLIFY_MV_FIELD 1
                    "Fixes and simplifications to motion field generation.")
-
-set_aom_config_var(CONFIG_ADJ_PYR_Q_OFFSET 1
-                   "Encoder-only config to adjust pyr qp offsets from nominal.")
 
 set_aom_config_var(CONFIG_CCSO_CLEANUP 1
                    "Clean up CCSO quant_sz and signaling.")
