@@ -2580,10 +2580,12 @@ void bru_extend_mc_border(const AV1_COMMON *const cm, int mi_row, int mi_col,
   }
 }
 
-void refinemv_highbd_pad_mc_border(const uint16_t *src, int src_stride,
-                                   uint16_t *dst, int dst_stride, int x0,
-                                   int y0, int b_w, int b_h,
-                                   const ReferenceArea *ref_area) {
+// Performs padding if the motion compensated block is partially
+// outside the reference area.
+void refinemv_highbd_pad_mc_border_c(const uint16_t *src, int src_stride,
+                                     uint16_t *dst, int dst_stride, int x0,
+                                     int y0, int b_w, int b_h,
+                                     const ReferenceArea *ref_area) {
   const int ref_x0 = ref_area->pad_block.x0;
   const int ref_y0 = ref_area->pad_block.y0;
   const int ref_x1 = ref_area->pad_block.x1;
