@@ -2138,18 +2138,13 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
   }
 
   if (xd->lossless[mbmi->segment_id]) {
-#if CONFIG_LOSSLESS_CHROMA_IDTX
     if (!is_inter && plane) {
       if (mbmi->fsc_mode[PLANE_TYPE_Y]) {
         txk_allowed = IDTX;
         allowed_tx_mask = 1 << txk_allowed;
       }
     } else if (is_inter) {
-#if CONFIG_LOSSLESS_LARGER_IDTX
       if (tx_size != TX_4X4) {
-#else
-      if (tx_size == TX_8X8) {
-#endif  // CONFIG_LOSSLESS_LARGER_IDTX
         assert(!plane);
         txk_allowed = IDTX;
         allowed_tx_mask = 1 << txk_allowed;
@@ -2164,17 +2159,6 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
         allowed_tx_mask = 1 << txk_allowed;
       }
     }
-#else
-    if (!plane && is_inter) {
-      if (tx_size == TX_4X4) {
-        txk_allowed = TX_TYPES;
-        allowed_tx_mask = (1 << DCT_DCT) | (1 << IDTX);
-      } else if (tx_size == TX_8X8) {
-        txk_allowed = IDTX;
-        allowed_tx_mask = 1 << txk_allowed;
-      }
-    }
-#endif  // CONFIG_LOSSLESS_CHROMA_IDTX
   }
 
   // Need to have at least one transform type allowed.
@@ -2605,16 +2589,14 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
         primary_tx_type != IDTX && plane == PLANE_TYPE_Y) {
       continue;
     }
-#if CONFIG_LOSSLESS_CHROMA_IDTX
+
     if (!xd->lossless[mbmi->segment_id]) {
-#endif  // CONFIG_LOSSLESS_CHROMA_IDTX
       if (!mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
           primary_tx_type == IDTX && !is_inter) {
         continue;
       }
-#if CONFIG_LOSSLESS_CHROMA_IDTX
     }
-#endif  // CONFIG_LOSSLESS_CHROMA_IDTX
+
     if (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
         (tx_size_wide[tx_size] > FSC_MAXWIDTH ||
          tx_size_high[tx_size] > FSC_MAXHEIGHT) &&
@@ -3688,16 +3670,9 @@ static AOM_INLINE void choose_lossless_tx_size(const AV1_COMP *const cpi,
   int rate_tx_large = INT_MAX;
   int rate_tx_4x4 = INT_MAX;
 
-#if CONFIG_LOSSLESS_LARGER_IDTX
   const bool allow_large_tx =
       bs > BLOCK_4X4 && (is_inter || (!is_inter && is_fsc));
   const TX_SIZE large_tx_size = lossless_max_txsize_lookup[bs];
-#else
-  const bool allow_large_tx = block_size_wide[bs] >= 8 &&
-                              block_size_high[bs] >= 8 &&
-                              (is_inter || (!is_inter && is_fsc));
-  const TX_SIZE large_tx_size = TX_8X8;
-#endif  // CONFIG_LOSSLESS_LARGER_IDTX
 
   if (allow_large_tx) {
     mbmi->tx_size = large_tx_size;
