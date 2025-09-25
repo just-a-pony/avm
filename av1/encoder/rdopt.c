@@ -1792,31 +1792,16 @@ static void av1_get_model_rd(const AV1_COMP *const cpi, MACROBLOCKD *xd,
   if (is_compound) {
     model_rd_sb_fn[MODELRD_TYPE_MASKED_COMPOUND](
         cpi, bsize, x, xd, plane_from, plane_to, rate_sum, dist_sum,
-        &tmp_skip_txfm_sb, &tmp_skip_sse_sb, NULL, NULL, NULL
-#if CONFIG_MRSSE
-        ,
-        cpi->oxcf.tool_cfg.enable_mrsse
-#endif  // CONFIG_MRSSE
-    );
+        &tmp_skip_txfm_sb, &tmp_skip_sse_sb, NULL, NULL, NULL);
   } else {
     if (mbmi->motion_mode == INTERINTRA) {
       model_rd_sb_fn[MODELRD_TYPE_INTERINTRA](cpi, bsize, x, xd, plane_from,
                                               plane_to, rate_sum, dist_sum,
-                                              NULL, NULL, NULL, NULL, NULL
-#if CONFIG_MRSSE
-                                              ,
-                                              cpi->oxcf.tool_cfg.enable_mrsse
-#endif  // CONFIG_MRSSE
-      );
+                                              NULL, NULL, NULL, NULL, NULL);
     } else {
       model_rd_sb_fn[MODELRD_CURVFIT](cpi, bsize, x, xd, plane_from, plane_to,
                                       rate_sum, dist_sum, NULL, NULL, NULL,
-                                      NULL, NULL
-#if CONFIG_MRSSE
-                                      ,
-                                      cpi->oxcf.tool_cfg.enable_mrsse
-#endif  // CONFIG_MRSSE
-      );
+                                      NULL, NULL);
     }
   }
 
@@ -3235,12 +3220,7 @@ static int64_t motion_mode_rd(
               } else if (cpi->sf.inter_sf.inter_mode_rd_model_estimation == 2) {
                 model_rd_sb_fn[MODELRD_TYPE_MOTION_MODE_RD](
                     cpi, bsize, x, xd, 0, num_planes - 1, &est_residue_cost,
-                    &est_dist, NULL, &curr_sse, NULL, NULL, NULL
-#if CONFIG_MRSSE
-                    ,
-                    SSE_TYPE_MOTION_MODE_RD
-#endif  // CONFIG_MRSSE
-                );
+                    &est_dist, NULL, &curr_sse, NULL, NULL, NULL);
                 sse_y =
                     x->pred_sse[COMPACT_INDEX0_NRS(xd->mi[0]->ref_frame[0])];
               }
@@ -3298,12 +3278,7 @@ static int64_t motion_mode_rd(
                 int64_t curr_sse = -1;
                 model_rd_sb_fn[MODELRD_TYPE_MOTION_MODE_RD](
                     cpi, bsize, x, xd, 0, num_planes - 1, &est_residue_cost,
-                    &est_dist, NULL, &curr_sse, NULL, NULL, NULL
-#if CONFIG_MRSSE
-                    ,
-                    SSE_TYPE_MOTION_MODE_RD
-#endif  // CONFIG_MRSSE
-                );
+                    &est_dist, NULL, &curr_sse, NULL, NULL, NULL);
                 int64_t est_rd = RDCOST(
                     x->rdmult, rd_stats->rate + est_residue_cost, est_dist);
                 if (prune_motion_mode(est_rd, top_motion_mode_model_rd))
@@ -3822,12 +3797,7 @@ static int64_t simple_translation_pred_rd(AV1_COMP *const cpi, MACROBLOCK *x,
   int est_rate;
   int64_t est_dist;
   model_rd_sb_fn[MODELRD_CURVFIT](cpi, bsize, x, xd, 0, 0, &est_rate, &est_dist,
-                                  NULL, NULL, NULL, NULL, NULL
-#if CONFIG_MRSSE
-                                  ,
-                                  cpi->oxcf.tool_cfg.enable_mrsse
-#endif  // CONFIG_MRSSE
-  );
+                                  NULL, NULL, NULL, NULL, NULL);
   return RDCOST(x->rdmult, rd_stats->rate + est_rate, est_dist);
 }
 

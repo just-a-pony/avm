@@ -875,11 +875,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_parity_hiding = ARG_DEF(NULL, "enable-parity-hiding", 1,
                                   "Enable parity hiding "
                                   "(0:false), 1:true (default)"),
-#if CONFIG_MRSSE
-  .enable_mrsse = ARG_DEF(NULL, "enable-mrsse", 1,
-                          "Enable mean removed sse "
-                          "(0: false (default), 1: true)"),
-#endif  // CONFIG_MRSSE
 #if CONFIG_EXT_SEG
   .enable_ext_seg = ARG_DEF(NULL, "enable-ext-seg", 1,
                             "Enable extended # of segments "

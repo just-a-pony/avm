@@ -32,29 +32,13 @@ extern "C" {
 #define MODELRD_TYPE_INTRA 1
 #define MODELRD_TYPE_MOTION_MODE_RD 1
 
-// note : if cpi(AV1_COMP)->mrsse is true, the below flags will be ignored.
-// (apply MRSSE) 0: Legacy SSE 1: Mean removed SSE
-#if CONFIG_MRSSE
-#define SSE_TYPE_INTERP_FILTER 0
-#define SSE_TYPE_TX_SEARCH_PRUNE 0
-#define SSE_TYPE_MASKED_COMPOUND 0
-#define SSE_TYPE_INTERINTRA 0
-#define SSE_TYPE_INTRA 0
-#define SSE_TYPE_MOTION_MODE_RD 0
-#endif  // CONFIG_MRSSE
-
 typedef void (*model_rd_for_sb_type)(const AV1_COMP *const cpi,
                                      BLOCK_SIZE bsize, MACROBLOCK *x,
                                      MACROBLOCKD *xd, int plane_from,
                                      int plane_to, int *out_rate_sum,
                                      int64_t *out_dist_sum, int *skip_txfm_sb,
                                      int64_t *skip_sse_sb, int *plane_rate,
-                                     int64_t *plane_sse, int64_t *plane_dist
-#if CONFIG_MRSSE
-                                     ,
-                                     int use_mrsse
-#endif  // CONFIG_MRSSE
-);
+                                     int64_t *plane_sse, int64_t *plane_dist);
 typedef void (*model_rd_from_sse_type)(const AV1_COMP *const cpi,
                                        const MACROBLOCK *const x,
                                        BLOCK_SIZE plane_bsize, int plane,
@@ -73,36 +57,8 @@ static int64_t calculate_sse(MACROBLOCKD *const xd,
   return sse;
 }
 
-#if CONFIG_MRSSE
-// Caclulate Mean-removed SSE.
-static int64_t calculate_mrsse(MACROBLOCKD *const xd,
-                               const struct macroblock_plane *p,
-                               struct macroblockd_plane *pd, const int bw,
-                               const int bh) {
-  int64_t mrsse = 0;
-  const int shift = xd->bd - 8;
-  mrsse = aom_highbd_mrsse(p->src.buf, p->src.stride, pd->dst.buf,
-                           pd->dst.stride, bw, bh);
-  mrsse = ROUND_POWER_OF_TWO(mrsse, shift * 2);
-  return mrsse;
-}
-
-typedef int64_t (*sse_type)(MACROBLOCKD *const xd,
-                            const struct macroblock_plane *p,
-                            struct macroblockd_plane *pd, const int bw,
-                            const int bh);
-
-enum { SSE, MR_SSE, SSE_TYPES } UENUM1BYTE(SSEType);
-static sse_type sse_fn[SSE_TYPES] = { calculate_sse, calculate_mrsse };
-#endif  // CONFIG_MRSSE
-
 static AOM_INLINE int64_t compute_sse_plane(MACROBLOCK *x, MACROBLOCKD *xd,
-                                            int plane, const BLOCK_SIZE bsize
-#if CONFIG_MRSSE
-                                            ,
-                                            bool use_mrsse
-#endif  // CONFIG_MRSSE
-) {
+                                            int plane, const BLOCK_SIZE bsize) {
   struct macroblockd_plane *const pd = &xd->plane[plane];
   const BLOCK_SIZE plane_bsize =
       get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
@@ -110,12 +66,7 @@ static AOM_INLINE int64_t compute_sse_plane(MACROBLOCK *x, MACROBLOCKD *xd,
   const struct macroblock_plane *const p = &x->plane[plane];
   get_txb_dimensions(xd, plane, plane_bsize, 0, 0, plane_bsize, NULL, NULL, &bw,
                      &bh);
-#if CONFIG_MRSSE
-  const int sse_fn_idx = use_mrsse;
-  int64_t sse = sse_fn[sse_fn_idx](xd, p, pd, bw, bh);
-#else
   int64_t sse = calculate_sse(xd, p, pd, bw, bh);
-#endif  // CONFIG_MRSSE
   return sse;
 }
 
@@ -197,18 +148,11 @@ static AOM_INLINE void model_rd_with_curvfit(const AV1_COMP *const cpi,
   if (dist) *dist = dist_i;
 }
 
-static AOM_INLINE void model_rd_for_sb(const AV1_COMP *const cpi,
-                                       BLOCK_SIZE bsize, MACROBLOCK *x,
-                                       MACROBLOCKD *xd, int plane_from,
-                                       int plane_to, int *out_rate_sum,
-                                       int64_t *out_dist_sum, int *skip_txfm_sb,
-                                       int64_t *skip_sse_sb, int *plane_rate,
-                                       int64_t *plane_sse, int64_t *plane_dist
-#if CONFIG_MRSSE
-                                       ,
-                                       int use_mrsse
-#endif  // CONFIG_MRSSE
-) {
+static AOM_INLINE void model_rd_for_sb(
+    const AV1_COMP *const cpi, BLOCK_SIZE bsize, MACROBLOCK *x, MACROBLOCKD *xd,
+    int plane_from, int plane_to, int *out_rate_sum, int64_t *out_dist_sum,
+    int *skip_txfm_sb, int64_t *skip_sse_sb, int *plane_rate,
+    int64_t *plane_sse, int64_t *plane_dist) {
   (void)bsize;
 
   // Note our transform coeffs are 8 times an orthogonal transform.
@@ -220,9 +164,6 @@ static AOM_INLINE void model_rd_for_sb(const AV1_COMP *const cpi,
   int64_t rate_sum = 0;
   int64_t dist_sum = 0;
   int64_t total_sse = 0;
-#if CONFIG_MRSSE
-  const int sse_fn_idx = cpi->oxcf.tool_cfg.enable_mrsse || use_mrsse;
-#endif  // CONFIG_MRSSE
   assert(bsize < BLOCK_SIZES_ALL);
 
   for (plane = plane_from; plane <= plane_to; ++plane) {
@@ -237,11 +178,7 @@ static AOM_INLINE void model_rd_for_sb(const AV1_COMP *const cpi,
     int64_t sse;
     int rate;
     int64_t dist;
-#if CONFIG_MRSSE
-    sse = sse_fn[sse_fn_idx](xd, p, pd, bw, bh);
-#else
     sse = calculate_sse(xd, p, pd, bw, bh);
-#endif  // CONFIG_MRSSE
     model_rd_from_sse(cpi, x, plane_bsize, plane, sse, bw * bh, &rate, &dist);
 
     if (plane == 0) x->pred_sse[ref] = (unsigned int)AOMMIN(sse, UINT_MAX);
@@ -266,12 +203,7 @@ static AOM_INLINE void model_rd_for_sb_with_curvfit(
     const AV1_COMP *const cpi, BLOCK_SIZE bsize, MACROBLOCK *x, MACROBLOCKD *xd,
     int plane_from, int plane_to, int *out_rate_sum, int64_t *out_dist_sum,
     int *skip_txfm_sb, int64_t *skip_sse_sb, int *plane_rate,
-    int64_t *plane_sse, int64_t *plane_dist
-#if CONFIG_MRSSE
-    ,
-    int use_mrsse
-#endif  // CONFIG_MRSSE
-) {
+    int64_t *plane_sse, int64_t *plane_dist) {
   (void)bsize;
 
   // Note our transform coeffs are 8 times an orthogonal transform.
@@ -282,9 +214,6 @@ static AOM_INLINE void model_rd_for_sb_with_curvfit(
   int64_t rate_sum = 0;
   int64_t dist_sum = 0;
   int64_t total_sse = 0;
-#if CONFIG_MRSSE
-  const int sse_fn_idx = cpi->oxcf.tool_cfg.enable_mrsse || use_mrsse;
-#endif  // CONFIG_MRSSE
 
   for (int plane = plane_from; plane <= plane_to; ++plane) {
     if (plane && !xd->is_chroma_ref) break;
@@ -302,9 +231,6 @@ static AOM_INLINE void model_rd_for_sb_with_curvfit(
     const int is_border_block =
         get_visible_dimensions(xd, plane, 0, 0, block_width, block_height,
                                cm->width, cm->height, &bw, &bh);
-#if CONFIG_MRSSE
-    sse = sse_fn[sse_fn_idx](xd, p, pd, bw, bh);
-#else
     const int shift = xd->bd - 8;
     if (!is_border_block)
       sse = aom_highbd_sse(p->src.buf, p->src.stride, pd->dst.buf,
@@ -314,7 +240,6 @@ static AOM_INLINE void model_rd_for_sb_with_curvfit(
                              pd->dst.stride, bw, bh);
 
     sse = ROUND_POWER_OF_TWO(sse, shift * 2);
-#endif  // CONFIG_MRSSE
     model_rd_with_curvfit(cpi, x, plane_bsize, plane, sse, bw * bh, &rate,
                           &dist);
 

@@ -624,12 +624,6 @@ typedef struct cfg_options {
    *
    */
   unsigned int enable_parity_hiding;
-#if CONFIG_MRSSE
-  /*!\brief enable mrsse for mean removed SSE
-   *
-   */
-  unsigned int enable_mrsse;
-#endif  // CONFIG_MRSSE
 
 #if CONFIG_REFRESH_FLAG
   /*!\brief enable signaling refresh frame flags with 3 bits.

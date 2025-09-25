@@ -394,12 +394,7 @@ static int64_t intra_model_yrd(const AV1_COMP *const cpi, MACROBLOCK *const x,
   // RD estimation.
   model_rd_sb_fn[MODELRD_TYPE_INTRA](
       cpi, bsize, x, xd, 0, 0, &this_rd_stats.rate, &this_rd_stats.dist,
-      &this_rd_stats.skip_txfm, &temp_sse, NULL, NULL, NULL
-#if CONFIG_MRSSE
-      ,
-      SSE_TYPE_INTRA
-#endif  // CONFIG_MRSSE
-  );
+      &this_rd_stats.skip_txfm, &temp_sse, NULL, NULL, NULL);
   const int use_intra_dip = mbmi->use_intra_dip;
   if (av1_intra_dip_allowed(&cpi->common, mbmi)) {
     int ctx = get_intra_dip_ctx(xd->neighbors[0], xd->neighbors[1], bsize);

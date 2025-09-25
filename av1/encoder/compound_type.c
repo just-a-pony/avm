@@ -533,12 +533,7 @@ static INLINE void compute_best_interintra_mode(
   av1_combine_interintra(xd, bsize, 0, tmp_buf, bw, intrapred, bw);
   model_rd_sb_fn[MODELRD_TYPE_INTERINTRA](cpi, bsize, x, xd, 0, 0, &rate, &dist,
                                           &skip_txfm_sb, &skip_sse_sb, NULL,
-                                          NULL, NULL
-#if CONFIG_MRSSE
-                                          ,
-                                          SSE_TYPE_INTERINTRA
-#endif  // CONFIG_MRSSE
-  );
+                                          NULL, NULL);
   int64_t rd = RDCOST(x->rdmult, rate + rmode, dist);
   if (rd < *best_interintra_rd) {
     *best_interintra_rd = rd;
@@ -810,12 +805,7 @@ static int handle_wedge_inter_intra_mode(
                              xd->plane[AOM_PLANE_Y].dst.stride, intrapred, bw);
       model_rd_sb_fn[MODELRD_TYPE_MASKED_COMPOUND](
           cpi, bsize, x, xd, 0, 0, &rate_sum, &dist_sum, &skip_txfm_sb,
-          &skip_sse_sb, NULL, NULL, NULL
-#if CONFIG_MRSSE
-          ,
-          SSE_TYPE_MASKED_COMPOUND
-#endif  // CONFIG_MRSSE
-      );
+          &skip_sse_sb, NULL, NULL, NULL);
       rd =
           RDCOST(x->rdmult, *tmp_rate_mv + *rate_overhead + rate_sum, dist_sum);
     }
@@ -1299,12 +1289,7 @@ static int64_t masked_compound_type_rd(
     // Get the RD cost from model RD
     model_rd_sb_fn[MODELRD_TYPE_MASKED_COMPOUND](
         cpi, bsize, x, xd, 0, 0, &rate_sum, &dist_sum, &tmp_skip_txfm_sb,
-        &tmp_skip_sse_sb, NULL, NULL, NULL
-#if CONFIG_MRSSE
-        ,
-        SSE_TYPE_MASKED_COMPOUND
-#endif  // CONFIG_MRSSE
-    );
+        &tmp_skip_sse_sb, NULL, NULL, NULL);
     rd = RDCOST(x->rdmult, *rs2 + *out_rate_mv + rate_sum, dist_sum);
     *comp_model_rd_cur = rd;
     // Override with best if current is worse than best for new MV
@@ -1493,12 +1478,7 @@ int av1_compound_type_rd(const AV1_COMP *const cpi, MACROBLOCK *x,
           int eval_txfm = 1;
           // Check if the mode is good enough based on skip rd
           if (cpi->sf.inter_sf.txfm_rd_gate_level) {
-            int64_t sse_y = compute_sse_plane(x, xd, PLANE_TYPE_Y, bsize
-#if CONFIG_MRSSE
-                                              ,
-                                              cpi->oxcf.tool_cfg.enable_mrsse
-#endif  // CONFIG_MRSSE
-            );
+            int64_t sse_y = compute_sse_plane(x, xd, PLANE_TYPE_Y, bsize);
             int64_t skip_rd = RDCOST(x->rdmult, rs2 + *rate_mv, (sse_y << 4));
             eval_txfm = check_txfm_eval(x, bsize, ref_skip_rd, skip_rd,
                                         cpi->sf.inter_sf.txfm_rd_gate_level, 1);
@@ -1514,12 +1494,7 @@ int av1_compound_type_rd(const AV1_COMP *const cpi, MACROBLOCK *x,
                                  est_rd_stats.dist);
             model_rd_sb_fn[MODELRD_TYPE_MASKED_COMPOUND](
                 cpi, bsize, x, xd, 0, 0, &rate_sum, &dist_sum,
-                &tmp_skip_txfm_sb, &tmp_skip_sse_sb, NULL, NULL, NULL
-#if CONFIG_MRSSE
-                ,
-                SSE_TYPE_MASKED_COMPOUND
-#endif  // CONFIG_MRSSE
-            );
+                &tmp_skip_txfm_sb, &tmp_skip_sse_sb, NULL, NULL, NULL);
             comp_model_rd_cur =
                 RDCOST(x->rdmult, rs2 + *rate_mv + rate_sum, dist_sum);
 

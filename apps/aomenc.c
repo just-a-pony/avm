@@ -505,9 +505,6 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_warp_delta,
   &g_av1_codec_arg_defs.enable_six_param_warp_delta,
   &g_av1_codec_arg_defs.enable_warp_extend,
-#if CONFIG_MRSSE
-  &g_av1_codec_arg_defs.enable_mrsse,
-#endif  // CONFIG_MRSSE
 #if CONFIG_REFRESH_FLAG
   &g_av1_codec_arg_defs.enable_short_refresh_frame_flags,
 #endif  // CONFIG_REFRESH_FLAG
@@ -757,9 +754,6 @@ static void init_config(cfg_options_t *config) {
   config->enable_avg_cdf = 1;
   config->avg_cdf_type = 1;
   config->enable_parity_hiding = 1;
-#if CONFIG_MRSSE
-  config->enable_mrsse = 0;
-#endif  // CONFIG_MRSSE
 #if CONFIG_REFRESH_FLAG
   config->enable_short_refresh_frame_flags = 1;
 #endif  // CONFIG_REFRESH_FLAG
@@ -1699,19 +1693,12 @@ static void show_stream_config(struct stream_state *stream,
           "Tool setting (Others)          : Palette (%d), "
           "ParityHiding (%d), "
           "IntraBCExt (%d), "
-#if CONFIG_MRSSE
-          "MRSSE (%d), "
-#endif  // CONFIG_MRSSE
           "Enable_CDF_Avg (%d), "
           "CDF_Avg_Type (%d), "
           "IntraBC (%d)\n",
           encoder_cfg->enable_palette, encoder_cfg->enable_parity_hiding,
-          encoder_cfg->enable_intrabc_ext,
-#if CONFIG_MRSSE
-          encoder_cfg->enable_mrsse,
-#endif  // CONFIG_MRSSE
-          encoder_cfg->enable_avg_cdf, encoder_cfg->avg_cdf_type,
-          encoder_cfg->enable_intrabc);
+          encoder_cfg->enable_intrabc_ext, encoder_cfg->enable_avg_cdf,
+          encoder_cfg->avg_cdf_type, encoder_cfg->enable_intrabc);
 
   fprintf(stdout, "\n\n");
 }
