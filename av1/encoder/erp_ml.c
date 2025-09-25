@@ -11,7 +11,7 @@
 
 #include "config/av1_rtcd.h"
 
-#include "av1/encoder/erp_tflite.h"
+#include "av1/encoder/erp_ml.h"
 #include "av1/encoder/erp_models.h"
 #include "av1/encoder/ml.h"
 
@@ -123,9 +123,8 @@ static inline void normalize(float *features_dst, const float *features_src,
 #undef EPSILON
 }
 
-extern "C" int av1_erp_prune_rect(BLOCK_SIZE bsize, bool is_hd,
-                                  const float *features, bool *prune_horz,
-                                  bool *prune_vert) {
+int av1_erp_prune_rect(BLOCK_SIZE bsize, bool is_hd, const float *features,
+                       bool *prune_horz, bool *prune_vert) {
   // Prepare input.
   float input[19];
   const float *mean = get_mean(bsize, is_hd);

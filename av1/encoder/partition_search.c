@@ -35,7 +35,7 @@
 #include "av1/encoder/reconinter_enc.h"
 #include "av1/encoder/tokenize.h"
 #include "av1/common/reconinter.h"
-#include "av1/encoder/erp_tflite.h"
+#include "av1/encoder/erp_ml.h"
 
 #include "aom_util/debug_util.h"
 
