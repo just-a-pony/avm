@@ -1510,6 +1510,7 @@ void av1_set_lossless(AV1_COMP *cpi) {
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
   cm->features.has_lossless_segment = 0;
 #endif  //  CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
+  cpi->enc_seg.has_lossless_segment = 0;
   for (int i = 0; i < MAX_SEGMENTS; ++i) {
     const int qindex =
         cm->seg.enabled ? av1_get_qindex(&cm->seg, i, quant_params->base_qindex,
