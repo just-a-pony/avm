@@ -734,6 +734,17 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
     }
   }
 
+#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+  uint32_t seq_chroma_format_idc;
+  aom_codec_err_t err =
+      av1_get_chroma_format_idc(seq_params, &seq_chroma_format_idc);
+  if (err != AOM_CODEC_OK) {
+    aom_internal_error(&cm->error, err,
+                       "Unsupported subsampling_x = %d, subsampling_y = %d.",
+                       seq_params->subsampling_x, seq_params->subsampling_y);
+  }
+#endif  // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+
   cm->width = oxcf->frm_dim_cfg.width;
   cm->height = oxcf->frm_dim_cfg.height;
   // set sb size before allocations

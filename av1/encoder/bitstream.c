@@ -4982,6 +4982,19 @@ static AOM_INLINE void write_profile(BITSTREAM_PROFILE profile,
   aom_wb_write_literal(wb, profile, PROFILE_BITS);
 }
 
+#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+// Write sequence chroma format idc to the bitstream.
+static AOM_INLINE void write_seq_chroma_format(
+    const SequenceHeader *const seq_params, struct aom_write_bit_buffer *wb) {
+  uint32_t seq_chroma_format_idc = CHROMA_FORMAT_420;
+  aom_codec_err_t err =
+      av1_get_chroma_format_idc(seq_params, &seq_chroma_format_idc);
+  assert(err == AOM_CODEC_OK);
+  (void)err;
+  aom_wb_write_uvlc(wb, seq_chroma_format_idc);
+}
+#endif  // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+
 static AOM_INLINE void write_bitdepth(const SequenceHeader *const seq_params,
                                       struct aom_write_bit_buffer *wb) {
   // Profile 0/1: [0] for 8 bit, [1]  10-bit
@@ -4994,13 +5007,21 @@ static AOM_INLINE void write_bitdepth(const SequenceHeader *const seq_params,
 
 static AOM_INLINE void write_color_config(
     const SequenceHeader *const seq_params, struct aom_write_bit_buffer *wb) {
+#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+  write_seq_chroma_format(seq_params, wb);
+  // NB: the bitdepth will be signalled after the chroma format
+#endif  // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+
   write_bitdepth(seq_params, wb);
+
   const int is_monochrome = seq_params->monochrome;
+#if !CONFIG_CWG_E242_CHROMA_FORMAT_IDC
   // monochrome bit
   if (seq_params->profile != PROFILE_1)
     aom_wb_write_bit(wb, is_monochrome);
   else
     assert(!is_monochrome);
+#endif  // !CONFIG_CWG_E242_CHROMA_FORMAT_IDC
   if (seq_params->color_primaries == AOM_CICP_CP_UNSPECIFIED &&
       seq_params->transfer_characteristics == AOM_CICP_TC_UNSPECIFIED &&
       seq_params->matrix_coefficients == AOM_CICP_MC_UNSPECIFIED) {

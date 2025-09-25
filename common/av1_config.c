@@ -19,6 +19,8 @@
 #include "aom_dsp/bitwriter_buffer.h"
 #include "av1/common/obu_util.h"
 #include "common/av1_config.h"
+#include "av1/common/av1_common_int.h"
+#include "av1/common/blockd.h"
 #include "av1/common/enums.h"
 
 // Helper macros to reduce verbosity required to check for read errors.
@@ -63,6 +65,18 @@
 #define AV1C_POP_ERROR_HANDLER_DATA()                         \
   do {                                                        \
     reader->error_handler_data = original_error_handler_data; \
+  } while (0)
+
+#define AV1C_READ_UVLC_BITS_OR_RETURN_ERROR(field)                             \
+  int field = 0;                                                               \
+  do {                                                                         \
+    field = aom_rb_read_uvlc(reader);                                          \
+    if (result == -1) {                                                        \
+      fprintf(stderr,                                                          \
+              "av1c: Error reading bit for " #field ", value=%d result=%d.\n", \
+              field, result);                                                  \
+      return -1;                                                               \
+    }                                                                          \
   } while (0)
 
 static const size_t kAv1cSize = 4;
@@ -158,6 +172,10 @@ static int parse_color_config(struct aom_read_bit_buffer *reader,
   int result = 0;
   AV1C_PUSH_ERROR_HANDLER_DATA(result);
 
+#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+  AV1C_READ_UVLC_BITS_OR_RETURN_ERROR(chroma_format_idc);
+#endif  // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+
   AV1C_READ_BIT_OR_RETURN_ERROR(high_bitdepth);
   config->high_bitdepth = high_bitdepth;
 
@@ -170,10 +188,16 @@ static int parse_color_config(struct aom_read_bit_buffer *reader,
     bit_depth = config->high_bitdepth ? 10 : 8;
   }
 
+#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+  (void)bit_depth;
+  assert(bit_depth == 8 || bit_depth == 10 || bit_depth == 12);
+  config->monochrome = (chroma_format_idc == CHROMA_FORMAT_400);
+#else
   if (config->seq_profile != 1) {
     AV1C_READ_BIT_OR_RETURN_ERROR(mono_chrome);
     config->monochrome = mono_chrome;
   }
+#endif  // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
 
   int color_primaries = AOM_CICP_CP_UNSPECIFIED;
   int transfer_characteristics = AOM_CICP_TC_UNSPECIFIED;
@@ -200,6 +224,19 @@ static int parse_color_config(struct aom_read_bit_buffer *reader,
     config->chroma_subsampling_y = 0;
   } else {
     AV1C_READ_BIT_OR_RETURN_ERROR(color_range);
+#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+    int subsampling_x;
+    int subsampling_y;
+    aom_codec_err_t err = av1_get_chroma_subsampling(
+        chroma_format_idc, &subsampling_x, &subsampling_y);
+    if (err != AOM_CODEC_OK) {
+      fprintf(stderr, "chroma format idc %d not supported.\n",
+              chroma_format_idc);
+      return -1;
+    }
+    config->chroma_subsampling_x = (uint8_t)subsampling_x;
+    config->chroma_subsampling_y = (uint8_t)subsampling_y;
+#else
     if (config->seq_profile == 0) {
       config->chroma_subsampling_x = 1;
       config->chroma_subsampling_y = 1;
@@ -221,6 +258,7 @@ static int parse_color_config(struct aom_read_bit_buffer *reader,
         config->chroma_subsampling_y = 0;
       }
     }
+#endif  // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
 
     if (config->chroma_subsampling_x && !config->chroma_subsampling_y) {
       // YUV 4:2:2
