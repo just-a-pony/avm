@@ -30,10 +30,6 @@ macro(fix_experiment_configs)
     change_config_and_warn(CONFIG_DIST_8X8 0 CONFIG_MULTITHREAD)
   endif()
 
-  if(CONFIG_ERP_TFLITE)
-    change_config_and_warn(CONFIG_TENSORFLOW_LITE 1 CONFIG_ERP_TFLITE)
-  endif()
-
   # CONFIG_MULTITHREAD is dependent on CONFIG_PARAKIT_COLLECT_DATA.
   if(CONFIG_PARAKIT_COLLECT_DATA AND CONFIG_MULTITHREAD)
     change_config_and_warn(CONFIG_MULTITHREAD 0 CONFIG_PARAKIT_COLLECT_DATA)
