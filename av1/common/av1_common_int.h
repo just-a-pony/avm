@@ -1611,10 +1611,6 @@ typedef struct TIP_Buffer {
    * Scale factors of tip frame.
    */
   struct scale_factors scale_factor;
-  /*!
-   * Check the motion field of TIP block is within the frame
-   */
-  int *mf_need_clamp;
 } TIP;
 
 /*!
@@ -2702,14 +2698,6 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
         }
       }
     }
-  }
-
-  realloc = cm->tip_ref.mf_need_clamp == NULL || is_tpl_mvs_mem_size_changed;
-  if (realloc) {
-    aom_free(cm->tip_ref.mf_need_clamp);
-    CHECK_MEM_ERROR(
-        cm, cm->tip_ref.mf_need_clamp,
-        (int *)aom_calloc(mem_size, sizeof(*cm->tip_ref.mf_need_clamp)));
   }
 }
 
@@ -5000,7 +4988,18 @@ static AOM_INLINE bool disable_opfl_for_tip_direct(
 
 // Obtain the tip block size based on block width and height.
 static AOM_INLINE BLOCK_SIZE get_tip_bsize_from_bw_bh(int bw, int bh) {
-  return (bw >= 16 && bh >= 16) ? BLOCK_16X16 : BLOCK_8X8;
+  assert(bh == 16 || bh == 8);
+  if (bh == 16) {
+    assert(bw == 64 || bw == 32 || bw == 16);
+    switch (bw) {
+      case 64: return BLOCK_64X16;
+      case 32: return BLOCK_32X16;
+      default: return BLOCK_16X16;
+    }
+  } else {
+    assert(bw == 8 && bh == 8);
+    return BLOCK_8X8;
+  }
 }
 
 // Obtain the tip block size of a TIP-ref block.

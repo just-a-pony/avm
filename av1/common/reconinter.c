@@ -4168,14 +4168,18 @@ static void build_inter_predictors_8x8_and_bigger_facade(
 #if CONFIG_FLEX_TIP_BLK_SIZE
     const int width = xd->width << MI_SIZE_LOG2;
     const int height = xd->height << MI_SIZE_LOG2;
+#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+    int enable_tip_refinemv = cm->seq_params.enable_tip_refinemv;
+#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
     const BLOCK_SIZE unit_bsize =
         get_unit_bsize_for_tip_ref(TIP_FRAME_AS_REF, width, height
 #if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
                                    ,
-                                   cm->seq_params.enable_tip_refinemv
+                                   enable_tip_refinemv
 #endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
         );
     const int unit_blk_size = block_size_wide[unit_bsize];
+    int blk_width = unit_blk_size;
     const int end_pixel_row = mi_y + height;
     const int end_pixel_col = mi_x + width;
 #else
@@ -4191,7 +4195,7 @@ static void build_inter_predictors_8x8_and_bigger_facade(
     for (int pixel_row = mi_y; pixel_row < end_pixel_row;
          pixel_row += unit_blk_size) {
       for (int pixel_col = mi_x; pixel_col < end_pixel_col;
-           pixel_col += unit_blk_size) {
+           pixel_col += blk_width) {
         const int tpl_row = pixel_row >> TMVP_MI_SZ_LOG2;
         const int tpl_col = pixel_col >> TMVP_MI_SZ_LOG2;
         const int row_offset = (pixel_row - mi_y) >> TMVP_MI_SZ_LOG2;
@@ -4214,6 +4218,22 @@ static void build_inter_predictors_8x8_and_bigger_facade(
                                 cm->mi_params.mi_rows, build_for_decode)) {
           continue;
         }
+        blk_width = unit_blk_size;
+        if (is_tip_mv_refinement_disabled_for_unit_size_16x16(
+                unit_blk_size,
+#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+                enable_tip_refinemv,
+#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+                TIP_FRAME_AS_REF)) {
+          const TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
+          const int mvs_stride =
+              ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
+          const int tpl_offset = tpl_row * mvs_stride + tpl_col;
+          const TPL_MV_REF *tpl_mvs = tpl_mvs_base + tpl_offset;
+          blk_width = get_tip_block_width_with_same_mv(
+              tpl_mvs, unit_blk_size, tpl_col, end_pixel_col >> TMVP_MI_SZ_LOG2,
+              MAX_BLOCK_SIZE_WITH_SAME_MV);
+        }
 
         get_tip_mv(cm, &mi->mv[0].as_mv, tpl_col, tpl_row, tip_mv_tmp);
 
@@ -4222,8 +4242,8 @@ static void build_inter_predictors_8x8_and_bigger_facade(
         if (plane == 0) {
           REFINEMV_SUBMB_INFO
           *refinemv_subinfo = &xd->refinemv_subinfo[refinemv_offset];
-          fill_subblock_refine_mv(refinemv_subinfo, unit_blk_size,
-                                  unit_blk_size, tip_mv[0], tip_mv[1]);
+          fill_subblock_refine_mv(refinemv_subinfo, blk_width, unit_blk_size,
+                                  tip_mv[0], tip_mv[1]);
           xd->opfl_vxy_bufs[opfl_vxy_offset] = 0;
           xd->opfl_vxy_bufs[N_OF_OFFSETS * 1 + opfl_vxy_offset] = 0;
           xd->opfl_vxy_bufs[N_OF_OFFSETS * 2 + opfl_vxy_offset] = 0;
@@ -4234,7 +4254,7 @@ static void build_inter_predictors_8x8_and_bigger_facade(
                        ((col_offset << TMVP_MI_SZ_LOG2) >> ss_x);
 
         build_inter_predictors_8x8_and_bigger(
-            cm, xd, plane, mi, dst_orig, build_for_decode, unit_blk_size,
+            cm, xd, plane, mi, dst_orig, build_for_decode, blk_width,
             unit_blk_size, pixel_col, pixel_row, mc_buf, tip_mv,
             calc_subpel_params_func, dst_buf->buf, dst_stride, bw, bh,
             build_for_refine_mv_only, &ext_warp_used,

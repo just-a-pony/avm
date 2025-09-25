@@ -241,9 +241,6 @@ static AOM_INLINE void dealloc_compressor_data(AV1_COMP *cpi) {
     }
   }
 
-  aom_free(cm->tip_ref.mf_need_clamp);
-  cm->tip_ref.mf_need_clamp = NULL;
-
   aom_free(cpi->td.mb.mbmi_ext);
   cpi->td.mb.mbmi_ext = NULL;
 

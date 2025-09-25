@@ -141,9 +141,6 @@ static INLINE void dec_init_tip_ref_frame(AV1_COMMON *const cm) {
 }
 
 static INLINE void dec_free_tip_ref_frame(AV1_COMMON *const cm) {
-  aom_free(cm->tip_ref.mf_need_clamp);
-  cm->tip_ref.mf_need_clamp = NULL;
-
   aom_free_frame_buffer(&cm->tip_ref.tip_frame->buf);
   aom_free(cm->tip_ref.tip_frame);
   cm->tip_ref.tip_frame = NULL;

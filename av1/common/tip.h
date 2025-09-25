@@ -23,6 +23,9 @@ extern "C" {
 
 #define TIP_RD_CORRECTION 100000
 
+// Maximum block size allowed to combine the blocks with same MV
+#define MAX_BLOCK_SIZE_WITH_SAME_MV 64
+
 // Encoder: Decide TIP mode is enabled or disabled. If TIP is enabled, derive
 // temporal motion field from one closest forward and one closet backward
 // reference frames, then fill the hole
@@ -44,6 +47,46 @@ void av1_derive_tip_nearest_ref_frames_motion_projection(AV1_COMMON *cm);
 // Save TMVP motion fields for future frame's TMVP if current frame is coded
 // as TIP_FRAME_AS_OUTPUT
 void av1_copy_tip_frame_tmvp_mvs(const AV1_COMMON *const cm);
+
+// Get the block width when blocks with same MV are combined.
+static AOM_INLINE int get_tip_block_width_with_same_mv(
+    const TPL_MV_REF *tpl_mvs, int unit_blk_size, int blk_col, int blk_col_end,
+    int max_allow_blk_size) {
+  int blk_width = unit_blk_size;
+  const int step = unit_blk_size >> TMVP_MI_SZ_LOG2;
+  int offset = step;
+  const int is_zero_tpl_mv =
+      tpl_mvs->mfmv0.as_int == 0 || tpl_mvs->mfmv0.as_int == INVALID_MV;
+
+  while (blk_col + offset < blk_col_end && blk_width < max_allow_blk_size &&
+         (tpl_mvs->mfmv0.as_int == tpl_mvs[offset].mfmv0.as_int ||
+          (is_zero_tpl_mv && (tpl_mvs[offset].mfmv0.as_int == 0 ||
+                              tpl_mvs[offset].mfmv0.as_int == INVALID_MV)))) {
+    blk_width += unit_blk_size;
+    offset += step;
+  }
+  blk_width = 1 << get_msb(blk_width);
+  return blk_width;
+}
+
+// Check if MV refinement is disabled for TIP 16x16 blocks.
+static AOM_INLINE int is_tip_mv_refinement_disabled_for_unit_size_16x16(
+    int unit_blk_size,
+#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+    int enable_tip_refinemv,
+#endif
+    TIP_FRAME_MODE tip_frame_mode) {
+  if (unit_blk_size != 16) return 0;
+#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG && CONFIG_DMVR_OFF_IN_TIP_DIRECT
+  return !enable_tip_refinemv || tip_frame_mode == TIP_FRAME_AS_OUTPUT;
+#elif CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+  return !enable_tip_refinemv;
+#elif CONFIG_DMVR_OFF_IN_TIP_DIRECT
+  return tip_frame_mode == TIP_FRAME_AS_OUTPUT;
+#else
+  return 0;
+#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG && CONFIG_DMVR_OFF_IN_TIP_DIRECT
+}
 
 // Compute scale factor for temporal scaling
 static AOM_INLINE int tip_derive_scale_factor(int num, int den_signed) {

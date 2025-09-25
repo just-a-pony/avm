@@ -15,14 +15,6 @@
 #include "config/aom_dsp_rtcd.h"
 #include "av1/common/reconinter.h"
 
-// Maximum block size is allowed to combine the blocks with same MV
-#define MAX_BLOCK_SIZE_WITH_SAME_MV \
-  8  // Needs to be 8 when across scale
-     // prediction is needed due to use of
-     // superres or resize. A higher value
-     // such as 128 could be used if
-     // across scale prediction is not
-     // invoked.
 // Percentage threshold of number of blocks with available motion
 // projection in a frame to allow TIP mode
 #define TIP_ENABLE_COUNT_THRESHOLD 60
@@ -207,99 +199,6 @@ static void tip_blk_average_filter_mv(AV1_COMMON *cm) {
   }
 }
 
-static INLINE MV tip_clamp_tip_mv_to_umv_border_sb(
-    const MV *src_mv, int bw, int bh, int ss_x, int ss_y, int dist_to_left_edge,
-    int dist_to_right_edge, int dist_to_top_edge, int dist_to_bottom_edge) {
-  // If the MV points so far into the UMV border that no visible pixels
-  // are used for reconstruction, the subpel part of the MV can be
-  // discarded and the MV limited to 16 pixels with equivalent results.
-  const int spel_left = (AOM_INTERP_EXTEND + bw) << SUBPEL_BITS;
-  const int spel_right = spel_left - SUBPEL_SHIFTS;
-  const int spel_top = (AOM_INTERP_EXTEND + bh) << SUBPEL_BITS;
-  const int spel_bottom = spel_top - SUBPEL_SHIFTS;
-  MV clamped_mv = { (MV_COMP_DATA_TYPE)(src_mv->row * (1 << (1 - ss_y))),
-                    (MV_COMP_DATA_TYPE)(src_mv->col * (1 << (1 - ss_x))) };
-  assert(ss_x <= 1);
-  assert(ss_y <= 1);
-  const SubpelMvLimits mv_limits = {
-    dist_to_left_edge * (1 << (1 - ss_x)) - spel_left,
-    dist_to_right_edge * (1 << (1 - ss_x)) + spel_right,
-    dist_to_top_edge * (1 << (1 - ss_y)) - spel_top,
-    dist_to_bottom_edge * (1 << (1 - ss_y)) + spel_bottom
-  };
-
-  clamp_mv(&clamped_mv, &mv_limits);
-
-  return clamped_mv;
-}
-
-static INLINE int tip_check_motion_field(AV1_COMMON *cm, const MV *mv, int mi_x,
-                                         int mi_y, int bw, int bh, int frame_w,
-                                         int frame_h) {
-  TIP *tip_ref = &cm->tip_ref;
-  MV this_mv[2];
-  tip_get_mv_projection(&this_mv[0], *mv, tip_ref->ref_frames_offset_sf[0]);
-  tip_get_mv_projection(&this_mv[1], *mv, tip_ref->ref_frames_offset_sf[1]);
-
-  const int dist_to_top_edge = -GET_MV_SUBPEL(mi_y);
-  const int dist_to_bottom_edge = GET_MV_SUBPEL(frame_h - bh - mi_y);
-  const int dist_to_left_edge = -GET_MV_SUBPEL(mi_x);
-  const int dist_to_right_edge = GET_MV_SUBPEL(frame_w - bw - mi_x);
-
-  MV temp_mv;
-  temp_mv = tip_clamp_tip_mv_to_umv_border_sb(
-      &this_mv[0], bw, bh, 0, 0, dist_to_left_edge, dist_to_right_edge,
-      dist_to_top_edge, dist_to_bottom_edge);
-  if (temp_mv.row != this_mv[0].row || temp_mv.col != this_mv[0].col) {
-    return 1;
-  }
-
-  temp_mv = tip_clamp_tip_mv_to_umv_border_sb(
-      &this_mv[1], bw, bh, 0, 0, dist_to_left_edge, dist_to_right_edge,
-      dist_to_top_edge, dist_to_bottom_edge);
-  if (temp_mv.row != this_mv[1].row || temp_mv.col != this_mv[1].col) {
-    return 1;
-  }
-
-  return 0;
-}
-
-static void tip_motion_field_within_frame(AV1_COMMON *cm) {
-  TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
-  const int mvs_rows =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_rows, TMVP_SHIFT_BITS);
-  const int mvs_cols =
-      ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
-  const int mvs_stride = mvs_cols;
-  assert(mvs_rows * mvs_stride <=
-         cm->tpl_mvs_mem_size_row * cm->tpl_mvs_mem_size_col);
-  av1_zero_array(cm->tip_ref.mf_need_clamp, mvs_rows * mvs_stride);
-
-  const int width = (mvs_cols << TMVP_MI_SZ_LOG2);
-  const int height = (mvs_rows << TMVP_MI_SZ_LOG2);
-  int *mf_need_clamp = cm->tip_ref.mf_need_clamp;
-  for (int i = 0; i < mvs_rows; i++) {
-    for (int j = 0; j < mvs_cols; j++) {
-      const int cur_pos = i * mvs_stride + j;
-      if (tpl_mvs_base[cur_pos].mfmv0.as_int != INVALID_MV &&
-          tpl_mvs_base[cur_pos].mfmv0.as_int != 0) {
-        MV this_mv;
-        this_mv.row = tpl_mvs_base[cur_pos].mfmv0.as_mv.row;
-        this_mv.col = tpl_mvs_base[cur_pos].mfmv0.as_mv.col;
-
-        const int tpl_row = i << TMVP_MI_SZ_LOG2;
-        const int tpl_col = j << TMVP_MI_SZ_LOG2;
-
-        mf_need_clamp[cur_pos] =
-            tip_check_motion_field(cm, &this_mv, tpl_col, tpl_row, TMVP_MI_SIZE,
-                                   TMVP_MI_SIZE, width, height);
-      } else {
-        mf_need_clamp[cur_pos] = 0;
-      }
-    }
-  }
-}
-
 static void tip_config_tip_parameter(AV1_COMMON *cm) {
   TIP *tip_ref = &cm->tip_ref;
   const OrderHintInfo *const order_hint_info = &cm->seq_params.order_hint_info;
@@ -355,7 +254,6 @@ void av1_setup_tip_motion_field(AV1_COMMON *cm) {
       tip_blk_average_filter_mv(cm);
     }
     av1_fill_tpl_mvs_sample_gap(cm);
-    tip_motion_field_within_frame(cm);
 
 #if CONFIG_TIP_LD
     cm->features.use_optflow_tip =
@@ -569,6 +467,7 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
                         { mbmi->mv[1].as_mv.row, mbmi->mv[1].as_mv.col } };
 
   int apply_refinemv = (is_refinemv_allowed_tip_blocks(cm, mbmi) && plane == 0);
+  assert(IMPLIES(bw > 16, !apply_refinemv));
 
   if (apply_refinemv) {
     uint16_t *dst_ref0 = NULL, *dst_ref1 = NULL;
@@ -620,6 +519,7 @@ static AOM_INLINE void tip_build_inter_predictors_8x8(
 #if CONFIG_FLEX_TIP_BLK_SIZE
   int do_opfl =
       is_optflow_refinement_enabled(cm, xd, mbmi, plane, 1 /* tip_ref_frame */);
+  assert(IMPLIES(bw > 8, !do_opfl));
 #else
   int do_opfl = (opfl_allowed_cur_refs_bsize(cm, xd, mbmi) &&
 #if CONFIG_ADAPT_OPFL_IN_TIP_DIRECT
@@ -739,15 +639,10 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
   uint16_t *const dst = dst_buf->buf;
 
 #if CONFIG_FLEX_TIP_BLK_SIZE
-  BLOCK_SIZE unit_bsize = get_unit_bsize_for_tip_frame(
-      cm->features.tip_frame_mode, cm->tip_interp_filter
-#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
-      ,
-      cm->seq_params.enable_tip_refinemv
-#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
-  );
+  BLOCK_SIZE unit_bsize = get_tip_bsize_from_bw_bh(bw, bh);
   int unit_bw = block_size_wide[unit_bsize];
   int unit_bh = block_size_high[unit_bsize];
+  xd->tree_type = SHARED_PART;
 #endif  // CONFIG_FLEX_TIP_BLK_SIZE
   const int width = (cm->mi_params.mi_cols << MI_SIZE_LOG2);
   const int height = (cm->mi_params.mi_rows << MI_SIZE_LOG2);
@@ -817,6 +712,13 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
                       cm->seq_params.enable_tip_refinemv &&
 #endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
                       cm->features.use_optflow_tip && plane == 0;
+  int is_tip_mv_refine_disabled_for_unit_size_16x16 =
+      is_tip_mv_refinement_disabled_for_unit_size_16x16(
+          unit_bh,
+#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+          cm->seq_params.enable_tip_refinemv,
+#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+          cm->features.tip_frame_mode);
   const int do_ref_area_pad =
 #if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
       cm->seq_params.enable_tip_refinemv &&
@@ -824,7 +726,8 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
 #if CONFIG_TIP_LD
       cm->has_both_sides_refs &&
 #endif
-      (comp_bw > 4 || comp_bh > 4);
+      (comp_bw > 4 || comp_bh > 4) &&
+      !is_tip_mv_refine_disabled_for_unit_size_16x16;
   if (do_ref_area_pad) {
     MB_MODE_INFO *mbmi = aom_calloc(1, sizeof(*mbmi));
     mbmi->mv[0].as_mv = mv[0];
@@ -859,7 +762,7 @@ static AOM_INLINE void tip_build_inter_predictors_8x8_and_bigger(
   }
 
   int dst_stride = dst_buf->stride;
-  if (plane == 0 &&
+  if (plane == 0 && !is_tip_mv_refine_disabled_for_unit_size_16x16 &&
 #if CONFIG_TIP_ENHANCEMENT
       is_any_mv_refinement_allowed(cm) && is_compound &&
       tip_weight == TIP_EQUAL_WTD &&
@@ -1030,6 +933,9 @@ static void tip_setup_tip_frame_plane(
     CalcSubpelParamsFunc calc_subpel_params_func, int copy_refined_mvs) {
   TIP *tip_ref = &cm->tip_ref;
   const TPL_MV_REF *tpl_mvs_base = cm->tpl_mvs;
+#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+  int enable_tip_refinemv = cm->seq_params.enable_tip_refinemv;
+#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
 
   MV zero_mv[2];
   memset(zero_mv, 0, sizeof(zero_mv));
@@ -1044,16 +950,15 @@ static void tip_setup_tip_frame_plane(
 
       int blk_width = unit_blk_size;
       int blk_height = unit_blk_size;
-      int offset = step;
-      while (blk_col + offset < blk_col_end && blk_width < max_allow_blk_size &&
-             tip_ref->mf_need_clamp[tpl_offset] ==
-                 tip_ref->mf_need_clamp[tpl_offset + offset] &&
-             tpl_mvs->mfmv0.as_int ==
-                 tpl_mvs_base[tpl_offset + offset].mfmv0.as_int) {
-        blk_width += unit_blk_size;
-        offset += step;
+      if (is_tip_mv_refinement_disabled_for_unit_size_16x16(
+              unit_blk_size,
+#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+              enable_tip_refinemv,
+#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
+              cm->features.tip_frame_mode)) {
+        blk_width = get_tip_block_width_with_same_mv(
+            tpl_mvs, unit_blk_size, blk_col, blk_col_end, max_allow_blk_size);
       }
-      blk_col += (offset - step);
 
       MV mv[2];
       if (tpl_mvs->mfmv0.as_int != 0 && tpl_mvs->mfmv0.as_int != INVALID_MV) {
@@ -1081,8 +986,8 @@ static void tip_setup_tip_frame_plane(
       for (int plane = 0; plane < av1_num_planes(cm); plane++) {
         if (plane == 0 && copy_refined_mvs) {
           REFINEMV_SUBMB_INFO *refinemv_subinfo = &xd->refinemv_subinfo[0];
-          fill_subblock_refine_mv(refinemv_subinfo, unit_blk_size,
-                                  unit_blk_size, mv[0], mv[1]);
+          fill_subblock_refine_mv(refinemv_subinfo, blk_width, blk_height,
+                                  mv[0], mv[1]);
           xd->opfl_vxy_bufs[0] = 0;
           xd->opfl_vxy_bufs[N_OF_OFFSETS * 1] = 0;
           xd->opfl_vxy_bufs[N_OF_OFFSETS * 2] = 0;
@@ -1103,10 +1008,7 @@ static void tip_setup_tip_frame_plane(
           av1_zero(mbmi);
 #if CONFIG_FLEX_TIP_BLK_SIZE
           mbmi.sb_type[PLANE_TYPE_Y] =
-              get_tip_bsize_from_bw_bh(unit_blk_size, unit_blk_size);
-          mbmi.sb_type[PLANE_TYPE_UV] =
-              (mbmi.sb_type[PLANE_TYPE_Y] == BLOCK_16X16) ? BLOCK_8X8
-                                                          : BLOCK_4X4;
+              get_tip_bsize_from_bw_bh(blk_width, blk_height);
 #else
           mbmi.sb_type[PLANE_TYPE_Y] = BLOCK_8X8;
           mbmi.sb_type[PLANE_TYPE_UV] = BLOCK_4X4;
@@ -1126,8 +1028,8 @@ static void tip_setup_tip_frame_plane(
 
 #if CONFIG_FLEX_TIP_BLK_SIZE
           const int x_inside_boundary =
-              AOMMIN(step << TMVP_SHIFT_BITS, (blk_col_end - blk_col)
-                                                  << TMVP_SHIFT_BITS);
+              AOMMIN(blk_width >> MI_SIZE_LOG2, (blk_col_end - blk_col)
+                                                    << TMVP_SHIFT_BITS);
           const int y_inside_boundary =
               AOMMIN(step << TMVP_SHIFT_BITS, (blk_row_end - blk_row)
                                                   << TMVP_SHIFT_BITS);
@@ -1181,6 +1083,7 @@ static void tip_setup_tip_frame_plane(
 #endif  // CONFIG_FLEX_TIP_BLK_SIZE
         }
       }
+      blk_col += (blk_width >> TMVP_MI_SZ_LOG2) - step;
     }
   }
 }
