@@ -281,6 +281,15 @@ void av1_copy_frame_mvs_tip_frame_mode(const AV1_COMMON *const cm,
 #endif  // WEDGE_BLD_SIG && CONFIG_ADAPTIVE_WEDGE_BOUNDARY
   }
 
+  int is_tip_two_refs = 1;
+#if CONFIG_TIP_ENHANCEMENT
+  if (is_tip_ref_frame(mi->ref_frame[0])) {
+    const int tip_wtd_index = cm->tip_global_wtd_index;
+    const int8_t tip_weight = tip_weighting_factors[tip_wtd_index];
+    is_tip_two_refs = tip_weight != TIP_SINGLE_WTD;
+  }
+#endif  // CONFIG_TIP_ENHANCEMENT
+
   WarpedMotionParams warp_params[2];
   int is_warp[2] = { 0 };
   for (int idx = 0; idx < 2; idx++) {
@@ -332,11 +341,13 @@ void av1_copy_frame_mvs_tip_frame_mode(const AV1_COMMON *const cm,
             process_mv_for_tmvp(&mv->mv[0].as_mv);
           }
 
-          if ((abs(this_mv[1].as_mv.row) <= REFMVS_LIMIT) &&
-              (abs(this_mv[1].as_mv.col) <= REFMVS_LIMIT)) {
-            mv->ref_frame[1] = tip_ref->ref_frame[1];
-            mv->mv[1].as_int = this_mv[1].as_int;
-            process_mv_for_tmvp(&mv->mv[1].as_mv);
+          if (is_tip_two_refs) {
+            if ((abs(this_mv[1].as_mv.row) <= REFMVS_LIMIT) &&
+                (abs(this_mv[1].as_mv.col) <= REFMVS_LIMIT)) {
+              mv->ref_frame[1] = tip_ref->ref_frame[1];
+              mv->mv[1].as_int = this_mv[1].as_int;
+              process_mv_for_tmvp(&mv->mv[1].as_mv);
+            }
           }
           break;
         }

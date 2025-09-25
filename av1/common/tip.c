@@ -1141,6 +1141,13 @@ void av1_copy_tip_frame_tmvp_mvs(const AV1_COMMON *const cm) {
       ROUND_POWER_OF_TWO(cm->mi_params.mi_cols, TMVP_SHIFT_BITS);
   const int mvs_stride = mvs_cols;
 
+  int is_tip_two_refs = 1;
+#if CONFIG_TIP_ENHANCEMENT
+  const int tip_wtd_index = cm->tip_global_wtd_index;
+  const int8_t tip_weight = tip_weighting_factors[tip_wtd_index];
+  is_tip_two_refs = tip_weight != TIP_SINGLE_WTD;
+#endif  // CONFIG_TIP_ENHANCEMENT
+
   for (int h = 0; h < mvs_rows; h++) {
     MV_REF *mv = frame_mvs;
     const TPL_MV_REF *tpl_mv = tpl_mvs;
@@ -1167,14 +1174,20 @@ void av1_copy_tip_frame_tmvp_mvs(const AV1_COMMON *const cm) {
           mv->mv[0].as_mv.row = this_mv[0].as_mv.row;
           mv->mv[0].as_mv.col = this_mv[0].as_mv.col;
           process_mv_for_tmvp(&mv->mv[0].as_mv);
+          if (!is_tip_two_refs) {
+            mv->ref_frame[1] = mv->ref_frame[0];
+            mv->mv[1] = mv->mv[0];
+          }
         }
 
-        if ((abs(this_mv[1].as_mv.row) <= REFMVS_LIMIT) &&
-            (abs(this_mv[1].as_mv.col) <= REFMVS_LIMIT)) {
-          mv->ref_frame[1] = tip_ref->ref_frame[1];
-          mv->mv[1].as_mv.row = this_mv[1].as_mv.row;
-          mv->mv[1].as_mv.col = this_mv[1].as_mv.col;
-          process_mv_for_tmvp(&mv->mv[1].as_mv);
+        if (is_tip_two_refs) {
+          if ((abs(this_mv[1].as_mv.row) <= REFMVS_LIMIT) &&
+              (abs(this_mv[1].as_mv.col) <= REFMVS_LIMIT)) {
+            mv->ref_frame[1] = tip_ref->ref_frame[1];
+            mv->mv[1].as_mv.row = this_mv[1].as_mv.row;
+            mv->mv[1].as_mv.col = this_mv[1].as_mv.col;
+            process_mv_for_tmvp(&mv->mv[1].as_mv);
+          }
         }
       }
       mv++;
