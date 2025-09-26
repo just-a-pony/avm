@@ -1567,6 +1567,7 @@ static AOM_INLINE int check_lossless(const struct AV1Common *cm,
                                      const bool *lossless_segment, int width,
                                      int height, int mi_stride, int ss_x,
                                      int ss_y, int plane) {
+  if (!cm->features.has_lossless_segment) return 0;
   const int block_size = 4;
   for (int r = 0; r < height; r += block_size) {
     const int start_mi_y = r >> (MI_SIZE_LOG2 - ss_y);
