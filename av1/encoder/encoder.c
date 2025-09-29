@@ -529,9 +529,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_t64_resample = oxcf->txfm_cfg.enable_t64_resample;
 #endif  // CONFIG_TX64_SEQ_FLAG
   seq->enable_inter_ddt = oxcf->txfm_cfg.enable_inter_ddt;
-#if CONFIG_REDUCED_TX_PART
   seq->reduced_tx_part_set = oxcf->txfm_cfg.reduced_tx_part_set;
-#endif  // CONFIG_REDUCED_TX_PART
   seq->enable_cctx = oxcf->txfm_cfg.enable_cctx;
   seq->enable_ibp = oxcf->intra_mode_cfg.enable_ibp;
   seq->enable_adaptive_mvd = tool_cfg->enable_adaptive_mvd;

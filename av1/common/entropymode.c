@@ -3577,7 +3577,6 @@ static const aom_cdf_prob default_txfm_4way_partition_type_cdf
           { AOM_CDF7(4681, 9362, 14043, 18725, 23406, 28087) } } }
     };
 
-#if CONFIG_REDUCED_TX_PART
 // default CDF for the reduced transform partition mode
 static const aom_cdf_prob default_txfm_4way_partition_type_reduced_cdf
     [FSC_MODES][2][TX_PARTITION_TYPE_NUM_VERT_AND_HORZ]
@@ -3651,7 +3650,6 @@ static const aom_cdf_prob default_txfm_4way_partition_type_reduced_cdf
           },
       },
     };
-#endif  // CONFIG_REDUCED_TX_PART
 
 static const aom_cdf_prob default_txfm_2or3_way_partition_type_cdf
     [FSC_MODES][2][TX_PARTITION_TYPE_NUM_VERT_OR_HORZ - 1][CDF_SIZE(2)] = {
@@ -4094,12 +4092,10 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
            default_txfm_2or3_way_partition_type_cdf);
   av1_copy(fc->txfm_4way_partition_type_cdf,
            default_txfm_4way_partition_type_cdf);
-#if CONFIG_REDUCED_TX_PART
   if (seq_params->reduced_tx_part_set) {
     av1_copy(fc->txfm_4way_partition_type_cdf,
              default_txfm_4way_partition_type_reduced_cdf);
   }
-#endif  // CONFIG_REDUCED_TX_PART
   av1_copy(fc->comp_group_idx_cdf, default_comp_group_idx_cdfs);
   av1_copy(fc->inter_single_mode_cdf, default_inter_single_mode_cdf);
 

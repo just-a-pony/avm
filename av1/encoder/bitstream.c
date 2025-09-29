@@ -325,11 +325,7 @@ static void write_tx_partition(MACROBLOCKD *xd, const MB_MODE_INFO *mbmi,
         int has_first_split = 0;
         if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
           has_first_split = 1;
-        if (txsize_group_h_or_v
-#if CONFIG_REDUCED_TX_PART
-            && !xd->reduced_tx_part_set
-#endif  // CONFIG_REDUCED_TX_PART
-        ) {
+        if (txsize_group_h_or_v && !xd->reduced_tx_part_set) {
           aom_cdf_prob *partition_type_cdf =
               ec_ctx->txfm_2or3_way_partition_type_cdf[is_fsc][is_inter]
                                                       [txsize_group_h_or_v - 1];
@@ -2980,9 +2976,7 @@ static AOM_INLINE void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
     }
   }
 
-#if CONFIG_REDUCED_TX_PART
   xd->reduced_tx_part_set = cm->seq_params.reduced_tx_part_set;
-#endif  // CONFIG_REDUCED_TX_PART
   const int is_inter_tx = is_inter_block(mbmi, xd->tree_type);
   const int skip_txfm = mbmi->skip_txfm[xd->tree_type == CHROMA_PART];
   const int segment_id = mbmi->segment_id;
@@ -5718,9 +5712,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->enable_t64_resample);
 #endif  // CONFIG_TX64_SEQ_FLAG
   aom_wb_write_bit(wb, seq_params->enable_inter_ddt);
-#if CONFIG_REDUCED_TX_PART
   aom_wb_write_bit(wb, seq_params->reduced_tx_part_set);
-#endif  // CONFIG_REDUCED_TX_PART
   if (!seq_params->monochrome) aom_wb_write_bit(wb, seq_params->enable_cctx);
   aom_wb_write_bit(wb, seq_params->enable_mrls);
 #if CONFIG_CWG_F307_CFL_SEQ_FLAG

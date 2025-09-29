@@ -70,14 +70,10 @@ static AOM_INLINE int inter_tx_partition_cost(const MACROBLOCK *const x,
       if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
         has_first_split = 1;
       if (txsize_group_h_or_v) {
-        cost +=
-#if CONFIG_REDUCED_TX_PART
-            xd->reduced_tx_part_set
-                ? 0
-                :
-#endif  // CONFIG_REDUCED_TX_PART
-                x->mode_costs.txfm_2or3_way_partition_type_cost
-                    [is_fsc][1][txsize_group_h_or_v - 1][has_first_split];
+        cost += xd->reduced_tx_part_set
+                    ? 0
+                    : x->mode_costs.txfm_2or3_way_partition_type_cost
+                          [is_fsc][1][txsize_group_h_or_v - 1][has_first_split];
       }
     }
   }
@@ -121,14 +117,10 @@ static AOM_INLINE int intra_tx_partition_cost(const MACROBLOCK *const x,
       if (partition == TX_PARTITION_VERT4 || partition == TX_PARTITION_HORZ4)
         has_first_split = 1;
       if (txsize_group_h_or_v) {
-        cost +=
-#if CONFIG_REDUCED_TX_PART
-            xd->reduced_tx_part_set
-                ? 0
-                :
-#endif  // CONFIG_REDUCED_TX_PART
-                x->mode_costs.txfm_2or3_way_partition_type_cost
-                    [is_fsc][0][txsize_group_h_or_v - 1][has_first_split];
+        cost += xd->reduced_tx_part_set
+                    ? 0
+                    : x->mode_costs.txfm_2or3_way_partition_type_cost
+                          [is_fsc][0][txsize_group_h_or_v - 1][has_first_split];
       }
     }
   }

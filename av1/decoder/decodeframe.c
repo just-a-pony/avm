@@ -1424,11 +1424,10 @@ static TX_SIZE read_tx_partition(MACROBLOCKD *xd, MB_MODE_INFO *mbmi,
           ec_ctx->txfm_2or3_way_partition_type_cdf[is_fsc][is_inter]
                                                   [txsize_group_h_or_v - 1];
       const TX_PARTITION_TYPE partition_type =
-#if CONFIG_REDUCED_TX_PART
-          xd->reduced_tx_part_set ? 0 :
-#endif  // CONFIG_REDUCED_TX_PART
-                                  aom_read_symbol(r, partition_type_cdf, 2,
-                                                  ACCT_INFO("partition_type"));
+          xd->reduced_tx_part_set
+              ? 0
+              : aom_read_symbol(r, partition_type_cdf, 2,
+                                ACCT_INFO("partition_type"));
       if (allow_horz) {
         switch (partition_type) {
           case 0: partition = TX_PARTITION_HORZ; break;
@@ -1538,9 +1537,7 @@ static AOM_INLINE void parse_decode_block(AV1Decoder *const pbi,
   MB_MODE_INFO *mbmi = xd->mi[0];
   int inter_block_tx = is_inter_block(mbmi, xd->tree_type) ||
                        is_intrabc_block(mbmi, xd->tree_type);
-#if CONFIG_REDUCED_TX_PART
   xd->reduced_tx_part_set = cm->seq_params.reduced_tx_part_set;
-#endif  // CONFIG_REDUCED_TX_PART
   if (xd->tree_type != CHROMA_PART) {
     memset(mbmi->tx_partition_type, TX_PARTITION_NONE,
            sizeof(mbmi->tx_partition_type));
@@ -6747,9 +6744,7 @@ void av1_read_sequence_header_beyond_av1(
   seq_params->enable_t64_resample = aom_rb_read_bit(rb);
 #endif  // CONFIG_TX64_SEQ_FLAG
   seq_params->enable_inter_ddt = aom_rb_read_bit(rb);
-#if CONFIG_REDUCED_TX_PART
   seq_params->reduced_tx_part_set = aom_rb_read_bit(rb);
-#endif  // CONFIG_REDUCED_TX_PART
   seq_params->enable_cctx = seq_params->monochrome ? 0 : aom_rb_read_bit(rb);
   seq_params->enable_mrls = aom_rb_read_bit(rb);
 #if CONFIG_CWG_F307_CFL_SEQ_FLAG
