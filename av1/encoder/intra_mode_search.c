@@ -728,10 +728,8 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                 xd) ||
             !intra_mode_cfg->enable_cfl_intra)
           continue;
-#if CONFIG_SDP_CFL_LATENCY_FIX
         assert(IMPLIES(xd->tree_type == CHROMA_PART,
                        xd->is_cfl_allowed_in_sdp == CFL_ALLOWED_FOR_CHROMA));
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
 
 #if MHCCP_RUNTIME_FLAG
         if (mbmi->cfl_idx == CFL_MULTI_PARAM &&
@@ -865,7 +863,6 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
 #endif  // !CONFIG_DISABLE_PALC
 
   *mbmi = best_mbmi;
-#if CONFIG_SDP_CFL_LATENCY_FIX
 #if CONFIG_CWG_F307_CFL_SEQ_FLAG
   if (cm->seq_params.enable_cfl_intra)
 #endif  // CONFIG_CWG_F307_CFL_SEQ_FLAG
@@ -878,7 +875,6 @@ int64_t av1_rd_pick_intra_sbuv_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
                  is_cfl_allowed(xd) &&
                      xd->is_cfl_allowed_in_sdp == CFL_ALLOWED_FOR_CHROMA));
 #endif  // CONFIG_CWG_F307_CFL_SEQ_FLAG
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   // Copy back the best cross-chroma txfm type (tmp_cctx_type_map)
   // to xd->cctx_type_map.
   av1_copy_array(xd->cctx_type_map, tmp_cctx_type_map, ctx->num_4x4_blk_chroma);

@@ -3597,11 +3597,7 @@ static AOM_INLINE bool is_luma_chroma_share_same_partition(
   // When luma partition is partition_none,
   // the chroma tree will always inherit luma partition
   if (ptree_luma->partition == PARTITION_NONE) {
-#if CONFIG_SDP_CFL_LATENCY_FIX
     return true;
-#else
-    return false;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   }
   // intra sdp logic - If the first two splits of luma prtition from 64X64
   // block is in the opposite direction chroma will use luma partition.
@@ -3617,7 +3613,6 @@ static AOM_INLINE bool is_luma_chroma_share_same_partition(
   return true;
 }
 
-#if CONFIG_SDP_CFL_LATENCY_FIX
 // This function is the basic partition comparision for decide if CFL can be
 // allowed for all the children for a chroma blocks starting from 64X64 in
 // chroma tree in key frames current_partition refers to the current chrom
@@ -3700,8 +3695,6 @@ static AOM_INLINE CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_sdp(
 
   return CFL_DISALLOWED_FOR_CHROMA;
 }
-
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
 
 static INLINE int check_is_chroma_size_valid(
     const AV1_COMMON *const cm, TREE_TYPE tree_type, PARTITION_TYPE partition,

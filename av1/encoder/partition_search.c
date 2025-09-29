@@ -2091,7 +2091,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
         &pc_tree->chroma_ref_info, partition, mi_row, mi_col, bsize, ctx);
 
   PARTITION_TREE *sub_tree[4] = { NULL, NULL, NULL, NULL };
-#if CONFIG_SDP_CFL_LATENCY_FIX
   if (bsize == cm->sb_size && pc_tree->partitioning == PARTITION_NONE) {
     xd->is_cfl_allowed_in_sdp =
         is_cfl_allowed_for_sdp(cm, xd, ptree_luma, partition, bsize);
@@ -2102,7 +2101,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
           pc_tree->is_cfl_allowed_for_this_chroma |
           is_cfl_allowed_for_sdp(cm, xd, ptree_luma, partition, bsize);
   }
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   // If two pass partition tree is enable, then store the partition types in
   // ptree even if it's dry run.
   if (!dry_run || (cpi->sf.part_sf.two_pass_partition_search && ptree)) {
@@ -2113,14 +2111,12 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
     ptree->mi_row = mi_row;
     ptree->mi_col = mi_col;
     PARTITION_TREE *parent = ptree->parent;
-#if CONFIG_SDP_CFL_LATENCY_FIX
     if (bsize == cm->sb_size) {
       xd->is_cfl_allowed_in_sdp =
           is_cfl_allowed_for_sdp(cm, xd, ptree_luma, PARTITION_NONE, bsize);
       ptree->is_cfl_allowed_for_this_chroma_partition =
           CFL_DISALLOWED_FOR_CHROMA;
     }
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
     ptree->region_type = pc_tree->region_type;
     const int is_sb_root = bsize == cm->sb_size;
     if (parent) {
@@ -2151,7 +2147,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
         &ptree->chroma_ref_info, parent ? &parent->chroma_ref_info : NULL,
         parent ? parent->bsize : BLOCK_INVALID,
         parent ? parent->partition : PARTITION_NONE, ss_x, ss_y);
-#if CONFIG_SDP_CFL_LATENCY_FIX
     ptree->is_cfl_allowed_for_this_chroma_partition |=
         is_cfl_allowed_for_sdp(cm, xd, ptree_luma, partition, bsize);
     CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_in_sdp =
@@ -2164,8 +2159,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
     if (partition == PARTITION_NONE) {
       xd->is_cfl_allowed_in_sdp = is_cfl_allowed_in_sdp;
     }
-
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
 
     switch (partition) {
       case PARTITION_HORZ_4A:
@@ -2193,7 +2186,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
       default: break;
     }
     for (int i = 0; i < 4; ++i) sub_tree[i] = ptree->sub_tree[i];
-#if CONFIG_SDP_CFL_LATENCY_FIX
 
     switch (partition) {
       case PARTITION_HORZ_4A:
@@ -2215,7 +2207,6 @@ static void encode_sb(const AV1_COMP *const cpi, ThreadData *td,
         break;
       default: break;
     }
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   }
 
   const int track_ptree_luma =
@@ -2838,12 +2829,7 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
                           MB_MODE_INFO **mib, TokenExtra **tp, int mi_row,
                           int mi_col, BLOCK_SIZE bsize, int *rate,
                           int64_t *dist, int do_recon, PARTITION_TREE *ptree,
-                          PC_TREE *pc_tree
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                          ,
-                          PARTITION_TREE *ptree_luma
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+                          PC_TREE *pc_tree, PARTITION_TREE *ptree_luma) {
   AV1_COMMON *const cm = &cpi->common;
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const int num_planes = av1_num_planes(cm);
@@ -2912,7 +2898,6 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
   // Save rdmult before it might be changed, so it can be restored later.
   const int orig_rdmult = x->rdmult;
   setup_block_rdmult(cpi, x, mi_row, mi_col, bsize, NO_AQ, NULL);
-#if CONFIG_SDP_CFL_LATENCY_FIX
   if (bsize == cm->sb_size) {
     if (pc_tree)
       pc_tree->is_cfl_allowed_for_this_chroma = CFL_DISALLOWED_FOR_CHROMA;
@@ -2941,7 +2926,6 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
     xd->is_cfl_allowed_in_sdp = CFL_DISALLOWED_FOR_CHROMA;
   }
 #endif  // CONFIG_CWG_F307_CFL_SEQ_FLAG
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   switch (partition) {
     case PARTITION_NONE:
       pick_sb_modes(cpi, td, tile_data, x, mi_row, mi_col, &last_part_rdc,
@@ -2968,12 +2952,8 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
       av1_rd_use_partition(cpi, td, tile_data, mib, tp, mi_row, mi_col, subsize,
                            &last_part_rdc.rate, &last_part_rdc.dist, 1,
                            ptree ? ptree->sub_tree[0] : NULL,
-                           pc_tree->horizontal[cur_region_type][0]
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                           ,
-                           get_partition_subtree_const(ptree_luma, 0)
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-      );
+                           pc_tree->horizontal[cur_region_type][0],
+                           get_partition_subtree_const(ptree_luma, 0));
       if (last_part_rdc.rate != INT_MAX && bsize >= BLOCK_8X8 &&
           mi_row + hbs < mi_params->mi_rows) {
         RD_STATS tmp_rdc;
@@ -2982,12 +2962,8 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
                              mib + hbh * mi_params->mi_stride, tp, mi_row + hbh,
                              mi_col, subsize, &tmp_rdc.rate, &tmp_rdc.dist, 0,
                              ptree ? ptree->sub_tree[1] : NULL,
-                             pc_tree->horizontal[cur_region_type][1]
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                             ,
-                             get_partition_subtree_const(ptree_luma, 1)
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-        );
+                             pc_tree->horizontal[cur_region_type][1],
+                             get_partition_subtree_const(ptree_luma, 1));
         if (tmp_rdc.rate == INT_MAX || tmp_rdc.dist == INT64_MAX) {
           av1_invalid_rd_stats(&last_part_rdc);
           break;
@@ -3013,12 +2989,8 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
       av1_rd_use_partition(cpi, td, tile_data, mib, tp, mi_row, mi_col, subsize,
                            &last_part_rdc.rate, &last_part_rdc.dist, 1,
                            ptree ? ptree->sub_tree[0] : NULL,
-                           pc_tree->vertical[cur_region_type][0]
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                           ,
-                           get_partition_subtree_const(ptree_luma, 0)
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-      );
+                           pc_tree->vertical[cur_region_type][0],
+                           get_partition_subtree_const(ptree_luma, 0));
       if (last_part_rdc.rate != INT_MAX && bsize >= BLOCK_8X8 &&
           mi_col + hbs < mi_params->mi_cols) {
         RD_STATS tmp_rdc;
@@ -3026,12 +2998,8 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
         av1_rd_use_partition(
             cpi, td, tile_data, mib + hbw, tp, mi_row, mi_col + hbw, subsize,
             &tmp_rdc.rate, &tmp_rdc.dist, 0, ptree ? ptree->sub_tree[1] : NULL,
-            pc_tree->vertical[cur_region_type][1]
-#if CONFIG_SDP_CFL_LATENCY_FIX
-            ,
-            get_partition_subtree_const(ptree_luma, 1)
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-        );
+            pc_tree->vertical[cur_region_type][1],
+            get_partition_subtree_const(ptree_luma, 1));
         if (tmp_rdc.rate == INT_MAX || tmp_rdc.dist == INT64_MAX) {
           av1_invalid_rd_stats(&last_part_rdc);
           break;
@@ -3067,12 +3035,8 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
                              &tmp_rdc.rate, &tmp_rdc.dist,
                              i != (SUB_PARTITIONS_SPLIT - 1),
                              ptree ? ptree->sub_tree[i] : NULL,
-                             pc_tree->split[cur_region_type][i]
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                             ,
-                             get_partition_subtree_const(ptree_luma, i)
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-        );
+                             pc_tree->split[cur_region_type][i],
+                             get_partition_subtree_const(ptree_luma, i));
         if (tmp_rdc.rate == INT_MAX || tmp_rdc.dist == INT64_MAX) {
           av1_invalid_rd_stats(&last_part_rdc);
           break;
@@ -3129,21 +3093,12 @@ void av1_rd_use_partition(AV1_COMP *cpi, ThreadData *td, TileDataEnc *tile_data,
       av1_reset_ptree_in_sbi(xd->sbi, xd->tree_type);
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, OUTPUT_ENABLED, bsize,
                 pc_tree, xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)],
-#if CONFIG_SDP_CFL_LATENCY_FIX
                 xd->tree_type == CHROMA_PART ? xd->sbi->ptree_root[0] : NULL,
-#else
-                NULL,
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
                 NULL);
     } else {
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, DRY_RUN_NORMAL, bsize,
                 pc_tree, NULL,
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                (xd->tree_type == CHROMA_PART) ? ptree_luma : NULL,
-#else
-                NULL,
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-                NULL);
+                (xd->tree_type == CHROMA_PART) ? ptree_luma : NULL, NULL);
     }
   }
 
@@ -3700,7 +3655,6 @@ static void rectangular_partition_search(
         blk_params.subsize, pc_tree, partition_type, 1, 1, ss_x, ss_y);
 
     bool both_blocks_skippable = true;
-#if CONFIG_SDP_CFL_LATENCY_FIX
     CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition_temp =
         is_cfl_allowed_for_sdp(cm, xd, ptree_luma,
                                (i == HORZ) ? PARTITION_HORZ : PARTITION_VERT,
@@ -3712,7 +3666,6 @@ static void rectangular_partition_search(
       if (bsize == cm->sb_size && pc_tree)
         sub_tree[ind]->is_cfl_allowed_for_this_chroma = 0;
     }
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
     const int track_ptree_luma =
         is_luma_chroma_share_same_partition(x->e_mbd.tree_type, ptree_luma,
                                             bsize) &&
@@ -3974,12 +3927,7 @@ static void none_partition_search(
     RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
     PartitionSearchState *part_search_state, RD_STATS *best_rdc,
     unsigned int *pb_source_variance, int64_t *none_rd, int64_t *part_none_rd,
-    LevelBanksRDO *level_banks
-#if CONFIG_SDP_CFL_LATENCY_FIX
-    ,
-    const PARTITION_TREE *ptree_luma
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+    LevelBanksRDO *level_banks, const PARTITION_TREE *ptree_luma) {
   const AV1_COMMON *const cm = &cpi->common;
   PartitionBlkParams blk_params = part_search_state->part_blk_params;
   RD_STATS *this_rdc = &part_search_state->this_rdc;
@@ -4019,7 +3967,6 @@ static void none_partition_search(
   // Set PARTITION_NONE context and cost.
   set_none_partition_params(cm, td, x, pc_tree, part_search_state,
                             &best_remain_rdcost, best_rdc, &pt_cost);
-#if CONFIG_SDP_CFL_LATENCY_FIX
   if (bsize == cm->sb_size)
     x->e_mbd.is_cfl_allowed_in_sdp = is_cfl_allowed_for_sdp(
         cm, &x->e_mbd, ptree_luma, PARTITION_NONE, bsize);
@@ -4031,7 +3978,6 @@ static void none_partition_search(
     x->e_mbd.is_cfl_allowed_in_sdp = CFL_DISALLOWED_FOR_CHROMA;
   }
 #endif  // CONFIG_CWG_F307_CFL_SEQ_FLAG
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   REGION_TYPE cur_region_type = pc_tree->region_type;
   PICK_MODE_CONTEXT *ctx_none = sdp_inter_chroma_flag
                                     ? pc_tree->none_chroma
@@ -4205,7 +4151,6 @@ static void split_partition_search(
           subsize, pc_tree, PARTITION_SPLIT, idx, idx == 3,
           part_search_state->ss_x, part_search_state->ss_y);
     }
-#if CONFIG_SDP_CFL_LATENCY_FIX
     CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition =
         is_cfl_allowed_for_sdp(cm, xd, ptree_luma, PARTITION_SPLIT, bsize);
     pc_tree->split[pc_tree->region_type][idx]->is_cfl_allowed_for_this_chroma =
@@ -4215,7 +4160,6 @@ static void split_partition_search(
     if (bsize == cm->sb_size && pc_tree)
       pc_tree->split[pc_tree->region_type][idx]
           ->is_cfl_allowed_for_this_chroma = CFL_DISALLOWED_FOR_CHROMA;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
     RD_STATS best_remain_rdcost;
     av1_rd_stats_subtraction(x->rdmult, best_rdc, &sum_rdc,
                              &best_remain_rdcost);
@@ -5267,12 +5211,8 @@ static void search_partition_horz_4a(
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
     const PartitionSearchState *part_search_state, LevelBanksRDO *level_banks,
-    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-    ,
-    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth,
+    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &td->mb;
   const int num_planes = av1_num_planes(cm);
@@ -5343,12 +5283,10 @@ static void search_partition_horz_4a(
                                subblock_sizes[idx], pc_tree, PARTITION_HORZ_4A,
                                idx, idx == 3, ss_x, ss_y);
   }
-#if CONFIG_SDP_CFL_LATENCY_FIX
   for (int i = 0; i < 4; ++i)
     pc_tree->horizontal4a[cur_region_type][i]->is_cfl_allowed_for_this_chroma =
         pc_tree->is_cfl_allowed_for_this_chroma |
         is_cfl_allowed_for_this_chroma_partition;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
     const int this_mi_row = mi_row + eighth_step * cum_step_multipliers_4a[i];
@@ -5390,12 +5328,8 @@ static void search_partition_horz_4b(
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
     const PartitionSearchState *part_search_state, LevelBanksRDO *level_banks,
-    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-    ,
-    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth,
+    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &td->mb;
   const int num_planes = av1_num_planes(cm);
@@ -5466,12 +5400,10 @@ static void search_partition_horz_4b(
                                subblock_sizes[idx], pc_tree, PARTITION_HORZ_4B,
                                idx, idx == 3, ss_x, ss_y);
   }
-#if CONFIG_SDP_CFL_LATENCY_FIX
   for (int i = 0; i < 4; ++i)
     pc_tree->horizontal4b[cur_region_type][i]->is_cfl_allowed_for_this_chroma =
         pc_tree->is_cfl_allowed_for_this_chroma |
         is_cfl_allowed_for_this_chroma_partition;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
     const int this_mi_row = mi_row + eighth_step * cum_step_multipliers_4b[i];
@@ -5513,12 +5445,8 @@ static void search_partition_vert_4a(
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
     const PartitionSearchState *part_search_state, LevelBanksRDO *level_banks,
-    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-    ,
-    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth,
+    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &td->mb;
   const int num_planes = av1_num_planes(cm);
@@ -5589,12 +5517,10 @@ static void search_partition_vert_4a(
                                subblock_sizes[idx], pc_tree, PARTITION_VERT_4A,
                                idx, idx == 3, ss_x, ss_y);
   }
-#if CONFIG_SDP_CFL_LATENCY_FIX
   for (int i = 0; i < 4; ++i)
     pc_tree->vertical4a[cur_region_type][i]->is_cfl_allowed_for_this_chroma =
         pc_tree->is_cfl_allowed_for_this_chroma |
         is_cfl_allowed_for_this_chroma_partition;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
     const int this_mi_col = mi_col + eighth_step * cum_step_multipliers_4a[i];
@@ -5636,12 +5562,8 @@ static void search_partition_vert_4b(
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
     const PartitionSearchState *part_search_state, LevelBanksRDO *level_banks,
-    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-    ,
-    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth,
+    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &td->mb;
   const int num_planes = av1_num_planes(cm);
@@ -5712,12 +5634,10 @@ static void search_partition_vert_4b(
                                subblock_sizes[idx], pc_tree, PARTITION_VERT_4B,
                                idx, idx == 3, ss_x, ss_y);
   }
-#if CONFIG_SDP_CFL_LATENCY_FIX
   for (int i = 0; i < 4; ++i)
     pc_tree->vertical4b[cur_region_type][i]->is_cfl_allowed_for_this_chroma =
         pc_tree->is_cfl_allowed_for_this_chroma |
         is_cfl_allowed_for_this_chroma_partition;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
     const int this_mi_col = mi_col + eighth_step * cum_step_multipliers_4b[i];
@@ -5760,12 +5680,8 @@ static INLINE void search_partition_horz_3(
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
     const PartitionSearchState *part_search_state, LevelBanksRDO *level_banks,
-    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-    ,
-    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth,
+    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &td->mb;
   const int num_planes = av1_num_planes(cm);
@@ -5838,12 +5754,10 @@ static INLINE void search_partition_horz_3(
         subblock_sizes[idx], pc_tree, PARTITION_HORZ_3, idx, idx == 3, ss_x,
         ss_y);
   }
-#if CONFIG_SDP_CFL_LATENCY_FIX
   for (int i = 0; i < 4; ++i)
     pc_tree->horizontal3[cur_region_type][i]->is_cfl_allowed_for_this_chroma =
         pc_tree->is_cfl_allowed_for_this_chroma |
         is_cfl_allowed_for_this_chroma_partition;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
     const int this_mi_row = mi_row + offset_mr[i];
@@ -5887,12 +5801,8 @@ static INLINE void search_partition_vert_3(
     PC_TREE *pc_tree, const PARTITION_TREE *ptree_luma,
     const PARTITION_TREE *template_tree, RD_SEARCH_MACROBLOCK_CONTEXT *x_ctx,
     const PartitionSearchState *part_search_state, LevelBanksRDO *level_banks,
-    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-    ,
-    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-) {
+    SB_MULTI_PASS_MODE multi_pass_mode, int max_recursion_depth,
+    CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition) {
   const AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &td->mb;
   const int num_planes = av1_num_planes(cm);
@@ -5966,12 +5876,10 @@ static INLINE void search_partition_vert_3(
         subblock_sizes[idx], pc_tree, PARTITION_VERT_3, idx, idx == 3, ss_x,
         ss_y);
   }
-#if CONFIG_SDP_CFL_LATENCY_FIX
   for (int i = 0; i < 4; ++i)
     pc_tree->vertical3[cur_region_type][i]->is_cfl_allowed_for_this_chroma =
         pc_tree->is_cfl_allowed_for_this_chroma |
         is_cfl_allowed_for_this_chroma_partition;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   bool skippable = true;
   for (int i = 0; i < 4; ++i) {
     const int this_mi_row = mi_row + offset_mr[i];
@@ -6270,10 +6178,8 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
   if (frame_is_intra_only(cm) && pc_tree) {
     pc_tree->region_type = INTRA_REGION;
   }
-#if CONFIG_SDP_CFL_LATENCY_FIX
   if (bsize == cm->sb_size && pc_tree)
     pc_tree->is_cfl_allowed_for_this_chroma = CFL_DISALLOWED_FOR_CHROMA;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   // Initialization of state variables used in partition search.
   init_partition_search_state_params(
       x, cpi, &part_search_state, pc_tree, ptree_luma, template_tree,
@@ -6294,11 +6200,8 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
     assert(pc_tree != NULL);
     if (counterpart_block &&
         (pc_tree->region_type == counterpart_block->region_type &&
-         (pc_tree->region_type != INTRA_REGION || frame_is_intra_only(cm)))
-#if CONFIG_SDP_CFL_LATENCY_FIX
-        && (xd->tree_type != CHROMA_PART || !frame_is_intra_only(cm))
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    ) {
+         (pc_tree->region_type != INTRA_REGION || frame_is_intra_only(cm))) &&
+        (xd->tree_type != CHROMA_PART || !frame_is_intra_only(cm))) {
       if (counterpart_block->rd_cost.rate != INT_MAX) {
         av1_copy_pc_tree_recursive(
             xd, cm, pc_tree, counterpart_block, part_search_state.ss_x,
@@ -6311,12 +6214,7 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
         if (!pc_tree->is_last_subblock) {
           encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, DRY_RUN_NORMAL,
                     bsize, pc_tree, NULL,
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                    (xd->tree_type == CHROMA_PART) ? ptree_luma : NULL,
-#else
-                    NULL,
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-                    NULL);
+                    (xd->tree_type == CHROMA_PART) ? ptree_luma : NULL, NULL);
         }
         return true;
       } else {
@@ -6328,11 +6226,9 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
 
   if ((bsize == cm->sb_size) && bru_is_sb_active(cm, mi_col, mi_row))
     x->must_find_valid_partition = 0;
-#if CONFIG_SDP_CFL_LATENCY_FIX
   if (bsize == cm->sb_size && pc_tree)
     pc_tree->is_cfl_allowed_for_this_chroma = CFL_DISALLOWED_FOR_CHROMA;
   ;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   // Override skipping rectangular partition operations for edge blocks.
   if (none_rd) *none_rd = 0;
   (void)*tp_orig;
@@ -6551,12 +6447,7 @@ BEGIN_PARTITION_SEARCH:
       partition_none_allowed) {
     none_partition_search(cpi, td, tile_data, x, pc_tree, sms_tree, &x_ctx,
                           &part_search_state, &best_rdc, &pb_source_variance,
-                          none_rd, &part_none_rd, &level_banks
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                          ,
-                          ptree_luma
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    );
+                          none_rd, &part_none_rd, &level_banks, ptree_luma);
   }
   if (pc_tree->parent && pc_tree->region_type == INTRA_REGION &&
       pc_tree->parent->region_type == MIXED_INTER_INTRA_REGION &&
@@ -6619,12 +6510,7 @@ BEGIN_PARTITION_SEARCH:
       partition_none_allowed && search_none_after_split) {
     none_partition_search(cpi, td, tile_data, x, pc_tree, sms_tree, &x_ctx,
                           &part_search_state, &best_rdc, &pb_source_variance,
-                          none_rd, &part_none_rd, &level_banks
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                          ,
-                          ptree_luma
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    );
+                          none_rd, &part_none_rd, &level_banks, ptree_luma);
   }
 
   // Rectangular partitions search stage.
@@ -6649,12 +6535,7 @@ BEGIN_PARTITION_SEARCH:
     prune_none_with_rect_results(&part_search_state, pc_tree);
     none_partition_search(cpi, td, tile_data, x, pc_tree, sms_tree, &x_ctx,
                           &part_search_state, &best_rdc, &pb_source_variance,
-                          none_rd, &part_none_rd, &level_banks
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                          ,
-                          ptree_luma
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    );
+                          none_rd, &part_none_rd, &level_banks, ptree_luma);
   }
 
   bool partition_boundaries[MAX_MIB_SQUARE] = { 0 };
@@ -6675,7 +6556,6 @@ BEGIN_PARTITION_SEARCH:
 
   const int ext_recur_depth =
       AOMMIN(max_recursion_depth - 1, ext_recur_depth_val);
-#if CONFIG_SDP_CFL_LATENCY_FIX
   CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition_vert3 =
       is_cfl_allowed_for_sdp(cm, xd, ptree_luma, PARTITION_VERT_3, bsize);
   CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition_horz3 =
@@ -6688,7 +6568,6 @@ BEGIN_PARTITION_SEARCH:
       is_cfl_allowed_for_sdp(cm, xd, ptree_luma, PARTITION_HORZ_4A, bsize);
   CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition_horz4b =
       is_cfl_allowed_for_sdp(cm, xd, ptree_luma, PARTITION_HORZ_4B, bsize);
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   const bool track_ptree_luma =
       is_luma_chroma_share_same_partition(xd->tree_type, ptree_luma, bsize);
 
@@ -6696,23 +6575,15 @@ BEGIN_PARTITION_SEARCH:
   search_partition_horz_3(&part_search_state, cpi, td, tile_data, tp, &best_rdc,
                           pc_tree, track_ptree_luma ? ptree_luma : NULL,
                           template_tree, &x_ctx, &part_search_state,
-                          &level_banks, multi_pass_mode, ext_recur_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                          ,
-                          is_cfl_allowed_for_this_chroma_partition_horz3
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-  );
+                          &level_banks, multi_pass_mode, ext_recur_depth,
+                          is_cfl_allowed_for_this_chroma_partition_horz3);
 
   // PARTITION_VERT_3
   search_partition_vert_3(&part_search_state, cpi, td, tile_data, tp, &best_rdc,
                           pc_tree, track_ptree_luma ? ptree_luma : NULL,
                           template_tree, &x_ctx, &part_search_state,
-                          &level_banks, multi_pass_mode, ext_recur_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                          ,
-                          is_cfl_allowed_for_this_chroma_partition_vert3
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-  );
+                          &level_banks, multi_pass_mode, ext_recur_depth,
+                          is_cfl_allowed_for_this_chroma_partition_vert3);
 
   if ((pc_tree->region_type != INTRA_REGION || frame_is_intra_only(cm))) {
     prune_ext_partitions_4way(cpi, pc_tree, &part_search_state,
@@ -6722,12 +6593,8 @@ BEGIN_PARTITION_SEARCH:
     search_partition_horz_4a(
         &part_search_state, cpi, td, tile_data, tp, &best_rdc, pc_tree,
         track_ptree_luma ? ptree_luma : NULL, template_tree, &x_ctx,
-        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-        ,
-        is_cfl_allowed_for_this_chroma_partition_horz4a
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    );
+        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth,
+        is_cfl_allowed_for_this_chroma_partition_horz4a);
 
     if (cpi->sf.part_sf.prune_part_4b_with_part_4a) {
       if (part_search_state.partition_4a_allowed[HORZ] &&
@@ -6742,23 +6609,15 @@ BEGIN_PARTITION_SEARCH:
     search_partition_horz_4b(
         &part_search_state, cpi, td, tile_data, tp, &best_rdc, pc_tree,
         track_ptree_luma ? ptree_luma : NULL, template_tree, &x_ctx,
-        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-        ,
-        is_cfl_allowed_for_this_chroma_partition_horz4b
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    );
+        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth,
+        is_cfl_allowed_for_this_chroma_partition_horz4b);
 
     // PARTITION_VERT_4A
     search_partition_vert_4a(
         &part_search_state, cpi, td, tile_data, tp, &best_rdc, pc_tree,
         track_ptree_luma ? ptree_luma : NULL, template_tree, &x_ctx,
-        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-        ,
-        is_cfl_allowed_for_this_chroma_partition_vert4a
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    );
+        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth,
+        is_cfl_allowed_for_this_chroma_partition_vert4a);
 
     if (cpi->sf.part_sf.prune_part_4b_with_part_4a) {
       if (part_search_state.partition_4a_allowed[VERT] &&
@@ -6773,12 +6632,8 @@ BEGIN_PARTITION_SEARCH:
     search_partition_vert_4b(
         &part_search_state, cpi, td, tile_data, tp, &best_rdc, pc_tree,
         track_ptree_luma ? ptree_luma : NULL, template_tree, &x_ctx,
-        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth
-#if CONFIG_SDP_CFL_LATENCY_FIX
-        ,
-        is_cfl_allowed_for_this_chroma_partition_vert4b
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-    );
+        &part_search_state, &level_banks, multi_pass_mode, ext_recur_depth,
+        is_cfl_allowed_for_this_chroma_partition_vert4b);
   }
 
   if (bsize == cm->sb_size && !part_search_state.found_best_partition &&
@@ -6929,12 +6784,7 @@ BEGIN_PARTITION_SEARCH:
       // Encode the smaller blocks in DRY_RUN mode.
       encode_sb(cpi, td, tile_data, tp, mi_row, mi_col, DRY_RUN_NORMAL, bsize,
                 pc_tree, NULL,
-#if CONFIG_SDP_CFL_LATENCY_FIX
-                (xd->tree_type == CHROMA_PART) ? ptree_luma : NULL,
-#else
-                NULL,
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
-                NULL);
+                (xd->tree_type == CHROMA_PART) ? ptree_luma : NULL, NULL);
     }
   }
 

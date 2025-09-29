@@ -3249,12 +3249,10 @@ static AOM_INLINE void write_modes_sb(
 
   const PARTITION_TYPE p = write_partition(cm, xd, mi_row, mi_col, partition,
                                            bsize, ptree, ptree_luma, w);
-#if CONFIG_SDP_CFL_LATENCY_FIX
   if (partition == PARTITION_NONE)
     xd->is_cfl_allowed_in_sdp =
         ptree->is_cfl_allowed_for_this_chroma_partition |
         is_cfl_allowed_for_sdp(cm, xd, ptree_luma, partition, bsize);
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   const int is_sb_root = bsize == cm->sb_size;
   PARTITION_TREE *parent = ptree->parent;
   if (!is_sb_root && !frame_is_intra_only(cm) && parent && partition &&

@@ -291,7 +291,6 @@ set_aom_config_var(CONFIG_MHCCP_BUFFER_1LINES 1
 set_aom_config_var(MHCCP_RUNTIME_FLAG 1 "Using runtime flag to control MHCCP")
 set_aom_config_var(CONFIG_CWG_F307_CFL_SEQ_FLAG 1 "Sequence level flag for CfL")
 
-set_aom_config_var(CONFIG_SDP_CFL_LATENCY_FIX 1 "Reduce SDP-CFL latency")
 set_aom_config_var(CONFIG_CHROMA_MERGE_LATENCY_FIX 1
                    "Fix the latency issue in chroma merge region")
 

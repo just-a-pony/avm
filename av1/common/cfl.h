@@ -53,14 +53,12 @@ static INLINE CFL_ALLOWED_TYPE is_cfl_allowed(
 #if CONFIG_CWG_F307_CFL_SEQ_FLAG
   if (!seq_enable_cfl_intra) return CFL_DISALLOWED;
 #endif  // CONFIG_CWG_F307_CFL_SEQ_FLAG
-#if CONFIG_SDP_CFL_LATENCY_FIX
   assert(xd->is_cfl_allowed_in_sdp < CFL_ALLOWED_TYPES_FOR_SDP);
   if (xd->is_cfl_allowed_in_sdp != CFL_ALLOWED_FOR_CHROMA) {
     assert(xd->tree_type == CHROMA_PART);
     if (xd->is_cfl_allowed_in_sdp == CFL_DISALLOWED_FOR_CHROMA)
       return CFL_DISALLOWED;
   }
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
 
   const BLOCK_SIZE bsize = get_bsize_base(xd, mbmi, AOM_PLANE_U);
   assert(bsize < BLOCK_SIZES_ALL);

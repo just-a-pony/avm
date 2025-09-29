@@ -740,11 +740,9 @@ typedef struct PARTITION_TREE {
   /*! \brief Data related to the chroma block that the current luma block
    * corresponds to. */
   CHROMA_REF_INFO chroma_ref_info;
-#if CONFIG_SDP_CFL_LATENCY_FIX
   /*! \brief Flag to decide whether CFL is allowed for a particular chroma
    * tree or not in SDP */
   CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   /*! \brief Which partition the superblock used. */
   int sb_root_partition_info;
@@ -2376,11 +2374,9 @@ typedef struct macroblockd {
 
   /** variable to store optical flow refined MVs per subblock */
   int_mv mv_refined[2 * N_OF_OFFSETS];
-#if CONFIG_SDP_CFL_LATENCY_FIX
   /*! \brief Flag to decide whether CFL is allowed for a particular chroma
    * block as passed down from the parent tree */
   CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_in_sdp;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
   /*! \brief Flag to indicate whether reduced transform partition mode is on */
   int reduced_tx_part_set;
 } MACROBLOCKD;

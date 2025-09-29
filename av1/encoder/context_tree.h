@@ -94,9 +94,7 @@ typedef struct PC_TREE {
   RD_STATS rd_cost;
   RD_STATS none_rd;
   bool skippable;
-#if CONFIG_SDP_CFL_LATENCY_FIX
   CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma;
-#endif  // CONFIG_SDP_CFL_LATENCY_FIX
 #if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   int sb_root_partition_info;
 #endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
