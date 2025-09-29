@@ -175,8 +175,6 @@ set_aom_config_var(CONFIG_LR_FRAMEFILTERS_IN_HEADER 0
                    "AV2 expt to move frame filters to frame header.")
 set_aom_config_var(CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES 0
                    "AV2 control to allow loopfilters across tiles or not")
-set_aom_config_var(CONFIG_INTRA_SDP_SIMPLIFICATION 1 NUMBER
-                   "Simplify intra sdp logic")
 set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
 set_aom_config_var(CONFIG_DISABLE_PALC 1 "Disable palette mode for chroma.")
 set_aom_config_var(CONFIG_TCQ_FOR_ALL_FRAMES 1 "Adjust base QP for TCQ")

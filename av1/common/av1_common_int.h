@@ -3554,7 +3554,6 @@ static AOM_INLINE bool tree_has_bsize_smaller_than(const PARTITION_TREE *ptree,
   return false;
 }
 
-#if CONFIG_INTRA_SDP_SIMPLIFICATION
 static AOM_INLINE bool is_sdp_share_partition(PARTITION_TYPE luma_partition,
                                               PARTITION_TYPE child_partition) {
   if (child_partition == PARTITION_NONE) return false;
@@ -3587,8 +3586,6 @@ static AOM_INLINE bool is_sdp_share_partition(PARTITION_TYPE luma_partition,
   }
 }
 
-#endif  // CONFIG_INTRA_SDP_SIMPLIFICATION
-
 static AOM_INLINE bool is_luma_chroma_share_same_partition(
     TREE_TYPE tree_type, const PARTITION_TREE *ptree_luma, BLOCK_SIZE bsize) {
   if (tree_type != CHROMA_PART || !ptree_luma ||
@@ -3610,7 +3607,6 @@ static AOM_INLINE bool is_luma_chroma_share_same_partition(
     return false;
 #endif  // CONFIG_SDP_CFL_LATENCY_FIX
   }
-#if CONFIG_INTRA_SDP_SIMPLIFICATION
   // intra sdp logic - If the first two splits of luma prtition from 64X64
   // block is in the opposite direction chroma will use luma partition.
   // otherwise chroma will have a seperate tree
@@ -3618,19 +3614,6 @@ static AOM_INLINE bool is_luma_chroma_share_same_partition(
     const PARTITION_TREE *sub_tree = ptree_luma->sub_tree[idx];
     if (sub_tree && sub_tree->partition != PARTITION_INVALID) {
       if (!is_sdp_share_partition(ptree_luma->partition, sub_tree->partition)) {
-#else
-  // For now, follow the logic in baseline SDP. i.e. we will force the current
-  // chroma partition to follow the luma split iff all the luma subblocks
-  // split further into blocks that's strictly smaller than half of the current
-  // bsize.
-  const int width_threshold = block_size_wide[bsize] / 2,
-            height_threshold = block_size_high[bsize] / 2;
-  for (int idx = 0; idx < 4; idx++) {
-    const PARTITION_TREE *sub_tree = ptree_luma->sub_tree[idx];
-    if (sub_tree && sub_tree->partition != PARTITION_INVALID) {
-      if (!tree_has_bsize_smaller_than(sub_tree, width_threshold,
-                                       height_threshold)) {
-#endif  // CONFIG_INTRA_SDP_SIMPLIFICATION
         return false;
       }
     }
