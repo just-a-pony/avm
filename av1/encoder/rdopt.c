@@ -601,7 +601,6 @@ static AOM_INLINE void estimate_ref_frame_costs(
     unsigned int base_cost = 0;
 
     int intra_inter_ctx = av1_get_intra_inter_context(xd);
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
     int is_intra_allowed = 1;
     MB_MODE_INFO *const mbmi = xd->mi[0];
     if (mbmi->tree_type == SHARED_PART &&
@@ -609,16 +608,11 @@ static AOM_INLINE void estimate_ref_frame_costs(
         mbmi->chroma_ref_info.offset_started) {
       is_intra_allowed = 0;
     }
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
     if (is_intra_allowed) {
-#endif
       ref_costs_single[INTRA_FRAME_INDEX] =
           base_cost + mode_costs->intra_inter_cost[intra_inter_ctx][0];
       base_cost += mode_costs->intra_inter_cost[intra_inter_ctx][1];
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
     }
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
     if (xd->mi[0]->sb_type[PLANE_TYPE_Y] == BLOCK_4X4) {
       ref_costs_single[INTRA_FRAME_INDEX] = 0;
     }
@@ -9212,14 +9206,12 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 
   get_y_intra_mode_set(mbmi, xd);
 
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
   int is_intra_mode_allowed = 1;
   if (mbmi->tree_type == SHARED_PART &&
       mbmi->region_type == MIXED_INTER_INTRA_REGION &&
       mbmi->chroma_ref_info.offset_started) {
     is_intra_mode_allowed = 0;
   }
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
 
   int dpcm_loop_num = 1;
   if (xd->lossless[mbmi->segment_id]) {
@@ -9247,9 +9239,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
           mbmi->multi_line_mrl = multi_line_mrl;
           mbmi->fsc_mode[xd->tree_type == CHROMA_PART] = fsc_mode;
           mbmi->mrl_index = mrl_index;
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
           if (!is_intra_mode_allowed) break;
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
           for (int mode_idx = INTRA_MODE_START; mode_idx < LUMA_MODE_COUNT;
                ++mode_idx) {
             if (sf->intra_sf.skip_intra_in_interframe &&
@@ -9381,11 +9371,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
   }
   RD_STATS this_rd_cost;
   int this_skippable = 0;
-  if (search_palette_mode
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
-      && is_intra_mode_allowed
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
-  ) {
+  if (search_palette_mode && is_intra_mode_allowed) {
     this_skippable = av1_search_palette_mode(
         &search_state.intra_search_state, cpi, x, bsize, intra_ref_frame_cost,
         ctx, &this_rd_cost, search_state.best_rd);
@@ -9423,11 +9409,7 @@ void av1_rd_pick_inter_mode_sb(struct AV1_COMP *cpi,
 
                                               ) &&
                             (xd->tree_type != CHROMA_PART);
-    if (try_intrabc
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
-        && is_intra_mode_allowed
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
-    ) {
+    if (try_intrabc && is_intra_mode_allowed) {
       this_rd_cost.rdcost = INT64_MAX;
       mbmi->ref_frame[0] = INTRA_FRAME;
       mbmi->ref_frame[1] = NONE_FRAME;

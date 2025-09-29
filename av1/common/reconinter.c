@@ -2326,61 +2326,15 @@ void av1_build_one_bawp_inter_predictor(
 //     are intrabc or inter-blocks
 static bool is_sub8x8_inter(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                             const MB_MODE_INFO *mi, int plane, int is_intrabc) {
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
   (void)xd;
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
-  if (is_intrabc
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
-      && frame_is_intra_only(cm)
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
-  ) {
+  if (is_intrabc && frame_is_intra_only(cm)) {
     return false;
   }
   if (!(plane &&
         (mi->sb_type[PLANE_TYPE_UV] != mi->chroma_ref_info.bsize_base)))
     return false;
 
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
   assert(!frame_is_intra_only(cm));
-#else
-  // For sub8x8 chroma blocks, we may be covering more than one luma block's
-  // worth of pixels. Thus (mi_row, mi_col) may not be the correct coordinates
-  // for the top-left corner of the prediction source. So, we need to find the
-  // correct top-left corner (row_start, col_start).
-  const int mi_row = xd->mi_row;
-  const int mi_col = xd->mi_col;
-  const int row_start =
-      plane ? mi->chroma_ref_info.mi_row_chroma_base - mi_row : 0;
-  const int col_start =
-      plane ? mi->chroma_ref_info.mi_col_chroma_base - mi_col : 0;
-  const BLOCK_SIZE plane_bsize =
-      plane ? mi->chroma_ref_info.bsize_base : mi->sb_type[PLANE_TYPE_Y];
-  const int plane_mi_height = mi_size_high[plane_bsize];
-  const int plane_mi_width = mi_size_wide[plane_bsize];
-  const int mi_rows = cm->mi_params.mi_rows;
-  const int mi_cols = cm->mi_params.mi_cols;
-
-  // Scan through all the blocks in the current chroma unit
-  for (int row = 0; row < plane_mi_height; ++row) {
-    const int row_coord = row_start + row;
-    if (mi_row + row_coord >= mi_rows) break;
-    for (int col = 0; col < plane_mi_width; ++col) {
-      const int col_coord = col_start + col;
-      if (mi_col + col_coord >= mi_cols) break;
-      // For the blocks at the lower right of the final chroma block, the mis
-      // are not set up correctly yet, so we do not check them.
-      if ((row_coord >= 0 && col_coord > 0) ||
-          (col_coord >= 0 && row_coord > 0)) {
-        break;
-      }
-      const MB_MODE_INFO *this_mbmi =
-          xd->mi[row_coord * xd->mi_stride + col_coord];
-      assert(this_mbmi != NULL);
-      if (!is_inter_block(this_mbmi, xd->tree_type)) return false;
-      if (is_intrabc_block(this_mbmi, xd->tree_type)) return false;
-    }
-  }
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
   return true;
 }
 

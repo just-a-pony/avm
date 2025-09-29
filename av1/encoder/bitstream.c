@@ -388,14 +388,12 @@ static AOM_INLINE void write_is_inter(const AV1_COMMON *cm,
     assert(is_inter);
     return;
   }
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
   if (mbmi->tree_type == SHARED_PART &&
       mbmi->region_type == MIXED_INTER_INTRA_REGION &&
       mbmi->chroma_ref_info.offset_started) {
     assert(is_inter);
     return;
   }
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
   const int ctx = av1_get_intra_inter_context(xd);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
   aom_write_symbol(w, is_inter, ec_ctx->intra_inter_cdf[ctx], 2);
@@ -3035,10 +3033,8 @@ static AOM_INLINE PARTITION_TYPE write_partition(
   bool partition_allowed[ALL_PARTITION_TYPES];
   init_allowed_partitions_for_signaling(
       partition_allowed, cm, xd->tree_type,
-#if CONFIG_CHROMA_MERGE_LATENCY_FIX
-      (ptree->parent ? ptree->parent->region_type : INTRA_REGION),
-#endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
-      mi_row, mi_col, ssx, ssy, bsize, &ptree->chroma_ref_info);
+      (ptree->parent ? ptree->parent->region_type : INTRA_REGION), mi_row,
+      mi_col, ssx, ssy, bsize, &ptree->chroma_ref_info);
   if (derived_partition != PARTITION_INVALID &&
       partition_allowed[derived_partition]) {
     assert(bru_is_sb_active(cm, mi_col, mi_row) ? p == derived_partition : 1);
