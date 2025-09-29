@@ -245,12 +245,10 @@ typedef struct {
    * height of a partition cannot be larger than the max_partition_size.
    */
   unsigned int max_partition_size;
-#if CONFIG_MAX_PB_RATIO
   /*!
    * Indicates the maximum aspect ratio of allowed partition block sizes.
    */
   unsigned int max_partition_aspect_ratio;
-#endif  // CONFIG_MAX_PB_RATIO
 } PartitionCfg;
 
 /*!

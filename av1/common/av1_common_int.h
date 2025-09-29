@@ -723,9 +723,7 @@ typedef struct SequenceHeader {
   uint8_t enable_parity_hiding;      // To turn on/off PAR_HIDING
   uint8_t enable_ext_partitions;     // enable extended partitions
   uint8_t enable_uneven_4way_partitions;  // enable uneven 4way partition
-#if CONFIG_MAX_PB_RATIO
-  uint8_t max_pb_aspect_ratio_log2_m1;  // Can be 0, 1, or 2.
-#endif                                  // CONFIG_MAX_PB_RATIO
+  uint8_t max_pb_aspect_ratio_log2_m1;    // Can be 0, 1, or 2.
 #if CONFIG_IMPROVED_GLOBAL_MOTION
   bool enable_global_motion;
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
@@ -3935,7 +3933,6 @@ static INLINE int is_valid_partition_in_mixed_region(
 }
 #endif  // CONFIG_CHROMA_MERGE_LATENCY_FIX
 
-#if CONFIG_MAX_PB_RATIO
 static bool check_partition_aspect_ratio(BLOCK_SIZE bsize,
                                          PARTITION_TYPE partition,
                                          int max_aspect_ratio) {
@@ -3950,7 +3947,6 @@ static bool check_partition_aspect_ratio(BLOCK_SIZE bsize,
   }
   return true;
 }
-#endif  // CONFIG_MAX_PB_RATIO
 
 // Initialize allowed partition types for the coding block.
 static AOM_INLINE void init_allowed_partitions_for_signaling(
@@ -3969,10 +3965,8 @@ static AOM_INLINE void init_allowed_partitions_for_signaling(
   int num_allowed_partitions = 0;
   const RECT_PART_TYPE implied_rect_type =
       rect_type_implied_by_bsize(bsize, tree_type);
-#if CONFIG_MAX_PB_RATIO
   const int max_aspect_ratio =
       1 << (cm->seq_params.max_pb_aspect_ratio_log2_m1 + 1);
-#endif  // CONFIG_MAX_PB_RATIO
 
   const int is_horz_size_valid =
       is_partition_valid(bsize, PARTITION_HORZ) && implied_rect_type != VERT &&
@@ -4113,7 +4107,6 @@ static AOM_INLINE void init_allowed_partitions_for_signaling(
       is_square_split_eligible(bsize, cm->sb_size);
   num_allowed_partitions += partition_allowed[PARTITION_SPLIT];
 
-#if CONFIG_MAX_PB_RATIO
   // Validate partition modes based on aspect ratio  constraints.
   if (max_aspect_ratio < 16) {
     num_allowed_partitions = 0;
@@ -4124,7 +4117,6 @@ static AOM_INLINE void init_allowed_partitions_for_signaling(
       num_allowed_partitions += partition_allowed[p];
     }
   }
-#endif  // CONFIG_MAX_PB_RATIO
 
   if (num_allowed_partitions == 0) {
     partition_allowed[PARTITION_NONE] = 1;

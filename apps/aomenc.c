@@ -434,9 +434,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.use_ml_erp_pruning,
   &g_av1_codec_arg_defs.enable_ext_partitions,
   &g_av1_codec_arg_defs.enable_tx_partition,
-#if CONFIG_MAX_PB_RATIO
   &g_av1_codec_arg_defs.max_partition_aspect_ratio,
-#endif  // CONFIG_MAX_PB_RATIO
   &g_av1_codec_arg_defs.enable_sdp,
   &g_av1_codec_arg_defs.enable_extended_sdp,
   &g_av1_codec_arg_defs.enable_mrls,
@@ -658,9 +656,7 @@ static void init_config(cfg_options_t *config) {
   config->use_ml_erp_pruning = 2;
   config->enable_ext_partitions = 1;
   config->enable_tx_partition = 1;
-#if CONFIG_MAX_PB_RATIO
   config->max_partition_aspect_ratio = 8;
-#endif  // CONFIG_MAX_PB_RATIO
   config->enable_sdp = 1;
   config->enable_extended_sdp = 1;
   config->enable_mrls = 1;
@@ -1537,10 +1533,8 @@ static void show_stream_config(struct stream_state *stream,
       encoder_cfg->enable_uneven_4way_partitions);
   fprintf(stdout, "Enable txfm partition   : %d\n",
           encoder_cfg->enable_tx_partition);
-#if CONFIG_MAX_PB_RATIO
   fprintf(stdout, "Max partition block aspect ratio   : %d\n",
           encoder_cfg->max_partition_aspect_ratio);
-#endif  // CONFIG_MAX_PB_RATIO
   fprintf(stdout, "Disable ml tx speed features   : %d\n",
           encoder_cfg->disable_ml_transform_speed_features);
   fprintf(stdout, "                               : SDP (%d)\n",

@@ -316,9 +316,6 @@ set_aom_config_var(CONFIG_REDUCED_TX_SET_EXT 1
 set_aom_config_var(CONFIG_FIX_RESIZE_PSNR 1
                    "Fix PSNR computation of resize mode in coded resolution")
 
-set_aom_config_var(CONFIG_MAX_PB_RATIO 1
-                   "Enable max partition block aspect ratio constraint")
-
 set_aom_config_var(CONFIG_SCC_DETERMINATION 1
                    "Enable the screen content tools determination improvement.")
 
