@@ -168,6 +168,10 @@ set_aom_config_var(CONFIG_F106_OBU_SEF 1 "Use SEF OBU.")
 set_aom_config_var(CONFIG_F106_OBU_TIP 1 "Use TIP_OBU.")
 set_aom_config_var(CONFIG_F253_REMOVE_OUTPUTFLAG 1
                    "Remove enable_frame_output_order.")
+# CWG-E242
+set_aom_config_var(CONFIG_CWG_E242_SIGNAL_TILE_INFO 1
+                   "Signal tile information at sequence header.")
+
 set_aom_config_var(CONFIG_SEQ_MAX_DRL_BITS 1
                    "AV2 sequence level max_drl_bits information")
 set_aom_config_var(CONFIG_EXT_MVPRED 1 "AV2 ext-mvpred.")
