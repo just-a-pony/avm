@@ -101,43 +101,6 @@ int32_t av1_dc_quant_QTX(int qindex, int delta, int base_dc_delta_q,
 int32_t av1_ac_quant_QTX(int qindex, int delta, int base_ac_delta_q,
                          aom_bit_depth_t bit_depth);
 
-#if !CONFIG_TCQ_FOR_ALL_FRAMES
-// Adjust qindex for better RDO when tcq is on
-static INLINE int get_new_qindex(int qindex, aom_bit_depth_t bit_depth) {
-  switch (bit_depth) {
-    case AOM_BITS_8: return clamp(qindex + QINDEX_INCR_8_BITS, 1, MAXQ_8_BITS);
-    case AOM_BITS_10:
-      return clamp(qindex + QINDEX_INCR_10_BITS, 1, MAXQ_10_BITS);
-    case AOM_BITS_12: return clamp(qindex + QINDEX_INCR, 1, MAXQ);
-    default:
-      assert(0 && "bit_depth should be AOM_BITS_8, AOM_BITS_10 or AOM_BITS_12");
-      return qindex;  // fall back to no change on qindex
-  }
-}
-
-// Calculate Qstep from Qindex for DC when tcq is on
-static INLINE int32_t av1_dc_quant_QTX_tcq(int qindex, int delta,
-                                           int base_dc_delta_q,
-                                           aom_bit_depth_t bit_depth,
-                                           int use_tcq_offset) {
-  if (use_tcq_offset && qindex != 0) {
-    qindex = get_new_qindex(qindex, bit_depth);
-  }
-  return av1_dc_quant_QTX(qindex, delta, base_dc_delta_q, bit_depth);
-}
-
-// Calculate Qstep from Qindex for AC when tcq is on
-static INLINE int32_t av1_ac_quant_QTX_tcq(int qindex, int delta,
-                                           int base_ac_delta_q,
-                                           aom_bit_depth_t bit_depth,
-                                           int use_tcq_offset) {
-  if (use_tcq_offset && qindex != 0) {
-    qindex = get_new_qindex(qindex, bit_depth);
-  }
-  return av1_ac_quant_QTX(qindex, delta, base_ac_delta_q, bit_depth);
-}
-#endif  // !CONFIG_TCQ_FOR_ALL_FRAMES
-
 int av1_get_qindex(const struct segmentation *seg, int segment_id,
                    int base_qindex, aom_bit_depth_t bit_depth);
 

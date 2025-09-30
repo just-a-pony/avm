@@ -184,7 +184,6 @@ set_aom_config_var(CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES 0
                    "AV2 control to allow loopfilters across tiles or not")
 set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
 set_aom_config_var(CONFIG_DISABLE_PALC 1 "Disable palette mode for chroma.")
-set_aom_config_var(CONFIG_TCQ_FOR_ALL_FRAMES 1 "Adjust base QP for TCQ")
 
 set_aom_config_var(CONFIG_ORIP_DC_DISABLED 1
                    "AV2 experiment flag to disable ORIP for DC mode.")

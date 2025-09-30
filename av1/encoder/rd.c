@@ -753,16 +753,9 @@ int av1_compute_rd_mult_based_on_qindex(const AV1_COMP *cpi, int qindex) {
            ? RDMULT_FROM_Q2_NUM_AI
            : (cpi->oxcf.gf_cfg.lag_in_frames == 0 ? RDMULT_FROM_Q2_NUM_LD
                                                   : RDMULT_FROM_Q2_NUM));
-#if !CONFIG_TCQ_FOR_ALL_FRAMES
-  const int tcq_mode = cpi->common.features.tcq_mode;
-  const int q =
-      av1_dc_quant_QTX_tcq(qindex, 0, cpi->common.seq_params.base_y_dc_delta_q,
-                           cpi->common.seq_params.bit_depth, tcq_mode);
-#else
   const int q =
       av1_dc_quant_QTX(qindex, 0, cpi->common.seq_params.base_y_dc_delta_q,
                        cpi->common.seq_params.bit_depth);
-#endif  // !CONFIG_TCQ_FOR_ALL_FRAMES
 
   int64_t rdmult = ROUND_POWER_OF_TWO_64(
       (int64_t)((int64_t)q * q * rdmult_from_q2_num / RDMULT_FROM_Q2_DEN),

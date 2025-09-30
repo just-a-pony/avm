@@ -1597,9 +1597,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   q_cfg->use_fixed_qp_offsets =
       cfg->use_fixed_qp_offsets && (rc_cfg->mode == AOM_Q);
   q_cfg->q_based_qp_offsets = (cfg->use_fixed_qp_offsets == 2) ? 1 : 0;
-#if CONFIG_TCQ_FOR_ALL_FRAMES
   q_cfg->is_ra = cfg->g_lag_in_frames > 0;
-#endif
 
   for (int i = 0; i < FIXED_QP_OFFSET_COUNT; ++i) {
     if (q_cfg->use_fixed_qp_offsets) {
@@ -4717,20 +4715,16 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
     2000,  // rc_two_pass_vbrmax_section
 
     // keyframing settings (kf)
-    0,            // fwd_kf_enabled
-    AOM_KF_AUTO,  // kf_mode
-    0,            // kf_min_dist
-    9999,         // kf_max_dist
-    0,            // sframe_dist
-    1,            // sframe_mode
-    0,            // large_scale_tile
-    0,            // monochrome
-    0,            // full_still_picture_hdr
-#if CONFIG_TCQ_FOR_ALL_FRAMES
-    1,  // enable_tcq
-#else
-    2,  // enable_tcq
-#endif
+    0,                           // fwd_kf_enabled
+    AOM_KF_AUTO,                 // kf_mode
+    0,                           // kf_min_dist
+    9999,                        // kf_max_dist
+    0,                           // sframe_dist
+    1,                           // sframe_mode
+    0,                           // large_scale_tile
+    0,                           // monochrome
+    0,                           // full_still_picture_hdr
+    1,                           // enable_tcq
     1,                           // save_as_annexb (0: external means)
     0,                           // tile_width_count
     0,                           // tile_height_count

@@ -1055,7 +1055,6 @@ static int get_q_using_fixed_offsets(const AV1EncoderConfig *const oxcf,
   return AOMMAX(qp + delta_qindex, 0);
 }
 
-#if CONFIG_TCQ_FOR_ALL_FRAMES
 // Adjust qindex for better RDO since tcq is always on.
 // This is an encoder-only adjustment. No implicit offset at the decoder side.
 static int apply_tcq_qp_offset(const AV1_COMP *cpi, int qp_tcq) {
@@ -1085,7 +1084,6 @@ static int apply_tcq_qp_offset(const AV1_COMP *cpi, int qp_tcq) {
                                           : MAXQ;
   return clamp(qp_tcq + tcq_qp_offset_shift, 0, max_qp);
 }
-#endif
 
 /*!\brief Picks q and q bounds given non-CBR rate control params in \c cpi->rc.
  *
@@ -1129,9 +1127,7 @@ static int rc_pick_q_and_bounds_no_stats(const AV1_COMP *cpi, int width,
   if (oxcf->q_cfg.use_fixed_qp_offsets) {
     int qp_tcq =
         get_q_using_fixed_offsets(oxcf, rc, gf_group, gf_index, qp, bit_depth);
-#if CONFIG_TCQ_FOR_ALL_FRAMES
     qp_tcq = apply_tcq_qp_offset(cpi, qp_tcq);
-#endif
     return qp_tcq;
   }
 
@@ -1593,9 +1589,7 @@ static int rc_pick_q_and_bounds(const AV1_COMP *cpi, int width, int height,
   if (oxcf->q_cfg.use_fixed_qp_offsets) {
     int qp_tcq = get_q_using_fixed_offsets(oxcf, rc, gf_group, gf_group->index,
                                            qp, bit_depth);
-#if CONFIG_TCQ_FOR_ALL_FRAMES
     qp_tcq = apply_tcq_qp_offset(cpi, qp_tcq);
-#endif
     return qp_tcq;
   }
 
