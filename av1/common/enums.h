@@ -297,6 +297,55 @@ enum {
 #define OP_POINTS_CNT_MINUS_1_BITS (TLAYER_BITS + MLAYER_BITS)
 #define OP_POINTS_IDC_BITS (MAX_NUM_TLAYERS + MAX_NUM_MLAYERS)
 
+#if CONFIG_MULTILAYER_HLS
+// LCR
+#define LCR_ID_BITS 3
+#define MAX_NUM_LCR (1 << LCR_ID_BITS)
+#define MAX_LCR_TYPES 2
+// OPS
+#define OPS_ID_BITS 4
+#define MAX_NUM_OPS_ID (1 << OPS_ID_BITS)
+#define OPS_COUNT_BITS 3
+#define MAX_NUM_OPS_COUNT (1 << OPS_COUNT_BITS)
+// Atlas
+#define MAX_ATLAS_REGIONS 64
+#define ATLAS_SEG_ID_BITS 3
+#define MAX_NUM_ATLAS_SEG_ID (1 << ATLAS_SEG_ID_BITS)
+#define ATLAS_LABEL_SEG_ID_BITS 8
+#define MAX_NUM_ATLAS_SEGMENTS (1 << ATLAS_LABEL_SEG_ID_BITS)
+
+#define CONFIG_MULTILAYER_HLS_REMOVE_LOGS 1
+// This macro is an encoder only change that writes LCR, OPS and Atlas
+// information to the bitstream. Set this macro to 1 to enable encoder to
+// signal.
+// TODO(hegilmez): add unit tests by enabling this macro.
+#define CONFIG_MULTILAYER_HLS_ENABLE_SIGNALING 0
+
+enum { AUX_LAYER, LAYER_TYPES };
+
+enum { VIEW_EXPLICIT, VIEW_TYPES };
+
+enum {
+  ENH_ATLAS = 0,
+  BASIC_ATLAS = 1,
+  SINGLE_ATLAS = 2,
+  MULTISTREAM_ATLAS = 3,
+  ATLAS_TYPES
+};
+
+enum {
+  UNSPECIFIED_MULTIVIEW,
+  STEREOSCOPIC_VIEWPORTS,
+  IMMERSIVE_MULTIPLE_VIEWPORTS,
+  IMMERSIVE_MULTIPLE_VIEWPORTS_ALPHA,
+  IMMERSIVE_MULTIPLE_VIEWPORTS_DEPTH,
+  IMMERSIVE_MULTIPLE_VIEWPORTS_ALPHA_DEPTH,
+  MULTIVIEW_PLAYBACK,
+  SUBREGION_PLAYBACK,
+  GLOBAL_PURPOSE_ID_TYPES
+};
+#endif  // CONFIG_MULTILAYER_HLS
+
 // Note: Some enums use the attribute 'packed' to use smallest possible integer
 // type, so that we can save memory when they are used in structs/arrays.
 

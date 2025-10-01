@@ -36,12 +36,36 @@ uint32_t av1_write_obu_header(AV1LevelParams *const level_params,
 int av1_write_uleb_obu_size(size_t obu_header_size, size_t obu_payload_size,
                             uint8_t *dest);
 
+void av1_add_trailing_bits(struct aom_write_bit_buffer *wb);
+
 #if CONFIG_CWG_E242_SIGNAL_TILE_INFO
 /*!\brief Derive sequence header from a keyframe
  */
 void set_sequence_header_with_keyframe(AV1_COMP *cpi,
                                        struct SequenceHeader *seq_params);
 #endif  // CONFIG_CWG_E242_SIGNAL_TILE_INFO
+
+#if CONFIG_MULTILAYER_HLS
+uint32_t av1_write_layer_configuration_record_obu(AV1_COMP *const cpi,
+                                                  int layer_id,
+                                                  uint8_t *const dst);
+uint32_t av1_write_atlas_segment_info_obu(AV1_COMP *const cpi,
+                                          int obu_xLayer_id,
+                                          uint8_t *const dst);
+uint32_t av1_write_operating_point_set_obu(AV1_COMP *const cpi,
+                                           int obu_xlayer_id,
+                                           uint8_t *const dst);
+
+int av1_set_lcr_params(AV1_COMP *cpi, struct LayerConfigurationRecord *lcr,
+                       int global_id, int layer_id);
+
+int av1_set_atlas_segment_info_params(AV1_COMP *cpi,
+                                      struct AtlasSegmentInfo *atlas,
+                                      int layer_id);
+
+int av1_set_ops_params(AV1_COMP *cpi, struct OperatingPointSet *ops,
+                       int layer_id);
+#endif  // CONFIG_MULTILAYER_HLS
 
 /*!\brief Pack the bitstream for one frame
  *

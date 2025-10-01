@@ -153,6 +153,11 @@ list(
   "${AOM_ROOT}/av1/decoder/obu.h"
   "${AOM_ROOT}/av1/decoder/obu.c")
 
+if(CONFIG_MULTILAYER_HLS)
+  list(APPEND AOM_AV1_DECODER_SOURCES "${AOM_ROOT}/av1/decoder/obu_atlas.c"
+       "${AOM_ROOT}/av1/decoder/obu_lcr.c" "${AOM_ROOT}/av1/decoder/obu_ops.c")
+endif()
+
 list(
   APPEND
   AOM_AV1_ENCODER_SOURCES
@@ -313,6 +318,13 @@ if(CONFIG_DIP_EXT_PRUNING)
     "${AOM_ROOT}/av1/encoder/intra_dip_mode_prune_tflite.h"
     "${AOM_ROOT}/av1/encoder/intra_dip_mode_prune_tflite.cc"
     "${AOM_ROOT}/av1/encoder/intra_dip_mode_prune_weights.cc")
+endif()
+
+if(CONFIG_MULTILAYER_HLS)
+  list(
+    APPEND AOM_AV1_ENCODER_SOURCES "${AOM_ROOT}/av1/encoder/bitstream_atlas.c"
+    "${AOM_ROOT}/av1/encoder/bitstream_lcr.c"
+    "${AOM_ROOT}/av1/encoder/bitstream_ops.c")
 endif()
 
 list(APPEND AOM_AV1_COMMON_INTRIN_SSE2

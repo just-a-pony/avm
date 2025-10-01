@@ -48,6 +48,16 @@ aom_codec_err_t aom_get_num_layers_from_operating_point_idc(
   return AOM_CODEC_OK;
 }
 
+int byte_alignment(AV1_COMMON *const cm, struct aom_read_bit_buffer *const rb) {
+  while (rb->bit_offset & 7) {
+    if (aom_rb_read_bit(rb)) {
+      cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+      return -1;
+    }
+  }
+  return 0;
+}
+
 static int is_obu_in_current_operating_point(AV1Decoder *pbi,
                                              ObuHeader obu_header) {
   if (!pbi->current_operating_point) {
@@ -59,17 +69,6 @@ static int is_obu_in_current_operating_point(AV1Decoder *pbi,
        (obu_header.obu_mlayer_id + MAX_NUM_TLAYERS)) &
           0x1) {
     return 1;
-  }
-  return 0;
-}
-
-static int byte_alignment(AV1_COMMON *const cm,
-                          struct aom_read_bit_buffer *const rb) {
-  while (rb->bit_offset & 7) {
-    if (aom_rb_read_bit(rb)) {
-      cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-      return -1;
-    }
   }
   return 0;
 }
@@ -925,7 +924,7 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
     cm->mlayer_id = obu_header.obu_mlayer_id;
     cm->xlayer_id = obu_header.obu_xlayer_id;
 #if CONFIG_MULTILAYER_CORE
-    // TODO: (@hegilmez) replace layer_id with mlayer_id (current code uses
+    // TODO(hegilmez) replace layer_id with mlayer_id (current code uses
     // layer_id variable)
     cm->layer_id = cm->mlayer_id;
 #endif  // CONFIG_MULTILAYER_CORE
@@ -981,6 +980,23 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
           return -1;
         }
         break;
+#if CONFIG_MULTILAYER_HLS
+      case OBU_LAYER_CONFIGURATION_RECORD:
+        decoded_payload_size =
+            av1_read_layer_configuration_record_obu(pbi, cm->xlayer_id, &rb);
+        if (cm->error.error_code != AOM_CODEC_OK) return -1;
+        break;
+      case OBU_ATLAS_SEGMENT:
+        decoded_payload_size =
+            av1_read_atlas_segment_info_obu(pbi, cm->xlayer_id, &rb);
+        if (cm->error.error_code != AOM_CODEC_OK) return -1;
+        break;
+      case OBU_OPERATING_POINT_SET:
+        decoded_payload_size =
+            av1_read_operating_point_set_obu(pbi, cm->xlayer_id, &rb);
+        if (cm->error.error_code != AOM_CODEC_OK) return -1;
+        break;
+#endif  // CONFIG_MULTILAYER_HLS
 #if CONFIG_F106_OBU_TILEGROUP
       case OBU_TILE_GROUP:
 #if CONFIG_F106_OBU_SWITCH

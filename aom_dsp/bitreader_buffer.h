@@ -16,6 +16,7 @@
 #include <limits.h>
 
 #include "aom/aom_integer.h"
+#include "config/aom_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,6 +64,11 @@ uint16_t aom_rb_read_primitive_quniform(struct aom_read_bit_buffer *rb,
 
 uint16_t aom_rb_read_primitive_ref_quniform(struct aom_read_bit_buffer *rb,
                                             uint16_t n, uint16_t r);
+
+#if CONFIG_MULTILAYER_HLS
+uint32_t aom_rb_read_uleb(struct aom_read_bit_buffer *rb);
+#endif
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
