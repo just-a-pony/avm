@@ -186,9 +186,6 @@ set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
 set_aom_config_var(CONFIG_DISABLE_PALC 1 "Disable palette mode for chroma.")
 set_aom_config_var(CONFIG_TCQ_FOR_ALL_FRAMES 1 "Adjust base QP for TCQ")
 
-set_aom_config_var(CONFIG_DMVR_OFF_IN_TIP_DIRECT 1
-                   "Disable DMVR in TIP-direct mode")
-
 set_aom_config_var(CONFIG_ORIP_DC_DISABLED 1
                    "AV2 experiment flag to disable ORIP for DC mode.")
 
@@ -324,16 +321,10 @@ set_aom_config_var(CONFIG_FIX_RESIZE_PSNR 1
 set_aom_config_var(CONFIG_SCC_DETERMINATION 1
                    "Enable the screen content tools determination improvement.")
 
-set_aom_config_var(CONFIG_F107_GRADIENT_SIMPLIFY 1
-                   "Use smaller OPFL gradient units and remove bit checks.")
 set_aom_config_var(CONFIG_LF_SUB_PU 1 "AV2 enable LF on sub blocks")
 set_aom_config_var(CONFIG_ASYM_DF 1 "Enable asymmetric DF")
 set_aom_config_var(CONFIG_DERIVED_MVD_SIGN 1 "Enable MVD sign derivations")
 set_aom_config_var(CONFIG_VQ_MVD_CODING 1 "Enable VQ based MVD coding")
-set_aom_config_var(CONFIG_SUBBLK_REF_EXT 1
-                   "Enable extension for subblock MV refinement.")
-set_aom_config_var(CONFIG_SUBBLK_PAD 1
-                   "Enable subblock padding for subblock mv refinement.")
 
 set_aom_config_var(CONFIG_ML_PART_SPLIT 1
                    "Partition SPLIT pruning/forcing as predicted by ML.")
