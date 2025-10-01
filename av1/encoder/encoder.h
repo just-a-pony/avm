@@ -847,10 +847,8 @@ typedef struct {
   bool enable_wiener_nonsep;
   // Indicates if ccso should be enabled.
   bool enable_ccso;
-#if CONFIG_LF_SUB_PU
   bool enable_lf_sub_pu;
   // Indicates if deblocking on sub block should be enabled.
-#endif  // CONFIG_LF_SUB_PU
   // Indicates if adaptive MVD resolution should be enabled.
   bool enable_adaptive_mvd;
 
