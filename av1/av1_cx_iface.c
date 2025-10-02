@@ -3122,7 +3122,11 @@ static void report_stats(AV1_COMP *cpi, size_t frame_size, uint64_t cx_time) {
           (cm->cur_frame->frame_type == INTER_FRAME);
       ref_poc[ref_idx] =
           ((ref_poc[ref_idx] == (int)cm->cur_frame->absolute_poc) &&
+#if CONFIG_CWG_F317
+           !valid_ref_case && !cm->bridge_frame_info.is_bridge_frame)
+#else
            !valid_ref_case)
+#endif
               ? -1
               : ref_poc[ref_idx];
     }
