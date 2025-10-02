@@ -117,6 +117,16 @@ bool ParseObuExtensionHeader(uint8_t ext_header_byte, ObuHeader *obu_header) {
   return true;
 }
 
+#if CONFIG_F106_OBU_TILEGROUP
+void PrintObuHeader(const ObuHeader *header, bool first_tile_group_in_frame) {
+  printf(
+      "  OBU extension: %s\n"
+      "      type:      %s%s\n"
+      "      tlayer_id: %d\n",
+      header->obu_extension_flag ? "yes" : "no",
+      aom_obu_type_to_string(static_cast<OBU_TYPE>(header->type)),
+      first_tile_group_in_frame ? " (new frame)" : "", header->obu_tlayer_id);
+#else
 void PrintObuHeader(const ObuHeader *header) {
   printf(
       "  OBU extension: %s\n"
@@ -125,6 +135,7 @@ void PrintObuHeader(const ObuHeader *header) {
       header->obu_extension_flag ? "yes" : "no",
       aom_obu_type_to_string(static_cast<OBU_TYPE>(header->type)),
       header->obu_tlayer_id);
+#endif  // CONFIG_F106_OBU_TILEGROUP
   if (header->obu_extension_flag) {
     printf(
         "      mlayer_id: %d\n"
@@ -189,11 +200,34 @@ bool DumpObu(const uint8_t *data, int length, int *obu_overhead_bytes) {
       ++obu_overhead;
     }
 
+#if CONFIG_F106_OBU_TILEGROUP
+    bool is_tile_group = obu_header.type == OBU_TILE_GROUP;
+#if CONFIG_F106_OBU_SWITCH
+    is_tile_group = is_tile_group || obu_header.type == OBU_SWITCH;
+#endif  // CONFIG_F106_OBU_SWITCH
+#if CONFIG_CWG_F317
+    is_tile_group = is_tile_group || obu_header.type == OBU_BRIDGE_FRAME;
+#endif  // CONFIG_CWG_F317
+    bool first_tile_group_in_frame = false;
+    if (is_tile_group) {
+      if (current_obu_length <
+          kObuHeaderSizeBytes + obu_header.obu_extension_flag + 1) {
+        fprintf(stderr, "OBU parsing failed: not enough OBU data.\n");
+        return false;
+      }
+      const uint8_t tile_group_header_first_byte =
+          *(data + consumed + length_field_size + kObuHeaderSizeBytes +
+            obu_header.obu_extension_flag);
+      first_tile_group_in_frame = (tile_group_header_first_byte >> 7) != 0;
+    }
+    PrintObuHeader(&obu_header, first_tile_group_in_frame);
+#else
     PrintObuHeader(&obu_header);
+#endif  // CONFIG_F106_OBU_TILEGROUP
 
     consumed += static_cast<int>(length_field_size) + current_obu_length;
     printf("      length:    %d\n",
-           static_cast<int>(length_field_size + current_obu_length));
+           static_cast<int>(length_field_size) + current_obu_length);
   }
 
   if (obu_overhead_bytes != nullptr) *obu_overhead_bytes = obu_overhead;
