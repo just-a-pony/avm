@@ -690,7 +690,7 @@ static AOM_INLINE void fill_mvp_from_derived_smvp(
           ref_mv_stack[index].this_mv = derived_mv_stack[derived_idx].this_mv;
           ref_mv_stack[index].row_offset = OFFSET_NONSPATIAL;
           ref_mv_stack[index].col_offset = OFFSET_NONSPATIAL;
-          ref_mv_stack[index].cwp_idx = derived_mv_stack[derived_idx].cwp_idx;
+          ref_mv_stack[index].cwp_idx = CWP_EQUAL;
           ref_mv_weight[index] = REF_CAT_LEVEL;
           ++(*refmv_count);
         }
@@ -701,8 +701,7 @@ static AOM_INLINE void fill_mvp_from_derived_smvp(
               derived_mv_stack[derived_idx].this_mv;
           ref_mv_stack[*refmv_count].row_offset = OFFSET_NONSPATIAL;
           ref_mv_stack[*refmv_count].col_offset = OFFSET_NONSPATIAL;
-          ref_mv_stack[*refmv_count].cwp_idx =
-              derived_mv_stack[derived_idx].cwp_idx;
+          ref_mv_stack[*refmv_count].cwp_idx = CWP_EQUAL;
           ref_mv_weight[*refmv_count] = REF_CAT_LEVEL;
           ++(*refmv_count);
         }
@@ -736,7 +735,7 @@ static AOM_INLINE void fill_mvp_from_derived_smvp(
           ref_mv_stack[index].comp_mv = derived_mv_stack[derived_idx].comp_mv;
           ref_mv_stack[index].row_offset = OFFSET_NONSPATIAL;
           ref_mv_stack[index].col_offset = OFFSET_NONSPATIAL;
-          ref_mv_stack[index].cwp_idx = derived_mv_stack[derived_idx].cwp_idx;
+          ref_mv_stack[index].cwp_idx = CWP_EQUAL;
 #if !CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL
           if (mbmi->skip_mode) {
             ref_frame_idx0[index] = rf[0];
@@ -755,8 +754,7 @@ static AOM_INLINE void fill_mvp_from_derived_smvp(
               derived_mv_stack[derived_idx].comp_mv;
           ref_mv_stack[*refmv_count].row_offset = OFFSET_NONSPATIAL;
           ref_mv_stack[*refmv_count].col_offset = OFFSET_NONSPATIAL;
-          ref_mv_stack[*refmv_count].cwp_idx =
-              derived_mv_stack[derived_idx].cwp_idx;
+          ref_mv_stack[*refmv_count].cwp_idx = CWP_EQUAL;
 #if !CONFIG_SKIP_MODE_ENHANCED_PARSING_DEPENDENCY_REMOVAL
           if (mbmi->skip_mode) {
             ref_frame_idx0[index] = rf[0];
@@ -811,7 +809,7 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
       ref_mv_weight[index] = weight;
       ref_mv_stack[index].row_offset = OFFSET_NONSPATIAL;
       ref_mv_stack[index].col_offset = OFFSET_NONSPATIAL;
-      ref_mv_stack[index].cwp_idx = candidate->cwp_idx;
+      ref_mv_stack[index].cwp_idx = CWP_EQUAL;
       ++(*refmv_count);
     }
 #if CONFIG_DRL_PR_LIM
@@ -822,7 +820,7 @@ static AOM_INLINE void derive_ref_mv_candidate_from_tip_mode(
       ref_mv_weight[*refmv_count] = weight;
       ref_mv_stack[*refmv_count].row_offset = OFFSET_NONSPATIAL;
       ref_mv_stack[*refmv_count].col_offset = OFFSET_NONSPATIAL;
-      ref_mv_stack[*refmv_count].cwp_idx = candidate->cwp_idx;
+      ref_mv_stack[*refmv_count].cwp_idx = CWP_EQUAL;
       ++(*refmv_count);
     }
   }
@@ -1059,7 +1057,7 @@ static AOM_INLINE void add_ref_mv_candidate(
             ref_mv_stack[index].this_mv = this_refmv;
             ref_mv_stack[index].row_offset = row_offset;
             ref_mv_stack[index].col_offset = col_offset;
-            ref_mv_stack[index].cwp_idx = candidate->cwp_idx;
+            ref_mv_stack[index].cwp_idx = CWP_EQUAL;
             ref_mv_weight[index] = weight;
             ++(*refmv_count);
           }
@@ -1069,7 +1067,7 @@ static AOM_INLINE void add_ref_mv_candidate(
             ref_mv_stack[*refmv_count].this_mv = this_refmv;
             ref_mv_stack[*refmv_count].row_offset = row_offset;
             ref_mv_stack[*refmv_count].col_offset = col_offset;
-            ref_mv_stack[*refmv_count].cwp_idx = candidate->cwp_idx;
+            ref_mv_stack[*refmv_count].cwp_idx = CWP_EQUAL;
             ref_mv_weight[*refmv_count] = weight;
             ++(*refmv_count);
           }
@@ -1109,7 +1107,7 @@ static AOM_INLINE void add_ref_mv_candidate(
             ref_mv_stack[index].this_mv = this_refmv;
             ref_mv_stack[index].row_offset = row_offset;
             ref_mv_stack[index].col_offset = col_offset;
-            ref_mv_stack[index].cwp_idx = candidate->cwp_idx;
+            ref_mv_stack[index].cwp_idx = CWP_EQUAL;
             ref_mv_weight[index] = weight;
             ++(*refmv_count);
           }
@@ -1119,7 +1117,7 @@ static AOM_INLINE void add_ref_mv_candidate(
             ref_mv_stack[*refmv_count].this_mv = this_refmv;
             ref_mv_stack[*refmv_count].row_offset = row_offset;
             ref_mv_stack[*refmv_count].col_offset = col_offset;
-            ref_mv_stack[*refmv_count].cwp_idx = candidate->cwp_idx;
+            ref_mv_stack[*refmv_count].cwp_idx = CWP_EQUAL;
             ref_mv_weight[*refmv_count] = weight;
             ++(*refmv_count);
           }
@@ -1180,7 +1178,7 @@ static AOM_INLINE void add_ref_mv_candidate(
           ) {
             derived_mv_stack[index].this_mv = derived_mv;
             derived_mv_weight[index] = weight;
-            derived_mv_stack[index].cwp_idx = candidate->cwp_idx;
+            derived_mv_stack[index].cwp_idx = CWP_EQUAL;
             ++(*derived_mv_count);
           }
 #if CONFIG_DRL_PR_LIM
@@ -1194,7 +1192,7 @@ static AOM_INLINE void add_ref_mv_candidate(
           ) {
             derived_mv_stack[*derived_mv_count].this_mv = derived_mv;
             derived_mv_weight[*derived_mv_count] = weight;
-            derived_mv_stack[*derived_mv_count].cwp_idx = candidate->cwp_idx;
+            derived_mv_stack[*derived_mv_count].cwp_idx = CWP_EQUAL;
             ++(*derived_mv_count);
           }
         }
@@ -1264,7 +1262,7 @@ static AOM_INLINE void add_ref_mv_candidate(
             ) {
               derived_mv_stack[index].this_mv = derived_mv;
               derived_mv_weight[index] = weight;
-              derived_mv_stack[index].cwp_idx = candidate->cwp_idx;
+              derived_mv_stack[index].cwp_idx = CWP_EQUAL;
               ++(*derived_mv_count);
             }
 #if CONFIG_DRL_PR_LIM
@@ -1278,7 +1276,7 @@ static AOM_INLINE void add_ref_mv_candidate(
             ) {
               derived_mv_stack[*derived_mv_count].this_mv = derived_mv;
               derived_mv_weight[*derived_mv_count] = weight;
-              derived_mv_stack[*derived_mv_count].cwp_idx = candidate->cwp_idx;
+              derived_mv_stack[*derived_mv_count].cwp_idx = CWP_EQUAL;
               ++(*derived_mv_count);
             }
           }
@@ -1324,7 +1322,7 @@ static AOM_INLINE void add_ref_mv_candidate(
               ) {
                 derived_mv_stack[index].this_mv = this_refmv;
                 derived_mv_weight[index] = weight;
-                derived_mv_stack[index].cwp_idx = candidate->cwp_idx;
+                derived_mv_stack[index].cwp_idx = CWP_EQUAL;
                 ++(*derived_mv_count);
               }
 #if CONFIG_DRL_PR_LIM
@@ -1338,8 +1336,7 @@ static AOM_INLINE void add_ref_mv_candidate(
               ) {
                 derived_mv_stack[*derived_mv_count].this_mv = this_refmv;
                 derived_mv_weight[*derived_mv_count] = weight;
-                derived_mv_stack[*derived_mv_count].cwp_idx =
-                    candidate->cwp_idx;
+                derived_mv_stack[*derived_mv_count].cwp_idx = CWP_EQUAL;
                 ++(*derived_mv_count);
               }
             }
@@ -1493,7 +1490,7 @@ static AOM_INLINE void add_ref_mv_candidate(
                 derived_mv_stack[index].this_mv = this_refmv[0];
                 derived_mv_stack[index].comp_mv = this_refmv[1];
                 derived_mv_weight[index] = weight;
-                derived_mv_stack[index].cwp_idx = candidate->cwp_idx;
+                derived_mv_stack[index].cwp_idx = CWP_EQUAL;
                 ++(*derived_mv_count);
               }
 #if CONFIG_DRL_PR_LIM
@@ -1508,8 +1505,7 @@ static AOM_INLINE void add_ref_mv_candidate(
                 derived_mv_stack[*derived_mv_count].this_mv = this_refmv[0];
                 derived_mv_stack[*derived_mv_count].comp_mv = this_refmv[1];
                 derived_mv_weight[*derived_mv_count] = weight;
-                derived_mv_stack[*derived_mv_count].cwp_idx =
-                    candidate->cwp_idx;
+                derived_mv_stack[*derived_mv_count].cwp_idx = CWP_EQUAL;
                 ++(*derived_mv_count);
               }
             }
@@ -1580,7 +1576,7 @@ static AOM_INLINE void add_ref_mv_candidate(
                 derived_mv_stack[index].this_mv = this_refmv[0];
                 derived_mv_stack[index].comp_mv = this_refmv[1];
                 derived_mv_weight[index] = weight;
-                derived_mv_stack[index].cwp_idx = candidate->cwp_idx;
+                derived_mv_stack[index].cwp_idx = CWP_EQUAL;
                 ++(*derived_mv_count);
               }
 #if CONFIG_DRL_PR_LIM
@@ -1595,8 +1591,7 @@ static AOM_INLINE void add_ref_mv_candidate(
                 derived_mv_stack[*derived_mv_count].this_mv = this_refmv[0];
                 derived_mv_stack[*derived_mv_count].comp_mv = this_refmv[1];
                 derived_mv_weight[*derived_mv_count] = weight;
-                derived_mv_stack[*derived_mv_count].cwp_idx =
-                    candidate->cwp_idx;
+                derived_mv_stack[*derived_mv_count].cwp_idx = CWP_EQUAL;
                 ++(*derived_mv_count);
               }
             }
