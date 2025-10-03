@@ -2401,9 +2401,11 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
   const int frame_width = cm->width;
   const int frame_height = cm->height;
   set_restoration_unit_size(
-#if CONFIG_RU_SIZE_RESTRICTION
+#if CONFIG_RU_SIZE_RESTRICTION || (CONFIG_MINIMUM_LR_UNIT_SIZE_64x64 && \
+                                   CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES)
       cm,
-#endif  // CONFIG_RU_SIZE_RESTRICTION
+#endif  // CONFIG_RU_SIZE_RESTRICTION || (CONFIG_MINIMUM_LR_UNIT_SIZE_64x64 &&
+        // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES)
       frame_width, frame_height, seq_params->subsampling_x,
       seq_params->subsampling_y, cm->rst_info);
   for (int i = 0; i < num_planes; ++i)
@@ -2523,24 +2525,20 @@ void gdf_optimizer(AV1_COMP *cpi, AV1_COMMON *cm) {
   }
 #endif
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-  const int num_tile_rows =
-      cm->seq_params.disable_loopfilters_across_tiles ? cm->tiles.rows : 1;
-  const int num_tile_cols =
-      cm->seq_params.disable_loopfilters_across_tiles ? cm->tiles.cols : 1;
+  const int num_tile_rows = cm->tiles.rows;
+  const int num_tile_cols = cm->tiles.cols;
 #else
   const int num_tile_rows = 1;
   const int num_tile_cols = 1;
-#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   AV1PixelRect tile_rect = av1_whole_frame_rect(cm, 0);
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   int blk_idx = 0;
   int tile_blk_stripe0 = 0;
   for (int tile_row = 0; tile_row < num_tile_rows; ++tile_row) {
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-    if (cm->seq_params.disable_loopfilters_across_tiles) {
-      TileInfo tile_info;
-      av1_tile_init(&tile_info, cm, tile_row, 0);
-      tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
-    }
+    TileInfo tile_info;
+    av1_tile_init(&tile_info, cm, tile_row, 0);
+    AV1PixelRect tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     const int tile_height = tile_rect.bottom - tile_rect.top;
     for (int y_pos = -GDF_TEST_STRIPE_OFF, blk_idx_h = 0; y_pos < tile_height;
@@ -2554,11 +2552,8 @@ void gdf_optimizer(AV1_COMP *cpi, AV1_COMMON *cm) {
       int blk_stripe = 0;
       for (int tile_col = 0; tile_col < num_tile_cols; ++tile_col) {
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-        if (cm->seq_params.disable_loopfilters_across_tiles) {
-          TileInfo tile_info;
-          av1_tile_init(&tile_info, cm, tile_row, tile_col);
-          tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
-        }
+        av1_tile_init(&tile_info, cm, tile_row, tile_col);
+        tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
         const int tile_width = tile_rect.right - tile_rect.left;
         for (int x_pos = 0; x_pos < tile_width;
@@ -2605,8 +2600,15 @@ void gdf_optimizer(AV1_COMP *cpi, AV1_COMMON *cm) {
                 continue;
               }
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-              int tile_boundary_left = (j_min == tile_rect.left);
-              int tile_boundary_right = (j_max == tile_rect.right);
+              int tile_boundary_left =
+                  cm->seq_params.disable_loopfilters_across_tiles
+                      ? (j_min == tile_rect.left)
+                      : (j_min == 0);
+              int tile_boundary_right =
+                  cm->seq_params.disable_loopfilters_across_tiles
+                      ? (j_max == tile_rect.right)
+                      : (j_max == cm->cur_frame->buf.y_width);
+
               gdf_setup_processing_stripe_leftright_boundary(
                   &cm->gdf_info, i_min, i_max, j_min, j_max, tile_boundary_left,
                   tile_boundary_right);
@@ -2996,7 +2998,11 @@ static void cdef_restoration_frame(AV1_COMP *cpi, AV1_COMMON *cm,
     if (cm->rst_info[0].frame_restoration_type != RESTORE_NONE ||
         cm->rst_info[1].frame_restoration_type != RESTORE_NONE ||
         cm->rst_info[2].frame_restoration_type != RESTORE_NONE) {
-      if (num_workers > 1 && USE_LOOP_RESTORATION_MT)
+      if (num_workers > 1
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+          && USE_LOOP_RESTORATION_MT
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+      )
         av1_loop_restoration_filter_frame_mt(
             &cm->cur_frame->buf, cm, 0, mt_info->workers, num_workers,
             &mt_info->lr_row_sync, &cpi->lr_ctxt);

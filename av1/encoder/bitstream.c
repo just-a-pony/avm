@@ -1624,8 +1624,15 @@ static AOM_INLINE void write_ccso(const AV1_COMMON *cm, MACROBLOCKD *const xd,
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const int mi_row = xd->mi_row;
   const int mi_col = xd->mi_col;
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+  const int ccso_blk_size = get_ccso_unit_size_log2_adaptive_tile(
+      cm, cm->mib_size_log2 + MI_SIZE_LOG2, CCSO_BLK_SIZE);
+  const int blk_size_y = (1 << (ccso_blk_size - MI_SIZE_LOG2)) - 1;
+  const int blk_size_x = (1 << (ccso_blk_size - MI_SIZE_LOG2)) - 1;
+#else
   const int blk_size_y = (1 << (CCSO_BLK_SIZE - MI_SIZE_LOG2)) - 1;
   const int blk_size_x = (1 << (CCSO_BLK_SIZE - MI_SIZE_LOG2)) - 1;
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   const MB_MODE_INFO *mbmi =
       mi_params->mi_grid_base[(mi_row & ~blk_size_y) * mi_params->mi_stride +
                               (mi_col & ~blk_size_x)];
@@ -1633,7 +1640,7 @@ static AOM_INLINE void write_ccso(const AV1_COMMON *cm, MACROBLOCKD *const xd,
   if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
       cm->ccso_info.ccso_enable[0]) {
     if (!cm->ccso_info.sb_reuse_ccso[0]) {
-      const int ccso_ctx = av1_get_ccso_context(xd, 0);
+      const int ccso_ctx = av1_get_ccso_context(cm, xd, 0);
       aom_write_symbol(w, mbmi->ccso_blk_y == 0 ? 0 : 1,
                        xd->tile_ctx->ccso_cdf[0][ccso_ctx], 2);
     }
@@ -1643,7 +1650,7 @@ static AOM_INLINE void write_ccso(const AV1_COMMON *cm, MACROBLOCKD *const xd,
   if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
       cm->ccso_info.ccso_enable[1]) {
     if (!cm->ccso_info.sb_reuse_ccso[1]) {
-      const int ccso_ctx = av1_get_ccso_context(xd, 1);
+      const int ccso_ctx = av1_get_ccso_context(cm, xd, 1);
       aom_write_symbol(w, mbmi->ccso_blk_u == 0 ? 0 : 1,
                        xd->tile_ctx->ccso_cdf[1][ccso_ctx], 2);
     }
@@ -1653,7 +1660,7 @@ static AOM_INLINE void write_ccso(const AV1_COMMON *cm, MACROBLOCKD *const xd,
   if (!(mi_row & blk_size_y) && !(mi_col & blk_size_x) &&
       cm->ccso_info.ccso_enable[2]) {
     if (!cm->ccso_info.sb_reuse_ccso[2]) {
-      const int ccso_ctx = av1_get_ccso_context(xd, 2);
+      const int ccso_ctx = av1_get_ccso_context(cm, xd, 2);
       aom_write_symbol(w, mbmi->ccso_blk_v == 0 ? 0 : 1,
                        xd->tile_ctx->ccso_cdf[2][ccso_ctx], 2);
     }
@@ -3724,7 +3731,49 @@ static AOM_INLINE void encode_restoration_mode(
       rsi->temporal_pred_flag = 0;
     }
   }
-  int size = cm->rst_info[0].max_restoration_unit_size;
+#if CONFIG_MINIMUM_LR_UNIT_SIZE_64x64
+  int size = RESTORATION_UNITSIZE_MAX;
+  if (!luma_none) {
+    aom_wb_write_bit(wb, cm->rst_info[0].restoration_unit_size == size >> 1);
+    if (cm->rst_info[0].restoration_unit_size != size >> 1
+#if CONFIG_RU_SIZE_RESTRICTION
+        && cm->mib_size != 64  // sb_size != 256
+#endif                         // CONFIG_RU_SIZE_RESTRICTION
+    ) {
+      aom_wb_write_bit(wb, cm->rst_info[0].restoration_unit_size == size);
+      if (cm->rst_info[0].restoration_unit_size != size
+#if CONFIG_RU_SIZE_RESTRICTION
+          && cm->mib_size != 32  // sb_size != 128
+#endif                           // CONFIG_RU_SIZE_RESTRICTION
+      ) {
+        aom_wb_write_bit(wb,
+                         cm->rst_info[0].restoration_unit_size == size >> 2);
+      }
+    }
+  }
+  if (!chroma_none) {
+    int s = AOMMAX(cm->seq_params.subsampling_x, cm->seq_params.subsampling_y);
+    size = RESTORATION_UNITSIZE_MAX >> s;
+    aom_wb_write_bit(wb, cm->rst_info[1].restoration_unit_size == size >> 1);
+    if (cm->rst_info[1].restoration_unit_size != size >> 1
+#if CONFIG_RU_SIZE_RESTRICTION
+        && cm->mib_size != 64  // sb_size != 256
+#endif                         // CONFIG_RU_SIZE_RESTRICTION
+    ) {
+      aom_wb_write_bit(wb, cm->rst_info[1].restoration_unit_size == size);
+      if (cm->rst_info[1].restoration_unit_size != size
+#if CONFIG_RU_SIZE_RESTRICTION
+          && cm->mib_size != 32  // sb_size != 128
+#endif                           // CONFIG_RU_SIZE_RESTRICTION
+      )
+        aom_wb_write_bit(wb,
+                         cm->rst_info[1].restoration_unit_size == size >> 2);
+    }
+    assert(cm->rst_info[2].restoration_unit_size ==
+           cm->rst_info[1].restoration_unit_size);
+  }
+#else
+  int size = RESTORATION_UNITSIZE_MAX;
   if (!luma_none) {
     aom_wb_write_bit(wb, cm->rst_info[0].restoration_unit_size == size >> 1);
     if (cm->rst_info[0].restoration_unit_size != size >> 1
@@ -3746,6 +3795,7 @@ static AOM_INLINE void encode_restoration_mode(
     assert(cm->rst_info[2].restoration_unit_size ==
            cm->rst_info[1].restoration_unit_size);
   }
+#endif  // CONFIG_MINIMUM_LR_UNIT_SIZE_64x64
 #if CONFIG_LR_FRAMEFILTERS_IN_HEADER
   for (int p = 0; p < num_planes; ++p) {
     if (is_frame_filters_enabled(p) &&

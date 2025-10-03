@@ -2770,6 +2770,128 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
     }
     assert(IMPLIES(!rsi->frame_filters_on, !rsi->temporal_pred_flag));
   }
+#if CONFIG_MINIMUM_LR_UNIT_SIZE_64x64
+  int subsampling_xy =
+      AOMMAX(cm->seq_params.subsampling_x, cm->seq_params.subsampling_y);
+
+  cm->rst_info[0].restoration_unit_size = RESTORATION_UNITSIZE_MAX >> 3;
+  cm->rst_info[1].restoration_unit_size =
+      RESTORATION_UNITSIZE_MAX >> (3 + subsampling_xy);
+  cm->rst_info[2].restoration_unit_size = cm->rst_info[1].restoration_unit_size;
+
+#if CONFIG_CWG_F317
+  if (cm->bru.frame_inactive_flag || cm->bridge_frame_info.is_bridge_frame) {
+#else
+  if (cm->bru.frame_inactive_flag) {
+#endif  // CONFIG_CWG_F317
+    if (num_planes > 1) {
+      cm->rst_info[1].restoration_unit_size =
+          RESTORATION_UNITSIZE_MAX >> (3 + subsampling_xy);
+      cm->rst_info[2].restoration_unit_size =
+          cm->rst_info[1].restoration_unit_size;
+    }
+    return;
+  }
+
+  if (!luma_none) {
+    int size = RESTORATION_UNITSIZE_MAX;
+    if (aom_rb_read_bit(rb))
+      cm->rst_info[0].restoration_unit_size = size >> 1;
+    else {
+#if CONFIG_RU_SIZE_RESTRICTION
+      if (cm->mib_size == 64) {  // sb_szie == 256
+        cm->rst_info[0].restoration_unit_size = size;
+      } else {
+        if (aom_rb_read_bit(rb))
+          cm->rst_info[0].restoration_unit_size = size;
+        else {
+          if (cm->mib_size == 32) {  // sb_szie == 128
+            cm->rst_info[0].restoration_unit_size = size >> 2;
+          } else {
+            if (aom_rb_read_bit(rb))
+              cm->rst_info[0].restoration_unit_size = size >> 2;
+            else
+              cm->rst_info[0].restoration_unit_size = size >> 3;
+          }
+        }
+      }
+#else
+      if (aom_rb_read_bit(rb))
+        cm->rst_info[0].restoration_unit_size = size;
+      else {
+        if (aom_rb_read_bit(rb))
+          cm->rst_info[0].restoration_unit_size = size >> 2;
+        else
+          cm->rst_info[0].restoration_unit_size = size >> 3;
+      }
+#endif  // CONFIG_RU_SIZE_RESTRICTION
+    }
+  }
+  if (num_planes > 1) {
+    if (!chroma_none) {
+      int size = RESTORATION_UNITSIZE_MAX >> subsampling_xy;
+      if (aom_rb_read_bit(rb))
+        cm->rst_info[1].restoration_unit_size = size >> 1;
+      else {
+#if CONFIG_RU_SIZE_RESTRICTION
+        if (cm->mib_size == 64) {  // sb_szie == 256
+          cm->rst_info[1].restoration_unit_size = size;
+        } else {
+          if (aom_rb_read_bit(rb))
+            cm->rst_info[1].restoration_unit_size = size;
+          else {
+            if (cm->mib_size == 32) {  // sb_szie == 128
+              cm->rst_info[1].restoration_unit_size = size >> 2;
+            } else {
+              if (aom_rb_read_bit(rb))
+                cm->rst_info[1].restoration_unit_size = size >> 2;
+              else
+                cm->rst_info[1].restoration_unit_size = size >> 3;
+            }
+          }
+        }
+#else
+        if (aom_rb_read_bit(rb))
+          cm->rst_info[1].restoration_unit_size = size;
+        else {
+          if (aom_rb_read_bit(rb))
+            cm->rst_info[1].restoration_unit_size = size >> 2;
+          else
+            cm->rst_info[1].restoration_unit_size = size >> 3;
+        }
+#endif  // CONFIG_RU_SIZE_RESTRICTION
+      }
+    }
+    cm->rst_info[2].restoration_unit_size =
+        cm->rst_info[1].restoration_unit_size;
+  }
+
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+  // add the normative restriction of ru size when
+  // disable_loopfilters_across_tiles == 1
+  int max_plane_ru_size =
+      AOMMAX(cm->rst_info[0].restoration_unit_size,
+             cm->rst_info[1].restoration_unit_size << subsampling_xy);
+  for (int tile_row = 0; tile_row < cm->tiles.rows - 1; tile_row++) {
+    for (int tile_col = 0; tile_col < cm->tiles.cols - 1; tile_col++) {
+      int tile_w = (cm->tiles.col_start_sb[tile_col + 1] -
+                    cm->tiles.col_start_sb[tile_col])
+                   << (cm->mib_size_log2 + MI_SIZE_LOG2);
+      int tile_h = (cm->tiles.row_start_sb[tile_row + 1] -
+                    cm->tiles.row_start_sb[tile_row])
+                   << (cm->mib_size_log2 + MI_SIZE_LOG2);
+
+      if (tile_w % max_plane_ru_size || tile_h % max_plane_ru_size) {
+        aom_internal_error(
+            &cm->error, AOM_CODEC_ERROR,
+            "Invalid RU size, RU size shall be an integer divisor of any tile "
+            "width or height when disable-loopfilters-across-tiles=1.");
+        return;
+      }
+    }
+  }
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+#else
   const int frame_width = cm->width;
   const int frame_height = cm->height;
   set_restoration_unit_size(
@@ -2843,6 +2965,7 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
     cm->rst_info[2].restoration_unit_size =
         cm->rst_info[1].restoration_unit_size;
   }
+#endif  // CONFIG_MINIMUM_LR_UNIT_SIZE_64x64
 #if CONFIG_LR_FRAMEFILTERS_IN_HEADER
   for (int p = 0; p < num_planes; ++p) {
     if (is_frame_filters_enabled(p) &&
@@ -3646,6 +3769,12 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
   }
 #endif  // CONFIG_CWG_F317
   if (cm->ccso_info.ccso_frame_flag) {
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+    const int ccso_blk_size = get_ccso_unit_size_log2_adaptive_tile(
+        cm, cm->mib_size_log2 + MI_SIZE_LOG2, CCSO_BLK_SIZE);
+    cm->ccso_info.ccso_blk_size = ccso_blk_size;
+    cm->cur_frame->ccso_info.ccso_blk_size = ccso_blk_size;
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     for (int plane = 0; plane < av1_num_planes(cm); plane++) {
       CcsoInfo *ref_frame_ccso_info = NULL;
       cm->cur_frame->ccso_info.subsampling_y[plane] =
@@ -3684,6 +3813,15 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
             aom_internal_error(&cm->error, AOM_CODEC_ERROR,
                                "Invalid ccso_ref_idx: ref frame ccso disabled");
           }
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+          if (cm->ccso_info.sb_reuse_ccso[plane] &&
+              (cm->ccso_info.ccso_blk_size !=
+                   ref_frame_ccso_info->ccso_blk_size ||
+               cm->ccso_info.ccso_blk_size != CCSO_BLK_SIZE)) {
+            aom_internal_error(&cm->error, AOM_CODEC_ERROR,
+                               "Invalid ccso_reuse: ccso_blk_size mismatch");
+          }
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
         }
 
         if (cm->ccso_info.sb_reuse_ccso[plane] &&
@@ -10496,7 +10634,11 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #endif
 
       if (do_cdef) {
-        if (pbi->num_workers > 1) {
+        if (pbi->num_workers > 1
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+            && USE_LOOP_RESTORATION_MT
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+        ) {
           av1_cdef_frame_mt(cm, &pbi->dcb.xd, pbi->cdef_worker,
                             pbi->tile_workers, &pbi->cdef_sync,
                             pbi->num_workers, av1_cdef_init_fb_row_mt);
@@ -10508,7 +10650,8 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       if (use_ccso) {
         if (pbi->num_workers > 1
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-            && !cm->seq_params.disable_loopfilters_across_tiles
+            && !cm->seq_params.disable_loopfilters_across_tiles &&
+            USE_LOOP_RESTORATION_MT
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
         ) {
           av1_ccso_frame_mt(&cm->cur_frame->buf, cm, xd, pbi->tile_workers,
@@ -10534,7 +10677,11 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       if (do_loop_restoration) {
         // HERE
         copy_frame_filters_to_runits_if_needed(cm);
-        if (pbi->num_workers > 1 && USE_LOOP_RESTORATION_MT) {
+        if (pbi->num_workers > 1
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+            && USE_LOOP_RESTORATION_MT
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+        ) {
           av1_loop_restoration_filter_frame_mt(
               (YV12_BUFFER_CONFIG *)xd->cur_buf, cm, optimized_loop_restoration,
               pbi->tile_workers, pbi->num_workers, &pbi->lr_row_sync,
@@ -10556,7 +10703,11 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       if (do_loop_restoration) {
         // HERE
         copy_frame_filters_to_runits_if_needed(cm);
-        if (pbi->num_workers > 1 && USE_LOOP_RESTORATION_MT) {
+        if (pbi->num_workers > 1
+#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+            && USE_LOOP_RESTORATION_MT
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+        ) {
           av1_loop_restoration_filter_frame_mt(
               (YV12_BUFFER_CONFIG *)xd->cur_buf, cm, optimized_loop_restoration,
               pbi->tile_workers, pbi->num_workers, &pbi->lr_row_sync,

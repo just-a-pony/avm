@@ -20,28 +20,6 @@ static int gdf_num_stripes_in_tile(int stripe_size, int tile_size) {
   return (tile_size + first_stripe_offset + stripe_size - 1) / stripe_size;
 }
 
-#ifndef NDEBUG
-static int gdf_get_frame_stripe_from_row(AV1_COMMON *const cm, int row) {
-#if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-  if (cm->seq_params.disable_loopfilters_across_tiles) {
-    const int mi_row = row >> MI_SIZE_LOG2;
-    const int tile_row = get_tile_row_from_mi_row(&cm->tiles, mi_row);
-    int fs = 0;
-    for (int tr = 0; tr < tile_row; tr++)
-      fs += cm->gdf_info.gdf_vert_stripes_per_tile[tr];
-    const int tile_row_start = cm->tiles.row_start_sb[tile_row]
-                               << cm->tiles.mib_size_log2;
-    row -= (tile_row_start << MI_SIZE_LOG2);
-    return fs + (row + GDF_TEST_STRIPE_OFF) / cm->gdf_info.gdf_unit_size;
-  } else {
-    return (row + GDF_TEST_STRIPE_OFF) / cm->gdf_info.gdf_unit_size;
-  }
-#else
-  return (row + GDF_TEST_STRIPE_OFF) / cm->gdf_info.gdf_unit_size;
-#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-}
-#endif  // NDEBUG
-
 void init_gdf_test(GdfInfo *gi, int mib_size, int rec_height, int rec_width) {
   gi->gdf_mode = 0;
   gi->gdf_pic_qp_idx = 0;
@@ -69,10 +47,24 @@ void init_gdf(AV1_COMMON *cm) {
   gi->gdf_pic_scale_idx = 0;
   gi->gdf_block_size = AOMMAX(cm->mib_size << MI_SIZE_LOG2, GDF_TEST_BLK_SIZE);
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-  const int num_tile_rows =
-      cm->seq_params.disable_loopfilters_across_tiles ? cm->tiles.rows : 1;
-  const int num_tile_cols =
-      cm->seq_params.disable_loopfilters_across_tiles ? cm->tiles.cols : 1;
+  const int num_tile_rows = cm->tiles.rows;
+  const int num_tile_cols = cm->tiles.cols;
+
+  // if super_block size is 64x64
+  if (cm->mib_size == 16) {
+    int e2 = 0;
+    for (int i = 0; i < cm->tiles.cols - 1; ++i) {
+      const int size =
+          cm->tiles.col_start_sb[i + 1] - cm->tiles.col_start_sb[i];
+      e2 += size & 1;
+    }
+    for (int i = 0; i < cm->tiles.rows - 1; ++i) {
+      const int size =
+          cm->tiles.row_start_sb[i + 1] - cm->tiles.row_start_sb[i];
+      e2 += size & 1;
+    }
+    if (e2) gi->gdf_block_size = 64;
+  }
 #else
   const int num_tile_rows = 1;
   const int num_tile_cols = 1;
@@ -381,7 +373,6 @@ void gdf_restore_processing_stripe_leftright_boundary(GdfInfo *gdf, int i_min,
 void gdf_setup_reference_lines(AV1_COMMON *cm, int i_min, int i_max,
                                int frame_stripe) {
   const RestorationStripeBoundaries *rsb = &cm->rst_info[0].boundaries;
-  assert(frame_stripe == gdf_get_frame_stripe_from_row(cm, i_min));
   const int rsb_row = frame_stripe * RESTORATION_CTX_VERT;
 
   const int rec_width = cm->cur_frame->buf.y_width;
@@ -590,24 +581,20 @@ void gdf_filter_frame(AV1_COMMON *cm) {
   int scale_val = cm->gdf_info.gdf_pic_scale_idx + 1;
 
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-  const int num_tile_rows =
-      cm->seq_params.disable_loopfilters_across_tiles ? cm->tiles.rows : 1;
-  const int num_tile_cols =
-      cm->seq_params.disable_loopfilters_across_tiles ? cm->tiles.cols : 1;
+  const int num_tile_rows = cm->tiles.rows;
+  const int num_tile_cols = cm->tiles.cols;
 #else
   const int num_tile_rows = 1;
   const int num_tile_cols = 1;
-#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   AV1PixelRect tile_rect = av1_whole_frame_rect(cm, 0);
+#endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   int blk_idx = 0;
   int tile_blk_stripe0 = 0;
   for (int tile_row = 0; tile_row < num_tile_rows; ++tile_row) {
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-    if (cm->seq_params.disable_loopfilters_across_tiles) {
-      TileInfo tile_info;
-      av1_tile_init(&tile_info, cm, tile_row, 0);
-      tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
-    }
+    TileInfo tile_info;
+    av1_tile_init(&tile_info, cm, tile_row, 0);
+    AV1PixelRect tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     const int tile_height = tile_rect.bottom - tile_rect.top;
     for (int y_pos = -GDF_TEST_STRIPE_OFF, blk_idx_h = 0; y_pos < tile_height;
@@ -618,11 +605,8 @@ void gdf_filter_frame(AV1_COMMON *cm) {
       int blk_stripe = 0;
       for (int tile_col = 0; tile_col < num_tile_cols; ++tile_col) {
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-        if (cm->seq_params.disable_loopfilters_across_tiles) {
-          TileInfo tile_info;
-          av1_tile_init(&tile_info, cm, tile_row, tile_col);
-          tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
-        }
+        av1_tile_init(&tile_info, cm, tile_row, tile_col);
+        tile_rect = av1_get_tile_rect(&tile_info, cm, 0);
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
         const int tile_width = tile_rect.right - tile_rect.left;
         for (int x_pos = 0; x_pos < tile_width;
@@ -650,8 +634,15 @@ void gdf_filter_frame(AV1_COMMON *cm) {
                                  tile_width - GDF_TEST_FRAME_BOUNDARY_SIZE) +
                           tile_rect.left;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
-              int tile_boundary_left = (j_min == tile_rect.left);
-              int tile_boundary_right = (j_max == tile_rect.right);
+              int tile_boundary_left =
+                  cm->seq_params.disable_loopfilters_across_tiles
+                      ? (j_min == tile_rect.left)
+                      : (j_min == 0);
+              int tile_boundary_right =
+                  cm->seq_params.disable_loopfilters_across_tiles
+                      ? (j_max == tile_rect.right)
+                      : (j_max == cm->cur_frame->buf.y_width);
+
               gdf_setup_processing_stripe_leftright_boundary(
                   &cm->gdf_info, i_min, i_max, j_min, j_max, tile_boundary_left,
                   tile_boundary_right);
