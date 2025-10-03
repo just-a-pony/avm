@@ -6578,6 +6578,7 @@ static AOM_INLINE void write_uncompressed_header_obu
     }
 #endif  // CONFIG_CWG_F317
   }
+#endif  // !CONFIG_CWG_F293_BUFFER_REMOVAL_TIMING
 
 #if CONFIG_CWG_F317
   if (cm->bridge_frame_info.is_bridge_frame) {
@@ -6593,7 +6594,7 @@ static AOM_INLINE void write_uncompressed_header_obu
       }
     }
   }
-#endif  // !CONFIG_CWG_F293_BUFFER_REMOVAL_TIMING
+
 
   if (!cm->bridge_frame_info.is_bridge_frame ||
       cm->bridge_frame_info.bridge_frame_overwrite_flag) {
