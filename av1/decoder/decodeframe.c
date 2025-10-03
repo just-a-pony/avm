@@ -584,6 +584,8 @@ static AOM_INLINE void set_offsets(AV1_COMMON *const cm, MACROBLOCKD *const xd,
 #endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
       xd, tile, mi_row, bh, mi_col, bw, mi_params->mi_rows, mi_params->mi_cols,
       chroma_ref_info);
+  xd->mi[0]->chroma_mi_row_start = mi_row;
+  xd->mi[0]->chroma_mi_col_start = mi_col;
 
   av1_setup_dst_planes(xd->plane, &cm->cur_frame->buf, mi_row, mi_col, 0,
                        num_planes, chroma_ref_info);

@@ -442,6 +442,8 @@ void av1_set_offsets_without_segment_id(
 #endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
       xd, tile, mi_row, mi_height, mi_col, mi_width, cm->mi_params.mi_rows,
       cm->mi_params.mi_cols, chroma_ref_info);
+  xd->mi[0]->chroma_mi_row_start = mi_row;
+  xd->mi[0]->chroma_mi_col_start = mi_col;
 
   // Set up source buffers.
   av1_setup_src_planes(x, cpi->source, mi_row, mi_col, num_planes,

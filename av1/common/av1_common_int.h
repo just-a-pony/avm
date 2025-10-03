@@ -3318,8 +3318,6 @@ static INLINE void set_mi_row_col(
 
   xd->mi_row = mi_row;
   xd->mi_col = mi_col;
-  xd->mi[0]->chroma_mi_row_start = mi_row;
-  xd->mi[0]->chroma_mi_col_start = mi_col;
 
   xd->tile.mi_col_start = tile->mi_col_start;
   xd->tile.mi_col_end = tile->mi_col_end;
