@@ -6595,7 +6595,6 @@ static AOM_INLINE void write_uncompressed_header_obu
     }
   }
 
-
   if (!cm->bridge_frame_info.is_bridge_frame ||
       cm->bridge_frame_info.bridge_frame_overwrite_flag) {
 #endif  // CONFIG_CWG_F317
