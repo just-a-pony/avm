@@ -125,6 +125,17 @@ int64_t total_context_switch = { 0 };
 int64_t total_total_hits = { 0 };
 #endif  // CONFIG_THROUGHPUT_ANALYSIS
 
+int av1_check_byte_alignment(AV1_COMMON *const cm,
+                             struct aom_read_bit_buffer *const rb) {
+  while (rb->bit_offset & 7) {
+    if (aom_rb_read_bit(rb)) {
+      cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+      return -1;
+    }
+  }
+  return 0;
+}
+
 // Checks that the remaining bits start with a 1 and ends with 0s.
 // It consumes an additional byte, if already byte aligned before the check.
 int av1_check_trailing_bits(AV1Decoder *pbi, struct aom_read_bit_buffer *rb) {

@@ -76,6 +76,9 @@ void av1_read_frame_size(struct aom_read_bit_buffer *rb, int num_bits_width,
                          int num_bits_height, int *width, int *height);
 BITSTREAM_PROFILE av1_read_profile(struct aom_read_bit_buffer *rb);
 
+int av1_check_byte_alignment(AV1_COMMON *const cm,
+                             struct aom_read_bit_buffer *const rb);
+
 // Returns 0 on success. Sets pbi->common.error.error_code and returns -1 on
 // failure.
 int av1_check_trailing_bits(struct AV1Decoder *pbi,

@@ -48,16 +48,6 @@ aom_codec_err_t aom_get_num_layers_from_operating_point_idc(
   return AOM_CODEC_OK;
 }
 
-int byte_alignment(AV1_COMMON *const cm, struct aom_read_bit_buffer *const rb) {
-  while (rb->bit_offset & 7) {
-    if (aom_rb_read_bit(rb)) {
-      cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-      return -1;
-    }
-  }
-  return 0;
-}
-
 static int is_obu_in_current_operating_point(AV1Decoder *pbi,
                                              ObuHeader obu_header) {
   if (!pbi->current_operating_point) {
@@ -501,7 +491,7 @@ static uint32_t read_tilegroup_obu(AV1Decoder *pbi,
     }
     header_size = (int32_t)aom_rb_bytes_read(rb);
   } else {
-    if (byte_alignment(cm, rb)) return 0;
+    if (av1_check_byte_alignment(cm, rb)) return 0;
     data += header_size;
 
     av1_decode_tg_tiles_and_wrapup(pbi, data, data_end, p_data_end, start_tile,
@@ -614,7 +604,7 @@ static uint32_t read_one_tile_group_obu(
 
   header_size = read_tile_group_header(pbi, rb, &start_tile, &end_tile,
                                        tile_start_implicit);
-  if (header_size == -1 || byte_alignment(cm, rb)) return 0;
+  if (header_size == -1 || av1_check_byte_alignment(cm, rb)) return 0;
   data += header_size;
   av1_decode_tg_tiles_and_wrapup(pbi, data, data_end, p_data_end, start_tile,
                                  end_tile, is_first_tg);
@@ -1289,8 +1279,9 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
         if (obu_header.type != OBU_FRAME) break;
         obu_payload_offset = frame_header_size;
         // Byte align the reader before reading the tile group.
-        // byte_alignment() has set cm->error.error_code if it returns -1.
-        if (byte_alignment(cm, &rb)) return -1;
+        // av1_check_byte_alignment() has set cm->error.error_code if it returns
+        // -1.
+        if (av1_check_byte_alignment(cm, &rb)) return -1;
         AOM_FALLTHROUGH_INTENDED;  // fall through to read tile group.
       case OBU_TILE_GROUP:
         if (!pbi->seen_frame_header) {

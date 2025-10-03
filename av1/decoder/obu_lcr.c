@@ -132,7 +132,7 @@ static int read_lcr_embedded_layer_info(struct AV1Decoder *pbi, int isGlobal,
         crop_params->crop_max_height = aom_rb_read_uvlc(rb);
       }
       // byte alignment
-      if (byte_alignment(&pbi->common, rb) != 0) {
+      if (av1_check_byte_alignment(&pbi->common, rb) != 0) {
         aom_internal_error(
             &pbi->common.error, AOM_CODEC_CORRUPT_FRAME,
             "Byte alignment error in read_lcr_embedded_layer_info()");
@@ -192,7 +192,7 @@ static int read_lcr_xlayer_info(struct AV1Decoder *pbi, int isGlobal, int xId,
     read_lcr_xlayer_color_info(pbi, isGlobal, xId, rb);
 
   // byte alignment
-  if (byte_alignment(&pbi->common, rb) != 0) {
+  if (av1_check_byte_alignment(&pbi->common, rb) != 0) {
     aom_internal_error(&pbi->common.error, AOM_CODEC_CORRUPT_FRAME,
                        "Byte alignment error in read_lcr_xlayer_info()");
   }
