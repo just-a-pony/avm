@@ -586,15 +586,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                           "(0: false, 1: true (default))"),
   .force_video_mode = ARG_DEF(NULL, "force-video-mode", 1,
                               "Force video mode (0: false, 1: true (default))"),
-#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   .enable_overlay =
       ARG_DEF(NULL, "enable-overlay", 1,
               "Enable coding overlay frames (0: false (default), 1: true)"),
-#else
-  .enable_overlay =
-      ARG_DEF(NULL, "enable-overlay", 1,
-              "Enable coding overlay frames (0: false, 1: true (default))"),
-#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   .enable_palette =
       ARG_DEF(NULL, "enable-palette", 1,
               "Enable palette prediction mode (0: false, 1: true (default))"),
@@ -899,9 +893,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "Write hash values for each plane instead of the entire frame. "
               "(0: false (default), 1: true)"),
 #endif  // CONFIG_AV1_ENCODER
-#if CONFIG_REFRESH_FLAG
   .enable_short_refresh_frame_flags =
       ARG_DEF(NULL, "enable-short-refresh-frame-flags", 1,
               "Signal refresh frame flags with N bits. (0: N = 8, 1 : N = 3)"),
-#endif  // CONFIG_REFRESH_FLAG
 };

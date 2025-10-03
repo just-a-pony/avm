@@ -945,9 +945,7 @@ typedef struct {
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   // Indicates if parity hiding should be enabled
   bool enable_parity_hiding;
-#if CONFIG_REFRESH_FLAG
   bool enable_short_refresh_frame_flags;
-#endif  // CONFIG_REFRESH_FLAG
 #if CONFIG_EXT_SEG
   bool enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
@@ -3747,7 +3745,6 @@ static INLINE char const *get_frame_type_enum(int type) {
 void enc_bru_swap_stage(AV1_COMP *cpi);
 void enc_bru_swap_ref(AV1_COMMON *const cm);
 
-#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
 static INLINE void check_ref_count_status_enc(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
   RefCntBuffer *const frame_bufs = cm->buffer_pool->frame_bufs;
@@ -3772,7 +3769,6 @@ static INLINE void check_ref_count_status_enc(AV1_COMP *cpi) {
     }
   }
 }
-#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
 /*!\endcond */
 
 #ifdef __cplusplus

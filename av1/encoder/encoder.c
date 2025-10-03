@@ -626,10 +626,8 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_global_motion =
       tool_cfg->enable_global_motion && !seq->single_picture_hdr_flag;
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
-#if CONFIG_REFRESH_FLAG
   seq->enable_short_refresh_frame_flags =
       tool_cfg->enable_short_refresh_frame_flags;
-#endif  // CONFIG_REFRESH_FLAG
 #if CONFIG_EXT_SEG
   seq->enable_ext_seg = tool_cfg->enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
@@ -4904,9 +4902,7 @@ int av1_get_compressed_data(AV1_COMP *cpi, unsigned int *frame_flags,
 
   // Initialize fields related to forward keyframes
   cpi->no_show_fwd_kf = 0;
-#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   check_ref_count_status_enc(cpi);
-#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
   if (assign_cur_frame_new_fb(cm) == NULL) return AOM_CODEC_ERROR;
 
   const int result =

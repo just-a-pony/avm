@@ -213,8 +213,6 @@ set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
 set_aom_config_var(
   CONFIG_WARP_EXTEND_SIMPLIFICATION 1
   "Reduce the number of neighbors used in warp extend mode to four")
-set_aom_config_var(CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT 1
-                   "Enable enhanced frame output order derivation")
 set_aom_config_var(CONFIG_MULTI_FRAME_HEADER 1 "Enable multi-frame header.")
 set_aom_config_var(CONFIG_CWG_E242_MFH_ID_UVLC 1
                    "Signaling multi-frame header ID in UVLC")
@@ -237,9 +235,6 @@ set_aom_config_var(
 
 set_aom_config_var(CONFIG_TU64_TRAVERSED_ORDER 1
                    "Coding order of TU 64x64 traversed as 128x128 blocks")
-
-set_aom_config_var(CONFIG_REFRESH_FLAG 1
-                   "Experiment flag to signal refresh frame flag using index")
 
 set_aom_config_var(
   CONFIG_COMPOUND_WARP_CAUSAL 1

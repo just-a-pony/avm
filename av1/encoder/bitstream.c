@@ -5947,9 +5947,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   }
 #endif  // CONFIG_IMPROVED_GLOBAL_MOTION
   aom_wb_write_literal(wb, seq_params->df_par_bits_minus2, 2);
-#if CONFIG_REFRESH_FLAG
   aom_wb_write_bit(wb, seq_params->enable_short_refresh_frame_flags);
-#endif  // CONFIG_REFRESH_FLAG
 #if CONFIG_EXT_SEG
   aom_wb_write_bit(wb, seq_params->enable_ext_seg);
 #endif  // CONFIG_EXT_SEG
@@ -6556,7 +6554,6 @@ static AOM_INLINE void write_uncompressed_header_obu
     if ((current_frame->frame_type == KEY_FRAME && !cm->show_frame) ||
         current_frame->frame_type == INTER_FRAME ||
         current_frame->frame_type == INTRA_ONLY_FRAME) {
-#if CONFIG_REFRESH_FLAG
       if (cm->seq_params.enable_short_refresh_frame_flags &&
           !(current_frame->frame_type == KEY_FRAME && !cm->show_frame) &&
           !cm->features.error_resilient_mode) {
@@ -6577,43 +6574,18 @@ static AOM_INLINE void write_uncompressed_header_obu
 #if CONFIG_CWG_F260_REFRESH_FLAG
         }
 #else
-          if (refresh_idx == 0) {
-            aom_wb_write_literal(wb, 1, 1);
-          }
-        } else {
-          aom_wb_write_literal(wb, 0, seq_params->ref_frames_log2);
-          aom_wb_write_literal(wb, 0, 1);
+        if (refresh_idx == 0) {
+          aom_wb_write_literal(wb, 1, 1);
         }
+      } else {
+        aom_wb_write_literal(wb, 0, seq_params->ref_frames_log2);
+        aom_wb_write_literal(wb, 0, 1);
+      }
 #endif  // CONFIG_CWG_F260_REFRESH_FLAG
       } else {
         aom_wb_write_literal(wb, current_frame->refresh_frame_flags,
                              cm->seq_params.ref_frames);
       }
-#else
-#if CONFIG_CWG_F317
-    if (cm->bridge_frame_info.is_bridge_frame) {
-      aom_wb_write_literal(
-          wb, cm->bridge_frame_info.bridge_frame_overwrite_flag, 1);
-      if (cm->bridge_frame_info.bridge_frame_overwrite_flag) {
-        aom_wb_write_literal(wb, current_frame->refresh_frame_flags,
-                             cm->seq_params.ref_frames);
-      } else {
-        if (current_frame->refresh_frame_flags !=
-            (1 << cm->bridge_frame_info.bridge_frame_ref_idx)) {
-          aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-                             "Bridge frame refresh_frame_flags is not equal "
-                             "to 1 << bridge_frame_ref_idx");
-        }
-      }
-    } else {
-#endif  // CONFIG_CWG_F317
-      aom_wb_write_literal(wb, current_frame->refresh_frame_flags,
-                           cm->seq_params.ref_frames);
-
-#if CONFIG_CWG_F317
-    }
-#endif  // CONFIG_CWG_F317
-#endif  // CONFIG_REFRESH_FLAG
     }
 #if CONFIG_CWG_F317
   }
@@ -7000,15 +6972,11 @@ static AOM_INLINE void write_uncompressed_header_obu
     }
 
     if (seq_params->film_grain_params_present
-#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
 #if !CONFIG_F253_REMOVE_OUTPUTFLAG
         && (cm->seq_params.enable_frame_output_order || cm->show_frame ||
             cm->showable_frame)
 #endif
     )
-#else   // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
-        && (cm->show_frame || cm->showable_frame))
-#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
       write_film_grain_params(cpi, wb);
     return;
   }
@@ -7153,15 +7121,11 @@ static AOM_INLINE void write_uncompressed_header_obu
   if (!frame_is_intra_only(cm)) write_global_motion(cpi, wb);
 
   if (seq_params->film_grain_params_present
-#if CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
 #if !CONFIG_F253_REMOVE_OUTPUTFLAG
       && (cm->seq_params.enable_frame_output_order || cm->show_frame ||
           cm->showable_frame)
 #endif
   )
-#else   // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
-      && (cm->show_frame || cm->showable_frame))
-#endif  // CONFIG_OUTPUT_FRAME_BASED_ON_ORDER_HINT_ENHANCEMENT
     write_film_grain_params(cpi, wb);
 
   if (cm->tiles.large_scale) write_ext_tile_info(cm, saved_wb, wb);
