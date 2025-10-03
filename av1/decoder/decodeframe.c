@@ -2690,7 +2690,7 @@ static AOM_INLINE void decode_restoration_mode(AV1_COMMON *cm,
       if (is_frame_filters_enabled(p)) {
         const int read_frame_filters_on_off = 1;
         if (read_frame_filters_on_off) {
-          rsi->frame_filters_on = aom_rb_read_literal(rb, 1);
+          rsi->frame_filters_on = aom_rb_read_bit(rb);
           rsi->rst_ref_pic_idx = 0;
           rsi->temporal_pred_flag = 0;
           if (rsi->frame_filters_on) {
@@ -3739,7 +3739,7 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
     cm->ccso_info.ccso_frame_flag = 0;
   } else {
 #endif  // CONFIG_CWG_F317
-    cm->ccso_info.ccso_frame_flag = aom_rb_read_literal(rb, 1);
+    cm->ccso_info.ccso_frame_flag = aom_rb_read_bit(rb);
 #if CONFIG_CWG_F317
   }
 #endif  // CONFIG_CWG_F317
@@ -3756,12 +3756,12 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
           plane ? cm->seq_params.subsampling_y : 0;
       cm->cur_frame->ccso_info.subsampling_x[plane] =
           plane ? cm->seq_params.subsampling_x : 0;
-      cm->ccso_info.ccso_enable[plane] = aom_rb_read_literal(rb, 1);
+      cm->ccso_info.ccso_enable[plane] = aom_rb_read_bit(rb);
       if (cm->ccso_info.ccso_enable[plane]) {
         cm->cur_frame->ccso_info.ccso_enable[plane] = 1;
         if (!frame_is_intra_only(cm) && !cm->features.error_resilient_mode) {
-          cm->ccso_info.reuse_ccso[plane] = aom_rb_read_literal(rb, 1);
-          cm->ccso_info.sb_reuse_ccso[plane] = aom_rb_read_literal(rb, 1);
+          cm->ccso_info.reuse_ccso[plane] = aom_rb_read_bit(rb);
+          cm->ccso_info.sb_reuse_ccso[plane] = aom_rb_read_bit(rb);
         } else {
           cm->ccso_info.reuse_ccso[plane] = 0;
           cm->ccso_info.sb_reuse_ccso[plane] = 0;
@@ -3814,7 +3814,7 @@ static AOM_INLINE void setup_ccso(AV1_COMMON *cm,
         }
 
         if (!cm->ccso_info.reuse_ccso[plane]) {
-          cm->ccso_info.ccso_bo_only[plane] = aom_rb_read_literal(rb, 1);
+          cm->ccso_info.ccso_bo_only[plane] = aom_rb_read_bit(rb);
           cm->ccso_info.scale_idx[plane] = aom_rb_read_literal(rb, 2);
           if (cm->ccso_info.ccso_bo_only[plane]) {
             cm->ccso_info.quant_idx[plane] = 0;
@@ -7157,7 +7157,7 @@ void av1_read_sequence_header_beyond_av1(
   } else {
     seq_params->max_reference_frames = 7;
   }
-  const bool use_extra_dpb = aom_rb_read_literal(rb, 1);
+  const bool use_extra_dpb = aom_rb_read_bit(rb);
 
   if (use_extra_dpb) {
     seq_params->num_extra_dpb = 1 + aom_rb_read_literal(rb, 3);
@@ -7263,7 +7263,7 @@ void av1_read_sequence_header_beyond_av1(
   seq_params->enable_tcq = 0;
   int enable_tcq = aom_rb_read_bit(rb);
   if (enable_tcq) {
-    enable_tcq += aom_rb_read_literal(rb, 1);
+    enable_tcq += aom_rb_read_bit(rb);
     seq_params->enable_tcq = enable_tcq;
   }
   if (seq_params->enable_tcq == TCQ_DISABLE ||
@@ -8466,7 +8466,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_CWG_F317
       if (!cm->bridge_frame_info.is_bridge_frame) {
 #endif  // CONFIG_CWG_F317
-        signal_primary_ref_frame = aom_rb_read_literal(rb, 1);
+        signal_primary_ref_frame = aom_rb_read_bit(rb);
         pbi->signal_primary_ref_frame = signal_primary_ref_frame;
         if (signal_primary_ref_frame)
           features->primary_ref_frame =
@@ -8536,7 +8536,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     if (current_frame->frame_type == INTRA_ONLY_FRAME) {
       if (short_refresh_frame_flags) {
 #if CONFIG_CWG_F260_REFRESH_FLAG
-        const bool has_refresh_frame_flags = aom_rb_read_literal(rb, 1);
+        const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
         if (has_refresh_frame_flags) {
           const int refresh_idx =
               aom_rb_read_literal(rb, refresh_frame_flags_bits);
@@ -8560,7 +8560,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                 seq_params->ref_frames, refresh_idx);
           }
           if (refresh_idx == 0) {
-            const bool has_refresh_frame_flags = aom_rb_read_literal(rb, 1);
+            const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
             current_frame->refresh_frame_flags =
                 has_refresh_frame_flags ? 1 : 0;
           } else {
@@ -8593,7 +8593,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #if CONFIG_CWG_F317
         if (cm->bridge_frame_info.is_bridge_frame) {
           cm->bridge_frame_info.bridge_frame_overwrite_flag =
-              aom_rb_read_literal(rb, 1);
+              aom_rb_read_bit(rb);
           if (!cm->bridge_frame_info.bridge_frame_overwrite_flag) {
             current_frame->refresh_frame_flags =
                 1 << cm->bridge_frame_info.bridge_frame_ref_idx;
@@ -8605,7 +8605,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #endif  // CONFIG_CWG_F317
           if (short_refresh_frame_flags) {
 #if CONFIG_CWG_F260_REFRESH_FLAG
-            const bool has_refresh_frame_flags = aom_rb_read_literal(rb, 1);
+            const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
             if (has_refresh_frame_flags) {
               const int refresh_idx =
                   aom_rb_read_literal(rb, refresh_frame_flags_bits);
@@ -8629,7 +8629,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                   seq_params->ref_frames, refresh_idx);
             }
             if (refresh_idx == 0) {
-              const bool has_refresh_frame_flags = aom_rb_read_literal(rb, 1);
+              const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
               current_frame->refresh_frame_flags =
                   has_refresh_frame_flags ? 1 : 0;
             } else {
