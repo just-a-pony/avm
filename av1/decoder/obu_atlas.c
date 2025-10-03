@@ -150,9 +150,8 @@ static uint32_t read_ats_label_segment_info(struct AV1Decoder *pbi,
 
   ats_label->ats_signalled_atlas_segment_ids_flag[xLayerId][xAId] =
       aom_rb_read_bit(rb);
+  int NumSegments = ats_reg->ats_num_atlas_segments_minus_1[xLayerId][xAId] + 1;
   if (ats_label->ats_signalled_atlas_segment_ids_flag[xLayerId][xAId]) {
-    int NumSegments =
-        ats_reg->ats_num_atlas_segments_minus_1[xLayerId][xAId] + 1;
     for (int i = 0; i < NumSegments; i++) {
       ats_label->ats_atlas_segment_id[i] =
           aom_rb_read_literal(rb, ATLAS_LABEL_SEG_ID_BITS);
@@ -162,9 +161,7 @@ static uint32_t read_ats_label_segment_info(struct AV1Decoder *pbi,
           ats_label->ats_atlas_segment_id[i];
     }
   } else {
-    int NumAtlasSegments =
-        ats_reg->ats_num_atlas_segments_minus_1[xLayerId][xAId] + 1;
-    for (int i = 0; i < NumAtlasSegments; i++) {
+    for (int i = 0; i < NumSegments; i++) {
       ats_label->ats_atlas_segment_id[i] = i;
       ats_label->AtlasSegmentIDToIndex[xLayerId][xAId][i] = i;
       ats_label->AtlasSegmentIndexToID[xLayerId][xAId][i] = i;
