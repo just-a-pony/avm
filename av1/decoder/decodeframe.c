@@ -926,13 +926,10 @@ static AOM_INLINE void copy_frame_mvs_inter_block(AV1_COMMON *const cm,
     if (enable_refined_mvs_in_tmvp(cm, xd, mi)) {
       av1_copy_frame_refined_mvs(cm, xd, mi, xd->mi_row, xd->mi_col,
                                  x_inside_boundary, y_inside_boundary);
-    }
-#if CONFIG_TMVP_MVS_WRITING_FLOW_OPT
-    else {
+    } else {
       av1_copy_frame_mvs(cm, xd, mi, xd->mi_row, xd->mi_col, x_inside_boundary,
                          y_inside_boundary);
     }
-#endif  // CONFIG_TMVP_MVS_WRITING_FLOW_OPT
   }
 }
 
@@ -6936,11 +6933,9 @@ void av1_read_sequence_header(
 #else
         seq_params->order_hint_info.enable_order_hint ? aom_rb_read_bit(rb) : 0;
 #endif  // CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
-#if CONFIG_REDUCED_REF_FRAME_MVS_MODE
     seq_params->order_hint_info.reduced_ref_frame_mvs_mode =
         seq_params->order_hint_info.enable_ref_frame_mvs ? aom_rb_read_bit(rb)
                                                          : 0;
-#endif  // CONFIG_REDUCED_REF_FRAME_MVS_MODE
 
     if (aom_rb_read_bit(rb)) {
       seq_params->force_screen_content_tools =
