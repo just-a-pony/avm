@@ -4520,13 +4520,6 @@ static AOM_INLINE void read_tile_info_max_tile(
     tiles->row_start_sb[i] = start_sb + height_sb;
   }
   av1_calculate_tile_rows(tiles);
-  if (cm->bru.enabled) {
-    const int num_tiles = tiles->rows * tiles->cols;
-    memset(cm->tiles.tile_active_bitmap, 0, (num_tiles + 7) / 8);
-    if (num_tiles == 1) {
-      cm->tiles.tile_active_bitmap[0] = 1;
-    }
-  }
 }
 
 void av1_set_single_tile_decoding_mode(AV1_COMMON *const cm) {
@@ -4593,6 +4586,13 @@ static AOM_INLINE void read_tile_info(AV1Decoder *const pbi,
 #else
   read_tile_info_max_tile(cm, rb);
 #endif  // CONFIG_CWG_E242_SIGNAL_TILE_INFO
+  if (cm->bru.enabled) {
+    const int num_tiles = cm->tiles.rows * cm->tiles.cols;
+    memset(cm->tiles.tile_active_bitmap, 0, (num_tiles + 7) / 8);
+    if (num_tiles == 1) {
+      cm->tiles.tile_active_bitmap[0] = 1;
+    }
+  }
   pbi->context_update_tile_id = 0;
   if (cm->tiles.rows * cm->tiles.cols > 1) {
     if (!cm->seq_params.enable_avg_cdf || !cm->seq_params.avg_cdf_type) {
