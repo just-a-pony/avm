@@ -147,17 +147,11 @@ enum {
 #define CCSO_BAND_NUM 64
 #define CCSO_NUM_COMPONENTS 3
 
-#if MHCCP_RUNTIME_FLAG
 #define CFL_MHCCP_SWITCH_NUM 2
-#endif  // MHCCP_RUNTIME_FLAG
 #define MHCCP_MODE_NUM 3
 #define MHCCP_CONTEXT_GROUP_SIZE 4
-#if CONFIG_MHCCP_BUFFER_1LINES
 // 2 lines of the luma buffer, and 1 line for the chroma buffer
 #define LINE_NUM 1
-#else
-#define LINE_NUM 2
-#endif  // CONFIG_MHCCP_BUFFER_1LINES
 #define MHCCP_NUM_PARAMS 3
 #define MHCCP_WINDOW_SIZE 6
 #define MHCCP_MAX_REF_SAMPLES \
@@ -950,13 +944,8 @@ enum {
 enum {
   CFL_EXPLICIT,       // av1 cfl
   CFL_DERIVED_ALPHA,  // implicit CfL mode with derived scaling factor
-#if MHCCP_RUNTIME_FLAG
-  CFL_MULTI_PARAM,  // multi hypothesis cross component prediction
-#else
-  CFL_MULTI_PARAM_V,  // multi hypothesis cross component vertical prediction
-  CFL_MULTI_PARAM_H,  // multi hypothesis cross component horizontal prediction
-#endif             // MHCCP_RUNTIME_FLAG
-  CFL_TYPE_COUNT,  // CfL mode type count
+  CFL_MULTI_PARAM,    // multi hypothesis cross component prediction
+  CFL_TYPE_COUNT,     // CfL mode type count
 } UENUM1BYTE(CFL_TYPE);
 
 // Number of top model rd to store for pruning y modes in intra mode decision
@@ -1259,17 +1248,11 @@ enum {
 #define MAX_EXTERNAL_REFERENCES 128
 #define MAX_TILES 512
 
-#if CONFIG_DIV_LUT_SIMP
 #define DIV_LUT_PREC_BITS 9
 #define DIV_LUT_BITS 7
-#endif  // CONFIG_DIV_LUT_SIMP
 
 #define DIR_MODES_0_90 17
-#if CONFIG_DIV_LUT_SIMP
 #define IBP_WEIGHT_SHIFT DIV_LUT_BITS
-#else
-#define IBP_WEIGHT_SHIFT 8
-#endif  // CONFIG_DIV_LUT_SIMP
 
 #define IBP_WEIGHT_MAX (1 << IBP_WEIGHT_SHIFT)
 #define IBP_WEIGHT_REF IBP_WEIGHT_MAX

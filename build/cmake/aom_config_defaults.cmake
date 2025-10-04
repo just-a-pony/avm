@@ -189,9 +189,6 @@ set_aom_config_var(CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES 1
                    "AV2 control to allow loopfilters across tiles or not")
 set_aom_config_var(CONFIG_DIP_EXT_PRUNING 1 "AV2 DIP TFLite pruning.")
 
-set_aom_config_var(CONFIG_ORIP_DC_DISABLED 1
-                   "AV2 experiment flag to disable ORIP for DC mode.")
-
 set_aom_config_var(CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT 1
                    "Remove enable order hint flag.")
 
@@ -284,18 +281,6 @@ set_aom_config_var(CONFIG_WARPMV_WARP_CAUSAL_REMOVAL 1
 
 set_aom_config_var(CONFIG_BLENDING_SIMPLIFICATION 1
                    "CWG F137 simplification for blending mode")
-set_aom_config_var(CONFIG_DIV_LUT_SIMP 1 "Simplification on div_lut")
-set_aom_config_var(
-  MHCCP_DIVISION_TAYLOR 1
-  "Change the multipler calcucation function in MHCCP division handling")
-
-set_aom_config_var(CONFIG_MHCCP_BUFFER_IMPROVE 1
-                   "Fix the buffer issue772 for MHCCP")
-
-set_aom_config_var(CONFIG_MHCCP_BUFFER_1LINES 1
-                   "Using 1 lines for the chroma reference region in MHCCP")
-
-set_aom_config_var(MHCCP_RUNTIME_FLAG 1 "Using runtime flag to control MHCCP")
 
 set_aom_config_var(CONFIG_MHCCP_BLK_SIZE 1
                    "Add block size constraint for MHCCP")
