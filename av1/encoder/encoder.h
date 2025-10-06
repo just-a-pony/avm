@@ -3043,13 +3043,11 @@ typedef struct AV1_COMP {
    */
   bool alloc_pyramid;
 
-#if CONFIG_SCC_DETERMINATION
   /*!
    * Number of pixels that choose palette mode for luma in the
    * fast encoding pass in av1_determine_sc_tools_with_encoding().
    */
   int palette_pixel_num;
-#endif  // CONFIG_SCC_DETERMINATION
   /*!
    * Indicate if the primary reference frame is signaled.
    */

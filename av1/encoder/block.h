@@ -1783,12 +1783,10 @@ typedef struct macroblock {
    * if the coefficient was quantized up and if it can be further adjusted.
    */
   coeff_info *coef_info;
-#if CONFIG_SCC_DETERMINATION
   /*!\brief Number of pixels in current thread that choose palette mode in the
    * fast encoding stage for screen content tool detemination.
    */
   int palette_pixels;
-#endif  // CONFIG_SCC_DETERMINATION
   /*! \brief Whether to prune current transform partition search. */
   int prune_tx_partition;
   /*! \brief Keep records of top rdcosts of transform partition search. */

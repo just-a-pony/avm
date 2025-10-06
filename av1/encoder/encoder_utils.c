@@ -981,7 +981,6 @@ static void screen_content_tools_determination(
   const double psnr_diff = use_hbd_psnr
                                ? psnr[1].psnr_hbd[0] - psnr[0].psnr_hbd[0]
                                : psnr[1].psnr[0] - psnr[0].psnr[0];
-#if CONFIG_SCC_DETERMINATION
   // Calculate % of palette mode to be chosen in a frame from mode decision.
   const double palette_ratio =
       (double)cpi->palette_pixel_num / (double)(cm->height * cm->width);
@@ -1005,19 +1004,12 @@ static void screen_content_tools_determination(
   }
   const int is_sc_encoding_much_better_2 =
       (psnr_diff_is_large || ratio_is_large_2);
-#else
-  const int is_sc_encoding_much_better = psnr_diff > STRICT_PSNR_DIFF_THRESH;
-#endif  // CONFIG_SCC_DETERMINATION
   if (is_sc_encoding_much_better) {
     // Use screen content tools, if we get coding gain.
     features->allow_screen_content_tools = 1;
-#if CONFIG_SCC_DETERMINATION
     features->allow_intrabc =
         (is_sc_encoding_much_better_2 || cpi->intrabc_used ||
          allow_intrabc_orig_decision);
-#else
-    features->allow_intrabc = cpi->intrabc_used;
-#endif  // CONFIG_SCC_DETERMINATION
     cpi->is_screen_content_type = 1;
   } else {
     // Use original screen content decision.
@@ -1089,11 +1081,7 @@ void av1_determine_sc_tools_with_encoding(AV1_COMP *cpi, const int q_orig) {
   // for lossless coding.
   // Use a high q and a fixed partition to do quick encoding.
   const int q_for_screen_content_quick_run =
-#if CONFIG_SCC_DETERMINATION
       is_lossless_requested(&oxcf->rc_cfg) ? q_orig : AOMMAX(q_orig, 200);
-#else
-      is_lossless_requested(&oxcf->rc_cfg) ? q_orig : AOMMAX(q_orig, 244);
-#endif  // CONFIG_SCC_DETERMINATION
   const int partition_search_type_orig = cpi->sf.part_sf.partition_search_type;
   const BLOCK_SIZE fixed_partition_block_size_orig =
       cpi->sf.part_sf.fixed_partition_size;
@@ -1153,10 +1141,8 @@ void av1_determine_sc_tools_with_encoding(AV1_COMP *cpi, const int q_orig) {
         allow_intrabc_orig_decision, is_screen_content_type_orig_decision, pass,
         projected_size_pass, psnr);
   }
-#if CONFIG_SCC_DETERMINATION
   assert(is_key_frame);
   cm->features.kf_allow_sc_tools = cm->features.allow_screen_content_tools;
-#endif  // CONFIG_SCC_DETERMINATION
   // Set partition speed feature back.
   cpi->sf.part_sf.partition_search_type = partition_search_type_orig;
   cpi->sf.part_sf.fixed_partition_size = fixed_partition_block_size_orig;

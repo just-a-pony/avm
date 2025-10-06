@@ -736,9 +736,7 @@ static AOM_INLINE void accumulate_counters_enc_workers(AV1_COMP *cpi,
     EncWorkerData *const thread_data = (EncWorkerData *)worker->data1;
     cpi->intrabc_used |= thread_data->td->intrabc_used;
     cpi->deltaq_used |= thread_data->td->deltaq_used;
-#if CONFIG_SCC_DETERMINATION
     cpi->palette_pixel_num += thread_data->td->mb.palette_pixels;
-#endif  // CONFIG_SCC_DETERMINATION
     dealloc_inter_modes_info_data(&thread_data->td->mb);
 
     // Accumulate counters.
@@ -791,9 +789,7 @@ static AOM_INLINE void prepare_enc_workers(AV1_COMP *cpi, AVxWorkerHook hook,
       }
       thread_data->td->mb.mbmi_ext = thread_data->td->mbmi_ext;
     }
-#if CONFIG_SCC_DETERMINATION
     thread_data->td->mb.palette_pixels = 0;
-#endif  // CONFIG_SCC_DETERMINATION
 
     alloc_inter_modes_info_data(&cpi->common, &thread_data->td->mb);
     if (thread_data->td->counts != &cpi->counts) {

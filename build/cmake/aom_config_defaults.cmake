@@ -313,9 +313,6 @@ set_aom_config_var(CONFIG_FAST_INTER_RDO 1 "Fast inter mode selection")
 set_aom_config_var(CONFIG_FIX_RESIZE_PSNR 1
                    "Fix PSNR computation of resize mode in coded resolution")
 
-set_aom_config_var(CONFIG_SCC_DETERMINATION 1
-                   "Enable the screen content tools determination improvement.")
-
 set_aom_config_var(CONFIG_F107_GRADIENT_SIMPLIFY 1
                    "Use smaller OPFL gradient units and remove bit checks.")
 set_aom_config_var(CONFIG_ASYM_DF 1 "Enable asymmetric DF")

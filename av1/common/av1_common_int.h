@@ -1193,12 +1193,10 @@ typedef struct {
    */
   bool is_scc_content_by_detector;
 
-#if CONFIG_SCC_DETERMINATION
   /*!
    * allow_screen_content_tools on key frames
    */
   bool kf_allow_sc_tools;
-#endif                       // CONFIG_SCC_DETERMINATION
   bool allow_global_intrabc; /*!< If true, intra block copy tool may use the
                                global search range. */
   bool allow_local_intrabc;  /*!< If true, intra block copy tool may use the
