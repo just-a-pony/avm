@@ -44,10 +44,6 @@ void av1_setup_tip_frame(AV1_COMMON *cm, MACROBLOCKD *xd, uint16_t **mc_buf,
 // Derive TMVP from closest forward and closet backward reference frames
 void av1_derive_tip_nearest_ref_frames_motion_projection(AV1_COMMON *cm);
 
-// Save TMVP motion fields for future frame's TMVP if current frame is coded
-// as TIP_FRAME_AS_OUTPUT
-void av1_copy_tip_frame_tmvp_mvs(const AV1_COMMON *const cm);
-
 // Get the block width when blocks with same MV are combined.
 static AOM_INLINE int get_tip_block_width_with_same_mv(
     const TPL_MV_REF *tpl_mvs, int unit_blk_size, int blk_col, int blk_col_end,
