@@ -492,9 +492,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_lf_sub_pu = tool_cfg->enable_lf_sub_pu;
   seq->enable_opfl_refine = tool_cfg->enable_opfl_refine;
   seq->enable_tip = tool_cfg->enable_tip;
-#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   seq->enable_tip_refinemv = tool_cfg->enable_tip_refinemv;
-#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   seq->enable_tip_hole_fill = seq->enable_tip != 0;
   seq->enable_tip_explicit_qp = 0;
   seq->enable_mv_traj = tool_cfg->enable_mv_traj;
@@ -3711,9 +3709,6 @@ static INLINE int compute_tip_direct_output_mode_RD(AV1_COMP *cpi,
 
     for (InterpFilter interp_filter = EIGHTTAP_REGULAR;
          interp_filter <= MULTITAP_SHARP; ++interp_filter) {
-#if !CONFIG_TIP_INTERP_SMOOTH
-      if (interp_filter == EIGHTTAP_SMOOTH) continue;
-#endif  // !CONFIG_TIP_INTERP_SMOOTH
       cm->tip_interp_filter = interp_filter;
       av1_setup_tip_frame(cm, &td->mb.e_mbd, NULL, td->mb.tmp_conv_dst,
                           av1_enc_calc_subpel_params, 0 /* copy_refined_mvs */
@@ -3795,14 +3790,12 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
     }
     cm->features.refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
 
-#if CONFIG_TIP_LD
     const int cur_order_hint = cm->current_frame.display_order_hint;
     if (!cm->has_both_sides_refs && cur_order_hint < INTER_REFS_PER_FRAME) {
       const int mvs_rows = cm->mi_params.mi_rows;
       const int mvs_cols = cm->mi_params.mi_cols;
       cpi->tip_mode_count[cur_order_hint] = mvs_rows * mvs_cols;
     }
-#endif  // CONFIG_TIP_LD
 
     if (cm->seq_params.enable_tip_explicit_qp == 0) {
       const int avg_u_ac_delta_q =
@@ -3825,7 +3818,6 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
           avg_base_qindex;
     }
 
-#if CONFIG_TIP_LD
     cm->features.refresh_frame_context = REFRESH_FRAME_CONTEXT_DISABLED;
     set_primary_ref_frame(cpi);
     if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
@@ -3838,9 +3830,7 @@ static INLINE int finalize_tip_mode(AV1_COMP *cpi, uint8_t *dest, size_t *size,
     if (!cm->fc->initialized)
       aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                          "Uninitialized entropy context.");
-#else
-    av1_setup_past_independence(cm);
-#endif  // CONFIG_TIP_LD
+
     if (!cm->tiles.large_scale) {
       cm->cur_frame->frame_context = *cm->fc;
     }

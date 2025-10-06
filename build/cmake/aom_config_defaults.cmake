@@ -289,14 +289,7 @@ set_aom_config_var(CONFIG_CWG_F307_CFL_SEQ_FLAG 1 "Sequence level flag for CfL")
 
 set_aom_config_var(CONFIG_RU_SIZE_RESTRICTION 1
                    "RU size shall be larger than or equal to sb size")
-set_aom_config_var(CONFIG_TIP_LD 1 "Enable TIP for low delay")
-set_aom_config_var(CONFIG_TIP_ENHANCEMENT 1
-                   "Enable different weighted prediction for TIP")
-set_aom_config_var(CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG 1
-                   "Enable RefineMV and OPFL for TIP")
 
-set_aom_config_var(CONFIG_TIP_INTERP_SMOOTH 1
-                   "Enable Smooth interpolation for TIP direct output mode")
 set_aom_config_var(CONFIG_WRL_NO_PRUNING 1 "No pruning when construct WRL")
 
 set_aom_config_var(CONFIG_REDUCED_TX_SET_EXT 1
@@ -330,11 +323,6 @@ set_aom_config_var(CONFIG_VQ_MVD_CODING 1 "Enable VQ based MVD coding")
 set_aom_config_var(CONFIG_ML_PART_SPLIT 1
                    "Partition SPLIT pruning/forcing as predicted by ML.")
 
-set_aom_config_var(CONFIG_ADAPT_OPFL_IN_TIP_DIRECT 1
-                   "Enable adaptive OPFL MV refinement in TIP-direct mode")
-
-set_aom_config_var(CONFIG_FLEX_TIP_BLK_SIZE 1 "Enable flexible TIP block size")
-
 set_aom_config_var(CONFIG_NEW_PART_CTX 1 "New partition context models")
 
 set_aom_config_var(CONFIG_EXT_SEG 1
@@ -345,8 +333,6 @@ set_aom_config_var(CONFIG_GDF_IMPROVEMENT 1
 
 set_aom_config_var(CONFIG_REDUCE_SYMBOL_SIZE 1
                    "Symbol size reduction from 16 to 8.")
-
-set_aom_config_var(CONFIG_IMPROVE_TIP_LF 1 "Enable improved LF for TIP frame.")
 
 set_aom_config_var(CONFIG_CCSO_CLEANUP 1
                    "Clean up CCSO quant_sz and signaling.")

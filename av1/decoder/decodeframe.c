@@ -7330,13 +7330,11 @@ void av1_read_sequence_header_beyond_av1(
 
   seq_params->enable_refinemv = aom_rb_read_bit(rb);
 
-#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   seq_params->enable_tip_refinemv =
       (seq_params->enable_tip &&
        (seq_params->enable_opfl_refine || seq_params->enable_refinemv))
           ? aom_rb_read_bit(rb)
           : 0;
-#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   seq_params->enable_bru = aom_rb_read_bit(rb);
 #if CONFIG_DERIVED_MVD_SIGN
   seq_params->enable_mvd_sign_derive = aom_rb_read_bit(rb);
@@ -9204,11 +9202,9 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
       cm->tip_global_motion.as_int = 0;
       cm->tip_interp_filter = MULTITAP_SHARP;
-#if CONFIG_TIP_ENHANCEMENT
       cm->tip_global_wtd_index = 0;
       cm->has_both_sides_refs = (cm->ref_frames_info.num_future_refs > 0) &&
                                 (cm->ref_frames_info.num_past_refs > 0);
-#endif  // CONFIG_TIP_ENHANCEMENT
       if (cm->seq_params.enable_tip && features->allow_ref_frame_mvs &&
           cm->ref_frames_info.num_total_refs >= 2 &&
 #if CONFIG_CWG_F317
@@ -9228,9 +9224,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           features->tip_frame_mode =
               aom_rb_read_bit(rb) ? TIP_FRAME_AS_REF : TIP_FRAME_DISABLED;
         }
-#if !CONFIG_TIP_LD
-        features->use_optflow_tip = 1;
-#endif  // !CONFIG_TIP_LD
+
         if (features->tip_frame_mode >= TIP_FRAME_MODES) {
           aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                              "Invalid TIP mode.");
@@ -9245,22 +9239,15 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         } else {
           features->allow_tip_hole_fill = false;
         }
-#if CONFIG_TIP_ENHANCEMENT
+
         if (features->tip_frame_mode && is_unequal_weighted_tip_allowed(cm)) {
           cm->tip_global_wtd_index = aom_rb_read_literal(rb, 3);
         }
-#endif  // CONFIG_TIP_ENHANCEMENT
         if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT &&
             cm->seq_params.enable_lf_sub_pu && features->allow_lf_sub_pu) {
           cm->lf.tip_filter_level = aom_rb_read_bit(rb);
           if (cm->lf.tip_filter_level) {
-#if !CONFIG_IMPROVE_TIP_LF
-            cm->lf.tip_delta_idx = aom_rb_read_literal(rb, 2);
-            const int tip_delta_idx_to_delta[4] = { -10, 0, 6, 12 };
-            cm->lf.tip_delta = tip_delta_idx_to_delta[cm->lf.tip_delta_idx];
-#else
-              cm->lf.tip_delta = 0;
-#endif  //! CONFIG_IMPROVE_TIP_LF
+            cm->lf.tip_delta = 0;
           }
         }
 
@@ -9278,7 +9265,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
               if (sign) cm->tip_global_motion.as_mv.col *= -1;
             }
           }
-#if CONFIG_TIP_INTERP_SMOOTH
+
           if (aom_rb_read_bit(rb)) {
             cm->tip_interp_filter = MULTITAP_SHARP;
           } else if (aom_rb_read_bit(rb)) {
@@ -9286,10 +9273,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           } else {
             cm->tip_interp_filter = EIGHTTAP_SMOOTH;
           }
-#else
-            cm->tip_interp_filter =
-                aom_rb_read_bit(rb) ? MULTITAP_SHARP : EIGHTTAP_REGULAR;
-#endif  // CONFIG_TIP_INTERP_SMOOTH
         }
       } else {
         features->tip_frame_mode = TIP_FRAME_DISABLED;
@@ -9871,11 +9854,7 @@ static AOM_INLINE void tip_mode_legal_check(AV1Decoder *const pbi) {
                        "Invalid TIP mode.");
   }
 
-  if (!cm->has_both_sides_refs
-#if CONFIG_TIP_LD
-      && cm->ref_frames_info.num_past_refs < 2
-#endif  // CONFIG_TIP_LD
-  ) {
+  if (!cm->has_both_sides_refs && cm->ref_frames_info.num_past_refs < 2) {
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                        "Invalid TIP mode.");
   }
@@ -9938,7 +9917,7 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
       cm->global_motion[i] = default_warp_params;
       cm->cur_frame->global_motion[i] = default_warp_params;
     }
-#if CONFIG_TIP_LD
+
     set_primary_ref_frame_and_ctx(pbi);
     cm->seg.enabled = 0;
     if (cm->cur_frame->seg_map) {
@@ -9950,13 +9929,6 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
     cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
     segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
-#else  // CONFIG_TIP_LD
-      av1_setup_past_independence(cm);
-#if CONFIG_EXT_SEG
-      cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
-      segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
-#endif  // CONFIG_TIP_LD
     if (!cm->tiles.large_scale) {
       cm->cur_frame->frame_context = *cm->fc;
     }
@@ -10157,11 +10129,8 @@ int32_t av1_read_tilegroup_header(
         cm->global_motion[i] = default_warp_params;
         cm->cur_frame->global_motion[i] = default_warp_params;
       }
-#if CONFIG_TIP_LD
+
       set_primary_ref_frame_and_ctx(pbi);
-#else
-      av1_setup_past_independence(cm);
-#endif  // CONFIG_TIP_LD
       cm->seg.enabled = 0;
       if (cm->cur_frame->seg_map) {
         memset(cm->cur_frame->seg_map, 0,
@@ -10363,11 +10332,7 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
       cm->global_motion[i] = default_warp_params;
       cm->cur_frame->global_motion[i] = default_warp_params;
     }
-#if CONFIG_TIP_LD
     set_primary_ref_frame_and_ctx(pbi);
-#else
-    av1_setup_past_independence(cm);
-#endif  // CONFIG_TIP_LD
     cm->seg.enabled = 0;
     if (cm->cur_frame->seg_map) {
       memset(cm->cur_frame->seg_map, 0,

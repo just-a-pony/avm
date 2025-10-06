@@ -868,10 +868,8 @@ typedef struct {
 #endif  // CONFIG_DERIVED_MVD_SIGN
   // enable temporal interpolated prediction
   int enable_tip;
-#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   // enable RefineMv and OPFL for TIP frame.
   int enable_tip_refinemv;
-#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   // enable MV trajectory tracking
   int enable_mv_traj;
 #if CONFIG_MV_RANGE_EXTENSION
@@ -3079,14 +3077,12 @@ typedef struct AV1_COMP {
    */
   MultiFrameHeader cur_mfh_params;
 #endif  // CONFIG_MULTI_FRAME_HEADER
-#if CONFIG_TIP_LD
   /*!
    * TIP mode selected count for first INTER_REFS_PER_FRAME frames
    * Encoder would use this value to decide if need to enable TIP mode
    * for future frames
    */
   int tip_mode_count[INTER_REFS_PER_FRAME];
-#endif  // CONFIG_TIP_LD
 #if CONFIG_CWG_F293_BUFFER_REMOVAL_TIMING
   /*!
    * Write the Buffer Removal Timing OBU

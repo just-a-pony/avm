@@ -5918,12 +5918,10 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->enable_ibp);
   aom_wb_write_bit(wb, seq_params->enable_adaptive_mvd);
   aom_wb_write_bit(wb, seq_params->enable_refinemv);
-#if CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
   if (seq_params->enable_tip != 0 &&
       (seq_params->enable_opfl_refine != 0 || seq_params->enable_refinemv)) {
     aom_wb_write_bit(wb, seq_params->enable_tip_refinemv);
   }
-#endif  // CONFIG_ENABLE_TIP_REFINEMV_SEQ_FLAG
 
   aom_wb_write_bit(wb, (int)(seq_params->enable_bru > 0));
 #if CONFIG_DERIVED_MVD_SIGN
@@ -6816,18 +6814,14 @@ static AOM_INLINE void write_uncompressed_header_obu
         if (features->tip_frame_mode && cm->seq_params.enable_tip_hole_fill) {
           aom_wb_write_bit(wb, features->allow_tip_hole_fill);
         }
-#if CONFIG_TIP_ENHANCEMENT
+
         if (features->tip_frame_mode && is_unequal_weighted_tip_allowed(cm)) {
           aom_wb_write_literal(wb, cm->tip_global_wtd_index, 3);
         }
-#endif  // CONFIG_TIP_ENHANCEMENT
+
         if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT &&
             cm->seq_params.enable_lf_sub_pu && features->allow_lf_sub_pu) {
           aom_wb_write_bit(wb, cm->lf.tip_filter_level);
-#if !CONFIG_IMPROVE_TIP_LF
-          if (cm->lf.tip_filter_level)
-            aom_wb_write_literal(wb, cm->lf.tip_delta_idx, 2);
-#endif  //! CONFIG_IMPROVE_TIP_LF
         }
 
         if (features->tip_frame_mode == TIP_FRAME_AS_OUTPUT) {
@@ -6841,11 +6835,9 @@ static AOM_INLINE void write_uncompressed_header_obu
               aom_wb_write_bit(wb, cm->tip_global_motion.as_mv.col < 0);
           }
           aom_wb_write_bit(wb, cm->tip_interp_filter == MULTITAP_SHARP);
-#if CONFIG_TIP_INTERP_SMOOTH
           if (cm->tip_interp_filter != MULTITAP_SHARP) {
             aom_wb_write_bit(wb, cm->tip_interp_filter == EIGHTTAP_REGULAR);
           }
-#endif  // CONFIG_TIP_INTERP_SMOOTH
         }
 #if CONFIG_FIX_OPFL_AUTO
       } else {
