@@ -1201,7 +1201,6 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
   const int src_sb_row = ((src_bottom_edge >> 3) - 1) / sb_size;
   const int src_sb64_col = ((src_right_edge >> 3) - 1) >> 6;
 
-#if CONFIG_GLOBAL_INTRABC_DELAY_OPT
   // Special case for 128x128 superblock with hor/quad split.
   const int active_sb64_row = (mi_row * MI_SIZE) >> 6;
   const int is_bottom_left =
@@ -1210,16 +1209,11 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
                               xd->mi[0]->sb_root_partition_info == 2)
                                  ? (-1) * is_bottom_left
                                  : 0;
-#endif  // CONFIG_GLOBAL_INTRABC_DELAY_OPT
   const int total_sb64_per_row =
       (((tile->mi_col_end - tile->mi_col_start - 1) >> 4) + 1);
   const int active_sb64 = active_sb_row * total_sb64_per_row + active_sb64_col;
   const int src_sb64 = src_sb_row * total_sb64_per_row + src_sb64_col;
-  if (src_sb64 >= active_sb64 - INTRABC_DELAY_SB64
-#if CONFIG_GLOBAL_INTRABC_DELAY_OPT
-                      - sb_64_residual
-#endif  // CONFIG_GLOBAL_INTRABC_DELAY_OPT
-  )
+  if (src_sb64 >= active_sb64 - INTRABC_DELAY_SB64 - sb_64_residual)
     return 0;
 
   // Wavefront constraint: use only top left area of frame for reference.
@@ -1228,9 +1222,7 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
   const int wf_offset = gradient * (active_sb_row - src_sb_row);
   if (src_sb_row > active_sb_row || src_sb64_col >= active_sb64_col -
                                                         INTRABC_DELAY_SB64
-#if CONFIG_GLOBAL_INTRABC_DELAY_OPT
                                                         - sb_64_residual
-#endif  // CONFIG_GLOBAL_INTRABC_DELAY_OPT
                                                         + wf_offset)
     return 0;
   return 1;
