@@ -3471,7 +3471,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
     av1_set_default_mode_deltas(lf->mode_deltas);
   }
 #if CONFIG_MULTI_FRAME_HEADER
-  assert(cm->mfh_valid[cm->cur_mfh_id]);
+  assert(cm->cur_mfh_id == 0 || cm->mfh_valid[cm->cur_mfh_id]);
   if (cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_update_flag)
     lf->filter_level[0] =
         cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_level[0];
@@ -4098,7 +4098,7 @@ static AOM_INLINE void setup_render_size(AV1_COMMON *cm,
   }
 #endif  // CONFIG_CWG_F317
 #if CONFIG_MULTI_FRAME_HEADER
-  assert(cm->mfh_valid[cm->cur_mfh_id]);
+  assert(cm->cur_mfh_id == 0 || cm->mfh_valid[cm->cur_mfh_id]);
   cm->render_width = cm->mfh_params[cm->cur_mfh_id].mfh_render_width;
   cm->render_height = cm->mfh_params[cm->cur_mfh_id].mfh_render_height;
 #else   // CONFIG_MULTI_FRAME_HEADER
@@ -4276,7 +4276,7 @@ static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
       }
     } else {
 #if CONFIG_MULTI_FRAME_HEADER
-      assert(cm->mfh_valid[cm->cur_mfh_id]);
+      assert(cm->cur_mfh_id == 0 || cm->mfh_valid[cm->cur_mfh_id]);
       width = cm->mfh_params[cm->cur_mfh_id].mfh_frame_width;
       height = cm->mfh_params[cm->cur_mfh_id].mfh_frame_height;
 #else   // CONFIG_MULTI_FRAME_HEADER
@@ -7429,10 +7429,15 @@ void av1_read_multi_frame_header(AV1_COMMON *cm,
                                  struct aom_read_bit_buffer *rb) {
   // TO DO: Adding a read seq_header_id_in_multi_frame_header here
 #if CONFIG_CWG_E242_MFH_ID_UVLC
-  int cur_mfh_id = aom_rb_read_uvlc(rb);
+  int cur_mfh_id = aom_rb_read_uvlc(rb) + 1;
 #else
-  int cur_mfh_id = aom_rb_read_literal(rb, 4);
+  int cur_mfh_id = aom_rb_read_literal(rb, 4) + 1;
 #endif  // CONFIG_CWG_E242_MFH_ID_UVLC
+  if (cur_mfh_id > MAX_MFH_NUM) {
+    aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                       "multi-frame header is is greater than the maximum "
+                       "multi-frame header number");
+  }
 
   MultiFrameHeader *mfh_param = &cm->mfh_params[cur_mfh_id];
 
@@ -8199,10 +8204,27 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 #else
     cm->cur_mfh_id = aom_rb_read_literal(rb, 4);
 #endif  // CONFIG_CWG_E242_MFH_ID_UVLC
-    if (!cm->mfh_valid[cm->cur_mfh_id]) {
-      aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
-                         "No multi-frame header with mfh_id %d",
-                         cm->cur_mfh_id);
+    if (cm->cur_mfh_id == 0) {
+      int seq_header_id_in_frame_header = aom_rb_read_uvlc(rb);
+      (void)seq_header_id_in_frame_header;
+      cm->mfh_params[cm->cur_mfh_id].mfh_frame_width =
+          seq_params->max_frame_width;
+      cm->mfh_params[cm->cur_mfh_id].mfh_frame_height =
+          seq_params->max_frame_height;
+      cm->mfh_params[cm->cur_mfh_id].mfh_render_width =
+          seq_params->max_frame_width;
+      cm->mfh_params[cm->cur_mfh_id].mfh_render_height =
+          seq_params->max_frame_height;
+      cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_update_flag = 0;
+      for (int i = 0; i < 4; i++) {
+        cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_level[i] = 0;
+      }
+    } else {
+      if (!cm->mfh_valid[cm->cur_mfh_id]) {
+        aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                           "No multi-frame header with mfh_id %d",
+                           cm->cur_mfh_id);
+      }
     }
 #endif  // CONFIG_MULTI_FRAME_HEADER
 #if CONFIG_CWG_F317
