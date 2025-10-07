@@ -3891,9 +3891,9 @@ void decide_rmb_unit_update_count(const AV1_COMMON *const cm,
 
 void av1_update_warp_param_bank(const AV1_COMMON *const cm,
                                 MACROBLOCKD *const xd,
-#if CONFIG_COMPOUND_WARP_CAUSAL && COMPOUND_WARP_LINE_BUFFER_REDUCTION
+#if COMPOUND_WARP_LINE_BUFFER_REDUCTION
                                 int cand_from_sb_above,
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL && COMPOUND_WARP_LINE_BUFFER_REDUCTION
+#endif  // COMPOUND_WARP_LINE_BUFFER_REDUCTION
                                 const MB_MODE_INFO *const mbmi);
 
 static INLINE void av1_reset_refmv_bank(const AV1_COMMON *const cm,
@@ -3940,9 +3940,9 @@ static INLINE void av1_reset_refmv_bank(const AV1_COMMON *const cm,
           candidate->use_intrabc[0]) {
         av1_update_ref_mv_bank(cm, xd, 0, candidate);
         av1_update_warp_param_bank(cm, xd,
-#if CONFIG_COMPOUND_WARP_CAUSAL && COMPOUND_WARP_LINE_BUFFER_REDUCTION
+#if COMPOUND_WARP_LINE_BUFFER_REDUCTION
                                    1,
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL && COMPOUND_WARP_LINE_BUFFER_REDUCTION
+#endif  // COMPOUND_WARP_LINE_BUFFER_REDUCTION
                                    candidate);
         row_hits++;
       }
@@ -5437,14 +5437,13 @@ static inline int is_this_mv_precision_compliant(
 static INLINE bool is_warp_mode(MOTION_MODE motion_mode) {
   return (motion_mode >= WARP_CAUSAL);
 }
-#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
+
 // Returns whether warp causal is allowed
 // by checking only four neighboring blocks.
 // It does not check all the neighboring blocks used
 // in the derivation of warp model in warp causal mode
 uint8_t av1_is_warp_causal_allowed(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                                    const MV_REFERENCE_FRAME ref_frame);
-#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
 
 /* Evaluate which motion modes are allowed for the current block
  * Returns a bit field, where motion mode `i` is allowed if and only if
@@ -5464,7 +5463,6 @@ uint8_t av1_is_warp_causal_allowed(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 int allow_extend_nb(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                     const MB_MODE_INFO *mbmi, int *p_num_of_warp_neighbors);
 
-#if CONFIG_COMPOUND_WARP_CAUSAL
 static INLINE int is_compound_warp_causal_allowed(const AV1_COMMON *cm,
                                                   const MACROBLOCKD *xd,
                                                   const MB_MODE_INFO *mbmi) {
@@ -5473,14 +5471,10 @@ static INLINE int is_compound_warp_causal_allowed(const AV1_COMMON *cm,
               block_size_high[mbmi->sb_type[xd->tree_type == CHROMA_PART]]) >=
           8) &&
          (mbmi->mode == NEW_NEWMV) &&
-         (cm->features.opfl_refine_type != REFINE_ALL)
-#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-         && av1_is_warp_causal_allowed(cm, xd, mbmi->ref_frame[0]) &&
-         av1_is_warp_causal_allowed(cm, xd, mbmi->ref_frame[1])
-#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-      ;
+         (cm->features.opfl_refine_type != REFINE_ALL) &&
+         av1_is_warp_causal_allowed(cm, xd, mbmi->ref_frame[0]) &&
+         av1_is_warp_causal_allowed(cm, xd, mbmi->ref_frame[1]);
 }
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL
 
 static INLINE int is_warp_newmv_allowed(const AV1_COMMON *cm,
                                         const MACROBLOCKD *xd,
@@ -5518,17 +5512,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
 #if !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
     int frame_warp_causal_allowed =
         cm->features.enabled_motion_modes & (1 << WARP_CAUSAL);
-#if CONFIG_COMPOUND_WARP_CAUSAL
     if (frame_warp_causal_allowed && mbmi->num_proj_ref[0] >= 1) {
-#else
-    if (frame_warp_causal_allowed &&
-#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-        av1_is_warp_causal_allowed(cm, xd, mbmi->ref_frame[0])
-#else
-        mbmi->num_proj_ref >= 1
-#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-    ) {
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL
       allowed_motion_mode_warpmv |= (1 << WARP_CAUSAL);
     }
 #endif  // !CONFIG_WARPMV_WARP_CAUSAL_REMOVAL
@@ -5538,17 +5522,7 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
   if (is_warp_newmv_allowed(cm, xd, mbmi, bsize) && mbmi->mode == WARP_NEWMV) {
     int allowed_motion_modes = 0;
 
-    if (
-#if CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-        av1_is_warp_causal_allowed(cm, xd, mbmi->ref_frame[0])
-#else
-#if CONFIG_COMPOUND_WARP_CAUSAL
-        mbmi->num_proj_ref[0] >= 1
-#else
-        mbmi->num_proj_ref >= 1
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL
-#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-    ) {
+    if (av1_is_warp_causal_allowed(cm, xd, mbmi->ref_frame[0])) {
       allowed_motion_modes |= (1 << WARP_CAUSAL);
     }
 
@@ -5604,7 +5578,6 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
     }
   }
 
-#if CONFIG_COMPOUND_WARP_CAUSAL
   const int allow_compound_warp_causal_motion =
       is_motion_variation_allowed_bsize(bsize, xd->mi_row, xd->mi_col) &&
       mbmi->mode == NEW_NEWMV &&
@@ -5612,15 +5585,10 @@ static INLINE int motion_mode_allowed(const AV1_COMMON *cm,
       !av1_is_scaled(xd->block_ref_scale_factors[0]) &&
 #endif  // !CONFIG_ACROSS_SCALE_WARP
       !xd->cur_frame_force_integer_mv &&
-      is_compound_warp_causal_allowed(cm, xd, mbmi)
-#if !CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-      && mbmi->num_proj_ref[0] >= 1 && mbmi->num_proj_ref[1] >= 1
-#endif  // CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION
-      ;
+      is_compound_warp_causal_allowed(cm, xd, mbmi);
   if (allow_compound_warp_causal_motion) {
     allowed_motion_modes |= (1 << WARP_CAUSAL);
   }
-#endif  // CONFIG_COMPOUND_WARP_CAUSAL
 
   return (allowed_motion_modes & enabled_motion_modes);
 }

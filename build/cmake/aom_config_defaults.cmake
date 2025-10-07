@@ -213,9 +213,6 @@ set_aom_config_var(CONFIG_CWG_F298_REC11 1 NUMBER
 # Source of throughput analysis : CWG-B065
 set_aom_config_var(CONFIG_THROUGHPUT_ANALYSIS 0
                    "AV2 experiment flag to measure throughput.")
-set_aom_config_var(
-  CONFIG_WARP_EXTEND_SIMPLIFICATION 1
-  "Reduce the number of neighbors used in warp extend mode to four")
 set_aom_config_var(CONFIG_MULTI_FRAME_HEADER 1 "Enable multi-frame header.")
 set_aom_config_var(CONFIG_CWG_E242_MFH_ID_UVLC 1
                    "Signaling multi-frame header ID in UVLC")
@@ -234,17 +231,7 @@ set_aom_config_var(CONFIG_CWG_F260_REFRESH_FLAG 1
 set_aom_config_var(CONFIG_TU64_TRAVERSED_ORDER 1
                    "Coding order of TU 64x64 traversed as 128x128 blocks")
 
-set_aom_config_var(
-  CONFIG_COMPOUND_WARP_CAUSAL 1
-  "AV2 experiment flag to enable compound new_newmv warp_causal mode")
-set_aom_config_var(CONFIG_WARP_CAUSAL_PARSING_DEPENDENCY_REDUCTION 1
-                   "reduce warp causal parsing dependency")
-set_aom_config_var(CONFIG_CWG_193_WARP_CAUSAL_THRESHOLD_REMOVAL 1
-                   "Removes threshold based selection stratergy in warp causal")
 set_aom_config_var(CONFIG_REDUCE_CCTX_CTX 1 "Reduce CCTX contexts")
-
-set_aom_config_var(CONFIG_WRL_PRUNE_FOUR_PARAMETERS 1
-                   "Enable WRL only prune four non-translational parameters")
 
 set_aom_config_var(CONFIG_LOCAL_INTRABC_ALIGN_RNG 1
                    "CWG F177 align inter/intra local intraBC search range")
