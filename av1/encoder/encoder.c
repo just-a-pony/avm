@@ -530,7 +530,11 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
   seq->enable_mrls = oxcf->intra_mode_cfg.enable_mrls;
   seq->enable_fsc = oxcf->intra_mode_cfg.enable_fsc;
 #if CONFIG_FSC_RES_HLS
-  seq->enable_fsc_residual = oxcf->intra_mode_cfg.enable_fsc_residual;
+  if (!seq->enable_fsc) {
+    seq->enable_idtx_intra = oxcf->intra_mode_cfg.enable_idtx_intra;
+  } else {
+    seq->enable_idtx_intra = 1;
+  }
 #endif  // CONFIG_FSC_RES_HLS
   seq->enable_orip = oxcf->intra_mode_cfg.enable_orip;
   seq->enable_ist = oxcf->txfm_cfg.enable_ist;
