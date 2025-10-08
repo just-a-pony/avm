@@ -3454,7 +3454,7 @@ static AOM_INLINE void setup_loopfilter(AV1_COMMON *cm,
     av1_set_default_mode_deltas(lf->mode_deltas);
   }
 #if CONFIG_MULTI_FRAME_HEADER
-  assert(cm->cur_mfh_id == 0 || cm->mfh_valid[cm->cur_mfh_id]);
+  assert(cm->mfh_valid[cm->cur_mfh_id]);
   if (cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_update_flag)
     lf->filter_level[0] =
         cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_level[0];
@@ -4081,7 +4081,7 @@ static AOM_INLINE void setup_render_size(AV1_COMMON *cm,
   }
 #endif  // CONFIG_CWG_F317
 #if CONFIG_MULTI_FRAME_HEADER
-  assert(cm->cur_mfh_id == 0 || cm->mfh_valid[cm->cur_mfh_id]);
+  assert(cm->mfh_valid[cm->cur_mfh_id]);
 #if CONFIG_CWG_E242_PARSING_INDEP
   if (cm->mfh_params[cm->cur_mfh_id].mfh_render_size_present_flag) {
     cm->render_width = cm->mfh_params[cm->cur_mfh_id].mfh_render_width;
@@ -4269,7 +4269,7 @@ static AOM_INLINE void setup_frame_size(AV1_COMMON *cm,
       }
     } else {
 #if CONFIG_MULTI_FRAME_HEADER
-      assert(cm->cur_mfh_id == 0 || cm->mfh_valid[cm->cur_mfh_id]);
+      assert(cm->mfh_valid[cm->cur_mfh_id]);
 #if CONFIG_CWG_E242_PARSING_INDEP
       if (cm->mfh_params[cm->cur_mfh_id].mfh_frame_size_present_flag) {
         width = cm->mfh_params[cm->cur_mfh_id].mfh_frame_width;
@@ -8245,6 +8245,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       for (int i = 0; i < 4; i++) {
         cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_level[i] = 0;
       }
+      cm->mfh_valid[cm->cur_mfh_id] = true;
     } else {
       if (!cm->mfh_valid[cm->cur_mfh_id]) {
         aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
