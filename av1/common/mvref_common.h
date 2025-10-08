@@ -1228,7 +1228,6 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
   return 1;
 }
 
-#if CONFIG_LOCAL_INTRABC_BAWP
 static INLINE int is_bv_valid_for_morph(const MV sub_pel_dv,
                                         const AV1_COMMON *cm,
                                         const MACROBLOCKD *xd, int mi_row,
@@ -1244,7 +1243,6 @@ static INLINE int is_bv_valid_for_morph(const MV sub_pel_dv,
   }
   return true;
 }
-#endif  // CONFIG_LOCAL_INTRABC_BAWP
 
 // assign subblock mv from warp into submi
 void assign_warpmv(const AV1_COMMON *cm, SUBMB_INFO **submi, BLOCK_SIZE bsize,

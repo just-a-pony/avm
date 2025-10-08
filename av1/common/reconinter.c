@@ -4544,23 +4544,8 @@ bool av1_build_morph_pred(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
       ref_y + ref_h >= pd->dst.height) {
     return false;
   }
-#if !CONFIG_LOCAL_INTRABC_BAWP
-  // Restriction: the reference block's
-  // template can't be outside the local 64x64
-  // block for local intra block copy. If
-  // local intra block copy extends to
-  // 128x128, one has to change the
-  // restrictions here to make it match.
-  const int is_same_unit_x = (cur_x >> 6) == (ref_x >> 6);
-  const int is_same_unit_y = (cur_y >> 6) == (ref_y >> 6);
-  if (is_same_unit_x && is_same_unit_y) {
-    if (ref_x > 0 && (ref_x % 64 == 0)) return false;
-    if (ref_y > 0 && (ref_y % 64 == 0)) return false;
-  }
-#endif  // !CONFIG_LOCAL_INTRABC_BAWP
-        // Restriction: the reference block's
-        // template can't be outside the current
-        // tile.
+
+  // Restriction: the reference block's template can't be outside the current tile.
   const TileInfo *const tile = &xd->tile;
   // Is the source top-left inside the current
   // tile?

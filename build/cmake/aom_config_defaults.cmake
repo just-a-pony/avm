@@ -249,8 +249,6 @@ set_aom_config_var(CONFIG_REDUCE_CCTX_CTX 1 "Reduce CCTX contexts")
 
 set_aom_config_var(CONFIG_LOCAL_INTRABC_ALIGN_RNG 1
                    "CWG F177 align inter/intra local intraBC search range")
-set_aom_config_var(CONFIG_LOCAL_INTRABC_BAWP 1
-                   "CWG-F165 Enable intraBAWP in local intraBC")
 
 set_aom_config_var(CONFIG_REDUCED_REF_FRAME_MVS_MODE 1
                    "Use reduced reference frame mvs for temporal mv prediction")

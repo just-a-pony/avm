@@ -1672,7 +1672,6 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       const int morph_pred_ctx = get_morph_pred_ctx(xd);
       mbmi->morph_pred = aom_read_symbol(
           r, ec_ctx->morph_pred_cdf[morph_pred_ctx], 2, ACCT_INFO());
-#if CONFIG_LOCAL_INTRABC_BAWP
       if (mbmi->morph_pred != 0) {
         valid_dv =
             valid_dv && is_bv_valid_for_morph(mbmi->mv[0].as_mv, cm, xd,
@@ -1683,7 +1682,6 @@ static void read_intrabc_info(AV1_COMMON *const cm, DecoderCodingBlock *dcb,
         aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
                            "Invalid intrabc BAWP dv");
       }
-#endif  // CONFIG_LOCAL_INTRABC_BAWP
     }
   }
 }

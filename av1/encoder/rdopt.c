@@ -6242,16 +6242,8 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
         int allow_morph_pred = av1_allow_intrabc_morph_pred(cm);
         int num_modes_to_search = 1 + allow_morph_pred;
 
-        if (num_modes_to_search > 1) {
-#if CONFIG_LOCAL_INTRABC_BAWP
-          if (!is_bv_valid_for_morph(mbmi->mv[0].as_mv, cm, xd, mi_row, mi_col,
-                                     bsize))
-#else
-          const int local_intrabc = is_local_intrabc(dv, cm, xd, mi_row, mi_col,
-                                                     bsize, cm->mib_size_log2);
-          // Disable the linear model for local intrabc.
-          if (local_intrabc)
-#endif  // CONFIG_LOCAL_INTRABC_BAWP
+        if (num_modes_to_search > 1 && !is_bv_valid_for_morph(mbmi->mv[0].as_mv, cm, xd, mi_row, mi_col,
+                                     bsize)) {
             num_modes_to_search = 1;
         }
         for (int morph_idx = 0; morph_idx < num_modes_to_search; ++morph_idx) {
