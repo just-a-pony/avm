@@ -7438,10 +7438,10 @@ void av1_read_multi_frame_header(AV1_COMMON *cm,
 #else
   int cur_mfh_id = aom_rb_read_literal(rb, 4) + 1;
 #endif  // CONFIG_CWG_E242_MFH_ID_UVLC
-  if (cur_mfh_id > MAX_MFH_NUM) {
+  if (cur_mfh_id >= MAX_MFH_NUM) {
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
-                       "multi-frame header is is greater than the maximum "
-                       "multi-frame header number");
+                       "multi-frame header id is greater than or equal to the "
+                       "maximum multi-frame header number");
   }
 
   MultiFrameHeader *mfh_param = &cm->mfh_params[cur_mfh_id];
