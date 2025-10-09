@@ -5007,7 +5007,7 @@ static INLINE int find_identical_tile(
   // No identical tile found
   return 0;
 }
-
+#if !CONFIG_CWG_F248_RENDER_SIZE
 static AOM_INLINE void write_render_size(const AV1_COMMON *cm,
                                          struct aom_write_bit_buffer *wb) {
   const int scaling_active = av1_resize_scaled(cm);
@@ -5017,7 +5017,7 @@ static AOM_INLINE void write_render_size(const AV1_COMMON *cm,
     aom_wb_write_literal(wb, cm->render_height - 1, 16);
   }
 }
-
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
 static AOM_INLINE void write_frame_size(const AV1_COMMON *cm,
                                         int frame_size_override,
                                         struct aom_write_bit_buffer *wb) {
@@ -5045,7 +5045,9 @@ static AOM_INLINE void write_frame_size(const AV1_COMMON *cm,
     aom_wb_write_literal(wb, coded_width, num_bits_width);
     aom_wb_write_literal(wb, coded_height, num_bits_height);
   }
+#if !CONFIG_CWG_F248_RENDER_SIZE
   write_render_size(cm, wb);
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
 }
 
 static AOM_INLINE void write_frame_size_with_refs(
@@ -6120,6 +6122,7 @@ static AOM_INLINE void write_multi_frame_header(
   }
 #endif  //  CONFIG_CWG_E242_PARSING_INDEP
 
+#if !CONFIG_CWG_F248_RENDER_SIZE
 #if CONFIG_CWG_E242_PARSING_INDEP
   aom_wb_write_bit(wb, mfh_param->mfh_render_size_present_flag);
   if (mfh_param->mfh_render_size_present_flag) {
@@ -6134,6 +6137,7 @@ static AOM_INLINE void write_multi_frame_header(
     aom_wb_write_literal(wb, cm->render_width - 1, 16);
     aom_wb_write_literal(wb, cm->render_height - 1, 16);
   }
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
 
   aom_wb_write_bit(wb, mfh_param->mfh_loop_filter_update_flag);
   if (mfh_param->mfh_loop_filter_update_flag) {
@@ -6294,8 +6298,8 @@ static AOM_INLINE void write_global_motion(AV1_COMP *cpi,
     printf("Frame %d/%d: Enc Ref %d: %d %d %d %d\n",
            cm->current_frame.frame_number, cm->show_frame, frame,
            cm->global_motion[frame].wmmat[0],
-           cm->global_motion[frame].wmmat[1], cm->global_motion[frame].wmmat[2],
-           cm->global_motion[frame].wmmat[3]);
+           cm->global_motion[frame].wmmat[1],
+    cm->global_motion[frame].wmmat[2], cm->global_motion[frame].wmmat[3]);
            */
   }
 }
@@ -6711,7 +6715,8 @@ static AOM_INLINE void write_uncompressed_header_obu
       cm->bridge_frame_info.bridge_frame_overwrite_flag) {
 #endif  // CONFIG_CWG_F317
     // Shown keyframes and switch-frames automatically refreshes all reference
-    // frames.  For all other frame types, we need to write refresh_frame_flags.
+    // frames.  For all other frame types, we need to write
+    // refresh_frame_flags.
     if ((current_frame->frame_type == KEY_FRAME && !cm->show_frame) ||
 #if CONFIG_RANDOM_ACCESS_SWITCH_FRAME
         (current_frame->frame_type == INTER_FRAME &&
@@ -7914,7 +7919,8 @@ static uint32_t write_tilegroup_payload(AV1_COMP *const cpi, uint8_t *const dst,
       unsigned int tile_size = mode_bc.pos;
       assert(tile_size >= AV1_MIN_TILE_SIZE_BYTES);
 
-      // curr_tg_data_size += (tile_size + (tile_idx < end_tile_idx  ? 0 : 4));
+      // curr_tg_data_size += (tile_size + (tile_idx < end_tile_idx  ? 0 :
+      // 4));
       buf->size = tile_size;
       if (tile_size > max_tile_size) {
         *largest_tile_id = tile_cols * tile_row + tile_col;
@@ -8740,6 +8746,7 @@ static void set_multi_frame_header_with_keyframe(AV1_COMP *cpi,
     mfh_params->mfh_frame_height = cm->height;
   }
 
+#if !CONFIG_CWG_F248_RENDER_SIZE
   // Set render size params for MFH
   mfh_params->mfh_render_size_present_flag =
       (cm->width != cm->render_width || cm->height != cm->render_height);
@@ -8747,6 +8754,7 @@ static void set_multi_frame_header_with_keyframe(AV1_COMP *cpi,
     mfh_params->mfh_render_width = cm->width;
     mfh_params->mfh_render_height = cm->height;
   }
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
 }
 #endif  // CONFIG_CWG_E242_PARSING_INDEP
 

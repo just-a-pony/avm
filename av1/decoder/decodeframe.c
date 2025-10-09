@@ -4109,6 +4109,7 @@ static AOM_INLINE void setup_render_size(AV1_COMMON *cm,
     return;
   }
 #endif  // CONFIG_CWG_F317
+#if !CONFIG_CWG_F248_RENDER_SIZE
 #if CONFIG_MULTI_FRAME_HEADER
   assert(cm->mfh_valid[cm->cur_mfh_id]);
 #if CONFIG_CWG_E242_PARSING_INDEP
@@ -4127,8 +4128,34 @@ static AOM_INLINE void setup_render_size(AV1_COMMON *cm,
   cm->render_width = cm->width;
   cm->render_height = cm->height;
 #endif  // CONFIG_MULTI_FRAME_HEADER
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
+
+#if CONFIG_CWG_F248_RENDER_SIZE
+  (void)rb;
+#if CONFIG_MULTILAYER_HLS && CONFIG_MULTILAYER_HLS_ENABLE_SIGNALING
+  // Note: if Local LCR information is used, then the layer_id =
+  // lcr_params.xlayer_id If Global LCR is used, then for each extended layer
+  // i.e, xlayer_info(1,n) is specified, where n is xlayer_id[i] of the i-th
+  // extended layer. Set default to use xlayer_id 31 when Global LCR is being
+  // used
+  const bool is_global_lcr = !cm->lcr_params.is_local_lcr;
+  const int layer_id =
+      is_global_lcr ? GLOBAL_LCR_XLAYER_ID : cm->lcr_params.xlayer_id;
+  const int xlayer_id = cm->lcr_params.lcr_xLayer_id[layerId];
+  if (cm->lcr_params.lcr_rep_info_present_flag[is_global_lcr][xlayer_id]) {
+    cm->render_width = cm->lcr_params.rep_params.lcr_max_pic_width;
+    cm->render_height = cm->lcr_params.rep_params.lcr_max_pic_height;
+  } else {
+#endif  // CONFIG_MULTILAYER_HLS && CONFIG_MULTILAYER_HLS_ENABLE_SIGNALING
+    cm->render_width = cm->width;
+    cm->render_height = cm->height;
+#if CONFIG_MULTILAYER_HLS && CONFIG_MULTILAYER_HLS_ENABLE_SIGNALING
+  }
+#endif  // CONFIG_MULTILAYER_HLS && CONFIG_MULTILAYER_HLS_ENABLE_SIGNALING
+#else
   if (aom_rb_read_bit(rb))
     av1_read_frame_size(rb, 16, 16, &cm->render_width, &cm->render_height);
+#endif  // CONFIG_CWG_F248_RENDER_SIZE
 }
 
 static AOM_INLINE void resize_context_buffers(AV1_COMMON *cm, int width,
@@ -7512,12 +7539,15 @@ void av1_read_multi_frame_header(AV1_COMMON *cm,
 #endif  // CONFIG_CWG_E242_PARSING_INDEP
 
 #if CONFIG_CWG_E242_PARSING_INDEP
+#if !CONFIG_CWG_F248_RENDER_SIZE
   mfh_param->mfh_render_size_present_flag = aom_rb_read_bit(rb);
   if (mfh_param->mfh_render_size_present_flag) {
     av1_read_frame_size(rb, 16, 16, &mfh_param->mfh_render_width,
                         &mfh_param->mfh_render_height);
   }
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
 #else
+#if !CONFIG_CWG_F248_RENDER_SIZE
   if (aom_rb_read_bit(rb)) {
     av1_read_frame_size(rb, 16, 16, &mfh_param->mfh_render_width,
                         &mfh_param->mfh_render_height);
@@ -7526,6 +7556,7 @@ void av1_read_multi_frame_header(AV1_COMMON *cm,
     mfh_param->mfh_render_height = mfh_param->mfh_frame_height;
   }
 #endif  // CONFIG_CWG_E242_PARSING_INDEP
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
 
   mfh_param->mfh_loop_filter_update_flag = aom_rb_read_bit(rb);
   if (mfh_param->mfh_loop_filter_update_flag) {
@@ -8259,10 +8290,12 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           seq_params->max_frame_width;
       cm->mfh_params[cm->cur_mfh_id].mfh_frame_height =
           seq_params->max_frame_height;
+#if !CONFIG_CWG_F248_RENDER_SIZE
       cm->mfh_params[cm->cur_mfh_id].mfh_render_width =
           seq_params->max_frame_width;
       cm->mfh_params[cm->cur_mfh_id].mfh_render_height =
           seq_params->max_frame_height;
+#endif  // !CONFIG_CWG_F248_RENDER_SIZE
       cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_update_flag = 0;
       for (int i = 0; i < 4; i++) {
         cm->mfh_params[cm->cur_mfh_id].mfh_loop_filter_level[i] = 0;
