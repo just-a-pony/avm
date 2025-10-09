@@ -1994,9 +1994,14 @@ typedef struct BRU_Info {
  */
 typedef struct BridgeFrame_Info {
   /*!
-   * reference idx of reference frame used for bridge frame
+   * reference frame used for bridge frame - index for 'ref_frame_map_pairs' and
+   * 'refresh_frame_flags'
    */
   int bridge_frame_ref_idx;
+  /*!
+   * reference frame used for bridge frame - index for 'remapped_ref_idx'
+   */
+  int bridge_frame_ref_idx_remapped;
   /*!
    * maximum width for bridge frame
    */
@@ -2013,6 +2018,16 @@ typedef struct BridgeFrame_Info {
    * flag indicating if refresh flags will be signaled (and not inferred)
    */
   int bridge_frame_overwrite_flag;
+#if CONFIG_CWG_F317_TEST_PATTERN
+  /*!
+   * frame count used for test pattern
+   */
+  int frame_count;
+  /*!
+   * idenitfy bridge frame in encoder log
+   */
+  int print_bridge_frame_in_log;
+#endif  // CONFIG_CWG_F317_TEST_PATTERN
 } BridgeFrameInfo;
 #endif  // CONFIG_CWG_F317
 
