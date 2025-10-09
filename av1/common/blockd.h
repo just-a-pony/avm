@@ -681,10 +681,8 @@ typedef struct MB_MODE_INFO {
   int local_ccso_blk_flag;
   /*! \brief store GDF mode in current SB in current implementation */
   int local_gdf_mode;
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   /*! \brief Which partition the superblock used. */
   int sb_root_partition_info;
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
 } MB_MODE_INFO;
 
 /*! \brief Stores the subblock motion info of the current coding block
@@ -745,10 +743,8 @@ typedef struct PARTITION_TREE {
   /*! \brief Flag to decide whether CFL is allowed for a particular chroma
    * tree or not in SDP */
   CFL_ALLOWED_FOR_SDP_TYPE is_cfl_allowed_for_this_chroma_partition;
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   /*! \brief Which partition the superblock used. */
   int sb_root_partition_info;
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
 } PARTITION_TREE;
 
 PARTITION_TREE *av1_alloc_ptree_node(PARTITION_TREE *parent, int index);

@@ -211,10 +211,8 @@ void av1_free_pmc(PICK_MODE_CONTEXT *ctx, int num_planes) {
 }
 
 PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                                BLOCK_SIZE sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                                BLOCK_SIZE bsize, PC_TREE *parent,
+                                BLOCK_SIZE sb_size, BLOCK_SIZE bsize,
+                                PC_TREE *parent,
                                 PARTITION_TYPE parent_partition, int index,
                                 int is_last, int subsampling_x,
                                 int subsampling_y) {
@@ -229,7 +227,6 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
   pc_tree->index = index;
   pc_tree->partitioning = PARTITION_NONE;
   if (parent) {
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
     if (parent->block_size == sb_size) {
       if (parent_partition == PARTITION_VERT)
         pc_tree->sb_root_partition_info = 1;
@@ -241,7 +238,6 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
     } else {
       pc_tree->sb_root_partition_info = pc_tree->parent->sb_root_partition_info;
     }
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
     pc_tree->region_type = parent->region_type;
     if (parent->extended_sdp_allowed_flag)
       pc_tree->extended_sdp_allowed_flag =
@@ -250,9 +246,7 @@ PC_TREE *av1_alloc_pc_tree_node(TREE_TYPE tree_type, int mi_row, int mi_col,
       pc_tree->extended_sdp_allowed_flag = 0;
   } else {
     pc_tree->extended_sdp_allowed_flag = 1;
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
     pc_tree->sb_root_partition_info = 0;
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
   }
   pc_tree->block_size = bsize;
   pc_tree->is_last_subblock = is_last;
@@ -489,11 +483,8 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
             const int x_idx = (i & 1) * (mi_size_wide[bsize] >> 1);
             const int y_idx = (i >> 1) * (mi_size_high[bsize] >> 1);
             dst->split[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_row + y_idx, mi_col + x_idx,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                subsize, dst, PARTITION_SPLIT, i, i == 3, ss_x, ss_y);
+                tree_type, mi_row + y_idx, mi_col + x_idx, cm->sb_size, subsize,
+                dst, PARTITION_SPLIT, i, i == 3, ss_x, ss_y);
             av1_copy_pc_tree_recursive(xd, cm, dst->split[cur_region_type][i],
                                        src->split[cur_region_type][i], ss_x,
                                        ss_y, shared_bufs, tree_type,
@@ -514,11 +505,8 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           if (src->horizontal[cur_region_type][i]) {
             const int this_mi_row = mi_row + i * (mi_size_high[bsize] >> 1);
             dst->horizontal[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, this_mi_row, mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                subsize, dst, PARTITION_HORZ, i, i == 1, ss_x, ss_y);
+                tree_type, this_mi_row, mi_col, cm->sb_size, subsize, dst,
+                PARTITION_HORZ, i, i == 1, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->horizontal[cur_region_type][i],
                 src->horizontal[cur_region_type][i], ss_x, ss_y, shared_bufs,
@@ -539,11 +527,8 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           if (src->vertical[cur_region_type][i]) {
             const int this_mi_col = mi_col + i * (mi_size_wide[bsize] >> 1);
             dst->vertical[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_row, this_mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                subsize, dst, PARTITION_VERT, i, i == 1, ss_x, ss_y);
+                tree_type, mi_row, this_mi_col, cm->sb_size, subsize, dst,
+                PARTITION_VERT, i, i == 1, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->vertical[cur_region_type][i],
                 src->vertical[cur_region_type][i], ss_x, ss_y, shared_bufs,
@@ -572,11 +557,8 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           }
           if (src->horizontal4a[cur_region_type][i]) {
             dst->horizontal4a[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_rows[i], mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                subsizes[i], dst, PARTITION_HORZ_4A, i, i == 3, ss_x, ss_y);
+                tree_type, mi_rows[i], mi_col, cm->sb_size, subsizes[i], dst,
+                PARTITION_HORZ_4A, i, i == 3, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->horizontal4a[cur_region_type][i],
                 src->horizontal4a[cur_region_type][i], ss_x, ss_y, shared_bufs,
@@ -605,11 +587,8 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           }
           if (src->horizontal4b[cur_region_type][i]) {
             dst->horizontal4b[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_rows[i], mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                subsizes[i], dst, PARTITION_HORZ_4B, i, i == 3, ss_x, ss_y);
+                tree_type, mi_rows[i], mi_col, cm->sb_size, subsizes[i], dst,
+                PARTITION_HORZ_4B, i, i == 3, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->horizontal4b[cur_region_type][i],
                 src->horizontal4b[cur_region_type][i], ss_x, ss_y, shared_bufs,
@@ -638,11 +617,8 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           }
           if (src->vertical4a[cur_region_type][i]) {
             dst->vertical4a[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_row, mi_cols[i],
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                subsizes[i], dst, PARTITION_VERT_4A, i, i == 3, ss_x, ss_y);
+                tree_type, mi_row, mi_cols[i], cm->sb_size, subsizes[i], dst,
+                PARTITION_VERT_4A, i, i == 3, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->vertical4a[cur_region_type][i],
                 src->vertical4a[cur_region_type][i], ss_x, ss_y, shared_bufs,
@@ -671,11 +647,8 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           }
           if (src->vertical4b[cur_region_type][i]) {
             dst->vertical4b[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_row, mi_cols[i],
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                subsizes[i], dst, PARTITION_VERT_4B, i, i == 3, ss_x, ss_y);
+                tree_type, mi_row, mi_cols[i], cm->sb_size, subsizes[i], dst,
+                PARTITION_VERT_4B, i, i == 3, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->vertical4b[cur_region_type][i],
                 src->vertical4b[cur_region_type][i], ss_x, ss_y, shared_bufs,
@@ -702,10 +675,7 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           }
           if (src->horizontal3[cur_region_type][i]) {
             dst->horizontal3[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_row + offset_mr, mi_col + offset_mc,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
+                tree_type, mi_row + offset_mr, mi_col + offset_mc, cm->sb_size,
                 this_subsize, dst, PARTITION_HORZ_3, i, i == 3, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->horizontal3[cur_region_type][i],
@@ -732,10 +702,7 @@ void av1_copy_pc_tree_recursive(MACROBLOCKD *xd, const AV1_COMMON *cm,
           }
           if (src->vertical3[cur_region_type][i]) {
             dst->vertical3[cur_region_type][i] = av1_alloc_pc_tree_node(
-                tree_type, mi_row + offset_mr, mi_col + offset_mc,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
+                tree_type, mi_row + offset_mr, mi_col + offset_mc, cm->sb_size,
                 this_subsize, dst, PARTITION_VERT_3, i, i == 3, ss_x, ss_y);
             av1_copy_pc_tree_recursive(
                 xd, cm, dst->vertical3[cur_region_type][i],

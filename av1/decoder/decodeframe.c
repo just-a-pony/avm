@@ -699,9 +699,7 @@ static AOM_INLINE void decode_mbmi_block(AV1Decoder *const pbi,
   xd->mi[0]->region_type = parent->region_type;
   // set tree_type for each mbmi
   xd->mi[0]->tree_type = xd->tree_type;
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   xd->mi[0]->sb_root_partition_info = parent->sb_root_partition_info;
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
   xd->mi[0]->local_rest_type =
       1;  // set non zero default type, it is only matter 1 or 0 in SW
   xd->mi[0]->local_ccso_blk_flag =
@@ -1985,7 +1983,6 @@ static AOM_INLINE void decode_partition(
   static const block_visitor_fn_t block_visit[4] = { NULL, parse_decode_block,
                                                      decode_block,
                                                      parse_decode_block };
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   if (ptree->parent) {
     if (ptree->parent->bsize == cm->sb_size) {
       if (ptree->parent->partition == PARTITION_VERT)
@@ -1999,7 +1996,6 @@ static AOM_INLINE void decode_partition(
       ptree->sb_root_partition_info = ptree->parent->sb_root_partition_info;
     }
   }
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
 
   const int is_sb_root = bsize == cm->sb_size;
   if (is_sb_root) {

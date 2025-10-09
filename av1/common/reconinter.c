@@ -4545,7 +4545,8 @@ bool av1_build_morph_pred(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
     return false;
   }
 
-  // Restriction: the reference block's template can't be outside the current tile.
+  // Restriction: the reference block's template can't be outside the current
+  // tile.
   const TileInfo *const tile = &xd->tile;
   // Is the source top-left inside the current
   // tile?

@@ -727,7 +727,6 @@ static INLINE int av1_is_dv_in_local_range_64x64(const MV dv,
   return 0;
 }
 
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
 static INLINE int is_two_blk_overlap(int blk1_x_left, int blk1_x_right,
                                      int blk1_y_top, int blk1_y_bottom,
                                      int blk2_x_left, int blk2_x_right,
@@ -993,100 +992,6 @@ static INLINE int av1_is_dv_in_local_range(const AV1_COMMON *cm, const MV dv,
   }
   return 1;
 }
-#else
-static INLINE int av1_is_dv_in_local_range(const MV dv, const MACROBLOCKD *xd,
-                                           int mi_row, int mi_col, int bh,
-                                           int bw, int mib_size_log2) {
-  int has_col_offset = dv.col & 7;  // sub-pel col
-  int has_row_offset = dv.row & 7;  // sub-pel col
-  int left_interp_border = has_col_offset ? IBC_LEFT_INTERP_BORDER : 0;
-  int right_interp_border = has_col_offset ? IBC_RIGHT_INTERP_BORDER : 0;
-  int top_interp_border = has_row_offset ? IBC_TOP_INTERP_BORDER : 0;
-  int bottom_interp_border = has_row_offset ? IBC_BOTTOM_INTERP_BORDER : 0;
-
-  const int SCALE_PX_TO_MV = 8;
-  const int src_top_edge = (mi_row * MI_SIZE) * SCALE_PX_TO_MV + dv.row;
-  const int src_left_edge = (mi_col * MI_SIZE) * SCALE_PX_TO_MV + dv.col;
-  const int src_bottom_edge = (mi_row * MI_SIZE + bh) * SCALE_PX_TO_MV + dv.row;
-  const int src_right_edge = (mi_col * MI_SIZE + bw) * SCALE_PX_TO_MV + dv.col;
-
-  const int src_top_y = (src_top_edge >> 3) - top_interp_border;
-  const int src_left_x = (src_left_edge >> 3) - left_interp_border;
-  const int src_bottom_y = (src_bottom_edge >> 3) - 1 + bottom_interp_border;
-  const int src_right_x = (src_right_edge >> 3) - 1 + right_interp_border;
-  const int active_left_x = mi_col * MI_SIZE;
-  const int active_top_y = mi_row * MI_SIZE;
-
-  const int sb_size_log2 = mib_size_log2 + MI_SIZE_LOG2;
-  if ((src_top_y >> sb_size_log2) < (active_top_y >> sb_size_log2)) return 0;
-
-  if ((src_bottom_y >> sb_size_log2) > (active_top_y >> sb_size_log2)) return 0;
-  if (((dv.col >> 3) + bw + right_interp_border) > 0 &&
-      ((dv.row >> 3) + bh + bottom_interp_border) > 0)
-    return 0;
-
-  if (src_top_y < 0 || src_left_x < 0) return 0;
-
-  const int numLeftSB =
-      (1 << ((7 - sb_size_log2) << 1)) - ((sb_size_log2 < 7) ? 1 : 0);
-  const int valid_SB =
-      ((src_right_x >> sb_size_log2) <= (active_left_x >> sb_size_log2)) &&
-      ((src_left_x >> sb_size_log2) >=
-       ((active_left_x >> sb_size_log2) - numLeftSB));
-  if (!valid_SB) return 0;
-
-  int TL_same_sb = 0;
-  int BR_same_sb = 0;
-  const int sb_size = 1 << sb_size_log2;
-  const int sb_mi_size = sb_size >> MI_SIZE_LOG2;
-  const int is_chroma_tree = xd->tree_type == CHROMA_PART;
-  const unsigned char *is_mi_coded_map = xd->is_mi_coded[is_chroma_tree];
-  if ((sb_size_log2 == 7)) {
-    if ((src_left_x >> sb_size_log2) == ((active_left_x >> sb_size_log2) - 1)) {
-      const int src_colo_left_x = src_left_x + sb_size;
-      const int src_colo_top_y = src_top_y;
-      const int offset64x = (src_colo_left_x >> 6) << 6;
-      const int offset64y = (src_colo_top_y >> 6) << 6;
-      const int mi_col_offset = (offset64x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
-      const int mi_row_offset = (offset64y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
-      const int pos = mi_row_offset * xd->is_mi_coded_stride + mi_col_offset;
-      if (is_mi_coded_map[pos]) return 0;
-      if (offset64x == active_left_x && offset64y == active_top_y) return 0;
-      TL_same_sb = 0;
-    } else {
-      TL_same_sb = 1;
-    }
-  } else {
-    if ((src_left_x >> sb_size_log2) < (active_left_x >> sb_size_log2)) {
-      TL_same_sb = 0;
-    } else {
-      TL_same_sb = 1;
-    }
-  }
-
-  if (TL_same_sb) {
-    const int LT_mi_col_offset =
-        (src_left_x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
-    const int LT_mi_row_offset = (src_top_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
-    const int LT_pos =
-        LT_mi_row_offset * xd->is_mi_coded_stride + LT_mi_col_offset;
-    if (is_mi_coded_map[LT_pos] == 0) return 0;
-  }
-
-  BR_same_sb = (src_right_x >> sb_size_log2) == (active_left_x >> sb_size_log2);
-  if (BR_same_sb) {
-    const int BR_mi_col_offset =
-        (src_right_x >> MI_SIZE_LOG2) & (sb_mi_size - 1);
-    const int BR_mi_row_offset =
-        (src_bottom_y >> MI_SIZE_LOG2) & (sb_mi_size - 1);
-    const int BR_pos =
-        BR_mi_row_offset * xd->is_mi_coded_stride + BR_mi_col_offset;
-    if (is_mi_coded_map[BR_pos] == 0) return 0;
-    assert(src_right_x < active_left_x || src_bottom_y < active_top_y);
-  }
-  return 1;
-}
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
 
 static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
                                   const MACROBLOCKD *xd, int mi_row, int mi_col,
@@ -1172,19 +1077,8 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
           }
         }
       }
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
       valid = av1_is_dv_in_local_range(cm, dv, xd, tmp_row, tmp_col, tmp_bh,
                                        tmp_bw, mib_size_log2);
-#else
-      if (!frame_is_intra_only(
-              cm))  // Inter frame: Using 128x128 but the modificantion made in
-                    // av1_is_dv_in_local_range_64x64 function
-        valid = av1_is_dv_in_local_range_64x64(dv, xd, tmp_row, tmp_col, tmp_bh,
-                                               tmp_bw, mib_size_log2);
-      else
-        valid = av1_is_dv_in_local_range(dv, xd, tmp_row, tmp_col, tmp_bh,
-                                         tmp_bw, mib_size_log2);
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
       if (valid) return 1;
     }
   }
@@ -1213,17 +1107,15 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
       (((tile->mi_col_end - tile->mi_col_start - 1) >> 4) + 1);
   const int active_sb64 = active_sb_row * total_sb64_per_row + active_sb64_col;
   const int src_sb64 = src_sb_row * total_sb64_per_row + src_sb64_col;
-  if (src_sb64 >= active_sb64 - INTRABC_DELAY_SB64 - sb_64_residual)
-    return 0;
+  if (src_sb64 >= active_sb64 - INTRABC_DELAY_SB64 - sb_64_residual) return 0;
 
   // Wavefront constraint: use only top left area of frame for reference.
   const int gradient =
       1 + INTRABC_DELAY_SB64 + (sb_size > 64) + 2 * (sb_size > 128);
   const int wf_offset = gradient * (active_sb_row - src_sb_row);
-  if (src_sb_row > active_sb_row || src_sb64_col >= active_sb64_col -
-                                                        INTRABC_DELAY_SB64
-                                                        - sb_64_residual
-                                                        + wf_offset)
+  if (src_sb_row > active_sb_row ||
+      src_sb64_col >=
+          active_sb64_col - INTRABC_DELAY_SB64 - sb_64_residual + wf_offset)
     return 0;
   return 1;
 }
