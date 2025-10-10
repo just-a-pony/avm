@@ -681,7 +681,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "Enable frame parallel decodability features "
               "(0: false (default), 1: true)"),
   .error_resilient_mode = ARG_DEF(NULL, "error-resilient", 1,
-                                  "Enable error resilient features "
+                                  "Enable error resilient features (obsolete)"
                                   "(0: false (default), 1: true)"),
   .aq_mode = ARG_DEF(NULL, "aq-mode", 1,
                      "Adaptive quantization mode (0: off (default), 1: "
