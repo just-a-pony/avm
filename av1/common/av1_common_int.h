@@ -721,7 +721,7 @@ typedef struct LayerConfigurationRecord {
   int lcr_data_size_present_flag;
   int lcr_global_purpose_id;
 
-  int long lcr_data_size[MAX_NUM_XLAYERS];
+  uint32_t lcr_data_size[MAX_NUM_XLAYERS];
   int lcr_xLayer_id[MAX_NUM_XLAYERS];
   int lcr_num_dependent_xlayer_map[MAX_NUM_XLAYERS];
   int lcr_dependent_xlayers_flag;
@@ -872,7 +872,7 @@ typedef struct OperatingPointSet {
   int ops_mlayer_info_idc[MAX_NUM_XLAYERS][MAX_NUM_OPS_ID];
   int ops_reserved_2bits[MAX_NUM_XLAYERS][MAX_NUM_OPS_ID];
   int ops_reserved_3bits[MAX_NUM_XLAYERS][MAX_NUM_OPS_ID];
-  int ops_data_size[MAX_NUM_XLAYERS][MAX_NUM_OPS_ID][MAX_NUM_OPS_COUNT];
+  uint32_t ops_data_size[MAX_NUM_XLAYERS][MAX_NUM_OPS_ID][MAX_NUM_OPS_COUNT];
   int ops_intent_op[MAX_NUM_XLAYERS][MAX_NUM_OPS_ID][MAX_NUM_OPS_COUNT];
   int ops_operational_profile_id[MAX_NUM_XLAYERS][MAX_NUM_OPS_ID]
                                 [MAX_NUM_OPS_COUNT];
