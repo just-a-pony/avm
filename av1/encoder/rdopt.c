@@ -5898,7 +5898,6 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
         }
       }
       if (cm->features.allow_local_intrabc && ibc_loop == 1) {
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
         int num_left_sb = 1;
         if (cm->mib_size_log2 == 4) {
           if (cm->bru.enabled) {
@@ -5914,9 +5913,6 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
           } else
             num_left_sb = 4;
         }
-#else
-        const int num_left_sb = 1;
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
         int left_coded_mi_edge =
             AOMMAX((sb_col - num_left_sb) * cm->mib_size, tile->mi_col_start);
         int right_coded_mi_edge =

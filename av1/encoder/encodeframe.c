@@ -562,10 +562,7 @@ static AOM_INLINE void perform_one_partition_pass(
     init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row, mi_col,
                       1);
     PC_TREE *const pc_root =
-        av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-                               cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
+        av1_alloc_pc_tree_node(xd->tree_type, mi_row, mi_col, cm->sb_size,
                                sb_size, NULL, PARTITION_NONE, 0, 1, ss_x, ss_y);
     if (!frame_is_intra_only(cm)) {
       pc_root->region_type = MIXED_INTER_INTRA_REGION;
@@ -782,11 +779,8 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
           xd->sbi->ptree_root[av1_get_sdp_idx(xd->tree_type)],
           xd->tree_type == CHROMA_PART ? xd->sbi->ptree_root[0] : NULL);
       PC_TREE *const pc_root = av1_alloc_pc_tree_node(
-          xd->tree_type, mi_row, mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-          cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-          sb_size, NULL, PARTITION_NONE, 0, 1, ss_x, ss_y);
+          xd->tree_type, mi_row, mi_col, cm->sb_size, sb_size, NULL,
+          PARTITION_NONE, 0, 1, ss_x, ss_y);
       av1_rd_use_partition(
           cpi, td, tile_data, mi,
           (intra_sdp_enabled && xd->tree_type == CHROMA_PART) ? tp_chroma : tp,
@@ -812,11 +806,8 @@ static AOM_INLINE void encode_rd_sb(AV1_COMP *cpi, ThreadData *td,
       init_encode_rd_sb(cpi, td, tile_data, sms_root, &dummy_rdc, mi_row,
                         mi_col, 1);
       PC_TREE *const pc_root = av1_alloc_pc_tree_node(
-          xd->tree_type, mi_row, mi_col,
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
-          cm->sb_size,
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
-          sb_size, NULL, PARTITION_NONE, 0, 1, ss_x, ss_y);
+          xd->tree_type, mi_row, mi_col, cm->sb_size, sb_size, NULL,
+          PARTITION_NONE, 0, 1, ss_x, ss_y);
       av1_reset_ptree_in_sbi(xd->sbi, xd->tree_type);
       av1_build_partition_tree_fixed_partitioning(
           cm, xd->tree_type, mi_row, mi_col, bsize,
@@ -933,10 +924,8 @@ static AOM_INLINE void bridge_frame_set_offsets(
       (parent == NULL) ? MIXED_INTER_INTRA_REGION : parent->region_type;
   // set tree_type for each mbmi
   xd->mi[0]->tree_type = xd->tree_type;
-#if CONFIG_LOCAL_INTRABC_ALIGN_RNG
   xd->mi[0]->sb_root_partition_info =
       (parent == NULL) ? -1 : parent->sb_root_partition_info;
-#endif  // CONFIG_LOCAL_INTRABC_ALIGN_RNG
   xd->mi[0]->local_rest_type =
       1;  // set non zero default type, it is only matter 1 or 0 in SW
   xd->mi[0]->local_ccso_blk_flag =
