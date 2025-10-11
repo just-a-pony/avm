@@ -3778,6 +3778,13 @@ static INLINE void check_ref_count_status_enc(AV1_COMP *cpi) {
     }
   }
 }
+
+// Returns true if current frame is a shown (visible) keyframe.
+static INLINE bool av1_is_shown_keyframe(const AV1_COMP *cpi,
+                                         FRAME_TYPE frame_type) {
+  return (frame_type == KEY_FRAME) && !cpi->no_show_fwd_kf;
+}
+
 /*!\endcond */
 
 #ifdef __cplusplus
