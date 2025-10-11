@@ -971,6 +971,82 @@ static size_t read_padding(AV1_COMMON *const cm, const uint8_t *data,
   return sz;
 }
 
+// Check the obu type is a kind of coded frame
+static int is_coded_frame(OBU_TYPE obu_type) {
+  return obu_type == OBU_SEF || obu_type == OBU_TIP || obu_type == OBU_SWITCH ||
+         obu_type == OBU_RAS_FRAME || obu_type == OBU_BRIDGE_FRAME ||
+         obu_type == OBU_TILE_GROUP;
+}
+
+// Check the obu type ordering within a temporal unit
+// as a part of checking bitstream conformance.
+// On success, return 0. If failed return 1.
+#if OBU_ORDER_IN_TU
+static int check_obu_order(OBU_TYPE prev_obu_type, OBU_TYPE curr_obu_type) {
+  if ((prev_obu_type == OBU_TEMPORAL_DELIMITER) &&
+      (curr_obu_type == OBU_MSDO ||
+       curr_obu_type == OBU_LAYER_CONFIGURATION_RECORD ||
+       curr_obu_type == OBU_ATLAS_SEGMENT ||
+       curr_obu_type == OBU_OPERATING_POINT_SET ||
+       curr_obu_type == OBU_SEQUENCE_HEADER ||
+       curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+       is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_MSDO) &&
+             (curr_obu_type == OBU_LAYER_CONFIGURATION_RECORD ||
+              curr_obu_type == OBU_ATLAS_SEGMENT ||
+              curr_obu_type == OBU_OPERATING_POINT_SET ||
+              curr_obu_type == OBU_SEQUENCE_HEADER ||
+              curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+              is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_LAYER_CONFIGURATION_RECORD) &&
+             (curr_obu_type == OBU_LAYER_CONFIGURATION_RECORD ||
+              curr_obu_type == OBU_ATLAS_SEGMENT ||
+              curr_obu_type == OBU_OPERATING_POINT_SET ||
+              curr_obu_type == OBU_SEQUENCE_HEADER ||
+              curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+              is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_OPERATING_POINT_SET) &&
+             (curr_obu_type == OBU_OPERATING_POINT_SET ||
+              curr_obu_type == OBU_ATLAS_SEGMENT ||
+              curr_obu_type == OBU_SEQUENCE_HEADER ||
+              curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+              is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_ATLAS_SEGMENT) &&
+             (curr_obu_type == OBU_ATLAS_SEGMENT ||
+              curr_obu_type == OBU_SEQUENCE_HEADER ||
+              curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+              is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_SEQUENCE_HEADER) &&
+             (curr_obu_type == OBU_SEQUENCE_HEADER ||
+              curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+              curr_obu_type == OBU_BUFFER_REMOVAL_TIMING ||
+              is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_BUFFER_REMOVAL_TIMING) &&
+             (curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+              is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_MULTI_FRAME_HEADER) &&
+             (curr_obu_type == OBU_MULTI_FRAME_HEADER ||
+              is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA)) {
+    return 0;
+  } else if ((prev_obu_type == OBU_METADATA) &&
+             (is_coded_frame(curr_obu_type) || curr_obu_type == OBU_METADATA ||
+              curr_obu_type == OBU_TEMPORAL_DELIMITER)) {
+    return 0;
+  } else if (prev_obu_type == OBU_TEMPORAL_DELIMITER ||
+             is_coded_frame(prev_obu_type) || prev_obu_type == OBU_PADDING) {
+    return 0;
+  }
+  return 1;
+}
+#endif  // OBU_ORDER_IN_TU
+
 // On success, sets *p_data_end and returns a boolean that indicates whether
 // the decoding of the current frame is finished. On failure, sets
 // cm->error.error_code and returns -1.
@@ -1000,6 +1076,12 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
   // Reset pbi->camera_frame_header_ready to 0 if cm->tiles.large_scale = 0.
   if (!cm->tiles.large_scale) pbi->camera_frame_header_ready = 0;
 
+#if OBU_ORDER_IN_TU
+  OBU_TYPE prev_obu_type = 0;
+  OBU_TYPE curr_obu_type = 0;
+  int prev_obu_type_initialized = 0;
+#endif  // OBU_ORDER_IN_TU
+
   // decode frame as a series of OBUs
   while (!frame_decoding_finished && cm->error.error_code == AOM_CODEC_OK) {
     struct aom_read_bit_buffer rb;
@@ -1022,6 +1104,17 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
       cm->error.error_code = status;
       return -1;
     }
+
+#if OBU_ORDER_IN_TU
+    curr_obu_type = obu_header.type;
+    if (prev_obu_type_initialized &&
+        check_obu_order(prev_obu_type, curr_obu_type)) {
+      aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                         "OBU order is incorrect in TU");
+    }
+    prev_obu_type = curr_obu_type;
+    prev_obu_type_initialized = 1;
+#endif  // OBU_ORDER_IN_TU
 
 #if CONFIG_MULTI_STREAM
     if (obu_header.type == OBU_MSDO) {
