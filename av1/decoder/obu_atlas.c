@@ -180,6 +180,20 @@ static uint32_t read_ats_multistream_atlas_info(
   ats_basic_info->AtlasHeight[obu_xLayer_id][xAId] =
       ats_basic_info->ats_atlas_height[obu_xLayer_id][xAId];
 
+#if CONFIG_ATLAS_BACKGROUND_COLOR
+  ats_basic_info->ats_background_info_present_flag[obu_xLayer_id][xAId] =
+      aom_rb_read_bit(rb);
+  if (ats_basic_info->ats_background_info_present_flag[obu_xLayer_id][xAId] ==
+      1) {
+    ats_basic_info->ats_background_red_value[obu_xLayer_id][xAId] =
+        aom_rb_read_literal(rb, 8);
+    ats_basic_info->ats_background_green_value[obu_xLayer_id][xAId] =
+        aom_rb_read_literal(rb, 8);
+    ats_basic_info->ats_background_blue_value[obu_xLayer_id][xAId] =
+        aom_rb_read_literal(rb, 8);
+  }
+#endif  // CONFIG_ATLAS_BACKGROUND_COLOR
+
   int NumSegments =
       ats_basic_info->ats_num_atlas_segments_minus_1[obu_xLayer_id][xAId] + 1;
   for (int i = 0; i < NumSegments; i++) {
