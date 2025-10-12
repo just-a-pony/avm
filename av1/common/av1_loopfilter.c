@@ -510,9 +510,9 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
     if (partition == TX_PARTITION_HORZ5 || partition == TX_PARTITION_VERT5) {
       if (is_tx_m_partition != NULL) {
         *is_tx_m_partition =
-            (edge_dir == VERT_EDGE && mi_size_wide[mbmi->sb_type[0]] == 4 &&
+            (edge_dir == VERT_EDGE && mi_size_wide[mbmi->sb_type[0]] <= 8 &&
              partition == TX_PARTITION_VERT5) ||
-            (edge_dir == HORZ_EDGE && mi_size_high[mbmi->sb_type[0]] == 4 &&
+            (edge_dir == HORZ_EDGE && mi_size_high[mbmi->sb_type[0]] <= 8 &&
              partition == TX_PARTITION_HORZ5);
       }
       TXB_POS_INFO txb_pos;
@@ -712,7 +712,7 @@ static AOM_INLINE void check_sub_pu_edge(
         *sub_pu_edge = 1;
       }
       if (*is_tx_m_partition) {
-        *ts = TX_4X4;
+        *ts = (sub_pu_size == 16) ? TX_8X8 : TX_4X4;
       } else if (*sub_pu_edge) {
         *ts = temp_ts;
       }
