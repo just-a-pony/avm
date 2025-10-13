@@ -716,6 +716,7 @@ static void update_frame_buffers(AV1Decoder *pbi, int frame_decoded) {
   BufferPool *const pool = cm->buffer_pool;
 
   pbi->output_frames_offset = 0;
+
   if (frame_decoded) {
     lock_buffer_pool(pool);
 
