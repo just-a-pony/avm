@@ -738,6 +738,8 @@ static aom_codec_err_t init_decoder(aom_codec_alg_priv_t *ctx) {
   for (int i = 0; i < MAX_MFH_NUM; i++) {
     frame_worker_data->pbi->common.mfh_valid[i] = false;
   }
+  // Initialize cm->cur_mfh_id to -1 to help detect if cm->cur_mfh_id is used
+  // before being assigned a valid value.
   frame_worker_data->pbi->common.cur_mfh_id = -1;
 #endif  // CONFIG_MULTI_FRAME_HEADER
   return AOM_CODEC_OK;
