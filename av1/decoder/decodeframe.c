@@ -9555,7 +9555,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         features->allow_ref_frame_mvs = 0;
 
       if (features->allow_ref_frame_mvs &&
-          cm->ref_frames_info.num_total_refs > 1
+          cm->ref_frames_info.num_total_refs > 1 &&
+          block_size_high[seq_params->sb_size] > 64
 #if !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
           && seq_params->order_hint_info.enable_order_hint
 #endif  // !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
