@@ -1487,28 +1487,27 @@ void check_this_warp_candidate(
   }
 }
 
-// update processed_cols variable, when scan_col_mbmi() is not used for adjacent
-// neigbhors
-static AOM_INLINE void update_processed_cols(const MACROBLOCKD *xd, int mi_row,
-                                             int mi_col, int row_offset,
-                                             int col_offset, int max_col_offset,
-                                             int *processed_cols) {
+// Check whether SMVP candidates in the second column are redundant.
+static AOM_INLINE int is_valid_candidate(const MACROBLOCKD *xd, int mi_row,
+                                         int mi_col, int row_offset,
+                                         int col_offset, int check_col_offset) {
   const TileInfo *const tile = &xd->tile;
   const POSITION mi_pos = { row_offset, col_offset };
   if (is_inside(tile, mi_col, mi_row, &mi_pos)) {
-    const MB_MODE_INFO *const candidate =
+    const MB_MODE_INFO *const cand_col =
         xd->mi[row_offset * xd->mi_stride + col_offset];
-    const int n8_h_8 = mi_size_high[BLOCK_8X8];
-    const int candidate_bsize =
-        candidate->sb_type[xd->tree_type == CHROMA_PART];
-    const int n4_h = mi_size_high[candidate_bsize];
-    if (xd->height >= n8_h_8 && xd->height <= n4_h) {
-      const int inc = AOMMIN(-max_col_offset + col_offset + 1,
-                             mi_size_wide[candidate_bsize]);
-      // Update processed cols.
-      *processed_cols = inc - col_offset - 1;
+    // If outer column is within the tile, inner column must be within the tile.
+    // Thus, no need to check if inner column is within the tile
+    const MB_MODE_INFO *const cand_other_col =
+        xd->mi[row_offset * xd->mi_stride + check_col_offset];
+    if (cand_col->mi_col_start == cand_other_col->mi_col_start) {
+      return 0;
     }
+
+    return 1;
   }
+
+  return 0;
 }
 
 static AOM_INLINE void scan_blk_mbmi_ctx(
@@ -2370,7 +2369,6 @@ static AOM_INLINE void setup_ref_mv_list(
   const TileInfo *const tile = &xd->tile;
   int max_col_offset = 0;
   const int col_adj = (xd->width < mi_size_wide[BLOCK_8X8]) && (mi_col & 0x01);
-  int processed_cols = 0;
 
   av1_set_ref_frame(rf, ref_frame);
   *refmv_count = 0;
@@ -2515,8 +2513,6 @@ static AOM_INLINE void setup_ref_mv_list(
                   warp_param_stack, max_num_of_warp_candidates,
                   valid_num_warp_candidates, ref_frame, refmv_count,
                   &drl_pr_count, &drl_dr_pr_count, &drl_dr_single_pr_count);
-    update_processed_cols(xd, mi_row, mi_col, (xd->height - 1), -1,
-                          max_col_offset, &processed_cols);
   }
 
   if (row_smvp_state[0].is_available) {
@@ -2538,8 +2534,6 @@ static AOM_INLINE void setup_ref_mv_list(
                   warp_param_stack, max_num_of_warp_candidates,
                   valid_num_warp_candidates, ref_frame, refmv_count,
                   &drl_pr_count, &drl_dr_pr_count, &drl_dr_single_pr_count);
-    update_processed_cols(xd, mi_row, mi_col, 0, -1, max_col_offset,
-                          &processed_cols);
   }
 
   if (row_smvp_state[1].is_available) {
@@ -2600,10 +2594,12 @@ static AOM_INLINE void setup_ref_mv_list(
         { 1, (xd->height - 1), col_offset },
         { xd->height > 1, 0, col_offset },
       };
-      if (abs(col_offset) <= abs(max_col_offset) &&
-          abs(col_offset) > processed_cols) {
+      if (abs(col_offset) <= abs(max_col_offset)) {
         for (int unit_idx = 0; unit_idx < SMVP_COL_SEARCH_COUNT; unit_idx++) {
-          if (col_units_status[unit_idx].is_available) {
+          if (col_units_status[unit_idx].is_available &&
+              is_valid_candidate(xd, mi_row, mi_col,
+                                 col_units_status[unit_idx].row_offset,
+                                 col_units_status[unit_idx].col_offset, -1)) {
             scan_blk_mbmi(cm, xd, mi_row, mi_col, rf,
                           col_units_status[unit_idx].row_offset,
                           col_units_status[unit_idx].col_offset, ref_mv_stack,
@@ -2614,10 +2610,6 @@ static AOM_INLINE void setup_ref_mv_list(
                           max_num_of_warp_candidates, valid_num_warp_candidates,
                           ref_frame, refmv_count, &drl_pr_count,
                           &drl_dr_pr_count, &drl_dr_single_pr_count);
-            update_processed_cols(xd, mi_row, mi_col,
-                                  col_units_status[unit_idx].row_offset,
-                                  col_units_status[unit_idx].col_offset,
-                                  max_col_offset, &processed_cols);
           }
         }
       }
