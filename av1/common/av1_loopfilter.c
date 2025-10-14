@@ -446,13 +446,22 @@ static bool is_tu_edge_helper(TX_SIZE tx_size, EDGE_DIR edge_dir,
   return !(relative_coord & tu_mask);
 }
 
+// Structure to store the transform block related information.
+typedef struct {
+  int row_offset;  // row starting offset
+  int col_offset;  // column starting offset
+  TX_PARTITION_TYPE tx_partition_type;
+  TX_SIZE tx_size;
+} tx_info_t;
+
 static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
                                   const MB_MODE_INFO *const mbmi,
                                   const EDGE_DIR edge_dir, const int mi_row,
                                   const int mi_col, const int plane,
                                   const TREE_TYPE tree_type,
                                   const struct macroblockd_plane *plane_ptr,
-                                  bool *tu_edge, bool *is_tx_m_partition) {
+                                  bool *tu_edge, tx_info_t *tx_info,
+                                  bool *is_tx_m_partition) {
   assert(mbmi != NULL);
   const BLOCK_SIZE bsize_base =
       get_bsize_base_from_tree_type(mbmi, tree_type, plane);
@@ -501,6 +510,7 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
                         ? av1_get_txb_size_index(sb_type, blk_row, blk_col)
                         : 0;
     const TX_PARTITION_TYPE partition = mbmi->tx_partition_type[txp_index];
+    tx_info->tx_partition_type = partition;
 
     const TX_SIZE max_tx_size = max_txsize_rect_lookup[sb_type];
     if (partition == TX_PARTITION_HORZ5 || partition == TX_PARTITION_VERT5) {
@@ -511,7 +521,7 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
             (edge_dir == HORZ_EDGE && mi_size_high[mbmi->sb_type[0]] <= 8 &&
              partition == TX_PARTITION_HORZ5);
       }
-      TXB_POS_INFO txb_pos;
+      TXB_POS_INFO txb_pos = { { 0 }, { 0 }, 0 };
       TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
       assert(xd != NULL);
       get_tx_partition_sizes(partition, max_tx_size, &txb_pos, sub_txs,
@@ -544,6 +554,9 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
       assert(txb_pos.n_partitions > 1);
       assert(txb_idx < txb_pos.n_partitions);
       TX_SIZE tmp_tx_size = sub_txs[txb_idx];
+      tx_info->row_offset = txb_pos.row_offset[txb_idx];
+      tx_info->col_offset = txb_pos.col_offset[txb_idx];
+      tx_info->tx_size = tmp_tx_size;
 
       assert(tmp_tx_size < TX_SIZES_ALL);
       tx_size = tmp_tx_size;
@@ -734,13 +747,71 @@ MB_MODE_INFO **get_mi_location(const AV1_COMMON *const cm, int scale_horz,
   return get_mi_location_from_collocated_mi(cm, this_mi, plane);
 }
 
+// Returns the remaining mi units for which the same loop-filter parameters as
+// the current unit hold. This is used to skip the redundant setting of
+// loop-filter parameters.
+static int get_remaining_mi_size(const MB_MODE_INFO *mbmi,
+                                 const tx_info_t *tx_info, EDGE_DIR edge_dir,
+                                 uint32_t x, uint32_t y, int plane,
+                                 TREE_TYPE tree_type, int ss_x, int ss_y) {
+  const bool vert_edge = (edge_dir == VERT_EDGE);
+  const int mi_cur_coord =
+      vert_edge ? (y >> MI_SIZE_LOG2) : (x >> MI_SIZE_LOG2);
+
+  int mi_pu_start;
+  if (plane == PLANE_TYPE_Y) {
+    mi_pu_start = vert_edge ? mbmi->mi_row_start : mbmi->mi_col_start;
+  } else {
+    int mi_row_start_uv;
+    int mi_col_start_uv;
+    get_chroma_start_location(mbmi, tree_type, &mi_row_start_uv,
+                              &mi_col_start_uv);
+    const int mi_pu_start_y = vert_edge ? mi_row_start_uv : mi_col_start_uv;
+    const int scale = vert_edge ? ss_y : ss_x;
+    mi_pu_start = mi_pu_start_y >> scale;
+  }
+
+  // All the transform block sizes with a given prediction block are of the same
+  // size for transform partition types other than TX_PARTITION_HORZ5,
+  // TX_PARTITION_VERT5. Thus, when the previous and current transform partition
+  // types are neither HORZ5 / VERT5, the filter length (which is determined
+  // based on the minimum transform block size from both sides of the edge) does
+  // not change for different transform blocks of a given prediction block and
+  // the same loop filter parameters hold for the complete prediction block.
+  // However, for transform partition types HORZ5 / VERT5, same loop filter
+  // parameters hold for the transform block.
+  int mi_offset;
+  if (tx_info->tx_partition_type == TX_PARTITION_HORZ5 && vert_edge) {
+    mi_offset = tx_info->row_offset + tx_size_high_unit[tx_info->tx_size];
+  } else if (tx_info->tx_partition_type == TX_PARTITION_VERT5 && !vert_edge) {
+    mi_offset = tx_info->col_offset + tx_size_wide_unit[tx_info->tx_size];
+  } else {
+    const BLOCK_SIZE plane_bsize = get_mb_plane_block_size_from_tree_type(
+        mbmi, tree_type, plane, ss_x, ss_y);
+    assert(plane_bsize < BLOCK_SIZES_ALL);
+    mi_offset =
+        vert_edge ? mi_size_high[plane_bsize] : mi_size_wide[plane_bsize];
+  }
+
+  // The remaining mi units is the number of mi units to the right/bottom of the
+  // current unit within a prediction/transform block.
+  const int mi_remain_size = mi_pu_start + mi_offset - mi_cur_coord;
+
+  return mi_remain_size;
+}
+
 // Return TX_SIZE from get_transform_size(), so it is plane and direction
 // aware
 static TX_SIZE set_lpf_parameters(
     AV1_DEBLOCKING_PARAMETERS *const params, uint32_t prev_x, uint32_t prev_y,
     AV1_COMMON *const cm, const MACROBLOCKD *const xd, const EDGE_DIR edge_dir,
     const uint32_t x, const uint32_t y, const int plane,
-    const struct macroblockd_plane *const plane_ptr) {
+    const struct macroblockd_plane *const plane_ptr, TX_SIZE *tx_size,
+    int *mi_size_min) {
+  if (*mi_size_min) {
+    *mi_size_min -= 1;
+    return *tx_size;
+  }
   // reset to initial values
 
 #if CONFIG_ASYM_DF
@@ -781,10 +852,15 @@ static TX_SIZE set_lpf_parameters(
   const int plane_type = is_sdp_eligible && plane > 0;
 
   bool tu_edge;
+  tx_info_t tx_info = { 0, 0, TX_PARTITION_NONE, TX_4X4 };
   bool is_tx_m_partition = false;
   TX_SIZE ts =
       get_transform_size(xd, mi[0], edge_dir, mi_row, mi_col, plane, tree_type,
-                         plane_ptr, &tu_edge, &is_tx_m_partition);
+                         plane_ptr, &tu_edge, &tx_info, &is_tx_m_partition);
+  const BLOCK_SIZE superblock_size = get_plane_block_size(
+      cm->sb_size, plane_ptr->subsampling_x, plane_ptr->subsampling_y);
+  assert(superblock_size < BLOCK_SIZES_ALL);
+  int mi_size_prev = mi_size_high[superblock_size];
   {
     const uint32_t coord = (VERT_EDGE == edge_dir) ? (x) : (y);
 
@@ -848,10 +924,15 @@ static TX_SIZE set_lpf_parameters(
             prev_tree_type = (plane == AOM_PLANE_Y) ? LUMA_PART : CHROMA_PART;
           }
           bool prev_tu_edge;
+          tx_info_t prev_tx_info = { 0, 0, TX_PARTITION_NONE, TX_4X4 };
           bool pv_is_tx_m_partition = false;
           TX_SIZE pv_ts = get_transform_size(
               xd, mi_prev, edge_dir, pv_row, pv_col, plane, prev_tree_type,
-              plane_ptr, &prev_tu_edge, &pv_is_tx_m_partition);
+              plane_ptr, &prev_tu_edge, &prev_tx_info, &pv_is_tx_m_partition);
+
+          mi_size_prev =
+              get_remaining_mi_size(mi_prev, &prev_tx_info, edge_dir, x, y,
+                                    plane, tree_type, scale_horz, scale_vert);
           int32_t pv_sub_pu_edge = 0;
           check_sub_pu_edge(cm, xd, mi_prev, plane, prev_tree_type, scale_horz,
                             scale_vert, edge_dir, 0, &pv_ts, &pv_sub_pu_edge,
@@ -879,8 +960,6 @@ static TX_SIZE set_lpf_parameters(
           // if the current and the previous blocks are skipped,
           // deblock the edge if the edge belongs to a PU's edge only.
 #if DF_REDUCED_SB_EDGE
-          const BLOCK_SIZE superblock_size = get_plane_block_size(
-              cm->sb_size, plane_ptr->subsampling_x, plane_ptr->subsampling_y);
 #if CONFIG_ASYM_DF
           const BLOCK_SIZE block64_size = get_plane_block_size(
               BLOCK_64X64, plane_ptr->subsampling_x, plane_ptr->subsampling_y);
@@ -1123,6 +1202,9 @@ static TX_SIZE set_lpf_parameters(
       }
     }
   }
+  const int mi_size_cur = get_remaining_mi_size(
+      mbmi, &tx_info, edge_dir, x, y, plane, tree_type, scale_horz, scale_vert);
+  *mi_size_min = AOMMIN(mi_size_prev, mi_size_cur) - 1;
   return ts;
 }
 
@@ -1165,10 +1247,20 @@ void av1_filter_block_plane_vert(AV1_COMMON *const cm,
   const int dst_stride = plane_ptr->dst.stride;
   const int y_range = (mib_size >> scale_vert);
   const int x_range = (mib_size >> scale_horz);
+
+  AV1_DEBLOCKING_PARAMETERS params_buf[MAX_MIB_SIZE];
+  TX_SIZE tx_size_buf[MAX_MIB_SIZE] = { 0 };
+  int mi_size_min_height_buf[MAX_MIB_SIZE] = { 0 };
+
   for (int y = 0; y < y_range; y++) {
     uint16_t *p = dst_ptr + y * MI_SIZE * dst_stride;
     uint32_t prev_x =
         (mi_col == 0) ? 0 : ((mi_col - 1) * MI_SIZE) >> scale_horz;
+
+    AV1_DEBLOCKING_PARAMETERS *params = params_buf;
+    TX_SIZE *tx_size = tx_size_buf;
+    int *mi_size_min_height = mi_size_min_height_buf;
+
     for (int x = 0; x < x_range;) {
       // inner loop always filter vertical edges in a MI block. If MI size
       // is 8x8, it will filter the vertical edge aligned with a 8x8 block.
@@ -1177,19 +1269,20 @@ void av1_filter_block_plane_vert(AV1_COMMON *const cm,
       const uint32_t curr_x = ((mi_col * MI_SIZE) >> scale_horz) + x * MI_SIZE;
       const uint32_t curr_y = ((mi_row * MI_SIZE) >> scale_vert) + y * MI_SIZE;
       uint32_t advance_units;
-      TX_SIZE tx_size = TX_4X4;
-      AV1_DEBLOCKING_PARAMETERS params;
-      memset(&params, 0, sizeof(params));
-      tx_size = set_lpf_parameters(&params, prev_x, curr_y, cm, xd, VERT_EDGE,
-                                   curr_x, curr_y, plane, plane_ptr);
-      if (tx_size == TX_INVALID) {
+      TX_SIZE cur_tx_size = TX_4X4;
+
+      cur_tx_size = set_lpf_parameters(params, prev_x, curr_y, cm, xd,
+                                       VERT_EDGE, curr_x, curr_y, plane,
+                                       plane_ptr, tx_size, mi_size_min_height);
+
+      if (cur_tx_size == TX_INVALID) {
 #if CONFIG_ASYM_DF
-        params.filter_length_neg = 0;
-        params.filter_length_pos = 0;
+        params->filter_length_neg = 0;
+        params->filter_length_pos = 0;
 #else
-        params.filter_length = 0;
+        params->filter_length = 0;
 #endif  // CONFIG_ASYM_DF
-        tx_size = TX_4X4;
+        cur_tx_size = TX_4X4;
       }
 
       const aom_bit_depth_t bit_depth = cm->seq_params.bit_depth;
@@ -1215,9 +1308,9 @@ void av1_filter_block_plane_vert(AV1_COMMON *const cm,
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
             !skip_deblock_lossless &&
 #endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
-            (params.filter_length_neg || params.filter_length_pos)) {
+            (params->filter_length_neg || params->filter_length_pos)) {
 #else
-        if (params.filter_length) {
+        if (params->filter_length) {
 #endif  // CONFIG_ASYM_DF
 
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
@@ -1227,11 +1320,11 @@ void av1_filter_block_plane_vert(AV1_COMMON *const cm,
             aom_highbd_lpf_vertical_generic(
                 p, dst_stride,
 #if CONFIG_ASYM_DF
-                params.filter_length_neg, params.filter_length_pos,
+                params->filter_length_neg, params->filter_length_pos,
 #else
-              params.filter_length,
+              params->filter_length,
 #endif  // CONFIG_ASYM_DF
-                &params.q_threshold, &params.side_threshold, bit_depth
+                &params->q_threshold, &params->side_threshold, bit_depth
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
                 ,
                 is_lossless_prev_block, is_lossless_current_block
@@ -1243,11 +1336,11 @@ void av1_filter_block_plane_vert(AV1_COMMON *const cm,
             aom_highbd_lpf_vertical_generic_c(
                 p, dst_stride,
 #if CONFIG_ASYM_DF
-                params.filter_length_neg, params.filter_length_pos,
+                params->filter_length_neg, params->filter_length_pos,
 #else
-                params.filter_length,
+                params->filter_length,
 #endif  // CONFIG_ASYM_DF
-                &params.q_threshold, &params.side_threshold, bit_depth
+                &params->q_threshold, &params->side_threshold, bit_depth
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
                 ,
                 is_lossless_prev_block, is_lossless_current_block
@@ -1260,9 +1353,13 @@ void av1_filter_block_plane_vert(AV1_COMMON *const cm,
 
       // advance the destination pointer
       prev_x = curr_x;
-      advance_units = tx_size_wide_unit[tx_size];
+      *tx_size = cur_tx_size;
+      advance_units = tx_size_wide_unit[cur_tx_size];
       x += advance_units;
       p += advance_units * MI_SIZE;
+      params += advance_units;
+      tx_size += advance_units;
+      mi_size_min_height += advance_units;
     }
   }
 }
@@ -1285,10 +1382,20 @@ void av1_filter_block_plane_horz(AV1_COMMON *const cm,
   const int dst_stride = plane_ptr->dst.stride;
   const int y_range = (mib_size >> scale_vert);
   const int x_range = (mib_size >> scale_horz);
+
+  AV1_DEBLOCKING_PARAMETERS params_buf[MAX_MIB_SIZE];
+  TX_SIZE tx_size_buf[MAX_MIB_SIZE] = { 0 };
+  int mi_size_min_width_buf[MAX_MIB_SIZE] = { 0 };
+
   for (int x = 0; x < x_range; x++) {
     uint16_t *p = dst_ptr + x * MI_SIZE;
     uint32_t prev_y =
         (mi_row == 0) ? 0 : ((mi_row - 1) * MI_SIZE) >> scale_vert;
+
+    AV1_DEBLOCKING_PARAMETERS *params = params_buf;
+    TX_SIZE *tx_size = tx_size_buf;
+    int *mi_size_min_width = mi_size_min_width_buf;
+
     for (int y = 0; y < y_range;) {
       // inner loop always filter vertical edges in a MI block. If MI size
       // is 8x8, it will first filter the vertical edge aligned with a 8x8
@@ -1297,19 +1404,19 @@ void av1_filter_block_plane_horz(AV1_COMMON *const cm,
       const uint32_t curr_x = ((mi_col * MI_SIZE) >> scale_horz) + x * MI_SIZE;
       const uint32_t curr_y = ((mi_row * MI_SIZE) >> scale_vert) + y * MI_SIZE;
       uint32_t advance_units;
-      TX_SIZE tx_size = TX_4X4;
-      AV1_DEBLOCKING_PARAMETERS params;
-      memset(&params, 0, sizeof(params));
-      tx_size = set_lpf_parameters(&params, curr_x, prev_y, cm, xd, HORZ_EDGE,
-                                   curr_x, curr_y, plane, plane_ptr);
-      if (tx_size == TX_INVALID) {
+      TX_SIZE cur_tx_size = TX_4X4;
+
+      cur_tx_size = set_lpf_parameters(params, curr_x, prev_y, cm, xd,
+                                       HORZ_EDGE, curr_x, curr_y, plane,
+                                       plane_ptr, tx_size, mi_size_min_width);
+      if (cur_tx_size == TX_INVALID) {
 #if CONFIG_ASYM_DF
-        params.filter_length_neg = 0;
-        params.filter_length_pos = 0;
+        params->filter_length_neg = 0;
+        params->filter_length_pos = 0;
 #else
-        params.filter_length = 0;
+        params->filter_length = 0;
 #endif  // CONFIG_ASYM_DF
-        tx_size = TX_4X4;
+        cur_tx_size = TX_4X4;
       }
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
       bool is_lossless_current_block = get_lossless_flag(
@@ -1334,9 +1441,9 @@ void av1_filter_block_plane_horz(AV1_COMMON *const cm,
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
             !skip_deblock_lossless &&
 #endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
-            (params.filter_length_neg || params.filter_length_pos)) {
+            (params->filter_length_neg || params->filter_length_pos)) {
 #else
-        if (params.filter_length) {
+        if (params->filter_length) {
 #endif  // CONFIG_ASYM_DF
 
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
@@ -1345,11 +1452,11 @@ void av1_filter_block_plane_horz(AV1_COMMON *const cm,
             aom_highbd_lpf_horizontal_generic(
                 p, dst_stride,
 #if CONFIG_ASYM_DF
-                params.filter_length_neg, params.filter_length_pos,
+                params->filter_length_neg, params->filter_length_pos,
 #else
-              params.filter_length,
+              params->filter_length,
 #endif  // CONFIG_ASYM_DF
-                &params.q_threshold, &params.side_threshold, bit_depth
+                &params->q_threshold, &params->side_threshold, bit_depth
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
                 ,
                 is_lossless_prev_block, is_lossless_current_block
@@ -1360,11 +1467,11 @@ void av1_filter_block_plane_horz(AV1_COMMON *const cm,
             aom_highbd_lpf_horizontal_generic_c(
                 p, dst_stride,
 #if CONFIG_ASYM_DF
-                params.filter_length_neg, params.filter_length_pos,
+                params->filter_length_neg, params->filter_length_pos,
 #else
-                params.filter_length,
+                params->filter_length,
 #endif  // CONFIG_ASYM_DF
-                &params.q_threshold, &params.side_threshold, bit_depth
+                &params->q_threshold, &params->side_threshold, bit_depth
 #if CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
                 ,
                 is_lossless_prev_block, is_lossless_current_block
@@ -1377,9 +1484,13 @@ void av1_filter_block_plane_horz(AV1_COMMON *const cm,
 
       // advance the destination pointer
       prev_y = curr_y;
-      advance_units = tx_size_high_unit[tx_size];
+      *tx_size = cur_tx_size;
+      advance_units = tx_size_high_unit[cur_tx_size];
       y += advance_units;
       p += advance_units * dst_stride * MI_SIZE;
+      params += advance_units;
+      tx_size += advance_units;
+      mi_size_min_width += advance_units;
     }
   }
 }
