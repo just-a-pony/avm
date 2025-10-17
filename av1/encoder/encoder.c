@@ -4518,18 +4518,6 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     cm->cur_frame->frame_context = *cm->fc;
   }
 
-  if (tile_cfg->enable_ext_tile_debug) {
-    // (yunqing) This test ensures the correctness of large scale tile coding.
-    if (cm->tiles.large_scale && is_stat_consumption_stage(cpi)) {
-      char fn[20] = "./fc";
-      fn[4] = current_frame->frame_number / 100 + '0';
-      fn[5] = (current_frame->frame_number % 100) / 10 + '0';
-      fn[6] = (current_frame->frame_number % 10) + '0';
-      fn[7] = '\0';
-      av1_print_frame_contexts(cm->fc, fn);
-    }
-  }
-
 #if CONFIG_COLLECT_COMPONENT_TIMING
   end_timing(cpi, encode_frame_to_data_rate_time);
 

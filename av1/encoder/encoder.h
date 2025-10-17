@@ -615,8 +615,6 @@ typedef struct {
   bool enable_large_scale_tile;
   // Indicates if single tile decoding mode should be enabled.
   bool enable_single_tile_decoding;
-  // Indicates if EXT_TILE_DEBUG should be enabled.
-  bool enable_ext_tile_debug;
 } TileConfig;
 
 typedef struct {

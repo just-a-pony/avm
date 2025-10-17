@@ -1156,15 +1156,8 @@ enum aome_enc_control_id {
    */
   AV1E_SET_VMAF_MODEL_PATH = 153,
 
-  /*!\brief Codec control function to enable EXT_TILE_DEBUG in AV1 encoder,
-   * unsigned int parameter
-   *
-   * - 0 = disable (default)
-   * - 1 = enable
-   *
-   * \note This is only used in lightfield example test.
+  /*!\brief Value 154 is unused.
    */
-  AV1E_ENABLE_EXT_TILE_DEBUG = 154,
 
   /*!\brief Codec control function to enable the superblock multipass unit test
    * in AV1 to ensure that the encoder does not leak state between different
@@ -1694,9 +1687,6 @@ AOM_CTRL_USE_TYPE(AV1E_SET_SINGLE_TILE_DECODING, unsigned int)
 
 AOM_CTRL_USE_TYPE(AV1E_ENABLE_MOTION_VECTOR_UNIT_TEST, unsigned int)
 #define AOM_CTRL_AV1E_ENABLE_MOTION_VECTOR_UNIT_TEST
-
-AOM_CTRL_USE_TYPE(AV1E_ENABLE_EXT_TILE_DEBUG, unsigned int)
-#define AOM_CTRL_AV1E_ENABLE_EXT_TILE_DEBUG
 
 AOM_CTRL_USE_TYPE(AV1E_SET_VMAF_MODEL_PATH, const char *)
 #define AOM_CTRL_AV1E_SET_VMAF_MODEL_PATH

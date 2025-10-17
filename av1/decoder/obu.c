@@ -1462,8 +1462,7 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
 #endif  // CONFIG_RANDOM_ACCESS_SWITCH_FRAME
 #endif  // CONFIG_CWG_F317
           pbi->seen_frame_header = 1;
-          if (!pbi->ext_tile_debug && cm->tiles.large_scale)
-            pbi->camera_frame_header_ready = 1;
+          if (cm->tiles.large_scale) pbi->camera_frame_header_ready = 1;
         } else {
           // TODO(wtc): Verify that the frame_header_obu is identical to the
           // original frame_header_obu. For now just skip frame_header_size

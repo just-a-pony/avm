@@ -364,7 +364,6 @@ typedef struct AV1Decoder {
   int output_frame_height_in_tiles_minus_1;
   int tile_count_minus_1;
   uint32_t coded_tile_data_size;
-  unsigned int ext_tile_debug;  // for ext-tile software debug & testing
 
   // Decoder has 3 modes of operation:
   // (1) Single-threaded decoding.

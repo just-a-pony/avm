@@ -55,7 +55,6 @@ struct aom_codec_alg_priv {
   int decode_tile_row;
   int decode_tile_col;
   unsigned int tile_mode;
-  unsigned int ext_tile_debug;
   unsigned int row_mt;
   EXTERNAL_REFERENCES ext_refs;
   unsigned int is_annexb;
@@ -720,7 +719,6 @@ static aom_codec_err_t init_decoder(aom_codec_alg_priv_t *ctx) {
   frame_worker_data->pbi->dec_tile_col = ctx->decode_tile_col;
   frame_worker_data->pbi->operating_point = ctx->operating_point;
   frame_worker_data->pbi->output_all_layers = ctx->output_all_layers;
-  frame_worker_data->pbi->ext_tile_debug = ctx->ext_tile_debug;
   frame_worker_data->pbi->row_mt = ctx->row_mt;
   frame_worker_data->pbi->is_fwd_kf_present = 0;
   frame_worker_data->pbi->enable_subgop_stats = ctx->enable_subgop_stats;
@@ -785,7 +783,6 @@ static aom_codec_err_t decode_one(aom_codec_alg_priv_t *ctx,
   frame_worker_data->pbi->common.tiles.large_scale = ctx->tile_mode;
   frame_worker_data->pbi->dec_tile_row = ctx->decode_tile_row;
   frame_worker_data->pbi->dec_tile_col = ctx->decode_tile_col;
-  frame_worker_data->pbi->ext_tile_debug = ctx->ext_tile_debug;
   frame_worker_data->pbi->row_mt = ctx->row_mt;
   frame_worker_data->pbi->ext_refs = ctx->ext_refs;
 
@@ -1055,7 +1052,7 @@ static aom_image_t *decoder_get_frame_(aom_codec_alg_priv_t *ctx,
         yuvconfig2image(&ctx->img, sd, frame_worker_data->user_priv);
         move_decoder_metadata_to_img(pbi, &ctx->img);
         copy_frame_hash_metadata_to_img(pbi, &ctx->img, output_frame_buf);
-        if (!pbi->ext_tile_debug && tiles->large_scale) {
+        if (tiles->large_scale) {
           if (update_iter)
             *index += 1;  // Advance the iterator to point to the next image
           aom_img_remove_metadata(&ctx->img);
@@ -1063,44 +1060,6 @@ static aom_image_t *decoder_get_frame_(aom_codec_alg_priv_t *ctx,
           move_decoder_metadata_to_img(pbi, &ctx->img);
           img = &ctx->img;
           return img;
-        }
-
-        const int num_planes = av1_num_planes(cm);
-        if (pbi->ext_tile_debug && tiles->single_tile_decoding &&
-            pbi->dec_tile_row >= 0) {
-          int tile_width, tile_height;
-          av1_get_uniform_tile_size(cm, &tile_width, &tile_height);
-          const int tile_row = AOMMIN(pbi->dec_tile_row, tiles->rows - 1);
-          const int mi_row = tile_row * tile_height;
-          const int ssy = ctx->img.y_chroma_shift;
-          int plane;
-          ctx->img.planes[0] += mi_row * MI_SIZE * ctx->img.stride[0];
-          if (num_planes > 1) {
-            for (plane = 1; plane < MAX_MB_PLANE; ++plane) {
-              ctx->img.planes[plane] +=
-                  mi_row * (MI_SIZE >> ssy) * ctx->img.stride[plane];
-            }
-          }
-          ctx->img.d_h =
-              AOMMIN(tile_height, cm->mi_params.mi_rows - mi_row) * MI_SIZE;
-        }
-
-        if (pbi->ext_tile_debug && tiles->single_tile_decoding &&
-            pbi->dec_tile_col >= 0) {
-          int tile_width, tile_height;
-          av1_get_uniform_tile_size(cm, &tile_width, &tile_height);
-          const int tile_col = AOMMIN(pbi->dec_tile_col, tiles->cols - 1);
-          const int mi_col = tile_col * tile_width;
-          const int ssx = ctx->img.x_chroma_shift;
-          int plane;
-          ctx->img.planes[0] += mi_col * MI_SIZE * 2;
-          if (num_planes > 1) {
-            for (plane = 1; plane < MAX_MB_PLANE; ++plane) {
-              ctx->img.planes[plane] += mi_col * (MI_SIZE >> ssx) * 2;
-            }
-          }
-          ctx->img.d_w =
-              AOMMIN(tile_width, cm->mi_params.mi_cols - mi_col) * MI_SIZE;
         }
 
         ctx->img.fb_priv = output_frame_buf->raw_frame_buffer.priv;
@@ -1842,12 +1801,6 @@ static aom_codec_err_t ctrl_set_inspection_callback(aom_codec_alg_priv_t *ctx,
 #endif
 }
 
-static aom_codec_err_t ctrl_ext_tile_debug(aom_codec_alg_priv_t *ctx,
-                                           va_list args) {
-  ctx->ext_tile_debug = va_arg(args, int);
-  return AOM_CODEC_OK;
-}
-
 static aom_codec_err_t ctrl_set_row_mt(aom_codec_alg_priv_t *ctx,
                                        va_list args) {
   ctx->row_mt = va_arg(args, unsigned int);
@@ -1869,7 +1822,6 @@ static aom_codec_ctrl_fn_map_t decoder_ctrl_maps[] = {
   { AV1D_SET_OPERATING_POINT, ctrl_set_operating_point },
   { AV1D_SET_OUTPUT_ALL_LAYERS, ctrl_set_output_all_layers },
   { AV1_SET_INSPECTION_CALLBACK, ctrl_set_inspection_callback },
-  { AV1D_EXT_TILE_DEBUG, ctrl_ext_tile_debug },
   { AV1D_SET_ROW_MT, ctrl_set_row_mt },
   { AV1D_SET_EXT_REF_PTR, ctrl_set_ext_ref_ptr },
   { AV1D_SET_SKIP_FILM_GRAIN, ctrl_set_skip_film_grain },

@@ -78,8 +78,6 @@
 #define AOM_MIN_THREADS_PER_TILE 1
 #define AOM_MAX_THREADS_PER_TILE 2
 
-// This is needed by ext_tile related unit tests.
-#define EXT_TILE_DEBUG 1
 #define MC_TEMP_BUF_PELS                           \
   (((MAX_SB_SIZE) * 2 + (AOM_INTERP_EXTEND) * 2) * \
    ((MAX_SB_SIZE) * 2 + (AOM_INTERP_EXTEND) * 2))
@@ -4587,24 +4585,6 @@ static AOM_INLINE void read_tile_info(AV1Decoder *const pbi,
   }
 }
 
-#if EXT_TILE_DEBUG
-static AOM_INLINE void read_ext_tile_info(
-    AV1Decoder *const pbi, struct aom_read_bit_buffer *const rb) {
-  AV1_COMMON *const cm = &pbi->common;
-
-  // This information is stored as a separate byte.
-  int mod = rb->bit_offset % CHAR_BIT;
-  if (mod > 0) aom_rb_read_literal(rb, CHAR_BIT - mod);
-  assert(rb->bit_offset % CHAR_BIT == 0);
-
-  if (cm->tiles.cols * cm->tiles.rows > 1) {
-    // Read the number of bytes used to store tile size
-    pbi->tile_col_size_bytes = aom_rb_read_literal(rb, 2) + 1;
-    pbi->tile_size_bytes = aom_rb_read_literal(rb, 2) + 1;
-  }
-}
-#endif  // EXT_TILE_DEBUG
-
 static size_t mem_get_varsize(const uint8_t *src, int sz) {
   switch (sz) {
     case 1: return src[0];
@@ -4613,155 +4593,6 @@ static size_t mem_get_varsize(const uint8_t *src, int sz) {
     case 4: return mem_get_le32(src);
     default: assert(0 && "Invalid size"); return -1;
   }
-}
-
-#if EXT_TILE_DEBUG
-// Reads the next tile returning its size and adjusting '*data' accordingly
-// based on 'is_last'. On return, '*data' is updated to point to the end of the
-// raw tile buffer in the bit stream.
-static AOM_INLINE void get_ls_tile_buffer(
-    const uint8_t *const data_end, struct aom_internal_error_info *error_info,
-    const uint8_t **data, TileBufferDec (*const tile_buffers)[MAX_TILE_COLS],
-    int tile_size_bytes, int col, int row, int tile_copy_mode) {
-  size_t size;
-
-  size_t copy_size = 0;
-  const uint8_t *copy_data = NULL;
-
-  if (!read_is_valid(*data, tile_size_bytes, data_end))
-    aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
-                       "Truncated packet or corrupt tile length");
-  size = mem_get_varsize(*data, tile_size_bytes);
-
-  // If tile_copy_mode = 1, then the top bit of the tile header indicates copy
-  // mode.
-  if (tile_copy_mode && (size >> (tile_size_bytes * 8 - 1)) == 1) {
-    // The remaining bits in the top byte signal the row offset
-    int offset = (size >> (tile_size_bytes - 1) * 8) & 0x7f;
-
-    // Currently, only use tiles in same column as reference tiles.
-    copy_data = tile_buffers[row - offset][col].data;
-    copy_size = tile_buffers[row - offset][col].size;
-    size = 0;
-  } else {
-    size += AV1_MIN_TILE_SIZE_BYTES;
-  }
-
-  *data += tile_size_bytes;
-
-  if (size > (size_t)(data_end - *data))
-    aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
-                       "Truncated packet or corrupt tile size");
-
-  if (size > 0) {
-    tile_buffers[row][col].data = *data;
-    tile_buffers[row][col].size = size;
-  } else {
-    tile_buffers[row][col].data = copy_data;
-    tile_buffers[row][col].size = copy_size;
-  }
-
-  *data += size;
-}
-
-// Returns the end of the last tile buffer
-// (tile_buffers[cm->tiles.rows - 1][cm->tiles.cols - 1]).
-static const uint8_t *get_ls_tile_buffers(
-    AV1Decoder *pbi, const uint8_t *data, const uint8_t *data_end,
-    TileBufferDec (*const tile_buffers)[MAX_TILE_COLS]) {
-  AV1_COMMON *const cm = &pbi->common;
-  const int tile_cols = cm->tiles.cols;
-  const int tile_rows = cm->tiles.rows;
-  const int have_tiles = tile_cols * tile_rows > 1;
-  const uint8_t *raw_data_end;  // The end of the last tile buffer
-
-  if (!have_tiles) {
-    const size_t tile_size = data_end - data;
-    tile_buffers[0][0].data = data;
-    tile_buffers[0][0].size = tile_size;
-    raw_data_end = NULL;
-  } else {
-    // We locate only the tile buffers that are required, which are the ones
-    // specified by pbi->dec_tile_col and pbi->dec_tile_row. Also, we always
-    // need the last (bottom right) tile buffer, as we need to know where the
-    // end of the compressed frame buffer is for proper superframe decoding.
-
-    const uint8_t *tile_col_data_end[MAX_TILE_COLS] = { NULL };
-    const uint8_t *const data_start = data;
-
-    const int dec_tile_row = AOMMIN(pbi->dec_tile_row, tile_rows);
-    const int single_row = pbi->dec_tile_row >= 0;
-    const int tile_rows_start = single_row ? dec_tile_row : 0;
-    const int tile_rows_end = single_row ? tile_rows_start + 1 : tile_rows;
-    const int dec_tile_col = AOMMIN(pbi->dec_tile_col, tile_cols);
-    const int single_col = pbi->dec_tile_col >= 0;
-    const int tile_cols_start = single_col ? dec_tile_col : 0;
-    const int tile_cols_end = single_col ? tile_cols_start + 1 : tile_cols;
-
-    const int tile_col_size_bytes = pbi->tile_col_size_bytes;
-    const int tile_size_bytes = pbi->tile_size_bytes;
-    int tile_width, tile_height;
-    av1_get_uniform_tile_size(cm, &tile_width, &tile_height);
-    const int tile_copy_mode =
-        ((AOMMAX(tile_width, tile_height) << MI_SIZE_LOG2) <= 256) ? 1 : 0;
-    // Read tile column sizes for all columns (we need the last tile buffer)
-    for (int c = 0; c < tile_cols; ++c) {
-      const int is_last = c == tile_cols - 1;
-      size_t tile_col_size;
-
-      if (!is_last) {
-        tile_col_size = mem_get_varsize(data, tile_col_size_bytes);
-        data += tile_col_size_bytes;
-        tile_col_data_end[c] = data + tile_col_size;
-      } else {
-        tile_col_size = data_end - data;
-        tile_col_data_end[c] = data_end;
-      }
-      data += tile_col_size;
-    }
-
-    data = data_start;
-
-    // Read the required tile sizes.
-    for (int c = tile_cols_start; c < tile_cols_end; ++c) {
-      const int is_last = c == tile_cols - 1;
-
-      if (c > 0) data = tile_col_data_end[c - 1];
-
-      if (!is_last) data += tile_col_size_bytes;
-
-      // Get the whole of the last column, otherwise stop at the required tile.
-      for (int r = 0; r < (is_last ? tile_rows : tile_rows_end); ++r) {
-        get_ls_tile_buffer(tile_col_data_end[c], &pbi->common.error, &data,
-                           tile_buffers, tile_size_bytes, c, r, tile_copy_mode);
-      }
-    }
-
-    // If we have not read the last column, then read it to get the last tile.
-    if (tile_cols_end != tile_cols) {
-      const int c = tile_cols - 1;
-
-      data = tile_col_data_end[c - 1];
-
-      for (int r = 0; r < tile_rows; ++r) {
-        get_ls_tile_buffer(tile_col_data_end[c], &pbi->common.error, &data,
-                           tile_buffers, tile_size_bytes, c, r, tile_copy_mode);
-      }
-    }
-    raw_data_end = data;
-  }
-  return raw_data_end;
-}
-#endif  // EXT_TILE_DEBUG
-
-static const uint8_t *get_ls_single_tile_buffer(
-    AV1Decoder *pbi, const uint8_t *data,
-    TileBufferDec (*const tile_buffers)[MAX_TILE_COLS]) {
-  assert(pbi->dec_tile_row >= 0 && pbi->dec_tile_col >= 0);
-  tile_buffers[pbi->dec_tile_row][pbi->dec_tile_col].data = data;
-  tile_buffers[pbi->dec_tile_row][pbi->dec_tile_col].size =
-      (size_t)pbi->coded_tile_data_size;
-  return data + pbi->coded_tile_data_size;
 }
 
 // Reads the next tile returning its size and adjusting '*data' accordingly
@@ -5275,14 +5106,7 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
   if (pbi->tile_data == NULL || n_tiles != pbi->allocated_tiles) {
     decoder_alloc_tile_data(pbi, n_tiles);
   }
-#if EXT_TILE_DEBUG
-  if (tiles->large_scale && !pbi->ext_tile_debug)
-    raw_data_end = get_ls_single_tile_buffer(pbi, data, tile_buffers);
-  else if (tiles->large_scale && pbi->ext_tile_debug)
-    raw_data_end = get_ls_tile_buffers(pbi, data, data_end, tile_buffers);
-  else
-#endif  // EXT_TILE_DEBUG
-    get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
+  get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
 #if CONFIG_ACCOUNTING
   if (pbi->acct_enabled) {
     aom_accounting_reset(&pbi->accounting);
@@ -6102,13 +5926,7 @@ static const uint8_t *decode_tiles_mt(AV1Decoder *pbi, const uint8_t *data,
     decoder_alloc_tile_data(pbi, n_tiles);
   }
   // get tile size in tile group
-#if EXT_TILE_DEBUG
-  if (tiles->large_scale) assert(pbi->ext_tile_debug == 1);
-  if (tiles->large_scale)
-    raw_data_end = get_ls_tile_buffers(pbi, data, data_end, tile_buffers);
-  else
-#endif  // EXT_TILE_DEBUG
-    get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
+  get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
 
   for (int row = 0; row < tile_rows; row++) {
     for (int col = 0; col < tile_cols; col++) {
@@ -6286,13 +6104,7 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
   }
 
   // get tile size in tile group
-#if EXT_TILE_DEBUG
-  if (tiles->large_scale) assert(pbi->ext_tile_debug == 1);
-  if (tiles->large_scale)
-    raw_data_end = get_ls_tile_buffers(pbi, data, data_end, tile_buffers);
-  else
-#endif  // EXT_TILE_DEBUG
-    get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
+  get_tile_buffers(pbi, data, data_end, tile_buffers, start_tile, end_tile);
 
   for (int row = 0; row < tile_rows; row++) {
     for (int col = 0; col < tile_cols; col++) {
@@ -9945,13 +9757,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       seq_params->film_grain_params_present;
   read_film_grain(cm, rb);
 
-#if EXT_TILE_DEBUG
-  if (pbi->ext_tile_debug && cm->tiles.large_scale) {
-    read_ext_tile_info(pbi, rb);
-    av1_set_single_tile_decoding_mode(cm);
-  }
-#endif  // EXT_TILE_DEBUG
-
   features->enable_ext_seg = seq_params->enable_ext_seg;
 
   return 0;
@@ -10642,12 +10447,10 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       AOM_DEC_BORDER_IN_PIXELS, cm->features.byte_alignment, NULL, NULL, NULL,
       false);
 #endif  // CONFIG_INSPECTION
-  if (pbi->max_threads > 1 && !(tiles->large_scale && !pbi->ext_tile_debug) &&
-      pbi->row_mt)
+  if (pbi->max_threads > 1 && !tiles->large_scale && pbi->row_mt)
     *p_data_end =
         decode_tiles_row_mt(pbi, data, data_end, start_tile, end_tile);
-  else if (pbi->max_threads > 1 && tile_count_tg > 1 &&
-           !(tiles->large_scale && !pbi->ext_tile_debug))
+  else if (pbi->max_threads > 1 && tile_count_tg > 1 && !tiles->large_scale)
     *p_data_end = decode_tiles_mt(pbi, data, data_end, start_tile, end_tile);
   else
     *p_data_end = decode_tiles(pbi, data, data_end, start_tile, end_tile);

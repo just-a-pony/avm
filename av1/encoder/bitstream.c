@@ -7551,15 +7551,6 @@ static uint32_t write_tilegroup_payload_large_scale(
   const uint32_t tg_hdr_size = 0;
   const uint32_t frame_header_size = 0;
 
-  // (yunqing) This test ensures the correctness of large scale tile coding.
-  if (cpi->oxcf.tile_cfg.enable_ext_tile_debug) {
-    char fn[20] = "./fh";
-    fn[4] = cm->current_frame.frame_number / 100 + '0';
-    fn[5] = (cm->current_frame.frame_number % 100) / 10 + '0';
-    fn[6] = (cm->current_frame.frame_number % 10) + '0';
-    fn[7] = '\0';
-    av1_print_uncompressed_frame_header(data, 0, fn);
-  }
   for (tile_col = 0; tile_col < tile_cols; tile_col++) {
     TileInfo tile_info;
     const int is_last_col = (tile_col == tile_cols - 1);
@@ -8063,17 +8054,6 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
     data += frame_header_size;
     total_size += frame_header_size;
 #endif  // CONFIG_CWG_F317
-
-    // (yunqing) This test ensures the correctness of large scale tile coding.
-    if (cpi->oxcf.tile_cfg.enable_ext_tile_debug) {
-      char fn[20] = "./fh";
-      fn[4] = cm->current_frame.frame_number / 100 + '0';
-      fn[5] = (cm->current_frame.frame_number % 100) / 10 + '0';
-      fn[6] = (cm->current_frame.frame_number % 10) + '0';
-      fn[7] = '\0';
-      av1_print_uncompressed_frame_header(data - frame_header_size,
-                                          frame_header_size, fn);
-    }
 
     int tile_size_bytes = 0;
     int tile_col_size_bytes = 0;
