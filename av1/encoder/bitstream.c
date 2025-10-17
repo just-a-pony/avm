@@ -6028,7 +6028,13 @@ static AOM_INLINE void write_multi_frame_header(
 
 #if CONFIG_CWG_E242_PARSING_INDEP
   aom_wb_write_bit(wb, mfh_param->mfh_frame_size_present_flag);
+#if CONFIG_MFH_SIGNAL_TILE_INFO
+  aom_wb_write_bit(wb, mfh_param->mfh_tile_info_present_flag);
+  if (mfh_param->mfh_frame_size_present_flag ||
+      mfh_param->mfh_tile_info_present_flag) {
+#else
   if (mfh_param->mfh_frame_size_present_flag) {
+#endif  // CONFIG_MFH_SIGNAL_TILE_INFO
     const int coded_width = mfh_param->mfh_frame_width;
     const int coded_height = mfh_param->mfh_frame_height;
     aom_wb_write_literal(wb, mfh_param->mfh_frame_width_bits_minus1, 4);
@@ -6080,18 +6086,10 @@ static AOM_INLINE void write_multi_frame_header(
   }
 
 #if CONFIG_MFH_SIGNAL_TILE_INFO
+#if !CONFIG_CWG_E242_PARSING_INDEP
   aom_wb_write_bit(wb, mfh_param->mfh_tile_info_present_flag);
+#endif  // !CONFIG_CWG_E242_PARSING_INDEP
   if (mfh_param->mfh_tile_info_present_flag) {
-    if (!mfh_param->mfh_frame_size_present_flag) {
-      const int coded_width = cm->width - 1;
-      const int coded_height = cm->height - 1;
-      int num_bits_width = cm->seq_params.num_bits_width;
-      int num_bits_height = cm->seq_params.num_bits_height;
-      aom_wb_write_literal(wb, num_bits_width, 4);
-      aom_wb_write_literal(wb, num_bits_height, 4);
-      aom_wb_write_literal(wb, coded_width, num_bits_width);
-      aom_wb_write_literal(wb, coded_height, num_bits_height);
-    }
     write_mfh_sb_size(mfh_param, wb);
     write_tile_mfh(mfh_param, wb);
   }
