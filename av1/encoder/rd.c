@@ -196,10 +196,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
 #else
     av1_cost_tokens_from_cdf(mode_costs->y_mode_idx_0_costs[i],
                              fc->y_mode_idx_cdf_0[i], NULL);
-#if !CONFIG_CTX_Y_SECOND_MODE
-    av1_cost_tokens_from_cdf(mode_costs->y_second_mode_costs[i],
-                             fc->y_mode_idx_cdf_1[i], NULL);
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   }
 

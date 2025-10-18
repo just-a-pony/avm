@@ -523,17 +523,6 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
           update_cdf(fc->y_mode_idx_cdf_0[context], mode_idx, FIRST_MODE_COUNT);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
         }
-#if !CONFIG_CTX_Y_SECOND_MODE && !CONFIG_REDUCE_SYMBOL_SIZE
-        else {
-          const int mode_idx_in_set = mode_idx - FIRST_MODE_COUNT -
-                                      SECOND_MODE_COUNT * (mode_set_index - 1);
-#if CONFIG_ENTROPY_STATS
-          ++counts->y_mode_idx_1[context][mode_idx_in_set];
-#endif
-          update_cdf(fc->y_mode_idx_cdf_1[context], mode_idx_in_set,
-                     SECOND_MODE_COUNT);
-        }
-#endif  // !CONFIG_CTX_Y_SECOND_MODE && !CONFIG_REDUCE_SYMBOL_SIZE
       } else {
         update_cdf(fc->dpcm_vert_horz_cdf, mbmi->dpcm_mode_y, 2);
       }
@@ -568,17 +557,6 @@ void av1_sum_intra_stats(const AV1_COMMON *const cm, FRAME_COUNTS *counts,
         update_cdf(fc->y_mode_idx_cdf_0[context], mode_idx, FIRST_MODE_COUNT);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
       }
-#if !CONFIG_CTX_Y_SECOND_MODE && !CONFIG_REDUCE_SYMBOL_SIZE
-      else {
-        const int mode_idx_in_set = mode_idx - FIRST_MODE_COUNT -
-                                    SECOND_MODE_COUNT * (mode_set_index - 1);
-#if CONFIG_ENTROPY_STATS
-        ++counts->y_mode_idx_1[context][mode_idx_in_set];
-#endif
-        update_cdf(fc->y_mode_idx_cdf_1[context], mode_idx_in_set,
-                   SECOND_MODE_COUNT);
-      }
-#endif  // !CONFIG_CTX_Y_SECOND_MODE && !CONFIG_REDUCE_SYMBOL_SIZE
     }
 
     update_fsc_cdf(cm, xd,

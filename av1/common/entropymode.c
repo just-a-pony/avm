@@ -130,20 +130,6 @@ static const aom_cdf_prob
                   29340, 31013, 31870),
         75 },
     };
-#if !CONFIG_CTX_Y_SECOND_MODE
-static const aom_cdf_prob
-    default_y_second_mode_cdf[Y_MODE_CONTEXTS][CDF_SIZE(SECOND_MODE_COUNT)] = {
-      { AOM_CDF16(2614, 4872, 7327, 9645, 11546, 13349, 15504, 17424, 19397,
-                  21573, 23212, 25033, 26890, 28681, 30112),
-        1 },
-      { AOM_CDF16(2837, 4903, 6949, 8850, 11141, 13110, 14637, 16551, 18362,
-                  20178, 22150, 24988, 27556, 29191, 30451),
-        90 },
-      { AOM_CDF16(2444, 4419, 5731, 6909, 9743, 12013, 14058, 15701, 17458,
-                  19690, 21835, 25356, 27731, 29157, 30362),
-        76 },
-    };
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
 static const aom_cdf_prob
     default_uv_mode_cdf[UV_MODE_CONTEXTS][CDF_SIZE(UV_INTRA_MODES - 1)] = {
       { AOM_CDF13(13848, 18930, 20641, 22133, 23986, 25450, 28075, 28950, 29740,
@@ -2196,9 +2182,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->y_mode_idx_offset_cdf, default_y_mode_idx_offset_cdf);
 #else
   av1_copy(fc->y_mode_idx_cdf_0, default_y_mode_idx_cdf_0);
-#if !CONFIG_CTX_Y_SECOND_MODE
-  av1_copy(fc->y_mode_idx_cdf_1, default_y_second_mode_cdf);
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   av1_copy(fc->uv_mode_cdf, default_uv_mode_cdf);
   av1_copy(fc->cfl_cdf, default_cfl_cdf);
@@ -2656,10 +2639,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
 #else
   CUMULATIVE_AVERAGE_CDF(ctx_left->y_mode_idx_cdf_0, ctx_tr->y_mode_idx_cdf_0,
                          FIRST_MODE_COUNT);
-#if !CONFIG_CTX_Y_SECOND_MODE
-  CUMULATIVE_AVERAGE_CDF(ctx_left->y_mode_idx_cdf_1, ctx_tr->y_mode_idx_cdf_1,
-                         SECOND_MODE_COUNT);
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
   CUMULATIVE_AVERAGE_CDF(ctx_left->uv_mode_cdf, ctx_tr->uv_mode_cdf,
                          UV_INTRA_MODES - 1);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
@@ -2988,9 +2967,6 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   SHIFT_CDF(ctx_ptr->uv_mode_cdf, CHROMA_INTRA_MODE_INDEX_COUNT);
 #else
   SHIFT_CDF(ctx_ptr->y_mode_idx_cdf_0, FIRST_MODE_COUNT);
-#if !CONFIG_CTX_Y_SECOND_MODE
-  SHIFT_CDF(ctx_ptr->y_mode_idx_cdf_1, SECOND_MODE_COUNT);
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
   SHIFT_CDF(ctx_ptr->uv_mode_cdf, UV_INTRA_MODES - 1);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   SHIFT_CDF(ctx_ptr->region_type_cdf, REGION_TYPES);
@@ -3380,10 +3356,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
 #else
   AVERAGE_CDF(ctx_left->y_mode_idx_cdf_0, ctx_tr->y_mode_idx_cdf_0,
               FIRST_MODE_COUNT);
-#if !CONFIG_CTX_Y_SECOND_MODE
-  AVERAGE_CDF(ctx_left->y_mode_idx_cdf_1, ctx_tr->y_mode_idx_cdf_1,
-              SECOND_MODE_COUNT);
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
   AVERAGE_CDF(ctx_left->uv_mode_cdf, ctx_tr->uv_mode_cdf, UV_INTRA_MODES - 1);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   AVERAGE_CDF(ctx_left->region_type_cdf, ctx_tr->region_type_cdf, REGION_TYPES);

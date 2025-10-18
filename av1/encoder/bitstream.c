@@ -1633,7 +1633,7 @@ static AOM_INLINE void write_intra_luma_mode(MACROBLOCKD *const xd,
                      FIRST_MODE_COUNT);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   } else {
-#if CONFIG_CTX_Y_SECOND_MODE || CONFIG_REDUCE_SYMBOL_SIZE
+#if CONFIG_REDUCE_SYMBOL_SIZE
     aom_write_literal(
         w,
         mode_idx - FIRST_MODE_COUNT - (mode_set_index - 1) * SECOND_MODE_COUNT,
@@ -1643,7 +1643,7 @@ static AOM_INLINE void write_intra_luma_mode(MACROBLOCKD *const xd,
         w,
         mode_idx - FIRST_MODE_COUNT - (mode_set_index - 1) * SECOND_MODE_COUNT,
         ec_ctx->y_mode_idx_cdf_1[context], SECOND_MODE_COUNT);
-#endif  // CONFIG_CTX_Y_SECOND_MODE || CONFIG_REDUCE_SYMBOL_SIZE
+#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   }
   if (mbmi->joint_y_mode_delta_angle < NON_DIRECTIONAL_MODES_COUNT)
     assert(mbmi->joint_y_mode_delta_angle == mbmi->y_mode_idx);

@@ -1678,13 +1678,13 @@ static void read_intra_luma_mode(MACROBLOCKD *const xd, aom_reader *r) {
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   } else {
     mode_idx = FIRST_MODE_COUNT + (mode_set_index - 1) * SECOND_MODE_COUNT +
-#if CONFIG_CTX_Y_SECOND_MODE || CONFIG_REDUCE_SYMBOL_SIZE
+#if CONFIG_REDUCE_SYMBOL_SIZE
                aom_read_literal(r, 4, ACCT_INFO("mode_idx"));
 #else
                aom_read_symbol(r, ec_ctx->y_mode_idx_cdf_1[context],
                                SECOND_MODE_COUNT,
                                ACCT_INFO("mode_idx", "y_mode_idx_cdf_1"));
-#endif  // CONFIG_CTX_Y_SECOND_MODE || CONFIG_REDUCE_SYMBOL_SIZE
+#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   }
   assert(mode_idx < LUMA_MODE_COUNT);
   get_y_intra_mode_set(mbmi, xd);

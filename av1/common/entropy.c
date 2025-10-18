@@ -327,9 +327,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->uv_mode_cdf, CHROMA_INTRA_MODE_INDEX_COUNT);
 #else
   RESET_CDF_COUNTER(fc->y_mode_idx_cdf_0, FIRST_MODE_COUNT);
-#if !CONFIG_CTX_Y_SECOND_MODE
-  RESET_CDF_COUNTER(fc->y_mode_idx_cdf_1, SECOND_MODE_COUNT);
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
   RESET_CDF_COUNTER(fc->uv_mode_cdf, UV_INTRA_MODES - 1);
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   RESET_CDF_COUNTER(fc->cfl_cdf, 2);

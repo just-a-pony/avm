@@ -356,9 +356,6 @@ typedef struct frame_contexts {
                           [CDF_SIZE(CHROMA_INTRA_MODE_INDEX_COUNT)];
 #else
   aom_cdf_prob y_mode_idx_cdf_0[Y_MODE_CONTEXTS][CDF_SIZE(FIRST_MODE_COUNT)];
-#if !CONFIG_CTX_Y_SECOND_MODE
-  aom_cdf_prob y_mode_idx_cdf_1[Y_MODE_CONTEXTS][CDF_SIZE(SECOND_MODE_COUNT)];
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
   aom_cdf_prob uv_mode_cdf[UV_MODE_CONTEXTS][CDF_SIZE(UV_INTRA_MODES - 1)];
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
   aom_cdf_prob cfl_cdf[CFL_CONTEXTS][CDF_SIZE(2)];

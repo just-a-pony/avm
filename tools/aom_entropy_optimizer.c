@@ -512,17 +512,7 @@ int main(int argc, const char **argv) {
       0, &total_count, 0, mem_wanted, "Intra");
 #endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
-#if !CONFIG_CTX_Y_SECOND_MODE
-  cts_each_dim[0] = Y_MODE_CONTEXTS;
-  cts_each_dim[1] = SECOND_MODE_COUNT;
-  optimize_cdf_table(&fc.y_mode_idx_1[0][0], probsfile, 2, cts_each_dim,
-                     "const aom_cdf_prob "
-                     "default_y_second_mode_cdf[Y_MODE_CONTEXTS][CDF_SIZE("
-                     "SECOND_MODE_COUNT)]",
-                     0, &total_count, 0, mem_wanted, "Intra");
-#endif  // !CONFIG_CTX_Y_SECOND_MODE
   /* Intra mode (chroma) */
-
   cts_each_dim[0] = UV_MODE_CONTEXTS;
 #if CONFIG_REDUCE_SYMBOL_SIZE
   cts_each_dim[1] = CHROMA_INTRA_MODE_INDEX_COUNT;
