@@ -1443,15 +1443,6 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob "
                      "default_intrabc_mode_cdf[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Intra");
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  /* intrabc drl index*/
-  cts_each_dim[0] = MAX_REF_BV_STACK_SIZE - 1;
-  cts_each_dim[1] = 2;
-  optimize_cdf_table(&fc.intrabc_drl_idx[0][0], probsfile, 2, cts_each_dim,
-                     "static const aom_cdf_prob default_intrabc_drl_idx_cdf"
-                     "[MAX_REF_BV_STACK_SIZE - 1][CDF_SIZE(2)]",
-                     0, &total_count, 0, mem_wanted, "Intra");
-#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
 
 #if CONFIG_MORPH_PRED
   cts_each_dim[0] = 3;

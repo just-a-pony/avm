@@ -2700,27 +2700,12 @@ void get_default_ref_bv(int_mv *cur_ref_bv,
                                  fullms_params->mv_cost_params.pb_mv_precision);
 }
 
-int av1_get_intrabc_drl_idx_cost(int max_ref_bv_num, int intrabc_drl_idx
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-                                 ,
-                                 const MACROBLOCK *x
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
-) {
+int av1_get_intrabc_drl_idx_cost(int max_ref_bv_num, int intrabc_drl_idx) {
   assert(intrabc_drl_idx < max_ref_bv_num);
   int cost = 0;
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  int bit_cnt = 0;
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
   for (int idx = 0; idx < max_ref_bv_num - 1; ++idx) {
-#if CONFIG_BYPASS_INTRABC_DRL_IDX
     cost += av1_cost_literal(1);
-#else
-    cost += x->mode_costs.intrabc_drl_idx_cost[bit_cnt][intrabc_drl_idx != idx];
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
     if (intrabc_drl_idx == idx) return cost;
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-    ++bit_cnt;
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
   }
   return cost;
 }
@@ -2732,12 +2717,7 @@ int av1_get_ref_bv_rate_cost(int intrabc_mode, int intrabc_drl_idx,
   int ref_bv_cost = 0;
   ref_bv_cost += x->mode_costs.intrabc_mode_cost[intrabc_mode];
   ref_bv_cost +=
-      av1_get_intrabc_drl_idx_cost(max_bvp_drl_bits + 1, intrabc_drl_idx
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-                                   ,
-                                   x
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
-      );
+      av1_get_intrabc_drl_idx_cost(max_bvp_drl_bits + 1, intrabc_drl_idx);
   ref_bv_cost = (int)ROUND_POWER_OF_TWO_64(
       (int64_t)ref_bv_cost * errorperbit,
       RDDIV_BITS + AV1_PROB_COST_SHIFT - RD_EPB_SHIFT + 4);

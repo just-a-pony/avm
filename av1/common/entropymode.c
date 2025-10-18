@@ -1790,14 +1790,6 @@ static const aom_cdf_prob default_intrabc_mode_cdf[CDF_SIZE(2)] = {
   AOM_CDF2(26560), 31
 };
 
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-static const aom_cdf_prob default_intrabc_drl_idx_cdf[3][CDF_SIZE(2)] = {
-  { AOM_CDF2(22959), 123 },
-  { AOM_CDF2(19303), 123 },
-  { AOM_CDF2(18859), 124 },
-};
-#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
-
 aom_cdf_prob
     default_intrabc_bv_precision_cdf[NUM_BV_PRECISION_CONTEXTS]
                                     [CDF_SIZE(NUM_ALLOWED_BV_PRECISIONS)] = {
@@ -2269,9 +2261,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->cfl_alpha_cdf, default_cfl_alpha_cdf);
   av1_copy(fc->intrabc_cdf, default_intrabc_cdf);
   av1_copy(fc->intrabc_mode_cdf, default_intrabc_mode_cdf);
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  av1_copy(fc->intrabc_drl_idx_cdf, default_intrabc_drl_idx_cdf);
-#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
   av1_copy(fc->intrabc_bv_precision_cdf, default_intrabc_bv_precision_cdf);
   av1_copy(fc->morph_pred_cdf, default_morph_pred_cdf);
   av1_copy(fc->stx_cdf, default_stx_cdf);
@@ -2611,10 +2600,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
   CUMULATIVE_AVERAGE_CDF(ctx_left->intrabc_cdf, ctx_tr->intrabc_cdf, 2);
   CUMULATIVE_AVERAGE_CDF(ctx_left->intrabc_mode_cdf, ctx_tr->intrabc_mode_cdf,
                          2);
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  CUMULATIVE_AVERAGE_CDF(ctx_left->intrabc_drl_idx_cdf,
-                         ctx_tr->intrabc_drl_idx_cdf, 2);
-#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
   CUMULATIVE_AVERAGE_CDF(ctx_left->intrabc_bv_precision_cdf,
                          ctx_tr->intrabc_bv_precision_cdf,
                          NUM_ALLOWED_BV_PRECISIONS);
@@ -2980,9 +2965,6 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   shift_nmv(&ctx_ptr->ndvc, total_tiles_log2);
   SHIFT_CDF(ctx_ptr->intrabc_cdf, 2);
   SHIFT_CDF(ctx_ptr->intrabc_mode_cdf, 2);
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  SHIFT_CDF(ctx_ptr->intrabc_drl_idx_cdf, 2);
-#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
   SHIFT_CDF(ctx_ptr->intrabc_bv_precision_cdf, NUM_ALLOWED_BV_PRECISIONS);
   SHIFT_CDF(ctx_ptr->morph_pred_cdf, 2);
   SHIFT_CDF(ctx_ptr->seg.pred_cdf, 2);
@@ -3362,9 +3344,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
   avg_nmv(&ctx_left->ndvc, &ctx_tr->ndvc, wt_left, wt_tr, offset, shift);
   AVERAGE_CDF(ctx_left->intrabc_cdf, ctx_tr->intrabc_cdf, 2);
   AVERAGE_CDF(ctx_left->intrabc_mode_cdf, ctx_tr->intrabc_mode_cdf, 2);
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  AVERAGE_CDF(ctx_left->intrabc_drl_idx_cdf, ctx_tr->intrabc_drl_idx_cdf, 2);
-#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
   AVERAGE_CDF(ctx_left->intrabc_bv_precision_cdf,
               ctx_tr->intrabc_bv_precision_cdf, NUM_ALLOWED_BV_PRECISIONS);
   AVERAGE_CDF(ctx_left->morph_pred_cdf, ctx_tr->morph_pred_cdf, 2);

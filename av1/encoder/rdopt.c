@@ -6216,12 +6216,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
         int rate_mode = x->mode_costs.intrabc_cost[intrabc_ctx][1];
         rate_mode += x->mode_costs.intrabc_mode_cost[mbmi->intrabc_mode];
         rate_mode += av1_get_intrabc_drl_idx_cost(
-            cm->features.max_bvp_drl_bits + 1, mbmi->intrabc_drl_idx
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-            ,
-            x
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
-        );
+            cm->features.max_bvp_drl_bits + 1, mbmi->intrabc_drl_idx);
 
         int allow_morph_pred = av1_allow_intrabc_morph_pred(cm);
         int num_modes_to_search = 1 + allow_morph_pred;

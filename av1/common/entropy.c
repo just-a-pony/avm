@@ -283,9 +283,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   reset_nmv_counter(&fc->ndvc);
   RESET_CDF_COUNTER(fc->intrabc_cdf, 2);
   RESET_CDF_COUNTER(fc->intrabc_mode_cdf, 2);
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  RESET_CDF_COUNTER(fc->intrabc_drl_idx_cdf, 2);
-#endif  // !CONFIG_BYPASS_INTRABC_DRL_IDX
   RESET_CDF_COUNTER(fc->intrabc_bv_precision_cdf, NUM_ALLOWED_BV_PRECISIONS);
   RESET_CDF_COUNTER(fc->morph_pred_cdf, 2);
   RESET_CDF_COUNTER(fc->seg.pred_cdf, 2);

@@ -162,7 +162,6 @@ set_aom_config_var(CONFIG_CTX_BYPASS_CB_DC_SIGN 1
                    "bypass coding FG8-Test8-chroma-only")
 
 set_aom_config_var(CONFIG_PLT_DIR_CTX 1 "by-pass PLT dir coding. FG8-Test24")
-set_aom_config_var(CONFIG_BYPASS_INTRABC_DRL_IDX 1 "bypass coding FG8-Test25")
 set_aom_config_var(CONFIG_CTX_Y_SECOND_MODE 1 "bypass coding FG8-Test27")
 
 # AV2 experiment flags.

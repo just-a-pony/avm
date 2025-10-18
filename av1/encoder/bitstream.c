@@ -2318,32 +2318,17 @@ static AOM_INLINE void pack_inter_mode_mvs(AV1_COMP *cpi, aom_writer *w) {
   }
 }
 
-static void write_intrabc_drl_idx(int max_ref_bv_num,
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-                                  FRAME_CONTEXT *ec_ctx,
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
-                                  const MB_MODE_INFO *mbmi,
+static void write_intrabc_drl_idx(int max_ref_bv_num, const MB_MODE_INFO *mbmi,
                                   const MB_MODE_INFO_EXT_FRAME *mbmi_ext_frame,
                                   aom_writer *w) {
   assert(!mbmi->skip_mode);
   assert(mbmi->intrabc_drl_idx < mbmi_ext_frame->ref_mv_count[0]);
   assert(mbmi->intrabc_drl_idx < max_ref_bv_num);
   (void)mbmi_ext_frame;
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-  int bit_cnt = 0;
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
   for (int idx = 0; idx < max_ref_bv_num - 1; ++idx) {
-#if CONFIG_BYPASS_INTRABC_DRL_IDX
     aom_write_bit(w, mbmi->intrabc_drl_idx != idx);
-#else
-    aom_write_symbol(w, mbmi->intrabc_drl_idx != idx,
-                     ec_ctx->intrabc_drl_idx_cdf[bit_cnt], 2);
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
 
     if (mbmi->intrabc_drl_idx == idx) break;
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-    ++bit_cnt;
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
   }
 }
 
@@ -2362,11 +2347,7 @@ static AOM_INLINE void write_intrabc_info(
     int_mv dv_ref = mbmi_ext_frame->ref_mv_stack[0][0].this_mv;
 
     aom_write_symbol(w, mbmi->intrabc_mode, ec_ctx->intrabc_mode_cdf, 2);
-    write_intrabc_drl_idx(max_bvp_drl_bits + 1,
-#if !CONFIG_BYPASS_INTRABC_DRL_IDX
-                          ec_ctx,
-#endif  // CONFIG_BYPASS_INTRABC_DRL_IDX
-                          mbmi, mbmi_ext_frame, w);
+    write_intrabc_drl_idx(max_bvp_drl_bits + 1, mbmi, mbmi_ext_frame, w);
 
     if (is_intraBC_bv_precision_active(cm, mbmi->intrabc_mode)) {
       int index = av1_intraBc_precision_to_index[mbmi->pb_mv_precision];
