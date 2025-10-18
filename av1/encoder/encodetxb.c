@@ -416,7 +416,6 @@ static AOM_FORCE_INLINE int get_br_cost(tran_low_t level, const int *coeff_lps,
   return cost;
 }
 
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
 static AOM_FORCE_INLINE int get_br_lf_cost_uv(tran_low_t level, int hr_ctx,
                                               int *hr_level) {
   int cost = 0;
@@ -428,7 +427,6 @@ static AOM_FORCE_INLINE int get_br_lf_cost_uv(tran_low_t level, int hr_ctx,
   }
   return cost;
 }
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
 
 static AOM_FORCE_INLINE int get_br_lf_cost(tran_low_t level,
                                            const int *coeff_lps, int hr_ctx,
@@ -470,7 +468,6 @@ static AOM_FORCE_INLINE int get_br_cost_with_diff(tran_low_t level,
   return cost;
 }
 
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
 static AOM_FORCE_INLINE int get_br_lf_cost_with_diff_uv(tran_low_t level,
                                                         int *diff, int hr_ctx,
                                                         int *hr_level) {
@@ -486,7 +483,6 @@ static AOM_FORCE_INLINE int get_br_lf_cost_with_diff_uv(tran_low_t level,
   }
   return cost;
 }
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
 
 static AOM_FORCE_INLINE int get_br_lf_cost_with_diff(tran_low_t level,
                                                      const int *coeff_lps,
@@ -527,7 +523,6 @@ static INLINE int get_low_range(int abs_qc, int lf) {
   return low;
 }
 
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
 static INLINE int get_high_range_uv(int abs_qc, int lf) {
   int base_levels = lf ? 6 : 4;
   int parity = abs_qc & 1;
@@ -535,7 +530,6 @@ static INLINE int get_high_range_uv(int abs_qc, int lf) {
   int high_range = (abs_qc - parity - (base_levels - 1)) >> 1;
   return high_range;
 }
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
 
 static INLINE int get_high_range(int abs_qc, int lf) {
   int base_levels = lf ? 6 : 4;
@@ -969,33 +963,19 @@ static INLINE void write_coeff_hidden(aom_writer *w, TX_CLASS tx_class,
 }
 
 static void write_high_range(aom_writer *w, int enable_tcq, int level, int lf,
-                             int *hr_avg
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                             ,
-                             int plane
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
+                             int *hr_avg, int plane) {
   int max = lf ? (plane == 0 ? (COEFF_BASE_RANGE + LF_NUM_BASE_LEVELS)
                              : LF_NUM_BASE_LEVELS)
                : COEFF_BASE_RANGE + NUM_BASE_LEVELS;
-#else
-  int max = lf ? COEFF_BASE_RANGE + LF_NUM_BASE_LEVELS
-               : COEFF_BASE_RANGE + NUM_BASE_LEVELS;
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
   max -= enable_tcq ? 1 : 0;
   if (level > max) {
     int hr = 0;
     if (enable_tcq) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
       if (lf && (plane != 0)) {
         hr = get_high_range_uv(level, lf);
       } else {
         hr = get_high_range(level, lf);
       }
-#else
-      hr = get_high_range(level, lf);
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
     } else {
       hr = level - max - 1;
     }
@@ -1142,15 +1122,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
     const int col = pos - (row << bwl);
     int limits = get_lf_limits(row, col, tx_class, plane);
     if (plane > 0) {
-      if (limits) {
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-        if (level > LF_NUM_BASE_LEVELS) {
-          const int br_ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
-          aom_cdf_prob *cdf = ec_ctx->coeff_br_lf_uv_cdf[br_ctx];
-          write_low_range(w, cdf, level, 1, tcq_mode);
-        }
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-      } else {
+      if (!limits) {
         if (level > NUM_BASE_LEVELS) {
           const int br_ctx = get_br_ctx_chroma(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_uv_cdf[br_ctx];
@@ -1257,15 +1229,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
     const int col = pos - (row << bwl);
     int limits = get_lf_limits(row, col, tx_class, plane);
     if (plane > 0) {
-      if (limits) {
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-        if (level > LF_NUM_BASE_LEVELS) {
-          const int br_ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
-          aom_cdf_prob *cdf = ec_ctx->coeff_br_lf_uv_cdf[br_ctx];
-          write_low_range(w, cdf, level, 1, tcq_mode);
-        }
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-      } else {
+      if (!limits) {
         if (level > NUM_BASE_LEVELS) {
           const int br_ctx = get_br_ctx_chroma(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_uv_cdf[br_ctx];
@@ -1365,12 +1329,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
           }
         }
 #else
-        write_high_range(w, tcq_mode, level, limits, &hr_level_avg
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                         ,
-                         plane
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-        );
+        write_high_range(w, tcq_mode, level, limits, &hr_level_avg, plane);
 #endif
       }
     }
@@ -1927,10 +1886,6 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
       coeff_costs->lps_lf_cost;
   const int(*lps_cost_uv)[COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1] =
       coeff_costs->lps_cost_uv;
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-  const int(*lps_lf_cost_uv)[COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1] =
-      coeff_costs->lps_lf_cost_uv;
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
   int hr_level = 0;
   int c = eob - 1;
   {
@@ -1966,20 +1921,8 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
       if (plane > 0) {
         if (limits) {
           if (level > LF_NUM_BASE_LEVELS) {
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-            const int ctx = get_br_ctx_lf_eob_chroma(pos, tx_class);
-#endif                      // !CONFIG_COEFF_BR_LF_UV_BYPASS
             int hr_ctx = 0; /* eob */
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
             cost += get_br_lf_cost_uv(level, hr_ctx, &hr_level);
-#else
-            cost += get_br_lf_cost(level, lps_lf_cost_uv[ctx], hr_ctx, &hr_level
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                                   ,
-                                   plane, 1
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-            );
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
           }
         } else {
           if (level > NUM_BASE_LEVELS) {
@@ -2073,20 +2016,8 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
       if (plane > 0) {
         if (limits) {
           if (level > LF_NUM_BASE_LEVELS) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
             cost += get_br_lf_cost_uv(level, hr_level_avg, &hr_level);
             hr_level_avg = (hr_level_avg + hr_level) >> 1;
-#else
-            const int ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
-            cost += get_br_lf_cost(level, lps_lf_cost_uv[ctx], hr_level_avg,
-                                   &hr_level
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                                   ,
-                                   plane, 0
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-            );
-            hr_level_avg = (hr_level_avg + hr_level) >> 1;
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
           }
         } else {
           if (level > NUM_BASE_LEVELS) {
@@ -2180,18 +2111,7 @@ static AOM_FORCE_INLINE int warehouse_efficients_txb(
       if (plane > 0) {
         if (limits) {
           if (level > LF_NUM_BASE_LEVELS) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
             cost += get_br_lf_cost_uv(level, hr_level_avg, &hr_level);
-#else
-            const int ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
-            cost += get_br_lf_cost(level, lps_lf_cost_uv[ctx], hr_level_avg,
-                                   &hr_level
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                                   ,
-                                   plane, 0
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-            );
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
           }
         } else {
           if (level > NUM_BASE_LEVELS) {
@@ -2492,19 +2412,10 @@ static AOM_FORCE_INLINE int get_two_coeff_cost_simple(
     if (plane > 0) {
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
           int brcost_diff = 0;
           cost += get_br_lf_cost_with_diff_uv(abs_qc, &brcost_diff,
                                               hr_level_avg, hr_level);
           diff += brcost_diff;
-#else
-          const int br_ctx = get_br_lf_ctx_chroma(levels, ci, bwl, tx_class);
-          int brcost_diff = 0;
-          cost += get_br_lf_cost_with_diff(
-              abs_qc, txb_costs->lps_lf_cost_uv[br_ctx], &brcost_diff,
-              hr_level_avg, hr_level);
-          diff += brcost_diff;
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
@@ -2621,22 +2532,9 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
     if (plane > 0) {
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
           int hr_level_avg = 0;
           int dummy_hr_level;
           cost += get_br_lf_cost_uv(abs_qc, hr_level_avg, &dummy_hr_level);
-#else
-          int br_ctx = get_br_ctx_lf_eob_chroma(ci, tx_class);
-          int hr_level_avg = 0;
-          int dummy_hr_level;
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx],
-                                 hr_level_avg, &dummy_hr_level
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                                 ,
-                                 plane, 1
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-          );
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
@@ -2714,22 +2612,7 @@ static INLINE int get_coeff_cost_general(
     if (plane > 0) {
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
           cost += get_br_lf_cost_uv(abs_qc, hr_level_avg, hr_level);
-#else
-          int br_ctx;
-          if (is_last)
-            br_ctx = get_br_ctx_lf_eob_chroma(ci, tx_class);
-          else
-            br_ctx = get_br_lf_ctx_chroma(levels, ci, bwl, tx_class);
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx],
-                                 hr_level_avg, hr_level
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                                 ,
-                                 plane, is_last
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-          );
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
@@ -4738,30 +4621,7 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
       const int col = pos - (row << bwl);
       int limits = get_lf_limits(row, col, tx_class, plane);
       if (plane > 0) {
-        if (limits) {
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-          if (level > LF_NUM_BASE_LEVELS) {
-            const int base_range = level - 1 - LF_NUM_BASE_LEVELS;
-            const int br_ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
-            for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
-              const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
-              if (allow_update_cdf) {
-                update_cdf(ec_ctx->coeff_br_lf_uv_cdf[br_ctx], k, BR_CDF_SIZE);
-              }
-              for (int lps = 0; lps < BR_CDF_SIZE - 1; lps++) {
-#if CONFIG_ENTROPY_STATS
-                ++td->counts->coeff_lps_lf[lps][br_ctx][lps == k];
-#endif  // CONFIG_ENTROPY_STATS
-                if (lps == k) break;
-              }
-#if CONFIG_ENTROPY_STATS
-              ++td->counts->coeff_lps_lf_multi_uv[cdf_idx][br_ctx][k];
-#endif
-              if (k < BR_CDF_SIZE - 1) break;
-            }
-          }
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-        } else {
+        if (!limits) {
           if (level > NUM_BASE_LEVELS) {
             const int base_range = level - 1 - NUM_BASE_LEVELS;
             const int br_ctx = get_br_ctx_chroma(levels, pos, bwl, tx_class);
@@ -4962,30 +4822,7 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
       const int col = pos - (row << bwl);
       int limits = get_lf_limits(row, col, tx_class, plane);
       if (plane > 0) {
-        if (limits) {
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-          if (level > LF_NUM_BASE_LEVELS) {
-            const int base_range = level - 1 - LF_NUM_BASE_LEVELS;
-            const int br_ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
-            for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
-              const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
-              if (allow_update_cdf) {
-                update_cdf(ec_ctx->coeff_br_lf_uv_cdf[br_ctx], k, BR_CDF_SIZE);
-              }
-              for (int lps = 0; lps < BR_CDF_SIZE - 1; lps++) {
-#if CONFIG_ENTROPY_STATS
-                ++td->counts->coeff_lps_lf[lps][br_ctx][lps == k];
-#endif  // CONFIG_ENTROPY_STATS
-                if (lps == k) break;
-              }
-#if CONFIG_ENTROPY_STATS
-              ++td->counts->coeff_lps_lf_multi_uv[cdf_idx][br_ctx][k];
-#endif
-              if (k < BR_CDF_SIZE - 1) break;
-            }
-          }
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-        } else {
+        if (!limits) {
           if (level > NUM_BASE_LEVELS) {
             const int base_range = level - 1 - NUM_BASE_LEVELS;
             const int br_ctx = get_br_ctx_chroma(levels, pos, bwl, tx_class);

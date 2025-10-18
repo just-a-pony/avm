@@ -116,19 +116,10 @@ static int read_adaptive_hr(MACROBLOCKD *xd, aom_reader *r, int ctx) {
 
 // Read high range part of coeff
 static INLINE int read_high_range(MACROBLOCKD *xd, aom_reader *r, int tcq_mode,
-                                  int level, int lf, int *hr_avg
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                                  ,
-                                  int plane
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-) {
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
+                                  int level, int lf, int *hr_avg, int plane) {
   int max_br = lf ? (plane == 0 ? LF_MAX_BASE_BR_RANGE  // 8
                                 : LF_NUM_BASE_LEVELS + 1)
                   : MAX_BASE_BR_RANGE;
-#else
-  int max_br = lf ? LF_MAX_BASE_BR_RANGE : MAX_BASE_BR_RANGE;
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
   int use_tcq_hr = tcq_mode && (level >= max_br - 1);
   int hr_level_avg = *hr_avg;
   int use_hr = use_tcq_hr || level >= max_br;
@@ -172,11 +163,8 @@ static INLINE void read_coeffs_reverse_2d(
     aom_reader *r, int start_si, int end_si, const int16_t *scan, int bwl,
     uint8_t *levels, base_lf_cdf_arr base_lf_cdf, br_cdf_arr br_lf_cdf,
     int plane, base_cdf_arr base_cdf, br_cdf_arr br_cdf,
-    base_lf_cdf_arr base_lf_uv_cdf,
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-    br_cdf_arr br_lf_uv_cdf,
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-    base_cdf_arr base_uv_cdf, br_cdf_arr br_uv_cdf, int *state) {
+    base_lf_cdf_arr base_lf_uv_cdf, base_cdf_arr base_uv_cdf,
+    br_cdf_arr br_uv_cdf, int *state) {
   for (int c = end_si; c >= start_si; --c) {
     const int pos = scan[c];
     int level = 0;
@@ -191,13 +179,6 @@ static INLINE void read_coeffs_reverse_2d(
         level +=
             aom_read_symbol(r, base_lf_uv_cdf[coeff_ctx][q_i], LF_BASE_SYMBOLS,
                             ACCT_INFO("level", "base_lf_uv_cdf"));
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-        if (level > LF_NUM_BASE_LEVELS) {
-          const int br_ctx = get_br_lf_ctx_2d_chroma(levels, pos, bwl);
-          aom_cdf_prob *cdf = br_lf_uv_cdf[br_ctx];
-          level += read_low_range(r, cdf);
-        }
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
       } else {
         const int coeff_ctx =
             get_lower_levels_ctx_2d_chroma(levels, pos, bwl, plane);
@@ -240,11 +221,8 @@ static INLINE void read_coeffs_reverse(
     aom_reader *r, TX_CLASS tx_class, int start_si, int end_si,
     const int16_t *scan, int bwl, uint8_t *levels, base_lf_cdf_arr base_lf_cdf,
     br_cdf_arr br_lf_cdf, int plane, base_cdf_arr base_cdf, br_cdf_arr br_cdf,
-    base_lf_cdf_arr base_lf_uv_cdf,
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-    br_cdf_arr br_lf_uv_cdf,
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-    base_cdf_arr base_uv_cdf, br_cdf_arr br_uv_cdf, int *state) {
+    base_lf_cdf_arr base_lf_uv_cdf, base_cdf_arr base_uv_cdf,
+    br_cdf_arr br_uv_cdf, int *state) {
   for (int c = end_si; c >= start_si; --c) {
     const int pos = scan[c];
     int level = 0;
@@ -259,13 +237,6 @@ static INLINE void read_coeffs_reverse(
         level +=
             aom_read_symbol(r, base_lf_uv_cdf[coeff_ctx][q_i], LF_BASE_SYMBOLS,
                             ACCT_INFO("level", "base_lf_uv_cdf"));
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-        if (level > LF_NUM_BASE_LEVELS) {
-          const int br_ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
-          aom_cdf_prob *cdf = br_lf_uv_cdf[br_ctx];
-          level += read_low_range(r, cdf);
-        }
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
       } else {
         const int coeff_ctx =
             get_lower_levels_ctx_chroma(levels, pos, bwl, tx_class, plane);
@@ -680,12 +651,7 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
       sign = aom_read_symbol(r, ec_ctx->idtx_sign_cdf[size_ctx][idtx_sign_ctx],
                              2, ACCT_INFO("sign"));
       signs[sign_idx] = sign > 0 ? -1 : 1;
-      level = read_high_range(xd, r, 0, level, 0, &hr_level_avg
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                              ,
-                              plane
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-      );
+      level = read_high_range(xd, r, 0, level, 0, &hr_level_avg, plane);
       if (c == 0) dc_val = sign ? -level : level;
       // Bitmasking to clamp level to valid range:
       // The valid range for 8/10/12 bit video is at most 14/16/18 bit
@@ -836,13 +802,6 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
             aom_read_symbol(r, cdf, LF_BASE_SYMBOLS - 1,
                             ACCT_INFO("level", "coeff_base_lf_eob_uv_cdf")) +
             1;
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-        if (level > LF_NUM_BASE_LEVELS) {
-          const int br_ctx = get_br_ctx_lf_eob_chroma(pos, tx_class);
-          cdf = ec_ctx->coeff_br_lf_uv_cdf[br_ctx];
-          level += read_low_range(r, cdf);
-        }
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
       } else {
         aom_cdf_prob *cdf = ec_ctx->coeff_base_eob_uv_cdf[coeff_ctx];
         level += aom_read_symbol(r, cdf, 3,
@@ -896,18 +855,12 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
     base_cdf_arr base_cdf = ec_ctx->coeff_base_cdf[txs_ctx];
     br_cdf_arr br_cdf = ec_ctx->coeff_br_cdf;
     base_lf_cdf_arr base_lf_uv_cdf = ec_ctx->coeff_base_lf_uv_cdf;
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-    br_cdf_arr br_lf_uv_cdf = ec_ctx->coeff_br_lf_uv_cdf;
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
     base_cdf_arr base_uv_cdf = ec_ctx->coeff_base_uv_cdf;
     br_cdf_arr br_uv_cdf = ec_ctx->coeff_br_uv_cdf;
 
     if (tx_class == TX_CLASS_2D) {
       read_coeffs_reverse_2d(r, 1, *eob - 2, scan, bwl, levels, base_lf_cdf,
                              br_lf_cdf, plane, base_cdf, br_cdf, base_lf_uv_cdf,
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-                             br_lf_uv_cdf,
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
                              base_uv_cdf, br_uv_cdf, &state);
       if (enable_parity_hiding) {
         for (int si = *eob - 1; si > 0; --si) {
@@ -927,19 +880,12 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       } else {
         read_coeffs_reverse(r, tx_class, 0, 0, scan, bwl, levels, base_lf_cdf,
                             br_lf_cdf, plane, base_cdf, br_cdf, base_lf_uv_cdf,
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-                            br_lf_uv_cdf,
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
                             base_uv_cdf, br_uv_cdf, &state);
       }
     } else {
       read_coeffs_reverse(r, tx_class, 1, *eob - 2, scan, bwl, levels,
                           base_lf_cdf, br_lf_cdf, plane, base_cdf, br_cdf,
-                          base_lf_uv_cdf,
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-                          br_lf_uv_cdf,
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-                          base_uv_cdf, br_uv_cdf, &state);
+                          base_lf_uv_cdf, base_uv_cdf, br_uv_cdf, &state);
       if (enable_parity_hiding) {
         for (int si = *eob - 1; si > 0; --si) {
           int pos = scan[si];
@@ -958,9 +904,6 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       } else {
         read_coeffs_reverse(r, tx_class, 0, 0, scan, bwl, levels, base_lf_cdf,
                             br_lf_cdf, plane, base_cdf, br_cdf, base_lf_uv_cdf,
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-                            br_lf_uv_cdf,
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
                             base_uv_cdf, br_uv_cdf, &state);
       }
     }
@@ -1017,12 +960,8 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
         }
       } else {
         int limits = get_lf_limits(row, col, tx_class, plane);
-        level = read_high_range(xd, r, tcq_mode, level, limits, &hr_level_avg
-#if CONFIG_COEFF_BR_LF_UV_BYPASS
-                                ,
-                                plane
-#endif  // CONFIG_COEFF_BR_LF_UV_BYPASS
-        );
+        level = read_high_range(xd, r, tcq_mode, level, limits, &hr_level_avg,
+                                plane);
       }
       if (c == 0) dc_val = sign ? -level : level;
 

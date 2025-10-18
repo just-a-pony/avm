@@ -134,14 +134,6 @@ static INLINE int get_br_ctx_2d(const uint8_t *const levels,
   return mag;
 }
 
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-static AOM_FORCE_INLINE int get_br_ctx_lf_eob_chroma(const int c,
-                                                     const TX_CLASS tx_class) {
-  if (tx_class == TX_CLASS_2D && c == 0) return 0;
-  return 4;
-}
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-
 static INLINE int get_br_ctx_2d_chroma(const uint8_t *const levels, const int c,
                                        const int bwl) {
   assert(c > 0);
@@ -181,41 +173,6 @@ static INLINE int get_br_lf_ctx_2d_chroma(const uint8_t *const levels,
   mag = AOMMIN((mag + 1) >> 1, 3);
   return mag + 4;
 }
-
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-// This function returns the low range context index/increment for the
-// coefficients residing in the low-frequency region for 1D and 2D
-// transforms and covers the 1D and 2D TX DC terms. For chroma only.
-static AOM_FORCE_INLINE int get_br_lf_ctx_chroma(const uint8_t *const levels,
-                                                 const int c,  // raster order
-                                                 const int bwl,
-                                                 const TX_CLASS tx_class) {
-  const int row = c >> bwl;
-  const int col = c - (row << bwl);
-  const int stride = (1 << bwl) + TX_PAD_HOR;
-  const int pos = row * stride + col;
-  int mag = AOMMIN(levels[pos + 1], MAX_VAL_BR_CTX);
-  mag += levels[pos + stride];
-  switch (tx_class) {
-    case TX_CLASS_2D:
-      mag += AOMMIN(levels[pos + stride + 1], MAX_VAL_BR_CTX);
-      mag = AOMMIN((mag + 1) >> 1, 3);
-      if (c == 0) return mag;
-      if ((row < 2) && (col < 2)) return mag + 4;
-      break;
-    case TX_CLASS_HORIZ:
-      mag = AOMMIN((mag + 1) >> 1, 3);
-      if (col == 0) return mag + 4;
-      break;
-    case TX_CLASS_VERT:
-      mag = AOMMIN((mag + 1) >> 1, 3);
-      if (row == 0) return mag + 4;
-      break;
-    default: break;
-  }
-  return mag + 4;
-}
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
 
 // This function returns the low range context index/increment for the
 // coefficients residing in the higher-frequency default region

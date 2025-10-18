@@ -1670,16 +1670,6 @@ int main(int argc, const char **argv) {
       "[TOKEN_CDF_Q_CTXS][SIG_COEF_CONTEXTS_UV][TCQ_CTXS][CDF_SIZE(NUM_BASE_"
       "LEVELS + 2)]",
       1, &total_count, dq_minus_entries_uv, mem_wanted, "Coefficients");
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-  cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
-  cts_each_dim[1] = LF_LEVEL_CONTEXTS_UV;
-  cts_each_dim[2] = BR_CDF_SIZE;
-  optimize_cdf_table(
-      &fc.coeff_lps_lf_multi_uv[0][0][0], probsfile, 3, cts_each_dim,
-      "static const aom_cdf_prob av1_default_coeff_lps_lf_multi_uv_cdfs"
-      "[TOKEN_CDF_Q_CTXS][LF_LEVEL_CONTEXTS_UV][CDF_SIZE(BR_CDF_SIZE)]",
-      1, &total_count, 0, mem_wanted, "Coefficients");
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
 
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
   cts_each_dim[1] = LEVEL_CONTEXTS_UV;

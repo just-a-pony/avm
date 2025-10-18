@@ -180,11 +180,6 @@ typedef struct LV_MAP_COEFF_COST {
   int base_lf_eob_cost_uv[SIG_COEF_CONTEXTS_EOB][LF_BASE_SYMBOLS - 1];
   //! Cost for encoding the base level of a low-frequency chroma coefficient
   int base_lf_cost_uv[LF_SIG_COEF_CONTEXTS_UV][TCQ_CTXS][LF_BASE_SYMBOLS * 2];
-  //! Cost for encoding an increment to the low-frequency chroma coefficient
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-  int lps_lf_cost_uv[LF_LEVEL_CONTEXTS_UV]
-                    [COEFF_BASE_RANGE + 1 + COEFF_BASE_RANGE + 1];
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
   /*! \brief Cost for encoding the base_eob of a chroma level.
    *
    * Decoder uses base_eob to derive the base_level as base_eob := base_eob+1.

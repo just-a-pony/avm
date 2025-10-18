@@ -58,10 +58,6 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
            av1_default_coeff_base_lf_multi_uv_cdfs[index]);
   av1_copy(cm->fc->coeff_base_lf_eob_uv_cdf,
            av1_default_coeff_base_lf_eob_multi_uv_cdfs[index]);
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-  av1_copy(cm->fc->coeff_br_lf_uv_cdf,
-           av1_default_coeff_lps_lf_multi_uv_cdfs[index]);
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
   av1_copy(cm->fc->coeff_br_uv_cdf, av1_default_coeff_lps_multi_uv_cdfs[index]);
   av1_copy(cm->fc->coeff_base_uv_cdf,
            av1_default_coeff_base_multi_uv_cdfs[index]);
@@ -174,9 +170,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->coeff_br_lf_cdf, BR_CDF_SIZE);
   RESET_CDF_COUNTER(fc->coeff_base_lf_uv_cdf, LF_BASE_SYMBOLS);
   RESET_CDF_COUNTER(fc->coeff_base_lf_eob_uv_cdf, LF_BASE_SYMBOLS - 1);
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-  RESET_CDF_COUNTER(fc->coeff_br_lf_uv_cdf, BR_CDF_SIZE);
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
   RESET_CDF_COUNTER(fc->coeff_base_uv_cdf, 4);
   RESET_CDF_COUNTER(fc->coeff_base_eob_uv_cdf, 3);
   RESET_CDF_COUNTER(fc->coeff_br_uv_cdf, BR_CDF_SIZE);

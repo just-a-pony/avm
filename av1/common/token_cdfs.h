@@ -2968,52 +2968,6 @@ static const aom_cdf_prob av1_default_coeff_base_lf_multi_uv_cdfs
     };
 #endif
 
-#if !CONFIG_COEFF_BR_LF_UV_BYPASS
-static const aom_cdf_prob av1_default_coeff_lps_lf_multi_uv_cdfs
-    [TOKEN_CDF_Q_CTXS][LF_LEVEL_CONTEXTS_UV][CDF_SIZE(BR_CDF_SIZE)] = {
-      {
-          { AOM_CDF4(10681, 16666, 20459), 27 },
-          { AOM_CDF4(12934, 19949, 23983), 0 },
-          { AOM_CDF4(10674, 17654, 22203), 80 },
-          { AOM_CDF4(5672, 10350, 14164), 15 },
-          { AOM_CDF4(10159, 15058, 19868), 110 },
-          { AOM_CDF4(12945, 19062, 23123), 50 },
-          { AOM_CDF4(10948, 17325, 21167), 10 },
-          { AOM_CDF4(6193, 11020, 14440), 37 },
-      },
-      {
-          { AOM_CDF4(10534, 16544, 20143), 6 },
-          { AOM_CDF4(13446, 20483, 24400), 90 },
-          { AOM_CDF4(10975, 17881, 22362), 115 },
-          { AOM_CDF4(5486, 9994, 13627), 118 },
-          { AOM_CDF4(14031, 19994, 23841), 5 },
-          { AOM_CDF4(13915, 21251, 25225), 10 },
-          { AOM_CDF4(11758, 18566, 22936), 35 },
-          { AOM_CDF4(6777, 12174, 16431), 37 },
-      },
-      {
-          { AOM_CDF4(8194, 12742, 15742), 6 },
-          { AOM_CDF4(12852, 19642, 23312), 75 },
-          { AOM_CDF4(10713, 17509, 22027), 75 },
-          { AOM_CDF4(6174, 11173, 15173), 90 },
-          { AOM_CDF4(19410, 25254, 28802), 50 },
-          { AOM_CDF4(16632, 23992, 27460), 0 },
-          { AOM_CDF4(15777, 22452, 26457), 100 },
-          { AOM_CDF4(10127, 16718, 20635), 110 },
-      },
-      {
-          { AOM_CDF4(9562, 14462, 17818), 50 },
-          { AOM_CDF4(15932, 23039, 26083), 9 },
-          { AOM_CDF4(14358, 22335, 26570), 20 },
-          { AOM_CDF4(10210, 17627, 22031), 20 },
-          { AOM_CDF4(8192, 16384, 24576), 0 },
-          { AOM_CDF4(8192, 16384, 24576), 0 },
-          { AOM_CDF4(10923, 16384, 27307), 0 },
-          { AOM_CDF4(8192, 16384, 24576), 0 },
-      },
-    };
-#endif  // !CONFIG_COEFF_BR_LF_UV_BYPASS
-
 #if TCQ_DIS_CHR
 static const aom_cdf_prob
     av1_default_coeff_base_multi_uv_cdfs[4][12][2][CDF_SIZE(4)] = {
