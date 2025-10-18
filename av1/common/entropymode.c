@@ -3628,18 +3628,12 @@ static const aom_cdf_prob default_delta_lf_cdf[CDF_SIZE(4)] = {
   AOM_CDF4(8192, 16384, 24576), 0
 };
 
-#if CONFIG_EXT_SEG
 static const aom_cdf_prob default_seg_tree_cdf[CDF_SIZE(MAX_SEGMENTS_8)] = {
   AOM_CDF8(4096, 8192, 12288, 16384, 20480, 24576, 28672)
 };
 static const aom_cdf_prob default_seg_tree_cdf1[CDF_SIZE(MAX_SEGMENTS_8)] = {
   AOM_CDF8(4096, 8192, 12288, 16384, 20480, 24576, 28672)
 };
-#else   // CONFIG_EXT_SEG
-static const aom_cdf_prob default_seg_tree_cdf[CDF_SIZE(MAX_SEGMENTS)] = {
-  AOM_CDF8(4096, 8192, 12288, 16384, 20480, 24576, 28672)
-};
-#endif  // CONFIG_EXT_SEG
 
 static const aom_cdf_prob
     default_segment_pred_cdf[SEG_TEMPORAL_PRED_CTXS][CDF_SIZE(2)] = {
@@ -3647,26 +3641,19 @@ static const aom_cdf_prob
     };
 
 static const aom_cdf_prob
-#if CONFIG_EXT_SEG
     default_spatial_pred_seg_tree_cdf[SPATIAL_PREDICTION_PROBS][CDF_SIZE(
-        MAX_SEGMENTS_8)] =
-#else   // CONFIG_EXT_SEG
-    default_spatial_pred_seg_tree_cdf[SPATIAL_PREDICTION_PROBS][CDF_SIZE(
-        MAX_SEGMENTS)] =
-#endif  // CONFIG_EXT_SEG
-        {
-          {
-              AOM_CDF8(5622, 7893, 16093, 18233, 27809, 28373, 32533),
-          },
-          {
-              AOM_CDF8(14274, 18230, 22557, 24935, 29980, 30851, 32344),
-          },
-          {
-              AOM_CDF8(27527, 28487, 28723, 28890, 32397, 32647, 32679),
-          },
-        };
+        MAX_SEGMENTS_8)] = {
+      {
+          AOM_CDF8(5622, 7893, 16093, 18233, 27809, 28373, 32533),
+      },
+      {
+          AOM_CDF8(14274, 18230, 22557, 24935, 29980, 30851, 32344),
+      },
+      {
+          AOM_CDF8(27527, 28487, 28723, 28890, 32397, 32647, 32679),
+      },
+    };
 
-#if CONFIG_EXT_SEG
 static const aom_cdf_prob
     default_spatial_pred_seg_tree_cdf1[SPATIAL_PREDICTION_PROBS][CDF_SIZE(
         MAX_SEGMENTS_8)] = {
@@ -3685,7 +3672,6 @@ static const aom_cdf_prob
     default_seg_id_ext_flag_cdf[SPATIAL_PREDICTION_PROBS][CDF_SIZE(2)] = {
       { AOM_CDF2(128 * 128) }, { AOM_CDF2(128 * 128) }, { AOM_CDF2(128 * 128) }
     };
-#endif  // CONFIG_EXT_SEG
 
 static const aom_cdf_prob default_stx_cdf[2][TX_SIZES][CDF_SIZE(STX_TYPES)] = {
   {
@@ -3933,9 +3919,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->interintra_mode_cdf, default_interintra_mode_cdf);
   av1_copy(fc->seg.pred_cdf, default_segment_pred_cdf);
   av1_copy(fc->seg.tree_cdf, default_seg_tree_cdf);
-#if CONFIG_EXT_SEG
   av1_copy(fc->seg.tree_cdf1, default_seg_tree_cdf1);
-#endif  // CONFIG_EXT_SEG
   av1_copy(fc->switchable_flex_restore_cdf,
            default_switchable_flex_restore_cdf);
   for (int plane = 0; plane < MAX_MB_PLANE; plane++) {
@@ -4008,11 +3992,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   for (int i = 0; i < SPATIAL_PREDICTION_PROBS; i++) {
     av1_copy(fc->seg.spatial_pred_seg_cdf[i],
              default_spatial_pred_seg_tree_cdf[i]);
-#if CONFIG_EXT_SEG
     av1_copy(fc->seg.spatial_pred_seg_cdf1[i],
              default_spatial_pred_seg_tree_cdf1[i]);
     av1_copy(fc->seg.seg_id_ext_flag_cdf[i], default_seg_id_ext_flag_cdf[i]);
-#endif  // CONFIG_EXT_SEG
   }
   av1_copy(fc->delta_q_cdf, default_delta_q_cdf);
   av1_copy(fc->delta_lf_cdf, default_delta_lf_cdf);
@@ -4372,7 +4354,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          NUM_ALLOWED_BV_PRECISIONS);
   CUMULATIVE_AVERAGE_CDF(ctx_left->morph_pred_cdf, ctx_tr->morph_pred_cdf, 2);
   CUMULATIVE_AVERAGE_CDF(ctx_left->seg.pred_cdf, ctx_tr->seg.pred_cdf, 2);
-#if CONFIG_EXT_SEG
   CUMULATIVE_AVERAGE_CDF(ctx_left->seg.tree_cdf, ctx_tr->seg.tree_cdf,
                          MAX_SEGMENTS_8);
   CUMULATIVE_AVERAGE_CDF(ctx_left->seg.tree_cdf1, ctx_tr->seg.tree_cdf1,
@@ -4383,12 +4364,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          ctx_tr->seg.spatial_pred_seg_cdf1, MAX_SEGMENTS_8);
   CUMULATIVE_AVERAGE_CDF(ctx_left->seg.seg_id_ext_flag_cdf,
                          ctx_tr->seg.seg_id_ext_flag_cdf, 2);
-#else
-  CUMULATIVE_AVERAGE_CDF(ctx_left->seg.tree_cdf, ctx_tr->seg.tree_cdf,
-                         MAX_SEGMENTS);
-  CUMULATIVE_AVERAGE_CDF(ctx_left->seg.spatial_pred_seg_cdf,
-                         ctx_tr->seg.spatial_pred_seg_cdf, MAX_SEGMENTS);
-#endif  // CONFIG_EXT_SEG
   CUMULATIVE_AVERAGE_CDF(ctx_left->switchable_flex_restore_cdf,
                          ctx_tr->switchable_flex_restore_cdf, 2);
   CUMULATIVE_AVERAGE_CDF(ctx_left->ccso_cdf, ctx_tr->ccso_cdf, 2);
@@ -4754,16 +4729,11 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   SHIFT_CDF(ctx_ptr->intrabc_bv_precision_cdf, NUM_ALLOWED_BV_PRECISIONS);
   SHIFT_CDF(ctx_ptr->morph_pred_cdf, 2);
   SHIFT_CDF(ctx_ptr->seg.pred_cdf, 2);
-#if CONFIG_EXT_SEG
   SHIFT_CDF(ctx_ptr->seg.tree_cdf, MAX_SEGMENTS_8);
   SHIFT_CDF(ctx_ptr->seg.tree_cdf1, MAX_SEGMENTS_8);
   SHIFT_CDF(ctx_ptr->seg.spatial_pred_seg_cdf, MAX_SEGMENTS_8);
   SHIFT_CDF(ctx_ptr->seg.spatial_pred_seg_cdf1, MAX_SEGMENTS_8);
   SHIFT_CDF(ctx_ptr->seg.seg_id_ext_flag_cdf, 2);
-#else
-  SHIFT_CDF(ctx_ptr->seg.tree_cdf, MAX_SEGMENTS);
-  SHIFT_CDF(ctx_ptr->seg.spatial_pred_seg_cdf, MAX_SEGMENTS);
-#endif  // CONFIG_EXT_SEG
   SHIFT_CDF(ctx_ptr->switchable_flex_restore_cdf, 2);
   SHIFT_CDF(ctx_ptr->ccso_cdf, 2);
   SHIFT_CDF(ctx_ptr->cdef_strength_index0_cdf, 2);
@@ -5148,7 +5118,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
               ctx_tr->intrabc_bv_precision_cdf, NUM_ALLOWED_BV_PRECISIONS);
   AVERAGE_CDF(ctx_left->morph_pred_cdf, ctx_tr->morph_pred_cdf, 2);
   AVERAGE_CDF(ctx_left->seg.pred_cdf, ctx_tr->seg.pred_cdf, 2);
-#if CONFIG_EXT_SEG
   AVERAGE_CDF(ctx_left->seg.tree_cdf, ctx_tr->seg.tree_cdf, MAX_SEGMENTS_8);
   AVERAGE_CDF(ctx_left->seg.tree_cdf1, ctx_tr->seg.tree_cdf1, MAX_SEGMENTS_8);
   AVERAGE_CDF(ctx_left->seg.spatial_pred_seg_cdf,
@@ -5157,11 +5126,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
               ctx_tr->seg.spatial_pred_seg_cdf1, MAX_SEGMENTS_8);
   AVERAGE_CDF(ctx_left->seg.seg_id_ext_flag_cdf,
               ctx_tr->seg.seg_id_ext_flag_cdf, 2);
-#else
-  AVERAGE_CDF(ctx_left->seg.tree_cdf, ctx_tr->seg.tree_cdf, MAX_SEGMENTS);
-  AVERAGE_CDF(ctx_left->seg.spatial_pred_seg_cdf,
-              ctx_tr->seg.spatial_pred_seg_cdf, MAX_SEGMENTS);
-#endif  // CONFIG_EXT_SEG
   AVERAGE_CDF(ctx_left->switchable_flex_restore_cdf,
               ctx_tr->switchable_flex_restore_cdf, 2);
   AVERAGE_CDF(ctx_left->ccso_cdf, ctx_tr->ccso_cdf, 2);

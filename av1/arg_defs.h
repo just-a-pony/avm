@@ -285,9 +285,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t enable_avg_cdf;
   arg_def_t avg_cdf_type;
   arg_def_t enable_parity_hiding;
-#if CONFIG_EXT_SEG
   arg_def_t enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   arg_def_t dpb_size;
   arg_def_t enable_bru;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES

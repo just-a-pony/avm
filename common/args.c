@@ -165,9 +165,7 @@ int parse_cfg(const char *file, cfg_options_t *config) {
     GET_PARAMS(avg_cdf_type);
     GET_PARAMS(enable_parity_hiding);
     GET_PARAMS(enable_short_refresh_frame_flags);
-#if CONFIG_EXT_SEG
     GET_PARAMS(enable_ext_seg);
-#endif  // CONFIG_EXT_SEG
     GET_PARAMS(dpb_size);
 
     fprintf(stderr, "\nInvalid parameter: %s", left);

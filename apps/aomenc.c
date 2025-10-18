@@ -498,9 +498,7 @@ const arg_def_t *av1_key_val_args[] = {
   &g_av1_codec_arg_defs.enable_six_param_warp_delta,
   &g_av1_codec_arg_defs.enable_warp_extend,
   &g_av1_codec_arg_defs.enable_short_refresh_frame_flags,
-#if CONFIG_EXT_SEG
   &g_av1_codec_arg_defs.enable_ext_seg,
-#endif  // CONFIG_EXT_SEG
   &g_av1_codec_arg_defs.dpb_size,
   &g_av1_codec_arg_defs.enable_bru,
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
@@ -726,9 +724,7 @@ static void init_config(cfg_options_t *config) {
   config->avg_cdf_type = 1;
   config->enable_parity_hiding = 1;
   config->enable_short_refresh_frame_flags = 1;
-#if CONFIG_EXT_SEG
   config->enable_ext_seg = 0;
-#endif  // CONFIG_EXT_SEG
   config->dpb_size = 8;
   config->enable_bru = 0;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES

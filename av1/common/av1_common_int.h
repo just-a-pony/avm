@@ -1038,9 +1038,7 @@ typedef struct SequenceHeader {
 #if CONFIG_RANDOM_ACCESS_SWITCH_FRAME
   uint8_t number_of_bits_for_lt_frame_id;
 #endif  // CONFIG_RANDOM_ACCESS_SWITCH_FRAME
-#if CONFIG_EXT_SEG
   uint8_t enable_ext_seg;
-#endif                                   // CONFIG_EXT_SEG
   bool user_defined_qmatrix;             // User defined quantizer matrix
   bool qm_data_present[NUM_CUSTOM_QMS];  // User defined QM data present
   // Note: qm_copy_from_previous_plane and qm_4x8_is_transpose_of_8x4 flags
@@ -1341,12 +1339,10 @@ typedef struct {
    * Frame tcq_mode: 0 = disabled, 1 = enabled (8-state)
    */
   int tcq_mode;
-#if CONFIG_EXT_SEG
   /*!
    * Enables/disables max # of segments to be 16
    */
   bool enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
 } FeatureFlags;
 
 /*!
@@ -5132,12 +5128,8 @@ static INLINE int is_coded_lossless(const AV1_COMMON *cm,
                                     const MACROBLOCKD *xd) {
   int coded_lossless = 1;
   if (cm->seg.enabled) {
-#if CONFIG_EXT_SEG
     const int max_seg_num =
         cm->seg.enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
-#else   // CONFIG_EXT_SEG
-    const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
     for (int i = 0; i < max_seg_num; i++) {
       if (!xd->lossless[i]) {
         coded_lossless = 0;

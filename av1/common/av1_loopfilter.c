@@ -270,14 +270,10 @@ void av1_loop_filter_frame_init(AV1_COMMON *cm, int plane_start,
     else if (plane == 2 && !cm->lf.filter_level_v)
       continue;
 
-#if CONFIG_EXT_SEG
 #if !CONFIG_DF_DQP
     const int max_seg_num =
         cm->seg.enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
 #endif  //! CONFIG_DF_DQP
-#else   // CONFIG_EXT_SEG
-    const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
 
 #if !CONFIG_DF_DQP
     for (seg_id = 0; seg_id < max_seg_num; seg_id++) {

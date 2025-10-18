@@ -853,11 +853,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .enable_parity_hiding = ARG_DEF(NULL, "enable-parity-hiding", 1,
                                   "Enable parity hiding "
                                   "(0:false), 1:true (default)"),
-#if CONFIG_EXT_SEG
   .enable_ext_seg = ARG_DEF(NULL, "enable-ext-seg", 1,
                             "Enable extended # of segments "
                             "(0: false (default), 1: true)"),
-#endif  // CONFIG_EXT_SEG
   .dpb_size =
       ARG_DEF(NULL, "dpb-size", 1, "number of dpb slots (1-16), default is 8"),
   .enable_bru = ARG_DEF(NULL, "enable-bru", 1,

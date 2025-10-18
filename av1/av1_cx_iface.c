@@ -239,9 +239,7 @@ struct av1_extracfg {
   int avg_cdf_type;
   int enable_parity_hiding;
   int enable_short_refresh_frame_flags;
-#if CONFIG_EXT_SEG
   int enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   int dpb_size;
   unsigned int enable_bru;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
@@ -572,9 +570,7 @@ static struct av1_extracfg default_extra_cfg = {
   1,  // avg_cdf_type
   1,    // enable_parity_hiding
   1,    // enable_short_refresh_frame_flags
-#if CONFIG_EXT_SEG
   0,    // enable_ext_seg
-#endif  // CONFIG_EXT_SEG
   8,    // dpb_size
   0,    // enable_bru
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
@@ -1036,9 +1032,7 @@ static void update_encoder_config(cfg_options_t *cfg,
   cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
   cfg->enable_short_refresh_frame_flags =
       extra_cfg->enable_short_refresh_frame_flags;
-#if CONFIG_EXT_SEG
   cfg->enable_ext_seg = extra_cfg->enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   cfg->dpb_size = extra_cfg->dpb_size;
 }
 
@@ -1155,9 +1149,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
   extra_cfg->enable_parity_hiding = cfg->enable_parity_hiding;
   extra_cfg->enable_short_refresh_frame_flags =
       cfg->enable_short_refresh_frame_flags;
-#if CONFIG_EXT_SEG
   extra_cfg->enable_ext_seg = cfg->enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   extra_cfg->dpb_size = cfg->dpb_size;
 }
 
@@ -1482,9 +1474,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   tool_cfg->enable_parity_hiding = extra_cfg->enable_parity_hiding;
   tool_cfg->enable_short_refresh_frame_flags =
       extra_cfg->enable_short_refresh_frame_flags;
-#if CONFIG_EXT_SEG
   tool_cfg->enable_ext_seg = extra_cfg->enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   tool_cfg->dpb_size = extra_cfg->dpb_size;
 
   // Set Quantization related configuration.
@@ -4401,11 +4391,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                  argv, err_string)) {
     extra_cfg.enable_short_refresh_frame_flags =
         arg_parse_uint_helper(&arg, err_string);
-#if CONFIG_EXT_SEG
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_ext_seg, argv,
                               err_string)) {
     extra_cfg.enable_ext_seg = arg_parse_int_helper(&arg, err_string);
-#endif  // CONFIG_EXT_SEG
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.dpb_size, argv,
                               err_string)) {
     extra_cfg.dpb_size = arg_parse_int_helper(&arg, err_string);
@@ -4725,9 +4713,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
         1,  // avg_cdf_type
         1,
         1,  // enable_short_refresh_frame_flags
-#if CONFIG_EXT_SEG
         0,  // enable_ext_seg
-#endif      // CONFIG_EXT_SEG
         8,  // dpb_size
         0,  // enable_bru
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES

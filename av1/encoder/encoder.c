@@ -641,9 +641,7 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_RANDOM_ACCESS_SWITCH_FRAME
   seq->number_of_bits_for_lt_frame_id = 3;
 #endif  // CONFIG_RANDOM_ACCESS_SWITCH_FRAME
-#if CONFIG_EXT_SEG
   seq->enable_ext_seg = tool_cfg->enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   seq->ref_frames = tool_cfg->dpb_size;
   seq->ref_frames_log2 = aom_ceil_log2(seq->ref_frames);
   const QuantizationCfg *const q_cfg = &oxcf->q_cfg;
@@ -3264,9 +3262,7 @@ static int encode_without_recode(AV1_COMP *cpi) {
   } else {
     memset(&cm->seg, 0, sizeof(cm->seg));
   }
-#if CONFIG_EXT_SEG
   cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif
   segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
   cm->cur_frame->seg.enabled = cm->seg.enabled;
 
@@ -3458,9 +3454,7 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
     } else {
       memset(&cm->seg, 0, sizeof(cm->seg));
     }
-#if CONFIG_EXT_SEG
     cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif
     segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
     cm->cur_frame->seg.enabled = cm->seg.enabled;
 
@@ -4279,10 +4273,8 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
 
   features->enable_imp_msk_bld = seq_params->enable_imp_msk_bld;
 
-#if CONFIG_EXT_SEG
   features->enable_ext_seg = seq_params->enable_ext_seg;
   cm->seg.enable_ext_seg = seq_params->enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
 
   cpi->last_frame_type = current_frame->frame_type;
 

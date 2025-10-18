@@ -235,7 +235,6 @@ void av1_choose_segmap_coding_method(AV1_COMMON *cm, MACROBLOCKD *xd) {
 
   int seg_id_cost[MAX_SEGMENTS] = { 0 };
 
-#if CONFIG_EXT_SEG
   if (seg->enable_ext_seg == 1) {
     av1_cost_tokens_from_cdf(seg_id_cost, segp->tree_cdf, MAX_SEGMENTS_8, NULL);
     av1_cost_tokens_from_cdf(seg_id_cost + MAX_SEGMENTS_8, segp->tree_cdf1,
@@ -243,9 +242,6 @@ void av1_choose_segmap_coding_method(AV1_COMMON *cm, MACROBLOCKD *xd) {
   } else {
     av1_cost_tokens_from_cdf(seg_id_cost, segp->tree_cdf, MAX_SEGMENTS_8, NULL);
   }
-#else
-  av1_cost_tokens_from_cdf(seg_id_cost, segp->tree_cdf, MAX_SEGMENTS, NULL);
-#endif  // CONFIG_EXT_SEG
 
   no_pred_cost = 0;
   for (int i = 0; i < MAX_SEGMENTS; ++i)
@@ -288,7 +284,5 @@ void av1_reset_segment_features(AV1_COMMON *cm) {
   seg->update_map = 0;
   seg->update_data = 0;
   av1_clearall_segfeatures(seg);
-#if CONFIG_EXT_SEG
   seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
 }

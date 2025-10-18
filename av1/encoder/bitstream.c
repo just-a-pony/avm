@@ -849,7 +849,6 @@ static AOM_INLINE void write_segment_id(AV1_COMP *cpi,
   const int coded_id =
       av1_neg_interleave(mbmi->segment_id, pred, seg->last_active_segid + 1);
 
-#if CONFIG_EXT_SEG
   aom_cdf_prob *pred_cdf = NULL;
   aom_cdf_prob *seg_id_ext_flag_cdf = segp->seg_id_ext_flag_cdf[cdf_num];
 
@@ -866,17 +865,10 @@ static AOM_INLINE void write_segment_id(AV1_COMP *cpi,
   } else {
     pred_cdf = segp->spatial_pred_seg_cdf[cdf_num];
   }
-#else
-  aom_cdf_prob *pred_cdf = segp->spatial_pred_seg_cdf[cdf_num];
-#endif  // CONFIG_EXT_SEG
 
-#if CONFIG_EXT_SEG
   aom_write_symbol(
       w, (coded_id < MAX_SEGMENTS_8) ? coded_id : (coded_id - MAX_SEGMENTS_8),
       pred_cdf, MAX_SEGMENTS_8);
-#else
-  aom_write_symbol(w, coded_id, pred_cdf, MAX_SEGMENTS);
-#endif  // CONFIG_EXT_SEG
 
   set_spatial_segment_id(&cm->mi_params, cm->cur_frame->seg_map,
                          mbmi->sb_type[xd->tree_type == CHROMA_PART], mi_row,
@@ -4698,11 +4690,7 @@ static AOM_INLINE void encode_segmentation(AV1_COMMON *cm, MACROBLOCKD *xd,
 
   // Segmentation data
   if (seg->update_data) {
-#if CONFIG_EXT_SEG
     const int max_seg_num = seg->enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
-#else   // CONFIG_EXT_SEG
-    const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
     for (i = 0; i < max_seg_num; i++) {
       for (j = 0; j < SEG_LVL_MAX; j++) {
         const int active = segfeature_active(seg, i, j);
@@ -5974,9 +5962,7 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 #if CONFIG_RANDOM_ACCESS_SWITCH_FRAME
   aom_wb_write_literal(wb, seq_params->number_of_bits_for_lt_frame_id, 3);
 #endif  // CONFIG_RANDOM_ACCESS_SWITCH_FRAME
-#if CONFIG_EXT_SEG
   aom_wb_write_bit(wb, seq_params->enable_ext_seg);
-#endif  // CONFIG_EXT_SEG
 
 #if CONFIG_QM_DEBUG
   printf("[ENC-SEQ] user_defined_qmatrix=%d\n",
@@ -7161,11 +7147,7 @@ static AOM_INLINE void write_uncompressed_header_obu
 
   if (quant_params->using_qmatrix) {
     const struct segmentation *seg = &cm->seg;
-#if CONFIG_EXT_SEG
     const int max_seg_num = seg->enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
-#else   // CONFIG_EXT_SEG
-    const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
     for (int i = 0; i < max_seg_num; i++) {
       const int qindex = av1_get_qindex(seg, i, quant_params->base_qindex,
                                         cm->seq_params.bit_depth);

@@ -941,9 +941,7 @@ typedef struct {
   // Indicates if parity hiding should be enabled
   bool enable_parity_hiding;
   bool enable_short_refresh_frame_flags;
-#if CONFIG_EXT_SEG
   bool enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   int dpb_size;
   // Indicates what frame hash metadata to write
   unsigned int frame_hash_metadata;

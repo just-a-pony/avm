@@ -307,9 +307,6 @@ set_aom_config_var(CONFIG_UNIFORM_TILE 1
 
 set_aom_config_var(CONFIG_NEW_PART_CTX 1 "New partition context models")
 
-set_aom_config_var(CONFIG_EXT_SEG 1
-                   "Extend the maximum number of segments to 16, CWG-F069.")
-
 set_aom_config_var(CONFIG_GDF_IMPROVEMENT 1
                    "Enable guided detail filter improvement.")
 

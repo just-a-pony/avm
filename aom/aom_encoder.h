@@ -613,12 +613,10 @@ typedef struct cfg_options {
    */
   unsigned int enable_short_refresh_frame_flags;
 
-#if CONFIG_EXT_SEG
   /*!\brief enable extended num of segments, 16
    *
    */
   unsigned int enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   /*!\brief number of decoded picture buffer (DPB) slots
    *
    */

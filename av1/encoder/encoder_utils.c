@@ -1108,12 +1108,10 @@ void av1_determine_sc_tools_with_encoding(AV1_COMP *cpi, const int q_orig) {
   } else {
     memset(&cm->seg, 0, sizeof(cm->seg));
   }
-#if CONFIG_EXT_SEG
   // When cm->seg.enabled is false, cm->seg.enable_ext_seg is reset as 0,
   // and whoever using cm->seg.enable_ext_seg later causes mismatch.
   // Hence settting this before segfeatures_copy().
   cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif
   segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
   cm->cur_frame->seg.enabled = cm->seg.enabled;
 

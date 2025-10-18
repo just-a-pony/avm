@@ -19,12 +19,8 @@
 extern "C" {
 #endif
 
-#if CONFIG_EXT_SEG
 #define MAX_SEGMENTS 16
 #define MAX_SEGMENTS_8 8
-#else
-#define MAX_SEGMENTS 8
-#endif  // CONFIG_EXT_SEG
 
 #define SEG_TREE_PROBS (MAX_SEGMENTS - 1)
 
@@ -50,20 +46,17 @@ struct segmentation {
 
   int16_t feature_data[MAX_SEGMENTS][SEG_LVL_MAX];
   unsigned int feature_mask[MAX_SEGMENTS];
-  int last_active_segid;  // The highest numbered segment id that has some
-                          // enabled feature.
-  uint8_t segid_preskip;  // Whether the segment id will be read before the
-                          // skip syntax element.
-                          // 1: the segment id will be read first.
-                          // 0: the skip syntax element will be read first.
-#if CONFIG_EXT_SEG
+  int last_active_segid;   // The highest numbered segment id that has some
+                           // enabled feature.
+  uint8_t segid_preskip;   // Whether the segment id will be read before the
+                           // skip syntax element.
+                           // 1: the segment id will be read first.
+                           // 0: the skip syntax element will be read first.
   uint8_t enable_ext_seg;  // Enable the extended max segment num = 16
-#endif                     // CONFIG_EXT_SEG
 };
 
 struct segmentation_probs {
   aom_cdf_prob pred_cdf[SEG_TEMPORAL_PRED_CTXS][CDF_SIZE(2)];
-#if CONFIG_EXT_SEG
   // *_cdf[]  : seg_id 0 ~ 7, before post-processing
   // *_cdf1[] : seg_id 8 ~ 15, before post-processing
   aom_cdf_prob tree_cdf[CDF_SIZE(MAX_SEGMENTS_8)];
@@ -73,11 +66,6 @@ struct segmentation_probs {
   aom_cdf_prob spatial_pred_seg_cdf1[SPATIAL_PREDICTION_PROBS]
                                     [CDF_SIZE(MAX_SEGMENTS_8)];
   aom_cdf_prob seg_id_ext_flag_cdf[SPATIAL_PREDICTION_PROBS][CDF_SIZE(2)];
-#else
-  aom_cdf_prob tree_cdf[CDF_SIZE(MAX_SEGMENTS)];
-  aom_cdf_prob spatial_pred_seg_cdf[SPATIAL_PREDICTION_PROBS]
-                                   [CDF_SIZE(MAX_SEGMENTS)];
-#endif  // CONFIG_EXT_SEG
 };
 
 static INLINE int segfeature_active(const struct segmentation *seg,
@@ -90,11 +78,7 @@ static INLINE void segfeatures_copy(struct segmentation *dst,
                                     const struct segmentation *src) {
   int i, j;
 
-#if CONFIG_EXT_SEG
   const int max_seg_num = src->enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
-#else   // CONFIG_EXT_SEG
-  const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
   for (i = 0; i < max_seg_num; i++) {
     dst->feature_mask[i] = src->feature_mask[i];
     for (j = 0; j < SEG_LVL_MAX; j++) {
@@ -103,9 +87,7 @@ static INLINE void segfeatures_copy(struct segmentation *dst,
   }
   dst->segid_preskip = src->segid_preskip;
   dst->last_active_segid = src->last_active_segid;
-#if CONFIG_EXT_SEG
   dst->enable_ext_seg = src->enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
 }
 
 void av1_clearall_segfeatures(struct segmentation *seg);

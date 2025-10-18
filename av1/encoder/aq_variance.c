@@ -78,13 +78,9 @@ void av1_vaq_frame_setup(AV1_COMP *cpi) {
 
     aom_clear_system_state();
 
-#if CONFIG_EXT_SEG
     // TODO: This workaround is needed because existing aq_mode=1 is only
     // defined for 8 energy levles.
     const int max_seg_num = MAX_SEGMENTS_8;
-#else   // CONFIG_EXT_SEG
-    const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
     for (i = 0; i < max_seg_num; ++i) {
       // Set up avg segment id to be 1.0 and adjust the other segments around
       // it.
@@ -117,7 +113,6 @@ void av1_vaq_frame_setup(AV1_COMP *cpi) {
       av1_enable_segfeature(seg, i, SEG_LVL_ALT_Q);
     }
 
-#if CONFIG_EXT_SEG
     // TODO: This workaround is needed because existing aq_mode=1 is only
     // defined for 8 energy levles, hence mapped to seg_id = [0..7] only. So,
     // until it is defined. disable ALT_Q/seg_id MAX_SEGMENTS_8 or greater.
@@ -135,7 +130,6 @@ void av1_vaq_frame_setup(AV1_COMP *cpi) {
         av1_disable_segfeature(seg, i, SEG_LVL_ALT_Q);
       }
     }
-#endif  // CONFIG_EXT_SEG
   }
 }
 

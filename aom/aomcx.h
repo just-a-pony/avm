@@ -1295,11 +1295,7 @@ typedef enum aom_scaling_mode_1d {
  *
  */
 
-#if CONFIG_EXT_SEG
 #define AOM_MAX_SEGMENTS 16
-#else  // CONFIG_EXT_SEG
-#define AOM_MAX_SEGMENTS 8
-#endif  // CONFIG_EXT_SEG
 
 /*!\brief  aom region of interest map
  *

@@ -583,18 +583,14 @@ typedef struct MB_MODE_INFO {
   int8_t delta_lf_from_base;
   /*! \copydoc MACROBLOCKD::delta_lf */
   int8_t delta_lf[FRAME_LF_COUNT];
-/**@}*/
+  /**@}*/
 
-/*****************************************************************************
- * \name Bitfield for Memory Reduction
- ****************************************************************************/
-/**@{*/
-/*! \brief The segment id */
-#if CONFIG_EXT_SEG
+  /*****************************************************************************
+   * \name Bitfield for Memory Reduction
+   ****************************************************************************/
+  /**@{*/
+  /*! \brief The segment id */
   uint8_t segment_id : 4;
-#else   // CONFIG_EXT_SEG
-  uint8_t segment_id : 3;
-#endif  // CONFIG_EXT_SEG
   /*! \brief Only valid when temporal update is off. */
   uint8_t seg_id_predicted : 1;
   /*! \brief Which ref_mv to use */

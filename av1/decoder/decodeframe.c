@@ -2507,9 +2507,7 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
   seg->update_map = 0;
   seg->update_data = 0;
   seg->temporal_update = 0;
-#if CONFIG_EXT_SEG
   seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
 
   seg->enabled = aom_rb_read_bit(rb);
   if (!seg->enabled) {
@@ -2519,9 +2517,7 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
     }
 
     memset(seg, 0, sizeof(*seg));
-#if CONFIG_EXT_SEG
     seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
     segfeatures_copy(&cm->cur_frame->seg, seg);
     return;
   }
@@ -2539,9 +2535,7 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
     seg->update_map = 1;
     seg->temporal_update = 0;
     seg->update_data = 1;
-#if CONFIG_EXT_SEG
     seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   } else {
     seg->update_map = aom_rb_read_bit(rb);
     if (seg->update_map) {
@@ -2555,12 +2549,8 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
   // Segmentation data update
   if (seg->update_data) {
     av1_clearall_segfeatures(seg);
-#if CONFIG_EXT_SEG
     const int max_seg_num =
         cm->seg.enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
-#else   // CONFIG_EXT_SEG
-    const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
     for (int i = 0; i < max_seg_num; i++) {
       for (int j = 0; j < SEG_LVL_MAX; j++) {
         int data = 0;
@@ -2587,9 +2577,7 @@ static AOM_INLINE void setup_segmentation(AV1_COMMON *const cm,
   } else if (cm->prev_frame) {
     segfeatures_copy(seg, &cm->prev_frame->seg);
   }
-#if CONFIG_EXT_SEG
   seg->enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
   segfeatures_copy(&cm->cur_frame->seg, seg);
 }
 
@@ -7424,9 +7412,7 @@ void av1_read_sequence_header_beyond_av1(
 #if CONFIG_RANDOM_ACCESS_SWITCH_FRAME
   seq_params->number_of_bits_for_lt_frame_id = aom_rb_read_literal(rb, 3);
 #endif  // CONFIG_RANDOM_ACCESS_SWITCH_FRAME
-#if CONFIG_EXT_SEG
   seq_params->enable_ext_seg = aom_rb_read_bit(rb);
-#endif  // CONFIG_EXT_SEG
   seq_params->user_defined_qmatrix = aom_rb_read_bit(rb);
 #if CONFIG_QM_DEBUG
   printf("[DEC-SEQ] user_defined_qmatrix=%d\n",
@@ -9869,12 +9855,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   features->has_lossless_segment = 0;
 #endif  // CONFIG_DISABLE_LOOP_FILTERS_LOSSLESS
 
-#if CONFIG_EXT_SEG
   const int max_seg_num =
       cm->seg.enable_ext_seg ? MAX_SEGMENTS : MAX_SEGMENTS_8;
-#else   // CONFIG_EXT_SEG
-    const int max_seg_num = MAX_SEGMENTS;
-#endif  // CONFIG_EXT_SEG
   for (int i = 0; i < max_seg_num; i++) {
     const int qindex = av1_get_qindex(&cm->seg, i, quant_params->base_qindex,
                                       cm->seq_params.bit_depth);
@@ -10018,9 +10000,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   }
 #endif  // EXT_TILE_DEBUG
 
-#if CONFIG_EXT_SEG
   features->enable_ext_seg = seq_params->enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
 
   return 0;
 }
@@ -10139,9 +10119,7 @@ static AOM_INLINE void process_tip_mode(AV1Decoder *pbi) {
              (cm->cur_frame->mi_rows * cm->cur_frame->mi_cols));
     }
     memset(&cm->seg, 0, sizeof(cm->seg));
-#if CONFIG_EXT_SEG
     cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
     segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
     if (!cm->tiles.large_scale) {
       cm->cur_frame->frame_context = *cm->fc;
@@ -10368,9 +10346,7 @@ int32_t av1_read_tilegroup_header(
                (cm->cur_frame->mi_rows * cm->cur_frame->mi_cols));
       }
       memset(&cm->seg, 0, sizeof(cm->seg));
-#if CONFIG_EXT_SEG
       cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
       segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
 
       if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
@@ -10581,9 +10557,7 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
              (cm->cur_frame->mi_rows * cm->cur_frame->mi_cols));
     }
     memset(&cm->seg, 0, sizeof(cm->seg));
-#if CONFIG_EXT_SEG
     cm->seg.enable_ext_seg = cm->seq_params.enable_ext_seg;
-#endif  // CONFIG_EXT_SEG
     segfeatures_copy(&cm->cur_frame->seg, &cm->seg);
 
     if (cm->features.primary_ref_frame == PRIMARY_REF_NONE) {
