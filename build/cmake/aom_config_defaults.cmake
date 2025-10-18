@@ -234,8 +234,6 @@ set_aom_config_var(OBU_ORDER_IN_TU 1 "Check OBU order in TU")
 # Configurable DPB extension
 set_aom_config_var(CONFIG_CWG_F168_DPB_HLS 1
                    "signaling changes for DPB extension")
-set_aom_config_var(CONFIG_CWG_F260_REFRESH_FLAG 1
-                   "refresh frame flag signaling in CWG-F260 method 2")
 
 set_aom_config_var(CONFIG_TU64_TRAVERSED_ORDER 1
                    "Coding order of TU 64x64 traversed as 128x128 blocks")

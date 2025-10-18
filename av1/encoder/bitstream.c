@@ -6683,9 +6683,7 @@ static AOM_INLINE void write_uncompressed_header_obu
       ) {
         const bool has_refresh_frame_flags =
             current_frame->refresh_frame_flags != 0;
-#if CONFIG_CWG_F260_REFRESH_FLAG
         aom_wb_write_literal(wb, has_refresh_frame_flags, 1);
-#endif  // CONFIG_CWG_F260_REFRESH_FLAG
         if (has_refresh_frame_flags) {
           int refresh_idx = 0;
           for (int i = 0; i < cm->seq_params.ref_frames; ++i) {
@@ -6696,16 +6694,6 @@ static AOM_INLINE void write_uncompressed_header_obu
           }
           aom_wb_write_literal(wb, refresh_idx, seq_params->ref_frames_log2);
         }
-#if !CONFIG_CWG_F260_REFRESH_FLAG
-// d          if (refresh_idx == 0) {
-// d           aom_wb_write_literal(wb, 1, 1);
-// d        }
-// d     }
-// d  else {
-// d     aom_wb_write_literal(wb, 0, seq_params->ref_frames_log2);
-// d    aom_wb_write_literal(wb, 0, 1);
-// d  }
-#endif  // !CONFIG_CWG_F260_REFRESH_FLAG
       }
       // if (cm->seq_params.enable_short_refresh_frame_flags &&
       //  !(current_frame->frame_type == KEY_FRAME && !cm->show_frame) &&

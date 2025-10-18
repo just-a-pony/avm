@@ -8845,7 +8845,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
     if (current_frame->frame_type == INTRA_ONLY_FRAME) {
       if (short_refresh_frame_flags) {
-#if CONFIG_CWG_F260_REFRESH_FLAG
         const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
         if (has_refresh_frame_flags) {
           const int refresh_idx =
@@ -8860,23 +8859,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         } else {
           current_frame->refresh_frame_flags = 0;
         }
-#else
-          const int refresh_idx =
-              aom_rb_read_literal(rb, refresh_frame_flags_bits);
-          if (refresh_idx >= seq_params->ref_frames) {
-            aom_internal_error(
-                &cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-                "refresh_idx must be less than %d but is set to %d",
-                seq_params->ref_frames, refresh_idx);
-          }
-          if (refresh_idx == 0) {
-            const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
-            current_frame->refresh_frame_flags =
-                has_refresh_frame_flags ? 1 : 0;
-          } else {
-            current_frame->refresh_frame_flags = 1 << refresh_idx;
-          }
-#endif  // CONFIG_CWG_F260_REFRESH_FLAG
       } else {
         current_frame->refresh_frame_flags =
             aom_rb_read_literal(rb, refresh_frame_flags_bits);
@@ -8924,7 +8906,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
             cm->bridge_frame_info.bridge_frame_overwrite_flag) {
 #endif  // CONFIG_CWG_F317
           if (short_refresh_frame_flags) {
-#if CONFIG_CWG_F260_REFRESH_FLAG
             const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
             if (has_refresh_frame_flags) {
               const int refresh_idx =
@@ -8939,23 +8920,6 @@ static int read_uncompressed_header(AV1Decoder *pbi,
             } else {
               current_frame->refresh_frame_flags = 0;
             }
-#else
-            const int refresh_idx =
-                aom_rb_read_literal(rb, refresh_frame_flags_bits);
-            if (refresh_idx >= seq_params->ref_frames) {
-              aom_internal_error(
-                  &cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-                  "refresh_idx must be less than %d but is set to %d",
-                  seq_params->ref_frames, refresh_idx);
-            }
-            if (refresh_idx == 0) {
-              const bool has_refresh_frame_flags = aom_rb_read_bit(rb);
-              current_frame->refresh_frame_flags =
-                  has_refresh_frame_flags ? 1 : 0;
-            } else {
-              current_frame->refresh_frame_flags = 1 << refresh_idx;
-            }
-#endif  // CONFIG_CWG_F260_REFRESH_FLAG
           } else {
             current_frame->refresh_frame_flags =
                 aom_rb_read_literal(rb, refresh_frame_flags_bits);
