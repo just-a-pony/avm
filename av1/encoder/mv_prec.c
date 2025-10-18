@@ -133,7 +133,6 @@ static AOM_INLINE int get_vq_mvd_rate(nmv_context *mvctx, const MV mv_diff,
   const int shell_class =
       get_shell_class_with_precision(shell_index, &shell_cls_offset);
 
-#if CONFIG_REDUCE_SYMBOL_SIZE
   int num_mv_class_0, num_mv_class_1;
   split_num_shell_class(num_mv_class, &num_mv_class_0, &num_mv_class_1);
   if (shell_class < num_mv_class_0) {
@@ -171,31 +170,6 @@ static AOM_INLINE int get_vq_mvd_rate(nmv_context *mvctx, const MV mv_diff,
     }
 #endif  // CONFIG_MV_RANGE_EXTENSION
   }
-#else
-#if CONFIG_MV_RANGE_EXTENSION
-  if (pb_mv_precision == MV_PRECISION_ONE_EIGHTH_PEL) {
-    const int map_shell_class = get_map_shell_class(shell_class);
-    total_rate += get_symbol_cost(mvctx->joint_shell_class_cdf[pb_mv_precision],
-                                  map_shell_class);
-    update_cdf(mvctx->joint_shell_class_cdf[pb_mv_precision], map_shell_class,
-               num_mv_class - 1);
-    if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
-      total_rate += get_symbol_cost(mvctx->joint_shell_last_two_classes_cdf,
-                                    shell_class == MAX_NUM_SHELL_CLASS - 1);
-      update_cdf(mvctx->joint_shell_last_two_classes_cdf,
-                 shell_class == MAX_NUM_SHELL_CLASS - 1, 2);
-    }
-  } else {
-#endif  // CONFIG_MV_RANGE_EXTENSION
-    total_rate += get_symbol_cost(mvctx->joint_shell_class_cdf[pb_mv_precision],
-                                  shell_class);
-    update_cdf(mvctx->joint_shell_class_cdf[pb_mv_precision], shell_class,
-               num_mv_class);
-#if CONFIG_MV_RANGE_EXTENSION
-  }
-#endif  // CONFIG_MV_RANGE_EXTENSION
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
-
   assert(shell_class >= 0 && shell_class < num_mv_class);
 
   if (shell_class < 2) {

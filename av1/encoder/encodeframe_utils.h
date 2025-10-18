@@ -177,10 +177,6 @@ static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
   (void)bsize;
   const int wedge_angle = wedge_index_2_angle[wedge_index];
   const int wedge_dist = wedge_index_2_dist[wedge_index];
-#if !CONFIG_REDUCE_SYMBOL_SIZE
-  const int wedge_angle_dir = (wedge_angle >= H_WEDGE_ANGLES);
-#endif  // !CONFIG_REDUCE_SYMBOL_SIZE
-#if CONFIG_REDUCE_SYMBOL_SIZE
   const int wedge_quad = (wedge_angle / QUAD_WEDGE_ANGLES);
   const int wedge_angle_in_quad = (wedge_angle % QUAD_WEDGE_ANGLES);
 #if CONFIG_ENTROPY_STATS
@@ -192,24 +188,6 @@ static AOM_INLINE void update_wedge_mode_cdf(FRAME_CONTEXT *fc,
 #endif
   update_cdf(fc->wedge_angle_cdf[wedge_quad], wedge_angle_in_quad,
              QUAD_WEDGE_ANGLES);
-#else
-#if CONFIG_ENTROPY_STATS
-  counts->wedge_angle_dir_cnt[wedge_angle_dir]++;
-#endif
-  update_cdf(fc->wedge_angle_dir_cdf, wedge_angle_dir, 2);
-  if (wedge_angle_dir == 0) {
-#if CONFIG_ENTROPY_STATS
-    counts->wedge_angle_0_cnt[wedge_angle]++;
-#endif
-    update_cdf(fc->wedge_angle_0_cdf, wedge_angle, H_WEDGE_ANGLES);
-  } else {
-#if CONFIG_ENTROPY_STATS
-    counts->wedge_angle_1_cnt[wedge_angle - H_WEDGE_ANGLES]++;
-#endif
-    update_cdf(fc->wedge_angle_1_cdf, wedge_angle - H_WEDGE_ANGLES,
-               H_WEDGE_ANGLES);
-  }
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
       (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
     assert(wedge_dist != 0);

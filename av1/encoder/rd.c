@@ -186,17 +186,12 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                            INTRA_MODE_SETS, NULL);
   for (i = 0; i < Y_MODE_CONTEXTS; ++i) {
     // y mode costs
-#if CONFIG_REDUCE_SYMBOL_SIZE
     av1_cost_tokens_from_cdf(mode_costs->y_mode_idx_costs[i],
                              fc->y_mode_idx_cdf[i], LUMA_INTRA_MODE_INDEX_COUNT,
                              NULL);
     av1_cost_tokens_from_cdf(mode_costs->y_mode_idx_offset_costs[i],
                              fc->y_mode_idx_offset_cdf[i],
                              LUMA_INTRA_MODE_OFFSET_COUNT, NULL);
-#else
-    av1_cost_tokens_from_cdf(mode_costs->y_mode_idx_0_costs[i],
-                             fc->y_mode_idx_cdf_0[i], NULL);
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   }
 
   for (j = 0; j < UV_MODE_CONTEXTS; ++j)
@@ -314,7 +309,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                              fc->intra_ext_tx_short_side_cdf[i], 4, NULL);
   }
 
-#if CONFIG_REDUCE_SYMBOL_SIZE
   for (i = TX_4X4; i < EXT_TX_SIZES; ++i) {
     int s;
     int k;
@@ -338,7 +332,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                              fc->inter_tx_type_offset_2[k],
                              INTER_TX_TYPE_OFFSET2_COUNT, NULL);
   }
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
   for (i = TX_4X4; i < EXT_TX_SIZES; ++i) {
     int s;
@@ -529,21 +522,12 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                              fc->compound_type_cdf, MASKED_COMPOUND_TYPES,
                              NULL);
 
-#if CONFIG_REDUCE_SYMBOL_SIZE
     av1_cost_tokens_from_cdf(mode_costs->wedge_quad_cost, fc->wedge_quad_cdf,
                              WEDGE_QUADS, NULL);
     for (i = 0; i < WEDGE_QUADS; ++i) {
       av1_cost_tokens_from_cdf(mode_costs->wedge_angle_cost[i],
                                fc->wedge_angle_cdf[i], QUAD_WEDGE_ANGLES, NULL);
     }
-#else
-    av1_cost_tokens_from_cdf(mode_costs->wedge_angle_dir_cost,
-                             fc->wedge_angle_dir_cdf, NULL);
-    av1_cost_tokens_from_cdf(mode_costs->wedge_angle_0_cost,
-                             fc->wedge_angle_0_cdf, NULL);
-    av1_cost_tokens_from_cdf(mode_costs->wedge_angle_1_cost,
-                             fc->wedge_angle_1_cdf, NULL);
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
     av1_cost_tokens_from_cdf(mode_costs->wedge_dist_cost, fc->wedge_dist_cdf,
                              NUM_WEDGE_DIST, NULL);
     av1_cost_tokens_from_cdf(mode_costs->wedge_dist_cost2, fc->wedge_dist_cdf2,

@@ -516,31 +516,13 @@ static void read_drl_idx(int max_drl_bits, const int16_t mode_ctx,
 static int8_t read_wedge_mode(aom_reader *r, FRAME_CONTEXT *ec_ctx,
                               const BLOCK_SIZE bsize) {
   (void)bsize;
-#if CONFIG_REDUCE_SYMBOL_SIZE
   int wedge_quad_dir = aom_read_symbol(r, ec_ctx->wedge_quad_cdf, WEDGE_QUADS,
                                        ACCT_INFO("wedge_quad"));
-#else
-  int wedge_angle_dir = aom_read_symbol(r, ec_ctx->wedge_angle_dir_cdf, 2,
-                                        ACCT_INFO("wedge_angle_dir"));
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   int wedge_angle = WEDGE_ANGLES;
-#if CONFIG_REDUCE_SYMBOL_SIZE
   wedge_angle = QUAD_WEDGE_ANGLES * wedge_quad_dir +
                 aom_read_symbol(r, ec_ctx->wedge_angle_cdf[wedge_quad_dir],
                                 QUAD_WEDGE_ANGLES,
                                 ACCT_INFO("wedge_angle", "wedge_angle_cdf"));
-#else
-  if (wedge_angle_dir == 0) {
-    wedge_angle =
-        aom_read_symbol(r, ec_ctx->wedge_angle_0_cdf, H_WEDGE_ANGLES,
-                        ACCT_INFO("wedge_angle", "wedge_angle_0_cdf"));
-  } else {
-    wedge_angle =
-        H_WEDGE_ANGLES +
-        aom_read_symbol(r, ec_ctx->wedge_angle_1_cdf, H_WEDGE_ANGLES,
-                        ACCT_INFO("wedge_angle", "wedge_angle_1_cdf"));
-  }
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   int wedge_dist = 0;
   if ((wedge_angle >= H_WEDGE_ANGLES) ||
       (wedge_angle == WEDGE_90 || wedge_angle == WEDGE_0)) {
@@ -1230,7 +1212,6 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
       const int eob_tx_ctx = get_lp2tx_ctx(tx_size, get_txb_bwl(tx_size), eob);
       if (tx_set_type != EXT_TX_SET_LONG_SIDE_64 &&
           tx_set_type != EXT_TX_SET_LONG_SIDE_32) {
-#if CONFIG_REDUCE_SYMBOL_SIZE
         int tx_type_idx = 0;
         if (eset == 1 || eset == 2) {
           int tx_set = aom_read_symbol(
@@ -1257,11 +1238,6 @@ void av1_read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd, int blk_row,
               r, ec_ctx->inter_ext_tx_cdf[eset][eob_tx_ctx][square_tx_size],
               av1_num_ext_tx_set[tx_set_type], ACCT_INFO("tx_type"));
         }
-#else
-        int tx_type_idx = aom_read_symbol(
-            r, ec_ctx->inter_ext_tx_cdf[eset][eob_tx_ctx][square_tx_size],
-            av1_num_ext_tx_set[tx_set_type], ACCT_INFO("tx_type"));
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
         *tx_type = av1_ext_tx_inv[tx_set_type][tx_type_idx];
       } else {
         int is_long_side_dct = 1;
@@ -1662,7 +1638,6 @@ static void read_intra_luma_mode(MACROBLOCKD *const xd, aom_reader *r) {
       aom_read_symbol(r, ec_ctx->y_mode_set_cdf, INTRA_MODE_SETS,
                       ACCT_INFO("mode_set_index", "y_mode_set_cdf"));
   if (mode_set_index == 0) {
-#if CONFIG_REDUCE_SYMBOL_SIZE
     mode_idx = aom_read_symbol(r, ec_ctx->y_mode_idx_cdf[context],
                                LUMA_INTRA_MODE_INDEX_COUNT,
                                ACCT_INFO("mode_idx", "y_mode_idx_cdf"));
@@ -1671,20 +1646,9 @@ static void read_intra_luma_mode(MACROBLOCKD *const xd, aom_reader *r) {
           aom_read_symbol(r, ec_ctx->y_mode_idx_offset_cdf[context],
                           LUMA_INTRA_MODE_OFFSET_COUNT,
                           ACCT_INFO("mode_idx", "y_mode_idx_offset_cdf"));
-#else
-    mode_idx =
-        aom_read_symbol(r, ec_ctx->y_mode_idx_cdf_0[context], FIRST_MODE_COUNT,
-                        ACCT_INFO("mode_idx", "y_mode_idx_cdf_0"));
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   } else {
     mode_idx = FIRST_MODE_COUNT + (mode_set_index - 1) * SECOND_MODE_COUNT +
-#if CONFIG_REDUCE_SYMBOL_SIZE
                aom_read_literal(r, 4, ACCT_INFO("mode_idx"));
-#else
-               aom_read_symbol(r, ec_ctx->y_mode_idx_cdf_1[context],
-                               SECOND_MODE_COUNT,
-                               ACCT_INFO("mode_idx", "y_mode_idx_cdf_1"));
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   }
   assert(mode_idx < LUMA_MODE_COUNT);
   get_y_intra_mode_set(mbmi, xd);
@@ -1716,7 +1680,6 @@ static void read_intra_uv_mode(MACROBLOCKD *const xd,
   }
 
   const int context = av1_is_directional_mode(mbmi->mode) ? 1 : 0;
-#if CONFIG_REDUCE_SYMBOL_SIZE
   int uv_mode_idx =
       aom_read_symbol(r, ec_ctx->uv_mode_cdf[context],
                       CHROMA_INTRA_MODE_INDEX_COUNT, ACCT_INFO("uv_mode_idx"));
@@ -1726,11 +1689,6 @@ static void read_intra_uv_mode(MACROBLOCKD *const xd,
     aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
                        "Invalid value for chroma intra mode index");
   }
-#else
-  const int uv_mode_idx =
-      aom_read_symbol(r, ec_ctx->uv_mode_cdf[context], UV_INTRA_MODES - 1,
-                      ACCT_INFO("uv_mode_idx"));
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   assert(uv_mode_idx >= 0 && uv_mode_idx < UV_INTRA_MODES);
   get_uv_intra_mode_set(mbmi);
   mbmi->uv_mode = mbmi->uv_intra_mode_list[uv_mode_idx];
@@ -2049,7 +2007,6 @@ static INLINE void read_mv(aom_reader *r, MV *mv_diff, int skip_sign_coding,
 
   // Read shell class
   int num_mv_class = get_default_num_shell_class(precision);
-#if CONFIG_REDUCE_SYMBOL_SIZE
   int shell_class = 0;
   int shell_set = 0;
   int num_mv_class_0, num_mv_class_1;
@@ -2088,29 +2045,6 @@ static INLINE void read_mv(aom_reader *r, MV *mv_diff, int skip_sign_coding,
         r, ctx->joint_shell_class_cdf_0[precision], num_mv_class_0,
         ACCT_INFO("shell_class_0", "joint_shell_class_cdf_0"));
   }
-#else
-#if CONFIG_MV_RANGE_EXTENSION
-  int shell_class = 0;
-  if (precision == MV_PRECISION_ONE_EIGHTH_PEL) {
-    shell_class = aom_read_symbol(
-        r, ctx->joint_shell_class_cdf[precision], num_mv_class - 1,
-        ACCT_INFO("shell_class", "joint_shell_class_cdf"));
-    if (shell_class >= MAX_NUM_SHELL_CLASS - 2) {
-      shell_class += aom_read_symbol(
-          r, ctx->joint_shell_last_two_classes_cdf, 2,
-          ACCT_INFO("shell_class", "joint_shell_last_two_classes_cdf"));
-    }
-  } else {
-    shell_class =
-        aom_read_symbol(r, ctx->joint_shell_class_cdf[precision], num_mv_class,
-                        ACCT_INFO("shell_class", "joint_shell_class_cdf"));
-  }
-#else
-  const int shell_class =
-      aom_read_symbol(r, ctx->joint_shell_class_cdf[precision], num_mv_class,
-                      ACCT_INFO("shell_class", "joint_shell_class_cdf"));
-#endif  // CONFIG_MV_RANGE_EXTENSION
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   assert(shell_class < num_mv_class);
 
   // Decode shell class offset

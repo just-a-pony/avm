@@ -1239,21 +1239,11 @@ typedef struct {
 } nmv_component_count;
 
 typedef struct {
-#if CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int joint_shell_set_cnts[CDF_SIZE(2)];
   unsigned int joint_shell_class_0_cnts[NUM_MV_PRECISIONS]
                                        [CDF_SIZE(FIRST_SHELL_CLASS)];
   unsigned int joint_shell_class_1_cnts[NUM_MV_PRECISIONS]
                                        [CDF_SIZE(SECOND_SHELL_CLASS)];
-#else
-#if CONFIG_MV_RANGE_EXTENSION
-  unsigned int joint_shell_class_cnts[NUM_MV_PRECISIONS][CDF_SIZE(
-      MAX_NUM_SHELL_CLASS - 1)];  // placeholder
-#else
-  unsigned int joint_shell_class_cnts[NUM_MV_PRECISIONS][CDF_SIZE(
-      MAX_NUM_SHELL_CLASS)];  // placeholder
-#endif  // CONFIG_MV_RANGE_EXTENSION
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
 #if CONFIG_MV_RANGE_EXTENSION
   unsigned int joint_shell_last_two_classes_cnts[CDF_SIZE(2)];  // placeholder
 #endif  // CONFIG_MV_RANGE_EXTENSION
@@ -1302,15 +1292,9 @@ typedef struct FRAME_COUNTS {
   nmv_context_count ndvc_cnts;  // For block vector of IBC mode
 
   unsigned int y_mode_set_idx[INTRA_MODE_SETS];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int y_mode_idx[Y_MODE_CONTEXTS][LUMA_INTRA_MODE_INDEX_COUNT];
   unsigned int y_mode_idx_offset[Y_MODE_CONTEXTS][LUMA_INTRA_MODE_OFFSET_COUNT];
   unsigned int uv_mode[UV_MODE_CONTEXTS][CHROMA_INTRA_MODE_INDEX_COUNT];
-#else
-  unsigned int y_mode_idx_0[Y_MODE_CONTEXTS][FIRST_MODE_COUNT];
-  unsigned int y_mode_idx_1[Y_MODE_CONTEXTS][SECOND_MODE_COUNT];
-  unsigned int uv_mode[UV_MODE_CONTEXTS][UV_INTRA_MODES - 1];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int cfl_mode[CFL_CONTEXTS][2];
   unsigned int fsc_mode[FSC_MODE_CONTEXTS][FSC_BSIZE_CONTEXTS][FSC_MODES];
   unsigned int mrl_index[MRL_INDEX_CONTEXTS][MRL_LINE_NUMBER];
@@ -1374,18 +1358,12 @@ typedef struct FRAME_COUNTS {
   unsigned int eob_multi32[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS][EOB_MAX_SYMS - 5];
   unsigned int eob_multi64[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS][EOB_MAX_SYMS - 4];
   unsigned int eob_multi128[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS][EOB_MAX_SYMS - 3];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int eob_multi256[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS]
                            [EOB_PT_INDEX_COUNT];
   unsigned int eob_multi512[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS]
                            [EOB_PT_INDEX_COUNT];
   unsigned int eob_multi1024[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS]
                             [EOB_PT_INDEX_COUNT];
-#else
-  unsigned int eob_multi256[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS][EOB_MAX_SYMS - 2];
-  unsigned int eob_multi512[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS][EOB_MAX_SYMS - 1];
-  unsigned int eob_multi1024[TOKEN_CDF_Q_CTXS][EOB_PLANE_CTXS][EOB_MAX_SYMS];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
   unsigned int coeff_lps_lf[BR_CDF_SIZE - 1][LF_LEVEL_CONTEXTS][2];
   unsigned int coeff_base_lf_multi[TOKEN_CDF_Q_CTXS][TX_SIZES]
@@ -1454,14 +1432,8 @@ typedef struct FRAME_COUNTS {
       inter_compound_mode_same_refs_cnt[INTER_MODE_CONTEXTS]
                                        [INTER_COMPOUND_SAME_REFS_TYPES];
   unsigned int amvd_mode[NUM_AMVD_MODES][AMVD_MODE_CONTEXTS][2];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int wedge_quad_cnt[WEDGE_QUADS];
   unsigned int wedge_angle_cnt[WEDGE_QUADS][QUAD_WEDGE_ANGLES];
-#else
-  unsigned int wedge_angle_dir_cnt[2];
-  unsigned int wedge_angle_0_cnt[H_WEDGE_ANGLES];
-  unsigned int wedge_angle_1_cnt[H_WEDGE_ANGLES];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int wedge_dist_cnt[NUM_WEDGE_DIST];
   unsigned int wedge_dist2_cnt[NUM_WEDGE_DIST - 1];
   unsigned int interintra[BLOCK_SIZE_GROUPS][2];
@@ -1509,12 +1481,10 @@ typedef struct FRAME_COUNTS {
   unsigned int default_ccso_cnts[3][CCSO_CONTEXT][2];
   unsigned int cdef_strength_index0_cnts[CDEF_STRENGTH_INDEX0_CTX][2];
   unsigned int cdef_cnts[CDEF_STRENGTHS_NUM - 1][CDEF_STRENGTHS_NUM];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int inter_tx_type_set[2][EOB_TX_CTXS][EXT_TX_SIZES][2];
   unsigned int inter_tx_type_idx[2][EOB_TX_CTXS][INTER_TX_TYPE_INDEX_COUNT];
   unsigned int inter_tx_type_offset_1[EOB_TX_CTXS][INTER_TX_TYPE_OFFSET1_COUNT];
   unsigned int inter_tx_type_offset_2[EOB_TX_CTXS][INTER_TX_TYPE_OFFSET2_COUNT];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   unsigned int inter_ext_tx[EXT_TX_SETS_INTER][EOB_TX_CTXS][EXT_TX_SIZES]
                            [TX_TYPES];
   unsigned int intra_ext_tx[EXT_TX_SETS_INTRA][EXT_TX_SIZES][TX_TYPES];

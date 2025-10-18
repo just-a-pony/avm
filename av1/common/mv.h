@@ -391,7 +391,6 @@ static INLINE void full_pel_lower_mv_precision(FULLPEL_MV *full_pel_mv,
 static INLINE int get_default_num_shell_class(MvSubpelPrecision precision) {
   return (MAX_NUM_SHELL_CLASS - (MV_PRECISION_ONE_EIGHTH_PEL - precision));
 }
-#if CONFIG_REDUCE_SYMBOL_SIZE
 // Split the number of shell class into two
 static INLINE void split_num_shell_class(const int num_mv_class,
                                          int *num_mv_class_0,
@@ -399,7 +398,6 @@ static INLINE void split_num_shell_class(const int num_mv_class,
   *num_mv_class_0 = num_mv_class >> 1;
   *num_mv_class_1 = num_mv_class - *num_mv_class_0;
 }
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
 static INLINE void full_pel_lower_mv_precision_one_comp(
     int *comp_value, MvSubpelPrecision precision, int is_max) {
   if (precision >= MV_PRECISION_ONE_PEL) return;

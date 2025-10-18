@@ -37,7 +37,6 @@ extern "C" {
 #define MAX_SEQ_NUM 16
 #endif  // CONFIG_CWG_E242_SEQ_HDR_ID
 
-#if CONFIG_REDUCE_SYMBOL_SIZE
 // Macros related to joint shell signaling
 #define FIRST_SHELL_CLASS 8
 #define SECOND_SHELL_CLASS 8
@@ -54,7 +53,6 @@ extern "C" {
 #define INTER_TX_TYPE_INDEX_COUNT 8
 #define INTER_TX_TYPE_OFFSET1_COUNT 8
 #define INTER_TX_TYPE_OFFSET2_COUNT 4
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
 #define ADJUST_SUPER_RES_Q 1
 

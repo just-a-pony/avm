@@ -84,7 +84,6 @@ typedef struct {
 } nmv_component;
 
 typedef struct {
-#if CONFIG_REDUCE_SYMBOL_SIZE
   /*The joint_shell_set is first decoded. Depending on the shell set index, the
    * joint_shell_class is decoded.*/
   aom_cdf_prob joint_shell_set_cdf[CDF_SIZE(2)];
@@ -92,17 +91,6 @@ typedef struct {
                                       [CDF_SIZE(FIRST_SHELL_CLASS)];
   aom_cdf_prob joint_shell_class_cdf_1[NUM_MV_PRECISIONS]
                                       [CDF_SIZE(SECOND_SHELL_CLASS)];
-#else
-#if CONFIG_MV_RANGE_EXTENSION
-  // For MV_PRECISION_ONE_EIGHTH_PEL, class 15 and 16 are coded as a
-  // single class, another flag to distinguish them
-  aom_cdf_prob joint_shell_class_cdf[NUM_MV_PRECISIONS]
-                                    [CDF_SIZE(MAX_NUM_SHELL_CLASS - 1)];
-#else
-  aom_cdf_prob joint_shell_class_cdf[NUM_MV_PRECISIONS]
-                                    [CDF_SIZE(MAX_NUM_SHELL_CLASS)];
-#endif  // CONFIG_MV_RANGE_EXTENSION
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
 #if CONFIG_MV_RANGE_EXTENSION
   // Only MV_PRECISION_ONE_EIGHTH_PEL has shell class 15 and class 16.

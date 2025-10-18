@@ -136,15 +136,9 @@ typedef struct frame_contexts {
   aom_cdf_prob eob_flag_cdf32[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 5)];
   aom_cdf_prob eob_flag_cdf64[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 4)];
   aom_cdf_prob eob_flag_cdf128[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 3)];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   aom_cdf_prob eob_flag_cdf256[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 3)];
   aom_cdf_prob eob_flag_cdf512[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 3)];
   aom_cdf_prob eob_flag_cdf1024[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 3)];
-#else
-  aom_cdf_prob eob_flag_cdf256[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 2)];
-  aom_cdf_prob eob_flag_cdf512[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 1)];
-  aom_cdf_prob eob_flag_cdf1024[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS)];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
 
   // Y CDFs
   aom_cdf_prob coeff_base_lf_cdf[TX_SIZES][LF_SIG_COEF_CONTEXTS][TCQ_CTXS]
@@ -202,17 +196,11 @@ typedef struct frame_contexts {
   aom_cdf_prob jmvd_scale_mode_cdf[CDF_SIZE(JOINT_NEWMV_SCALE_FACTOR_CNT)];
   aom_cdf_prob jmvd_amvd_scale_mode_cdf[CDF_SIZE(JOINT_AMVD_SCALE_FACTOR_CNT)];
   aom_cdf_prob compound_type_cdf[CDF_SIZE(MASKED_COMPOUND_TYPES)];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   /*The wedge_quad is first decoded. Depending on the wedge quadrant, the
    * wedge_angle is decoded. Depending on the wedge_angle, the wedge_dist is
    * decoded.*/
   aom_cdf_prob wedge_quad_cdf[CDF_SIZE(WEDGE_QUADS)];
   aom_cdf_prob wedge_angle_cdf[WEDGE_QUADS][CDF_SIZE(QUAD_WEDGE_ANGLES)];
-#else
-  aom_cdf_prob wedge_angle_dir_cdf[CDF_SIZE(2)];
-  aom_cdf_prob wedge_angle_0_cdf[CDF_SIZE(H_WEDGE_ANGLES)];
-  aom_cdf_prob wedge_angle_1_cdf[CDF_SIZE(H_WEDGE_ANGLES)];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   aom_cdf_prob wedge_dist_cdf[CDF_SIZE(NUM_WEDGE_DIST)];
   aom_cdf_prob wedge_dist_cdf2[CDF_SIZE(NUM_WEDGE_DIST - 1)];
 
@@ -320,7 +308,6 @@ typedef struct frame_contexts {
                              [CDF_SIZE(MHCCP_MODE_NUM)];
   // y mode cdf
   aom_cdf_prob y_mode_set_cdf[CDF_SIZE(INTRA_MODE_SETS)];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   /*
   Luma intra mode signaling is redesigned as follows:
     1)	mode_set_idx (with symbol size 4) is decoded first
@@ -339,10 +326,6 @@ typedef struct frame_contexts {
   */
   aom_cdf_prob uv_mode_cdf[UV_MODE_CONTEXTS]
                           [CDF_SIZE(CHROMA_INTRA_MODE_INDEX_COUNT)];
-#else
-  aom_cdf_prob y_mode_idx_cdf_0[Y_MODE_CONTEXTS][CDF_SIZE(FIRST_MODE_COUNT)];
-  aom_cdf_prob uv_mode_cdf[UV_MODE_CONTEXTS][CDF_SIZE(UV_INTRA_MODES - 1)];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   aom_cdf_prob cfl_cdf[CFL_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob do_split_cdf[PARTITION_STRUCTURE_NUM][PARTITION_CONTEXTS]
                            [CDF_SIZE(2)];
@@ -366,7 +349,6 @@ typedef struct frame_contexts {
                                [CDF_SIZE(TX_TYPES)];
   aom_cdf_prob inter_ext_tx_cdf[EXT_TX_SETS_INTER][EOB_TX_CTXS][EXT_TX_SIZES]
                                [CDF_SIZE(TX_TYPES)];
-#if CONFIG_REDUCE_SYMBOL_SIZE
   /* Inter TX_TYPE signaling for EXT_TX_SET_ALL16, EXT_TX_SET_DTT9_IDTX_1DDCT
     1)	tx_set_idx (with symbol size 2) is decoded
     2)	If tx_set_idx == 0 , tx_type_idx (with symbol size 8) is decoded
@@ -381,7 +363,6 @@ typedef struct frame_contexts {
                                      [CDF_SIZE(INTER_TX_TYPE_OFFSET1_COUNT)];
   aom_cdf_prob inter_tx_type_offset_2[EOB_TX_CTXS]
                                      [CDF_SIZE(INTER_TX_TYPE_OFFSET2_COUNT)];
-#endif  // CONFIG_REDUCE_SYMBOL_SIZE
   aom_cdf_prob tx_ext_32_cdf[2][CDF_SIZE(2)];
   aom_cdf_prob intra_ext_tx_short_side_cdf[EXT_TX_SIZES][CDF_SIZE(4)];
   aom_cdf_prob inter_ext_tx_short_side_cdf[EOB_TX_CTXS][EXT_TX_SIZES]
