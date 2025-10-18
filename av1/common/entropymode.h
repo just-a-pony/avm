@@ -326,9 +326,6 @@ typedef struct frame_contexts {
   aom_cdf_prob wienerns_uv_sym_cdf[CDF_SIZE(2)];
   aom_cdf_prob wienerns_4part_cdf[WIENERNS_4PART_CTX_MAX][CDF_SIZE(4)];
   aom_cdf_prob pc_wiener_restore_cdf[CDF_SIZE(2)];
-#if !CONFIG_MERGE_PARA_CTX
-  aom_cdf_prob merged_param_cdf[CDF_SIZE(2)];
-#endif  // !CONFIG_MERGE_PARA_CTX
   aom_cdf_prob mrl_index_cdf[MRL_INDEX_CONTEXTS][CDF_SIZE(MRL_LINE_NUMBER)];
   aom_cdf_prob multi_line_mrl_cdf[MRL_INDEX_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob dpcm_cdf[CDF_SIZE(2)];

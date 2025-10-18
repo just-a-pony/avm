@@ -326,9 +326,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->wienerns_uv_sym_cdf, 2);
   RESET_CDF_COUNTER(fc->wienerns_4part_cdf, 4);
   RESET_CDF_COUNTER(fc->pc_wiener_restore_cdf, 2);
-#if !CONFIG_MERGE_PARA_CTX
-  RESET_CDF_COUNTER(fc->merged_param_cdf, 2);
-#endif  // !CONFIG_MERGE_PARA_CTX
   RESET_CDF_COUNTER(fc->y_mode_set_cdf, INTRA_MODE_SETS);
 #if CONFIG_REDUCE_SYMBOL_SIZE
   RESET_CDF_COUNTER(fc->y_mode_idx_cdf, LUMA_INTRA_MODE_INDEX_COUNT);

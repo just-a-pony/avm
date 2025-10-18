@@ -3594,12 +3594,8 @@ static int check_and_write_merge_info(
       check_wienerns_bank_eq(bank, wienerns_info, nsfilter_params->ncoeffs,
                              wiener_class_id, ref_for_class);
   const int exact_match = (is_equal >= 0);
-#if CONFIG_MERGE_PARA_CTX
   (void)xd;
   aom_write_bit(wb, exact_match);
-#else
-  aom_write_symbol(wb, exact_match, xd->tile_ctx->merged_param_cdf, 2);
-#endif  // CONFIG_MERGE_PARA_CTX
   if (!exact_match) {
     ref_for_class[wiener_class_id] =
         wienerns_info->bank_ref_for_class[wiener_class_id];
@@ -3640,12 +3636,8 @@ static int check_and_write_exact_match(
   const int exact_match =
       check_wienerns_eq(wienerns_info, ref_wienerns_info,
                         nsfilter_params->ncoeffs, wiener_class_id);
-#if CONFIG_MERGE_PARA_CTX
   (void)xd;
   aom_write_bit(wb, exact_match);
-#else
-  aom_write_symbol(wb, exact_match, xd->tile_ctx->merged_param_cdf, 2);
-#endif  // CONFIG_MERGE_PARA_CTX
   return exact_match;
 }
 #endif  // CONFIG_LR_FRAMEFILTERS_IN_HEADER

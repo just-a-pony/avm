@@ -1543,13 +1543,6 @@ int main(int argc, const char **argv) {
                      "static const aom_cdf_prob default_wienerns_length_cdf"
                      "[CDF_SIZE(2)]",
                      0, &total_count, 0, mem_wanted, "Filters");
-#if !CONFIG_MERGE_PARA_CTX
-  cts_each_dim[0] = 2;
-  optimize_cdf_table(&fc.merged_param_cnts[0], probsfile, 1, cts_each_dim,
-                     "static const aom_cdf_prob default_merged_param_cdf"
-                     "[CDF_SIZE(2)]",
-                     0, &total_count, 0, mem_wanted, "Filters");
-#endif  // !CONFIG_MERGE_PARA_CTX
 
   /* transform coding */
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
