@@ -372,11 +372,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
         RESET_CDF_COUNTER(fc->do_ext_partition_cdf[plane_index][rect][i], 2);
         RESET_CDF_COUNTER(
             fc->do_uneven_4way_partition_cdf[plane_index][rect][i], 2);
-#if !CONFIG_NEW_PART_CTX
-        RESET_CDF_COUNTER(
-            fc->uneven_4way_partition_type_cdf[plane_index][rect][i],
-            NUM_UNEVEN_4WAY_PARTS);
-#endif  // !CONFIG_NEW_PART_CTX
       }
     }
   }

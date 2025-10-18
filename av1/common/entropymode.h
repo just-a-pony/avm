@@ -117,14 +117,9 @@ struct AV1Common;
 
 #define PARTITION_STRUCTURE_NUM 2
 
-#if CONFIG_NEW_PART_CTX
 #define PARTITION_BLOCK_GROUPS 16
 #define PARTITION_CONTEXTS (PARTITION_BLOCK_GROUPS * PARTITION_PLOFFSET)
 #define NUM_RECT_CONTEXTS 1
-#else
-#define PARTITION_CONTEXTS (PARTITION_BLOCK_SIZES * PARTITION_PLOFFSET)
-#define NUM_RECT_CONTEXTS 2
-#endif  // CONFIG_NEW_PART_CTX
 
 typedef struct {
   const int16_t *scan;
@@ -389,12 +384,6 @@ typedef struct frame_contexts {
   aom_cdf_prob do_uneven_4way_partition_cdf[PARTITION_STRUCTURE_NUM]
                                            [NUM_RECT_CONTEXTS]
                                            [PARTITION_CONTEXTS][CDF_SIZE(2)];
-#if !CONFIG_NEW_PART_CTX
-  aom_cdf_prob uneven_4way_partition_type_cdf[PARTITION_STRUCTURE_NUM]
-                                             [NUM_RECT_CONTEXTS]
-                                             [PARTITION_CONTEXTS]
-                                             [CDF_SIZE(NUM_UNEVEN_4WAY_PARTS)];
-#endif  // !CONFIG_NEW_PART_CTX
   aom_cdf_prob switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS]
                                     [CDF_SIZE(SWITCHABLE_FILTERS)];
   aom_cdf_prob delta_q_cdf[CDF_SIZE(DELTA_Q_PROBS + 1)];

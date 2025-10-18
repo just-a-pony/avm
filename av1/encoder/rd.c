@@ -140,13 +140,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
                 ->do_uneven_4way_partition_cost[plane_index][rect_type][i],
             fc->do_uneven_4way_partition_cdf[plane_index][rect_type][i], 2,
             NULL);
-#if !CONFIG_NEW_PART_CTX
-        av1_cost_tokens_from_cdf(
-            mode_costs
-                ->uneven_4way_partition_type_cost[plane_index][rect_type][i],
-            fc->uneven_4way_partition_type_cdf[plane_index][rect_type][i],
-            NULL);
-#endif  // !CONFIG_NEW_PART_CTX
       }
     }
   }

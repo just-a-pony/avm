@@ -645,20 +645,6 @@ int main(int argc, const char **argv) {
       "SIZE(2)]",
       0, &total_count, do_uneven_4way_partition_reduce, mem_wanted,
       "Partitions");  // minus unused context entries
-#if !CONFIG_NEW_PART_CTX
-  cts_each_dim[0] = PARTITION_STRUCTURE_NUM;
-  cts_each_dim[1] = NUM_RECT_CONTEXTS;
-  cts_each_dim[2] = PARTITION_CONTEXTS;
-  cts_each_dim[3] = NUM_UNEVEN_4WAY_PARTS;
-  int do_uneven_4way_partition_type_reduce = 320;
-  optimize_cdf_table(
-      &fc.uneven_4way_partition_type[0][0][0][0], probsfile, 4, cts_each_dim,
-      "static aom_cdf_prob default_uneven_4way_partition_type_cdf"
-      "[PARTITION_STRUCTURE_NUM][NUM_RECT_CONTEXTS][PARTITION_CONTEXTS][CDF_"
-      "SIZE(NUM_UNEVEN_4WAY_PARTS)]",
-      0, &total_count, do_uneven_4way_partition_type_reduce, mem_wanted,
-      "Partitions");  // minus unused context entries
-#endif
 
   cts_each_dim[0] = DELTA_Q_PROBS + 1;
   optimize_cdf_table(&fc.delta_q_cnts[0], probsfile, 1, cts_each_dim,

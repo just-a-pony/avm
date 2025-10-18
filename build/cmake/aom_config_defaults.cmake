@@ -305,8 +305,6 @@ set_aom_config_var(CONFIG_ML_PART_SPLIT 1
 set_aom_config_var(CONFIG_UNIFORM_TILE 1
                    "Enable better uniform tile distribution")
 
-set_aom_config_var(CONFIG_NEW_PART_CTX 1 "New partition context models")
-
 set_aom_config_var(CONFIG_GDF_IMPROVEMENT 1
                    "Enable guided detail filter improvement.")
 

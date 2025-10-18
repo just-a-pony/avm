@@ -989,17 +989,6 @@ static PARTITION_TYPE bridge_frame_read_partition(
     const AV1_COMMON *const cm, MACROBLOCKD *xd, int mi_row, int mi_col,
     int has_rows, int has_cols, const PARTITION_TREE *ptree,
     const PARTITION_TREE *ptree_luma, BLOCK_SIZE bsize) {
-#if !CONFIG_NEW_PART_CTX
-#if CONFIG_PARTITION_CONTEXT_REDUCE
-  const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize, 1);
-  const int rect_type_ctx =
-      partition_plane_context(xd, mi_row, mi_col, bsize, 0);
-#else
-  const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize);
-  const int rect_type_ctx = ctx;
-#endif
-#endif  // !CONFIG_NEW_PART_CTX
-
   (void)has_rows;
   (void)has_cols;
   const int ssx = cm->seq_params.subsampling_x;

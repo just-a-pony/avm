@@ -2930,11 +2930,6 @@ static AOM_INLINE PARTITION_TYPE write_partition(
     assert(p == derived_partition);
     return derived_partition;
   }
-#if !CONFIG_NEW_PART_CTX
-  const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize, 1);
-  const int rect_type_ctx =
-      partition_plane_context(xd, mi_row, mi_col, bsize, 0);
-#endif  // !CONFIG_NEW_PART_CTX
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
 
   bool do_split = p != PARTITION_NONE;
@@ -2950,13 +2945,9 @@ static AOM_INLINE PARTITION_TYPE write_partition(
     if (!bru_is_sb_active(cm, mi_col, mi_row)) {
       do_split = false;
     } else {
-#if CONFIG_NEW_PART_CTX
       const int ctx =
           partition_plane_context(xd, mi_row, mi_col, bsize, 0, SPLIT_CTX_MODE);
       aom_write_symbol(w, do_split, ec_ctx->do_split_cdf[plane][ctx], 2);
-#else
-      aom_write_symbol(w, do_split, ec_ctx->do_split_cdf[plane][ctx], 2);
-#endif  // CONFIG_NEW_PART_CTX
     }
   }
   if (!do_split) {
@@ -2980,15 +2971,10 @@ static AOM_INLINE PARTITION_TYPE write_partition(
   }
   if (rect_type == RECT_INVALID) {
     rect_type = get_rect_part_type(p);
-#if CONFIG_NEW_PART_CTX
     const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize, 0,
                                             RECT_TYPE_CTX_MODE);
     aom_write_symbol(w, rect_type, ec_ctx->rect_type_cdf[plane][ctx],
                      NUM_RECT_PARTS);
-#else
-    aom_write_symbol(w, rect_type, ec_ctx->rect_type_cdf[plane][rect_type_ctx],
-                     NUM_RECT_PARTS);
-#endif  // CONFIG_NEW_PART_CTX
   } else {
     assert(rect_type == get_rect_part_type(p));
   }
@@ -2999,15 +2985,10 @@ static AOM_INLINE PARTITION_TYPE write_partition(
                                   &implied_do_ext)) {
     assert(do_ext_partition == implied_do_ext);
   } else {
-#if CONFIG_NEW_PART_CTX
     const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize,
                                             rect_type, EXT_PART_CTX_MODE);
     aom_write_symbol(w, do_ext_partition,
                      ec_ctx->do_ext_partition_cdf[plane][0][ctx], 2);
-#else
-    aom_write_symbol(w, do_ext_partition,
-                     ec_ctx->do_ext_partition_cdf[plane][rect_type][ctx], 2);
-#endif  // CONFIG_NEW_PART_CTX
   }
   if (do_ext_partition) {
     const bool do_uneven_4way_partition = (p >= PARTITION_HORZ_4A);
@@ -3016,29 +2997,16 @@ static AOM_INLINE PARTITION_TYPE write_partition(
                                             &implied_do_uneven_4way)) {
       assert(do_uneven_4way_partition == implied_do_uneven_4way);
     } else {
-#if CONFIG_NEW_PART_CTX
       const int ctx = partition_plane_context(xd, mi_row, mi_col, bsize,
                                               rect_type, FOUR_WAY_CTX_MODE);
       aom_write_symbol(w, do_uneven_4way_partition,
                        ec_ctx->do_uneven_4way_partition_cdf[plane][0][ctx], 2);
-#else
-      aom_write_symbol(
-          w, do_uneven_4way_partition,
-          ec_ctx->do_uneven_4way_partition_cdf[plane][rect_type][ctx], 2);
-#endif  // CONFIG_NEW_PART_CTX
     }
     if (do_uneven_4way_partition) {
       const UNEVEN_4WAY_PART_TYPE uneven_4way_type =
           (p == PARTITION_HORZ_4A || p == PARTITION_VERT_4A) ? UNEVEN_4A
                                                              : UNEVEN_4B;
-#if CONFIG_NEW_PART_CTX
       aom_write_bit(w, uneven_4way_type);
-#else
-      aom_write_symbol(
-          w, uneven_4way_type,
-          ec_ctx->uneven_4way_partition_type_cdf[plane][rect_type][ctx],
-          NUM_UNEVEN_4WAY_PARTS);
-#endif  // CONFIG_NEW_PART_CTX
     }
   }
   return p;
