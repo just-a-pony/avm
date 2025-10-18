@@ -576,15 +576,15 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
     }
   }
 
-#if CONFIG_MULTILAYER_CORE_HLS
+  // layer dependency information
   seq->max_tlayer_id = 0;
   seq->max_mlayer_id = 0;
   seq->tlayer_dependency_present_flag = 0;
   seq->mlayer_dependency_present_flag = 0;
   setup_default_temporal_layer_dependency_structure(seq);
   setup_default_embedded_layer_dependency_structure(seq);
-#endif  // CONFIG_MULTILAYER_CORE_HLS
 
+  // delta_q
   seq->base_y_dc_delta_q = 0;
   seq->base_uv_dc_delta_q = 0;
   // Note if equal_ac_dc_q is on, then:
@@ -810,11 +810,9 @@ static void init_config(struct AV1_COMP *cpi, AV1EncoderConfig *oxcf) {
   cm->tlayer_id = 0;
   cm->mlayer_id = 0;
   cm->xlayer_id = 0;
-#if CONFIG_MULTILAYER_CORE
   // TODO(hegilmez) replace layer_id with mlayer_id (current code uses
   // layer_id variable)
   cm->layer_id = cm->mlayer_id;
-#endif  // CONFIG_MULTILAYER_CORE
 
   // change includes all joint functionality
   av1_change_config(cpi, oxcf);

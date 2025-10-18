@@ -3092,9 +3092,7 @@ void av1_setup_frame_buf_refs(AV1_COMMON *cm) {
   cm->cur_frame->absolute_poc = cm->current_frame.absolute_poc;
   cm->cur_frame->pyramid_level = cm->current_frame.pyramid_level;
   cm->cur_frame->temporal_layer_id = cm->current_frame.temporal_layer_id;
-#if CONFIG_MULTILAYER_CORE
   cm->cur_frame->layer_id = cm->current_frame.layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
 
   MV_REFERENCE_FRAME ref_frame;
   for (ref_frame = 0; ref_frame < INTER_REFS_PER_FRAME; ++ref_frame) {
@@ -3103,15 +3101,11 @@ void av1_setup_frame_buf_refs(AV1_COMMON *cm) {
       cm->cur_frame->ref_order_hints[ref_frame] = buf->order_hint;
       cm->cur_frame->ref_display_order_hint[ref_frame] =
           buf->display_order_hint;
-#if CONFIG_MULTILAYER_CORE
       cm->cur_frame->ref_layer_ids[ref_frame] = buf->layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
     } else {
       cm->cur_frame->ref_order_hints[ref_frame] = -1;
       cm->cur_frame->ref_display_order_hint[ref_frame] = -1;
-#if CONFIG_MULTILAYER_CORE
       cm->cur_frame->ref_layer_ids[ref_frame] = -1;
-#endif  // CONFIG_MULTILAYER_CORE
     }
   }
 }

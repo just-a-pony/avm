@@ -77,7 +77,6 @@ static int read_bitstream_level(AV1_LEVEL *seq_level_idx,
   return 1;
 }
 
-#if CONFIG_MULTILAYER_CORE_HLS
 static void av1_read_tlayer_dependency_info(SequenceHeader *const seq,
                                             struct aom_read_bit_buffer *rb) {
   const int max_layer_id = seq->max_tlayer_id;
@@ -99,7 +98,6 @@ static void av1_read_mlayer_dependency_info(SequenceHeader *const seq,
     }
   }
 }
-#endif  // CONFIG_MULTILAYER_CORE_HLS
 
 // Returns whether two sequence headers are consistent with each other.
 // Note that the 'op_params' field is not compared per Section 7.5 in the spec:
@@ -368,7 +366,7 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
     cm->error.error_code = AOM_CODEC_ERROR;
     return 0;
   }
-#if CONFIG_MULTILAYER_CORE_HLS
+
   if (seq_params->single_picture_hdr_flag) {
     seq_params->max_tlayer_id = 0;
     seq_params->max_mlayer_id = 0;
@@ -399,7 +397,6 @@ static uint32_t read_sequence_header_obu(AV1Decoder *pbi,
       av1_read_mlayer_dependency_info(seq_params, rb);
     }
   }
-#endif  // CONFIG_MULTILAYER_CORE_HLS
 
   av1_read_sequence_header(
 #if !CWG_F215_CONFIG_REMOVE_FRAME_ID
@@ -1259,13 +1256,10 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
     cm->tlayer_id = obu_header.obu_tlayer_id;
     cm->mlayer_id = obu_header.obu_mlayer_id;
     cm->xlayer_id = obu_header.obu_xlayer_id;
-#if CONFIG_MULTILAYER_CORE
     // TODO(hegilmez) replace layer_id with mlayer_id (current code uses
     // layer_id variable)
     cm->layer_id = cm->mlayer_id;
-#endif  // CONFIG_MULTILAYER_CORE
 
-#if CONFIG_MULTILAYER_CORE_HLS
     // check bitstream conformance if sequence header is parsed
     if (pbi->sequence_header_ready) {
       // bitstream constraint for tlayer_id
@@ -1287,7 +1281,6 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
             cm->mlayer_id, cm->seq_params.max_mlayer_id);
       }
     }
-#endif  // CONFIG_MULTILAYER_CORE_HLS
 
 #if CONFIG_CWG_F317
     // Set is_bridge_frame flag based on OBU type

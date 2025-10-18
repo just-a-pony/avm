@@ -291,10 +291,8 @@ typedef struct RefCntBuffer {
   unsigned int order_hint;
   int ref_order_hints[INTER_REFS_PER_FRAME];
   int ref_display_order_hint[INTER_REFS_PER_FRAME];
-#if CONFIG_MULTILAYER_CORE
   int layer_id;
   int ref_layer_ids[INTER_REFS_PER_FRAME];
-#endif  // CONFIG_MULTILAYER_CORE
 
   // These variables are used only in encoder and compare the absolute
   // display order hint to compute the relative distance and overcome
@@ -367,9 +365,7 @@ typedef struct {
   int temporal_layer_id;
   int disp_order;
   int base_qindex;
-#if CONFIG_MULTILAYER_CORE
   int layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
   int width;
   int height;
 } RefFrameMapPair;
@@ -1101,17 +1097,15 @@ typedef struct SequenceHeader {
   AV1_LEVEL seq_level_idx[MAX_NUM_OPERATING_POINTS];
   uint8_t tier[MAX_NUM_OPERATING_POINTS];  // seq_tier in spec. One bit: 0 or 1.
 
-#if CONFIG_MULTILAYER_CORE_HLS
-  // Dependency structure descriptors
+  // Layer dependency structure descriptors
   int max_tlayer_id;
   int max_mlayer_id;
-  // Dependency signaling present flag
+  // Layer dependency signaling present flag
   int tlayer_dependency_present_flag;
   int mlayer_dependency_present_flag;
-  // Dependency structure arrays
+  // Layer dependency structure arrays
   int tlayer_dependency_map[MAX_NUM_TLAYERS][MAX_NUM_TLAYERS];
   int mlayer_dependency_map[MAX_NUM_MLAYERS][MAX_NUM_MLAYERS];
-#endif  // CONFIG_MULTILAYER_CORE_HLS
 
   uint8_t df_par_bits_minus2;
 
@@ -1143,9 +1137,7 @@ typedef struct {
   unsigned int absolute_poc;
   unsigned int key_frame_number;
   unsigned int frame_number;
-#if CONFIG_MULTILAYER_CORE
   int layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
   SkipModeInfo skip_mode_info;
   int refresh_frame_flags;  // Which ref frames are overwritten by this frame
 #if CONFIG_CWG_E242_SIGNAL_TILE_INFO
@@ -2536,7 +2528,6 @@ typedef struct AV1Common {
    */
   int xlayer_id;
 
-#if CONFIG_MULTILAYER_CORE
   /*!
    * Number of multiple layers
    */
@@ -2546,7 +2537,6 @@ typedef struct AV1Common {
    * (in the range 0 ... (number_layers - 1)).
    */
   int layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
 
   /*!
    * Weights for IBP of directional modes.
@@ -2866,7 +2856,6 @@ static INLINE int get_ref_frame_map_idx(const AV1_COMMON *const cm,
              : INVALID_IDX;
 }
 
-#if CONFIG_MULTILAYER_CORE_HLS
 static INLINE void setup_default_temporal_layer_dependency_structure(
     SequenceHeader *const seq) {
   const int max_layer_id = seq->max_tlayer_id;
@@ -2943,7 +2932,6 @@ static INLINE int is_mlayer_scalable_and_dependent(
     return curr_layer_id >= ref_layer_id;
   }
 }
-#endif  // CONFIG_MULTILAYER_CORE_HLS
 
 static INLINE void get_secondary_reference_frame_idx(const AV1_COMMON *const cm,
                                                      int *ref_frame_used,

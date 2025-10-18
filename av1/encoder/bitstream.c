@@ -7526,7 +7526,6 @@ static AOM_INLINE void write_bitstream_level(AV1_LEVEL seq_level_idx,
   aom_wb_write_literal(wb, seq_level_idx, LEVEL_BITS);
 }
 
-#if CONFIG_MULTILAYER_CORE_HLS
 static void av1_write_tlayer_dependency_info(struct aom_write_bit_buffer *wb,
                                              const SequenceHeader *const seq) {
   const int max_layer_id = seq->max_tlayer_id;
@@ -7548,7 +7547,6 @@ static void av1_write_mlayer_dependency_info(struct aom_write_bit_buffer *wb,
     }
   }
 }
-#endif  // CONFIG_MULTILAYER_CORE_HLS
 
 uint32_t av1_write_sequence_header_obu(const SequenceHeader *seq_params,
                                        uint8_t *const dst) {
@@ -7625,7 +7623,7 @@ uint32_t av1_write_sequence_header_obu(const SequenceHeader *seq_params,
       }
     }
   }
-#if CONFIG_MULTILAYER_CORE_HLS
+
   if (!seq_params->single_picture_hdr_flag) {
     aom_wb_write_literal(&wb, seq_params->max_tlayer_id, TLAYER_BITS);
     aom_wb_write_literal(&wb, seq_params->max_mlayer_id, MLAYER_BITS);
@@ -7646,7 +7644,7 @@ uint32_t av1_write_sequence_header_obu(const SequenceHeader *seq_params,
       av1_write_mlayer_dependency_info(&wb, seq_params);
     }
   }
-#endif  // CONFIG_MULTILAYER_CORE_HLS
+
   write_sequence_header(seq_params, &wb);
 
   aom_wb_write_bit(&wb, seq_params->film_grain_params_present);

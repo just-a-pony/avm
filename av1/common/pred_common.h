@@ -43,30 +43,18 @@ static INLINE void init_ref_map_pair(AV1_COMMON *cm,
       ref_frame_map_pairs[map_idx].disp_order = (int)buf->display_order_hint;
       ref_frame_map_pairs[map_idx].pyr_level = buf->pyramid_level;
       ref_frame_map_pairs[map_idx].temporal_layer_id = buf->temporal_layer_id;
-#if CONFIG_MULTILAYER_CORE
       ref_frame_map_pairs[map_idx].layer_id = buf->layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
       ref_frame_map_pairs[map_idx].base_qindex = buf->base_qindex;
       ref_frame_map_pairs[map_idx].frame_type = buf->frame_type;
     }
     if (ref_frame_map_pairs[map_idx].ref_frame_for_inference == -1) continue;
     ref_frame_map_pairs[map_idx].ref_frame_for_inference = 1;
-    if (buf == NULL
-#if CONFIG_MULTILAYER_CORE && CONFIG_MULTILAYER_CORE_HLS
-        || !is_tlayer_scalable_and_dependent(
-               &cm->seq_params, cm->current_frame.temporal_layer_id,
-               buf->temporal_layer_id) ||
+    if (buf == NULL ||
+        !is_tlayer_scalable_and_dependent(&cm->seq_params,
+                                          cm->current_frame.temporal_layer_id,
+                                          buf->temporal_layer_id) ||
         !is_mlayer_scalable_and_dependent(
             &cm->seq_params, cm->current_frame.layer_id, buf->layer_id)
-#else
-#if CONFIG_MULTILAYER_CORE
-        || buf->layer_id > cm->current_frame.layer_id
-#endif  // CONFIG_MULTILAYER_CORE
-        // If the temporal_layer_id of the reference frame is greater than
-        // the temporal_layer_id of the current frame, the reference frame
-        // is not included into the list of ref_frame_map_pairs[].
-        || buf->temporal_layer_id > cm->current_frame.temporal_layer_id
-#endif  // CONFIG_MULTILAYER_CORE && CONFIG_MULTILAYER_CORE_HLS
 #if CONFIG_RANDOM_ACCESS_SWITCH_FRAME
         || (is_ras && buf->frame_type != KEY_FRAME)
 #endif  // CONFIG_RANDOM_ACCESS_SWITCH_FRAME
@@ -110,9 +98,8 @@ typedef struct {
   int disp_order;
   // Quality of the reference frame
   int base_qindex;
-#if CONFIG_MULTILAYER_CORE
+  // Layer id of the ference frame
   int layer_id;
-#endif  // CONFIG_MULTILAYER_CORE
   // log2 of resolution ratio
   int res_ratio_log2;
 } RefScoreData;
