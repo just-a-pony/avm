@@ -1355,12 +1355,7 @@ typedef struct FRAME_COUNTS {
                                          [NUM_UNEVEN_4WAY_PARTS];
   unsigned int txb_skip[TOKEN_CDF_Q_CTXS][TX_SIZES][TXB_SKIP_CONTEXTS][2];
   unsigned int v_txb_skip[TOKEN_CDF_Q_CTXS][V_TXB_SKIP_CONTEXTS][2];
-#if CONFIG_EOB_PT_CTX_REDUCTION
   unsigned int eob_extra[TOKEN_CDF_Q_CTXS][2];
-#else
-  unsigned int eob_extra[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES]
-                        [EOB_COEF_CONTEXTS][2];
-#endif
   unsigned int dc_sign[TOKEN_CDF_Q_CTXS][PLANE_TYPES][DC_SIGN_GROUPS]
                       [DC_SIGN_CONTEXTS][2];
   unsigned int coeff_base_bob_multi[TOKEN_CDF_Q_CTXS][TX_SIZES]

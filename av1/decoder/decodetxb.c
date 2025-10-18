@@ -307,15 +307,9 @@ static INLINE void decode_eob(DecoderCodingBlock *dcb, aom_reader *const r,
 #endif
 ) {
   MACROBLOCKD *const xd = &dcb->xd;
-#if !CONFIG_EOB_PT_CTX_REDUCTION
-  const PLANE_TYPE plane_type = get_plane_type(plane);
-#endif  // !CONFIG_EOB_PT_CTX_REDUCTION
   FRAME_CONTEXT *const ec_ctx = xd->tile_ctx;
   const int is_inter = is_inter_block(xd->mi[0], xd->tree_type);
   const int pl_ctx = get_eob_plane_ctx(plane, is_inter);
-#if !CONFIG_EOB_PT_CTX_REDUCTION
-  const TX_SIZE txs_ctx = get_txsize_entropy_ctx(tx_size);
-#endif  // !CONFIG_EOB_PT_CTX_REDUCTION
   eob_info *eob_data = dcb->eob_data[plane] + dcb->txb_offset[plane];
   uint16_t *const eob = &(eob_data->eob);
   eob_info *bob_data = dcb->bob_data[plane] + dcb->txb_offset[plane];
@@ -435,17 +429,8 @@ static INLINE void decode_eob(DecoderCodingBlock *dcb, aom_reader *const r,
 
   const int eob_offset_bits = av1_eob_offset_bits[eob_pt];
   if (eob_offset_bits > 0) {
-#if !CONFIG_EOB_PT_CTX_REDUCTION
-    const int eob_ctx = eob_pt - 3;
-#endif  // !CONFIG_EOB_PT_CTX_REDUCTION
-    int bit =
-#if CONFIG_EOB_PT_CTX_REDUCTION
-        aom_read_symbol(r, ec_ctx->eob_extra_cdf, 2,
-                        ACCT_INFO("eob_extra_cdf"));
-#else
-        aom_read_symbol(r, ec_ctx->eob_extra_cdf[txs_ctx][plane_type][eob_ctx],
-                        2, ACCT_INFO("eob_extra_cdf"));
-#endif  // CONFIG_EOB_PT_CTX_REDUCTION
+    int bit = aom_read_symbol(r, ec_ctx->eob_extra_cdf, 2,
+                              ACCT_INFO("eob_extra_cdf"));
     if (bit) {
       eob_extra += (1 << (eob_offset_bits - 1));
     }

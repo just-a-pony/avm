@@ -1102,13 +1102,8 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
             pcost->base_bob_cost[ctx],
             fc->coeff_base_bob_cdf[AOMMIN(tx_size, TX_16X16)][ctx], 3, NULL);
       for (int ctx = 0; ctx < EOB_COEF_CONTEXTS; ++ctx)
-#if CONFIG_EOB_PT_CTX_REDUCTION
         av1_cost_tokens_from_cdf(pcost->eob_extra_cost[ctx], fc->eob_extra_cdf,
                                  2, NULL);
-#else
-        av1_cost_tokens_from_cdf(pcost->eob_extra_cost[ctx],
-                                 fc->eob_extra_cdf[tx_size][plane][ctx], NULL);
-#endif  // CONFIG_EOB_PT_CTX_REDUCTION
       for (int gr = 0; gr < DC_SIGN_GROUPS; ++gr) {
         for (int ctx = 0; ctx < DC_SIGN_CONTEXTS; ++ctx) {
 #if CONFIG_CTX_BYPASS_CB_DC_SIGN

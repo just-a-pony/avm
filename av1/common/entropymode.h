@@ -129,12 +129,7 @@ typedef struct {
 typedef struct frame_contexts {
   aom_cdf_prob txb_skip_cdf[2][TX_SIZES][TXB_SKIP_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob v_txb_skip_cdf[V_TXB_SKIP_CONTEXTS][CDF_SIZE(2)];
-#if CONFIG_EOB_PT_CTX_REDUCTION
   aom_cdf_prob eob_extra_cdf[CDF_SIZE(2)];
-#else
-  aom_cdf_prob eob_extra_cdf[TX_SIZES][PLANE_TYPES][EOB_COEF_CONTEXTS]
-                            [CDF_SIZE(2)];
-#endif  // CONFIG_EOB_PT_CTX_REDUCTION
   aom_cdf_prob dc_sign_cdf[PLANE_TYPES][DC_SIGN_GROUPS][DC_SIGN_CONTEXTS]
                           [CDF_SIZE(2)];
   aom_cdf_prob eob_flag_cdf16[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 6)];

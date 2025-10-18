@@ -1561,25 +1561,13 @@ int main(int argc, const char **argv) {
                      1, &total_count, 0, mem_wanted, "Coefficients");
 
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
-#if CONFIG_EOB_PT_CTX_REDUCTION
   cts_each_dim[1] = 2;
   optimize_cdf_table(&fc.eob_extra[0][0], probsfile, 2, cts_each_dim,
                      "static const aom_cdf_prob av1_default_eob_extra_cdfs"
                      "[TOKEN_CDF_Q_CTXS]"
                      "[CDF_SIZE(2)]",
                      1, &total_count, 0, mem_wanted, "Coefficients");
-#else
-  cts_each_dim[1] = TX_SIZES;
-  cts_each_dim[2] = PLANE_TYPES;
-  cts_each_dim[3] = EOB_COEF_CONTEXTS;
-  cts_each_dim[4] = 2;
-  optimize_cdf_table(
-      &fc.eob_extra[0][0][0][0][0], probsfile, 5, cts_each_dim,
-      "static const aom_cdf_prob av1_default_eob_extra_cdfs"
-      "[TOKEN_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][EOB_COEF_CONTEXTS]"
-      "[CDF_SIZE(2)]",
-      1, &total_count, 0, mem_wanted, "Coefficients");
-#endif
+
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
   cts_each_dim[1] = EOB_PLANE_CTXS;
   cts_each_dim[2] = EOB_MAX_SYMS - 6;

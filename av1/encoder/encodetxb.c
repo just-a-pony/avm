@@ -238,10 +238,6 @@ void av1_update_eob_context(int eob, TX_SIZE tx_size, int is_inter,
 #endif
   int eob_extra;
   const int eob_pt = get_eob_pos_token(eob, &eob_extra);
-#if !CONFIG_EOB_PT_CTX_REDUCTION
-  TX_SIZE txs_ctx = get_txsize_entropy_ctx(tx_size);
-#endif  // !CONFIG_EOB_PT_CTX_REDUCTION
-
   const int eob_multi_size = txsize_log2_minus4[tx_size];
   const int pl_ctx = get_eob_plane_ctx(plane, is_inter);
   switch (eob_multi_size) {
@@ -337,24 +333,12 @@ void av1_update_eob_context(int eob, TX_SIZE tx_size, int is_inter,
 
   const int eob_offset_bits = av1_eob_offset_bits[eob_pt];
   if (eob_offset_bits > 0) {
-#if !CONFIG_EOB_PT_CTX_REDUCTION
-    int eob_ctx = eob_pt - 3;
-#endif  // !CONFIG_EOB_PT_CTX_REDUCTION
     int eob_shift = eob_offset_bits - 1;
     int bit = (eob_extra & (1 << eob_shift)) ? 1 : 0;
 #if CONFIG_ENTROPY_STATS
-#if CONFIG_EOB_PT_CTX_REDUCTION
     counts->eob_extra[cdf_idx][bit]++;
-#else
-    counts->eob_extra[cdf_idx][txs_ctx][plane][eob_ctx][bit]++;
-#endif  // CONFIG_EOB_PT_CTX_REDUCTION
 #endif  // CONFIG_ENTROPY_STATS
-    if (allow_update_cdf)
-#if CONFIG_EOB_PT_CTX_REDUCTION
-      update_cdf(ec_ctx->eob_extra_cdf, bit, 2);
-#else
-      update_cdf(ec_ctx->eob_extra_cdf[txs_ctx][plane][eob_ctx], bit, 2);
-#endif  // CONFIG_EOB_PT_CTX_REDUCTION
+    if (allow_update_cdf) update_cdf(ec_ctx->eob_extra_cdf, bit, 2);
   }
 }
 
@@ -688,10 +672,6 @@ static INLINE void code_eob(MACROBLOCK *const x, aom_writer *w, int plane,
                             TX_SIZE tx_size, int eob) {
   MACROBLOCKD *xd = &x->e_mbd;
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
-#if !CONFIG_EOB_PT_CTX_REDUCTION
-  const PLANE_TYPE plane_type = get_plane_type(plane);
-  const TX_SIZE txs_ctx = get_txsize_entropy_ctx(tx_size);
-#endif  // !CONFIG_EOB_PT_CTX_REDUCTION
   const int is_inter = is_inter_block(xd->mi[0], xd->tree_type);
   const int pl_ctx = get_eob_plane_ctx(plane, is_inter);
 
@@ -754,17 +734,9 @@ static INLINE void code_eob(MACROBLOCK *const x, aom_writer *w, int plane,
   }
   const int eob_offset_bits = av1_eob_offset_bits[eob_pt];
   if (eob_offset_bits > 0) {
-#if !CONFIG_EOB_PT_CTX_REDUCTION
-    const int eob_ctx = eob_pt - 3;
-#endif  // !CONFIG_EOB_PT_CTX_REDUCTION
     int eob_shift = eob_offset_bits - 1;
     int bit = (eob_extra & (1 << eob_shift)) ? 1 : 0;
-#if CONFIG_EOB_PT_CTX_REDUCTION
     aom_write_symbol(w, bit, ec_ctx->eob_extra_cdf, 2);
-#else
-    aom_write_symbol(w, bit,
-                     ec_ctx->eob_extra_cdf[txs_ctx][plane_type][eob_ctx], 2);
-#endif  // CONFIG_EOB_PT_CTX_REDUCTION
     // Zero out top bit; write (eob_offset_bits - 1) lsb bits.
     eob_extra &= (1 << (eob_offset_bits - 1)) - 1;
     aom_write_literal(w, eob_extra, eob_offset_bits - 1);
