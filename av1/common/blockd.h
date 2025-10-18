@@ -3728,10 +3728,6 @@ typedef struct {
   uint8_t *color_map;
   MapCdf map_cdf;
   ColorCost color_cost;
-#if !CONFIG_PLT_DIR_CTX
-  aom_cdf_prob *direction_cdf;
-  PaletteDirectionCost direction_cost;
-#endif  // !CONFIG_PLT_DIR_CTX
   IdentityRowCdf identity_row_cdf;
   IdentityRowCost identity_row_cost;
 } Av1ColorMapParam;

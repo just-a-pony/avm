@@ -239,10 +239,6 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
     }
   }
 
-#if !CONFIG_PLT_DIR_CTX
-  av1_cost_tokens_from_cdf(mode_costs->palette_direction_cost,
-                           fc->palette_direction_cdf, NULL);
-#endif  // !CONFIG_PLT_DIR_CTX
   for (i = 0; i < PALETTE_ROW_FLAG_CONTEXTS; ++i) {
     av1_cost_tokens_from_cdf(mode_costs->palette_y_row_flag_cost[i],
                              fc->identity_row_cdf_y[i], 3, NULL);

@@ -1493,11 +1493,6 @@ static const aom_cdf_prob
       { AOM_CDF3(10923, 21845), 30 },
       { AOM_CDF3(10923, 21845), 56 },
     };
-#if !CONFIG_PLT_DIR_CTX
-static const aom_cdf_prob default_palette_direction_cdf[CDF_SIZE(2)] = {
-  AOM_CDF2(21697), 6
-};
-#endif  // !CONFIG_PLT_DIR_CTX
 
 static const aom_cdf_prob default_palette_y_color_index_cdf
     [PALETTE_SIZES][PALETTE_COLOR_INDEX_CONTEXTS][CDF_SIZE(PALETTE_COLORS)] = {
@@ -2102,9 +2097,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc,
   av1_copy(fc->palette_uv_size_cdf, default_palette_uv_size_cdf);
   av1_copy(fc->identity_row_cdf_y, default_identity_row_cdf_y);
   av1_copy(fc->identity_row_cdf_uv, default_identity_row_cdf_uv);
-#if !CONFIG_PLT_DIR_CTX
-  av1_copy(fc->palette_direction_cdf, default_palette_direction_cdf);
-#endif  // !CONFIG_PLT_DIR_CTX
   av1_copy(fc->palette_y_color_index_cdf, default_palette_y_color_index_cdf);
   av1_copy(fc->comp_inter_cdf, default_comp_inter_cdf);
   av1_copy(fc->tip_cdf, default_tip_cdf);
@@ -2553,10 +2545,6 @@ void av1_cumulative_avg_cdf_symbols(FRAME_CONTEXT *ctx_left,
                          ctx_tr->identity_row_cdf_y, 3);
   CUMULATIVE_AVERAGE_CDF(ctx_left->identity_row_cdf_uv,
                          ctx_tr->identity_row_cdf_uv, 3);
-#if !CONFIG_PLT_DIR_CTX
-  CUMULATIVE_AVERAGE_CDF(ctx_left->palette_direction_cdf,
-                         ctx_tr->palette_direction_cdf, 2);
-#endif  // !CONFIG_PLT_DIR_CTX
   CUMULATIVE_AVERAGE_CDF(ctx_left->cfl_cdf, ctx_tr->cfl_cdf, 2);
 
   CUMULATIVE_AVERAGE_CDF(ctx_left->palette_y_size_cdf,
@@ -2933,9 +2921,6 @@ void av1_shift_cdf_symbols(FRAME_CONTEXT *ctx_ptr,
   SHIFT_CDF(ctx_ptr->tip_pred_mode_cdf, TIP_PRED_MODES);
   SHIFT_CDF(ctx_ptr->identity_row_cdf_y, 3);
   SHIFT_CDF(ctx_ptr->identity_row_cdf_uv, 3);
-#if !CONFIG_PLT_DIR_CTX
-  SHIFT_CDF(ctx_ptr->palette_direction_cdf, 2);
-#endif  // !CONFIG_PLT_DIR_CTX
   SHIFT_CDF(ctx_ptr->cfl_cdf, 2);
   SHIFT_CDF(ctx_ptr->palette_y_size_cdf, PALETTE_SIZES);
   SHIFT_CDF(ctx_ptr->palette_uv_size_cdf, PALETTE_SIZES);
@@ -3309,10 +3294,6 @@ void av1_avg_cdf_symbols(FRAME_CONTEXT *ctx_left, FRAME_CONTEXT *ctx_tr,
               PALETTE_SIZES);
   AVERAGE_CDF(ctx_left->identity_row_cdf_y, ctx_tr->identity_row_cdf_y, 3);
   AVERAGE_CDF(ctx_left->identity_row_cdf_uv, ctx_tr->identity_row_cdf_uv, 3);
-#if !CONFIG_PLT_DIR_CTX
-  AVERAGE_CDF(ctx_left->palette_direction_cdf, ctx_tr->palette_direction_cdf,
-              2);
-#endif  // !CONFIG_PLT_DIR_CTX
   AVERAGE_CDF(ctx_left->cfl_cdf, ctx_tr->cfl_cdf, 2);
   for (int j = 0; j < PALETTE_SIZES; j++) {
     int nsymbs = j + PALETTE_MIN_SIZE;

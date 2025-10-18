@@ -633,11 +633,7 @@ static AOM_INLINE void pack_map_tokens(const MACROBLOCKD *xd, aom_writer *w,
   const TokenExtra *p = *tp;
   const int direction = (direction_allowed) ? p->direction : 0;
   if (direction_allowed) {
-#if CONFIG_PLT_DIR_CTX
     aom_write_bit(w, p->direction);
-#else
-    aom_write_symbol(w, p->direction, xd->tile_ctx->palette_direction_cdf, 2);
-#endif  // CONFIG_PLT_DIR_CTX
   }
   const int ax1_limit = direction ? rows : cols;
   const int ax2_limit = direction ? cols : rows;

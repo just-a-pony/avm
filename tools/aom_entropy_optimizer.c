@@ -1306,13 +1306,6 @@ int main(int argc, const char **argv) {
                      "const aom_cdf_prob default_identity_row_cdf_uv"
                      "[PALETTE_ROW_FLAG_CONTEXTS][CDF_SIZE(3)]",
                      0, &total_count, 0, mem_wanted, "Coefficients");
-#if !CONFIG_PLT_DIR_CTX
-  cts_each_dim[0] = 2;
-  optimize_cdf_table(&fc.palette_direction_cnts[0], probsfile, 1, cts_each_dim,
-                     "const aom_cdf_prob default_palette_direction_cdf"
-                     "[CDF_SIZE(2)]",
-                     0, &total_count, 0, mem_wanted, "Coefficients");
-#endif  // !CONFIG_PLT_DIR_CTX
 
   /* palette */
   cts_each_dim[0] = 2;
