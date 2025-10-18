@@ -414,17 +414,8 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, ModeCosts *mode_costs,
       fc->most_probable_stx_set_cdf_ADST_ADST, IST_REDUCE_SET_SIZE_ADST_ADST,
       NULL);
 
-#if CONFIG_REDUCE_CCTX_CTX
   av1_cost_tokens_from_cdf(mode_costs->cctx_type_cost, fc->cctx_type_cdf,
                            CCTX_TYPES, NULL);
-#else
-  for (i = 0; i < EXT_TX_SIZES; ++i) {
-    for (j = 0; j < CCTX_CONTEXTS; ++j) {
-      av1_cost_tokens_from_cdf(mode_costs->cctx_type_cost[i][j],
-                               fc->cctx_type_cdf[i][j], NULL);
-    }
-  }
-#endif  // CONFIG_REDUCE_CCTX_CTX
 
   if (!frame_is_intra_only(cm)) {
     for (i = 0; i < COMP_INTER_CONTEXTS; ++i) {

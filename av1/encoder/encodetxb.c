@@ -1592,16 +1592,8 @@ int get_cctx_type_cost(const AV1_COMMON *cm, const MACROBLOCK *x,
                             : (x->plane[plane].eobs[block] == 1);
   if (plane == AOM_PLANE_U && x->plane[plane].eobs[block] &&
       is_cctx_allowed(cm, xd) && !skip_cctx) {
-#if CONFIG_REDUCE_CCTX_CTX
     (void)tx_size;
     return x->mode_costs.cctx_type_cost[cctx_type];
-#else
-    const TX_SIZE square_tx_size = AOMMIN(TX_32X32, txsize_sqr_map[tx_size]);
-    int above_cctx, left_cctx;
-    get_above_and_left_cctx_type(cm, xd, &above_cctx, &left_cctx);
-    const int cctx_ctx = get_cctx_context(xd, &above_cctx, &left_cctx);
-    return x->mode_costs.cctx_type_cost[square_tx_size][cctx_ctx][cctx_type];
-#endif  // CONFIG_REDUCE_CCTX_CTX
   } else {
     return 0;
   }
@@ -4097,23 +4089,11 @@ static void update_cctx_type_count(const AV1_COMMON *cm, MACROBLOCKD *xd,
       !mbmi->skip_txfm[xd->tree_type == CHROMA_PART] &&
       !segfeature_active(&cm->seg, mbmi->segment_id, SEG_LVL_SKIP)) {
     const CctxType cctx_type = av1_get_cctx_type(xd, blk_row, blk_col);
-#if CONFIG_REDUCE_CCTX_CTX
     (void)tx_size;
     if (allow_update_cdf) update_cdf(fc->cctx_type_cdf, cctx_type, CCTX_TYPES);
 #if CONFIG_ENTROPY_STATS
     ++counts->cctx_type[cctx_type];
 #endif  // CONFIG_ENTROPY_STATS
-#else
-    int above_cctx, left_cctx;
-    get_above_and_left_cctx_type(cm, xd, &above_cctx, &left_cctx);
-    const int cctx_ctx = get_cctx_context(xd, &above_cctx, &left_cctx);
-    if (allow_update_cdf)
-      update_cdf(fc->cctx_type_cdf[txsize_sqr_map[tx_size]][cctx_ctx],
-                 cctx_type, CCTX_TYPES);
-#if CONFIG_ENTROPY_STATS
-    ++counts->cctx_type[txsize_sqr_map[tx_size]][cctx_ctx][cctx_type];
-#endif  // CONFIG_ENTROPY_STATS
-#endif  // CONFIG_REDUCE_CCTX_CTX
   }
 }
 

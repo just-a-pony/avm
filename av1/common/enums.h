@@ -704,10 +704,6 @@ enum {
 #define IST_REDUCE_SET_SIZE 4  // reduced set size for IST
 #define IST_REDUCE_SET_SIZE_ADST_ADST 4
 
-#if !CONFIG_REDUCE_CCTX_CTX
-#define CCTX_CONTEXTS 3
-#endif  // !CONFIG_REDUCE_CCTX_CTX
-
 enum {
   CCTX_NONE,     // No cross chroma transform
   CCTX_45,       // 45 degrees rotation (Haar transform)

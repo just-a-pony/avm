@@ -499,48 +499,6 @@ static INLINE int is_cctx_allowed(const AV1_COMMON *cm, const MACROBLOCKD *xd) {
   return 1;
 }
 
-#if !CONFIG_REDUCE_CCTX_CTX
-static INLINE void get_above_and_left_cctx_type(const AV1_COMMON *cm,
-                                                const MACROBLOCKD *xd,
-                                                int *above_cctx,
-                                                int *left_cctx) {
-  const CommonModeInfoParams *const mi_params = &cm->mi_params;
-  const int stride = mi_params->mi_stride;
-
-  const int mi_grid_idx =
-      get_mi_grid_idx(mi_params, xd->mi[0]->chroma_ref_info.mi_row_chroma_base,
-                      xd->mi[0]->chroma_ref_info.mi_col_chroma_base);
-  CctxType *const cur_cctx_ptr = mi_params->cctx_type_map + mi_grid_idx;
-#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
-  const int not_at_sb_top_boundary = !is_at_sb_top_boundary(
-      xd->mi[0]->chroma_ref_info.mi_row_chroma_base, cm->mib_size);
-#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
-  *above_cctx = xd->chroma_up_available
-#if CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
-                        && not_at_sb_top_boundary
-#endif  // CONFIG_CTX_MODELS_LINE_BUFFER_REDUCTION
-                    ? (int)cur_cctx_ptr[-stride]
-                    : -1;
-  *left_cctx = xd->chroma_left_available ? (int)cur_cctx_ptr[-1] : -1;
-
-  assert(*above_cctx >= -1 && *above_cctx < CCTX_TYPES);
-  assert(*left_cctx >= -1 && *left_cctx < CCTX_TYPES);
-}
-
-// Context of cctx type is determined by comparing the numbers of positive and
-// negative angles in the above and left neighbors of the current tx block.
-// 0: tie, 1: more positive angles, 2: more negative angles.
-static INLINE int get_cctx_context(const MACROBLOCKD *xd, int *above,
-                                   int *left) {
-  int cnt = 0;
-  if (xd->chroma_up_available && *above > CCTX_NONE)
-    cnt += (*above > CCTX_60) ? -1 : 1;
-  if (xd->chroma_left_available && *left > CCTX_NONE)
-    cnt += (*left > CCTX_60) ? -1 : 1;
-  return cnt == 0 ? 0 : 1 + (cnt < 0);
-}
-#endif  // !CONFIG_REDUCE_CCTX_CTX
-
 int av1_get_pred_context_switchable_interp(const MACROBLOCKD *xd, int dir);
 
 // Get a list of palette base colors that are used in the above and left blocks,

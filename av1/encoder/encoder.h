@@ -1530,11 +1530,7 @@ typedef struct FRAME_COUNTS {
   unsigned int tx_ext_32[2][2];
   unsigned int intra_ext_tx_short_side[EXT_TX_SIZES][4];
   unsigned int inter_ext_tx_short_side[EOB_TX_CTXS][EXT_TX_SIZES][4];
-#if CONFIG_REDUCE_CCTX_CTX
   unsigned int cctx_type[CCTX_TYPES];
-#else
-  unsigned int cctx_type[EXT_TX_SIZES][CCTX_CONTEXTS][CCTX_TYPES];
-#endif  // CONFIG_REDUCE_CCTX_CTX
   unsigned int filter_intra[2];
   unsigned int intra_dip[TOKEN_CDF_Q_CTXS][DIP_CTXS][2];
   unsigned int intra_dip_mode_n6[6];

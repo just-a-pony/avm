@@ -1347,19 +1347,9 @@ void av1_read_cctx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 
   CctxType cctx_type = CCTX_NONE;
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
-#if CONFIG_REDUCE_CCTX_CTX
   (void)tx_size;
   cctx_type = aom_read_symbol(r, ec_ctx->cctx_type_cdf, CCTX_TYPES,
                               ACCT_INFO("cctx_type"));
-#else
-  const TX_SIZE square_tx_size = AOMMIN(TX_32X32, txsize_sqr_map[tx_size]);
-  int above_cctx, left_cctx;
-  get_above_and_left_cctx_type(cm, xd, &above_cctx, &left_cctx);
-  const int cctx_ctx = get_cctx_context(xd, &above_cctx, &left_cctx);
-  cctx_type =
-      aom_read_symbol(r, ec_ctx->cctx_type_cdf[square_tx_size][cctx_ctx],
-                      CCTX_TYPES, ACCT_INFO("cctx_type"));
-#endif  // CONFIG_REDUCE_CCTX_CTX
   update_cctx_array(xd, blk_row, blk_col, row_offset, col_offset, tx_size,
                     cctx_type);
 }
