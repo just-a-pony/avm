@@ -40,9 +40,6 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   av1_copy(cm->fc->v_txb_skip_cdf, av1_default_v_txb_skip_cdfs[index]);
   av1_copy(cm->fc->eob_extra_cdf, av1_default_eob_extra_cdfs[index]);
   av1_copy(cm->fc->dc_sign_cdf, av1_default_dc_sign_cdfs[index]);
-#if !CONFIG_BY_PASS_V_SIGN
-  av1_copy(cm->fc->v_dc_sign_cdf, av1_default_v_dc_sign_cdfs[index]);
-#endif  // !CONFIG_BY_PASS_V_SIGN
   av1_copy(cm->fc->coeff_base_lf_cdf,
            av1_default_coeff_base_lf_multi_cdfs[index]);
   av1_copy(cm->fc->coeff_base_lf_eob_cdf,
@@ -160,9 +157,6 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
   RESET_CDF_COUNTER(fc->v_txb_skip_cdf, 2);
   RESET_CDF_COUNTER(fc->eob_extra_cdf, 2);
   RESET_CDF_COUNTER(fc->dc_sign_cdf, 2);
-#if !CONFIG_BY_PASS_V_SIGN
-  RESET_CDF_COUNTER(fc->v_dc_sign_cdf, 2);
-#endif  // !CONFIG_BY_PASS_V_SIGN
   RESET_CDF_COUNTER(fc->eob_flag_cdf16, EOB_MAX_SYMS - 6);
   RESET_CDF_COUNTER(fc->eob_flag_cdf32, EOB_MAX_SYMS - 5);
   RESET_CDF_COUNTER(fc->eob_flag_cdf64, EOB_MAX_SYMS - 4);

@@ -1345,14 +1345,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
         const int tmp_sign_idx = pos;
         if (plane == AOM_PLANE_U) xd->tmp_sign[tmp_sign_idx] = (sign ? 2 : 1);
         if (plane == AOM_PLANE_V) {
-#if CONFIG_BY_PASS_V_SIGN
           aom_write_literal(w, sign, 1);
-#else
-          aom_write_symbol(
-              w, sign,
-              ec_ctx->v_dc_sign_cdf[xd->tmp_sign[tmp_sign_idx]][dc_sign_ctx],
-              2);
-#endif  // CONFIG_BY_PASS_V_SIGN
         } else {
 #if CONFIG_CTX_BYPASS_CB_DC_SIGN
           if (plane == AOM_PLANE_Y) {
@@ -5162,28 +5155,14 @@ void av1_update_and_record_txb_context(int plane, int block, int blk_row,
 #if CONFIG_ENTROPY_STATS
           if (allow_update_cdf) {
             const int dc_ph_group = is_hidden ? 1 : 0;
-#if !CONFIG_BY_PASS_V_SIGN
-            if (plane == AOM_PLANE_V) {
-              ++td->counts->v_dc_sign[cdf_idx][xd->tmp_sign[pos]][dc_sign_ctx]
-                                     [dc_sign];
-            } else {
-#else
             if (plane != AOM_PLANE_V) {
-#endif
               ++td->counts->dc_sign[cdf_idx][plane_type][dc_ph_group]
                                    [dc_sign_ctx][dc_sign];
             }
           }
 #endif  // CONFIG_ENTROPY_STATS
           if (allow_update_cdf) {
-#if !CONFIG_BY_PASS_V_SIGN
-            if (plane == AOM_PLANE_V) {
-              update_cdf(ec_ctx->v_dc_sign_cdf[xd->tmp_sign[pos]][dc_sign_ctx],
-                         dc_sign, 2);
-            } else {
-#else
             if (plane != AOM_PLANE_V) {
-#endif
               const int dc_ph_group = is_hidden ? 1 : 0;
               update_cdf(
                   ec_ctx->dc_sign_cdf[plane_type][dc_ph_group][dc_sign_ctx],

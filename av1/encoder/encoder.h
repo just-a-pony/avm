@@ -1363,10 +1363,6 @@ typedef struct FRAME_COUNTS {
 #endif
   unsigned int dc_sign[TOKEN_CDF_Q_CTXS][PLANE_TYPES][DC_SIGN_GROUPS]
                       [DC_SIGN_CONTEXTS][2];
-#if !CONFIG_BY_PASS_V_SIGN
-  unsigned int v_dc_sign[TOKEN_CDF_Q_CTXS][CROSS_COMPONENT_CONTEXTS]
-                        [DC_SIGN_CONTEXTS][2];
-#endif
   unsigned int coeff_base_bob_multi[TOKEN_CDF_Q_CTXS][TX_SIZES]
                                    [SIG_COEF_CONTEXTS_BOB][NUM_BASE_LEVELS + 1];
   unsigned int idtx_sign[TOKEN_CDF_Q_CTXS][TX_SIZES][IDTX_SIGN_CONTEXTS][2];

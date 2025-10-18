@@ -1127,16 +1127,10 @@ void av1_fill_coeff_costs(CoeffCosts *coeff_costs, FRAME_CONTEXT *fc,
       }
       if (plane == PLANE_TYPE_UV) {
         for (int i = 0; i < CROSS_COMPONENT_CONTEXTS; ++i)
-          for (int ctx = 0; ctx < DC_SIGN_CONTEXTS; ++ctx)
-#if CONFIG_BY_PASS_V_SIGN
-          {
+          for (int ctx = 0; ctx < DC_SIGN_CONTEXTS; ++ctx) {
             pcost->v_dc_sign_cost[i][ctx][0] = av1_cost_literal(1);
             pcost->v_dc_sign_cost[i][ctx][1] = av1_cost_literal(1);
           }
-#else
-            av1_cost_tokens_from_cdf(pcost->v_dc_sign_cost[i][ctx],
-                                     fc->v_dc_sign_cdf[i][ctx], NULL);
-#endif  // CONFIG_BY_PASS_V_SIGN
       }
 
 #if !CONFIG_COEFF_BR_LF_UV_BYPASS

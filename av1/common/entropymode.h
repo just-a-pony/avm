@@ -137,10 +137,6 @@ typedef struct frame_contexts {
 #endif  // CONFIG_EOB_PT_CTX_REDUCTION
   aom_cdf_prob dc_sign_cdf[PLANE_TYPES][DC_SIGN_GROUPS][DC_SIGN_CONTEXTS]
                           [CDF_SIZE(2)];
-#if !CONFIG_BY_PASS_V_SIGN
-  aom_cdf_prob v_dc_sign_cdf[CROSS_COMPONENT_CONTEXTS][DC_SIGN_CONTEXTS]
-                            [CDF_SIZE(2)];
-#endif  // !CONFIG_BY_PASS_V_SIGN
   aom_cdf_prob eob_flag_cdf16[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 6)];
   aom_cdf_prob eob_flag_cdf32[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 5)];
   aom_cdf_prob eob_flag_cdf64[EOB_PLANE_CTXS][CDF_SIZE(EOB_MAX_SYMS - 4)];
