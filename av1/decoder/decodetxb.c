@@ -719,24 +719,12 @@ uint8_t av1_read_coeffs_txb_skip(const AV1_COMMON *const cm,
 static INLINE tran_low_t read_coeff_hidden(aom_reader *r, TX_CLASS tx_class,
                                            const int16_t *scan, int bwl,
                                            uint8_t *levels, int parity,
-                                           base_ph_cdf_arr base_cdf_ph
-#if !CONFIG_COEFF_BR_PH_BYPASS
-                                           ,
-                                           br_cdf_arr br_cdf_ph
-#endif  // !CONFIG_COEFF_BR_PH_BYPASS
-) {
+                                           base_ph_cdf_arr base_cdf_ph) {
   int q_index;
   const int pos = scan[0];
   int ctx_idx = get_base_ctx_ph(levels, pos, bwl, tx_class);
   q_index = aom_read_symbol(r, base_cdf_ph[ctx_idx], 4, ACCT_INFO("q_index"));
 
-#if !CONFIG_COEFF_BR_PH_BYPASS
-  if (q_index > NUM_BASE_LEVELS) {
-    ctx_idx = get_par_br_ctx(levels, pos, bwl, tx_class);
-    aom_cdf_prob *cdf_br = br_cdf_ph[ctx_idx];
-    q_index += read_low_range(r, cdf_br);
-  }
-#endif  // !CONFIG_COEFF_BR_PH_BYPASS
   assert(q_index <= MAX_BASE_BR_RANGE);
   uint8_t level = (q_index << 1) + parity;
   levels[get_padded_idx(pos, bwl)] = level;
@@ -935,12 +923,7 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       }
       if (is_hidden) {
         read_coeff_hidden(r, tx_class, scan, bwl, levels, (sum_abs1 & 1),
-                          ec_ctx->coeff_base_ph_cdf
-#if !CONFIG_COEFF_BR_PH_BYPASS
-                          ,
-                          ec_ctx->coeff_br_ph_cdf
-#endif  // !CONFIG_COEFF_BR_PH_BYPASS
-        );
+                          ec_ctx->coeff_base_ph_cdf);
       } else {
         read_coeffs_reverse(r, tx_class, 0, 0, scan, bwl, levels, base_lf_cdf,
                             br_lf_cdf, plane, base_cdf, br_cdf, base_lf_uv_cdf,
@@ -971,12 +954,7 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
       }
       if (is_hidden) {
         read_coeff_hidden(r, tx_class, scan, bwl, levels, (sum_abs1 & 1),
-                          ec_ctx->coeff_base_ph_cdf
-#if !CONFIG_COEFF_BR_PH_BYPASS
-                          ,
-                          ec_ctx->coeff_br_ph_cdf
-#endif  // !CONFIG_COEFF_BR_PH_BYPASS
-        );
+                          ec_ctx->coeff_base_ph_cdf);
       } else {
         read_coeffs_reverse(r, tx_class, 0, 0, scan, bwl, levels, base_lf_cdf,
                             br_lf_cdf, plane, base_cdf, br_cdf, base_lf_uv_cdf,
@@ -1032,19 +1010,11 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, DecoderCodingBlock *dcb,
         sign = aom_read_bit(r, ACCT_INFO("sign"));
       }
       if (is_hidden && c == 0) {
-#if CONFIG_COEFF_BR_PH_BYPASS
         if (level >= ((NUM_BASE_LEVELS + 1) << 1)) {
           int hr_level = (read_adaptive_hr(xd, r, hr_level_avg >> 1) << 1);
           level += hr_level;
           hr_level_avg = (hr_level_avg + hr_level) >> 1;
         }
-#else
-        if (level >= (MAX_BASE_BR_RANGE << 1)) {
-          int hr_level = (read_adaptive_hr(xd, r, hr_level_avg >> 1) << 1);
-          level += hr_level;
-          hr_level_avg = (hr_level_avg + hr_level) >> 1;
-        }
-#endif  // CONFIG_COEFF_BR_PH_BYPASS
       } else {
         int limits = get_lf_limits(row, col, tx_class, plane);
         level = read_high_range(xd, r, tcq_mode, level, limits, &hr_level_avg

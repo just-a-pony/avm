@@ -180,9 +180,6 @@ typedef struct frame_contexts {
   aom_cdf_prob coeff_base_bob_cdf[TX_SIZES][SIG_COEF_CONTEXTS_BOB][CDF_SIZE(3)];
   aom_cdf_prob coeff_base_ph_cdf[COEFF_BASE_PH_CONTEXTS]
                                 [CDF_SIZE(NUM_BASE_LEVELS + 2)];
-#if !CONFIG_COEFF_BR_PH_BYPASS
-  aom_cdf_prob coeff_br_ph_cdf[COEFF_BR_PH_CONTEXTS][CDF_SIZE(BR_CDF_SIZE)];
-#endif  // !CONFIG_COEFF_BR_PH_BYPASS
   aom_cdf_prob inter_single_mode_cdf[INTER_MODE_CONTEXTS]
                                     [CDF_SIZE(INTER_SINGLE_MODES)];
   aom_cdf_prob inter_warp_mode_cdf[WARPMV_MODE_CONTEXT][CDF_SIZE(2)];

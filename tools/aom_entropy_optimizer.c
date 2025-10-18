@@ -1721,17 +1721,6 @@ int main(int argc, const char **argv) {
                      "av1_default_coeff_base_ph_cdfs[TOKEN_CDF_Q_CTXS][COEFF_"
                      "BASE_PH_CONTEXTS][CDF_SIZE(NUM_BASE_LEVELS + 2)]",
                      1, &total_count, 0, mem_wanted, "Coefficients");
-#if !CONFIG_COEFF_BR_PH_BYPASS
-  cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
-  cts_each_dim[1] = COEFF_BR_PH_CONTEXTS;
-  cts_each_dim[2] = BR_CDF_SIZE;
-  optimize_cdf_table(&fc.coeff_lps_ph_multi[0][0][0], probsfile, 3,
-                     cts_each_dim,
-                     "const aom_cdf_prob "
-                     "av1_default_coeff_br_ph_cdfs[TOKEN_CDF_Q_CTXS][COEFF_BR_"
-                     "PH_CONTEXTS][CDF_SIZE(BR_CDF_SIZE)]",
-                     1, &total_count, 0, mem_wanted, "Coefficients");
-#endif  // !CONFIG_COEFF_BR_PH_BYPASS
 
   cts_each_dim[0] = TOKEN_CDF_Q_CTXS;
   cts_each_dim[1] = TX_SIZES;
