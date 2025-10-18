@@ -288,11 +288,7 @@ typedef struct av1_codec_arg_definitions {
 #if CONFIG_EXT_SEG
   arg_def_t enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   arg_def_t dpb_size;
-#else
-  arg_def_t num_extra_dpb;
-#endif  // CONFIG_CWG_F168_DPB_HLS
   arg_def_t enable_bru;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   arg_def_t disable_loopfilters_across_tiles;

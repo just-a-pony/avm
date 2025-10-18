@@ -242,11 +242,7 @@ struct av1_extracfg {
 #if CONFIG_EXT_SEG
   int enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   int dpb_size;
-#else
-  int num_extra_dpb;
-#endif  // CONFIG_CWG_F168_DPB_HLS
   unsigned int enable_bru;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   unsigned int disable_loopfilters_across_tiles;
@@ -579,11 +575,7 @@ static struct av1_extracfg default_extra_cfg = {
 #if CONFIG_EXT_SEG
   0,    // enable_ext_seg
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   8,    // dpb_size
-#else
-  0,    // num_extra_dpb
-#endif  // CONFIG_CWG_F168_DPB_HLS
   0,    // enable_bru
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   0,
@@ -783,12 +775,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK_HI(cfg, frame_hash_metadata, 3);
   RANGE_CHECK_HI(cfg, frame_hash_per_plane, 1);
 
-#if CONFIG_CWG_F168_DPB_HLS
   RANGE_CHECK(extra_cfg, dpb_size, 1, 16);
-#else
-  RANGE_CHECK(extra_cfg, num_extra_dpb, 0, 8);
-#endif  // CONFIG_CWG_F168_DPB_HLS
-
   RANGE_CHECK(extra_cfg, color_primaries, AOM_CICP_CP_BT_709,
               AOM_CICP_CP_EBU_3213);  // Need to check range more precisely to
                                       // check for reserved values?
@@ -843,11 +830,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
     if (extra_cfg->enable_chroma_deltaq)
       ERROR("Only --enable_chroma_deltaq=0 can be used with --lossless=1.");
   }
-#if CONFIG_CWG_F168_DPB_HLS
   RANGE_CHECK(extra_cfg, max_reference_frames, 1, 7);
-#else
-  RANGE_CHECK(extra_cfg, max_reference_frames, 3, 7);
-#endif  // CONFIG_CWG_F168_DPB_HLS
   RANGE_CHECK(extra_cfg, reduced_ref_frame_mvs_mode, 0, 1);
   RANGE_CHECK(extra_cfg, enable_reduced_reference_set, 0, 1);
   RANGE_CHECK(extra_cfg, explicit_ref_frame_map, 0, 1);
@@ -1056,11 +1039,7 @@ static void update_encoder_config(cfg_options_t *cfg,
 #if CONFIG_EXT_SEG
   cfg->enable_ext_seg = extra_cfg->enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   cfg->dpb_size = extra_cfg->dpb_size;
-#else
-  cfg->num_extra_dpb = extra_cfg->num_extra_dpb;
-#endif
 }
 
 static void update_default_encoder_config(const cfg_options_t *cfg,
@@ -1179,11 +1158,7 @@ static void update_default_encoder_config(const cfg_options_t *cfg,
 #if CONFIG_EXT_SEG
   extra_cfg->enable_ext_seg = cfg->enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   extra_cfg->dpb_size = cfg->dpb_size;
-#else
-  extra_cfg->num_extra_dpb = cfg->num_extra_dpb;
-#endif
 }
 
 static double convert_qp_offset(int qp, int qp_offset, int bit_depth) {
@@ -1510,11 +1485,7 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
 #if CONFIG_EXT_SEG
   tool_cfg->enable_ext_seg = extra_cfg->enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   tool_cfg->dpb_size = extra_cfg->dpb_size;
-#else
-  tool_cfg->num_extra_dpb = extra_cfg->num_extra_dpb;
-#endif  // CONFIG_CWG_F168_DPB_HLS
 
   // Set Quantization related configuration.
   q_cfg->using_qm = extra_cfg->enable_qm;
@@ -1683,13 +1654,11 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   }
 
   // Set reference frame related configuration.
-#if CONFIG_CWG_F168_DPB_HLS
   // If max_reference_frames is set to be larger than dpb_size, set
   // max_reference_frames to dpb_size.
   if (extra_cfg->max_reference_frames > extra_cfg->dpb_size) {
     extra_cfg->max_reference_frames = extra_cfg->dpb_size;
   }
-#endif
   oxcf->ref_frm_cfg.max_reference_frames = extra_cfg->max_reference_frames;
   oxcf->ref_frm_cfg.enable_reduced_reference_set =
       extra_cfg->enable_reduced_reference_set;
@@ -4437,15 +4406,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     extra_cfg.enable_ext_seg = arg_parse_int_helper(&arg, err_string);
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.dpb_size, argv,
                               err_string)) {
     extra_cfg.dpb_size = arg_parse_int_helper(&arg, err_string);
-#else
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.num_extra_dpb, argv,
-                              err_string)) {
-    extra_cfg.num_extra_dpb = arg_parse_int_helper(&arg, err_string);
-#endif  // CONFIG_CWG_F168_DPB_HLS
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_bru, argv,
                               err_string)) {
     extra_cfg.enable_bru = arg_parse_int_helper(&arg, err_string);
@@ -4765,11 +4728,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = { {
 #if CONFIG_EXT_SEG
         0,  // enable_ext_seg
 #endif      // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
         8,  // dpb_size
-#else
-        0,  // num_extra_dpb
-#endif      // CONFIG_CWG_F168_DPB_HLS
         0,  // enable_bru
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
         0,  // disable_loopfilters_across_tiles

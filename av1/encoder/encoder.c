@@ -423,9 +423,6 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #endif  // !CONFIG_CWG_F243_REMOVE_ENABLE_ORDER_HINT
       ;
 #endif  // !CONFIG_F253_REMOVE_OUTPUTFLAG
-#if !CONFIG_CWG_F168_DPB_HLS
-  seq->max_reference_frames = oxcf->ref_frm_cfg.max_reference_frames;
-#endif  // !CONFIG_CWG_F168_DPB_HLS
   if (oxcf->tool_cfg.max_drl_refmvs == 0) {
     seq->def_max_drl_bits = DEF_MAX_DRL_REFMVS - 1;
   } else {
@@ -647,16 +644,8 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
 #if CONFIG_EXT_SEG
   seq->enable_ext_seg = tool_cfg->enable_ext_seg;
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   seq->ref_frames = tool_cfg->dpb_size;
   seq->ref_frames_log2 = aom_ceil_log2(seq->ref_frames);
-#else
-  seq->num_extra_dpb = tool_cfg->num_extra_dpb;
-  seq->ref_frames = seq->num_extra_dpb ? REGULAR_REF_FRAMES + seq->num_extra_dpb
-                                       : REGULAR_REF_FRAMES;
-  seq->ref_frames_log2 =
-      seq->num_extra_dpb ? REF_FRAMES_LOG2 + 1 : REF_FRAMES_LOG2;
-#endif  // CONFIG_CWG_F168_DPB_HLS
   const QuantizationCfg *const q_cfg = &oxcf->q_cfg;
   seq->user_defined_qmatrix = q_cfg->using_qm && q_cfg->user_defined_qmatrix;
 #if CONFIG_QM_DEBUG

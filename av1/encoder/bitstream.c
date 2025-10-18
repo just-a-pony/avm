@@ -5869,21 +5869,12 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
   aom_wb_write_bit(wb, seq_params->enable_frame_output_order);
 #endif  // !CONFIG_F253_REMOVE_OUTPUTFLAG
 
-#if CONFIG_CWG_F168_DPB_HLS
   const int signal_dpb_explicit =
       seq_params->ref_frames != 8;  // DPB size 8 is the default value
   aom_wb_write_bit(wb, signal_dpb_explicit);
   if (signal_dpb_explicit) {
     aom_wb_write_literal(wb, seq_params->ref_frames - 1, 4);
   }
-#else
-  // A bit is sent here to indicate if the max number of references is 7. If
-  // this bit is 0, then two more bits are sent to indicate the exact number
-  // of references allowed (range: 3 to 6).
-  aom_wb_write_bit(wb, seq_params->max_reference_frames < 7);
-  if (seq_params->max_reference_frames < 7)
-    aom_wb_write_literal(wb, seq_params->max_reference_frames - 3, 2);
-#endif  // CONFIG_CWG_F168_DPB_HLS
 
   aom_wb_write_primitive_quniform(
       wb, MAX_MAX_DRL_BITS - MIN_MAX_DRL_BITS + 1,
@@ -6820,18 +6811,10 @@ static AOM_INLINE void write_uncompressed_header_obu
         aom_wb_write_bit(wb, explicit_ref_frame_map);
 #endif
       if (explicit_ref_frame_map) {
-#if CONFIG_CWG_F168_DPB_HLS
         const int max_num_ref_frames =
             AOMMIN(seq_params->ref_frames, INTER_REFS_PER_FRAME);
-#endif  // CONFIG_CWG_F168_DPB_HLS
         if (cm->ref_frames_info.num_total_refs < 0 ||
-            cm->ref_frames_info.num_total_refs >
-#if CONFIG_CWG_F168_DPB_HLS
-                max_num_ref_frames
-#else
-                seq_params->max_reference_frames
-#endif  // CONFIG_CWG_F168_DPB_HLS
-        )
+            cm->ref_frames_info.num_total_refs > max_num_ref_frames)
           aom_internal_error(&cpi->common.error, AOM_CODEC_ERROR,
                              "Invalid num_total_refs");
         aom_wb_write_literal(wb, cm->ref_frames_info.num_total_refs,

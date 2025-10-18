@@ -719,15 +719,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .gf_max_pyr_height = ARG_DEF(
       NULL, "gf-max-pyr-height", 1,
       "maximum height for GF group pyramid structure (0 to 5 (default))"),
-#if CONFIG_CWG_F168_DPB_HLS
   .max_reference_frames = ARG_DEF(NULL, "max-reference-frames", 1,
                                   "maximum number of reference frames allowed "
                                   "per frame (1 to 7 (default))"),
-#else
-  .max_reference_frames = ARG_DEF(NULL, "max-reference-frames", 1,
-                                  "maximum number of reference frames allowed "
-                                  "per frame (3 to 7 (default))"),
-#endif  // CONFIG_CWG_F168_DPB_HLS
   .reduced_reference_set =
       ARG_DEF(NULL, "reduced-reference-set", 1,
               "Use reduced set of single and compound references (0: off "
@@ -864,13 +858,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                             "Enable extended # of segments "
                             "(0: false (default), 1: true)"),
 #endif  // CONFIG_EXT_SEG
-#if CONFIG_CWG_F168_DPB_HLS
   .dpb_size =
       ARG_DEF(NULL, "dpb-size", 1, "number of dpb slots (1-16), default is 8"),
-#else
-  .num_extra_dpb = ARG_DEF(NULL, "num-extra-dpb", 1,
-                           "extra dpb number (0..8), default is 0"),
-#endif  // CONFIG_CWG_F168_DPB_HLS
   .enable_bru = ARG_DEF(NULL, "enable-bru", 1,
                         "Enable Backward Reference Update "
                         "(0: false (default), 1: true with regular decoder, 2: "

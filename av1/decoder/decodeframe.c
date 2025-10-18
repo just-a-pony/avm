@@ -7304,7 +7304,6 @@ void av1_read_sequence_header_beyond_av1(
   seq_params->enable_frame_output_order = aom_rb_read_bit(rb);
 #endif  // !CONFIG_F253_REMOVE_OUTPUTFLAG
 
-#if CONFIG_CWG_F168_DPB_HLS
   if (aom_rb_read_bit(rb)) {
     seq_params->ref_frames =
         aom_rb_read_literal(rb, 4) + 1;  // explicitly signaled DPB size
@@ -7312,30 +7311,6 @@ void av1_read_sequence_header_beyond_av1(
     seq_params->ref_frames = 8;  // default DPB size: 8
   }
   seq_params->ref_frames_log2 = aom_ceil_log2(seq_params->ref_frames);
-#else
-  // A bit is sent here to indicate if the max number of references is 7. If
-  // this bit is 0, then two more bits are sent to indicate the exact number
-  // of references allowed (range: 3 to 6).
-  if (aom_rb_read_bit(rb)) {
-    seq_params->max_reference_frames = 3 + aom_rb_read_literal(rb, 2);
-  } else {
-    seq_params->max_reference_frames = 7;
-  }
-  const bool use_extra_dpb = aom_rb_read_bit(rb);
-
-  if (use_extra_dpb) {
-    seq_params->num_extra_dpb = 1 + aom_rb_read_literal(rb, 3);
-  } else {
-    seq_params->num_extra_dpb = 0;
-  }
-
-  seq_params->ref_frames = seq_params->num_extra_dpb
-                               ? REGULAR_REF_FRAMES + seq_params->num_extra_dpb
-                               : REGULAR_REF_FRAMES;
-
-  seq_params->ref_frames_log2 =
-      seq_params->num_extra_dpb ? REF_FRAMES_LOG2 + 1 : REF_FRAMES_LOG2;
-#endif  // CONFIG_CWG_F168_DPB_HLS
 
   seq_params->def_max_drl_bits =
       aom_rb_read_primitive_quniform(rb,
@@ -9150,21 +9125,14 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       if (explicit_ref_frame_map) {
         cm->ref_frames_info.num_total_refs =
             aom_rb_read_literal(rb, MAX_REFS_PER_FRAME_LOG2);
-#if CONFIG_CWG_F168_DPB_HLS
         const int max_num_ref_frames =
             AOMMIN(seq_params->ref_frames, INTER_REFS_PER_FRAME);
-#endif  // CONFIG_CWG_F168_DPB_HLS
         // Check whether num_total_refs read is valid
 #if CONFIG_RANDOM_ACCESS_SWITCH_FRAME
         if (current_frame->frame_type != S_FRAME)
 #endif  // CONFIG_RANDOM_ACCESS_SWITCH_FRAME
           if (cm->ref_frames_info.num_total_refs < 0 ||
-              cm->ref_frames_info.num_total_refs >
-#if CONFIG_CWG_F168_DPB_HLS
-                  max_num_ref_frames)
-#else
-                  seq_params->max_reference_frames)
-#endif  // CONFIG_CWG_F168_DPB_HLS
+              cm->ref_frames_info.num_total_refs > max_num_ref_frames)
             aom_internal_error(&cm->error, AOM_CODEC_ERROR,
                                "Invalid num_total_refs");
         for (int i = 0; i < cm->ref_frames_info.num_total_refs; ++i) {

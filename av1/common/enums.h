@@ -1137,12 +1137,6 @@ typedef uint8_t INTRA_REGION_CONTEXT;
 // log2(INTER_REFS_PER_FRAME + 1)
 #define MAX_REFS_PER_FRAME_LOG2 3
 
-#if !CONFIG_CWG_F168_DPB_HLS
-#define REGULAR_REF_FRAMES \
-  (INTER_REFS_PER_FRAME +  \
-   1)   //  the original size of the decoded picture buffers
-#endif  //  !CONFIG_CWG_F168_DPB_HLS
-
 #define REF_FRAMES 16
 
 // NOTE: A limited number of unidirectional reference pairs can be signalled for
@@ -1164,10 +1158,6 @@ typedef uint8_t INTRA_REGION_CONTEXT;
 #define INTRA_FRAME_INDEX INTER_REFS_PER_FRAME
 #define NONE_FRAME INVALID_IDX
 #define AOM_REFFRAME_ALL ((1 << INTER_REFS_PER_FRAME) - 1)
-
-#if !CONFIG_CWG_F168_DPB_HLS
-#define REF_FRAMES_LOG2 3
-#endif  //  !CONFIG_CWG_F168_DPB_HLS
 
 // REF_FRAMES for the cm->ref_frame_map array, 1 scratch frame for the new
 // frame in cm->cur_frame, INTER_REFS_PER_FRAME for scaled references on the

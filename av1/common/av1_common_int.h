@@ -927,21 +927,15 @@ typedef struct SequenceHeader {
   int enable_frame_output_order;  // Enable frame output order derivation based
                                   // on order hint value
 #endif                            // !CONFIG_F253_REMOVE_OUTPUTFLAG
-#if !CONFIG_CWG_F168_DPB_HLS
-  int max_reference_frames;              // Number of reference frames allowed
-#endif                                   // !CONFIG_CWG_F168_DPB_HLS
-  int def_max_drl_bits;                  // default max drl bits for MVs
+  int def_max_drl_bits;           // default max drl bits for MVs
   uint8_t allow_frame_max_drl_bits;      // whether to allow frame level update
   int def_max_bvp_drl_bits;              // default max ibc drl bits for MVs
   uint8_t allow_frame_max_bvp_drl_bits;  // whether to allow frame level update
   int num_same_ref_compound;  // Number of the allowed same reference frames for
                               // the compound mode
-#if !CONFIG_CWG_F168_DPB_HLS
-  int num_extra_dpb;    // number of extra decoded picture buffers
-#endif                  // !CONFIG_CWG_F168_DPB_HLS
-  int ref_frames;       // number of all decoded picture buffers
-  int ref_frames_log2;  // ceiling of the log2 value of the number of all
-                        // decoded picture buffers (ref_frames)
+  int ref_frames;             // number of all decoded picture buffers
+  int ref_frames_log2;        // ceiling of the log2 value of the number of all
+                              // decoded picture buffers (ref_frames)
 
   OrderHintInfo order_hint_info;
 
