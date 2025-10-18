@@ -8172,16 +8172,18 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
 #if CONFIG_CWG_E242_SEQ_HDR_ID
   if (pbi->seq_header_count == 0) {
+#else
+  if (!pbi->sequence_header_ready) {
+#endif  // CONFIG_CWG_E242_SEQ_HDR_ID
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                        "No sequence header");
   }
-#endif  // CONFIG_CWG_E242_SEQ_HDR_ID
 
 #if CONFIG_CWG_F317
   cm->bridge_frame_info.bridge_frame_ref_idx = INVALID_IDX;
   if (cm->bridge_frame_info.is_bridge_frame) {
 #if CONFIG_CWG_E242_SEQ_HDR_ID
-    // TODO(wtc): read seq_header_id_in_frame_header from the bitstream.
+    // TODO(issue #988): read seq_header_id_in_frame_header from the bitstream.
     // For now, always use the first sequence header.
     pbi->active_seq = &pbi->seq_list[0];
     cm->seq_params = *pbi->active_seq;
@@ -8205,8 +8207,15 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     if (cm->cur_mfh_id == 0) {
       uint32_t seq_header_id_in_frame_header = aom_rb_read_uvlc(rb);
 #if CONFIG_CWG_E242_SEQ_HDR_ID
+      if (seq_header_id_in_frame_header >= MAX_SEQ_NUM) {
+        aom_internal_error(
+            &cm->error, AOM_CODEC_CORRUPT_FRAME,
+            "Unsupported Sequence Header ID in uncompressed_header()");
+      }
+      cm->mfh_params[cm->cur_mfh_id].mfh_seq_header_id =
+          (int)seq_header_id_in_frame_header;
       bool seq_header_found = false;
-      int cm_seq_header_id = (int)seq_header_id_in_frame_header;
+      int cm_seq_header_id = cm->mfh_params[cm->cur_mfh_id].mfh_seq_header_id;
       for (int i = 0; i < pbi->seq_header_count; i++) {
         if (pbi->seq_list[i].seq_header_id == cm_seq_header_id) {
           pbi->active_seq = &pbi->seq_list[i];
@@ -8245,17 +8254,8 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                            cm->cur_mfh_id);
       }
 #if CONFIG_CWG_E242_SEQ_HDR_ID
-      if (pbi->seq_header_count == 0) {
-        aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
-                           "No sequence header");
-      }
       bool seq_header_found = false;
-      int cm_seq_header_id =
-#if CONFIG_MULTI_FRAME_HEADER
-          cm->mfh_params[cm->cur_mfh_id].mfh_seq_header_id;
-#else
-          0;
-#endif
+      int cm_seq_header_id = cm->mfh_params[cm->cur_mfh_id].mfh_seq_header_id;
       for (int i = 0; i < pbi->seq_header_count; i++) {
         if (pbi->seq_list[i].seq_header_id == cm_seq_header_id) {
           pbi->active_seq = &pbi->seq_list[i];

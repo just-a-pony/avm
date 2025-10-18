@@ -450,7 +450,6 @@ typedef struct AV1Decoder {
    */
   struct SequenceHeader *active_seq;
 #endif  // CONFIG_CWG_E242_SEQ_HDR_ID
-
 } AV1Decoder;
 
 // Returns 0 on success. Sets pbi->common.error.error_code to a nonzero error

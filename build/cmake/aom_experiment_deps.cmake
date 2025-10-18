@@ -68,4 +68,8 @@ macro(fix_experiment_configs)
                            CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES)
   endif()
 
+  if(CONFIG_CWG_E242_SEQ_HDR_ID)
+    change_config_and_warn(CONFIG_MULTI_FRAME_HEADER 1
+                           CONFIG_CWG_E242_SEQ_HDR_ID)
+  endif()
 endmacro()
