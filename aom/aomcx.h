@@ -1016,15 +1016,8 @@ enum aome_enc_control_id {
    */
   AV1E_SET_DELTALF_MODE = 108,
 
-  /*!\brief Codec control function to set the single tile decoding mode,
-   * unsigned int parameter
-   *
-   * \attention Only applicable if large scale tiling is on.
-   *
-   * - 0 = single tile decoding is off
-   * - 1 = single tile decoding is on (default)
+  /*!\brief Value 109 is unused.
    */
-  AV1E_SET_SINGLE_TILE_DECODING = 109,
 
   /*!\brief Codec control function to enable the extreme motion vector unit
    * test, unsigned int parameter
@@ -1681,9 +1674,6 @@ AOM_CTRL_USE_TYPE(AV1E_GET_FRAME_INFO, void *)
 
 AOM_CTRL_USE_TYPE(AV1E_ENABLE_SUBGOP_STATS, unsigned int)
 #define AOM_CTRL_AV1E_ENABLE_SUBGOP_INFO
-
-AOM_CTRL_USE_TYPE(AV1E_SET_SINGLE_TILE_DECODING, unsigned int)
-#define AOM_CTRL_AV1E_SET_SINGLE_TILE_DECODING
 
 AOM_CTRL_USE_TYPE(AV1E_ENABLE_MOTION_VECTOR_UNIT_TEST, unsigned int)
 #define AOM_CTRL_AV1E_ENABLE_MOTION_VECTOR_UNIT_TEST

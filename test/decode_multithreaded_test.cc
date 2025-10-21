@@ -48,17 +48,6 @@ class AV1DecodeMultiThreadedTest
       multi_thread_dec_[i] = codec_->CreateDecoder(cfg, 0);
       multi_thread_dec_[i]->Control(AV1D_SET_ROW_MT, row_mt_);
     }
-
-    if (single_thread_dec_->IsAV1()) {
-      single_thread_dec_->Control(AV1_SET_DECODE_TILE_ROW, -1);
-      single_thread_dec_->Control(AV1_SET_DECODE_TILE_COL, -1);
-    }
-    for (int i = 0; i < kNumMultiThreadDecoders; ++i) {
-      if (multi_thread_dec_[i]->IsAV1()) {
-        multi_thread_dec_[i]->Control(AV1_SET_DECODE_TILE_ROW, -1);
-        multi_thread_dec_[i]->Control(AV1_SET_DECODE_TILE_COL, -1);
-      }
-    }
   }
 
   virtual ~AV1DecodeMultiThreadedTest() {

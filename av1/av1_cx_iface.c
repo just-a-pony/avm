@@ -105,7 +105,6 @@ struct av1_extracfg {
   int render_width;
   int render_height;
   aom_superblock_size_t superblock_size;
-  unsigned int single_tile_decoding;
   int error_resilient_mode;
   int s_frame_mode;
 
@@ -446,7 +445,6 @@ static struct av1_extracfg default_extra_cfg = {
   0,                            // render width
   0,                            // render height
   AOM_SUPERBLOCK_SIZE_DYNAMIC,  // superblock_size
-  1,                            // this depends on large_scale_tile.
   0,                            // error_resilient_mode off by default.
   0,                            // s_frame_mode off by default.
   0,                            // film_grain_test_vector
@@ -734,7 +732,6 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK(extra_cfg, superblock_size, AOM_SUPERBLOCK_SIZE_64X64,
               AOM_SUPERBLOCK_SIZE_DYNAMIC);
   RANGE_CHECK_HI(cfg, large_scale_tile, 1);
-  RANGE_CHECK_HI(extra_cfg, single_tile_decoding, 1);
 
   RANGE_CHECK_HI(extra_cfg, row_mt, 1);
 
@@ -1666,8 +1663,6 @@ static aom_codec_err_t set_encoder_config(AV1EncoderConfig *oxcf,
   if (cfg->large_scale_tile) tile_cfg->num_tile_groups = 1;
   tile_cfg->mtu = extra_cfg->mtu_size;
   tile_cfg->enable_large_scale_tile = cfg->large_scale_tile;
-  tile_cfg->enable_single_tile_decoding =
-      (tile_cfg->enable_large_scale_tile) ? extra_cfg->single_tile_decoding : 0;
   tile_cfg->tile_columns = extra_cfg->tile_columns;
   tile_cfg->tile_rows = extra_cfg->tile_rows;
   tile_cfg->tile_width_count = AOMMIN(cfg->tile_width_count, MAX_TILE_COLS);
@@ -2572,13 +2567,6 @@ static aom_codec_err_t ctrl_set_frame_parallel_decoding_mode(
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   extra_cfg.frame_parallel_decoding_mode =
       CAST(AV1E_SET_FRAME_PARALLEL_DECODING, args);
-  return update_extra_cfg(ctx, &extra_cfg);
-}
-
-static aom_codec_err_t ctrl_set_single_tile_decoding(aom_codec_alg_priv_t *ctx,
-                                                     va_list args) {
-  struct av1_extracfg extra_cfg = ctx->extra_cfg;
-  extra_cfg.single_tile_decoding = CAST(AV1E_SET_SINGLE_TILE_DECODING, args);
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
@@ -4605,7 +4593,6 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_RENDER_SIZE, ctrl_set_render_size },
 #endif  // CONFIG_CWG_F248_RENDER_SIZE
   { AV1E_SET_SUPERBLOCK_SIZE, ctrl_set_superblock_size },
-  { AV1E_SET_SINGLE_TILE_DECODING, ctrl_set_single_tile_decoding },
   { AV1E_SET_VMAF_MODEL_PATH, ctrl_set_vmaf_model_path },
   { AV1E_SET_SUBGOP_CONFIG_STR, ctrl_set_subgop_config_str },
   { AV1E_SET_SUBGOP_CONFIG_PATH, ctrl_set_subgop_config_path },

@@ -613,8 +613,6 @@ typedef struct {
   int tile_heights[MAX_TILE_ROWS];
   // Indicates if large scale tile coding should be used.
   bool enable_large_scale_tile;
-  // Indicates if single tile decoding mode should be enabled.
-  bool enable_single_tile_decoding;
 } TileConfig;
 
 typedef struct {

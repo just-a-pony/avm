@@ -52,8 +52,6 @@ struct aom_codec_alg_priv {
   int skip_loop_filter;
   int skip_film_grain;
   int bru_opt_mode;
-  int decode_tile_row;
-  int decode_tile_col;
   unsigned int tile_mode;
   unsigned int row_mt;
   EXTERNAL_REFERENCES ext_refs;
@@ -115,8 +113,6 @@ static aom_codec_err_t decoder_init(aom_codec_ctx_t *ctx) {
     // 0 is for normal tile coding mode, and 1 is for large scale tile coding
     // mode(refer to lightfield example).
     priv->tile_mode = 0;
-    priv->decode_tile_row = -1;
-    priv->decode_tile_col = -1;
     init_ibp_info(ctx->priv->ibp_directional_weights);
   }
 
@@ -725,8 +721,8 @@ static aom_codec_err_t init_decoder(aom_codec_alg_priv_t *ctx) {
   frame_worker_data->pbi->inv_tile_order = ctx->invert_tile_order;
   frame_worker_data->pbi->common.tiles.large_scale = ctx->tile_mode;
   frame_worker_data->pbi->is_annexb = ctx->is_annexb;
-  frame_worker_data->pbi->dec_tile_row = ctx->decode_tile_row;
-  frame_worker_data->pbi->dec_tile_col = ctx->decode_tile_col;
+  frame_worker_data->pbi->dec_tile_row = -1;
+  frame_worker_data->pbi->dec_tile_col = -1;
   frame_worker_data->pbi->operating_point = ctx->operating_point;
   frame_worker_data->pbi->output_all_layers = ctx->output_all_layers;
   frame_worker_data->pbi->row_mt = ctx->row_mt;
@@ -791,8 +787,8 @@ static aom_codec_err_t decode_one(aom_codec_alg_priv_t *ctx,
   frame_worker_data->received_frame = 1;
 
   frame_worker_data->pbi->common.tiles.large_scale = ctx->tile_mode;
-  frame_worker_data->pbi->dec_tile_row = ctx->decode_tile_row;
-  frame_worker_data->pbi->dec_tile_col = ctx->decode_tile_col;
+  frame_worker_data->pbi->dec_tile_row = -1;
+  frame_worker_data->pbi->dec_tile_col = -1;
   frame_worker_data->pbi->row_mt = ctx->row_mt;
   frame_worker_data->pbi->ext_refs = ctx->ext_refs;
 
@@ -1782,17 +1778,6 @@ static aom_codec_err_t ctrl_get_accounting(aom_codec_alg_priv_t *ctx,
   return AOM_CODEC_ERROR;
 #endif
 }
-static aom_codec_err_t ctrl_set_decode_tile_row(aom_codec_alg_priv_t *ctx,
-                                                va_list args) {
-  ctx->decode_tile_row = va_arg(args, int);
-  return AOM_CODEC_OK;
-}
-
-static aom_codec_err_t ctrl_set_decode_tile_col(aom_codec_alg_priv_t *ctx,
-                                                va_list args) {
-  ctx->decode_tile_col = va_arg(args, int);
-  return AOM_CODEC_OK;
-}
 
 static aom_codec_err_t ctrl_set_tile_mode(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
@@ -1848,8 +1833,6 @@ static aom_codec_ctrl_fn_map_t decoder_ctrl_maps[] = {
   { AV1_INVERT_TILE_DECODE_ORDER, ctrl_set_invert_tile_order },
   { AV1_SET_BYTE_ALIGNMENT, ctrl_set_byte_alignment },
   { AV1_SET_SKIP_LOOP_FILTER, ctrl_set_skip_loop_filter },
-  { AV1_SET_DECODE_TILE_ROW, ctrl_set_decode_tile_row },
-  { AV1_SET_DECODE_TILE_COL, ctrl_set_decode_tile_col },
   { AV1_SET_TILE_MODE, ctrl_set_tile_mode },
   { AV1D_SET_IS_ANNEXB, ctrl_set_is_annexb },
   { AV1D_SET_OPERATING_POINT, ctrl_set_operating_point },

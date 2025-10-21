@@ -218,8 +218,7 @@ void av1_alloc_cdef_buffers(AV1_COMMON *const cm,
       (cm->mi_params.mi_rows + MI_SIZE_64X64 - 1) / MI_SIZE_64X64;
   const int is_num_workers_changed =
       cdef_info->allocated_num_workers != num_workers;
-  const int is_cdef_enabled =
-      cm->seq_params.enable_cdef && !cm->tiles.single_tile_decoding;
+  const int is_cdef_enabled = cm->seq_params.enable_cdef;
   // num-bufs=3 represents ping-pong buffers for top linebuf,
   // followed by bottom linebuf.
   // ping-pong is to avoid top linebuf over-write by consecutive row.

@@ -1834,13 +1834,6 @@ static void initialize_encoder(struct stream_state *stream,
                                     stream->config.cfg.save_as_annexb);
       ctx_exit_on_error(&stream->decoder, "Failed to set is_annexb");
 
-      AOM_CODEC_CONTROL_TYPECHECKED(&stream->decoder, AV1_SET_DECODE_TILE_ROW,
-                                    -1);
-      ctx_exit_on_error(&stream->decoder, "Failed to set decode_tile_row");
-
-      AOM_CODEC_CONTROL_TYPECHECKED(&stream->decoder, AV1_SET_DECODE_TILE_COL,
-                                    -1);
-      ctx_exit_on_error(&stream->decoder, "Failed to set decode_tile_col");
       int bru_opt_mode;
       AOM_CODEC_CONTROL_TYPECHECKED(&stream->encoder, AV1E_GET_ENABLE_BRU,
                                     &bru_opt_mode);

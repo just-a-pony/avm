@@ -4518,33 +4518,6 @@ static AOM_INLINE void read_tile_info_max_tile(
   av1_calculate_tile_rows(tiles);
 }
 
-void av1_set_single_tile_decoding_mode(AV1_COMMON *const cm) {
-  cm->tiles.single_tile_decoding = 0;
-  if (cm->tiles.large_scale) {
-    struct loopfilter *lf = &cm->lf;
-    RestorationInfo *const rst_info = cm->rst_info;
-    const CdefInfo *const cdef_info = &cm->cdef_info;
-    const GdfInfo *const gdf_info = &cm->gdf_info;
-
-    // Figure out single_tile_decoding by loopfilter_level.
-    const int no_loopfilter = !(lf->filter_level[0] || lf->filter_level[1]);
-    const int no_cdef = cdef_info->nb_cdef_strengths == 1 &&
-                        cdef_info->cdef_strengths[0] == 0 &&
-                        cdef_info->cdef_uv_strengths[0] == 0;
-    const int no_restoration =
-        rst_info[0].frame_restoration_type == RESTORE_NONE &&
-        rst_info[1].frame_restoration_type == RESTORE_NONE &&
-        rst_info[2].frame_restoration_type == RESTORE_NONE;
-    const int no_gdf = gdf_info->gdf_mode == 0;
-    assert(IMPLIES(cm->features.coded_lossless,
-                   no_loopfilter && no_cdef && no_gdf));
-    assert(IMPLIES(cm->features.all_lossless, no_restoration));
-    cm->tiles.single_tile_decoding =
-        no_loopfilter && no_cdef && no_restoration && no_gdf;
-    ;
-  }
-}
-
 static AOM_INLINE void read_tile_info(AV1Decoder *const pbi,
                                       struct aom_read_bit_buffer *const rb) {
   AV1_COMMON *const cm = &pbi->common;
@@ -10052,8 +10025,7 @@ int32_t av1_read_tilegroup_header(
                                        cm->show_frame);
 #endif  // CONFIG_FRAME_OUTPUT_ORDER_WITH_LAYER_ID
 #endif
-    if (!cm->tiles.single_tile_decoding &&
-        (pbi->dec_tile_row >= 0 || pbi->dec_tile_col >= 0)) {
+    if (pbi->dec_tile_row >= 0 || pbi->dec_tile_col >= 0) {
       pbi->dec_tile_row = -1;
       pbi->dec_tile_col = -1;
     }
@@ -10268,8 +10240,7 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
 
   if (trailing_bits_present) av1_check_trailing_bits(pbi, rb);
 
-  if (!cm->tiles.single_tile_decoding &&
-      (pbi->dec_tile_row >= 0 || pbi->dec_tile_col >= 0)) {
+  if (pbi->dec_tile_row >= 0 || pbi->dec_tile_col >= 0) {
     pbi->dec_tile_row = -1;
     pbi->dec_tile_col = -1;
   }
@@ -10544,7 +10515,7 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
     }
   }
 
-  if (!cm->bru.frame_inactive_flag && !tiles->single_tile_decoding) {
+  if (!cm->bru.frame_inactive_flag) {
     if (cm->lf.filter_level[0] || cm->lf.filter_level[1]) {
       if (pbi->num_workers > 1) {
         av1_loop_filter_frame_mt(&cm->cur_frame->buf, cm, &pbi->dcb.xd, 0,

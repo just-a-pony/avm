@@ -36,10 +36,6 @@ class AV1SBMultipassTestLarge
     cfg.w = 320;
     cfg.h = 240;
     decoder_ = codec_->CreateDecoder(cfg, 0);
-    if (decoder_->IsAV1()) {
-      decoder_->Control(AV1_SET_DECODE_TILE_ROW, -1);
-      decoder_->Control(AV1_SET_DECODE_TILE_COL, -1);
-    }
 
     size_enc_.clear();
     md5_dec_.clear();

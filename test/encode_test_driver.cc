@@ -188,14 +188,6 @@ void EncoderTest::RunLoop(VideoSource *video) {
 
     std::unique_ptr<Decoder> decoder(
         codec_->CreateDecoder(dec_cfg, 0 /* flags */));
-#if CONFIG_AV1_DECODER
-    if (decoder->IsAV1()) {
-      // Set dec_cfg.tile_row = -1 and dec_cfg.tile_col = -1 so that the whole
-      // frame is decoded.
-      decoder->Control(AV1_SET_DECODE_TILE_ROW, -1);
-      decoder->Control(AV1_SET_DECODE_TILE_COL, -1);
-    }
-#endif
 
     number_spatial_layers_ = GetNumSpatialLayers();
 

@@ -38,13 +38,6 @@ class TileIndependenceTest
     fw_dec_ = codec_->CreateDecoder(cfg, 0);
     inv_dec_ = codec_->CreateDecoder(cfg, 0);
     inv_dec_->Control(AV1_INVERT_TILE_DECODE_ORDER, 1);
-
-    if (fw_dec_->IsAV1() && inv_dec_->IsAV1()) {
-      fw_dec_->Control(AV1_SET_DECODE_TILE_ROW, -1);
-      fw_dec_->Control(AV1_SET_DECODE_TILE_COL, -1);
-      inv_dec_->Control(AV1_SET_DECODE_TILE_ROW, -1);
-      inv_dec_->Control(AV1_SET_DECODE_TILE_COL, -1);
-    }
   }
 
   virtual ~TileIndependenceTest() {

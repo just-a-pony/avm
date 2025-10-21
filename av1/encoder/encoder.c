@@ -4275,7 +4275,6 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
   cm->cur_frame->frame_type = current_frame->frame_type;
 
   cm->tiles.large_scale = tile_cfg->enable_large_scale_tile;
-  cm->tiles.single_tile_decoding = tile_cfg->enable_single_tile_decoding;
 
   features->allow_ref_frame_mvs &= frame_might_allow_ref_frame_mvs(cm);
   // features->allow_ref_frame_mvs needs to be written into the frame header

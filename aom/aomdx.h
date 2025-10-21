@@ -283,17 +283,6 @@ enum aom_dec_control_id {
    */
   AOMD_GET_LAST_QUANTIZER,
 
-  /*!\brief Codec control function to set the range of tile decoding, int
-   * parameter
-   *
-   * A value that is greater and equal to zero indicates only the specific
-   * row/column is decoded. A value that is -1 indicates the whole row/column
-   * is decoded. A special case is both values are -1 that means the whole
-   * frame is decoded.
-   */
-  AV1_SET_DECODE_TILE_ROW,
-  AV1_SET_DECODE_TILE_COL,
-
   /*!\brief Codec control function to set the tile coding mode, int parameter
    *
    * - 0 = tiles are coded in normal tile mode
@@ -505,12 +494,6 @@ AOM_CTRL_USE_TYPE(AV1_INVERT_TILE_DECODE_ORDER, int)
 
 AOM_CTRL_USE_TYPE(AV1_GET_ACCOUNTING, Accounting **)
 #define AOM_CTRL_AV1_GET_ACCOUNTING
-
-AOM_CTRL_USE_TYPE(AV1_SET_DECODE_TILE_ROW, int)
-#define AOM_CTRL_AV1_SET_DECODE_TILE_ROW
-
-AOM_CTRL_USE_TYPE(AV1_SET_DECODE_TILE_COL, int)
-#define AOM_CTRL_AV1_SET_DECODE_TILE_COL
 
 AOM_CTRL_USE_TYPE(AV1_SET_TILE_MODE, unsigned int)
 #define AOM_CTRL_AV1_SET_TILE_MODE
