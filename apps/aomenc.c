@@ -504,6 +504,13 @@ const arg_def_t *av1_key_val_args[] = {
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
   &g_av1_codec_arg_defs.disable_loopfilters_across_tiles,
 #endif  // CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
+#if CONFIG_CROP_WIN_CWG_F220
+  &g_av1_codec_arg_defs.enable_cropping_window,
+  &g_av1_codec_arg_defs.crop_win_left_offset,
+  &g_av1_codec_arg_defs.crop_win_right_offset,
+  &g_av1_codec_arg_defs.crop_win_top_offset,
+  &g_av1_codec_arg_defs.crop_win_bottom_offset,
+#endif  // CONFIG_CROP_WIN_CWG_F220
   NULL,
 };
 
@@ -718,6 +725,13 @@ static void init_config(cfg_options_t *config) {
   config->enable_reduced_reference_set = 0;
   config->reduced_tx_type_set = 0;
   config->enable_refmvbank = 1;
+#if CONFIG_CROP_WIN_CWG_F220
+  config->enable_cropping_window = 0;
+  config->crop_win_left_offset = 0;
+  config->crop_win_right_offset = 0;
+  config->crop_win_top_offset = 0;
+  config->crop_win_bottom_offset = 0;
+#endif  // CONFIG_CROP_WIN_CWG_F220
   config->enable_drl_reorder = 1;
   config->enable_cdef_on_skip_txfm = 1;
   config->enable_avg_cdf = 1;
@@ -815,6 +829,26 @@ static void parse_global_config(struct AvxEncoderConfig *global, char ***argv) {
         global->show_psnr = 2;
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.recontest, argi)) {
       global->test_decode = arg_parse_enum_or_int(&arg);
+#if CONFIG_CROP_WIN_CWG_F220
+    } else if (arg_match(&arg, &g_av1_codec_arg_defs.enable_cropping_window,
+                         argi)) {
+      global->encoder_config.enable_cropping_window =
+          arg_parse_enum_or_int(&arg);
+    } else if (arg_match(&arg, &g_av1_codec_arg_defs.crop_win_left_offset,
+                         argi)) {
+      global->encoder_config.crop_win_left_offset = arg_parse_enum_or_int(&arg);
+    } else if (arg_match(&arg, &g_av1_codec_arg_defs.crop_win_right_offset,
+                         argi)) {
+      global->encoder_config.crop_win_right_offset =
+          arg_parse_enum_or_int(&arg);
+    } else if (arg_match(&arg, &g_av1_codec_arg_defs.crop_win_top_offset,
+                         argi)) {
+      global->encoder_config.crop_win_top_offset = arg_parse_enum_or_int(&arg);
+    } else if (arg_match(&arg, &g_av1_codec_arg_defs.crop_win_bottom_offset,
+                         argi)) {
+      global->encoder_config.crop_win_bottom_offset =
+          arg_parse_enum_or_int(&arg);
+#endif  // CONFIG_CROP_WIN_CWG_F220
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.framerate, argi)) {
       global->framerate = arg_parse_rational(&arg);
       validate_positive_rational(arg.name, &global->framerate);
