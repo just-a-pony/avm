@@ -930,9 +930,9 @@ static TX_SIZE set_lpf_parameters(
               xd, mi_prev, edge_dir, pv_row, pv_col, plane, prev_tree_type,
               plane_ptr, &prev_tu_edge, &prev_tx_info, &pv_is_tx_m_partition);
 
-          mi_size_prev =
-              get_remaining_mi_size(mi_prev, &prev_tx_info, edge_dir, x, y,
-                                    plane, tree_type, scale_horz, scale_vert);
+          mi_size_prev = get_remaining_mi_size(mi_prev, &prev_tx_info, edge_dir,
+                                               x, y, plane, prev_tree_type,
+                                               scale_horz, scale_vert);
           int32_t pv_sub_pu_edge = 0;
           check_sub_pu_edge(cm, xd, mi_prev, plane, prev_tree_type, scale_horz,
                             scale_vert, edge_dir, 0, &pv_ts, &pv_sub_pu_edge,
