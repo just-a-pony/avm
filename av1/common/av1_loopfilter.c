@@ -461,7 +461,7 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
                                   const TREE_TYPE tree_type,
                                   const struct macroblockd_plane *plane_ptr,
                                   bool *tu_edge, tx_info_t *tx_info,
-                                  bool *is_tx_m_partition) {
+                                  int *tx_m_partition_size) {
   assert(mbmi != NULL);
   const BLOCK_SIZE bsize_base =
       get_bsize_base_from_tree_type(mbmi, tree_type, plane);
@@ -514,12 +514,15 @@ static TX_SIZE get_transform_size(const MACROBLOCKD *const xd,
 
     const TX_SIZE max_tx_size = max_txsize_rect_lookup[sb_type];
     if (partition == TX_PARTITION_HORZ5 || partition == TX_PARTITION_VERT5) {
-      if (is_tx_m_partition != NULL) {
-        *is_tx_m_partition =
-            (edge_dir == VERT_EDGE && mi_size_wide[mbmi->sb_type[0]] <= 8 &&
+      if (tx_m_partition_size != NULL) {
+        if ((edge_dir == VERT_EDGE && mi_size_wide[mbmi->sb_type[0]] <= 8 &&
              partition == TX_PARTITION_VERT5) ||
             (edge_dir == HORZ_EDGE && mi_size_high[mbmi->sb_type[0]] <= 8 &&
-             partition == TX_PARTITION_HORZ5);
+             partition == TX_PARTITION_HORZ5)) {
+          *tx_m_partition_size = (edge_dir == VERT_EDGE)
+                                     ? block_size_wide[mbmi->sb_type[0]]
+                                     : block_size_high[mbmi->sb_type[0]];
+        }
       }
       TXB_POS_INFO txb_pos = { { 0 }, { 0 }, 0 };
       TX_SIZE sub_txs[MAX_TX_PARTITIONS] = { 0 };
@@ -688,7 +691,7 @@ static AOM_INLINE void check_sub_pu_edge(
     const MB_MODE_INFO *const mbmi, const int plane, TREE_TYPE tree_type,
     const int scale_horz, const int scale_vert, const EDGE_DIR edge_dir,
     const uint32_t coord, TX_SIZE *ts, int32_t *sub_pu_edge,
-    bool *is_tx_m_partition) {
+    int *tx_m_partition_size) {
   if (!cm->features.allow_lf_sub_pu) return;
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
   if (!is_inter) return;
@@ -720,8 +723,10 @@ static AOM_INLINE void check_sub_pu_edge(
       } else {
         *sub_pu_edge = 1;
       }
-      if (*is_tx_m_partition) {
-        *ts = (sub_pu_size == 16) ? TX_8X8 : TX_4X4;
+      if (*tx_m_partition_size == 16 && sub_pu_size == 8) {
+        *ts = TX_4X4;
+      } else if (*tx_m_partition_size == 32 && sub_pu_size == 16) {
+        *ts = TX_8X8;
       } else if (*sub_pu_edge) {
         *ts = temp_ts;
       }
@@ -853,10 +858,10 @@ static TX_SIZE set_lpf_parameters(
 
   bool tu_edge;
   tx_info_t tx_info = { 0, 0, TX_PARTITION_NONE, TX_4X4 };
-  bool is_tx_m_partition = false;
+  int tx_m_partition_size = 0;
   TX_SIZE ts =
       get_transform_size(xd, mi[0], edge_dir, mi_row, mi_col, plane, tree_type,
-                         plane_ptr, &tu_edge, &tx_info, &is_tx_m_partition);
+                         plane_ptr, &tu_edge, &tx_info, &tx_m_partition_size);
   const BLOCK_SIZE superblock_size = get_plane_block_size(
       cm->sb_size, plane_ptr->subsampling_x, plane_ptr->subsampling_y);
   assert(superblock_size < BLOCK_SIZES_ALL);
@@ -866,7 +871,7 @@ static TX_SIZE set_lpf_parameters(
 
     int32_t sub_pu_edge = 0;
     check_sub_pu_edge(cm, xd, mbmi, plane, tree_type, scale_horz, scale_vert,
-                      edge_dir, coord, &ts, &sub_pu_edge, &is_tx_m_partition);
+                      edge_dir, coord, &ts, &sub_pu_edge, &tx_m_partition_size);
     if (!tu_edge && !sub_pu_edge) return ts;
 #if CONFIG_CONTROL_LOOPFILTERS_ACROSS_TILES
     if (cm->seq_params.disable_loopfilters_across_tiles) {
@@ -925,10 +930,10 @@ static TX_SIZE set_lpf_parameters(
           }
           bool prev_tu_edge;
           tx_info_t prev_tx_info = { 0, 0, TX_PARTITION_NONE, TX_4X4 };
-          bool pv_is_tx_m_partition = false;
+          int pv_tx_m_partition_size = 0;
           TX_SIZE pv_ts = get_transform_size(
               xd, mi_prev, edge_dir, pv_row, pv_col, plane, prev_tree_type,
-              plane_ptr, &prev_tu_edge, &prev_tx_info, &pv_is_tx_m_partition);
+              plane_ptr, &prev_tu_edge, &prev_tx_info, &pv_tx_m_partition_size);
 
           mi_size_prev = get_remaining_mi_size(mi_prev, &prev_tx_info, edge_dir,
                                                x, y, plane, prev_tree_type,
@@ -936,7 +941,7 @@ static TX_SIZE set_lpf_parameters(
           int32_t pv_sub_pu_edge = 0;
           check_sub_pu_edge(cm, xd, mi_prev, plane, prev_tree_type, scale_horz,
                             scale_vert, edge_dir, 0, &pv_ts, &pv_sub_pu_edge,
-                            &pv_is_tx_m_partition);
+                            &pv_tx_m_partition_size);
           const uint32_t pv_q =
               av1_get_filter_q(&cm->lf_info, edge_dir, plane, mi_prev
 #if CONFIG_DF_DQP
