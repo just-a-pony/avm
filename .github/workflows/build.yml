@@ -1,0 +1,81 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+jobs:
+  win32:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-clang
+            arch: "x64"
+            os: "windows-latest"
+    env:
+      VS: "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise"
+      CC: "ccache clang"
+      CXX: "ccache clang++"
+      CC_LD: "lld-link"
+      CXX_LD: "lld-link"
+      WINDRES: "llvm-rc"
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_DIR: "${{ github.workspace }}\\.ccache"
+      CCACHE_MAXSIZE: 500M
+    steps:
+      - name: Disable autocrlf
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - uses: actions/checkout@v4
+
+      - name: Get time
+        id: get_time
+        run: |
+          "timestamp=$((Get-Date).Ticks)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ matrix.target }}-${{ steps.get_time.outputs.timestamp }}
+          restore-keys: ${{ matrix.target }}-
+
+      - name: Install dependencies
+        run: |
+          choco install ccache nasm doxygen.install
+
+#      - name: Setup tmate session
+#        uses: mxschmitt/action-tmate@v3
+
+      - name: Build
+        id: build
+        run: |
+          Import-Module "$env:VS\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $env:VS -SkipAutomaticLocation -DevCmdArguments "-arch=${{ matrix.arch }} -host_arch=${{ matrix.arch }}"
+
+          New-Item -Path out -ItemType Directory
+          cd out
+          $CMakeArgs = @(
+            "-G", "Ninja",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_C_COMPILER=clang",
+            "-DCMAKE_CXX_COMPILER=clang++",
+            $CMakePolicy
+          )
+          cmake $CMakeArgs ..
+          ninja
+      - name: Save Cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ matrix.target }}-${{ steps.get_time.outputs.timestamp }}
+      - name: Out
+        uses: actions/upload-artifact@v4
+        with:
+          name: out.zip
+          path: out/
